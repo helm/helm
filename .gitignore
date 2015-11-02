@@ -1,0 +1,6 @@
+expandybird/pkg/*
+expandybird/expansion/*.pyc
+resourcifier/pkg/*
+resourcifier/bin/*
+manager/pkg/*
+

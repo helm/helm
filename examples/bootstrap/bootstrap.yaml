@@ -1,0 +1,36 @@
+imports:
+- path: replicatedservice.py
+resources:
+- name: expandybird
+  type: replicatedservice.py
+  properties:
+    service_port: 8081
+    target_port: 8080
+    container_port: 8080
+    external_service: false
+    replicas: 2
+    image: gcr.io/dm-k8s-testing/expandybird:latest
+    labels:
+      app: dm
+- name: resourcifier
+  type: replicatedservice.py
+  properties:
+    service_port: 8082
+    target_port: 8080
+    container_port: 8080
+    external_service: false
+    replicas: 2
+    image: gcr.io/dm-k8s-testing/resourcifier:latest
+    labels:
+      app: dm
+- name: manager
+  type: replicatedservice.py
+  properties:
+    service_port: 8080
+    target_port: 8080
+    container_port: 8080
+    external_service: false
+    replicas: 1
+    image: gcr.io/dm-k8s-testing/manager:latest
+    labels:
+      app: dm
