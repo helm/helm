@@ -15,20 +15,39 @@
 FROM golang:1.4
 MAINTAINER Jack Greenfield <jackgr@google.com>
 
-WORKDIR /go/src
+RUN mkdir -p "$GOPATH/src/github.com" && chmod 777 "$GOPATH/src/github.com"
 
-RUN mkdir -p manager
+WORKDIR "$GOPATH/src/github.com"
+
+RUN mkdir -p manager && chmod 777 manager
 COPY manager manager
 
-RUN mkdir -p util
+RUN mkdir -p util && chmod 777 util
 COPY util util
 
-RUN mkdir -p version
+RUN mkdir -p version && chmod 777 version
 COPY version version
 
-RUN go-wrapper download manager/...
-RUN go-wrapper install manager/...
+WORKDIR "$GOPATH"
+
+RUN mkdir -p src/github.com/kubernetes/deployment-manager \
+  && chmod 777 src/github.com/kubernetes/deployment-manager
+
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/manager \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/manager
+COPY manager src/github.com/kubernetes/deployment-manager/manager
+
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/util \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/util
+COPY util src/github.com/kubernetes/deployment-manager/util
+
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/version \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/version
+COPY version src/github.com/kubernetes/deployment-manager/version
+
+RUN go-wrapper download github.com/kubernetes/deployment-manager/manager/...
+RUN go-wrapper install github.com/kubernetes/deployment-manager/manager/...
 
 EXPOSE 8080
 
-ENTRYPOINT ["go-wrapper", "run"]
+ENTRYPOINT ["bin/manager"]

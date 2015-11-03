@@ -32,23 +32,30 @@ RUN wget -O - "$KUBE_DOWLOAD" 2> /dev/null | tar xzf - -C /tmp "$KUBE_COMMAND" \
 
 RUN apt-get purge -y --auto-remove wget
 
-WORKDIR /go/src
+WORKDIR "$GOPATH"
 
-RUN mkdir -p expandybird
-COPY expandybird expandybird
+RUN mkdir -p src/github.com/kubernetes/deployment-manager \
+  && chmod 777 src/github.com/kubernetes/deployment-manager
 
-RUN mkdir -p resourcifier
-COPY resourcifier resourcifier
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/expandybird \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/expandybird
+COPY expandybird src/github.com/kubernetes/deployment-manager/expandybird
 
-RUN mkdir -p util
-COPY util util
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/resourcifier \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/resourcifier
+COPY resourcifier src/github.com/kubernetes/deployment-manager/resourcifier
 
-RUN mkdir -p version
-COPY version version
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/util \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/util
+COPY util src/github.com/kubernetes/deployment-manager/util
 
-RUN go-wrapper download resourcifier/...
-RUN go-wrapper install resourcifier/...
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/version \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/version
+COPY version src/github.com/kubernetes/deployment-manager/version
+
+RUN go-wrapper download github.com/kubernetes/deployment-manager/resourcifier/...
+RUN go-wrapper install github.com/kubernetes/deployment-manager/resourcifier/...
 
 EXPOSE 8080
 
-ENTRYPOINT ["go-wrapper", "run", "--kubectl=/usr/local/bin/kubectl"]
+ENTRYPOINT ["bin/resourcifier", "--kubectl=/usr/local/bin/kubectl"]
