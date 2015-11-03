@@ -22,7 +22,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"util"
+
+	"github.com/kubernetes/deployment-manager/util"
 
 	"github.com/ghodss/yaml"
 )

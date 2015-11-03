@@ -23,8 +23,8 @@ import (
 	"reflect"
 	"testing"
 
-	"expandybird/expander"
-	"util"
+	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/util"
 
 	restful "github.com/emicklei/go-restful"
 )

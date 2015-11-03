@@ -4,7 +4,7 @@ TARGETS := all build test push container clean
 SUBDIRS_TARGETS := \
 	$(foreach t,$(TARGETS),$(addsuffix $t,$(SUBDIRS)))
 
-GO_DEPS := util/... version/... expandybird/... resourcifier/... manager/... client/...
+GO_DEPS := github.com/kubernetes/deployment-manager/util/... github.com/kubernetes/deployment-manager/version/... github.com/kubernetes/deployment-manager/expandybird/... github.com/kubernetes/deployment-manager/resourcifier/... github.com/kubernetes/deployment-manager/manager/... github.com/kubernetes/deployment-manager/client/...
 
 .PHONY : all build test clean $(TARGETS) $(SUBDIRS_TARGETS) .project .docker
 

@@ -14,8 +14,8 @@ limitations under the License.
 package service
 
 import (
-	"expandybird/expander"
-	"util"
+	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/util"
 
 	"errors"
 	"fmt"

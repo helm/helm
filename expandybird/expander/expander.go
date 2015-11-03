@@ -14,14 +14,13 @@ limitations under the License.
 package expander
 
 import (
-	"path/filepath"
-
 	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os/exec"
 	"path"
+	"path/filepath"
 
 	"github.com/ghodss/yaml"
 )

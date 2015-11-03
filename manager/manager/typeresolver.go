@@ -17,7 +17,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	"util"
+
+	"github.com/kubernetes/deployment-manager/util"
 
 	"github.com/ghodss/yaml"
 )

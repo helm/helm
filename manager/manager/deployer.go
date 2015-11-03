@@ -16,13 +16,14 @@ package manager
 import (
 	"bytes"
 	"fmt"
-	"github.com/ghodss/yaml"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/ghodss/yaml"
 )
 
 // Deployer abstracts interactions with the expander and deployer services.

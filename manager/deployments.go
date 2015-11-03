@@ -28,9 +28,9 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gorilla/mux"
 
-	"manager/manager"
-	"manager/repository"
-	"util"
+	"github.com/kubernetes/deployment-manager/manager/manager"
+	"github.com/kubernetes/deployment-manager/manager/repository"
+	"github.com/kubernetes/deployment-manager/util"
 )
 
 var deployments = []Route{

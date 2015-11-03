@@ -14,7 +14,8 @@ limitations under the License.
 package repository
 
 import (
-	"manager/manager"
+	"github.com/kubernetes/deployment-manager/manager/manager"
+
 	"testing"
 )
 

@@ -19,9 +19,10 @@ package repository
 import (
 	"fmt"
 	"log"
-	"manager/manager"
 	"sync"
 	"time"
+
+	"github.com/kubernetes/deployment-manager/manager/manager"
 )
 
 // deploymentTypeInstanceMap stores type instances mapped by deployment name.

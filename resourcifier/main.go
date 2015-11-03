@@ -14,7 +14,7 @@ limitations under the License.
 package main
 
 import (
-	"version"
+	"github.com/kubernetes/deployment-manager/version"
 
 	"flag"
 	"fmt"

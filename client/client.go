@@ -14,7 +14,7 @@ limitations under the License.
 package main
 
 import (
-	"expandybird/expander"
+	"github.com/kubernetes/deployment-manager/expandybird/expander"
 
 	"bytes"
 	"encoding/json"

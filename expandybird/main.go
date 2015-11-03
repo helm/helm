@@ -14,9 +14,9 @@ limitations under the License.
 package main
 
 import (
-	"expandybird/expander"
-	"expandybird/service"
-	"version"
+	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/expandybird/service"
+	"github.com/kubernetes/deployment-manager/version"
 
 	"flag"
 	"fmt"

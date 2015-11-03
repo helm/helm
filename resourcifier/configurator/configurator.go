@@ -16,10 +16,11 @@ package configurator
 import (
 	"bytes"
 	"fmt"
-	"github.com/ghodss/yaml"
 	"log"
 	"os/exec"
 	"strings"
+
+	"github.com/ghodss/yaml"
 )
 
 // TODO(jackgr): Define an interface and a struct type for Configurator and move initialization to the caller.
