@@ -1,9 +1,8 @@
 imports:
 - path: redis.jinja
-- path: replicatedservice.py
 resources:
 - name: frontend
-  type: replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
   properties:
     service_port: 80
     container_port: 80

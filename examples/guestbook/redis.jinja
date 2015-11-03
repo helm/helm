@@ -3,7 +3,7 @@
 
 resources:
 - name: redis-master
-  type: replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
   properties:
     # This has to be overwritten since service names are hard coded in the code
     service_name: redis-master
@@ -15,7 +15,7 @@ resources:
     image: redis
 
 - name: redis-slave
-  type: replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
   properties:
     # This has to be overwritten since service names are hard coded in the code
     service_name: redis-slave

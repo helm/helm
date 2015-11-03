@@ -108,3 +108,15 @@ the following command:
 ```
 make push
 ```
+
+## Design of Deployment Manager
+
+There is a more detailed [design document](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md)
+available.
+
+## Status of the project
+
+The project is still in a very active development mode so you might run into issues,
+please don't be shy about letting us know when you run into issues.
+
+
