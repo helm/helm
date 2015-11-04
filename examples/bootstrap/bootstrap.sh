@@ -1,6 +1,9 @@
 #!/bin/bash
+
 LOGDIR=log
-mkdir $LOGDIR
+if [[ ! -d $LOGDIR ]]; then
+  mkdir $LOGDIR
+fi
 
 KUBECTL=`which kubectl`
 if [[ -z $KUBECTL ]] ; then
