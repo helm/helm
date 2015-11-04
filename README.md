@@ -1,7 +1,7 @@
 # Deployment Manager
 
 Deployment Manager lets you define and deploy simple declarative configuration
-for your Kubernetes resources.
+for your Kubernetes resources (e.g., pods, replication controllers, services, etc.).
 
 You can also use Python or [Jinja](http://jinja.pocoo.org/) to create powerful
 parameterizable abstract types called **Templates**. You can create general
@@ -14,8 +14,10 @@ You can find more examples of Templates and configurations in our
 
 Deployment Manager uses the same concepts and languages as
 [Google Cloud Deployment Manager](https://cloud.google.com/deployment-manager/overview),
-but works directly within your Kubernetes cluster.
+but creates resources within your Kubernetes cluster, not on the Google Cloud Platform.
 
+Please join us on [the Google Group](https://groups.google.com/forum/#!forum/kubernetes-sig-config) and/or in [the Slack chat room](https://kubernetes.slack.com/messages/sig-configuration/) for the
+Kubernetes configuration SIG.
 
 ## Getting started
 
