@@ -155,7 +155,12 @@ passing configuration to Deployment Manager.
 
 ### Instantiating Templates
 Templates can be instantiated in the same way that a configurable resource is
-used, but must be imported and included as part of the configuration.
+used. They can be used in two different ways, either passed to the API as an
+imported file, or used from a public HTTP endpoint.
+
+#### Imported Templates
+Templates may be imported as part of the target configuration and used
+directly, for example:
 
 ```
 imports:
@@ -171,6 +176,30 @@ resources:
 The _imports_ list is not understood by the Deployment Manager service, but is a
 directive to client-side tooling to specify what additional files should be
 included when passing a configuration to the API.
+
+Using the Deployment Manager API, these templates can be included in the
+imports section of the _targetConfig_.
+
+#### External Templates
+Templates may also be used from a public HTTP endpoint, for example:
+
+```
+resources:
+- name: example
+  type: https://raw.githubusercontent.com/example/example.py
+  properties:
+    prop1: prop-value
+```
+
+The service will process external templates as follows:
+
+1. fetch the external template as an import
+1. attempt to fetch the schema for the template, using
+  _<full template path>.schema_ as the schema path
+1. repeat for any sub-imports found in the schema file
+
+When fetching schema files and sub-imports, the base path of the external
+template is used for relative paths.
 
 ## API Model
 Deployment Manager exposes a set of RESTful collections over HTTP/JSON.
