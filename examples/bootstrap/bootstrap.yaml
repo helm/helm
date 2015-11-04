@@ -1,8 +1,6 @@
-imports:
-- path: replicatedservice.py
 resources:
 - name: expandybird
-  type: replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
   properties:
     service_port: 8081
     target_port: 8080
@@ -13,7 +11,7 @@ resources:
     labels:
       app: dm
 - name: resourcifier
-  type: replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
   properties:
     service_port: 8082
     target_port: 8080
@@ -24,7 +22,7 @@ resources:
     labels:
       app: dm
 - name: manager
-  type: replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
   properties:
     service_port: 8080
     target_port: 8080
