@@ -1,5 +1,7 @@
 imports:
 - path: redis.jinja
+- path: redis.jinja.schema
+
 resources:
 - name: frontend
   type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
