@@ -1,5 +1,5 @@
 {% set REDIS_PORT = 6379 %}
-{% set WORKERS = properties['workers'] %}
+{% set WORKERS = properties['workers'] or 2 %}
 
 resources:
 - name: redis-master
