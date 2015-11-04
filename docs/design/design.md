@@ -127,7 +127,6 @@ more details, including:
 
 * info: more information about the template, including long description and
   title
-* imports: any sub-imports used by this template (may be relative path or URL)
 * required: properties which are required when instantiating the template
 * properties: JSON Schema descriptions of each property the template accepts
 
@@ -137,9 +136,6 @@ An example of a template schema is:
 info:
   title: The Example
   description: A template being used as an example to illustrate concepts.
-
-imports:
-- path: helper.py
 
 required:
 - prop1
