@@ -15,25 +15,7 @@ def GenerateConfig(context):
   """Generates a Replication Controller and a matching Service.
 
   Args:
-    context: Template context, which can contain the following properties:
-             container_name - Name to use for container. If omitted, name is
-                              used.
-             namespace - Namespace to create the resources in. If omitted,
-                         'default' is used.
-             service_name - Name to use for service. If omitted name-service is
-                            used.
-             protocol - Protocol to use for the service
-             service_port - Port to use for the service
-             target_port - Target port for the service
-             container_port - Container port to use
-             replicas - Number of replicas to create in RC
-             image - Docker image to use for replicas. Required.
-             labels - labels to apply.
-             env - Environmental variables to apply (list of maps). Format
-                   should be:
-                      [{'name': ENV_VAR_NAME, 'value':'ENV_VALUE'},
-                       {'name': ENV_VAR_NAME_2, 'value':'ENV_VALUE_2'}]
-             external_service - If set to true, enable external Load Balancer
+    context: Template context. See schema for context properties.
 
   Returns:
     A Container Manifest as a YAML string.
