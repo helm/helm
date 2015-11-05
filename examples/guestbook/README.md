@@ -77,9 +77,10 @@ resources:
 
 ### Displaying types
 
-You can also (currently using curl, work in progress) see what types have been deployed to the cluster:
+You can also see what types have been deployed to the cluster:
 ```
-curl http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager/types
+client --action listtypes --service=http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager 
+
 ["Service","ReplicationController","redis.jinja","https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py"]
 ```
 
@@ -89,8 +90,8 @@ This shows that there are 2 native types that we have deployed (Service and Repl
 
 You can also see where the types are being used by getting details on the particular type:
 ```
- curl 'http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager/types/redis.jinja/instances'
-[{"name":"redis","type":"redis.jinja","deployment":"guestbook","manifest":"manifest-1446584669795839153","path":"$.resources[1]"}]
+client -action gettype --service=http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager -name 'Service'
+[{"name":"frontend-service","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[0].resources[0]"},{"name":"redis-master","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[1].resources[0].resources[0]"},{"name":"redis-slave","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[1].resources[1].resources[0]"}]
 ```
 
 It lists which deployment and manifest as well as JSON path to the type.
