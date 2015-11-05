@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | gettype")
+	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances")
 	name    = flag.String("name", "", "Name of template or deployment")
 	service = flag.String("service", "http://localhost:8080", "URL for deployment manager")
 	binary  = flag.String("binary", "../expandybird/expansion/expansion.py",
@@ -72,8 +72,8 @@ func main() {
 		callService(path, "PUT", name, readTemplate(name))
 	case "listtypes":
 		callService("types", "GET", name, nil)
-	case "gettype":
-		path := fmt.Sprintf("types/%s/instances", name)
+	case "listtypeinstances":
+		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(name))
 		callService(path, "GET", name, nil)
 	}
 }
@@ -84,7 +84,7 @@ func callService(path, method, name string, reader io.ReadCloser) {
 		action = "deploy"
 	}
 
-	u := fmt.Sprintf("%s/%s", *service, url.QueryEscape(path))
+	u := fmt.Sprintf("%s/%s", *service, path)
 	request, err := http.NewRequest(method, u, reader)
 	request.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(request)
