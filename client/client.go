@@ -24,13 +24,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 )
 
 var (
-	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update")
+	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | gettype")
 	name    = flag.String("name", "", "Name of template or deployment")
 	service = flag.String("service", "http://localhost:8080", "URL for deployment manager")
 	binary  = flag.String("binary", "../expandybird/expansion/expansion.py",
@@ -69,6 +70,11 @@ func main() {
 	case "update":
 		path := fmt.Sprintf("deployments/%s", name)
 		callService(path, "PUT", name, readTemplate(name))
+	case "listtypes":
+		callService("types", "GET", name, nil)
+	case "gettype":
+		path := fmt.Sprintf("types/%s/instances", name)
+		callService(path, "GET", name, nil)
 	}
 }
 
@@ -78,8 +84,8 @@ func callService(path, method, name string, reader io.ReadCloser) {
 		action = "deploy"
 	}
 
-	url := fmt.Sprintf("%s/%s", *service, path)
-	request, err := http.NewRequest(method, url, reader)
+	u := fmt.Sprintf("%s/%s", *service, url.QueryEscape(path))
+	request, err := http.NewRequest(method, u, reader)
 	request.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -94,7 +100,7 @@ func callService(path, method, name string, reader io.ReadCloser) {
 
 	if response.StatusCode < http.StatusOK ||
 		response.StatusCode >= http.StatusMultipleChoices {
-		message := fmt.Sprintf("status code: %d status: %s", response.StatusCode, response.Status)
+		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
 		log.Fatalf("cannot %s template named %s: %s\n", action, name, message)
 	}
 
