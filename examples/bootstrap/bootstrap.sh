@@ -1,4 +1,10 @@
 #!/bin/bash
+
+LOGDIR=log
+if [[ ! -d $LOGDIR ]]; then
+  mkdir $LOGDIR
+fi
+
 KUBECTL=`which kubectl`
 if [[ -z $KUBECTL ]] ; then
   echo Cannot find kubectl
@@ -12,7 +18,7 @@ if [[ -z $RESOURCIFIER ]] ; then
 	exit 1
 fi
 pkill -f $RESOURCIFIER
-$RESOURCIFIER > resourcifier.log 2>&1 --kubectl=$KUBECTL --port=8082 &
+$RESOURCIFIER > $LOGDIR/resourcifier.log 2>&1 --kubectl=$KUBECTL --port=8082 &
 echo
 
 echo "Starting expandybird..."
@@ -22,7 +28,7 @@ if [[ -z $EXPANDYBIRD ]] ; then
   exit 1
 fi
 pkill -f $EXPANDYBIRD
-$EXPANDYBIRD > expandybird.log 2>&1 --port=8081 --expansion_binary=expandybird/expansion/expansion.py &
+$EXPANDYBIRD > $LOGDIR/expandybird.log 2>&1 --port=8081 --expansion_binary=expandybird/expansion/expansion.py &
 echo
 
 echo "Starting deployment manager..."
@@ -32,7 +38,7 @@ if [[ -z $MANAGER ]] ; then
   exit 1
 fi
 pkill -f $MANAGER
-$MANAGER > manager.log 2>&1 --port=8080 --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
+$MANAGER > $LOGDIR/manager.log 2>&1 --port=8080 --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
 echo
 
 echo "Starting kubectl proxy..."
