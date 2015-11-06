@@ -21,65 +21,68 @@ Kubernetes configuration SIG.
 
 ## Getting started
 
-For the following steps, it is assumed that you have a Kubernetes cluster up
-and running, and that you can run kubectl commands against it. It is also
-assumed that you're working with a clone of the repository installed in the src
-folder of your GOPATH, and that your PATH contains $GOPATH/bin, per convention.
+There are two ways to get started...
 
-Since Deployment Manager uses Python and will be running locally on your
-machine, you will first need to make sure the necessary Python packages are
-installed. This assumes that you have already installed the pip package
-management system on your machine.
+* The quick way simply installs Deployment Manager in your cluster using
+kubectl. This is the fastest way to get started and takes only a few seconds.
 
-```
-pip install -r expandybird/requirements.txt
-```
+* The interesting way bootstraps Deployment Manager, by building and running a
+local instance on your machine, and then using it to install another instance
+in your cluster. You might want to go this way if you're interested in contributing
+to Deployment Manager.
 
-Next, you'll build and install the binaries, and bootstrap Deployment Manager
-into the cluster. Finally, you'll deploy an example application on the
-cluster using Deployment Manager.
+Both assume that you have a Kubernetes cluster up and running, and that you can
+run `kubectl` commands against it. They both also assume that that you're working
+with a clone of the repository installed in the src folder of your GOPATH, per
+convention.
 
-### Building and installing the binaries
+Instructions for the quick install follow here. Instructions for bootstrapping
+Deployment Manager can be found in [examples/bootstrap/README.md](examples/bootstrap/README.md).
 
-In this step, you're going to build and install the Deployment Manager binaries.
-You can do this by running make in the repository root.
+### Quick Install
 
-```
-make
-```
-
-### Bootstrapping Deployment Manager
-
-In this step, you're going to bootstrap Deployment Manager into the cluster.
-
-Next, start the three Deployment Manager binaries on localhost using the supplied
-bootstrap script.
+For the quick install, you're going to use `kubectl` to create the replication
+controllers and services that comprise a Deployment Manager instance from a predefined
+configuration file, as follows:
 
 ```
-./examples/bootstrap/bootstrap.sh
+kubectl create -f install.yaml
 ```
 
-The script starts the following binaries:
-* manager (frontend service) running on port 8080
-* expandybird (expands templates) running on port 8081
-* resourcifier (reifies primitive Kubernetes resources) running on port 8082
-
-It also starts kubectl proxy on port 8001.
-
-Next, use the Deployment Manager running on localhost to deploy itself onto the
-cluster using the supplied command line tool and template.
+That's it. You should now be able to see Deployment Manager running in your cluster
+using:
 
 ```
-client --name test --service=http://localhost:8080 examples/bootstrap/bootstrap.yaml
+kubectl get pod,rc,service
 ```
 
-You should now have Deployment Manager running on your cluster, and it should be
-visible using kubectl (kubectl get pod,rc,service).
+If you see replication controllers named expandybird-rc, manager-rc and resourcifier-rc
+with pods that are READY, and services with corresponding names, then Deployment
+Manager is up and running.
+
+Note that you can also tear down Deployment Manager using the same file, with:
+
+```
+kubectl delete -f install.yaml
+```
+
+The easiest way to interact with Deployment Manager, now that it's up and running,
+is to use a `kubectl` proxy:
+
+```
+kubectl proxy --port=8001 &
+```
+
+This command will start a proxy that lets you interact with the Kubernetes api
+server through port 8001 on you local host. However, there are other ways to access
+Deployment Manager. We won't go into them here, but if you know how to access
+services running on Kubernetes, you should be able to use any of the supported
+methods to access Deployment Manager.
 
 ### Deploying your first application (Guestbook)
 
-In this step, you're going to deploy the canonical guestbook example to your
-Kubernetes cluster.
+Next, you're going to deploy the canonical guestbook example to your Kubernetes
+cluster.
 
 ```
 client --name guestbook --service=http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager examples/guestbook/guestbook.yaml
@@ -94,7 +97,7 @@ kubectl get service
 
 You should see frontend-service running. If your cluster supports external
 load balancing, it will have an external IP assigned to it, and you should be 
-able to navigate to it to see the guestbook in action.
+able to navigate to it in your browser to see the guestbook in action.
 
 ## Building the container images
 
@@ -113,12 +116,14 @@ make push
 
 ## Design of Deployment Manager
 
-There is a more detailed [design document](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md)
+There is a more detailed [design document](docs/design/design.md)
 available.
 
 ## Status of the project
 
-The project is still in a very active development mode so you might run into issues,
-please don't be shy about letting us know when you run into issues.
+The project is still under active development, so you might run into issues. If
+you do, please don't be shy about letting us know, or better yet, contributing a
+fix or feature. We use the same contribution conventions as the main Kubernetes
+repository.
 
 

@@ -3,4 +3,4 @@ expandybird/expansion/*.pyc
 resourcifier/pkg/*
 resourcifier/bin/*
 manager/pkg/*
-
+.project
