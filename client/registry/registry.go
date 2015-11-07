@@ -16,7 +16,7 @@ package registry
 // Registry abstracts a types registry which holds types that can be
 // used in a Deployment Manager configurations. A registry root must have
 // a 'types' directory which contains all the available types. Each type
-// then contains version directory which in turn contains all the files
+// then contains version directories which in turn contains all the files
 // necessary for that type.
 // For example a type registry holding two types:
 //   redis v1               (implemented in jinja)
