@@ -23,21 +23,18 @@ import (
 type GithubRegistry struct {
 	owner      string
 	repository string
-	root       string
 	client     *github.Client
 }
 
-func NewGithubRegistry(owner string, repository string, root string) *GithubRegistry {
+func NewGithubRegistry(owner string, repository string) *GithubRegistry {
 	return &GithubRegistry{
 		owner:      owner,
 		repository: repository,
-		root:       root,
 		client:     github.NewClient(nil),
 	}
 }
 
 func (g *GithubRegistry) List() ([]Type, error) {
-	log.Printf("Calling ListRefs")
 	// First list all the types at the top level.
 	types, err := g.getDirs(TypesDir)
 	if err != nil {
@@ -46,7 +43,6 @@ func (g *GithubRegistry) List() ([]Type, error) {
 	}
 	var retTypes []Type
 	for _, t := range types {
-		log.Printf("Got TYPE: %s, fetching : %s", t, TypesDir+"/"+t)
 		// Then we need to fetch the versions (directories for this type)
 		versions, err := g.getDirs(TypesDir + "/" + t)
 		if err != nil {
@@ -54,7 +50,6 @@ func (g *GithubRegistry) List() ([]Type, error) {
 			return nil, err
 		}
 		for _, v := range versions {
-			log.Printf("Got VERSION: %s", v)
 			retTypes = append(retTypes, Type{Name: t, Version: v})
 		}
 	}
@@ -71,7 +66,7 @@ func (g *GithubRegistry) GetURL(t Type) (string, error) {
 	}
 	for _, f := range dc {
 		if *f.Type == "file" {
-			if *f.Name == t.Version+".jinja" || *f.Name == t.Version+".py" {
+			if *f.Name == t.Name+".jinja" || *f.Name == t.Name+".py" {
 				return *f.DownloadURL, nil
 			}
 		}
@@ -80,12 +75,11 @@ func (g *GithubRegistry) GetURL(t Type) (string, error) {
 }
 
 func (g *GithubRegistry) getDirs(dir string) ([]string, error) {
-	_, dc, resp, err := g.client.Repositories.GetContents(g.owner, g.repository, dir, nil)
+	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, dir, nil)
 	if err != nil {
 		log.Printf("Failed to call ListRefs : %v", err)
 		return nil, err
 	}
-	log.Printf("Got: %v %v", dc, resp, err)
 	var dirs []string
 	for _, entry := range dc {
 		if *entry.Type == "dir" {

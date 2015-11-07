@@ -29,8 +29,7 @@ package registry
 //   replicatedservice.python
 //   replicatedservice.python.schema
 
-//const TypesDir string = "types"
-const TypesDir string = "examples"
+const TypesDir string = "types"
 
 type Type struct {
 	Name string
