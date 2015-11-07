@@ -14,8 +14,11 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/ghodss/yaml"
+
 	"github.com/kubernetes/deployment-manager/client/registry"
+	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/manager/manager"
 
 	"bytes"
 	"encoding/json"
@@ -27,17 +30,20 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
 var (
-	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances | types")
-	name    = flag.String("name", "", "Name of template or deployment")
-	service = flag.String("service", "http://localhost:8080", "URL for deployment manager")
-	type_registry = flag.String("type_registry", "kubernetes/deployment-manager", "Type registry [owner/repo], defaults to kubernetes/deployment-manager/")
-	binary  = flag.String("binary", "../expandybird/expansion/expansion.py",
+	action        = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances | types")
+	name          = flag.String("name", "", "Name of template or deployment")
+	service       = flag.String("service", "http://localhost:8080", "URL for deployment manager")
+	type_registry = flag.String("type_registry", "kubernetes/deployment-manager", "Type registry [owner/repo], defaults to kubernetes/deployment-manager")
+	binary        = flag.String("binary", "../expandybird/expansion/expansion.py",
 		"Path to template expansion binary")
+
+	properties = flag.String("properties", "", "Properties to use when deploying a type")
 )
 
 var usage = func() {
@@ -46,13 +52,21 @@ var usage = func() {
 	flag.PrintDefaults()
 }
 
+func getGitRegistry() *registry.GithubRegistry {
+	s := strings.Split(*type_registry, "/")
+	if len(s) != 2 {
+		log.Fatalf("invalid type reegistry: %s", type_registry)
+	}
+
+	return registry.NewGithubRegistry(s[0], s[1])
+}
+
 func main() {
 	flag.Parse()
 	name := getNameArgument()
 	switch *action {
 	case "types":
-		s := strings.Split(*type_registry, "/")
- 		git := registry.NewGithubRegistry(s[0], s[1])
+		git := getGitRegistry()
 		types, err := git.List()
 		if err != nil {
 			log.Fatalf("Cannot list %v err")
@@ -62,8 +76,8 @@ func main() {
 			log.Printf("%s:%s", t.Name, t.Version)
 			downloadURL, err := git.GetURL(t)
 			if err != nil {
-				log.Printf("Failed to get download URL for %s:%s", t.Name, t.Version)
-			} 
+				log.Printf("Failed to get download URL for type %s:%s", t.Name, t.Version)
+			}
 			log.Printf("\tdownload URL: %s", downloadURL)
 		}
 
@@ -140,7 +154,11 @@ func loadTemplate(name string) *expander.Template {
 	var template *expander.Template
 	var err error
 	if len(args) == 1 {
-		template, err = expander.NewTemplateFromRootTemplate(args[0])
+		if t := getRegistryType(args[0]); t != nil {
+			template = buildTemplateFromType(name, *t)
+		} else {
+			template, err = expander.NewTemplateFromRootTemplate(args[0])
+		}
 	} else {
 		template, err = expander.NewTemplateFromFileNames(args[0], args[1:])
 	}
@@ -153,6 +171,64 @@ func loadTemplate(name string) *expander.Template {
 	}
 
 	return template
+}
+
+// TODO: needs better validation that this is actually a registry type.
+func getRegistryType(fullType string) *registry.Type {
+	tList := strings.Split(fullType, ":")
+	if len(tList) != 2 {
+		return nil
+	}
+
+	return &registry.Type{
+		Name:    tList[0],
+		Version: tList[1],
+	}
+}
+
+func buildTemplateFromType(name string, t registry.Type) *expander.Template {
+	git := getGitRegistry()
+	downloadURL, err := git.GetURL(t)
+	if err != nil {
+		log.Printf("Failed to get download URL for type %s:%s", t.Name, t.Version)
+	}
+
+	props := make(map[string]interface{})
+	if *properties != "" {
+		plist := strings.Split(*properties, ",")
+		for _, p := range plist {
+			ppair := strings.Split(p, "=")
+			if len(ppair) != 2 {
+				log.Fatalf("--properties must be in the form \"p1=v1,p2=v2,...\": %s", p)
+			}
+
+			// support ints
+			// TODO: needs to support other types.
+			i, err := strconv.Atoi(ppair[1])
+			if err != nil {
+				props[ppair[0]] = ppair[1]
+			} else {
+				props[ppair[0]] = i
+			}
+		}
+	}
+
+	config := manager.Configuration{Resources: []*manager.Resource{&manager.Resource{
+		Name:       name,
+		Type:       downloadURL,
+		Properties: props,
+	}}}
+
+	y, err := yaml.Marshal(config)
+	if err != nil {
+		log.Fatalf("cannot create configuration for deployment: %v\n", config)
+	}
+
+	return &expander.Template{
+		// Name will be set later.
+		Content: string(y),
+		// No imports, as this is a single type from repository.
+	}
 }
 
 func marshalTemplate(template *expander.Template) io.ReadCloser {
