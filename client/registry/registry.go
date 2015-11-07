@@ -38,7 +38,7 @@ type Type struct {
 
 // Registry abstracts type interactions.
 type Registry interface {
-	// List all the types in the given repository
+	// List all the types in the given registry
 	List() ([]Type, error)
 	// Get the download URL for a given type and version
 	GetURL(t Type) (string, error)
