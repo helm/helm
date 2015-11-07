@@ -27,6 +27,7 @@ type GithubRegistry struct {
 	client     *github.Client
 }
 
+// NewGithubRegistry creates a Registry that can be used to talk to github.
 func NewGithubRegistry(owner string, repository string) *GithubRegistry {
 	return &GithubRegistry{
 		owner:      owner,
@@ -35,6 +36,7 @@ func NewGithubRegistry(owner string, repository string) *GithubRegistry {
 	}
 }
 
+// List the types from the Registry.
 func (g *GithubRegistry) List() ([]Type, error) {
 	// First list all the types at the top level.
 	types, err := g.getDirs(TypesDir)
