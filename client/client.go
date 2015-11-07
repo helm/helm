@@ -15,6 +15,7 @@ package main
 
 import (
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/client/registry"
 
 	"bytes"
 	"encoding/json"
@@ -31,9 +32,10 @@ import (
 )
 
 var (
-	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances")
+	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances | types")
 	name    = flag.String("name", "", "Name of template or deployment")
 	service = flag.String("service", "http://localhost:8080", "URL for deployment manager")
+	type_registry = flag.String("type_registry", "kubernetes/deployment-manager/examples/guestbook", "Type registry [owner/repo/root], defaults to kubernetes/deployment-manager/")
 	binary  = flag.String("binary", "../expandybird/expansion/expansion.py",
 		"Path to template expansion binary")
 )
@@ -48,6 +50,21 @@ func main() {
 	flag.Parse()
 	name := getNameArgument()
 	switch *action {
+	case "repolist":
+ 		git := registry.NewGithubRegistry("kubernetes", "deployment-manager", "examples/guestbook")
+		types, err := git.List()
+		if err != nil {
+			log.Fatalf("Cannot list %v err")
+		}
+		for _, t := range types {
+			log.Printf("Got type: %s:%s", t.Name, t.Version)
+			downloadURL, err := git.GetURL(t)
+			if err != nil {
+				log.Printf("Failed to get download URL for %s:%s", t.Name, t.Version)
+			} 
+			log.Printf("DOWNLOAD URL: %s", downloadURL)
+		}
+
 	case "expand":
 		backend := expander.NewExpander(*binary)
 		template := loadTemplate(name)
