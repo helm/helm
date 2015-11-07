@@ -43,7 +43,7 @@ var (
 	binary        = flag.String("binary", "../expandybird/expansion/expansion.py",
 		"Path to template expansion binary")
 
-	properties = flag.String("properties", "", "Properties to use when deploying a type")
+	properties = flag.String("properties", "", "Properties to use when deploying a type (e.g., --properties k1=v1,k2=v2)")
 )
 
 var usage = func() {
@@ -55,7 +55,7 @@ var usage = func() {
 func getGitRegistry() *registry.GithubRegistry {
 	s := strings.Split(*type_registry, "/")
 	if len(s) != 2 {
-		log.Fatalf("invalid type reegistry: %s", type_registry)
+		log.Fatalf("invalid type registry: %s", type_registry)
 	}
 
 	return registry.NewGithubRegistry(s[0], s[1])
