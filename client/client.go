@@ -16,6 +16,7 @@ package main
 import (
 	"github.com/ghodss/yaml"
 
+	"github.com/kubernetes/deployment-manager/client/registry"
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/manager/manager"
 
@@ -35,10 +36,11 @@ import (
 )
 
 var (
-	action  = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances")
-	name    = flag.String("name", "", "Name of template or deployment")
-	service = flag.String("service", "http://localhost:8080", "URL for deployment manager")
-	binary  = flag.String("binary", "../expandybird/expansion/expansion.py",
+	action        = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances | types")
+	name          = flag.String("name", "", "Name of template or deployment")
+	service       = flag.String("service", "http://localhost:8080", "URL for deployment manager")
+	type_registry = flag.String("type_registry", "kubernetes/deployment-manager", "Type registry [owner/repo], defaults to kubernetes/deployment-manager/")
+	binary        = flag.String("binary", "../expandybird/expansion/expansion.py",
 		"Path to template expansion binary")
 
 	properties = flag.String("properties", "", "Properties to use when deploying a type")
@@ -57,6 +59,23 @@ func main() {
 	flag.Parse()
 	name := getNameArgument()
 	switch *action {
+	case "types":
+		s := strings.Split(*type_registry, "/")
+		git := registry.NewGithubRegistry(s[0], s[1])
+		types, err := git.List()
+		if err != nil {
+			log.Fatalf("Cannot list %v err")
+		}
+		log.Printf("Types:")
+		for _, t := range types {
+			log.Printf("%s:%s", t.Name, t.Version)
+			downloadURL, err := git.GetURL(t)
+			if err != nil {
+				log.Printf("Failed to get download URL for %s:%s", t.Name, t.Version)
+			}
+			log.Printf("\tdownload URL: %s", downloadURL)
+		}
+
 	case "expand":
 		backend := expander.NewExpander(*binary)
 		template := loadTemplate(name)
