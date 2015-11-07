@@ -146,12 +146,11 @@ func loadTemplate(name string) *expander.Template {
 		template.Name = name
 	}
 
-	log.Printf("%v", template)
-
 	return template
 }
 
 func buildTemplateFromType(name string, typeName string) *expander.Template {
+	// TODO: Fill this in with an actual URL fetched from github.
 	fullType := *repository + "/" + typeName
 
 	props := make(map[string]interface{})
