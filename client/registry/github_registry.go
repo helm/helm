@@ -20,6 +20,7 @@ import (
 	"log"
 )
 
+// GithubRegistry implements the Registry interface that talks to github.
 type GithubRegistry struct {
 	owner      string
 	repository string
@@ -57,7 +58,7 @@ func (g *GithubRegistry) List() ([]Type, error) {
 	return retTypes, nil
 }
 
-// Get the URL for a given type
+// GetURL fetches the download URL for a given Type.
 func (g *GithubRegistry) GetURL(t Type) (string, error) {
 	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, TypesDir+"/"+t.Name+"/"+t.Version, nil)
 	if err != nil {
