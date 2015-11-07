@@ -54,6 +54,10 @@ var usage = func() {
 
 func getGitRegistry() *registry.GithubRegistry {
 	s := strings.Split(*type_registry, "/")
+	if len(s) != 2 {
+		log.Fatalf("invalid type reegistry: %s", type_registry)
+	}
+
 	return registry.NewGithubRegistry(s[0], s[1])
 }
 
