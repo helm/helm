@@ -14,7 +14,10 @@ limitations under the License.
 package main
 
 import (
+	"github.com/ghodss/yaml"
+
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/manager/manager"
 
 	"bytes"
 	"encoding/json"
@@ -26,6 +29,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -36,6 +40,11 @@ var (
 	service = flag.String("service", "http://localhost:8080", "URL for deployment manager")
 	binary  = flag.String("binary", "../expandybird/expansion/expansion.py",
 		"Path to template expansion binary")
+
+	properties = flag.String("properties", "", "Properties to use when deploying a type")
+	repository = flag.String("repository",
+		"https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples",
+		"Root of type repository")
 )
 
 var usage = func() {
@@ -121,7 +130,11 @@ func loadTemplate(name string) *expander.Template {
 	var template *expander.Template
 	var err error
 	if len(args) == 1 {
-		template, err = expander.NewTemplateFromRootTemplate(args[0])
+		if strings.HasSuffix(args[0], ".py") || strings.HasSuffix(args[0], ".jinja") {
+			template = buildTemplateFromType(name, args[0])
+		} else {
+			template, err = expander.NewTemplateFromRootTemplate(args[0])
+		}
 	} else {
 		template, err = expander.NewTemplateFromFileNames(args[0], args[1:])
 	}
@@ -133,7 +146,50 @@ func loadTemplate(name string) *expander.Template {
 		template.Name = name
 	}
 
+	log.Printf("%v", template)
+
 	return template
+}
+
+func buildTemplateFromType(name string, typeName string) *expander.Template {
+	fullType := *repository + "/" + typeName
+
+	props := make(map[string]interface{})
+	if *properties != "" {
+		plist := strings.Split(*properties, ",")
+		for _, p := range plist {
+			ppair := strings.Split(p, "=")
+			if len(ppair) != 2 {
+				log.Fatalf("--properties must be in the form \"p1=v1,p2=v2,...\": %s", p)
+			}
+
+			// support ints
+			// TODO: needs to done to support other types.
+			i, err := strconv.Atoi(ppair[1])
+			if err != nil {
+				props[ppair[0]] = ppair[1]
+			} else {
+				props[ppair[0]] = i
+			}
+		}
+	}
+
+	config := manager.Configuration{Resources: []*manager.Resource{&manager.Resource{
+		Name:       name,
+		Type:       fullType,
+		Properties: props,
+	}}}
+
+	y, err := yaml.Marshal(config)
+	if err != nil {
+		log.Fatalf("cannot create configuration for deployment: %v\n", config)
+	}
+
+	return &expander.Template{
+		// Name will be set later.
+		Content: string(y),
+		// No imports, as this is a single type from repository.
+	}
 }
 
 func marshalTemplate(template *expander.Template) io.ReadCloser {
