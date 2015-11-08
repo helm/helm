@@ -38,18 +38,17 @@ import (
 var (
 	action        = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances | types")
 	name          = flag.String("name", "", "Name of template or deployment")
-	service       = flag.String("service", "http://localhost:8080", "URL for deployment manager")
-	type_registry = flag.String("type_registry", "kubernetes/deployment-manager", "Type registry [owner/repo], defaults to kubernetes/deployment-manager")
-	binary        = flag.String("binary", "../expandybird/expansion/expansion.py",
-		"Path to template expansion binary")
-
-	properties = flag.String("properties", "", "Properties to use when deploying a type (e.g., --properties k1=v1,k2=v2)")
+	service       = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager", "URL for deployment manager")
+	type_registry = flag.String("registry", "kubernetes/deployment-manager", "Type registry [owner/repo], defaults to kubernetes/deployment-manager")
+	binary        = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
+	properties    = flag.String("properties", "", "Properties to use when deploying a type (e.g., --properties k1=v1,k2=v2)")
 )
 
 var usage = func() {
 	message := "usage: %s [<flags>] (name | (<template> [<import1>...<importN>]))\n"
 	fmt.Fprintf(os.Stderr, message, os.Args[0])
 	flag.PrintDefaults()
+	os.Exit(1)
 }
 
 func getGitRegistry() *registry.GithubRegistry {
@@ -108,6 +107,8 @@ func main() {
 	case "listtypeinstances":
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(name))
 		callService(path, "GET", name, nil)
+	default:
+		usage()
 	}
 }
 
@@ -148,7 +149,6 @@ func loadTemplate(name string) *expander.Template {
 	args := flag.Args()
 	if len(args) < 1 {
 		usage()
-		os.Exit(1)
 	}
 
 	var template *expander.Template

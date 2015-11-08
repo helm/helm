@@ -110,9 +110,9 @@ var ServiceWrapperTestCases = []ServiceWrapperTestCase{
 func TestServiceWrapper(t *testing.T) {
 	backend := expander.NewExpander("../expansion/expansion.py")
 	wrapper := NewService(NewExpansionHandler(backend))
-	container := restful.DefaultContainer
+	container := restful.NewContainer()
+	container.ServeMux = http.NewServeMux()
 	wrapper.Register(container)
-	defer container.Remove(wrapper.WebService)
 	handlerTester := util.NewHandlerTester(container)
 	for _, swtc := range ServiceWrapperTestCases {
 		reader := GetTemplateReader(t, swtc.Description, inputFileName)
@@ -172,7 +172,7 @@ var ExpansionHandlerTestCases = []ExpansionHandlerTestCase{
 }
 
 var malformedExpansionOutput = []byte(`
-this is malformed output
+this: is: invalid: yaml:
 `)
 
 type mockExpander struct {
@@ -182,9 +182,9 @@ type mockExpander struct {
 // expanded configuration as a string on success.
 func (e *mockExpander) ExpandTemplate(template *expander.Template) (string, error) {
 	switch template.Name {
-	case "InvalidFileName":
+	case "InvalidFileName.yaml":
 		return "", fmt.Errorf("expansion error")
-	case "InvalidTypeName":
+	case "InvalidTypeName.yaml":
 		return string(malformedExpansionOutput), nil
 	}
 
@@ -196,7 +196,6 @@ func TestExpansionHandler(t *testing.T) {
 	wrapper := NewService(NewExpansionHandler(backend))
 	container := restful.DefaultContainer
 	wrapper.Register(container)
-	defer container.Remove(wrapper.WebService)
 	handlerTester := util.NewHandlerTester(container)
 	for _, ehtc := range ExpansionHandlerTestCases {
 		reader := GetTemplateReader(t, ehtc.Description, ehtc.TemplateFileName)
