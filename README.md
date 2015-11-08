@@ -1,114 +1,145 @@
 # Deployment Manager
 
-Deployment Manager lets you define and deploy simple declarative configuration
-for your Kubernetes resources (e.g., pods, replication controllers, services, etc.).
+[![Go Report Card](http://goreportcard.com/badge/kubernetes/deployment-manager)](http://goreportcard.com/report/kubernetes/deployment-manager)
 
-You can also use Python or [Jinja](http://jinja.pocoo.org/) to create powerful
-parameterizable abstract types called **Templates**. You can create general
-abstract building blocks to reuse, like a
-[Replicated Service](examples/guestbook/replicatedservice.py), or create
-more concrete types like a [Redis cluster](examples/guestbook/redis.jinja).
+Deployment Manager (DM) provides parameterized templates for Kubernetes clusters.
 
-You can find more examples of Templates and configurations in our
-[examples](examples).
+You can use it deploy ready-to-use types, such as:
+* [Replicated Service](types/replicatedservice/v1)
+* [Redis](types/redis/v1)
 
-Deployment Manager uses the same concepts and languages as
-[Google Cloud Deployment Manager](https://cloud.google.com/deployment-manager/overview),
-but creates resources within your Kubernetes cluster, not on the Google Cloud Platform.
+As you can see, types live in ordinary Github repositories. This repository is a
+DM type registry.
 
-Please join us on [the Google Group](https://groups.google.com/forum/#!forum/kubernetes-sig-config) and/or in [the Slack chat room](https://kubernetes.slack.com/messages/sig-configuration/) for the
-Kubernetes configuration SIG.
+You can also use DM to deploy simple templates that use existing types, such as:
+* [Guestbook](examples/guestbook/guestbook.yaml)
+* [Deployment Manager](examples/bootstrap/bootstrap.yaml)
 
-## Getting started
+As you can see, a template is just a `YAML` file that supplies parameters to
+instantiate types. (Yes, you're reading that second example correctly. It uses DM
+to deploy itself. See [examples/bootstrap/README.md](examples/bootstrap/README.md)
+for more information)
 
-There are two ways to get started...
+DM runs server side, on your Kubernetes cluster, so it can tell you what types
+you've instantiated in the cluster, and even what resources comprise a given instance.
+So, you can ask questions like:
+* Show me all the Redis slaves running in this cluster.
+* Show me all the resources used by Redis.
 
-* The quick way simply installs Deployment Manager in your cluster using
-kubectl. This is the fastest way to get started and takes only a few seconds.
+Because DM stores its state in the cluster, not on your workstation, you can ask
+those questions from any client at any time.
 
-* The interesting way bootstraps Deployment Manager, by building and running a
-local instance on your machine, and then using it to install another instance
-in your cluster. You might want to go this way if you're interested in contributing
-to Deployment Manager.
+Please hang out with us in
+[the Slack chat room](https://kubernetes.slack.com/messages/sig-configuration/)
+and/or
+[the Google Group](https://groups.google.com/forum/#!forum/kubernetes-sig-config)
+for the Kubernetes configuration SIG. Your feedback and contributions are welcome.
 
-Both assume that you have a Kubernetes cluster up and running, and that you can
-run `kubectl` commands against it. They both also assume that that you're working
-with a clone of the repository installed in the src folder of your GOPATH, per
-convention.
+## Installing Deployment Manager
 
-Instructions for the quick install follow here. Instructions for bootstrapping
-Deployment Manager can be found in [examples/bootstrap/README.md](examples/bootstrap/README.md).
-
-### Quick Install
-
-For the quick install, you're going to use `kubectl` to create the replication
-controllers and services that comprise a Deployment Manager instance from a predefined
-configuration file, as follows:
+Follow these 3 steps to install DM:
+1. Make sure your Kubernetes cluster is up and running, and that you can run
+`kubectl` commands against it.
+1. Clone this repository into the src folder of your GOPATH, if you haven't already.
+1. Use `kubectl` to intall DM into your cluster:
 
 ```
 kubectl create -f install.yaml
 ```
 
-That's it. You should now be able to see Deployment Manager running in your cluster
-using:
+That's it. You can now use `kubectl` to see DM running in your cluster:
 
 ```
 kubectl get pod,rc,service
 ```
 
-If you see replication controllers named expandybird-rc, manager-rc and resourcifier-rc
-with pods that are READY, and services with corresponding names, then Deployment
-Manager is up and running.
+If you see expandybird-service, manager-service, resourcifier-service, and
+expandybird-rc, manager-rc and resourcifier-rc with pods that are READY, then DM
+is up and running!
 
-Note that you can also tear down Deployment Manager using the same file, with:
-
-```
-kubectl delete -f install.yaml
-```
-
-The easiest way to interact with Deployment Manager, now that it's up and running,
-is to use a `kubectl` proxy:
+The easiest way to interact with Deployment Manager is through `kubectl` proxy:
 
 ```
 kubectl proxy --port=8001 &
 ```
 
-This command will start a proxy that lets you interact with the Kubernetes api
-server through port 8001 on you local host. However, there are other ways to access
-Deployment Manager. We won't go into them here, but if you know how to access
-services running on Kubernetes, you should be able to use any of the supported
-methods to access Deployment Manager.
+This command starts a proxy that lets you interact with the Kubernetes api
+server through port 8001 on localhost. `dm` uses
+`http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager`
+as the default service address for DM.
 
-### Deploying your first application (Guestbook)
+## Using Deployment Manager
 
-Next, you're going to deploy the canonical guestbook example to your Kubernetes
-cluster.
+You can use `dm` to deploy a type from the command line. This command deploys a
+redis cluster with two workers from the type definition in this repository:
 
 ```
-client --name guestbook --service=http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager examples/guestbook/guestbook.yaml
+dm deploy redis/v1
 ```
 
-You should now have guestbook up and running. To verify, get the list of services
-running on the cluster:
+When you deploy a type, you can optionally supply values for input parameters,
+like this:
+
+```
+dm --properties workers=3 deploy redis/v1
+```
+
+When you deploy a type, `dm` generates a template from the type and input 
+paramaters, and then deploys it. 
+
+You can also deploy an existing template, or read one from `stdin`. This command
+deploys the canonical Guestbook example from the examples directory:
+
+```
+dm deploy examples/guestbook/guestbook.yaml
+```
+
+You can now use `kubectl` to see Guestbook running:
 
 ```
 kubectl get service
 ```
 
-You should see frontend-service running. If your cluster supports external
-load balancing, it will have an external IP assigned to it, and you should be 
-able to navigate to it in your browser to see the guestbook in action.
+Look for frontend-service. If your cluster supports external load balancing, it
+will have an external IP assigned to it, and you can navigate to it in your browser
+to see the guestbook in action. 
+
+For more information about this example, see [examples/guestbook/README.md](examples/guestbook/README.md)
+
+## Additional commands
+
+The command line tool makes it easy to configure a cluster from a set of predefined
+types.
+
+## Uninstalling Deployment Manager
+
+You can uninstall Deployment Manager using the same configuration file:
+
+```
+kubectl delete -f install.yaml
+```
+
+## Creating a type registry
+
+All you need to create a type registry is a Github repository with top level file
+named `registry.yaml`, and a top level folder named `types` that contains type definitions. 
+
+A type definition is just a folder that contains one or more versions, like `/v1`, 
+`/v2`, etc.
+
+A version is just a folder that contains a type definition. As you can see from the
+examples above, a type definition is just a Python or [Jinja](http://jinja.pocoo.org/)
+file plus an optional schema.
 
 ## Building the container images
 
 This project runs Deployment Manager on Kubernetes as three replicated services.
-By default, prebuilt images stored in Google Container Registry are used to create
-them. However, you can build your own container images and push them to your own
-project in the registry. 
+By default, install.yaml uses prebuilt images stored in Google Container Registry
+to install them. However, you can build your own container images and push them
+to your own project in the Google Container Registry: 
 
-To build and push your own images to Google Container Registry, first set the
-environment variable PROJECT to the name of a project known to gcloud. Then, run
-the following command:
+1. Set the environment variable PROJECT to the name of a project known to gcloud.
+1. Run the following command:
 
 ```
 make push
@@ -123,7 +154,13 @@ available.
 
 The project is still under active development, so you might run into issues. If
 you do, please don't be shy about letting us know, or better yet, contributing a
-fix or feature. We use the same contribution conventions as the main Kubernetes
-repository.
+fix or feature. We use the same [development process](CONTRIBUTING.md) as the main 
+Kubernetes repository.
+
+## Relationship to Google Cloud Platform
+DM uses the same concepts and languages as
+[Google Cloud Deployment Manager](https://cloud.google.com/deployment-manager/overview),
+but creates resources in Kubernetes clusters, not in Google Cloud Platform projects.
+
 
 

@@ -16,9 +16,9 @@ package main
 import (
 	"github.com/ghodss/yaml"
 
-	"github.com/kubernetes/deployment-manager/client/registry"
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/manager/manager"
+	"github.com/kubernetes/deployment-manager/registry"
 
 	"bytes"
 	"encoding/json"
@@ -36,7 +36,7 @@ import (
 )
 
 var (
-	action        = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | listtypes | listtypeinstances | types")
+	action        = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | list-types | list-instances | types")
 	name          = flag.String("name", "", "Name of template or deployment")
 	service       = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager", "URL for deployment manager")
 	type_registry = flag.String("registry", "kubernetes/deployment-manager", "Type registry [owner/repo], defaults to kubernetes/deployment-manager")
@@ -102,9 +102,9 @@ func main() {
 	case "update":
 		path := fmt.Sprintf("deployments/%s", name)
 		callService(path, "PUT", name, readTemplate(name))
-	case "listtypes":
+	case "list-types":
 		callService("types", "GET", name, nil)
-	case "listtypeinstances":
+	case "list-instances":
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(name))
 		callService(path, "GET", name, nil)
 	default:

@@ -1,45 +1,53 @@
 # Bootstrapping Deployment Manager
 
 Welcome to the bootstrap example. The instructions below will step you through
-the process of building and running a local instance of Deployment Manager on
-your local machine, and then using it to deploy another instance in your cluster.
+the process of building and running a local instance of DM on your local machine,
+and then using it to deploy another instance of DM in your cluster.
 
-This example provides insights into how Deployment Manager works, and is
-recommended for anyone interested in contributing to the project.
+This example provides insights into how DM works, and is recommended for anyone
+interested in contributing to the project.
 
-The instructions below assume that you have a Kubernetes cluster up and running,
-and that you can run `kubectl` commands against it. They also assume that that
-you're working with a clone of the repository installed in the src folder of your 
-GOPATH and that your PATH contains `$GOPATH/bin`, per convention.
+## Prerequisites
 
-## Installing required python packages
+Before you can bootstrap DM, the following prerequisites must be satisfied.
+
+### Kubernetes cluster and go configuration
+
+1. Make sure your Kubernetes cluster is up and running, and that you can run
+`kubectl` commands against it.
+1. Clone this repository into the src folder of your GOPATH, if you haven't already.
+1. Make sure your PATH contains `$GOPATH/bin`.
+
+### Installing required python packages
 
 Since Deployment Manager uses Python and will be running locally on your
-machine, you will first need to make sure the necessary Python packages are
-installed. This assumes that you have already installed the pip package
-management system on your machine.
+machine, you need to make sure the necessary Python packages are installed. This
+step assumes that you have already installed the pip package management system
+on your machine.
 
 ```
-sudo pip install -r expandybird/requirements.txt
+pip install -r expandybird/requirements.txt
 ```
 
-## Building and installing the binaries
+Note: depending on how you installed python and pip, you may need to use `sudo`
+for this command.
 
-Next, you're going to build and install the Deployment Manager binaries. You can
-do this by running make in the repository root.
+## Bootstrapping Deployment Manager
+
+With the prerequisites satisfied, you're ready to bootstrap DM.
+
+### Building and installing the binaries
+
+First, you're going to build and install the DM binaries. You can do this by
+running make in the repository root.
 
 ```
 make
 ```
 
-## Bootstrapping Deployment Manager
-
-Now, you're ready to bootstrap Deployment Manager into the cluster.
-
 ### Start Deployment Manager on localhost
 
-First, start the three Deployment Manager binaries on localhost using the supplied
-bootstrap script.
+Next, start the three DM binaries on localhost using the supplied bootstrap script.
 
 ```
 ./examples/bootstrap/bootstrap.sh
@@ -54,14 +62,12 @@ It also starts kubectl proxy on port 8001.
 
 ### Deploy Deployment Manager into your cluster
 
-Next, use the Deployment Manager running on localhost to deploy itself onto the
-cluster using the supplied command line tool and template.
+Finally, use the DM running on localhost to deploy another instance of DM onto
+the cluster using `dm` and the supplied template.
 
 ```
-client --name test --service=http://localhost:8080 examples/bootstrap/bootstrap.yaml
+dm --name DM --service=http://localhost:8080 examples/bootstrap/bootstrap.yaml
 ```
 
-You should now have Deployment Manager running on your cluster, and it should be
-visible using kubectl (kubectl get pod,rc,service).
-
-
+You now have Deployment Manager running on your cluster. You can see it running
+using `kubectl`, as described in the top level [README.md](../../README.md).
