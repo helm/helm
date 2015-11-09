@@ -41,8 +41,8 @@ resources:
 Resources can reference values from other resources. The version of Deployment
 Manager running in the Google Cloud Platform uses references to understand
 dependencies between resources and properly order the operations it performs on
-a configuration. This version doesn't yet have this functionality, but will have
-it shortly.
+a configuration. (This version doesn't yet order operations to satisfy dependencies, 
+but it will soon.)
 
 A reference follows this syntax: **$(ref.NAME.PATH)**, where _NAME_ is the name
 of the resource being referenced, and _PATH_ is a JSON path to the value in the
