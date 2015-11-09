@@ -60,21 +60,32 @@ func (g *GithubRegistry) List() ([]Type, error) {
 	return retTypes, nil
 }
 
-// GetURL fetches the download URL for a given Type.
+// GetURL fetches the download URL for a given Type and checks for existence of a schema file.
 func (g *GithubRegistry) GetURL(t Type) (string, error) {
 	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, TypesDir+"/"+t.Name+"/"+t.Version, nil)
 	if err != nil {
 		log.Printf("Failed to list types : %v", err)
 		return "", err
 	}
+	var downloadURL, typeName, schemaName string
 	for _, f := range dc {
 		if *f.Type == "file" {
 			if *f.Name == t.Name+".jinja" || *f.Name == t.Name+".py" {
-				return *f.DownloadURL, nil
+				typeName = *f.Name
+				downloadURL = *f.DownloadURL
+			}
+			if *f.Name == t.Name+".jinja.schema" || *f.Name == t.Name+".py.schema" {
+				schemaName = *f.Name
 			}
 		}
 	}
-	return "", fmt.Errorf("Can not find type %s:%s", t.Name, t.Version)
+	if downloadURL == "" {
+		return "", fmt.Errorf("Can not find type %s:%s", t.Name, t.Version)
+	}
+	if schemaName == typeName + ".schema" {
+		return downloadURL, nil
+	}
+	return "", fmt.Errorf("Can not find schema for %s:%s, expected to find %s", t.Name, t.Version, typeName + ".schema")
 }
 
 func (g *GithubRegistry) getDirs(dir string) ([]string, error) {
