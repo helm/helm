@@ -11,18 +11,4 @@
 # limitations under the License.
 ######################################################################
 
-imports:
-- path: redis.jinja
-- path: replicatedservice.py
-resources:
-- name: frontend
-  type: replicatedservice.py
-  properties:
-    service_port: 80
-    container_port: 80
-    external_service: true
-    replicas: 3
-    image: gcr.io/google_containers/example-guestbook-php-redis:v3
-- name: redis
-  type: redis.jinja
-  properties: null
+root: .

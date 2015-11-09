@@ -1,32 +1,43 @@
 # Guestbook Example
 
-Guestbook example shows how to bring up the
-[Guestbook Example](https://github.com/kubernetes/kubernetes/tree/master/examples/guestbook)
-from Kubernetes using Deployment Manager. It also shows you how to construct
-and reuse parameterized templates. 
+Welcome to the Guestbook example. It shows you how to build and reuse
+parameterized templates.
 
-## Getting started
+## Prerequisites
 
-It is assumed that you have bootstrapped the Deployment Manager on your cluster
-by following the [README.md][https://github.com/kubernetes/deployment-manager/blob/master/README.md]
-for bootstrapping the cluster. 
+First, make sure DM is installed in your Kubernetes cluster and that the
+Guestbook example is deployed by following the instructions in the top level
+[README.md](../../README.md).
 
-## Deploying Guestbook
-To deploy the Guestbook example, you run the following command.
+## Understanding the Guestbook example template
 
-```
-client --name guestbook --service=http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager examples/guestbook/guestbook.yaml
-```
+Let's take a closer look at the template used by the Guestbook example.
 
-### Replicated Service
+### Replicated services
 
-Typical pattern for deploying microservices in Kubernetes is to create both a
-Replication Controller and a Service. We have created a parameterizable type
-for that called [Replicated Service](https://github.com/kubernetes/deployment-manager/tree/master/examples/replicatedservice)
-that we use throughout this example.
+The typical design pattern for microservices in Kubernetes is to create a
+replication controller and a service with the same selector, so that the service
+exposes ports from the pods managed by the replication controller.
 
-The Guestbook example consists of 2 services, a frontend and a Redis service.
-Frontend is a replicated service with 3 replicas and is created like so:
+We have created a parameterized type for this kind of replicated service called
+[Replicated Service](../../types/replicatedservice/v1), and we use it three times in this
+example.
+
+Note that the type is defined by a
+[python script](../../types/replicatedservice/v1/replicatedservice.py). It also has a
+[schema](../../types/replicatedservice/v1/replicatedservice.py.schema). Schemas are
+optional. If present in the type definition, they are used to validate uses of the
+type that appear in DM templates.
+
+For more information about types and templates, see the [design document](../../docs/design/design.md).
+
+### The Guestbook application
+The Guestbook application consists of 2 microservices: a front end and a Redis cluster.
+
+#### The front end
+
+The front end is a replicated service with 3 replicas:
+
 ```
 - name: frontend
   type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
@@ -38,8 +49,14 @@ Frontend is a replicated service with 3 replicas and is created like so:
     image: gcr.io/google_containers/example-guestbook-php-redis:v3
 ```
 
-Redis is a composite type and consists of two replicated services. A master with a single replica
-and the slaves with 2 replicas. It's construced as follows:
+(Note that we use the URL for the type replicatedservice.py, not just the type name.)
+
+#### The Redis cluster
+
+The Redis cluster consists of two replicated services: a master with a single replica
+and the slaves with 2 replicas. It's defined by [this composite type](../../types/redis/v1/redis.jinja),
+which is a [Jinja](http://jinja.pocoo.org/) template with a [schema](../../types/redis/v1/redis.jinja.schema).
+
 ```
 {% set REDIS_PORT = 6379 %}
 {% set WORKERS = properties['workers'] or 2 %}
@@ -77,22 +94,27 @@ resources:
 
 ### Displaying types
 
-You can also see what types have been deployed to the cluster:
+You can see the types you deployed to the cluster using the `deployed-types` command:
+
 ```
-client --action listtypes --service=http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager 
+dm deployed-types 
 
 ["Service","ReplicationController","redis.jinja","https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py"]
 ```
 
-This shows that there are 2 native types that we have deployed (Service and ReplicationController) and
-2 composite types (redis.jinja and one imported from github (replicatedservice.py)).
+This output shows 2 primitive types (Service and ReplicationController), and 2
+composite types (redis.jinja and one imported from github (replicatedservice.py)).
 
+You can also see where a specific type is being used with the `deployed-instances` command:
 
-You can also see where the types are being used by getting details on the particular type:
 ```
-client -action gettype --service=http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager -name 'Service'
+dm deployed-instances Service
 [{"name":"frontend-service","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[0].resources[0]"},{"name":"redis-master","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[1].resources[0].resources[0]"},{"name":"redis-slave","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[1].resources[1].resources[0]"}]
 ```
 
-It lists which deployment and manifest as well as JSON path to the type.
+This output describes the deployment and manifest, as well as the JSON paths to
+the instances of the type within the layout.
+
+For more information about deployments, manifests and layouts, see the [design document](../../docs/design/design.md).
+
 
