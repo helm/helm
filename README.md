@@ -43,7 +43,7 @@ Follow these 3 steps to install DM:
 1. Make sure your Kubernetes cluster is up and running, and that you can run
 `kubectl` commands against it.
 1. Clone this repository into the src folder of your GOPATH, if you haven't already.
-1. Use `kubectl` to intall DM into your cluster:
+1. Use `kubectl` to install DM into your cluster:
 
 ```
 kubectl create -f install.yaml
