@@ -67,10 +67,11 @@ Deployment Manager, including:
 * Service
 
 Deployment Manager processes configurable resources by passing their
-configuration properties directly to kubectl on the cluster to create, update,
-or delete the resources.
+configuration properties directly to kubectl to create, update, or delete them
+in the cluster.
 
 ### Templates
+
 Templates are abstract types that can be created using Python or
 [Jinja](http://jinja.pocoo.org/). A template takes a set of properties as input,
 and must output a valid YAML configuration string. Properties are bound to
@@ -159,10 +160,12 @@ Schemas must be imported with the templates they describe, when passing
 configuration to Deployment Manager.
 
 ### Instantiating Templates
+
 Templates can be used in two different ways: either passed to the API as an
 imported file, or used from a public HTTP endpoint.
 
 #### Imported Templates
+
 Templates can be imported as part of the target configuration, and used
 directly, for example:
 
@@ -185,6 +188,7 @@ Using the Deployment Manager API, these templates can be included in the
 imports section of the _configuration_.
 
 #### External Templates
+
 Templates can also be used from a public HTTP endpoint. For example:
 
 ```
@@ -206,9 +210,11 @@ When fetching schema files and sub-imports, the base path of the external
 template is used for relative paths.
 
 ## API Model
+
 Deployment Manager exposes a set of RESTful collections over HTTP/JSON.
 
 ### Deployments
+
 Deployments are the primary resource in the Deployment Manager service. The
 inputs to a deployment are:
 
@@ -230,6 +236,7 @@ http://manager-service/deployments
 ```
 
 ### Manifests
+
 A manifest is created for a deployment every time it is changed. It contains
 three key components:
 
@@ -252,6 +259,7 @@ This final set is stored as the _expandedConfig_ and is used during resource
 processing.
 
 #### Layout
+
 Users can use templates to build a rich, deep hierarchical architecture in their
 configuration. Expansion flattens this hierarchy and removes the template
 relationships from the configuration to create a format optimized for the process
