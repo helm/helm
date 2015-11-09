@@ -20,11 +20,12 @@ that second example correctly. It uses DM to deploy itself.
 See [examples/bootstrap/README.md](examples/bootstrap/README.md) for more information.)
 
 DM runs server side, in your Kubernetes cluster, so it can tell you what types
-you've instantiated there, and even what instances you've created of a given type.
-So, you can ask questions like:
+you've instantiated there, what instances you've created of a given type, and even
+how the instances are organized. So, you can ask questions like:
 
-* Show me all the Redis slaves running in this cluster.
-* Show me all the resources used by Redis.
+* What Redis instances are running in this cluster?
+* What Redis master and slave services are part of this Redis instance?
+* What pods are part of this Redis slave?
 
 Because DM stores its state in the cluster, not on your workstation, you can ask
 those questions from any client at any time.
@@ -86,7 +87,7 @@ dm --properties workers=3 deploy redis/v1
 ```
 
 When you deploy a type, `dm` generates a template from the type and input 
-paramaters, and then deploys it. 
+parameters, and then deploys it. 
 
 You can also deploy an existing template, or read one from `stdin`. This command
 deploys the canonical Guestbook example from the examples directory:
