@@ -40,7 +40,7 @@ The front end is a replicated service with 3 replicas:
 
 ```
 - name: frontend
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v1/replicatedservice.py
   properties:
     service_port: 80
     container_port: 80
@@ -63,7 +63,7 @@ which is a [Jinja](http://jinja.pocoo.org/) template with a [schema](../../types
 
 resources:
 - name: redis-master
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v1/replicatedservice.py
   properties:
     # This has to be overwritten since service names are hard coded in the code
     service_name: redis-master
@@ -75,7 +75,7 @@ resources:
     image: redis
 
 - name: redis-slave
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v1/replicatedservice.py
   properties:
     # This has to be overwritten since service names are hard coded in the code
     service_name: redis-slave
@@ -99,7 +99,7 @@ You can see the types you deployed to the cluster using the `deployed-types` com
 ```
 dm deployed-types 
 
-["Service","ReplicationController","redis.jinja","https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py"]
+["Service","ReplicationController","redis.jinja","https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v1/replicatedservice.py"]
 ```
 
 This output shows 2 primitive types (Service and ReplicationController), and 2
