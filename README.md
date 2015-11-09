@@ -111,7 +111,21 @@ For more information about this example, see [examples/guestbook/README.md](exam
 ## Additional commands
 
 The command line tool makes it easy to configure a cluster from a set of predefined
-types.
+types. Here's a list of available commands:
+
+```
+expand              Expands the supplied template(s)
+deploy              Deploys the supplied type or template(s)
+list                Lists the deployments in the cluster
+get                 Retrieves the supplied deployment
+delete              Deletes the supplied deployment
+update              Updates a deployment using the supplied template(s)
+deployed-types      Lists the types deployed in the cluster
+deployed-instances  Lists the instances of the supplied type deployed in the cluster
+types               Lists the types in the current registry
+describe            Describes the supplied type in the current registry
+
+```
 
 ## Uninstalling Deployment Manager
 
