@@ -98,15 +98,15 @@ func main() {
 			log.Fatalf("Cannot list %v err")
 		}
 
-		fmt.Printf("Types:")
+		fmt.Printf("Types:\n")
 		for _, t := range types {
-			fmt.Printf("%s:%s", t.Name, t.Version)
+			fmt.Printf("%s:%s\n", t.Name, t.Version)
 			downloadURL, err := git.GetURL(t)
 			if err != nil {
 				log.Printf("Failed to get download URL for type %s:%s", t.Name, t.Version)
 			}
 
-			fmt.Printf("\tdownload URL: %s", downloadURL)
+			fmt.Printf("\tdownload URL: %s\n", downloadURL)
 		}
 	case "describe":
 		fmt.Printf("this feature is not yet implemented")
