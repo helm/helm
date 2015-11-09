@@ -63,10 +63,13 @@ It also starts kubectl proxy on port 8001.
 ### Deploy Deployment Manager into your cluster
 
 Finally, use the DM running on localhost to deploy another instance of DM onto
-the cluster using `dm` and the supplied template.
+the cluster using `dm` and the supplied template. Note that you are using the 
+`--service` flag to point `dm` to the instance of DM running on localhost, rather
+than to an instance of DM running in the cluster through `kubectl proxy`, which
+is the default.
 
 ```
-dm --name DM --service=http://localhost:8080 examples/bootstrap/bootstrap.yaml
+dm --service=http://localhost:8080 deploy examples/bootstrap/bootstrap.yaml
 ```
 
 You now have Deployment Manager running on your cluster. You can see it running

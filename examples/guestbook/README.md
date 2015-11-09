@@ -94,10 +94,10 @@ resources:
 
 ### Displaying types
 
-You can see the types you deployed to the cluster using the `list-types` command:
+You can see the types you deployed to the cluster using the `deployed-types` command:
 
 ```
-dm list-types 
+dm deployed-types 
 
 ["Service","ReplicationController","redis.jinja","https://raw.githubusercontent.com/kubernetes/deployment-manager/master/examples/replicatedservice/replicatedservice.py"]
 ```
@@ -105,10 +105,10 @@ dm list-types
 This output shows 2 primitive types (Service and ReplicationController), and 2
 composite types (redis.jinja and one imported from github (replicatedservice.py)).
 
-You can also see where a specific type is being used with the `list-instances` command:
+You can also see where a specific type is being used with the `deployed-instances` command:
 
 ```
-dm --name 'Service' list-instances
+dm deployed-instances Service
 [{"name":"frontend-service","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[0].resources[0]"},{"name":"redis-master","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[1].resources[0].resources[0]"},{"name":"redis-slave","type":"Service","deployment":"guestbook4","manifest":"manifest-1446682551242763329","path":"$.resources[1].resources[1].resources[0]"}]
 ```
 

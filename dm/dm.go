@@ -36,18 +36,39 @@ import (
 )
 
 var (
-	action        = flag.String("action", "deploy", "expand | deploy | list | get | delete | update | list-types | list-instances | types")
-	name          = flag.String("name", "", "Name of template or deployment")
-	service       = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager", "URL for deployment manager")
-	type_registry = flag.String("registry", "kubernetes/deployment-manager", "Type registry [owner/repo], defaults to kubernetes/deployment-manager")
-	binary        = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
+	// TODO(jackgr): Implement reading a template from stdin
+	//stdin       = flag.Bool("stdin", false, "Reads a template from the standard input")
 	properties    = flag.String("properties", "", "Properties to use when deploying a type (e.g., --properties k1=v1,k2=v2)")
+	type_registry = flag.String("registry", "kubernetes/deployment-manager", "Github based type registry [owner/repo]")
+	service       = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager", "URL for deployment manager")
+	binary        = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
 )
 
+var commands = []string{
+	"expand \t\t\t Expands the supplied template(s)",
+	"deploy \t\t\t Deploys the supplied type or template(s)",
+	"list \t\t\t Lists the deployments in the cluster",
+	"get \t\t\t Retrieves the supplied deployment",
+	"delete \t\t\t Deletes the supplied deployment",
+	"update \t\t\t Updates a deployment using the supplied template(s)",
+	"deployed-types \t\t Lists the types deployed in the cluster",
+	"deployed-instances \t Lists the instances of the supplied type deployed in the cluster",
+	"types \t\t\t Lists the types in the current registry",
+	"describe \t\t Describes the supplied type in the current registry",
+}
+
 var usage = func() {
-	message := "usage: %s [<flags>] (name | (<template> [<import1>...<importN>]))\n"
+	message := "Usage: %s [<flags>] <command> (<type-name> | <deployment-name> | (<template> [<import1>...<importN>]))\n"
 	fmt.Fprintf(os.Stderr, message, os.Args[0])
+	fmt.Fprintln(os.Stderr, "Commands:")
+	for _, command := range commands {
+		fmt.Fprintln(os.Stderr, command)
+	}
+
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Flags:")
 	flag.PrintDefaults()
+	fmt.Fprintln(os.Stderr)
 	os.Exit(1)
 }
 
@@ -62,112 +83,132 @@ func getGitRegistry() *registry.GithubRegistry {
 
 func main() {
 	flag.Parse()
-	name := getNameArgument()
-	switch *action {
+	args := flag.Args()
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "No command supplied")
+		usage()
+	}
+
+	command := args[0]
+	switch command {
 	case "types":
 		git := getGitRegistry()
 		types, err := git.List()
 		if err != nil {
 			log.Fatalf("Cannot list %v err")
 		}
-		log.Printf("Types:")
+
+		fmt.Printf("Types:")
 		for _, t := range types {
-			log.Printf("%s:%s", t.Name, t.Version)
+			fmt.Printf("%s:%s", t.Name, t.Version)
 			downloadURL, err := git.GetURL(t)
 			if err != nil {
 				log.Printf("Failed to get download URL for type %s:%s", t.Name, t.Version)
 			}
-			log.Printf("\tdownload URL: %s", downloadURL)
-		}
 
+			fmt.Printf("\tdownload URL: %s", downloadURL)
+		}
+	case "describe":
+		fmt.Printf("this feature is not yet implemented")
 	case "expand":
 		backend := expander.NewExpander(*binary)
-		template := loadTemplate(name)
+		template := loadTemplate(args)
 		output, err := backend.ExpandTemplate(template)
 		if err != nil {
-			log.Fatalf("cannot expand %s: %s\n", name, err)
+			log.Fatalf("cannot expand %s: %s\n", template.Name, err)
 		}
 
 		fmt.Println(output)
 	case "deploy":
-		callService("deployments", "POST", name, readTemplate(name))
+		template := loadTemplate(args)
+		action := fmt.Sprintf("deploy template named %s", template.Name)
+		callService("deployments", "POST", action, marshalTemplate(template))
 	case "list":
-		callService("deployments", "GET", name, nil)
+		callService("deployments", "GET", "list deployments", nil)
 	case "get":
-		path := fmt.Sprintf("deployments/%s", name)
-		callService(path, "GET", name, nil)
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "No deployment name supplied")
+			usage()
+		}
+
+		path := fmt.Sprintf("deployments/%s", args[1])
+		action := fmt.Sprintf("get deployment named %s", args[1])
+		callService(path, "GET", action, nil)
 	case "delete":
-		path := fmt.Sprintf("deployments/%s", name)
-		callService(path, "DELETE", name, nil)
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "No deployment name supplied")
+			usage()
+		}
+
+		path := fmt.Sprintf("deployments/%s", args[1])
+		action := fmt.Sprintf("delete deployment named %s", args[1])
+		callService(path, "DELETE", action, nil)
 	case "update":
-		path := fmt.Sprintf("deployments/%s", name)
-		callService(path, "PUT", name, readTemplate(name))
-	case "list-types":
-		callService("types", "GET", name, nil)
-	case "list-instances":
-		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(name))
-		callService(path, "GET", name, nil)
+		template := loadTemplate(args)
+		path := fmt.Sprintf("deployments/%s", template.Name)
+		action := fmt.Sprintf("delete deployment named %s", template.Name)
+		callService(path, "PUT", action, marshalTemplate(template))
+	case "deployed-types":
+		action := fmt.Sprintf("list types in registry %s", *type_registry)
+		callService("types", "GET", action, nil)
+	case "deployed-instances":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "No type name supplied")
+			usage()
+		}
+
+		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(args[1]))
+		action := fmt.Sprintf("list instances of type %s in registry %s", args[1], *type_registry)
+		callService(path, "GET", action, nil)
 	default:
 		usage()
 	}
 }
 
-func callService(path, method, name string, reader io.ReadCloser) {
-	action := strings.ToLower(method)
-	if action == "post" {
-		action = "deploy"
-	}
-
+func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
 	request, err := http.NewRequest(method, u, reader)
 	request.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
-		log.Fatalf("cannot %s template named %s: %s\n", action, name, err)
+		log.Fatalf("cannot %s: %s\n", action, err)
 	}
 
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatalf("cannot %s template named %s: %s\n", action, name, err)
+		log.Fatalf("cannot %s: %s\n", action, err)
 	}
 
 	if response.StatusCode < http.StatusOK ||
 		response.StatusCode >= http.StatusMultipleChoices {
 		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
-		log.Fatalf("cannot %s template named %s: %s\n", action, name, message)
+		log.Fatalf("cannot %s: %s\n", action, message)
 	}
 
 	fmt.Println(string(body))
 }
 
-func readTemplate(name string) io.ReadCloser {
-	return marshalTemplate(loadTemplate(name))
-}
-
-func loadTemplate(name string) *expander.Template {
-	args := flag.Args()
-	if len(args) < 1 {
+func loadTemplate(args []string) *expander.Template {
+	var template *expander.Template
+	var err error
+	if len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "No type name or template file(s) supplied")
 		usage()
 	}
 
-	var template *expander.Template
-	var err error
-	if len(args) == 1 {
-		if t := getRegistryType(args[0]); t != nil {
-			template = buildTemplateFromType(name, *t)
+	if len(args) < 3 {
+		if t := getRegistryType(args[1]); t != nil {
+			template = buildTemplateFromType(args[1], *t)
 		} else {
-			template, err = expander.NewTemplateFromRootTemplate(args[0])
+			template, err = expander.NewTemplateFromRootTemplate(args[1])
 		}
 	} else {
-		template, err = expander.NewTemplateFromFileNames(args[0], args[1:])
-	}
-	if err != nil {
-		log.Fatalf("cannot create template from supplied file names: %s\n", err)
+		template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
 	}
 
-	if name != "" {
-		template.Name = name
+	if err != nil {
+		log.Fatalf("cannot create template from supplied arguments: %s\n", err)
 	}
 
 	return template
@@ -190,7 +231,7 @@ func buildTemplateFromType(name string, t registry.Type) *expander.Template {
 	git := getGitRegistry()
 	downloadURL, err := git.GetURL(t)
 	if err != nil {
-		log.Printf("Failed to get download URL for type %s:%s", t.Name, t.Version)
+		log.Fatalf("Failed to get download URL for type %s:%s\n%s\n", t.Name, t.Version, err)
 	}
 
 	props := make(map[string]interface{})
@@ -199,7 +240,7 @@ func buildTemplateFromType(name string, t registry.Type) *expander.Template {
 		for _, p := range plist {
 			ppair := strings.Split(p, "=")
 			if len(ppair) != 2 {
-				log.Fatalf("--properties must be in the form \"p1=v1,p2=v2,...\": %s", p)
+				log.Fatalf("--properties must be in the form \"p1=v1,p2=v2,...\": %s\n", p)
 			}
 
 			// support ints
@@ -221,7 +262,7 @@ func buildTemplateFromType(name string, t registry.Type) *expander.Template {
 
 	y, err := yaml.Marshal(config)
 	if err != nil {
-		log.Fatalf("cannot create configuration for deployment: %v\n", config)
+		log.Fatalf("error: %s\ncannot create configuration for deployment: %v\n", err, config)
 	}
 
 	return &expander.Template{
@@ -240,10 +281,6 @@ func marshalTemplate(template *expander.Template) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader(j))
 }
 
-func getNameArgument() string {
-	if *name == "" {
-		*name = fmt.Sprintf("manifest-%d", time.Now().UTC().UnixNano())
-	}
-
-	return *name
+func getRandomName() string {
+	return fmt.Sprintf("manifest-%d", time.Now().UTC().UnixNano())
 }
