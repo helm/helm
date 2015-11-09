@@ -8,21 +8,21 @@ You can use it deploy ready-to-use types, such as:
 * [Replicated Service](types/replicatedservice/v1)
 * [Redis](types/redis/v1)
 
-As you can see, types live in ordinary Github repositories. This repository is a
-DM type registry.
+Types live in ordinary Github repositories. This repository is a DM type registry.
 
-You can also use DM to deploy simple templates that use existing types, such as:
+You can also use DM to deploy simple templates that use types, such as:
+
 * [Guestbook](examples/guestbook/guestbook.yaml)
 * [Deployment Manager](examples/bootstrap/bootstrap.yaml)
 
-As you can see, a template is just a `YAML` file that supplies parameters to
-instantiate types. (Yes, you're reading that second example correctly. It uses DM
-to deploy itself. See [examples/bootstrap/README.md](examples/bootstrap/README.md)
-for more information)
+A template is just a `YAML` file that supplies parameters. (Yes, you're reading
+that second example correctly. It uses DM to deploy itself.
+See [examples/bootstrap/README.md](examples/bootstrap/README.md) for more information.)
 
-DM runs server side, on your Kubernetes cluster, so it can tell you what types
-you've instantiated in the cluster, and even what resources comprise a given instance.
+DM runs server side, in your Kubernetes cluster, so it can tell you what types
+you've instantiated there, and even what instances you've created of a given type.
 So, you can ask questions like:
+
 * Show me all the Redis slaves running in this cluster.
 * Show me all the resources used by Redis.
 
@@ -38,6 +38,7 @@ for the Kubernetes configuration SIG. Your feedback and contributions are welcom
 ## Installing Deployment Manager
 
 Follow these 3 steps to install DM:
+
 1. Make sure your Kubernetes cluster is up and running, and that you can run
 `kubectl` commands against it.
 1. Clone this repository into the src folder of your GOPATH, if you haven't already.
