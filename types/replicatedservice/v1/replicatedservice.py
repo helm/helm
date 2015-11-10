@@ -99,10 +99,9 @@ def GenerateConfig(context):
   return yaml.dump(config)
 
 
-# Generates labels either from the context.properties['labels'] or generates
-# a default label 'name':name
 def GenerateLabels(context, name):
-  """Generates labels from context.properties['labels'] or creates default.
+  """Generates labels either from the context.properties['labels'] or 
+     generates a default label 'name':name
 
   We make a deep copy of the context.properties['labels'] section to avoid
   linking in the yaml document, which I believe reduces readability of the
