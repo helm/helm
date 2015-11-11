@@ -242,7 +242,7 @@ three key components:
 
 * inputConfig: the original input configuration for the manifest
 * expandedConfig: the expanded configuration to be used when processing resources
-* for the manifest
+for the manifest
 * layout: the hierarchical structure of the manifest
 
 Manifests are available at the HTTP endpoint:
