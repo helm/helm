@@ -4,4 +4,3 @@ imports:
 resources:
 - name: redis
   type: redis.jinja
-  properties: null
