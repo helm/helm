@@ -1,0 +1,82 @@
+# Type Registry
+
+The Deployment Manager client allows you to deploy
+[template types](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md#templates)
+directly from a Github repository. In order for a repository to integrate with
+Deployment Manager, it must store Deployment Manager templates in a manner that
+conforms to the required **Type Registry** structure detailed below.
+
+## File structure
+The repository must use the following file structure to store Deployment
+Manager template types:
+
+```
+<repository root>/
+  types/
+    <type-1>/
+      <version-1>/
+        <type-files>
+      <version-2>/
+        ...
+    <type-2>/
+      ...
+```
+
+## Versions
+Each type may contain any number of versions. Versions may be as simple as
+`v1`, `latest`, or `head`, or may be more complex to contain major and minor
+version numbers. Version format is user-defined.
+
+## Type files
+Each type version must contain a top-level Deployment Manager template, named
+either `<type-name>.py` or `<type-name>.jinja`, depending on the templating
+language used for the type.
+
+A
+[template schema](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md#template-schemas)
+must also be present, named `<template>.schema`. Other files
+may exist as part of the type and imported through the schema, including
+sub-templates, data files, or other metadata used by the template.
+
+## Test Configuration
+Each type version should include an example YAML configuration called
+`example.yaml` to be used for deploying an instance of the type. This is useful
+for development purposes.
+
+## Sample Registry
+An example of a valid type registry repository looks like:
+
+```
+/
+  types/
+    redis/
+      v1/
+        example.yaml
+        redis.jinja
+        redis.jinja.schema
+    replicatedservice/
+      v1/
+        example.yaml
+        replicatedservice.py
+        replicatedservice.py.schema
+```
+
+For a working example of a type registry, please see the
+[kubernetes/deployment-manager registry](https://github.com/kubernetes/deployment-manager/tree/master/types).
+
+## Using Types
+The Deployment Manager client can deploy types directly from a registry with
+the following command:
+
+```
+$ dm deploy <type-name>:<version>
+```
+
+This will default to the type registry in the kubernetes/deployment-manager
+Github repository. You can change this to another repository that contains a
+registry with the `--registry` flag:
+
+```
+$ dm --registry my-repo/registry deploy <type-name>:<version>
+```
+
