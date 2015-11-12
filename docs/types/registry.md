@@ -26,9 +26,8 @@ Manager template types:
 ```
 
 ## Versions
-Each type may contain any number of versions. Versions may be as simple as
-`v1`, `latest`, or `head`, or may be more complex to contain major and minor
-version numbers. Version format is user-defined.
+Types are versioned based on [Semantic Versioning](http://semver.org/), for
+example, *v1.1.0*. A type may have any number of versions.
 
 ## Type files
 Each type version must contain a top-level Deployment Manager template, named
