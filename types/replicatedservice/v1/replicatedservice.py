@@ -41,9 +41,9 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'Service',
-          'namespace': namespace,
           'metadata': {
               'name': service_name,
+              'namespace': namespace,
               'labels': GenerateLabels(context, service_name),
           },
           'spec': {
@@ -63,9 +63,9 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'ReplicationController',
-          'namespace': namespace,
           'metadata': {
               'name': rc_name,
+              'namespace': namespace,
               'labels': GenerateLabels(context, rc_name),
           },
           'spec': {
@@ -101,11 +101,11 @@ def GenerateConfig(context):
 
 def GenerateLabels(context, name):
   """Generates labels either from the context.properties['labels'] or 
-     generates a default label 'name':name
+     generates a default label 'app':name
 
   We make a deep copy of the context.properties['labels'] section to avoid
   linking in the yaml document, which I believe reduces readability of the
-  expanded template. If no labels are given, generate a default 'name':name.
+  expanded template. If no labels are given, generate a default 'app':name.
 
   Args:
     context: Template context, which can contain the following properties:
@@ -115,7 +115,7 @@ def GenerateLabels(context, name):
     A dict containing labels in a name:value format
   """
   tmp_labels = context.properties.get('labels', None)
-  ret_labels = {'name': name}
+  ret_labels = {'app': name}
   if isinstance(tmp_labels, dict):
     for key, value in tmp_labels.iteritems():
       ret_labels[key] = value
