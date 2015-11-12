@@ -2,7 +2,7 @@
 
 The Deployment Manager client allows you to deploy
 [template types](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md#templates)
-directly from a Github repository. You can use types from existing registries
+directly from a Github repository. You can use types from existing repositories
 or integrate with your own repository.
 
 In order for a Github repository to integrate with Deployment Manager, it must
