@@ -1,0 +1,185 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
+{% set PROPERTIES = properties or {} %}
+{% set PROJECT = PROPERTIES['project'] or 'dm-k8s-testing' %}
+{% set NFS_SERVER = PROPERTIES['nfs-server'] or {} %}
+=======
+{% set PROJECT = properties['project'] or 'dm-k8s-testing' %}
+{% set NFS_SERVER = properties['nfs-server'] or {} %}
+>>>>>>> 320a0e9... Adds Wordpress example
+=======
+{% set PROPERTIES = properties or {} %}
+{% set PROJECT = PROPERTIES['project'] or 'dm-k8s-testing' %}
+{% set NFS_SERVER = PROPERTIES['nfs-server'] or {} %}
+>>>>>>> f7940f1... Updates Wordpress example
+{% set NFS_SERVER_IP = NFS_SERVER['ip'] or '10.0.253.247' %}
+{% set NFS_SERVER_PORT = NFS_SERVER['port'] or 2049 %}
+{% set NFS_SERVER_DISK = NFS_SERVER['disk'] or 'nfs-disk' %}
+{% set NFS_SERVER_DISK_FSTYPE = NFS_SERVER['fstype'] or 'ext4' %}
+<<<<<<< HEAD
+<<<<<<< HEAD
+{% set NGINX = PROPERTIES['nginx'] or {} %}
+{% set NGINX_PORT = 80 %}
+{% set NGINX_REPLICAS = NGINX['replicas'] or 2 %}
+{% set WORDPRESS_PHP = PROPERTIES['wordpress-php'] or {} %}
+{% set WORDPRESS_PHP_REPLICAS = WORDPRESS_PHP['replicas'] or 2 %}
+{% set WORDPRESS_PHP_PORT = WORDPRESS_PHP['port'] or 9000 %}
+{% set MYSQL = PROPERTIES['mysql'] or {} %}
+=======
+{% set NGINX = properties['nginx'] or {} %}
+=======
+{% set NGINX = PROPERTIES['nginx'] or {} %}
+>>>>>>> f7940f1... Updates Wordpress example
+{% set NGINX_PORT = 80 %}
+{% set NGINX_REPLICAS = NGINX['replicas'] or 2 %}
+{% set WORDPRESS_PHP = PROPERTIES['wordpress-php'] or {} %}
+{% set WORDPRESS_PHP_REPLICAS = WORDPRESS_PHP['replicas'] or 2 %}
+{% set WORDPRESS_PHP_PORT = WORDPRESS_PHP['port'] or 9000 %}
+<<<<<<< HEAD
+{% set MYSQL = properties['mysql'] or {} %}
+>>>>>>> 320a0e9... Adds Wordpress example
+=======
+{% set MYSQL = PROPERTIES['mysql'] or {} %}
+>>>>>>> f7940f1... Updates Wordpress example
+{% set MYSQL_PORT = MYSQL['port'] or 3306 %}
+{% set MYSQL_PASSWORD = MYSQL['password'] or 'mysql-password' %}
+{% set MYSQL_DISK = MYSQL['disk'] or 'mysql-disk' %}
+{% set MYSQL_DISK_FSTYPE = MYSQL['fstype'] or 'ext4' %}
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+<<<<<<< HEAD
+resources:
+- name: nfs
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/nfs/v1/nfs.jinja
+  properties:
+    ip: {{ NFS_SERVER_IP }}
+    port: {{ NFS_SERVER_PORT }}
+    disk: {{ NFS_SERVER_DISK }}
+    fstype: {{NFS_SERVER_DISK_FSTYPE }}
+- name: nginx
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+=======
+=======
+
+>>>>>>> 2df5f72... Improves readability
+imports:
+- path: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+
+=======
+>>>>>>> 3ed2616... Creates an NFS type
+resources:
+- name: nfs
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/nfs/v1/nfs.jinja
+  properties:
+    ip: {{ NFS_SERVER_IP }}
+    port: {{ NFS_SERVER_PORT }}
+    disk: {{ NFS_SERVER_DISK }}
+    fstype: {{NFS_SERVER_DISK_FSTYPE }}
+- name: nginx
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+>>>>>>> 320a0e9... Adds Wordpress example
+=======
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+>>>>>>> ebf3a33... Change hardcoded type urls from leendersr/deployment-manager to kubernetes/deployment-manager
+=======
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+>>>>>>> 65b3c7e... Changes the Wordpress template so that it uses PersistentVolumeClaims
+=======
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+>>>>>>> be9b2a3... Changes absolute url from leendersr/deployment-manager back to kubernetes/deployment-manager
+  properties:
+    service_port: {{ NGINX_PORT }}
+    container_port: {{ NGINX_PORT }}
+    replicas: {{ NGINX_REPLICAS }}
+    external_service: true
+    image: gcr.io/{{ PROJECT }}/nginx:latest
+    volumes:
+      - mount_path: /var/www/html
+<<<<<<< HEAD
+<<<<<<< HEAD
+        persistentVolumeClaim:
+          claimName: nfs
+- name: mysql
+<<<<<<< HEAD
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+=======
+        nfs:
+          server: {{ NFS_SERVER_IP }}
+          path: /
+- name: mysql
+<<<<<<< HEAD
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+>>>>>>> 320a0e9... Adds Wordpress example
+=======
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+>>>>>>> ebf3a33... Change hardcoded type urls from leendersr/deployment-manager to kubernetes/deployment-manager
+=======
+        persistentVolumeClaim:
+          claimName: nfs
+- name: mysql
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+>>>>>>> 65b3c7e... Changes the Wordpress template so that it uses PersistentVolumeClaims
+=======
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+>>>>>>> be9b2a3... Changes absolute url from leendersr/deployment-manager back to kubernetes/deployment-manager
+  properties:
+    service_port: {{ MYSQL_PORT }}
+    container_port: {{ MYSQL_PORT }}
+    replicas: 1
+    image: mysql:5.6
+    env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: {{ MYSQL_PASSWORD }}
+    volumes:
+      - mount_path: /var/lib/mysql
+        gcePersistentDisk:
+          pdName: {{ MYSQL_DISK }}
+          fsType: {{ MYSQL_DISK_FSTYPE }}
+- name: wordpress-php
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+=======
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+>>>>>>> 320a0e9... Adds Wordpress example
+=======
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+>>>>>>> ebf3a33... Change hardcoded type urls from leendersr/deployment-manager to kubernetes/deployment-manager
+=======
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+>>>>>>> 65b3c7e... Changes the Wordpress template so that it uses PersistentVolumeClaims
+=======
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+>>>>>>> be9b2a3... Changes absolute url from leendersr/deployment-manager back to kubernetes/deployment-manager
+  properties:
+    service_name: wordpress-php
+    service_port: {{ WORDPRESS_PHP_PORT }}
+    container_port: {{ WORDPRESS_PHP_PORT }}
+    replicas: 2
+    image: wordpress:fpm
+    env:
+      - name: WORDPRESS_DB_PASSWORD
+        value: {{ MYSQL_PASSWORD }}
+      - name: WORDPRESS_DB_HOST
+        value: mysql-service
+    volumes:
+      - mount_path: /var/www/html
+<<<<<<< HEAD
+<<<<<<< HEAD
+        persistentVolumeClaim:
+          claimName: nfs
+=======
+        nfs:
+          server: {{ NFS_SERVER_IP }}
+          path: /
+>>>>>>> 320a0e9... Adds Wordpress example
+=======
+        persistentVolumeClaim:
+          claimName: nfs
+>>>>>>> 65b3c7e... Changes the Wordpress template so that it uses PersistentVolumeClaims
