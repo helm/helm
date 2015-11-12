@@ -341,7 +341,7 @@ processing deployments. It uses the following process:
 
 1. Create a new deployment with a manifest containing _inputConfig_ from the
    user request
-1. Call out to he **expandybird** service to expand the _inputConfig_
+1. Call out to the **expandybird** service to expand the _inputConfig_
 1. Store the resulting _expandedConfig_ and _layout_
 1. Call out to the **resourcifier** service to perform processing on resources
 from the _expandedConfig_

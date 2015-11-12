@@ -54,7 +54,7 @@ func (e *expander) getBaseURL() string {
 }
 
 func expanderError(t *Template, err error) error {
-	return fmt.Errorf("cannot expand template named %s (%s):\n%s\n", t.Name, err, t.Content)
+	return fmt.Errorf("cannot expand template named %s (%s):\n%s", t.Name, err, t.Content)
 }
 
 // ExpanderResponse gives back a layout, which has nested structure
@@ -117,7 +117,7 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 	// 4. If type resolution resulted in new imports being available, return to 2.
 	config := &Configuration{}
 	if err := yaml.Unmarshal([]byte(t.Content), config); err != nil {
-		e := fmt.Errorf("Unable to unmarshal configuration (%s): %s\n", err, t.Content)
+		e := fmt.Errorf("Unable to unmarshal configuration (%s): %s", err, t.Content)
 		return nil, e
 	}
 
@@ -127,7 +127,7 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 	// Start things off by attempting to resolve the templates in a first pass.
 	newImp, err := e.typeResolver.ResolveTypes(config, t.Imports)
 	if err != nil {
-		e := fmt.Errorf("type resolution failed:%s\n", err)
+		e := fmt.Errorf("type resolution failed: %s", err)
 		return nil, expanderError(&t, e)
 	}
 
@@ -137,7 +137,7 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 		// Now expand with everything imported.
 		result, err := e.expandTemplate(&t)
 		if err != nil {
-			e := fmt.Errorf("template expansion:%s\n", err)
+			e := fmt.Errorf("template expansion: %s", err)
 			return nil, expanderError(&t, e)
 		}
 
@@ -152,7 +152,7 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 
 		newImp, err = e.typeResolver.ResolveTypes(result.Config, nil)
 		if err != nil {
-			e := fmt.Errorf("type resolution failed:%s\n", err)
+			e := fmt.Errorf("type resolution failed: %s", err)
 			return nil, expanderError(&t, e)
 		}
 
@@ -167,7 +167,7 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 		content, err = yaml.Marshal(result.Config)
 		t.Content = string(content)
 		if err != nil {
-			e := fmt.Errorf("Unable to unmarshal response from expander (%s): %s\n",
+			e := fmt.Errorf("Unable to unmarshal response from expander (%s): %s",
 				err, result.Config)
 			return nil, expanderError(&t, e)
 		}
@@ -183,31 +183,31 @@ func (e *expander) expandTemplate(t *Template) (*ExpandedTemplate, error) {
 
 	response, err := http.Post(e.getBaseURL(), "application/json", ioutil.NopCloser(bytes.NewReader(j)))
 	if err != nil {
-		e := fmt.Errorf("http POST failed:%s\n", err)
+		e := fmt.Errorf("http POST failed: %s", err)
 		return nil, e
 	}
+
 	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		err := fmt.Errorf("expander service response:%v", response)
-		return nil, err
-	}
-
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		e := fmt.Errorf("error reading response:%s\n", err)
+		e := fmt.Errorf("error reading response: %s", err)
 		return nil, e
+	}
+
+	if response.StatusCode != http.StatusOK {
+		err := fmt.Errorf("expandybird response:\n%s", body)
+		return nil, err
 	}
 
 	er := &ExpansionResponse{}
 	if err := json.Unmarshal(body, er); err != nil {
-		e := fmt.Errorf("cannot unmarshal response body (%s):%s\n", err, body)
+		e := fmt.Errorf("cannot unmarshal response body (%s):%s", err, body)
 		return nil, e
 	}
 
 	template, err := er.Unmarshal()
 	if err != nil {
-		e := fmt.Errorf("cannot unmarshal response yaml (%s):%v\n", err, er)
+		e := fmt.Errorf("cannot unmarshal response yaml (%s):%v", err, er)
 		return nil, e
 	}
 

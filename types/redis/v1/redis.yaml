@@ -1,0 +1,7 @@
+imports:
+- path: redis.jinja
+
+resources:
+- name: redis
+  type: redis.jinja
+  properties: null

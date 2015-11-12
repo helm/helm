@@ -100,7 +100,7 @@ func (d *deployer) PutConfiguration(configuration *Configuration) error {
 
 func (d *deployer) callServiceWithConfiguration(method, operation string, configuration *Configuration) error {
 	callback := func(e error) error {
-		return fmt.Errorf("cannot %s configuration (%s)", operation, e)
+		return fmt.Errorf("cannot %s configuration: %s", operation, e)
 	}
 
 	y, err := yaml.Marshal(configuration)
@@ -129,14 +129,14 @@ func (d *deployer) callService(method, url string, reader io.Reader, callback fo
 	}
 
 	defer response.Body.Close()
-	if response.StatusCode < http.StatusOK ||
-		response.StatusCode >= http.StatusMultipleChoices {
-		err := fmt.Errorf("deployer service response:\n%v\n", response)
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
 		return nil, callback(err)
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
+	if response.StatusCode < http.StatusOK ||
+		response.StatusCode >= http.StatusMultipleChoices {
+		err := fmt.Errorf("resourcifier response:\n%s", body)
 		return nil, callback(err)
 	}
 
