@@ -29,10 +29,11 @@ Manager template types:
 Types are versioned based on [Semantic Versioning](http://semver.org/), for
 example, *v1.1.0*. A type may have any number of versions.
 
-## Type files
-Each type version must contain a top-level Deployment Manager template, named
-either `<type-name>.py` or `<type-name>.jinja`, depending on the templating
-language used for the type.
+## Types
+Each type version must contain a top-level Deployment Manager template
+[Deployment Manager template](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md#templates)
+named either `<type-name>.py` or `<type-name>.jinja`, depending on the
+templating language used for the type.
 
 A
 [template schema](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md#template-schemas)
