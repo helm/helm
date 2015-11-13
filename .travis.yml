@@ -1,0 +1,14 @@
+sudo: true
+
+language: go
+
+go:
+  - 1.4
+
+install:
+  - sudo pip install jinja2
+  - sudo pip install pyyaml
+  - sudo pip install jsonschema
+
+script:
+  - make test
