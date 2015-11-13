@@ -155,6 +155,6 @@ The NFS service is a replicated service with a single replica:
 We can now deploy Wordpress using:
 
 ```
-dm deploy examples/wordpress/wordpress.jinja
+dm deploy examples/wordpress/wordpress.yaml
 ```
 
