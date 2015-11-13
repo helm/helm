@@ -17,10 +17,10 @@
 {% set MYSQL_DISK = MYSQL['disk'] or 'mysql-disk' %}
 {% set MYSQL_DISK_FSTYPE = MYSQL['fstype'] or 'ext4' %}
 imports:
-- path: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+- path: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
 resources:
 - name: nfs-server
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ NFS_SERVER_PORT }}
     container_port: {{ NFS_SERVER_PORT }}
@@ -34,7 +34,7 @@ resources:
           pdName: {{ NFS_SERVER_DISK }}
           fsType: {{ NFS_SERVER_DISK_FSTYPE }}
 - name: nginx
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ NGINX_PORT }}
     container_port: {{ NGINX_PORT }}
@@ -47,7 +47,7 @@ resources:
           server: {{ NFS_SERVER_IP }}
           path: /
 - name: mysql
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ MYSQL_PORT }}
     container_port: {{ MYSQL_PORT }}
@@ -62,7 +62,7 @@ resources:
           pdName: {{ MYSQL_DISK }}
           fsType: {{ MYSQL_DISK_FSTYPE }}
 - name: wordpress-php
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
   properties:
     service_name: wordpress-php
     service_port: {{ WORDPRESS_PHP_PORT }}
