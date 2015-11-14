@@ -1,3 +1,4 @@
+# Google Cloud Deployment Manager template
 resources:
 - name: nfs-disk
   type: compute.v1.disk
