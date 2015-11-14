@@ -8,7 +8,8 @@ You can use it deploy ready-to-use types, such as:
 * [Replicated Service](types/replicatedservice/v1)
 * [Redis](types/redis/v1)
 
-Types live in ordinary Github repositories. This repository is a DM type registry.
+Types live in ordinary Github repositories. This repository contains the DM
+code, but also acts as a DM type registry.
 
 You can also use DM to deploy simple templates that use types, such as:
 
@@ -43,11 +44,10 @@ Follow these 3 steps to install DM:
 1. Make sure your Kubernetes cluster is up and running, and that you can run
 `kubectl` commands against it.
 1. Clone this repository into the src folder of your GOPATH, if you haven't already.
-1. Use `kubectl` to install DM into your cluster:
-
-```
-kubectl create -f install.yaml
-```
+See the [Kubernetes docs](https://github.com/kubernetes/kubernetes/blob/master/docs/devel/development.md)
+for how to setup Go and the repos.
+1. Use `kubectl` to install DM into your cluster `kubectl create -f
+install.yaml`
 
 That's it. You can now use `kubectl` to see DM running in your cluster:
 
@@ -59,35 +59,41 @@ If you see expandybird-service, manager-service, resourcifier-service, and
 expandybird-rc, manager-rc and resourcifier-rc with pods that are READY, then DM
 is up and running!
 
-The easiest way to interact with Deployment Manager is through `kubectl` proxy:
+## Using Deployment Manager
 
-```
-kubectl proxy --port=8001 &
-```
+### Setting up the client
 
-This command starts a proxy that lets you interact with the Kubernetes api
-server through port 8001 on localhost. `dm` uses
+The easiest way to interact with Deployment Manager is through the `dm` tool
+hitting a`kubectl` proxy. To set that up:
+
+1. Build the tool by running `make` from the deployment-manager repo.
+1. Run `kubectl proxy --port=8001 &` to start a proxy that lets you interact
+with the Kubernetes API server through port 8001 on localhost. `dm` uses
 `http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager`
 as the default service address for DM.
 
-## Using Deployment Manager
+### Using the client
 
-You can use `dm` to deploy a type from the command line. This command deploys a
-redis cluster with two workers from the type definition in this repository:
+#### Deploying from a type registry
+
+This command deploys a redis cluster with two workers from the type definition
+in this repository:
 
 ```
-dm deploy redis/v1
+dm deploy redis:v1
 ```
 
 When you deploy a type, you can optionally supply values for input parameters,
 like this:
 
 ```
-dm --properties workers=3 deploy redis/v1
+dm --properties workers=3 deploy redis:v1
 ```
 
 When you deploy a type, `dm` generates a template from the type and input 
 parameters, and then deploys it. 
+
+#### Deploying from a template
 
 You can also deploy an existing template, or read one from `stdin`. This command
 deploys the canonical Guestbook example from the examples directory:
@@ -108,7 +114,7 @@ to see the guestbook in action.
 
 For more information about this example, see [examples/guestbook/README.md](examples/guestbook/README.md)
 
-## Additional commands
+### Additional commands
 
 The command line tool makes it easy to configure a cluster from a set of predefined
 types. Here's a list of available commands:
@@ -124,7 +130,6 @@ deployed-types      Lists the types deployed in the cluster
 deployed-instances  Lists the instances of the supplied type deployed in the cluster
 types               Lists the types in the current registry
 describe            Describes the supplied type in the current registry
-
 ```
 
 ## Uninstalling Deployment Manager
@@ -154,12 +159,9 @@ By default, install.yaml uses prebuilt images stored in Google Container Registr
 to install them. However, you can build your own container images and push them
 to your own project in the Google Container Registry: 
 
-1. Set the environment variable PROJECT to the name of a project known to gcloud.
-1. Run the following command:
-
-```
-make push
-```
+1. Set the environment variable `PROJECT` to the name of a project known to
+GCloud.
+1. Run `make push`
 
 ## Design of Deployment Manager
 
@@ -169,13 +171,11 @@ There is a more detailed [design document](docs/design/design.md) available.
 
 This project is still under active development, so you might run into issues. If
 you do, please don't be shy about letting us know, or better yet, contribute a
-fix or feature. We use the same [development process](CONTRIBUTING.md) as the main 
+fix or feature. We use the same [development process](CONTRIBUTING.md) as the main
 Kubernetes repository.
 
 ## Relationship to Google Cloud Platform
 DM uses the same concepts and languages as
 [Google Cloud Deployment Manager](https://cloud.google.com/deployment-manager/overview),
 but creates resources in Kubernetes clusters, not in Google Cloud Platform projects.
-
-
 
