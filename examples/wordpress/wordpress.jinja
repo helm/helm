@@ -16,8 +16,10 @@
 {% set MYSQL_PASSWORD = MYSQL['password'] or 'mysql-password' %}
 {% set MYSQL_DISK = MYSQL['disk'] or 'mysql-disk' %}
 {% set MYSQL_DISK_FSTYPE = MYSQL['fstype'] or 'ext4' %}
+
 imports:
 - path: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+
 resources:
 - name: nfs-server
   type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
