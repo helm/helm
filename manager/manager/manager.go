@@ -113,15 +113,16 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	// TODO: Mark this as failed instead of deleting.
 	if err := m.deployer.CreateConfiguration(et.Config); err != nil {
-		m.repository.DeleteDeployment(t.Name, true)
+		// Deployment failed, mark as deleted
+		log.Printf("CreateConfiguration failed: %v", err)
+		m.repository.SetDeploymentStatus(t.Name, FailedStatus)
 		return nil, err
 	}
 
+	m.repository.SetDeploymentStatus(t.Name, DeployedStatus)
 	// Finally update the type instances for this deployment.
 	m.addTypeInstances(t.Name, manifest.Name, manifest.Layout)
-
 	return m.repository.GetValidDeployment(t.Name)
 }
 

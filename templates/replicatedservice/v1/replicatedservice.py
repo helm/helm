@@ -1,3 +1,16 @@
+######################################################################
+# Copyright 2015 The Kubernetes Authors All rights reserved.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+######################################################################
+
 """Defines a ReplicatedService type by creating both a Service and an RC.
 
 This module creates a typical abstraction for running a service in a
@@ -41,9 +54,9 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'Service',
-          'namespace': namespace,
           'metadata': {
               'name': service_name,
+              'namespace': namespace,
               'labels': GenerateLabels(context, service_name),
           },
           'spec': {
@@ -63,9 +76,9 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'ReplicationController',
-          'namespace': namespace,
           'metadata': {
               'name': rc_name,
+              'namespace': namespace,
               'labels': GenerateLabels(context, rc_name),
           },
           'spec': {
@@ -101,11 +114,11 @@ def GenerateConfig(context):
 
 def GenerateLabels(context, name):
   """Generates labels either from the context.properties['labels'] or 
-     generates a default label 'name':name
+     generates a default label 'app':name
 
   We make a deep copy of the context.properties['labels'] section to avoid
   linking in the yaml document, which I believe reduces readability of the
-  expanded template. If no labels are given, generate a default 'name':name.
+  expanded template. If no labels are given, generate a default 'app':name.
 
   Args:
     context: Template context, which can contain the following properties:
@@ -115,7 +128,7 @@ def GenerateLabels(context, name):
     A dict containing labels in a name:value format
   """
   tmp_labels = context.properties.get('labels', None)
-  ret_labels = {'name': name}
+  ret_labels = {'app': name}
   if isinstance(tmp_labels, dict):
     for key, value in tmp_labels.iteritems():
       ret_labels[key] = value

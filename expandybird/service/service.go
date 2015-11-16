@@ -68,14 +68,14 @@ func NewExpansionHandler(backend expander.Expander) restful.RouteFunction {
 
 		output, err := backend.ExpandTemplate(template)
 		if err != nil {
-			message := fmt.Sprintf("error (%s) expanding template:\n%v\n", err, template)
+			message := fmt.Sprintf("error expanding template: %s", err)
 			logAndReturnErrorFromHandler(http.StatusBadRequest, message, resp)
 			return
 		}
 
 		response, err := expander.NewExpansionResponse(output)
 		if err != nil {
-			message := fmt.Sprintf("error (%s) marshaling output:\n%v\n", err, output)
+			message := fmt.Sprintf("error marshaling output: %s", err)
 			logAndReturnErrorFromHandler(http.StatusBadRequest, message, resp)
 			return
 		}
