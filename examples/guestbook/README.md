@@ -97,7 +97,7 @@ resources:
 
 ### Displaying types
 
-You can see both the both primitive types and the templates you deployed to the
+You can see both the both primitive types and the templates you've deployed to the
 cluster using the `deployed-types` command:
 
 ```

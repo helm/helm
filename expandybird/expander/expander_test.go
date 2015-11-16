@@ -24,7 +24,7 @@ import (
 const invalidFileName = "afilethatdoesnotexist"
 
 var importFileNames = []string{
-	"../test/replicatedservice.py",
+	"../../templates/replicatedservice/v1/replicatedservice.py",
 }
 
 var outputFileName = "../test/ExpectedOutput.yaml"

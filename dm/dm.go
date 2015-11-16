@@ -36,29 +36,28 @@ import (
 )
 
 var (
-	// TODO(jackgr): Implement reading a template from stdin
-	//stdin       = flag.Bool("stdin", false, "Reads a template from the standard input")
-	properties    = flag.String("properties", "", "Properties to use when deploying a type (e.g., --properties k1=v1,k2=v2)")
-	type_registry = flag.String("registry", "kubernetes/deployment-manager", "Github based type registry [owner/repo]")
-	service       = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager", "URL for deployment manager")
-	binary        = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
+	stdin             = flag.Bool("stdin", false, "Reads a configuration from the standard input")
+	properties        = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
+	template_registry = flag.String("registry", "kubernetes/deployment-manager/templates", "Github based template registry (owner/repo[/path])")
+	service           = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager", "URL for deployment manager")
+	binary            = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
 )
 
 var commands = []string{
-	"expand \t\t\t Expands the supplied template(s)",
-	"deploy \t\t\t Deploys the supplied type or template(s)",
+	"expand \t\t\t Expands the supplied configuration(s)",
+	"deploy \t\t\t Deploys the named template or the supplied configuration(s)",
 	"list \t\t\t Lists the deployments in the cluster",
 	"get \t\t\t Retrieves the supplied deployment",
 	"delete \t\t\t Deletes the supplied deployment",
-	"update \t\t\t Updates a deployment using the supplied template(s)",
+	"update \t\t\t Updates a deployment using the supplied configuration(s)",
 	"deployed-types \t\t Lists the types deployed in the cluster",
-	"deployed-instances \t Lists the instances of the supplied type deployed in the cluster",
-	"types \t\t\t Lists the types in the current registry",
-	"describe \t\t Describes the supplied type in the current registry",
+	"deployed-instances \t Lists the instances of the named type deployed in the cluster",
+	"templates \t\t Lists the templates in a given template registry",
+	"describe \t\t Describes the named template in a given template registry",
 }
 
 var usage = func() {
-	message := "Usage: %s [<flags>] <command> (<type-name> | <deployment-name> | (<template> [<import1>...<importN>]))\n"
+	message := "Usage: %s [<flags>] <command> (<template-name> | <deployment-name> | (<configuration> [<import1>...<importN>]))\n"
 	fmt.Fprintf(os.Stderr, message, os.Args[0])
 	fmt.Fprintln(os.Stderr, "Commands:")
 	for _, command := range commands {
@@ -73,12 +72,17 @@ var usage = func() {
 }
 
 func getGitRegistry() *registry.GithubRegistry {
-	s := strings.Split(*type_registry, "/")
-	if len(s) != 2 {
-		log.Fatalf("invalid type registry: %s", type_registry)
+	s := strings.Split(*template_registry, "/")
+	if len(s) < 2 {
+		log.Fatalf("invalid template registry: %s", *template_registry)
 	}
 
-	return registry.NewGithubRegistry(s[0], s[1])
+	var path = ""
+	if len(s) > 2 {
+		path = strings.Join(s[2:], "/")
+	}
+
+	return registry.NewGithubRegistry(s[0], s[1], path)
 }
 
 func main() {
@@ -89,27 +93,32 @@ func main() {
 		usage()
 	}
 
+	if *stdin {
+		fmt.Printf("reading from stdin is not yet implemented")
+		os.Exit(0)
+	}
+
 	command := args[0]
 	switch command {
-	case "types":
+	case "templates":
 		git := getGitRegistry()
-		types, err := git.List()
+		templates, err := git.List()
 		if err != nil {
-			log.Fatalf("Cannot list %v err")
+			log.Fatalf("Cannot list %v", err)
 		}
 
-		fmt.Printf("Types:\n")
-		for _, t := range types {
+		fmt.Printf("Templates:\n")
+		for _, t := range templates {
 			fmt.Printf("%s:%s\n", t.Name, t.Version)
 			downloadURL, err := git.GetURL(t)
 			if err != nil {
-				log.Printf("Failed to get download URL for type %s:%s", t.Name, t.Version)
+				log.Printf("Failed to get download URL for template %s:%s", t.Name, t.Version)
 			}
 
 			fmt.Printf("\tdownload URL: %s\n", downloadURL)
 		}
 	case "describe":
-		fmt.Printf("this feature is not yet implemented")
+		fmt.Printf("the describe feature is not yet implemented")
 	case "expand":
 		backend := expander.NewExpander(*binary)
 		template := loadTemplate(args)
@@ -121,7 +130,7 @@ func main() {
 		fmt.Println(output)
 	case "deploy":
 		template := loadTemplate(args)
-		action := fmt.Sprintf("deploy template named %s", template.Name)
+		action := fmt.Sprintf("deploy configuration named %s", template.Name)
 		callService("deployments", "POST", action, marshalTemplate(template))
 	case "list":
 		callService("deployments", "GET", "list deployments", nil)
@@ -149,8 +158,7 @@ func main() {
 		action := fmt.Sprintf("delete deployment named %s", template.Name)
 		callService(path, "PUT", action, marshalTemplate(template))
 	case "deployed-types":
-		action := fmt.Sprintf("list types in registry %s", *type_registry)
-		callService("types", "GET", action, nil)
+		callService("types", "GET", "list deployed types", nil)
 	case "deployed-instances":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "No type name supplied")
@@ -158,7 +166,7 @@ func main() {
 		}
 
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(args[1]))
-		action := fmt.Sprintf("list instances of type %s in registry %s", args[1], *type_registry)
+		action := fmt.Sprintf("list deployed instances of type %s", args[1])
 		callService(path, "GET", action, nil)
 	default:
 		usage()
@@ -193,7 +201,7 @@ func loadTemplate(args []string) *expander.Template {
 	var template *expander.Template
 	var err error
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "No type name or template file(s) supplied")
+		fmt.Fprintln(os.Stderr, "No template name or configuration(s) supplied")
 		usage()
 	}
 
@@ -208,7 +216,7 @@ func loadTemplate(args []string) *expander.Template {
 	}
 
 	if err != nil {
-		log.Fatalf("cannot create template from supplied arguments: %s\n", err)
+		log.Fatalf("cannot create configuration from supplied arguments: %s\n", err)
 	}
 
 	return template
@@ -275,7 +283,7 @@ func buildTemplateFromType(name string, t registry.Type) *expander.Template {
 func marshalTemplate(template *expander.Template) io.ReadCloser {
 	j, err := json.Marshal(template)
 	if err != nil {
-		log.Fatalf("cannot deploy template %s: %s\n", template.Name, err)
+		log.Fatalf("cannot deploy configuration %s: %s\n", template.Name, err)
 	}
 
 	return ioutil.NopCloser(bytes.NewReader(j))

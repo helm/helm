@@ -20,9 +20,8 @@ config:
       metadata:
         labels:
           app: expandybird
-          name: expandybird-service
         name: expandybird-service
-      namespace: default
+        namespace: default
       spec:
         ports:
         - name: expandybird
@@ -30,7 +29,6 @@ config:
           targetPort: 8080
         selector:
           app: expandybird
-          name: expandybird
         type: LoadBalancer
     type: Service
   - name: expandybird-rc
@@ -40,22 +38,20 @@ config:
       metadata:
         labels:
           app: expandybird
-          name: expandybird-rc
         name: expandybird-rc
-      namespace: default
+        namespace: default
       spec:
         replicas: 3
         selector:
           app: expandybird
-          name: expandybird
         template:
           metadata:
             labels:
               app: expandybird
-              name: expandybird
           spec:
             containers:
-            - image: b.gcr.io/dm-k8s-testing/expandybird
+            - env: []
+              image: b.gcr.io/dm-k8s-testing/expandybird
               name: expandybird
               ports:
               - containerPort: 8080

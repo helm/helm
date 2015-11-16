@@ -24,14 +24,16 @@ import (
 type GithubRegistry struct {
 	owner      string
 	repository string
+	path       string
 	client     *github.Client
 }
 
 // NewGithubRegistry creates a Registry that can be used to talk to github.
-func NewGithubRegistry(owner string, repository string) *GithubRegistry {
+func NewGithubRegistry(owner, repository, path string) *GithubRegistry {
 	return &GithubRegistry{
 		owner:      owner,
 		repository: repository,
+		path:       path,
 		client:     github.NewClient(nil),
 	}
 }
@@ -39,19 +41,21 @@ func NewGithubRegistry(owner string, repository string) *GithubRegistry {
 // List the types from the Registry.
 func (g *GithubRegistry) List() ([]Type, error) {
 	// First list all the types at the top level.
-	types, err := g.getDirs(TypesDir)
+	types, err := g.getDirs("")
 	if err != nil {
-		log.Printf("Failed to list types : %v", err)
+		log.Printf("Failed to list templates: %v", err)
 		return nil, err
 	}
+
 	var retTypes []Type
 	for _, t := range types {
 		// Then we need to fetch the versions (directories for this type)
-		versions, err := g.getDirs(TypesDir + "/" + t)
+		versions, err := g.getDirs(t)
 		if err != nil {
-			log.Printf("Failed to fetch versions for type: %s", t)
+			log.Printf("Failed to fetch versions for template: %s", t)
 			return nil, err
 		}
+
 		for _, v := range versions {
 			retTypes = append(retTypes, Type{Name: t, Version: v})
 		}
@@ -62,9 +66,10 @@ func (g *GithubRegistry) List() ([]Type, error) {
 
 // GetURL fetches the download URL for a given Type and checks for existence of a schema file.
 func (g *GithubRegistry) GetURL(t Type) (string, error) {
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, TypesDir+"/"+t.Name+"/"+t.Version, nil)
+	path := g.path + "/" + t.Name + "/" + t.Version
+	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
-		log.Printf("Failed to list types : %v", err)
+		log.Printf("Failed to list versions at path: %s: %v", path, err)
 		return "", err
 	}
 	var downloadURL, typeName, schemaName string
@@ -80,25 +85,32 @@ func (g *GithubRegistry) GetURL(t Type) (string, error) {
 		}
 	}
 	if downloadURL == "" {
-		return "", fmt.Errorf("Can not find type %s:%s", t.Name, t.Version)
+		return "", fmt.Errorf("Can not find template %s:%s", t.Name, t.Version)
 	}
-	if schemaName == typeName + ".schema" {
+	if schemaName == typeName+".schema" {
 		return downloadURL, nil
 	}
-	return "", fmt.Errorf("Can not find schema for %s:%s, expected to find %s", t.Name, t.Version, typeName + ".schema")
+	return "", fmt.Errorf("Can not find schema for %s:%s, expected to find %s", t.Name, t.Version, typeName+".schema")
 }
 
 func (g *GithubRegistry) getDirs(dir string) ([]string, error) {
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, dir, nil)
+	var path = g.path
+	if dir != "" {
+		path = g.path + "/" + dir
+	}
+
+	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
-		log.Printf("Failed to call ListRefs : %v", err)
+		log.Printf("Failed to get contents at path: %s: %v", path, err)
 		return nil, err
 	}
+
 	var dirs []string
 	for _, entry := range dc {
 		if *entry.Type == "dir" {
 			dirs = append(dirs, *entry.Name)
 		}
 	}
+
 	return dirs, nil
 }

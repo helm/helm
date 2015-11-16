@@ -65,7 +65,7 @@ const (
 )
 
 var importFileNames = []string{
-	"../test/replicatedservice.py",
+	"../../templates/replicatedservice/v1/replicatedservice.py",
 }
 
 type ServiceWrapperTestCase struct {
