@@ -13,33 +13,36 @@ limitations under the License.
 
 package registry
 
-// Registry abstracts a types registry which holds types that can be
-// used in a Deployment Manager configurations. A registry root must have
-// a 'types' directory which contains all the available types. Each type
-// then contains version directories which in turn contains all the files
-// necessary for that version of the type.
-// For example a type registry holding two types:
-//   redis v1               (implemented in jinja)
-//   replicatedservice v2   (implemented in python)
-// would have a directory structure like so:
-// /types/redis/v1
-//   redis.jinja
-//   redis.jinja.schema
-// /types/replicatedservice/v2
-//   replicatedservice.python
-//   replicatedservice.python.schema
-
-const TypesDir string = "types"
+// Registry abstracts a registry that holds templates, which can be
+// used in a Deployment Manager configurations. A registry root must be a
+// directory that contains all the available templates, one directory per
+// template. Each template directory then contains version directories, each
+// of which in turn contains all the files necessary for that version of the
+// template.
+// For example, a template registry containing two versions of redis
+// (implemented in jinja), and one version of replicatedservice (implemented
+// in python) would have a directory structure that looks something like this:
+// /redis
+//   /v1
+//     redis.jinja
+//     redis.jinja.schema
+//   /v2
+//     redis.jinja
+//     redis.jinja.schema
+// /replicatedservice
+//   /v1
+//     replicatedservice.python
+//     replicatedservice.python.schema
 
 type Type struct {
-	Name string
+	Name    string
 	Version string
 }
 
 // Registry abstracts type interactions.
 type Registry interface {
-	// List all the types in the given registry
+	// List all the templates at the given path
 	List() ([]Type, error)
-	// Get the download URL for a given type and version
+	// Get the download URL for a given template and version
 	GetURL(t Type) (string, error)
 }

@@ -1,6 +1,6 @@
 resources:
 - name: frontend
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v1/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py
   properties:
     service_port: 80
     container_port: 80
@@ -8,5 +8,5 @@ resources:
     replicas: 3
     image: gcr.io/google_containers/example-guestbook-php-redis:v3
 - name: redis
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/redis/v1/redis.jinja
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/redis/v1/redis.jinja
   properties: null

@@ -28,19 +28,7 @@ def GenerateConfig(context):
   """Generates a Replication Controller and a matching Service.
 
   Args:
-    context: Template context, which can contain the following properties:
-             container_name - Name to use for container. If omitted, name is
-                              used.
-             namespace - Namespace to create the resources in. If omitted,
-                         'default' is used.
-             protocol - Protocol to use for the service
-             service_port - Port to use for the service
-             target_port - Target port for the service
-             container_port - Container port to use
-             replicas - Number of replicas to create in RC
-             image - Docker image to use for replicas. Required.
-             labels - labels to apply.
-             external_service - If set to true, enable external Load Balancer
+    context: Template context. See schema for context properties.
 
   Returns:
     A Container Manifest as a YAML string.
@@ -53,7 +41,7 @@ def GenerateConfig(context):
   namespace = context.properties.get('namespace', 'default')
 
   # Define things that the Service cares about
-  service_name = name + '-service'
+  service_name = context.properties.get('service_name', name + '-service')
   service_type = SERVICE_TYPE_COLLECTION
 
   # Define things that the Replication Controller (rc) cares about
@@ -66,9 +54,9 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'Service',
-          'namespace': namespace,
           'metadata': {
               'name': service_name,
+              'namespace': namespace,
               'labels': GenerateLabels(context, service_name),
           },
           'spec': {
@@ -88,9 +76,9 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'ReplicationController',
-          'namespace': namespace,
           'metadata': {
               'name': rc_name,
+              'namespace': namespace,
               'labels': GenerateLabels(context, rc_name),
           },
           'spec': {
@@ -103,6 +91,7 @@ def GenerateConfig(context):
                   'spec': {
                       'containers': [
                           {
+                              'env': GenerateEnv(context),
                               'name': container_name,
                               'image': context.properties['image'],
                               'ports': [
@@ -123,14 +112,13 @@ def GenerateConfig(context):
   return yaml.dump(config)
 
 
-# Generates labels either from the context.properties['labels'] or generates
-# a default label 'name':name
 def GenerateLabels(context, name):
-  """Generates labels from context.properties['labels'] or creates default.
+  """Generates labels either from the context.properties['labels'] or 
+     generates a default label 'app':name
 
   We make a deep copy of the context.properties['labels'] section to avoid
   linking in the yaml document, which I believe reduces readability of the
-  expanded template. If no labels are given, generate a default 'name':name.
+  expanded template. If no labels are given, generate a default 'app':name.
 
   Args:
     context: Template context, which can contain the following properties:
@@ -140,7 +128,7 @@ def GenerateLabels(context, name):
     A dict containing labels in a name:value format
   """
   tmp_labels = context.properties.get('labels', None)
-  ret_labels = {'name': name}
+  ret_labels = {'app': name}
   if isinstance(tmp_labels, dict):
     for key, value in tmp_labels.iteritems():
       ret_labels[key] = value
@@ -174,3 +162,20 @@ def GenerateServicePorts(context, name):
     ports['protocol'] = protocol
 
   return ports
+
+def GenerateEnv(context):
+  """Generates environmental variables for a pod.
+
+  Args:
+    context: Template context, which can contain the following properties:
+             env - Environment variables to set.
+
+  Returns:
+    A list containing env variables in dict format {name: 'name', value: 'value'}
+  """
+  env = []
+  tmp_env = context.properties.get('env', [])
+  for entry in tmp_env:
+    if isinstance(entry, dict):
+      env.append({'name': entry.get('name'), 'value': entry.get('value')})
+  return env
