@@ -47,6 +47,7 @@ type Repository interface {
 	GetValidDeployment(name string) (*Deployment, error)
 	CreateDeployment(name string) (*Deployment, error)
 	DeleteDeployment(name string, forget bool) (*Deployment, error)
+	SetDeploymentStatus(name string, status DeploymentStatus) error
 
 	// Manifests.
 	AddManifest(deploymentName string, manifest *Manifest) error
@@ -69,7 +70,7 @@ type Deployment struct {
 	DeployedAt time.Time            `json:"deployedAt,omitempty"`
 	ModifiedAt time.Time            `json:"modifiedAt,omitempty"`
 	DeletedAt  time.Time            `json:"deletedAt,omitempty"`
-	Status     deploymentStatus     `json:"status,omitempty"`
+	Status     DeploymentStatus     `json:"status,omitempty"`
 	Current    *Configuration       `json:"current,omitEmpty"`
 	Manifests  map[string]*Manifest `json:"manifests,omitempty"`
 }
@@ -85,19 +86,19 @@ func NewManifest(deploymentName string, manifestName string) *Manifest {
 	return &Manifest{Deployment: deploymentName, Name: manifestName}
 }
 
-// deploymentStatus is an enumeration type for the status of a deployment.
-type deploymentStatus string
+// DeploymentStatus is an enumeration type for the status of a deployment.
+type DeploymentStatus string
 
 // These constants implement the deploymentStatus enumeration type.
 const (
-	CreatedStatus  deploymentStatus = "Created"
-	DeletedStatus  deploymentStatus = "Deleted"
-	DeployedStatus deploymentStatus = "Deployed"
-	FailedStatus   deploymentStatus = "Failed"
-	ModifiedStatus deploymentStatus = "Modified"
+	CreatedStatus  DeploymentStatus = "Created"
+	DeletedStatus  DeploymentStatus = "Deleted"
+	DeployedStatus DeploymentStatus = "Deployed"
+	FailedStatus   DeploymentStatus = "Failed"
+	ModifiedStatus DeploymentStatus = "Modified"
 )
 
-func (s deploymentStatus) String() string {
+func (s DeploymentStatus) String() string {
 	return string(s)
 }
 
