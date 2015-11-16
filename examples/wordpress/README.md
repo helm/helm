@@ -1,10 +1,7 @@
 # Wordpress Example
-
 Welcome to the Wordpress example. It shows you how to deploy a Wordpress application using Deployment Manager.
 
 ## Prerequisites
-
-
 ### Deployment Manager
 First, make sure DM is installed in your Kubernetes cluster by following the instructions in the top level
 [README.md](../../README.md).
@@ -30,17 +27,12 @@ resources:
 ```
 
 ### Privileged containers
-To use NFS we need to be able to launch privileged containers. If your Kubernetes cluster doesn't support this you can either manually change this in every Kubernetes minion or you could set the flag at `kubernetes/saltbase/pillar/privilege.sls` to true and (re)launch your Kubernetes cluster. Once Kubernetes 1.1 releases this should be enabled by default.
+To use NFS we need to be able to launch privileged containers. Since the release of Kubernetes 1.1 privileged container support is enabled by default. If your Kubernetes cluster doesn't support privileged containers you need to manually change this by setting the flag at `kubernetes/saltbase/pillar/privilege.sls` to true.
 
 ### NFS Library
-Currently the nfs-common library should be installed by default on Kubernetes nodes. In case nfs-common is not installed you can install it on all Kubernetes nodes using the following command:
-```
-gcloud compute instances list | cut -d ' ' -f 1 | tail -n +2 | xargs -n1 gcloud compute ssh --command="sudo apt-get update;sudo apt-get -y install nfs-common"
-```
-
+Mounting NFS volumes requires NFS libraries. Since the release of Kubernetes 1.1 the NFS libraries are installed by default. If they are not installed on your Kubernetes cluster you need to install them manually.
 
 ## Understanding the Wordpress example template
-
 Let's take a closer look at the template used by the Wordpress example. The Wordpress application consists of 4 microservices: an nginx service, a wordpress-php service, a MySQL service, and an NFS service. The architecture looks as follows:
 
 ![Architecture](architecture.png)
