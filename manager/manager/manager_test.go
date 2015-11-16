@@ -122,6 +122,7 @@ type repositoryStub struct {
 	TypeInstancesCleared   bool
 	GetTypeInstancesCalled bool
 	ListTypesCalled        bool
+	DeploymentStatuses     []DeploymentStatus
 }
 
 func (repository *repositoryStub) reset() {
@@ -134,6 +135,7 @@ func (repository *repositoryStub) reset() {
 	repository.TypeInstancesCleared = false
 	repository.GetTypeInstancesCalled = false
 	repository.ListTypesCalled = false
+	repository.DeploymentStatuses = make([]DeploymentStatus, 0)
 }
 
 func newRepositoryStub() *repositoryStub {
@@ -163,6 +165,11 @@ func (repository *repositoryStub) GetDeployment(d string) (*Deployment, error) {
 func (repository *repositoryStub) GetValidDeployment(d string) (*Deployment, error) {
 	repository.GetValid = append(repository.GetValid, d)
 	return &deploymentWithConfiguration, nil
+}
+
+func (repository *repositoryStub) SetDeploymentStatus(name string, status DeploymentStatus) error {
+	repository.DeploymentStatuses = append(repository.DeploymentStatuses, status)
+	return nil
 }
 
 func (repository *repositoryStub) CreateDeployment(d string) (*Deployment, error) {
@@ -294,6 +301,10 @@ func TestCreateDeployment(t *testing.T) {
 			testDeployer.Created[0], configuration)
 	}
 
+	if testRepository.DeploymentStatuses[0] != DeployedStatus {
+		t.Error("CreateDeployment success did not mark deployment as deployed")
+	}
+
 	if !testRepository.TypeInstancesCleared {
 		t.Error("Repository did not clear type instances during creation")
 	}
@@ -314,9 +325,13 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 			testRepository.Created[0], template.Name)
 	}
 
-	if testRepository.Deleted[0] != template.Name {
-		t.Errorf("Repository DeleteDeployment was called with %s but expected %s.",
-			testRepository.Created[0], template.Name)
+	if len(testRepository.Deleted) != 0 {
+		t.Errorf("DeleteDeployment was called with %s but not expected",
+			testRepository.Created[0])
+	}
+
+	if testRepository.DeploymentStatuses[0] != FailedStatus {
+		t.Error("CreateDeployment failure did not mark deployment as failed")
 	}
 
 	if !strings.HasPrefix(testRepository.ManifestAdd[template.Name].Name, "manifest-") {

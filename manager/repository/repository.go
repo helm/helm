@@ -84,6 +84,24 @@ func (r *mapBasedRepository) GetValidDeployment(name string) (*manager.Deploymen
 	return d, nil
 }
 
+// SetDeploymentStatus sets the DeploymentStatus of the deployment and updates ModifiedAt
+func (r *mapBasedRepository) SetDeploymentStatus(name string, status manager.DeploymentStatus) error {
+	return func() error {
+		r.Lock()
+		defer r.Unlock()
+
+		d, err := r.GetValidDeployment(name)
+		if err != nil {
+			return err
+		}
+
+		d.Status = status
+		d.ModifiedAt = time.Now()
+		r.deployments[name] = *d
+		return nil
+	}()
+}
+
 // CreateDeployment creates a new deployment and stores it in the repository.
 func (r *mapBasedRepository) CreateDeployment(name string) (*manager.Deployment, error) {
 	d, err := func() (*manager.Deployment, error) {
