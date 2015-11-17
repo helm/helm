@@ -55,7 +55,7 @@ install.yaml`
 That's it. You can now use `kubectl` to see DM running in your cluster:
 
 ```
-kubectl get pod,rc,service
+kubectl get pod,rc,service --namespace=dm
 ```
 
 If you see expandybird-service, manager-service, resourcifier-service, and
@@ -70,9 +70,9 @@ The easiest way to interact with Deployment Manager is through the `dm` tool
 hitting a `kubectl` proxy. To set that up:
 
 1. Build the tool by running `make` in the deployment-manager repository.
-1. Run `kubectl proxy --port=8001 &` to start a proxy that lets you interact
+1. Run `kubectl proxy --port=8001 --namespace=dm &` to start a proxy that lets you interact
 with the Kubernetes API server through port 8001 on localhost. `dm` uses
-`http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager`
+`http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager`
 as the default service address for DM.
 
 ### Using the client
