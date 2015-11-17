@@ -81,11 +81,6 @@ func NewDeployment(name string, id int) *Deployment {
 		Manifests: make(map[string]*Manifest, 0)}
 }
 
-// NewManifest creates a new manifest.
-func NewManifest(deploymentName string, manifestName string) *Manifest {
-	return &Manifest{Deployment: deploymentName, Name: manifestName}
-}
-
 // DeploymentStatus is an enumeration type for the status of a deployment.
 type DeploymentStatus string
 
