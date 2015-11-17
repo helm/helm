@@ -400,8 +400,12 @@ func TestExpand(t *testing.T) {
 		t.Error("Failed to expand template into manifest.")
 	}
 
-	if m.InputConfig != nil {
-		t.Errorf("Input config not nil: %v", *m)
+	if m.Name != "" {
+		t.Errorf("Name was not empty: %v", *m)
+	}
+
+	if m.Deployment != "" {
+		t.Errorf("Deployment was not empty: %v", *m)
 	}
 
 	if m.InputConfig != nil {
