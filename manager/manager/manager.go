@@ -28,6 +28,7 @@ type Manager interface {
 	PutDeployment(name string, t *Template) (*Deployment, error)
 	ListManifests(deploymentName string) (map[string]*Manifest, error)
 	GetManifest(deploymentName string, manifest string) (*Manifest, error)
+	Expand(t *Template) (*Manifest, error)
 	ListTypes() []string
 	ListInstances(typeName string) []*TypeInstance
 }
@@ -96,7 +97,7 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	manifest, err := createManifest(t)
+	manifest, err := m.createManifest(t)
 	if err != nil {
 		log.Printf("Manifest creation failed: %v", err)
 		m.repository.SetDeploymentStatus(t.Name, FailedStatus)
@@ -110,7 +111,7 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	if err := m.deployer.CreateConfiguration(et.Config); err != nil {
+	if err := m.deployer.CreateConfiguration(manifest.ExpandedConfig); err != nil {
 		// Deployment failed, mark as deleted
 		log.Printf("CreateConfiguration failed: %v", err)
 		m.repository.SetDeploymentStatus(t.Name, FailedStatus)
@@ -136,7 +137,7 @@ func (m *manager) createManifest(t *Template) (*Manifest, error) {
 		InputConfig:    t,
 		ExpandedConfig: et.Config,
 		Layout:         et.Layout,
-	}
+	}, nil
 }
 
 func (m *manager) addTypeInstances(deploymentName string, manifestName string, layout *Layout) {
@@ -188,7 +189,7 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*Deployment, error
 		}
 
 		// Create an empty manifest since resources have been deleted.
-		err = m.repository.AddManifest(name, NewManifest(name, generateManifestName()))
+		err = m.repository.AddManifest(name, &Manifest{Deployment: name, Name: generateManifestName()})
 		if err != nil {
 			log.Printf("Failed to add empty manifest")
 			return nil, err
@@ -224,10 +225,13 @@ func (m *manager) PutDeployment(name string, t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	manifest := NewManifest(t.Name, generateManifestName())
-	manifest.InputConfig = t
-	manifest.ExpandedConfig = et.Config
-	manifest.Layout = et.Layout
+	manifest := &Manifest{
+		Deployment:     t.Name,
+		Name:           generateManifestName(),
+		InputConfig:    t,
+		ExpandedConfig: et.Config,
+		Layout:         et.Layout,
+	}
 
 	err = m.repository.AddManifest(t.Name, manifest)
 	if err != nil {
@@ -238,6 +242,19 @@ func (m *manager) PutDeployment(name string, t *Template) (*Deployment, error) {
 	m.addTypeInstances(t.Name, manifest.Name, manifest.Layout)
 
 	return m.repository.GetValidDeployment(t.Name)
+}
+
+func (m *manager) Expand(t *Template) (*Manifest, error) {
+	et, err := m.expander.ExpandTemplate(*t)
+	if err != nil {
+		log.Printf("Expansion failed %v", err)
+		return nil, err
+	}
+
+	return &Manifest{
+		ExpandedConfig: et.Config,
+		Layout:         et.Layout,
+	}, nil
 }
 
 func (m *manager) ListTypes() []string {
