@@ -394,6 +394,33 @@ func TestDeleteDeploymentForget(t *testing.T) {
 	}
 }
 
+func TestExpand(t *testing.T) {
+	m, err := testManager.Expand(&template)
+	if err != nil {
+		t.Error("Failed to expand template into manifest.")
+	}
+
+	if m.Name != "" {
+		t.Errorf("Name was not empty: %v", *m)
+	}
+
+	if m.Deployment != "" {
+		t.Errorf("Deployment was not empty: %v", *m)
+	}
+
+	if m.InputConfig != nil {
+		t.Errorf("Input config not nil: %v", *m)
+	}
+
+	if !reflect.DeepEqual(*m.ExpandedConfig, configuration) {
+		t.Errorf("Expanded config not correct in output manifest: %v", *m)
+	}
+
+	if !reflect.DeepEqual(*m.Layout, layout) {
+		t.Errorf("Layout not correct in output manifest: %v", *m)
+	}
+}
+
 func TestListTypes(t *testing.T) {
 	testRepository.reset()
 
