@@ -3,9 +3,10 @@
 {% set SERVER_PORT = PROPERTIES['port'] or 2049 %}
 {% set SERVER_DISK = PROPERTIES['disk'] or 'nfs-disk' %}
 {% set SERVER_DISK_FSTYPE = PROPERTIES['fstype'] or 'ext4' %}
+{% set CLAIM_NAME = PROPERTIES['claim-name'] or 'nfs' %}
 
 resources:
-- name: nfs-server
+- name: nfs
   type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ SERVER_PORT }}
@@ -25,7 +26,7 @@ resources:
     kind: PersistentVolumeClaim
     apiVersion: v1
     metadata:
-      name: nfs
+      name: {{ CLAIM_NAME }}
     spec:
       accessModes:
         - ReadWriteMany
@@ -38,7 +39,7 @@ resources:
     apiVersion: v1
     kind: PersistentVolume
     metadata:
-      name: nfs
+      name: {{ CLAIM_NAME }}
     spec:
       capacity:
         storage: 1Mi

@@ -62,7 +62,7 @@ The nginx service is a replicated service with 2 replicas:
 
 ```
 - name: nginx
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ NGINX_PORT }}
     container_port: {{ NGINX_PORT }}
@@ -71,9 +71,8 @@ The nginx service is a replicated service with 2 replicas:
     image: gcr.io/{{ PROJECT }}/nginx:latest
     volumes:
       - mount_path: /var/www/html
-        nfs:
-          server: {{ NFS_SERVER_IP }}
-          path: /
+        persistentVolumeClaim:
+          claimName: nfs
 ```
 
 The nginx image builds upon the standard nginx image and simply copies a custom configuration file.
@@ -83,7 +82,7 @@ The wordpress-php service is a replicated service with 2 replicas:
 
 ```
 - name: wordpress-php
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_name: wordpress-php
     service_port: {{ WORDPRESS_PHP_PORT }}
@@ -97,9 +96,8 @@ The wordpress-php service is a replicated service with 2 replicas:
         value: mysql-service
     volumes:
       - mount_path: /var/www/html
-        nfs:
-          server: {{ NFS_SERVER_IP }}
-          path: /
+        persistentVolumeClaim:
+          claimName: nfs
 ```
 
 ### MySQL service
@@ -124,23 +122,16 @@ The MySQL service is a replicated service with a single replica:
 ```
 
 ### NFS service
-The NFS service is a replicated service with a single replica:
+The NFS service is a replicated service with a single replica that is available as a type:
 
 ```
-- name: nfs-server
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+- name: nfs
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/nfs/v1/nfs.jinja
   properties:
-    service_port: {{ NFS_SERVER_PORT }}
-    container_port: {{ NFS_SERVER_PORT }}
-    replicas: 1 # Has to be 1 because of the persistent disk
-    image: jsafrane/nfs-data
-    privileged: true
-    cluster_ip: {{ NFS_SERVER_IP }}
-    volumes:
-      - mount_path: /mnt/data
-        gcePersistentDisk:
-          pdName: {{ NFS_SERVER_DISK }}
-          fsType: {{ NFS_SERVER_DISK_FSTYPE }}
+    ip: {{ NFS_SERVER_IP }}
+    port: {{ NFS_SERVER_PORT }}
+    disk: {{ NFS_SERVER_DISK }}
+    fstype: {{NFS_SERVER_DISK_FSTYPE }}
 ```
 
 ## Deploying Wordpress
