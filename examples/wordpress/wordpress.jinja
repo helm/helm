@@ -17,52 +17,14 @@
 {% set MYSQL_DISK = MYSQL['disk'] or 'mysql-disk' %}
 {% set MYSQL_DISK_FSTYPE = MYSQL['fstype'] or 'ext4' %}
 
-imports:
-- path: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
-
 resources:
-- name: nfs-server
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+- name: nfs
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/nfs/v1/nfs.jinja
   properties:
-    service_port: {{ NFS_SERVER_PORT }}
-    container_port: {{ NFS_SERVER_PORT }}
-    replicas: 1 # Has to be 1 because of the persistent disk
-    image: gcr.io/google_containers/volume-nfs
-    privileged: true
-    cluster_ip: {{ NFS_SERVER_IP }}
-    volumes:
-      - mount_path: /mnt/data
-        gcePersistentDisk:
-          pdName: {{ NFS_SERVER_DISK }}
-          fsType: {{ NFS_SERVER_DISK_FSTYPE }}
-- name: nfs-pvc
-  type: PersistentVolumeClaim
-  properties:
-    kind: PersistentVolumeClaim
-    apiVersion: v1
-    metadata:
-      name: nfs
-    spec:
-      accessModes:
-        - ReadWriteMany
-      resources:
-        requests:
-          storage: 1Mi
-- name: nfs-pv
-  type: PersistentVolume
-  properties:
-    apiVersion: v1
-    kind: PersistentVolume
-    metadata:
-      name: nfs
-    spec:
-      capacity:
-        storage: 1Mi
-      accessModes:
-        - ReadWriteMany
-      nfs:
-        server: {{ NFS_SERVER_IP }}
-        path: "/"
+    ip: {{ NFS_SERVER_IP }}
+    port: {{ NFS_SERVER_PORT }}
+    disk: {{ NFS_SERVER_DISK }}
+    fstype: {{NFS_SERVER_DISK_FSTYPE }}
 - name: nginx
   type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
