@@ -25,6 +25,9 @@ var Primitives = map[string]bool{
 	"Service":               true,
 	"Namespace":             true,
 	"Volume":                true,
+	"Endpoints":             true,
+	"PersistentVolumeClaim": true,
+	"PersistentVolume":      true,
 }
 
 // SchemaImport represents an import as declared in a schema file.

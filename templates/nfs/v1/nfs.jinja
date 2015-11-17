@@ -1,0 +1,50 @@
+{% set PROPERTIES = properties or {} %}
+{% set SERVER_IP = PROPERTIES['ip'] or '10.0.253.247' %}
+{% set SERVER_PORT = PROPERTIES['port'] or 2049 %}
+{% set SERVER_DISK = PROPERTIES['disk'] or 'nfs-disk' %}
+{% set SERVER_DISK_FSTYPE = PROPERTIES['fstype'] or 'ext4' %}
+{% set CLAIM_NAME = PROPERTIES['claim-name'] or 'nfs' %}
+
+resources:
+- name: nfs
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  properties:
+    service_port: {{ SERVER_PORT }}
+    container_port: {{ SERVER_PORT }}
+    replicas: 1 # Has to be 1 because of the persistent disk
+    image: gcr.io/google_containers/volume-nfs
+    privileged: true
+    cluster_ip: {{ SERVER_IP }}
+    volumes:
+      - mount_path: /mnt/data
+        gcePersistentDisk:
+          pdName: {{ SERVER_DISK }}
+          fsType: {{ SERVER_DISK_FSTYPE }}
+- name: nfs-pvc
+  type: PersistentVolumeClaim
+  properties:
+    kind: PersistentVolumeClaim
+    apiVersion: v1
+    metadata:
+      name: {{ CLAIM_NAME }}
+    spec:
+      accessModes:
+        - ReadWriteMany
+      resources:
+        requests:
+          storage: 1Mi
+- name: nfs-pv
+  type: PersistentVolume
+  properties:
+    apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      name: {{ CLAIM_NAME }}
+    spec:
+      capacity:
+        storage: 1Mi
+      accessModes:
+        - ReadWriteMany
+      nfs:
+        server: {{ SERVER_IP }}
+        path: "/"

@@ -1,0 +1,69 @@
+info:
+  title: Wordpress
+  description: |
+    Defines a Wordpress website by defining four replicated services: an NFS service, an nginx service, a wordpress-php service, and a MySQL service.
+
+    The nginx service and the Wordpress-php service both use NFS to share files.
+
+properties:
+  project:
+    type: string
+    default: dm-k8s-testing
+    description: Project location to load the images from.
+  nfs-service:
+    type: object
+    properties:
+      ip:
+        type: string
+        default: 10.0.253.247
+        description: The IP of the NFS service.
+      port:
+        type: int
+        default: 2049
+        description: The port of the NFS service.
+      disk:
+        type: string
+        default: nfs-disk
+        description: The name of the persistent disk the NFS service uses.
+      fstype:
+        type: string
+        default: ext4
+        description: The filesystem the disk of the NFS service uses.
+  nginx:
+    type: object
+    properties:
+      replicas:
+        type: int
+        default: 2
+        description: The number of replicas for the nginx service.
+  wordpress-php:
+    type: object
+    properties:
+      replicas:
+        type: int
+        default: 2
+        description: The number of replicas for the wordpress-php service.
+      port:
+        type: int
+        default: 9000
+        description: The port the wordpress-php service runs on.
+  mysql:
+    type: object
+    properties:
+      port:
+        type: int
+        default: 3306
+        description: The port the MySQL service runs on.
+      password:
+        type: string
+        default: mysql-password
+        description: The root password of the MySQL service.
+      disk:
+        type: string
+        default: mysql-disk
+        description: The name of the persistent disk the MySQL service uses.
+      fstype:
+        type: string
+        default: ext4
+        description: The filesystem the disk of the MySQL service uses.
+

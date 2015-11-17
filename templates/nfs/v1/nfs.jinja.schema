@@ -1,0 +1,25 @@
+info:
+  title: NFS
+  description: Defines an NFS service.
+
+properties:
+  ip:
+    type: string
+    default: 10.0.253.247
+    description: The IP of the NFS service.
+  port:
+    type: int
+    default: 2049
+    description: The port of the NFS service.
+  disk:
+    type: string
+    default: nfs-disk
+    description: The name of the persistent disk the NFS service uses.
+  fstype:
+    type: string
+    default: ext4
+    description: The filesystem the disk of the NFS service uses.
+  claim-name:
+    type: string
+    default: nfs
+    description: The name of the PersistentVolumeClaim
