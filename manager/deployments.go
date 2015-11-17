@@ -41,6 +41,7 @@ var deployments = []Route{
 	{"PutDeployment", "/deployments/{deployment}", "PUT", putDeploymentHandlerFunc, "JSON"},
 	{"ListManifests", "/deployments/{deployment}/manifests", "GET", listManifestsHandlerFunc, ""},
 	{"GetManifest", "/deployments/{deployment}/manifests/{manifest}", "GET", getManifestHandlerFunc, ""},
+	{"Expand", "/expand", "POST", expandHandlerFunc, ""},
 	{"ListTypes", "/types", "GET", listTypesHandlerFunc, ""},
 	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
 }
@@ -288,6 +289,23 @@ func getManifestHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, m, http.StatusOK)
+}
+
+func expandHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: expand config"
+	util.LogHandlerEntry(handler, r)
+	defer r.Body.Close()
+	t := getTemplate(w, r, handler)
+	if t != nil {
+		c, err := backend.Expand(t)
+		if err != nil {
+			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+			return
+		}
+
+		util.LogHandlerExitWithJSON(handler, w, c, http.StatusCreated)
+		return
+	}
 }
 
 // Putting Type handlers here for now because deployments.go

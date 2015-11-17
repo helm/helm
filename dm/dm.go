@@ -120,14 +120,8 @@ func main() {
 	case "describe":
 		fmt.Printf("the describe feature is not yet implemented")
 	case "expand":
-		backend := expander.NewExpander(*binary)
 		template := loadTemplate(args)
-		output, err := backend.ExpandTemplate(template)
-		if err != nil {
-			log.Fatalf("cannot expand %s: %s\n", template.Name, err)
-		}
-
-		fmt.Println(output)
+		callService("expand", "POST", "expand configuration", marshalTemplate(template))
 	case "deploy":
 		template := loadTemplate(args)
 		action := fmt.Sprintf("deploy configuration named %s", template.Name)

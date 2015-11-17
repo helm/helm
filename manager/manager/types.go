@@ -112,9 +112,9 @@ type Layout struct {
 // expanded configuration, and the layout structure of the manifest.
 //
 type Manifest struct {
-	Deployment     string         `json:"deployment"`
-	Name           string         `json:"name"`
-	InputConfig    *Template      `json:"inputConfig"`
+	Deployment     string         `json:"deployment,omitempty"`
+	Name           string         `json:"name,omitempty"`
+	InputConfig    *Template      `json:"inputConfig,omitempty"`
 	ExpandedConfig *Configuration `json:"expandedConfig,omitempty"`
 	Layout         *Layout        `json:"layout,omitempty"`
 }
