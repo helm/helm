@@ -238,7 +238,7 @@ func loadTemplate(args []string) *expander.Template {
 
 	if len(args) < 3 {
 		if t := getRegistryType(args[1]); t != nil {
-			template = buildTemplateFromType(args[1], *t)
+			template = buildTemplateFromType(*t)
 		} else {
 			template, err = expander.NewTemplateFromRootTemplate(args[1])
 		}
@@ -266,7 +266,7 @@ func getRegistryType(fullType string) *registry.Type {
 	}
 }
 
-func buildTemplateFromType(name string, t registry.Type) *expander.Template {
+func buildTemplateFromType(t registry.Type) *expander.Template {
 	git := getGitRegistry()
 	downloadURL, err := git.GetURL(t)
 	if err != nil {
@@ -293,6 +293,7 @@ func buildTemplateFromType(name string, t registry.Type) *expander.Template {
 		}
 	}
 
+	name := fmt.Sprintf("%s-%s", t.Name, t.Version)
 	config := manager.Configuration{Resources: []*manager.Resource{&manager.Resource{
 		Name:       name,
 		Type:       downloadURL,
@@ -305,7 +306,7 @@ func buildTemplateFromType(name string, t registry.Type) *expander.Template {
 	}
 
 	return &expander.Template{
-		// Name will be set later.
+		Name:    name,
 		Content: string(y),
 		// No imports, as this is a single type from repository.
 	}
