@@ -1,21 +1,9 @@
 info:
   title: Wordpress
   description: |
-<<<<<<< HEAD
-<<<<<<< HEAD
     Defines a Wordpress website by defining four replicated services: an NFS service, an nginx service, a wordpress-php service, and a MySQL service.
 
     The nginx service and the Wordpress-php service both use NFS to share files.
-=======
-    Defines a Wordpress website by defining four replicatedservices: an NFS service, an NGINX service, an Wordpress-PHP service, and a MySQL service.
-
-    The NGINX service and the Wordpress-fpm service both use NFS to share files.
->>>>>>> 320a0e9... Adds Wordpress example
-=======
-    Defines a Wordpress website by defining four replicated services: an NFS service, an nginx service, a wordpress-php service, and a MySQL service.
-
-    The nginx service and the Wordpress-php service both use NFS to share files.
->>>>>>> f337d6c... Fix spelling
 
 properties:
   project:

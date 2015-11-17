@@ -1,11 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 # Google Cloud Deployment Manager template
-=======
->>>>>>> 320a0e9... Adds Wordpress example
-=======
-# Google Cloud Deployment Manager template
->>>>>>> 2df5f72... Improves readability
 resources:
 - name: nfs-disk
   type: compute.v1.disk
