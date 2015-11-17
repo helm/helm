@@ -215,26 +215,21 @@ func (m *manager) PutDeployment(name string, t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	// TODO(bmelville): This should just return a new manifest filled in.
-	et, err := m.expander.ExpandTemplate(*t)
+	manifest, err := m.createManifest(t)
 	if err != nil {
+		log.Printf("Manifest creation failed: %v", err)
+		m.repository.SetDeploymentStatus(name, FailedStatus)
 		return nil, err
-	}
-
-	if err := m.deployer.PutConfiguration(et.Config); err != nil {
-		return nil, err
-	}
-
-	manifest := &Manifest{
-		Deployment:     t.Name,
-		Name:           generateManifestName(),
-		InputConfig:    t,
-		ExpandedConfig: et.Config,
-		Layout:         et.Layout,
 	}
 
 	err = m.repository.AddManifest(t.Name, manifest)
 	if err != nil {
+		m.repository.SetDeploymentStatus(name, FailedStatus)
+		return nil, err
+	}
+
+	if err := m.deployer.PutConfiguration(manifest.ExpandedConfig); err != nil {
+		m.repository.SetDeploymentStatus(name, FailedStatus)
 		return nil, err
 	}
 
