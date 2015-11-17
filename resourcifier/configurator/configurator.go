@@ -127,8 +127,6 @@ func (a *Configurator) Configure(c *Configuration, o operation) (string, error) 
 		cmd.Stdout = combined
 		cmd.Stderr = combined
 
-		// log.Printf("starting command:%s %s\nin directory: %s\nwith environment: %s\nwith stdin:\n%s\n",
-		// cmd.Path, strings.Join(cmd.Args, " "), cmd.Dir, strings.Join(cmd.Env, "\n"), string(y))
 		if err := cmd.Start(); err != nil {
 			e := fmt.Errorf("cannot start kubetcl for resource: %v: %v", resource.Name, err)
 			log.Println(errors.appendError(e))
@@ -136,9 +134,15 @@ func (a *Configurator) Configure(c *Configuration, o operation) (string, error) 
 		}
 
 		if err := cmd.Wait(); err != nil {
-			e := fmt.Errorf("kubetcl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
-			log.Println(errors.appendError(e))
-			continue
+			// Treat delete special. If a delete is issued and a resource is not found, treat it as
+			// success.
+			if (o == DeleteOperation && strings.HasSuffix(strings.TrimSpace(combined.String()), "not found")) {
+				log.Println(resource.Name + " not found, treating as success for delete")
+			} else {
+				e := fmt.Errorf("kubetcl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
+				log.Println(errors.appendError(e))
+				continue
+			}
 		}
 
 		output = append(output, combined.String())
