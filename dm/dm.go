@@ -175,10 +175,10 @@ func main() {
 
 func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
-	callAndPrintHttp(u, method, action, reader)
+	fmt.Println(callHttp(u, method, action, reader))
 }
 
-func callAndPrintHttp(path, method, action string, reader io.ReadCloser) {
+func callHttp(path, method, action string, reader io.ReadCloser) string {
 	request, err := http.NewRequest(method, path, reader)
 	request.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(request)
@@ -198,11 +198,12 @@ func callAndPrintHttp(path, method, action string, reader io.ReadCloser) {
 		log.Fatalf("cannot %s: %s\n", action, message)
 	}
 
-	fmt.Println(string(body))
+	return string(body)
 }
 
-// describeType prints the schema for  a type specified by either a
-// template URL or a fully qualified registry type name.
+// describeType prints the schema for a type specified by either a
+// template URL or a fully qualified registry type name (e.g.,
+// <type-name>:<version>)
 func describeType(args []string) {
 	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "No type name or URL supplied")
@@ -230,7 +231,7 @@ func describeType(args []string) {
 	}
 
 	schemaUrl := tUrl + ".schema"
-	callAndPrintHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil)
+	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil))
 }
 
 func loadTemplate(args []string) *expander.Template {
