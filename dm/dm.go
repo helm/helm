@@ -118,7 +118,7 @@ func main() {
 			fmt.Printf("\tdownload URL: %s\n", downloadURL)
 		}
 	case "describe":
-		fmt.Printf("the describe feature is not yet implemented")
+		describeType(args)
 	case "expand":
 		template := loadTemplate(args)
 		callService("expand", "POST", "expand configuration", marshalTemplate(template))
@@ -169,7 +169,11 @@ func main() {
 
 func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
-	request, err := http.NewRequest(method, u, reader)
+	fmt.Println(callHttp(u, method, action, reader))
+}
+
+func callHttp(path, method, action string, reader io.ReadCloser) string {
+	request, err := http.NewRequest(method, path, reader)
 	request.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -188,7 +192,40 @@ func callService(path, method, action string, reader io.ReadCloser) {
 		log.Fatalf("cannot %s: %s\n", action, message)
 	}
 
-	fmt.Println(string(body))
+	return string(body)
+}
+
+// describeType prints the schema for a type specified by either a
+// template URL or a fully qualified registry type name (e.g.,
+// <type-name>:<version>)
+func describeType(args []string) {
+	if len(args) != 2 {
+		fmt.Fprintln(os.Stderr, "No type name or URL supplied")
+		usage()
+	}
+
+	var tUrl string
+
+	if strings.HasPrefix(args[1], "http://") || strings.HasPrefix(args[1], "https://") {
+		// User can pass raw URL to template.
+		tUrl = args[1]
+	} else {
+		// User can pass registry type.
+		t := getRegistryType(args[1])
+		if t == nil {
+			log.Fatalf("Invalid type name, must be in the form \"<type-name>:<version>\": %s", args[1])
+		}
+
+		git := getGitRegistry()
+		url, err := git.GetURL(*t)
+		if err != nil {
+			log.Fatalf("Failed to fetch type information for %s: %s", args[1], err)
+		}
+		tUrl = url
+	}
+
+	schemaUrl := tUrl + ".schema"
+	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil))
 }
 
 func loadTemplate(args []string) *expander.Template {
