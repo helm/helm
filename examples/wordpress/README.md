@@ -141,3 +141,15 @@ We can now deploy Wordpress using:
 dm deploy examples/wordpress/wordpress.yaml
 ```
 
+where `wordpress.yaml` looks as follows:
+
+```
+imports:
+- path: wordpress.jinja
+
+resources:
+- name: wordpress
+  type: wordpress.jinja
+  properties:
+    project: <YOUR PROJECT>
+```
