@@ -201,11 +201,11 @@ func callAndPrintHttp(path, method, action string, reader io.ReadCloser) {
 	fmt.Println(string(body))
 }
 
-// describeTemplate prints the schema for  a type specified by either a
+// describeType prints the schema for  a type specified by either a
 // template URL or a fully qualified registry type name.
 func describeType(args []string) {
 	if len(args) != 2 {
-		fmt.Fprintln(os.Stderr, "No template name supplied")
+		fmt.Fprintln(os.Stderr, "No type name or URL supplied")
 		usage()
 	}
 
@@ -230,7 +230,7 @@ func describeType(args []string) {
 	}
 
 	schemaUrl := tUrl + ".schema"
-	callAndPrintHttp(schemaUrl, "GET", "get schema for type", nil)
+	callAndPrintHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil)
 }
 
 func loadTemplate(args []string) *expander.Template {
