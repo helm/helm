@@ -13,13 +13,21 @@
 
 ---
 apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app: dm
+    name: dm-namespace
+  name: dm
+---
+apiVersion: v1
 kind: Service
 metadata:
   labels:
     app: dm
     name: expandybird-service
   name: expandybird-service
-  namespace: default
+  namespace: dm
 spec:
   ports:
   - name: expandybird
@@ -36,7 +44,7 @@ metadata:
     app: dm
     name: expandybird-rc
   name: expandybird-rc
-  namespace: default
+  namespace: dm
 spec:
   replicas: 2
   selector:
@@ -63,7 +71,7 @@ metadata:
     app: dm
     name: resourcifier-service
   name: resourcifier-service
-  namespace: default
+  namespace: dm
 spec:
   ports:
   - name: resourcifier
@@ -80,7 +88,7 @@ metadata:
     app: dm
     name: resourcifier-rc
   name: resourcifier-rc
-  namespace: default
+  namespace: dm
 spec:
   replicas: 2
   selector:
@@ -107,7 +115,7 @@ metadata:
     app: dm
     name: manager-service
   name: manager-service
-  namespace: default
+  namespace: dm
 spec:
   ports:
   - name: manager
@@ -124,7 +132,7 @@ metadata:
     app: dm
     name: manager-rc
   name: manager-rc
-  namespace: default
+  namespace: dm
 spec:
   replicas: 1
   selector:

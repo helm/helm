@@ -41,9 +41,13 @@ pkill -f $MANAGER
 $MANAGER > $LOGDIR/manager.log 2>&1 --port=8080 --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
 echo
 
+echo "Creating dm namespace..."
+$KUBECTL create -f dm-namespace.yaml
+echo
+
 echo "Starting kubectl proxy..."
 pkill -f "$KUBECTL proxy"
-$KUBECTL proxy --port=8001 &
+$KUBECTL proxy --port=8001 --namespace=dm &
 sleep 1s
 echo
 

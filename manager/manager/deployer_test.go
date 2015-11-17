@@ -37,7 +37,7 @@ resources:
       apiVersion: v1
       metadata: 
         name: test-controller-v1
-        namespace: default
+        namespace: dm
         labels: 
           k8s-app: test
           version: v1
@@ -66,7 +66,7 @@ resources:
       kind: Service
       metadata: 
         name: test
-        namespace: default
+        namespace: dm
         labels: 
           k8s-app: test
           version: v1

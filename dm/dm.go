@@ -39,7 +39,7 @@ var (
 	stdin             = flag.Bool("stdin", false, "Reads a configuration from the standard input")
 	properties        = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
 	template_registry = flag.String("registry", "kubernetes/deployment-manager/templates", "Github based template registry (owner/repo[/path])")
-	service           = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/default/services/manager-service:manager", "URL for deployment manager")
+	service           = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager", "URL for deployment manager")
 	binary            = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
 )
 
