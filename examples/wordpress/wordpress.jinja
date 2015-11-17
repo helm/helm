@@ -18,16 +18,16 @@
 {% set MYSQL_DISK_FSTYPE = MYSQL['fstype'] or 'ext4' %}
 
 imports:
-- path: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+- path: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
 
 resources:
 - name: nfs-server
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ NFS_SERVER_PORT }}
     container_port: {{ NFS_SERVER_PORT }}
     replicas: 1 # Has to be 1 because of the persistent disk
-    image: jsafrane/nfs-data
+    image: gcr.io/google_containers/volume-nfs
     privileged: true
     cluster_ip: {{ NFS_SERVER_IP }}
     volumes:
@@ -35,8 +35,36 @@ resources:
         gcePersistentDisk:
           pdName: {{ NFS_SERVER_DISK }}
           fsType: {{ NFS_SERVER_DISK_FSTYPE }}
+- name: nfs-pvc
+  type: PersistentVolumeClaim
+  properties:
+    kind: PersistentVolumeClaim
+    apiVersion: v1
+    metadata:
+      name: nfs
+    spec:
+      accessModes:
+        - ReadWriteMany
+      resources:
+        requests:
+          storage: 1Mi
+- name: nfs-pv
+  type: PersistentVolume
+  properties:
+    apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      name: nfs
+    spec:
+      capacity:
+        storage: 1Mi
+      accessModes:
+        - ReadWriteMany
+      nfs:
+        server: {{ NFS_SERVER_IP }}
+        path: "/"
 - name: nginx
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ NGINX_PORT }}
     container_port: {{ NGINX_PORT }}
@@ -45,11 +73,10 @@ resources:
     image: gcr.io/{{ PROJECT }}/nginx:latest
     volumes:
       - mount_path: /var/www/html
-        nfs:
-          server: {{ NFS_SERVER_IP }}
-          path: /
+        persistentVolumeClaim:
+          claimName: nfs
 - name: mysql
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ MYSQL_PORT }}
     container_port: {{ MYSQL_PORT }}
@@ -64,7 +91,7 @@ resources:
           pdName: {{ MYSQL_DISK }}
           fsType: {{ MYSQL_DISK_FSTYPE }}
 - name: wordpress-php
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/types/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_name: wordpress-php
     service_port: {{ WORDPRESS_PHP_PORT }}
@@ -78,6 +105,5 @@ resources:
         value: mysql-service
     volumes:
       - mount_path: /var/www/html
-        nfs:
-          server: {{ NFS_SERVER_IP }}
-          path: /
+        persistentVolumeClaim:
+          claimName: nfs
