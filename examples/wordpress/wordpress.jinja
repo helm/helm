@@ -19,14 +19,14 @@
 
 resources:
 - name: nfs
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/nfs/v1/nfs.jinja
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/nfs/v1/nfs.jinja
   properties:
     ip: {{ NFS_SERVER_IP }}
     port: {{ NFS_SERVER_PORT }}
     disk: {{ NFS_SERVER_DISK }}
     fstype: {{NFS_SERVER_DISK_FSTYPE }}
 - name: nginx
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ NGINX_PORT }}
     container_port: {{ NGINX_PORT }}
@@ -38,7 +38,7 @@ resources:
         persistentVolumeClaim:
           claimName: nfs
 - name: mysql
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ MYSQL_PORT }}
     container_port: {{ MYSQL_PORT }}
@@ -53,7 +53,7 @@ resources:
           pdName: {{ MYSQL_DISK }}
           fsType: {{ MYSQL_DISK_FSTYPE }}
 - name: wordpress-php
-  type: https://raw.githubusercontent.com/leendersr/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
   properties:
     service_name: wordpress-php
     service_port: {{ WORDPRESS_PHP_PORT }}
