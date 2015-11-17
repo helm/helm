@@ -6,9 +6,7 @@ go:
   - 1.4
 
 install:
-  - sudo pip install jinja2
-  - sudo pip install pyyaml
-  - sudo pip install jsonschema
+  - sudo pip install -r expandybird/requirements.txt
 
 script:
   - make test
