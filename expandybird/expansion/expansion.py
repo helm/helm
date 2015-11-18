@@ -231,7 +231,8 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
       raise ExpansionError(resource, e.message)
 
   if source_file.endswith('jinja'):
-    expanded_template = ExpandJinja(imports[source_file], resource, imports)
+    expanded_template = ExpandJinja(
+        source_file, imports[source_file], resource, imports)
   elif source_file.endswith('py'):
     # This is a Python template.
     expanded_template = ExpandPython(
@@ -252,10 +253,11 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
   return parsed_template
 
 
-def ExpandJinja(source_template, resource, imports):
+def ExpandJinja(file_name, source_template, resource, imports):
   """Render the jinja template using jinja libraries.
 
   Args:
+    file_name: string, the file name.
     source_template: string, the content of jinja file to be render
     resource: resource object, the resource that contains parameters to the
         jinja file
@@ -263,19 +265,23 @@ def ExpandJinja(source_template, resource, imports):
         and contents
   Returns:
     The final expanded template
+  Raises:
+    ExpansionError in case we fail to expand the Jinja2 template.
   """
 
-  # The standard jinja loader doesn't work in the sandbox as it calls getmtime()
-  # and this system call is not supported.
-  env = jinja2.Environment(loader=jinja2.DictLoader(imports))
+  try:
+    env = jinja2.Environment(loader=jinja2.DictLoader(imports))
 
-  template = env.from_string(source_template)
+    template = env.from_string(source_template)
 
-  if (resource.has_key('properties') or resource.has_key('env') or
-      resource.has_key('imports')):
-    return template.render(resource)
-  else:
-    return template.render()
+    if (resource.has_key('properties') or resource.has_key('env') or
+        resource.has_key('imports')):
+      return template.render(resource)
+    else:
+      return template.render()
+  except Exception:
+    st = 'Exception in %s\n%s'%(file_name, traceback.format_exc())
+    raise ExpansionError(file_name, st)
 
 
 def ExpandPython(python_source, file_name, params):
