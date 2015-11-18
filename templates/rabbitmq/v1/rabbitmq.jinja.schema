@@ -1,0 +1,28 @@
+info:
+  title: RabbitMQ
+  description: Defines a RabbitMQ service.
+
+required:
+- username
+- password
+properties:
+  disk:
+    type: string
+    default: rabbitmq-disk
+    description: The name of the persistent disk the RabbitMQ service uses.
+  fstype:
+    type: string
+    default: ext4
+    description: The filesystem the disk of the RabbitMQ service uses.
+  ips:
+    type: array
+    description: If any IP addresses are given we assume RabbitMQ runs on an external server (say GCE) and is accessible by these IP addresses.
+    items:
+      type: string
+      uniqueItems: true
+  username:
+    type: string
+    description: The username for the RabbitMQ service.
+  password:
+    type: string
+    description: The password for the RabbitMQ service.

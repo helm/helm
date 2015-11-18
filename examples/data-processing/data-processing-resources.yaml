@@ -1,0 +1,18 @@
+imports:
+- path: data-processing-resources.jinja
+
+resources:
+- name: data-processing-resources
+  type: data-processing-resources.jinja
+  properties:
+    project: dm-k8s-testing
+    db-fields:
+    - name: param1
+      type: STRING
+      mode: REQUIRED
+    - name: param2
+      type: STRING
+      mode: NULLABLE
+    - name: param3
+      type: STRING
+      mode: REQUIRED

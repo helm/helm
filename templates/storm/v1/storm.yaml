@@ -1,0 +1,7 @@
+imports:
+- path: storm.jinja
+
+resources:
+- name: storm
+  type: storm.jinja
+  properties: null

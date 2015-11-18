@@ -1,0 +1,58 @@
+{% set PROPERTIES = properties or {} %}
+{% set PROJECT = PROPERTIES['project'] or 'dm-k8s-testing' %}
+
+imports:
+- path: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+
+resources:
+- name: zookeeper
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  properties:
+    service_name: zookeeper
+    image: mattf/zookeeper
+    service_port: 2181
+    container_port: 2181
+    replicas: 1
+- name: storm-nimbus
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  properties:
+    service_name: nimbus
+    service_port: 6627
+    container_port: 6627
+    replicas: 1
+    external_service: true
+    image: gcr.io/dm-k8s-testing/storm-nimbus:latest
+- name: storm-workers
+  type: ReplicationController
+  properties:
+    kind: ReplicationController
+    apiVersion: v1
+    metadata:
+      name: storm-worker-rc
+      labels:
+        name: storm-worker
+    spec:
+      replicas: 2
+      selector:
+        name: storm-worker
+      template:
+        metadata:
+          labels:
+            name: storm-worker
+            uses: nimbus
+        spec:
+          containers:
+            - name: storm-worker
+              image: gcr.io/{{ PROJECT }}/storm-worker:latest
+              ports:
+                - hostPort: 6700
+                  containerPort: 6700
+                - hostPort: 6701
+                  containerPort: 6701
+                - hostPort: 6702
+                  containerPort: 6702
+                - hostPort: 6703
+                  containerPort: 6703
+              resources:
+                limits:
+                  cpu: 200m

@@ -1,0 +1,8 @@
+info:
+  title: Storm cluster
+  description: Defines a storm cluster, a single replica zookeeper replicatedservice, a single replica storm nimbus replicatedservice, and two replica storm worker replicatedservice.
+
+properties:
+  project:
+    type: string
+    description: Project location to load the images from.

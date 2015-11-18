@@ -1,0 +1,14 @@
+imports:
+- path: data-processing.jinja
+
+resources:
+- name: data-processing
+  type: data-processing.jinja
+  properties:
+    project: dm-k8s-testing
+    rabbitmq:
+      # Replace with your information
+      username: rabbit
+      password: rabbit-password
+      # ips:
+      # - <YOUR IP>
