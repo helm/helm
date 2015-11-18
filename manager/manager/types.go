@@ -84,7 +84,7 @@ func NewDeployment(name string, id int) *Deployment {
 // DeploymentStatus is an enumeration type for the status of a deployment.
 type DeploymentStatus string
 
-// These constants implement the deploymentStatus enumeration type.
+// These constants implement the DeploymentStatus enumeration type.
 const (
 	CreatedStatus  DeploymentStatus = "Created"
 	DeletedStatus  DeploymentStatus = "Deleted"
@@ -140,6 +140,23 @@ type Configuration struct {
 	Resources []*Resource `json:"resources"`
 }
 
+// ResourceStatus is an enumeration type for the status of a resource.
+type ResourceStatus string
+
+// These constants implement the resourceStatus enumeration type.
+const (
+	Created ResourceStatus = "Created"
+	Failed  ResourceStatus = "Failed"
+	Aborted ResourceStatus = "Aborted"
+)
+
+// ResourceState describes the state of a resource.
+type ResourceState struct {
+	Status   ResourceStatus `json:"status"`
+	SelfLink string         `json:"selflink,omitempty"`
+	Errors   []string       `json:"errors,omitempty"`
+}
+
 // Resource describes a resource in a configuration. A resource has
 // a name, a type and a set of properties. The name and type are used
 // to identify the resource in Kubernetes. The properties are passed
@@ -148,6 +165,7 @@ type Resource struct {
 	Name       string                 `json:"name"`
 	Type       string                 `json:"type"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
+	State      ResourceState          `json:"state"`
 }
 
 // TypeInstance defines the metadata for an instantiation of a template type
