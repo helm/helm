@@ -36,6 +36,7 @@ import (
 )
 
 var (
+	deployment_name   = flag.String("name", "", "Name of deployment, used for deploy and update commands (defaults to template name)")
 	stdin             = flag.Bool("stdin", false, "Reads a configuration from the standard input")
 	properties        = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
 	template_registry = flag.String("registry", "kubernetes/deployment-manager/templates", "Github based template registry (owner/repo[/path])")
@@ -248,6 +249,11 @@ func loadTemplate(args []string) *expander.Template {
 
 	if err != nil {
 		log.Fatalf("cannot create configuration from supplied arguments: %s\n", err)
+	}
+
+	// Override name if set from flags.
+	if *deployment_name != "" {
+		template.Name = *deployment_name
 	}
 
 	return template
