@@ -151,8 +151,9 @@ const (
 )
 
 // ResourceState describes the state of a resource.
+// Status is set during resource creation and is a terminal state.
 type ResourceState struct {
-	Status   ResourceStatus `json:"status"`
+	Status   ResourceStatus `json:"status,omitempty"`
 	SelfLink string         `json:"selflink,omitempty"`
 	Errors   []string       `json:"errors,omitempty"`
 }
