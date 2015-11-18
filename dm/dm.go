@@ -169,7 +169,13 @@ func main() {
 
 func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
-	fmt.Println(callHttp(u, method, action, reader))
+
+	resp := callHttp(u, method, action, reader)
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, []byte(resp), "", "  "); err != nil {
+		log.Fatalf("Failed to parse JSON response from service: %s", resp)
+	}
+	fmt.Println(prettyJSON.String())
 }
 
 func callHttp(path, method, action string, reader io.ReadCloser) string {
