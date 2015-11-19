@@ -42,7 +42,11 @@ $MANAGER > $LOGDIR/manager.log 2>&1 --port=8080 --expanderURL=http://localhost:8
 echo
 
 echo "Creating dm namespace..."
-$KUBECTL create -f dm-namespace.yaml
+$KUBECTL get namespace dm >/dev/null 2>/dev/null
+if [ $? -ne 0 ]; then
+  BOOTSTRAP_PATH=$( cd $(dirname $0) ; pwd -P )
+  $KUBECTL create -f $BOOTSTRAP_PATH/dm-namespace.yaml
+fi
 echo
 
 echo "Starting kubectl proxy..."
