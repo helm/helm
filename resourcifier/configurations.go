@@ -14,6 +14,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/kubernetes/deployment-manager/manager/manager"
 	"github.com/kubernetes/deployment-manager/resourcifier/configurator"
 	"github.com/kubernetes/deployment-manager/util"
 
@@ -75,8 +76,8 @@ func listConfigurationsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := &configurator.Configuration{
-		[]configurator.Resource{
+	c := &manager.Configuration{
+		[]*manager.Resource{
 			{Type: rtype},
 		},
 	}
@@ -104,8 +105,8 @@ func getConfigurationHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := &configurator.Configuration{
-		[]configurator.Resource{
+	c := &manager.Configuration{
+		[]*manager.Resource{
 			{Name: rname, Type: rtype},
 		},
 	}
@@ -252,7 +253,7 @@ func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler s
 	return unescaped, nil
 }
 
-func getConfiguration(w http.ResponseWriter, r *http.Request, handler string) *configurator.Configuration {
+func getConfiguration(w http.ResponseWriter, r *http.Request, handler string) *manager.Configuration {
 	b := io.LimitReader(r.Body, *maxLength*1024)
 	y, err := ioutil.ReadAll(b)
 	if err != nil {
@@ -275,7 +276,7 @@ func getConfiguration(w http.ResponseWriter, r *http.Request, handler string) *c
 		return nil
 	}
 
-	c := &configurator.Configuration{}
+	c := &manager.Configuration{}
 	if err := json.Unmarshal(j, c); err != nil {
 		e := errors.New(err.Error() + "\n" + string(j))
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)

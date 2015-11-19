@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"time"
 	"log"
 	"net/http"
 	"net/url"
@@ -29,18 +30,20 @@ import (
 // Deployer abstracts interactions with the expander and deployer services.
 type Deployer interface {
 	GetConfiguration(cached *Configuration) (*Configuration, error)
-	CreateConfiguration(configuration *Configuration) error
-	DeleteConfiguration(configuration *Configuration) error
-	PutConfiguration(configuration *Configuration) error
+	CreateConfiguration(configuration *Configuration) (*Configuration, error)
+	DeleteConfiguration(configuration *Configuration) (*Configuration, error)
+	PutConfiguration(configuration *Configuration) (*Configuration, error)
 }
 
 // NewDeployer returns a new initialized Deployer.
+// TODO(vaikas): Add a flag for setting the timeout.
 func NewDeployer(url string) Deployer {
-	return &deployer{url}
+	return &deployer{url, 5}
 }
 
 type deployer struct {
 	deployerURL string
+	timeout int
 }
 
 func (d *deployer) getBaseURL() string {
@@ -83,34 +86,47 @@ func (d *deployer) GetConfiguration(cached *Configuration) (*Configuration, erro
 	return actual, nil
 }
 
-// CreateConfiguration deploys the set of resources described by a configuration.
-func (d *deployer) CreateConfiguration(configuration *Configuration) error {
+// CreateConfiguration deploys the set of resources described by a configuration and returns
+// the Configuration with status for each resource filled in.
+func (d *deployer) CreateConfiguration(configuration *Configuration) (*Configuration, error) {
 	return d.callServiceWithConfiguration("POST", "create", configuration)
 }
 
 // DeleteConfiguration deletes the set of resources described by a configuration.
-func (d *deployer) DeleteConfiguration(configuration *Configuration) error {
+func (d *deployer) DeleteConfiguration(configuration *Configuration) (*Configuration, error) {
 	return d.callServiceWithConfiguration("DELETE", "delete", configuration)
 }
 
-// PutConfiguration replaces the set of resources described by a configuration.
-func (d *deployer) PutConfiguration(configuration *Configuration) error {
+// PutConfiguration replaces the set of resources described by a configuration and returns
+// the Configuration with status for each resource filled in.
+func (d *deployer) PutConfiguration(configuration *Configuration) (*Configuration, error) {
 	return d.callServiceWithConfiguration("PUT", "replace", configuration)
 }
 
-func (d *deployer) callServiceWithConfiguration(method, operation string, configuration *Configuration) error {
+func (d *deployer) callServiceWithConfiguration(method, operation string, configuration *Configuration) (*Configuration, error) {
 	callback := func(e error) error {
 		return fmt.Errorf("cannot %s configuration: %s", operation, e)
 	}
 
 	y, err := yaml.Marshal(configuration)
 	if err != nil {
-		return callback(err)
+		return nil, callback(err)
 	}
 
 	reader := ioutil.NopCloser(bytes.NewReader(y))
-	_, err = d.callService(method, d.getBaseURL(), reader, callback)
-	return err
+	resp, err := d.callService(method, d.getBaseURL(), reader, callback)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &Configuration{}
+	if len(resp) != 0 {
+		if err := yaml.Unmarshal(resp, &result); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal response: (%v)", err)
+		}
+	}
+	return result, err
 }
 
 func (d *deployer) callService(method, url string, reader io.Reader, callback formatter) ([]byte, error) {
@@ -123,7 +139,11 @@ func (d *deployer) callService(method, url string, reader io.Reader, callback fo
 		request.Header.Add("Content-Type", "application/json")
 	}
 
-	response, err := http.DefaultClient.Do(request)
+	timeout := time.Duration(time.Duration(d.timeout) * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+	response, err := client.Do(request)
 	if err != nil {
 		return nil, callback(err)
 	}

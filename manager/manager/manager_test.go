@@ -28,6 +28,20 @@ var layout = Layout{
 var configuration = Configuration{
 	Resources: []*Resource{&Resource{Name: "test", Type: "test"}},
 }
+var resourcesWithSuccessState = Configuration{
+	Resources: []*Resource{&Resource{Name: "test", Type: "test", State: &ResourceState{Status: Created}}},
+}
+var resourcesWithFailureState = Configuration{
+	Resources: []*Resource{&Resource{
+		Name: "test",
+		Type: "test",
+		State: &ResourceState{
+			Status: Failed,
+			Errors:[]string{"test induced error",
+			},
+		},
+	}},
+}
 var expandedConfig = ExpandedTemplate{
 	Config: &configuration,
 	Layout: &layout,
@@ -73,6 +87,7 @@ type deployerStub struct {
 	Created    []*Configuration
 	FailDelete bool
 	Deleted    []*Configuration
+	FailCreateResource bool
 }
 
 func (deployer *deployerStub) reset() {
@@ -80,6 +95,7 @@ func (deployer *deployerStub) reset() {
 	deployer.Created = make([]*Configuration, 0)
 	deployer.FailDelete = false
 	deployer.Deleted = make([]*Configuration, 0)
+	deployer.FailCreateResource = false
 }
 
 func newDeployerStub() *deployerStub {
@@ -91,25 +107,28 @@ func (deployer *deployerStub) GetConfiguration(cached *Configuration) (*Configur
 	return nil, nil
 }
 
-func (deployer *deployerStub) CreateConfiguration(configuration *Configuration) error {
+func (deployer *deployerStub) CreateConfiguration(configuration *Configuration) (*Configuration, error) {
 	if deployer.FailCreate {
-		return errTest
+		return nil, errTest
+	}
+	if deployer.FailCreateResource {
+		return &resourcesWithFailureState, errTest
 	}
 
 	deployer.Created = append(deployer.Created, configuration)
-	return nil
+	return &resourcesWithSuccessState, nil
 }
 
-func (deployer *deployerStub) DeleteConfiguration(configuration *Configuration) error {
+func (deployer *deployerStub) DeleteConfiguration(configuration *Configuration) (*Configuration, error) {
 	if deployer.FailDelete {
-		return errTest
+		return nil, errTest
 	}
 	deployer.Deleted = append(deployer.Deleted, configuration)
-	return nil
+	return nil, nil
 }
 
-func (deployer *deployerStub) PutConfiguration(configuration *Configuration) error {
-	return nil
+func (deployer *deployerStub) PutConfiguration(configuration *Configuration) (*Configuration, error) {
+	return nil, nil
 }
 
 type repositoryStub struct {
@@ -334,11 +353,6 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 		t.Error("CreateDeployment failure did not mark deployment as failed")
 	}
 
-	if !strings.HasPrefix(testRepository.ManifestAdd[template.Name].Name, "manifest-") {
-		t.Errorf("Repository AddManifest was called with %s but expected manifest name"+
-			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
-	}
-
 	if err != errTest || d != nil {
 		t.Errorf("Expected a different set of response values from invoking CreateDeployment."+
 			"Received: %s, %s. Expected: %s, %s.", d, err, "nil", errTest)
@@ -346,6 +360,42 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 
 	if testRepository.TypeInstancesCleared {
 		t.Error("Unexpected change to type instances during CreateDeployment failure.")
+	}
+}
+
+func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
+	testRepository.reset()
+	testDeployer.reset()
+	testDeployer.FailCreateResource = true
+	d, err := testManager.CreateDeployment(&template)
+
+	if testRepository.Created[0] != template.Name {
+		t.Errorf("Repository CreateDeployment was called with %s but expected %s.",
+			testRepository.Created[0], template.Name)
+	}
+
+	if len(testRepository.Deleted) != 0 {
+		t.Errorf("DeleteDeployment was called with %s but not expected",
+			testRepository.Created[0])
+	}
+
+	if testRepository.DeploymentStatuses[0] != FailedStatus {
+		t.Error("CreateDeployment failure did not mark deployment as failed")
+	}
+
+	if !strings.HasPrefix(testRepository.ManifestAdd[template.Name].Name, "manifest-") {
+		t.Errorf("Repository AddManifest was called with %s but expected manifest name"+
+			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
+	}
+
+//	if err != errTest || d != nil {
+	if d == nil {
+		t.Errorf("Expected a different set of response values from invoking CreateDeployment."+
+			"Received: %s, %s. Expected: %s, %s.", d, err, "nil", errTest)
+	}
+
+	if !testRepository.TypeInstancesCleared {
+		t.Error("Repository did not clear type instances during creation")
 	}
 }
 

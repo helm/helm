@@ -20,24 +20,11 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/kubernetes/deployment-manager/manager/manager"
 	"github.com/ghodss/yaml"
 )
 
 // TODO(jackgr): Define an interface and a struct type for Configurator and move initialization to the caller.
-
-// Configuration describes a configuration deserialized from a YAML or JSON file.
-type Configuration struct {
-	Resources []Resource `json:"resources"`
-}
-
-// Resource describes a resource in a deserialized configuration. A resource has
-// a name, a type and a set of properties. The properties are passed directly to
-// kubectl as the definition of the resource on the server.
-type Resource struct {
-	Name       string                 `json:"name"`
-	Type       string                 `json:"type"`
-	Properties map[string]interface{} `json:"properties"`
-}
 
 type Configurator struct {
 	KubePath  string
@@ -86,12 +73,14 @@ func (e *Error) appendError(err error) error {
 	return err
 }
 
-// Configure passes the configuration in the given deployment to kubectl
+// Configure passes each resource in the configuration to kubectl and performs the appropriate
+// action on it (create/delete/replace) and updates the State of the resource with the resulting
+// status. In case of errors with a resource, Resource.State.Errors is set. 
 // and then updates the deployment with the completion status and completion time.
-func (a *Configurator) Configure(c *Configuration, o operation) (string, error) {
+func (a *Configurator) Configure(c *manager.Configuration, o operation) (string, error) {
 	errors := &Error{}
 	var output []string
-	for _, resource := range c.Resources {
+	for i, resource := range c.Resources {
 		args := []string{o.String()}
 		if o == GetOperation {
 			args = append(args, "-o", "yaml")
@@ -110,6 +99,10 @@ func (a *Configurator) Configure(c *Configuration, o operation) (string, error) 
 			if err != nil {
 				e := fmt.Errorf("yaml marshal failed for resource: %v: %v", resource.Name, err)
 				log.Println(errors.appendError(e))
+				c.Resources[i].State = &manager.ResourceState{
+					Status: manager.Aborted,
+					Errors: []string{e.Error()},
+				}
 				continue
 			}
 		}
@@ -129,6 +122,10 @@ func (a *Configurator) Configure(c *Configuration, o operation) (string, error) 
 
 		if err := cmd.Start(); err != nil {
 			e := fmt.Errorf("cannot start kubetcl for resource: %v: %v", resource.Name, err)
+			c.Resources[i].State = &manager.ResourceState{
+				Status: manager.Failed,
+				Errors: []string{e.Error()},
+			}
 			log.Println(errors.appendError(e))
 			continue
 		}
@@ -140,19 +137,19 @@ func (a *Configurator) Configure(c *Configuration, o operation) (string, error) 
 				log.Println(resource.Name + " not found, treating as success for delete")
 			} else {
 				e := fmt.Errorf("kubetcl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
+				c.Resources[i].State = &manager.ResourceState{
+					Status: manager.Failed,
+					Errors: []string{e.Error()},
+				}
 				log.Println(errors.appendError(e))
 				continue
 			}
 		}
 
 		output = append(output, combined.String())
+		c.Resources[i].State = &manager.ResourceState{Status: manager.Created}
 		log.Printf("kubectl succeeded for resource: %v: SysTime: %v UserTime: %v\n%v",
 			resource.Name, cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime(), combined.String())
 	}
-
-	if len(errors.errors) > 0 {
-		return "", errors
-	}
-
 	return strings.Join(output, "\n"), nil
 }
