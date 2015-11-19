@@ -36,6 +36,7 @@ import (
 )
 
 var (
+	deployment_name   = flag.String("name", "", "Name of deployment, used for deploy and update commands (defaults to template name)")
 	stdin             = flag.Bool("stdin", false, "Reads a configuration from the standard input")
 	properties        = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
 	template_registry = flag.String("registry", "kubernetes/deployment-manager/templates", "Github based template registry (owner/repo[/path])")
@@ -111,10 +112,7 @@ func main() {
 		fmt.Printf("Templates:\n")
 		for _, t := range templates {
 			fmt.Printf("%s:%s\n", t.Name, t.Version)
-			downloadURL, err := git.GetURL(t)
-			if err != nil {
-				log.Printf("Failed to get download URL for template %s:%s", t.Name, t.Version)
-			}
+			downloadURL := getDownloadUrl(t)
 
 			fmt.Printf("\tdownload URL: %s\n", downloadURL)
 		}
@@ -160,8 +158,9 @@ func main() {
 			usage()
 		}
 
-		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(args[1]))
-		action := fmt.Sprintf("list deployed instances of type %s", args[1])
+		tUrl := getTypeUrl(args[1])
+		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tUrl))
+		action := fmt.Sprintf("list deployed instances of type %s", tUrl)
 		callService(path, "GET", action, nil)
 	default:
 		usage()
@@ -216,28 +215,38 @@ func describeType(args []string) {
 		usage()
 	}
 
-	var tUrl string
-
-	if strings.HasPrefix(args[1], "http://") || strings.HasPrefix(args[1], "https://") {
-		// User can pass raw URL to template.
-		tUrl = args[1]
-	} else {
-		// User can pass registry type.
-		t := getRegistryType(args[1])
-		if t == nil {
-			log.Fatalf("Invalid type name, must be in the form \"<type-name>:<version>\": %s", args[1])
-		}
-
-		git := getGitRegistry()
-		url, err := git.GetURL(*t)
-		if err != nil {
-			log.Fatalf("Failed to fetch type information for %s: %s", args[1], err)
-		}
-		tUrl = url
-	}
-
+	tUrl := getTypeUrl(args[1])
 	schemaUrl := tUrl + ".schema"
 	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil))
+}
+
+func getTypeUrl(tName string) string {
+	if isHttp(tName) {
+		// User can pass raw URL to template.
+		return tName
+	}
+
+	// User can pass registry type.
+	t := getRegistryType(tName)
+	if t == nil {
+		log.Fatalf("Invalid type name, must be in the form \"<type-name>:<version>\": %s", tName)
+	}
+
+	return getDownloadUrl(*t)
+}
+
+func getDownloadUrl(t registry.Type) string {
+	git := getGitRegistry()
+	url, err := git.GetURL(t)
+	if err != nil {
+		log.Fatalf("Failed to fetch type information for \"%s:%s\": %s", t.Name, t.Version, err)
+	}
+
+	return url
+}
+
+func isHttp(t string) bool {
+	return strings.HasPrefix(t, "http://") || strings.HasPrefix(t, "https://")
 }
 
 func loadTemplate(args []string) *expander.Template {
@@ -262,6 +271,11 @@ func loadTemplate(args []string) *expander.Template {
 		log.Fatalf("cannot create configuration from supplied arguments: %s\n", err)
 	}
 
+	// Override name if set from flags.
+	if *deployment_name != "" {
+		template.Name = *deployment_name
+	}
+
 	return template
 }
 
@@ -279,11 +293,7 @@ func getRegistryType(fullType string) *registry.Type {
 }
 
 func buildTemplateFromType(t registry.Type) *expander.Template {
-	git := getGitRegistry()
-	downloadURL, err := git.GetURL(t)
-	if err != nil {
-		log.Fatalf("Failed to get download URL for type %s:%s\n%s\n", t.Name, t.Version, err)
-	}
+	downloadURL := getDownloadUrl(t)
 
 	props := make(map[string]interface{})
 	if *properties != "" {
