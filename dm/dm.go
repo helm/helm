@@ -41,6 +41,7 @@ var (
 	template_registry = flag.String("registry", "kubernetes/deployment-manager/templates", "Github based template registry (owner/repo[/path])")
 	service           = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager", "URL for deployment manager")
 	binary            = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
+	timeout           = flag.Int("timeout", 10, "Time in seconds to wait for response")
 )
 
 var commands = []string{
@@ -181,7 +182,12 @@ func callService(path, method, action string, reader io.ReadCloser) {
 func callHttp(path, method, action string, reader io.ReadCloser) string {
 	request, err := http.NewRequest(method, path, reader)
 	request.Header.Add("Content-Type", "application/json")
-	response, err := http.DefaultClient.Do(request)
+
+	client := http.Client{
+		Timeout: time.Duration(time.Duration(*timeout) * time.Second),
+	}
+
+	response, err := client.Do(request)
 	if err != nil {
 		log.Fatalf("cannot %s: %s\n", action, err)
 	}
