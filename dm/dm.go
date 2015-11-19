@@ -36,6 +36,7 @@ import (
 )
 
 var (
+	deployment_name   = flag.String("name", "", "Name of deployment, used for deploy and update commands (defaults to template name)")
 	stdin             = flag.Bool("stdin", false, "Reads a configuration from the standard input")
 	properties        = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
 	template_registry = flag.String("registry", "kubernetes/deployment-manager/templates", "Github based template registry (owner/repo[/path])")
@@ -169,7 +170,13 @@ func main() {
 
 func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
-	fmt.Println(callHttp(u, method, action, reader))
+
+	resp := callHttp(u, method, action, reader)
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, []byte(resp), "", "  "); err != nil {
+		log.Fatalf("Failed to parse JSON response from service: %s", resp)
+	}
+	fmt.Println(prettyJSON.String())
 }
 
 func callHttp(path, method, action string, reader io.ReadCloser) string {
@@ -248,6 +255,11 @@ func loadTemplate(args []string) *expander.Template {
 
 	if err != nil {
 		log.Fatalf("cannot create configuration from supplied arguments: %s\n", err)
+	}
+
+	// Override name if set from flags.
+	if *deployment_name != "" {
+		template.Name = *deployment_name
 	}
 
 	return template
