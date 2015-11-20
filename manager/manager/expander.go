@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/ghodss/yaml"
+	"github.com/kubernetes/deployment-manager/util"
 )
 
 const (
@@ -96,7 +97,7 @@ func walkLayout(l *Layout, toReplace map[string]*LayoutResource) map[string]*Lay
 	for len(toVisit) > 0 {
 		lr := toVisit[0]
 		nodeKey := lr.Resource.Name + layoutNodeKeySeparator + lr.Resource.Type
-		if len(lr.Layout.Resources) == 0 && Primitives[lr.Resource.Type] == false {
+		if len(lr.Layout.Resources) == 0 && util.IsTemplate(lr.Resource.Type) {
 			ret[nodeKey] = lr
 		} else if toReplace[nodeKey] != nil {
 			toReplace[nodeKey].Resources = lr.Resources

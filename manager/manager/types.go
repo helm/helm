@@ -17,19 +17,6 @@ import (
 	"time"
 )
 
-// This map defines the primitives that DM knows how to handle implicitly.
-// TODO (iantw): Make these come from the resourcifier(?). Add more as appropriate...
-var Primitives = map[string]bool{
-	"Pod": true,
-	"ReplicationController": true,
-	"Service":               true,
-	"Namespace":             true,
-	"Volume":                true,
-	"Endpoints":             true,
-	"PersistentVolumeClaim": true,
-	"PersistentVolume":      true,
-}
-
 // SchemaImport represents an import as declared in a schema file.
 type SchemaImport struct {
 	Path string `json:"path"`

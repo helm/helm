@@ -87,11 +87,13 @@ func (tr *typeResolver) ResolveTypes(config *Configuration, imports []*ImportFil
 	fetched := map[string][]*ImportFile{}
 	toFetch := make([]string, 0, tr.maxUrls)
 	for _, r := range config.Resources {
-		if !Primitives[r.Type] && !existing[r.Type] {
+		// Only fetch HTTP URLs that we haven't already imported.
+		if util.IsHttpUrl(r.Type) && !existing[r.Type] {
 			toFetch = append(toFetch, r.Type)
 			fetched[r.Type] = append(fetched[r.Type], &ImportFile{Name: r.Type})
 		}
 	}
+
 	count := 0
 	for len(toFetch) > 0 {
 		//1. Fetch import URL. Exit if no URLs left

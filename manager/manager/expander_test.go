@@ -138,7 +138,7 @@ var roundTripContent = `
 config:
   resources:
   - name: test
-    type: test
+    type: test.py
     properties:
       test: test
 `
@@ -146,7 +146,7 @@ config:
 var roundTripExpanded = `
 resources:
 - name: test2
-  type: test2
+  type: test2.py
   properties:
     test: test
 `
@@ -154,12 +154,12 @@ resources:
 var roundTripLayout = `
 resources:
 - name: test
-  type: test
+  type: test.py
   properties:
     test: test
   resources:
   - name: test2
-    type: test2
+    type: test2.py
     properties:
       test: test
 `
@@ -175,7 +175,7 @@ resources:
 var roundTripLayout2 = `
 resources:
 - name: test2
-  type: test2
+  type: test2.py
   properties:
     test: test
   resources:
@@ -195,12 +195,12 @@ config:
 layout:
   resources:
   - name: test
-    type: test
+    type: test.py
     properties:
       test: test
     resources:
     - name: test2
-      type: test2
+      type: test2.py
       properties:
         test: test
       resources:
@@ -251,7 +251,7 @@ func TestExpandTemplate(t *testing.T) {
 			roundTripHandler,
 			&mockResolver{[][]*ImportFile{
 				{},
-				{&ImportFile{Name: "test"}},
+				{&ImportFile{Name: "test.py"}},
 			}, t},
 			roundTripResponse,
 		},

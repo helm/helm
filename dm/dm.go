@@ -19,6 +19,7 @@ import (
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/manager/manager"
 	"github.com/kubernetes/deployment-manager/registry"
+	"github.com/kubernetes/deployment-manager/util"
 
 	"bytes"
 	"encoding/json"
@@ -221,7 +222,7 @@ func describeType(args []string) {
 }
 
 func getTypeUrl(tName string) string {
-	if isHttp(tName) {
+	if util.IsHttpUrl(tName) {
 		// User can pass raw URL to template.
 		return tName
 	}

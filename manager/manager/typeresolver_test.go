@@ -117,15 +117,15 @@ func TestIncludedImport(t *testing.T) {
 var templateSingleURL = `
 resources:
 - name: foo
-  type: my-fake-url
+  type: http://my-fake-url
 `
 
 func TestSingleUrl(t *testing.T) {
-	finalImports := []*ImportFile{&ImportFile{Name: "my-fake-url", Content: "my-content"}}
+	finalImports := []*ImportFile{&ImportFile{Name: "http://my-fake-url", Content: "my-content"}}
 
 	responses := map[string]responseAndError{
-		"my-fake-url":        responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":        responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema": responseAndError{nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
@@ -139,7 +139,7 @@ func TestSingleUrl(t *testing.T) {
 
 func TestSingleUrlWith500(t *testing.T) {
 	responses := map[string]responseAndError{
-		"my-fake-url": responseAndError{nil, http.StatusInternalServerError, "my-content"},
+		"http://my-fake-url": responseAndError{nil, http.StatusInternalServerError, "my-content"},
 	}
 
 	test := resolverTestCase{
@@ -159,16 +159,16 @@ imports:
 
 func TestSingleUrlWithSchema(t *testing.T) {
 	finalImports := []*ImportFile{
-		&ImportFile{Name: "my-fake-url", Content: "my-content"},
+		&ImportFile{Name: "http://my-fake-url", Content: "my-content"},
 		&ImportFile{Name: "schema-import", Content: "schema-import"},
-		&ImportFile{Name: "my-fake-url.schema", Content: schema1},
+		&ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
 	}
 
 	responses := map[string]responseAndError{
-		"my-fake-url":        responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url.schema": responseAndError{nil, http.StatusOK, schema1},
-		"my-next-url":        responseAndError{nil, http.StatusOK, "schema-import"},
-		"my-next-url.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":        responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema": responseAndError{nil, http.StatusOK, schema1},
+		"my-next-url":               responseAndError{nil, http.StatusOK, "schema-import"},
+		"my-next-url.schema":        responseAndError{nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
@@ -183,33 +183,33 @@ func TestSingleUrlWithSchema(t *testing.T) {
 var templateExceedsMax = `
 resources:
 - name: foo
-  type: my-fake-url
+  type: http://my-fake-url
 - name: foo1
-  type: my-fake-url1
+  type: http://my-fake-url1
 - name: foo2
-  type: my-fake-url2
+  type: http://my-fake-url2
 - name: foo3
-  type: my-fake-url3
+  type: http://my-fake-url3
 - name: foo4
-  type: my-fake-url4
+  type: http://my-fake-url4
 - name: foo5
-  type: my-fake-url5
+  type: http://my-fake-url5
 `
 
 func TestTooManyImports(t *testing.T) {
 	responses := map[string]responseAndError{
-		"my-fake-url":         responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url.schema":  responseAndError{nil, http.StatusNotFound, ""},
-		"my-fake-url1":        responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url1.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"my-fake-url2":        responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url2.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"my-fake-url3":        responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url3.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"my-fake-url4":        responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url4.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"my-fake-url5":        responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url5.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":         responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema":  responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url1":        responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url1.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url2":        responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url2.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url3":        responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url3.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url4":        responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url4.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url5":        responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url5.schema": responseAndError{nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
@@ -224,9 +224,9 @@ func TestTooManyImports(t *testing.T) {
 var templateSharesImport = `
 resources:
 - name: foo
-  type: my-fake-url
+  type: http://my-fake-url
 - name: foo1
-  type: my-fake-url1
+  type: http://my-fake-url1
 `
 
 var schema2 = `
@@ -237,21 +237,21 @@ imports:
 
 func TestSharedImport(t *testing.T) {
 	finalImports := []*ImportFile{
-		&ImportFile{Name: "my-fake-url", Content: "my-content"},
-		&ImportFile{Name: "my-fake-url1", Content: "my-content-1"},
+		&ImportFile{Name: "http://my-fake-url", Content: "my-content"},
+		&ImportFile{Name: "http://my-fake-url1", Content: "my-content-1"},
 		&ImportFile{Name: "schema-import", Content: "schema-import"},
 		&ImportFile{Name: "schema-import-1", Content: "schema-import"},
-		&ImportFile{Name: "my-fake-url.schema", Content: schema1},
-		&ImportFile{Name: "my-fake-url1.schema", Content: schema2},
+		&ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
+		&ImportFile{Name: "http://my-fake-url1.schema", Content: schema2},
 	}
 
 	responses := map[string]responseAndError{
-		"my-fake-url":         responseAndError{nil, http.StatusOK, "my-content"},
-		"my-fake-url.schema":  responseAndError{nil, http.StatusOK, schema1},
-		"my-fake-url1":        responseAndError{nil, http.StatusOK, "my-content-1"},
-		"my-fake-url1.schema": responseAndError{nil, http.StatusOK, schema2},
-		"my-next-url":         responseAndError{nil, http.StatusOK, "schema-import"},
-		"my-next-url.schema":  responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":         responseAndError{nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema":  responseAndError{nil, http.StatusOK, schema1},
+		"http://my-fake-url1":        responseAndError{nil, http.StatusOK, "my-content-1"},
+		"http://my-fake-url1.schema": responseAndError{nil, http.StatusOK, schema2},
+		"my-next-url":                responseAndError{nil, http.StatusOK, "schema-import"},
+		"my-next-url.schema":         responseAndError{nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
