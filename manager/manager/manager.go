@@ -104,21 +104,39 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	err = m.repository.AddManifest(t.Name, manifest)
-	if err != nil {
-		log.Printf("AddManifest failed %v", err)
-		m.repository.SetDeploymentStatus(t.Name, FailedStatus)
-		return nil, err
-	}
-
-	if err := m.deployer.CreateConfiguration(manifest.ExpandedConfig); err != nil {
-		// Deployment failed, mark as deleted
+	actualConfig, createErr := m.deployer.CreateConfiguration(manifest.ExpandedConfig)
+	if createErr != nil {
+		// Deployment failed, mark as failed
 		log.Printf("CreateConfiguration failed: %v", err)
 		m.repository.SetDeploymentStatus(t.Name, FailedStatus)
-		return nil, err
+		// If we failed before being able to create some of the resources, then
+		// return the failure as such. Otherwise, we're going to add the manifest
+		// and hence resource specific errors down below.
+		if actualConfig == nil {
+			return nil, createErr
+		}
+	} else {
+		m.repository.SetDeploymentStatus(t.Name, DeployedStatus)
+	}
+	
+	// Update the manifest with the actual state of the reified resources
+	manifest.ExpandedConfig = actualConfig
+	aErr := m.repository.AddManifest(t.Name, manifest)
+	if aErr != nil {
+		log.Printf("AddManifest failed %v", aErr)
+		m.repository.SetDeploymentStatus(t.Name, FailedStatus)
+		// If there's an earlier error, return that instead since it contains
+		// more applicable error message. Adding manifest failure is more akin
+		// to a check fail (either deployment doesn't exist, or a manifest with the same
+		// name already exists).
+		// TODO(vaikas): Should we combine both errors and return a nicely formatted error for both?
+		if createErr != nil {
+			return nil, createErr
+		} else {
+			return nil, aErr
+		}
 	}
 
-	m.repository.SetDeploymentStatus(t.Name, DeployedStatus)
 	// Finally update the type instances for this deployment.
 	m.addTypeInstances(t.Name, manifest.Name, manifest.Layout)
 	return m.repository.GetValidDeployment(t.Name)
@@ -183,7 +201,7 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*Deployment, error
 	latest := getLatestManifest(d.Manifests)
 	if latest != nil {
 		log.Printf("Deleting resources from the latest manifest")
-		if err := m.deployer.DeleteConfiguration(latest.ExpandedConfig); err != nil {
+		if _, err := m.deployer.DeleteConfiguration(latest.ExpandedConfig); err != nil {
 			log.Printf("Failed to delete resources from the latest manifest: %v", err)
 			return nil, err
 		}
@@ -222,13 +240,15 @@ func (m *manager) PutDeployment(name string, t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	err = m.repository.AddManifest(t.Name, manifest)
+	actualConfig, err := m.deployer.PutConfiguration(manifest.ExpandedConfig)
 	if err != nil {
 		m.repository.SetDeploymentStatus(name, FailedStatus)
 		return nil, err
 	}
 
-	if err := m.deployer.PutConfiguration(manifest.ExpandedConfig); err != nil {
+	manifest.ExpandedConfig = actualConfig
+	err = m.repository.AddManifest(t.Name, manifest)
+	if err != nil {
 		m.repository.SetDeploymentStatus(name, FailedStatus)
 		return nil, err
 	}

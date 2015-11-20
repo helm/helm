@@ -169,7 +169,7 @@ type Resource struct {
 	Name       string                 `json:"name"`
 	Type       string                 `json:"type"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
-	State      ResourceState          `json:"state"`
+	State      *ResourceState          `json:"state,omitempty"`
 }
 
 // TypeInstance defines the metadata for an instantiation of a template type

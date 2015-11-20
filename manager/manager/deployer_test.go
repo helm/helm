@@ -165,7 +165,7 @@ func TestCreateConfiguration(t *testing.T) {
 		defer ts.Close()
 
 		deployer := NewDeployer(ts.URL)
-		err := deployer.CreateConfiguration(valid)
+		_, err := deployer.CreateConfiguration(valid)
 		if err != nil {
 			message := err.Error()
 			if !strings.Contains(message, dtc.Error) {
@@ -200,7 +200,7 @@ func TestDeleteConfiguration(t *testing.T) {
 		defer ts.Close()
 
 		deployer := NewDeployer(ts.URL)
-		err := deployer.DeleteConfiguration(valid)
+		_, err := deployer.DeleteConfiguration(valid)
 		if err != nil {
 			message := err.Error()
 			if !strings.Contains(message, dtc.Error) {
@@ -235,7 +235,7 @@ func TestPutConfiguration(t *testing.T) {
 		defer ts.Close()
 
 		deployer := NewDeployer(ts.URL)
-		err := deployer.PutConfiguration(valid)
+		_, err := deployer.PutConfiguration(valid)
 		if err != nil {
 			message := err.Error()
 			if !strings.Contains(message, dtc.Error) {
