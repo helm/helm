@@ -104,9 +104,8 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 		return nil, err
 	}
 
-	actualConfig, err := m.deployer.CreateConfiguration(manifest.ExpandedConfig)
-	log.Printf("Got Back %s", actualConfig)
-	if err != nil {
+	actualConfig, createErr := m.deployer.CreateConfiguration(manifest.ExpandedConfig)
+	if createErr != nil {
 		// Deployment failed, mark as failed
 		log.Printf("CreateConfiguration failed: %v", err)
 		m.repository.SetDeploymentStatus(t.Name, FailedStatus)
@@ -114,7 +113,7 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 		// return the failure as such. Otherwise, we're going to add the manifest
 		// and hence resource specific errors down below.
 		if actualConfig == nil {
-			return nil, err
+			return nil, createErr
 		}
 	} else {
 		m.repository.SetDeploymentStatus(t.Name, DeployedStatus)
@@ -131,8 +130,8 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 		// to a check fail (either deployment doesn't exist, or a manifest with the same
 		// name already exists).
 		// TODO(vaikas): Should we combine both errors and return a nicely formatted error for both?
-		if err != nil {
-			return nil, err
+		if createErr != nil {
+			return nil, createErr
 		} else {
 			return nil, aErr
 		}

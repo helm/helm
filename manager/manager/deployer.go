@@ -38,7 +38,7 @@ type Deployer interface {
 // NewDeployer returns a new initialized Deployer.
 // TODO(vaikas): Add a flag for setting the timeout.
 func NewDeployer(url string) Deployer {
-	return &deployer{url, 5}
+	return &deployer{url, 15}
 }
 
 type deployer struct {
@@ -126,7 +126,7 @@ func (d *deployer) callServiceWithConfiguration(method, operation string, config
 			return nil, fmt.Errorf("cannot unmarshal response: (%v)", err)
 		}
 	}
-	return result, err
+	return result, nil
 }
 
 func (d *deployer) callService(method, url string, reader io.Reader, callback formatter) ([]byte, error) {
@@ -140,9 +140,7 @@ func (d *deployer) callService(method, url string, reader io.Reader, callback fo
 	}
 
 	timeout := time.Duration(time.Duration(d.timeout) * time.Second)
-	client := http.Client{
-		Timeout: timeout,
-	}
+	client := http.Client{Timeout: timeout}
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, callback(err)
