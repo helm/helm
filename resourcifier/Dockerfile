@@ -41,6 +41,10 @@ RUN mkdir -p src/github.com/kubernetes/deployment-manager/expandybird \
   && chmod 777 src/github.com/kubernetes/deployment-manager/expandybird
 COPY expandybird src/github.com/kubernetes/deployment-manager/expandybird
 
+RUN mkdir -p src/github.com/kubernetes/deployment-manager/manager \
+  && chmod 777 src/github.com/kubernetes/deployment-manager/manager
+COPY manager src/github.com/kubernetes/deployment-manager/manager
+
 RUN mkdir -p src/github.com/kubernetes/deployment-manager/resourcifier \
   && chmod 777 src/github.com/kubernetes/deployment-manager/resourcifier
 COPY resourcifier src/github.com/kubernetes/deployment-manager/resourcifier
