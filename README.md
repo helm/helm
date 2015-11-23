@@ -33,7 +33,7 @@ Because DM stores its state in the cluster, not on your workstation, you can ask
 those questions from any client at any time.
 
 For more information about types, including both primitive types and templates,
-see the [design document](../design/design.md#types).
+see the [design document](docs/design/design.md#types).
 
 Please hang out with us in
 [the Slack chat room](https://kubernetes.slack.com/messages/sig-configuration/)
