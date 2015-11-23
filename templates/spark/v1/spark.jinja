@@ -1,0 +1,113 @@
+{% set PROPERTIES = properties or {} %}
+{% set WORKERS = PROPERTIES['workers'] or 2 %}
+{% set REPO = PROPERTIES['repository'] or 'gcr.io/google_containers' %}
+{% set SPARK_VERSION = PROPERTIES['spark_version'] or '1.5.1_v2' %}
+{% set ZEPPELIN_VERSION = PROPERTIES['zeppelin_version'] or 'v0.5.5_v2' %}
+{% set MASTER_CPU = PROPERTIES['master_cpu'] or '100m' %}
+{% set ZEPPELIN_CPU = PROPERTIES['zeppelin_cpu'] or '100m' %}
+{% set WORKER_CPU = PROPERTIES['worker_cpu'] or '100m' %}
+
+# TODO(zmerlynn): This can't be a standard replicatedservice (yet) because of:
+# - the double containerPort
+# - the cpu request
+# (neither are possible in the type as of v2)
+resources:
+- name: spark-master
+  type: ReplicationController
+  properties:
+    kind: ReplicationController
+    apiVersion: v1
+    metadata:
+      name: spark-master-controller
+    spec:
+      replicas: 1
+      selector:
+        component: spark-master
+      template:
+        metadata:
+          labels:
+            component: spark-master
+        spec:
+          containers:
+            - name: spark-master
+              image: {{ REPO }}/spark-master:{{ SPARK_VERSION }}
+              ports:
+                - containerPort: 7077
+                - containerPort: 8080
+              resources:
+                requests:
+                  cpu: {{ MASTER_CPU }}
+- name: spark-master-service
+  type: Service
+  properties:
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: spark-master
+    spec:
+      ports:
+        - port: 7077
+          targetPort: 7077
+      selector:
+        component: spark-master
+- name: spark-webui
+  type: Service
+  properties:
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: spark-webui
+    spec:
+      ports:
+        - port: 8080
+          targetPort: 8080
+      selector:
+        component: spark-master
+- name: spark-worker-controller
+  type: ReplicationController
+  properties:
+    kind: ReplicationController
+    apiVersion: v1
+    metadata:
+      name: spark-worker-controller
+    spec:
+      replicas: 3
+      selector:
+        component: spark-worker
+      template:
+        metadata:
+          labels:
+            component: spark-worker
+        spec:
+          containers:
+            - name: spark-worker
+              image: {{ REPO }}/spark-worker:{{ SPARK_VERSION }}
+              ports:
+                - containerPort: 8081
+              resources:
+                requests:
+                  cpu: {{ WORKER_CPU }}
+- name: zeppelin-controller
+  type: ReplicationController
+  properties:
+    kind: ReplicationController
+    apiVersion: v1
+    metadata:
+      name: zeppelin-controller
+    spec:
+      replicas: 1
+      selector:
+        component: zeppelin
+      template:
+        metadata:
+          labels:
+            component: zeppelin
+        spec:
+          containers:
+            - name: zeppelin
+              image: {{ REPO }}/zeppelin:{{ ZEPPELIN_VERSION }}
+              ports:
+                - containerPort: 8080
+              resources:
+                requests:
+                  cpu: {{ ZEPPELIN_CPU }}
