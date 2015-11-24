@@ -1,0 +1,12 @@
+info:
+  title: Schema with properties that have default values
+
+imports:
+
+properties:
+  one:
+    type: integer
+    default: 1
+  alpha:
+    type: string
+    default: alpha

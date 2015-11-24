@@ -1,0 +1,14 @@
+info:
+  title: Schema with references
+
+imports:
+
+properties:
+  odd:
+    type: integer
+    not:
+      $ref: '#/even'
+
+
+even:
+    multipleOf: 2

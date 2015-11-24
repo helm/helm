@@ -1,0 +1,14 @@
+info:
+  title: Schema with a property that has a referenced default value
+
+imports:
+
+properties:
+  number:
+    $ref: '#/level/mult'
+
+level:
+  mult:
+    type: integer
+    multipleOf: 1
+    default: 1
