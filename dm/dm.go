@@ -316,7 +316,9 @@ func buildTemplateFromType(t registry.Type) *expander.Template {
 		}
 	}
 
-	name := fmt.Sprintf("%s-%s", t.Name, t.Version)
+	// Name the deployment after the type name.
+	name := fmt.Sprintf("%s:%s", t.Name, t.Version)
+
 	config := manager.Configuration{Resources: []*manager.Resource{&manager.Resource{
 		Name:       name,
 		Type:       downloadURL,
