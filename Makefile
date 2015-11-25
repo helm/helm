@@ -1,4 +1,4 @@
-SUBDIRS := expandybird/. resourcifier/. manager/.
+SUBDIRS := expandybird/. resourcifier/. manager/. dm/.
 TARGETS := all build test push container clean
 
 SUBDIRS_TARGETS := \
