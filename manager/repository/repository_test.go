@@ -16,6 +16,7 @@ package repository
 import (
 	"github.com/kubernetes/deployment-manager/manager/manager"
 
+	"fmt"
 	"testing"
 )
 
@@ -41,15 +42,15 @@ func TestRepositoryGetFailsWithNonExistentDeployment(t *testing.T) {
 	}
 }
 
-func TestRepositoryCreateDeploymentWorks(t *testing.T) {
+func testCreateDeploymentWithManifests(t *testing.T, count int) {
 	var deploymentName = "mydeployment"
-	var manifestName = "manifest-0"
 	r := NewMapBasedRepository()
-	manifest := manager.Manifest{Deployment: deploymentName, Name: manifestName}
+
 	d, err := r.CreateDeployment(deploymentName)
 	if err != nil {
 		t.Fatalf("CreateDeployment failed: %v", err)
 	}
+
 	l, err := r.ListDeployments()
 	if err != nil {
 		t.Fatalf("ListDeployments failed: %v", err)
@@ -57,6 +58,7 @@ func TestRepositoryCreateDeploymentWorks(t *testing.T) {
 	if len(l) != 1 {
 		t.Fatalf("List of deployments is not 1: %d", len(l))
 	}
+
 	dNew, err := r.GetDeployment(deploymentName)
 	if err != nil {
 		t.Fatalf("GetDeployment failed: %v", err)
@@ -64,114 +66,51 @@ func TestRepositoryCreateDeploymentWorks(t *testing.T) {
 	if dNew.Name != d.Name {
 		t.Fatalf("Deployment Names don't match, got: %v, expected %v", dNew, d)
 	}
-	if len(dNew.Manifests) != 0 {
-		t.Fatalf("Deployment has non-zero manifest count: %d", len(dNew.Manifests))
-	}
-	err = r.AddManifest(deploymentName, &manifest)
-	if err != nil {
-		t.Fatalf("AddManifest failed: %v", err)
-	}
-	dNew, err = r.GetDeployment(deploymentName)
-	if err != nil {
-		t.Fatalf("GetDeployment failed: %v", err)
-	}
-	if len(dNew.Manifests) != 1 {
-		t.Fatalf("Fetched deployment does not have manifest count of 1: %d", len(dNew.Manifests))
-	}
-	manifestList, err := r.ListManifests(deploymentName)
+
+	mList, err := r.ListManifests(deploymentName)
 	if err != nil {
 		t.Fatalf("ListManifests failed: %v", err)
 	}
-	if len(manifestList) != 1 {
-		t.Fatalf("ManifestList does not have manifest count of 1: %d", len(manifestList))
+	if len(mList) != 0 {
+		t.Fatalf("Deployment has non-zero manifest count: %d", len(mList))
 	}
-	m, err := r.GetManifest(deploymentName, manifestName)
-	if err != nil {
-		t.Fatalf("GetManifest failed: %v", err)
-	}
-	if m.Name != manifestName {
-		t.Fatalf("manifest name doesn't match: %v", m)
+
+	for i := 0; i < count; i++ {
+		var manifestName = fmt.Sprintf("manifest-%d", i)
+		manifest := manager.Manifest{Deployment: deploymentName, Name: manifestName}
+		err := r.AddManifest(deploymentName, &manifest)
+		if err != nil {
+			t.Fatalf("AddManifest failed: %v", err)
+		}
+		_, err = r.GetDeployment(deploymentName)
+		if err != nil {
+			t.Fatalf("GetDeployment failed: %v", err)
+		}
+
+		mListNew, err := r.ListManifests(deploymentName)
+		if err != nil {
+			t.Fatalf("ListManifests failed: %v", err)
+		}
+		if len(mListNew) != i+1 {
+			t.Fatalf("Deployment has unexpected manifest count: want %d, have %d", i+1, len(mListNew))
+		}
+
+		m, err := r.GetManifest(deploymentName, manifestName)
+		if err != nil {
+			t.Fatalf("GetManifest failed: %v", err)
+		}
+		if m.Name != manifestName {
+			t.Fatalf("Unexpected manifest name: want %s, have %s", manifestName, m.Name)
+		}
 	}
 }
 
+func TestRepositoryCreateDeploymentWorks(t *testing.T) {
+	testCreateDeploymentWithManifests(t, 1)
+}
+
 func TestRepositoryMultipleManifestsWorks(t *testing.T) {
-	var deploymentName = "mydeployment"
-	var manifestName = "manifest-0"
-	var manifestName2 = "manifest-1"
-	r := NewMapBasedRepository()
-	manifest := manager.Manifest{Deployment: deploymentName, Name: manifestName}
-	manifest2 := manager.Manifest{Deployment: deploymentName, Name: manifestName2}
-	d, err := r.CreateDeployment(deploymentName)
-	if err != nil {
-		t.Fatalf("CreateDeployment failed: %v", err)
-	}
-	dNew, err := r.GetDeployment(deploymentName)
-	if err != nil {
-		t.Fatalf("GetDeployment failed: %v", err)
-	}
-	if dNew.Name != d.Name {
-		t.Fatalf("Deployment Names don't match, got: %v, expected %v", dNew, d)
-	}
-	if len(dNew.Manifests) != 0 {
-		t.Fatalf("Deployment has non-zero manifest count: %d", len(dNew.Manifests))
-	}
-	err = r.AddManifest(deploymentName, &manifest)
-	if err != nil {
-		t.Fatalf("AddManifest failed: %v", err)
-	}
-	dNew, err = r.GetDeployment(deploymentName)
-	if err != nil {
-		t.Fatalf("GetDeployment failed: %v", err)
-	}
-	if len(dNew.Manifests) != 1 {
-		t.Fatalf("Fetched deployment does not have manifest count of 1: %d", len(dNew.Manifests))
-	}
-	manifestList, err := r.ListManifests(deploymentName)
-	if err != nil {
-		t.Fatalf("ListManifests failed: %v", err)
-	}
-	if len(manifestList) != 1 {
-		t.Fatalf("ManifestList does not have manifest count of 1: %d", len(manifestList))
-	}
-	m, err := r.GetManifest(deploymentName, manifestName)
-	if err != nil {
-		t.Fatalf("GetManifest failed: %v", err)
-	}
-	if m.Name != manifestName {
-		t.Fatalf("manifest name doesn't match: %v", m)
-	}
-	err = r.AddManifest(deploymentName, &manifest2)
-	if err != nil {
-		t.Fatalf("AddManifest failed: %v", err)
-	}
-	dNew, err = r.GetDeployment(deploymentName)
-	if err != nil {
-		t.Fatalf("GetDeployment failed: %v", err)
-	}
-	if len(dNew.Manifests) != 2 {
-		t.Fatalf("Fetched deployment does not have manifest count of 2: %d", len(dNew.Manifests))
-	}
-	manifestList, err = r.ListManifests(deploymentName)
-	if err != nil {
-		t.Fatalf("ListManifests failed: %v", err)
-	}
-	if len(manifestList) != 2 {
-		t.Fatalf("ManifestList does not have manifest count of 1: %d", len(manifestList))
-	}
-	m, err = r.GetManifest(deploymentName, manifestName)
-	if err != nil {
-		t.Fatalf("GetManifest failed: %v", err)
-	}
-	if m.Name != manifestName {
-		t.Fatalf("manifest name doesn't match: %v", m)
-	}
-	m, err = r.GetManifest(deploymentName, manifestName2)
-	if err != nil {
-		t.Fatalf("GetManifest failed: %v", err)
-	}
-	if m.Name != manifestName2 {
-		t.Fatalf("manifest name doesn't match: %v", m)
-	}
+	testCreateDeploymentWithManifests(t, 7)
 }
 
 func TestRepositoryDeleteFailsWithNonExistentDeployment(t *testing.T) {
@@ -200,8 +139,8 @@ func TestRepositoryDeleteWorksWithNoLatestManifest(t *testing.T) {
 	if dDeleted.Status != manager.DeletedStatus {
 		t.Fatalf("Deployment Status is not deleted")
 	}
-	if len(dDeleted.Manifests) != 0 {
-		t.Fatalf("manifests count is not 0, is: %d", len(dDeleted.Manifests))
+	if _, err := r.ListManifests(deploymentName); err == nil {
+		t.Fatalf("Manifests are not deleted")
 	}
 }
 

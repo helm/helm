@@ -60,10 +60,7 @@ func (m *manager) GetDeployment(name string) (*Deployment, error) {
 	if err != nil {
 		return nil, err
 	}
-	latest := getLatestManifest(d.Manifests)
-	if latest != nil {
-		d.Current = latest.ExpandedConfig
-	}
+
 	return d, nil
 }
 
@@ -74,6 +71,7 @@ func (m *manager) ListManifests(deploymentName string) (map[string]*Manifest, er
 	if err != nil {
 		return nil, err
 	}
+
 	return l, nil
 }
 
@@ -83,6 +81,7 @@ func (m *manager) GetManifest(deploymentName string, manifestName string) (*Mani
 	if err != nil {
 		return nil, err
 	}
+
 	return d, nil
 }
 
@@ -118,7 +117,7 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 	} else {
 		m.repository.SetDeploymentStatus(t.Name, DeployedStatus)
 	}
-	
+
 	// Update the manifest with the actual state of the reified resources
 	manifest.ExpandedConfig = actualConfig
 	aErr := m.repository.AddManifest(t.Name, manifest)
@@ -198,7 +197,11 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*Deployment, error
 	}
 
 	// If there's a latest manifest, delete the underlying resources.
-	latest := getLatestManifest(d.Manifests)
+	latest, err := m.repository.GetLatestManifest(name)
+	if err != nil {
+		return nil, err
+	}
+
 	if latest != nil {
 		log.Printf("Deleting resources from the latest manifest")
 		if _, err := m.deployer.DeleteConfiguration(latest.ExpandedConfig); err != nil {
@@ -282,20 +285,4 @@ func (m *manager) ListInstances(typeName string) []*TypeInstance {
 
 func generateManifestName() string {
 	return fmt.Sprintf("manifest-%d", time.Now().UTC().UnixNano())
-}
-
-// Given a map of manifests, finds the largest time stamp, hence probably the latest manifest.
-// This is a hack until we get a real story for storage.
-func getLatestManifest(l map[string]*Manifest) *Manifest {
-	var latest = 0
-	var ret *Manifest
-	for k, v := range l {
-		var i = 0
-		fmt.Sscanf(k, "manifest-%d", &i)
-		if i > latest {
-			latest = i
-			ret = v
-		}
-	}
-	return ret
 }

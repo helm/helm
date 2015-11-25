@@ -34,14 +34,15 @@ type typeInstanceMap map[string]deploymentTypeInstanceMap
 type mapBasedRepository struct {
 	sync.RWMutex
 	deployments map[string]manager.Deployment
+	manifests   map[string]map[string]*manager.Manifest
 	instances   typeInstanceMap
-	lastID      int
 }
 
 // NewMapBasedRepository returns a new map based repository.
 func NewMapBasedRepository() manager.Repository {
 	return &mapBasedRepository{
 		deployments: make(map[string]manager.Deployment, 0),
+		manifests:   make(map[string]map[string]*manager.Manifest, 0),
 		instances:   typeInstanceMap{},
 	}
 }
@@ -113,9 +114,7 @@ func (r *mapBasedRepository) CreateDeployment(name string) (*manager.Deployment,
 			return nil, fmt.Errorf("Deployment %s already exists", name)
 		}
 
-		r.lastID++
-
-		d := manager.NewDeployment(name, r.lastID)
+		d := manager.NewDeployment(name)
 		d.Status = manager.CreatedStatus
 		d.DeployedAt = time.Now()
 		r.deployments[name] = *d
@@ -134,23 +133,32 @@ func (r *mapBasedRepository) AddManifest(deploymentName string, manifest *manage
 	err := func() error {
 		r.Lock()
 		defer r.Unlock()
+
 		d, err := r.GetValidDeployment(deploymentName)
+		if err != nil {
+			return err
+		}
+
+		l, err := r.listManifestsForDeployment(deploymentName)
 		if err != nil {
 			return err
 		}
 
 		// Make sure the manifest doesn't already exist, and if not, add the manifest to
 		// map of manifests this deployment has
-		if _, ok := d.Manifests[manifest.Name]; ok {
+		if _, ok := l[manifest.Name]; ok {
 			return fmt.Errorf("Manifest %s already exists in deployment %s", manifest.Name, deploymentName)
 		}
-		d.Manifests[manifest.Name] = manifest
-		r.deployments[deploymentName] = *d
+
+		l[manifest.Name] = manifest
+		d.LatestManifest = manifest.Name
 		return nil
 	}()
+
 	if err != nil {
 		return err
 	}
+
 	log.Printf("Added manifest %s to deployment: %s", manifest.Name, deploymentName)
 	return nil
 }
@@ -174,6 +182,8 @@ func (r *mapBasedRepository) DeleteDeployment(name string, forget bool) (*manage
 			r.deployments[name] = *d
 		} else {
 			delete(r.deployments, name)
+			delete(r.manifests, name)
+			d.LatestManifest = ""
 		}
 
 		return d, nil
@@ -188,22 +198,65 @@ func (r *mapBasedRepository) DeleteDeployment(name string, forget bool) (*manage
 }
 
 func (r *mapBasedRepository) ListManifests(deploymentName string) (map[string]*manager.Manifest, error) {
-	d, err := r.GetValidDeployment(deploymentName)
+	r.Lock()
+	defer r.Unlock()
+
+	_, err := r.GetValidDeployment(deploymentName)
 	if err != nil {
 		return nil, err
 	}
-	return d.Manifests, nil
+
+	return r.listManifestsForDeployment(deploymentName)
+}
+
+func (r *mapBasedRepository) listManifestsForDeployment(deploymentName string) (map[string]*manager.Manifest, error) {
+	l, ok := r.manifests[deploymentName]
+	if !ok {
+		l = make(map[string]*manager.Manifest, 0)
+		r.manifests[deploymentName] = l
+	}
+
+	return l, nil
 }
 
 func (r *mapBasedRepository) GetManifest(deploymentName string, manifestName string) (*manager.Manifest, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	_, err := r.GetValidDeployment(deploymentName)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.getManifestForDeployment(deploymentName, manifestName)
+}
+
+func (r *mapBasedRepository) getManifestForDeployment(deploymentName string, manifestName string) (*manager.Manifest, error) {
+	l, err := r.listManifestsForDeployment(deploymentName)
+	if err != nil {
+		return nil, err
+	}
+
+	m, ok := l[manifestName]
+	if !ok {
+		return nil, fmt.Errorf("manifest %s not found in deployment %s", manifestName, deploymentName)
+	}
+
+	return m, nil
+}
+
+// GetLatestManifest returns the latest manifest for a given deployment,
+// which by definition is the manifest with the largest time stamp.
+func (r *mapBasedRepository) GetLatestManifest(deploymentName string) (*manager.Manifest, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	d, err := r.GetValidDeployment(deploymentName)
 	if err != nil {
 		return nil, err
 	}
-	if m, ok := d.Manifests[manifestName]; ok {
-		return m, nil
-	}
-	return nil, fmt.Errorf("manifest %s not found in deployment %s", manifestName, deploymentName)
+
+	return r.getManifestForDeployment(deploymentName, d.LatestManifest)
 }
 
 // ListTypes returns all types known from existing instances.

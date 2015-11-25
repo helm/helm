@@ -43,6 +43,7 @@ type Repository interface {
 	AddManifest(deploymentName string, manifest *Manifest) error
 	ListManifests(deploymentName string) (map[string]*Manifest, error)
 	GetManifest(deploymentName string, manifestName string) (*Manifest, error)
+	GetLatestManifest(deploymentName string) (*Manifest, error)
 
 	// Types.
 	ListTypes() []string
@@ -54,21 +55,19 @@ type Repository interface {
 // Deployment defines a deployment that describes
 // the creation, modification and/or deletion of a set of resources.
 type Deployment struct {
-	Name       string               `json:"name"`
-	ID         int                  `json:"id"`
-	CreatedAt  time.Time            `json:"createdAt,omitempty"`
-	DeployedAt time.Time            `json:"deployedAt,omitempty"`
-	ModifiedAt time.Time            `json:"modifiedAt,omitempty"`
-	DeletedAt  time.Time            `json:"deletedAt,omitempty"`
-	Status     DeploymentStatus     `json:"status,omitempty"`
-	Current    *Configuration       `json:"current,omitEmpty"`
-	Manifests  map[string]*Manifest `json:"manifests,omitempty"`
+	Name           string           `json:"name"`
+	ID             int              `json:"id"`
+	CreatedAt      time.Time        `json:"createdAt,omitempty"`
+	DeployedAt     time.Time        `json:"deployedAt,omitempty"`
+	ModifiedAt     time.Time        `json:"modifiedAt,omitempty"`
+	DeletedAt      time.Time        `json:"deletedAt,omitempty"`
+	Status         DeploymentStatus `json:"status,omitempty"`
+	LatestManifest string           `json:"latestManifest,omitEmpty"`
 }
 
 // NewDeployment creates a new deployment.
-func NewDeployment(name string, id int) *Deployment {
-	return &Deployment{Name: name, ID: id, CreatedAt: time.Now(), Status: CreatedStatus,
-		Manifests: make(map[string]*Manifest, 0)}
+func NewDeployment(name string) *Deployment {
+	return &Deployment{Name: name, CreatedAt: time.Now(), Status: CreatedStatus}
 }
 
 // DeploymentStatus is an enumeration type for the status of a deployment.
@@ -156,7 +155,7 @@ type Resource struct {
 	Name       string                 `json:"name"`
 	Type       string                 `json:"type"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
-	State      *ResourceState          `json:"state,omitempty"`
+	State      *ResourceState         `json:"state,omitempty"`
 }
 
 // TypeInstance defines the metadata for an instantiation of a template type
