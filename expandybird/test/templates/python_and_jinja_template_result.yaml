@@ -1,0 +1,35 @@
+config:
+  resources:
+  - name: vm-created-by-cloud-config-master-address
+    properties:
+      disks:
+      - autoDelete: true
+        boot: true
+        deviceName: boot
+        initializeParams:
+          diskName: disk-created-by-cloud-config-master-address
+          sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-7-wheezy-v20140619
+        type: PERSISTENT
+      machineType: https://www.googleapis.com/compute/v1/projects/my-project/zones/my-zone/machineTypes/f1-micro
+      networkInterfaces:
+      - network: https://www.googleapis.com/compute/v1/projects/my-project/global/networks/default
+      zone: my-zone
+    type: compute.v1.instance
+layout:
+  resources:
+  - name: python_and_jinja_template_name
+    properties:
+      masterAddress: master-address
+      project: my-project
+      zone: my-zone
+    resources:
+    - name: python_and_jinja_template_jinja_name
+      properties:
+        deployment: master-address
+        project: my-project
+        zone: my-zone
+      resources:
+      - name: vm-created-by-cloud-config-master-address
+        type: compute.v1.instance
+      type: python_and_jinja_template.jinja
+    type: python_and_jinja_template.py

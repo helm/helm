@@ -1,0 +1,10 @@
+imports: ["jinja_unresolved.jinja"]
+
+resources:
+- name: jinja_template_name
+  type: jinja_unresolved.jinja
+  properties:
+    zone: test-zone
+    project: test-project
+    deployment: test-deployment
+

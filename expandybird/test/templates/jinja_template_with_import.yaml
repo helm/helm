@@ -1,0 +1,5 @@
+imports: ["jinja_template_with_import.jinja", "helpers/common.jinja"]
+
+resources:
+- name: jinja_template_with_import_name
+  type: jinja_template_with_import.jinja

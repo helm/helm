@@ -1,0 +1,19 @@
+config:
+  resources:
+  - name: myFrontend
+    properties:
+      machineSize: big
+    type: compute.v1.instance
+  - name: myBackend
+    properties:
+      machineSize: big
+    type: compute.v1.instance
+layout:
+  resources:
+  - name: myFrontend
+    type: compute.v1.instance
+  - name: python_noparams_name
+    resources:
+    - name: myBackend
+      type: compute.v1.instance
+    type: python_noparams.py

@@ -1,0 +1,47 @@
+config:
+  resources:
+  - name: master-address-firewall
+    properties:
+      allowed:
+      - IPProtocol: tcp
+        ports:
+        - '4505'
+        - '4506'
+      network: https://www.googleapis.com/compute/v1/projects/my-project/global/networks/default
+      sourceRanges:
+      - 0.0.0.0/0
+    type: compute.v1.firewall
+  - name: master-address
+    properties:
+      disks:
+      - autoDelete: true
+        boot: true
+        deviceName: boot
+        initializeParams:
+          sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-7-wheezy-v20140619
+        type: PERSISTENT
+      machineType: https://www.googleapis.com/compute/v1/projects/my-project/zones/my-zone/machineTypes/f1-micro
+      metadata:
+        items:
+        - key: startup-script
+          value: startup-script-value
+      networkInterfaces:
+      - accessConfigs:
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+        network: https://www.googleapis.com/compute/v1/projects/my-project/global/networks/default
+      zone: my-zone
+    type: compute.v1.instance
+layout:
+  resources:
+  - name: python_template_name
+    properties:
+      masterAddress: master-address
+      project: my-project
+      zone: my-zone
+    resources:
+    - name: master-address-firewall
+      type: compute.v1.firewall
+    - name: master-address
+      type: compute.v1.instance
+    type: python_template.py

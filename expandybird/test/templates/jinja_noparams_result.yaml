@@ -1,0 +1,41 @@
+config:
+  resources:
+  - name: name1
+    properties:
+      disks:
+      - autoDelete: true
+        boot: true
+        deviceName: boot
+        initializeParams:
+          diskName: disk-created-by-cloud-config-test-deployment
+          sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-7-wheezy-v20140619
+        type: PERSISTENT
+      machineType: https://www.googleapis.com/compute/v1/projects/test-project/zones/test-zone/machineTypes/f1-micro
+      networkInterfaces:
+      - network: https://www.googleapis.com/compute/v1/projects/test-project/global/networks/default
+      zone: test-zone
+    type: compute.v1.instance
+  - name: name2
+    properties:
+      disks:
+      - autoDelete: true
+        boot: true
+        deviceName: boot
+        initializeParams:
+          diskName: disk-created-by-cloud-config-test-deployment
+          sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-7-wheezy-v20140619
+        type: PERSISTENT
+      machineType: https://www.googleapis.com/compute/v1/projects/test-project/zones/test-zone/machineTypes/f1-micro
+      networkInterfaces:
+      - network: https://www.googleapis.com/compute/v1/projects/test-project/global/networks/default
+      zone: test-zone
+    type: compute.v1.instance
+layout:
+  resources:
+  - name: jinja_noparams_name
+    resources:
+    - name: name1
+      type: compute.v1.instance
+    - name: name2
+      type: compute.v1.instance
+    type: jinja_noparams.jinja

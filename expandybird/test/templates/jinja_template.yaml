@@ -1,0 +1,10 @@
+imports: ["jinja_template.jinja"]
+
+resources:
+- name: jinja_template_name
+  type: jinja_template.jinja
+  properties:
+    zone: test-zone
+    project: test-project
+    deployment: test-deployment
+

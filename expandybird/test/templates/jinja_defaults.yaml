@@ -1,0 +1,9 @@
+imports:
+- path: "jinja_defaults.jinja"
+- path: "jinja_defaults.jinja.schema"
+
+resources:
+- name: jinja_defaults_name
+  type: jinja_defaults.jinja
+  properties:
+    foo: bar

@@ -1,0 +1,11 @@
+info:
+  title: Schema with a required property
+
+imports:
+
+required:
+  - important
+properties:
+  important:
+    type: string
+

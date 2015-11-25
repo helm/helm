@@ -1,0 +1,13 @@
+config:
+  resources:
+  - name: myFrontend-prod
+    properties:
+      machineSize: big
+    type: compute.v1.instance
+layout:
+  resources:
+  - name: jinja_template_with_import_name
+    resources:
+    - name: myFrontend-prod
+      type: compute.v1.instance
+    type: jinja_template_with_import.jinja

@@ -1,0 +1,18 @@
+resources:
+- type: compute.v1.instance
+  name: vm-created-by-cloud-config-{{ porcelain["deployment"] }}
+  properties:
+    zone: {{ properties["zone"] }}
+    machineType: https://www.googleapis.com/compute/v1/projects/{{ properties["project"] }}/zones/{{ properties["zone"] }}/machineTypes/f1-micro
+    disks:
+    - deviceName: boot
+      type: PERSISTENT
+      boot: true
+      autoDelete: true
+      initializeParams:
+        diskName: disk-created-by-cloud-config-{{ properties["deployment"] }}
+        sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-7-wheezy-v20140619
+    networkInterfaces:
+    - network: https://www.googleapis.com/compute/v1/projects/{{ properties["project"] }}/global/networks/default
+
+

@@ -1,0 +1,18 @@
+info:
+  title: Schema for a basic jinja template that includes default values
+
+imports:
+
+properties:
+  foo:
+    description: blah
+    type: string
+  zone:
+    type: string
+    default: test-zone
+  project:
+    type: string
+    default: test-project
+  deployment:
+    type: string
+    default: test-deployment
