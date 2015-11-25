@@ -160,6 +160,10 @@ func main() {
 		}
 
 		tUrl := getTypeUrl(args[1])
+		if tUrl == "" {
+			// Type is most likely a primitive.
+			tUrl = args[1]
+		}
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tUrl))
 		action := fmt.Sprintf("list deployed instances of type %s", tUrl)
 		callService(path, "GET", action, nil)
@@ -217,10 +221,14 @@ func describeType(args []string) {
 	}
 
 	tUrl := getTypeUrl(args[1])
+	if tUrl == "" {
+		log.Fatalf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1])
+	}
 	schemaUrl := tUrl + ".schema"
 	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil))
 }
 
+// getTypeUrl returns URL or empty if a primitive type.
 func getTypeUrl(tName string) string {
 	if util.IsHttpUrl(tName) {
 		// User can pass raw URL to template.
@@ -230,7 +238,8 @@ func getTypeUrl(tName string) string {
 	// User can pass registry type.
 	t := getRegistryType(tName)
 	if t == nil {
-		log.Fatalf("Invalid type name, must be in the form \"<type-name>:<version>\": %s", tName)
+		// Primitive types have no associated URL.
+		return ""
 	}
 
 	return getDownloadUrl(*t)
