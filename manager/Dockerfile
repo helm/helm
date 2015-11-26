@@ -30,20 +30,7 @@ COPY version version
 
 WORKDIR "$GOPATH"
 
-RUN mkdir -p src/github.com/kubernetes/deployment-manager \
-  && chmod 777 src/github.com/kubernetes/deployment-manager
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/manager \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/manager
-COPY manager src/github.com/kubernetes/deployment-manager/manager
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/util \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/util
-COPY util src/github.com/kubernetes/deployment-manager/util
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/version \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/version
-COPY version src/github.com/kubernetes/deployment-manager/version
+RUN mkdir -p "$GOPATH/src/github.com" && chmod 777 "$GOPATH/src/github.com"
 
 RUN go-wrapper download github.com/kubernetes/deployment-manager/manager/...
 RUN go-wrapper install github.com/kubernetes/deployment-manager/manager/...

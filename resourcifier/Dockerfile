@@ -34,28 +34,7 @@ RUN apt-get purge -y --auto-remove wget
 
 WORKDIR "$GOPATH"
 
-RUN mkdir -p src/github.com/kubernetes/deployment-manager \
-  && chmod 777 src/github.com/kubernetes/deployment-manager
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/expandybird \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/expandybird
-COPY expandybird src/github.com/kubernetes/deployment-manager/expandybird
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/manager \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/manager
-COPY manager src/github.com/kubernetes/deployment-manager/manager
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/resourcifier \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/resourcifier
-COPY resourcifier src/github.com/kubernetes/deployment-manager/resourcifier
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/util \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/util
-COPY util src/github.com/kubernetes/deployment-manager/util
-
-RUN mkdir -p src/github.com/kubernetes/deployment-manager/version \
-  && chmod 777 src/github.com/kubernetes/deployment-manager/version
-COPY version src/github.com/kubernetes/deployment-manager/version
+RUN mkdir -p "$GOPATH/src/github.com" && chmod 777 "$GOPATH/src/github.com"
 
 RUN go-wrapper download github.com/kubernetes/deployment-manager/resourcifier/...
 RUN go-wrapper install github.com/kubernetes/deployment-manager/resourcifier/...
