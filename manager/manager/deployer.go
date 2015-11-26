@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"time"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/common"
@@ -47,7 +47,7 @@ func NewDeployer(url string) Deployer {
 
 type deployer struct {
 	deployerURL string
-	timeout int
+	timeout     int
 }
 
 func (d *deployer) getBaseURL() string {

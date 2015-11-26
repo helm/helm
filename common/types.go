@@ -35,7 +35,6 @@ type Schema struct {
 // the creation, modification and/or deletion of a set of resources.
 type Deployment struct {
 	Name           string           `json:"name"`
-	ID             int              `json:"id"`
 	CreatedAt      time.Time        `json:"createdAt,omitempty"`
 	DeployedAt     time.Time        `json:"deployedAt,omitempty"`
 	ModifiedAt     time.Time        `json:"modifiedAt,omitempty"`

@@ -44,8 +44,8 @@ type Manager interface {
 	Expand(t *common.Template) (*common.Manifest, error)
 
 	// Types
-	ListTypes() []string
-	ListInstances(typeName string) []*common.TypeInstance
+	ListTypes() ([]string, error)
+	ListInstances(typeName string) ([]*common.TypeInstance, error)
 
 	// Registries
 	ListRegistries() ([]*common.Registry, error)
@@ -141,7 +141,7 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 		return nil, err
 	}
 
-	if err := m.repository.AddManifest(t.Name, manifest); err != nil {
+	if err := m.repository.AddManifest(manifest); err != nil {
 		log.Printf("AddManifest failed %v", err)
 		m.repository.SetDeploymentState(t.Name, failState(err))
 		return nil, err
@@ -173,14 +173,14 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 
 	// Update the manifest with the actual state of the reified resources
 	manifest.ExpandedConfig = actualConfig
-	if err := m.repository.SetManifest(t.Name, manifest); err != nil {
+	if err := m.repository.SetManifest(manifest); err != nil {
 		log.Printf("SetManifest failed %v", err)
 		m.repository.SetDeploymentState(t.Name, failState(err))
 		return nil, err
 	}
 
 	// Finally update the type instances for this deployment.
-	m.addTypeInstances(t.Name, manifest.Name, manifest.Layout)
+	m.setTypeInstances(t.Name, manifest.Name, manifest.Layout)
 	return m.repository.GetValidDeployment(t.Name)
 }
 
@@ -200,15 +200,15 @@ func (m *manager) createManifest(t *common.Template) (*common.Manifest, error) {
 	}, nil
 }
 
-func (m *manager) addTypeInstances(deploymentName string, manifestName string, layout *common.Layout) {
-	m.repository.ClearTypeInstances(deploymentName)
+func (m *manager) setTypeInstances(deploymentName string, manifestName string, layout *common.Layout) {
+	m.repository.ClearTypeInstancesForDeployment(deploymentName)
 
 	instances := make(map[string][]*common.TypeInstance)
 	for i, r := range layout.Resources {
 		addTypeInstances(&instances, r, deploymentName, manifestName, fmt.Sprintf("$.resources[%d]", i))
 	}
 
-	m.repository.SetTypeInstances(deploymentName, instances)
+	m.repository.AddTypeInstances(instances)
 }
 
 func addTypeInstances(instances *map[string][]*common.TypeInstance, r *common.LayoutResource, deploymentName string, manifestName string, jsonPath string) {
@@ -220,6 +220,7 @@ func addTypeInstances(instances *map[string][]*common.TypeInstance, r *common.La
 		Manifest:   manifestName,
 		Path:       jsonPath,
 	}
+
 	(*instances)[r.Type] = append((*instances)[r.Type], inst)
 
 	// Add all sub resources if they exist.
@@ -260,11 +261,12 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 		}
 
 		// Create an empty manifest since resources have been deleted.
-		err = m.repository.AddManifest(name, &common.Manifest{Deployment: name, Name: generateManifestName()})
-		if err != nil {
-			log.Printf("Failed to add empty manifest")
-			m.repository.SetDeploymentState(name, failState(err))
-			return nil, err
+		if !forget {
+			manifest := &common.Manifest{Deployment: name, Name: generateManifestName()}
+			if err := m.repository.AddManifest(manifest); err != nil {
+				log.Printf("Failed to add empty manifest")
+				return nil, err
+			}
 		}
 	}
 
@@ -274,8 +276,7 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 	}
 
 	// Finally remove the type instances for this deployment.
-	m.repository.ClearTypeInstances(name)
-
+	m.repository.ClearTypeInstancesForDeployment(name)
 	return d, nil
 }
 
@@ -301,15 +302,14 @@ func (m *manager) PutDeployment(name string, t *common.Template) (*common.Deploy
 	}
 
 	manifest.ExpandedConfig = actualConfig
-	err = m.repository.AddManifest(t.Name, manifest)
+	err = m.repository.AddManifest(manifest)
 	if err != nil {
 		m.repository.SetDeploymentState(name, failState(err))
 		return nil, err
 	}
 
 	// Finally update the type instances for this deployment.
-	m.addTypeInstances(t.Name, manifest.Name, manifest.Layout)
-
+	m.setTypeInstances(t.Name, manifest.Name, manifest.Layout)
 	return m.repository.GetValidDeployment(t.Name)
 }
 
@@ -326,11 +326,11 @@ func (m *manager) Expand(t *common.Template) (*common.Manifest, error) {
 	}, nil
 }
 
-func (m *manager) ListTypes() []string {
+func (m *manager) ListTypes() ([]string, error) {
 	return m.repository.ListTypes()
 }
 
-func (m *manager) ListInstances(typeName string) []*common.TypeInstance {
+func (m *manager) ListInstances(typeName string) ([]*common.TypeInstance, error) {
 	return m.repository.GetTypeInstances(typeName)
 }
 
