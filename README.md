@@ -170,8 +170,13 @@ There is a more detailed [design document](docs/design/design.md) available.
 
 This project is still under active development, so you might run into issues. If
 you do, please don't be shy about letting us know, or better yet, contribute a
-fix or feature. We use the same [development process](CONTRIBUTING.md) as the main
-Kubernetes repository.
+fix or feature.
+
+## Contributing
+Your contributions are welcome.
+
+We use the same [workflow](https://github.com/kubernetes/kubernetes/blob/master/docs/devel/development.md#git-setup),
+[License](LICENSE) and [Contributor License Agreement](CONTRIBUTING.md) as the main Kubernetes repository.
 
 ## Relationship to Google Cloud Platform
 DM uses the same concepts and languages as

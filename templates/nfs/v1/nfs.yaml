@@ -1,2 +1,0 @@
-- name: nfs
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/nfs/v1/nfs.jinja

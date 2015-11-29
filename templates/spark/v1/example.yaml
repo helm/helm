@@ -1,6 +1,0 @@
-imports:
-- path: spark.jinja
-
-resources:
-- name: spark
-  type: spark.jinja

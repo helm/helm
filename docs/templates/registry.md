@@ -11,6 +11,9 @@ without some organizing principles. This document defines conventions for
 template registries that store templates in Github and organize them by name
 and by version to make sharing easier.
 
+For a working example of a template registry, please see the
+[Kubernetes Template Registry](https://github.com/kubernetes/application-dm-templates).
+
 ## Template Versions
 
 Since templates referenced by configurations and by other templates may change
@@ -55,6 +58,8 @@ with any supporting files it might require, such as an optional schema file
 named `<template-name>.py.schema` or `<template-name>.jinja.schema`, respectively, 
 helper files used by the implementation, files imported by the schema, and so on.
 
+### Basic structure
+
 These constraints impose a basic level of organization on the template definition
 by ensuring that the template and all of its supporting files at least live in the
 same directory, and that the template and schema files follow well-defined naming
@@ -67,17 +72,17 @@ might be some benefits in allowing templates to share a directory, such as avoid
 the duplication of helper files, the cost of discovering and maintaining templates
 would quickly outweigh them as the number of templates in the directory increased.
 
-Every template version must therefore live in its own directory, and that
-directory must contain one and only one top-level template file and supporting
-files for one and only template version.
-
-Since it may reduce management overhead to store many different templates,
+Also, since it may reduce management overhead to store many different templates,
 and/or many versions of the same template, in a single repository, we need a way
 to organize templates within a repository.
 
-A template repository must therefore place all of the versions of a given
-template in directories named for the template versions under a directory named
-for the template.
+Therefore:
+
+* Every template version must live in its own directory named for the version.
+* The version directory must contain one and only one top-level template file 
+and supporting files for one and only template version.
+* All of the version directories for a given template must live under a single
+directory named for the template without extensions.
 
 For example:
 
@@ -98,8 +103,36 @@ templateA/
     helper.py
 ```
 
-The template directories may be organized in any way that makes sense to the
-repository maintainers.
+In this example, `templateA` is a template directory, and `v1`, `v1.01`, and 
+`v1.1` are template version directories that hold the versions of `templateA`.
+
+### Registry based template references
+
+In general, 
+[templates references](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md#template-references)
+are just URLs to HTTP endpoints. However, because a template registry follows
+the conventions outlined above, references to templates in a template registry
+can be shorter and simpler than generalized template references.
+
+In a registry based template reference, the scheme part of the URL and the name
+of the top level template file are omitted, and the version number is delimited
+by a colon. So for example, instead of
+
+```
+https://raw.githubusercontent.com/ownerA/repository2/master/templateA/v1/templateA.py
+```
+
+you can simply write
+
+```
+github.com/ownerA/repository2/templateA:v1
+```
+
+### Grouping templates
+
+Of course, a flat list of templates won't scale, and it's unlikely that any
+fixed taxonomy would work for all registries. Template directories may therefore
+be grouped in any way that makes sense to the repository maintainers.
 
 For example, this flat list of template directories is valid:
 
@@ -133,13 +166,70 @@ templates/
       ...
 ```
 
-## Template Registries
+### Template collections
 
-Github is a convenient place to store and manage templates. A template registry
-is a Github repository that conforms to the requirements detailed in this document.
+A side effect of allowing arbitrary grouping is that we don't know how to find
+templates when searching or listing the contents of a registry without walking
+the directory tree down to the leaves and then backtracking to identify template
+directories.
 
-For a working example of a template registry, please see the
-[Kubernetes Template Registry](https://github.com/kubernetes/deployment-manager/tree/master/templates).
+Since walking the repository is not very efficient, we introduce the concept of
+collections.
+
+#### Definition
+
+A collection is a directory that contains a flat list of templates. Deployment
+manager will only discover templates at the root of a collection.
+
+So for example, in the section above, `templateA` and `templateB` live in the
+`templates` collection in the first example, and in the `big-data` collection in
+the second example.
+
+A registry may contain any number of collections. A single, unnamed collection
+is implied at the root of every registry, but additional named collections may
+be created at other points in the directory structure.
+
+#### Usage
+
+Of course, collections are useless if we can't reference them efficiently. A
+registry based template reference may therefore include a collection name. A
+collection name is the only path segment allowed between the repository name and
+the template name. So, for example, this is a valid template reference:
+
+```
+github.com/ownerA/repository2/collectionM/templateA:v1
+```
+
+but this is not:
+
+```
+github.com/ownerA/repository2/multiple/path/segments/are/not/allowed/templateA:v1
+```
+
+Because it may appear in a template reference, a collection name must not contain
+URL path separators (i.e., slashes). However, it may contain other delimiters
+(e.g., dots). So, for example, this is a valid template reference:
+
+```
+github.com/ownerA/repository2/dot.delimited.strings.are.allowed/templateA:v1
+```
+
+#### Mapping
+
+Currently, deployment manager maps collection names to directories. This means
+that registries can be at most one level deep. Soon, however, we plan to introduce
+a metadata file at the top level that maps collection names to paths. This will
+allow registries to have arbitrary organizations, by making it possible to place
+collections anywhere in the directory tree.
+
+When the metadata file is introduced, the current behavior will be the default.
+So, if the metadata file is not found in a given registry, or if a given collection
+name is not found in the metadata file, then deployment manager will simply map
+it to a directory name by default. This approach allows us to define collections
+at the top level now, and then move them to new locations later without breaking
+existing template references.
+
+## Using Template Registries
 
 ### Accessing a template registry
 
@@ -180,8 +270,8 @@ $ dm --properties prop1=value1,prop2=value2 deploy <template-name>:<version>
 DM relies on Github to provide the tools and processes needed to add, modify or
 delete the contents of a template registry. Conventions for changing a template
 registry are defined by the registry maintainers, and should be published in the
-top level README.md or a file it references, following usual Github practices.
+top level README.md or a file it references, following standard Github practices.
 
 The [Kubernetes Template Registry](https://github.com/kubernetes/deployment-manager/tree/master/templates)
-follows the [git setup](https://github.com/kubernetes/kubernetes/blob/master/docs/devel/development.md#git-setup)
+follows the [workflow](https://github.com/kubernetes/kubernetes/blob/master/docs/devel/development.md#git-setup)
 used by Kubernetes.
