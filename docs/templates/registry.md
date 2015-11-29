@@ -41,13 +41,19 @@ manner, and
 
 When resolving a template reference, DM will attempt to fetch the template with
 the highest available PATCH version that has the same MAJOR and MINOR versions as
-the referenced version.
+the referenced version. However, it will not automatically substitute a higher
+MINOR version for a requested MINOR version with the same MAJOR version, since
+although it would be backward compatible, it would not have the same feature set.
+You must therefore explicitly request the higher MINOR version in this situation
+to obtain the additional features.
 
 ## Template Validation
 
 Every template version should include a configuration named `example.yaml`
-that can be used to deploy an instance of the template. This file may be used,
-along with any supporting files it requires, to validate the template.
+that can be used to deploy an instance of the template. This file, along with
+any supporting files it requires, may be used automatically in the future by
+a template testing framework to validate the template, and should therefore be
+well formed. 
 
 ## Template Organization
 
@@ -79,10 +85,10 @@ to organize templates within a repository.
 Therefore:
 
 * Every template version must live in its own directory named for the version.
-* The version directory must contain one and only one top-level template file 
-and supporting files for one and only template version.
-* All of the version directories for a given template must live under a single
-directory named for the template without extensions.
+* The version directory must contain exactly one top-level template file and
+supporting files for exactly one template version.
+* All of the versions of a given template must live under a directory named for
+the template without extensions.
 
 For example:
 
@@ -127,6 +133,14 @@ you can simply write
 ```
 github.com/ownerA/repository2/templateA:v1
 ```
+
+The general pattern for a registry based template reference is as follows:
+
+```
+github.com/<owner>/<repository>/<collection>/<template>:<version>
+```
+
+The `collection` segment, described below, is optional, and may be omitted.
 
 ### Grouping templates
 
@@ -181,9 +195,8 @@ collections.
 A collection is a directory that contains a flat list of templates. Deployment
 manager will only discover templates at the root of a collection.
 
-So for example, in the section above, `templateA` and `templateB` live in the
-`templates` collection in the first example, and in the `big-data` collection in
-the second example.
+So for example, `templateA` and `templateB` live in the `templates` collection
+in the first example above, and in the `big-data` collection in the second example.
 
 A registry may contain any number of collections. A single, unnamed collection
 is implied at the root of every registry, but additional named collections may
@@ -216,18 +229,18 @@ github.com/ownerA/repository2/dot.delimited.strings.are.allowed/templateA:v1
 
 #### Mapping
 
-Currently, deployment manager maps collection names to directories. This means
-that registries can be at most one level deep. Soon, however, we plan to introduce
-a metadata file at the top level that maps collection names to paths. This will
-allow registries to have arbitrary organizations, by making it possible to place
-collections anywhere in the directory tree.
+Currently, deployment manager maps collection names to top level directory names.
+This mapping implies that registries can be at most one level deep. Soon, however,
+we plan to introduce a metadata file at the top level that maps collection names
+to paths. This feature will allow registries to have arbitrary organizations, by
+making it possible to place collections anywhere in the directory tree.
 
 When the metadata file is introduced, the current behavior will be the default.
 So, if the metadata file is not found in a given registry, or if a given collection
 name is not found in the metadata file, then deployment manager will simply map
-it to a directory name by default. This approach allows us to define collections
-at the top level now, and then move them to new locations later without breaking
-existing template references.
+it to a top level directory name by default. This approach allows us to define
+collections at the top level now, and then move them to new locations later without
+breaking existing template references.
 
 ## Using Template Registries
 
@@ -241,25 +254,24 @@ $ dm deploy <template-name>:<version>
 ```
 
 To resolve the template reference, `dm` looks for a template version directory
-with the given version in the template directory with the given template name.
+with the given version in the template directory with the given template name in
+the default template registry.
 
-By default, it uses the Kubernetes Template Registry. However, you can set a
-different default using the `--registry` flag:
-
-```
-$ dm --registry my-org/my-repo/my-root-directory deploy <template-name>:<version>
-```
-
-Alternatively, you can qualify the template name with the path to the template
-directory within the registry, like this:
+The default is the [Kubernetes Template Registry](https://github.com/kubernetes/application-dm-templates),
+but you can set a different default using the `--registry` flag:
 
 ```
-$ dm deploy my-org/my-repo/my-root-directory/<template-name>:<version>
+$ dm --registry my-org/my-repo/my-collection deploy <template-name>:<version>
 ```
 
-Specifying the path to the template directory this way doesn't change the default.
+Alternatively, you can specify a complete template reference using the pattern
+described above, like this:
 
-For templates that require properties, you can provide them on the command line:
+```
+$ dm deploy github.com/my-org/my-repo/my-collection/<template-name>:<version>
+```
+
+If a template requires properties, you can provide them on the command line:
 
 ```
 $ dm --properties prop1=value1,prop2=value2 deploy <template-name>:<version>
@@ -272,6 +284,6 @@ delete the contents of a template registry. Conventions for changing a template
 registry are defined by the registry maintainers, and should be published in the
 top level README.md or a file it references, following standard Github practices.
 
-The [Kubernetes Template Registry](https://github.com/kubernetes/deployment-manager/tree/master/templates)
+The [Kubernetes Template Registry](https://github.com/kubernetes/application-dm-templates)
 follows the [workflow](https://github.com/kubernetes/kubernetes/blob/master/docs/devel/development.md#git-setup)
 used by Kubernetes.
