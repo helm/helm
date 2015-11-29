@@ -1,6 +1,6 @@
 resources:
 - name: expandybird
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v1
   properties:
     namespace: dm
     service_port: 8081
@@ -12,7 +12,7 @@ resources:
     labels:
       app: dm
 - name: resourcifier
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v1
   properties:
     namespace: dm
     service_port: 8082
@@ -24,7 +24,7 @@ resources:
     labels:
       app: dm
 - name: manager
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v1
   properties:
     namespace: dm
     service_port: 8080
