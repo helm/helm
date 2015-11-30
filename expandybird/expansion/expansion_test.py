@@ -144,12 +144,7 @@ class ExpansionTest(unittest.TestCase):
 
   def testNoImportErrors(self):
     template = 'resources: \n- type: something.jinja\n  name: something'
-
-    try:
-      expansion.Expand(template, {})
-      self.fail('Expansion should fail')
-    except expansion.ExpansionError as e:
-      self.assertTrue('Unable to find source file' in e.message)
+    expansion.Expand(template, {})
 
   def testInvalidConfig(self):
     template = ReadTestFile('invalid_config.yaml')

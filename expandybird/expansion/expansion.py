@@ -136,7 +136,7 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
   layout = {'name': resource['name'],
             'type': resource['type']}
 
-  if IsTemplate(resource['type']):
+  if IsTemplate(resource['type']) and resource['type'] in imports:
     # A template resource, which contains sub-resources.
     expanded_template = ExpandTemplate(resource, imports, env, validate_schema)
 
@@ -145,7 +145,7 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
 
       # Process all sub-resources of this template.
       for resource_to_process in expanded_template['resources']:
-        processed_resource = _ProcessResource(resource_to_process, imports, env, 
+        processed_resource = _ProcessResource(resource_to_process, imports, env,
                                               validate_schema)
 
         # Append all sub-resources to the config resources, and the resulting
