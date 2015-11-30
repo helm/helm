@@ -262,7 +262,7 @@ func TestExpandTemplate(t *testing.T) {
 		defer ts.Close()
 
 		expander := NewExpander(ts.URL, etc.Resolver)
-		actualResponse, err := expander.ExpandTemplate(validTemplateTestCaseData)
+		actualResponse, err := expander.ExpandTemplate(&validTemplateTestCaseData)
 		if err != nil {
 			message := err.Error()
 			if etc.Error == "" {

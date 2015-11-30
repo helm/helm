@@ -90,7 +90,11 @@ func (tr *typeResolver) ResolveTypes(config *Configuration, imports []*ImportFil
 		// Only fetch HTTP URLs that we haven't already imported.
 		if util.IsHttpUrl(r.Type) && !existing[r.Type] {
 			toFetch = append(toFetch, r.Type)
+
 			fetched[r.Type] = append(fetched[r.Type], &ImportFile{Name: r.Type})
+
+			// Add to existing map so it is not fetched multiple times.
+			existing[r.Type] = true
 		}
 	}
 
