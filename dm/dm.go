@@ -176,11 +176,17 @@ func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
 
 	resp := callHttp(u, method, action, reader)
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, []byte(resp), "", "  "); err != nil {
+	var j interface{}
+	if err := json.Unmarshal([]byte(resp), &j); err != nil {
 		log.Fatalf("Failed to parse JSON response from service: %s", resp)
 	}
-	fmt.Println(prettyJSON.String())
+
+	y, err := yaml.Marshal(j)
+	if err != nil {
+		log.Fatalf("Failed to serialize JSON response from service: %s", resp)
+	}
+
+	fmt.Println(string(y))
 }
 
 func callHttp(path, method, action string, reader io.ReadCloser) string {
