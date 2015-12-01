@@ -64,8 +64,8 @@ var errTest = errors.New("test")
 
 type expanderStub struct{}
 
-func (expander *expanderStub) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
-	if reflect.DeepEqual(t, template) {
+func (expander *expanderStub) ExpandTemplate(t *Template) (*ExpandedTemplate, error) {
+	if reflect.DeepEqual(*t, template) {
 		return &expandedConfig, nil
 	}
 

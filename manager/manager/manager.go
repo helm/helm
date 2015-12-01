@@ -142,7 +142,7 @@ func (m *manager) CreateDeployment(t *Template) (*Deployment, error) {
 }
 
 func (m *manager) createManifest(t *Template) (*Manifest, error) {
-	et, err := m.expander.ExpandTemplate(*t)
+	et, err := m.expander.ExpandTemplate(t)
 	if err != nil {
 		log.Printf("Expansion failed %v", err)
 		return nil, err
@@ -263,7 +263,7 @@ func (m *manager) PutDeployment(name string, t *Template) (*Deployment, error) {
 }
 
 func (m *manager) Expand(t *Template) (*Manifest, error) {
-	et, err := m.expander.ExpandTemplate(*t)
+	et, err := m.expander.ExpandTemplate(t)
 	if err != nil {
 		log.Printf("Expansion failed %v", err)
 		return nil, err

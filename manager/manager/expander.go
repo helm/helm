@@ -37,7 +37,7 @@ type ExpandedTemplate struct {
 
 // Expander abstracts interactions with the expander and deployer services.
 type Expander interface {
-	ExpandTemplate(t Template) (*ExpandedTemplate, error)
+	ExpandTemplate(t *Template) (*ExpandedTemplate, error)
 }
 
 // NewExpander returns a new initialized Expander.
@@ -110,7 +110,9 @@ func walkLayout(l *Layout, toReplace map[string]*LayoutResource) map[string]*Lay
 }
 
 // ExpandTemplate expands the supplied template, and returns a configuration.
-func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
+// It will also update the imports in the provided template if any were added
+// during type resolution.
+func (e *expander) ExpandTemplate(t *Template) (*ExpandedTemplate, error) {
 	// We have a fencepost problem here.
 	// 1. Start by trying to resolve any missing templates
 	// 2. Expand the configuration using all the of the imports available to us at this point
@@ -129,17 +131,17 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 	newImp, err := e.typeResolver.ResolveTypes(config, t.Imports)
 	if err != nil {
 		e := fmt.Errorf("type resolution failed: %s", err)
-		return nil, expanderError(&t, e)
+		return nil, expanderError(t, e)
 	}
 
 	t.Imports = append(t.Imports, newImp...)
 
 	for {
 		// Now expand with everything imported.
-		result, err := e.expandTemplate(&t)
+		result, err := e.expandTemplate(t)
 		if err != nil {
 			e := fmt.Errorf("template expansion: %s", err)
-			return nil, expanderError(&t, e)
+			return nil, expanderError(t, e)
 		}
 
 		// Once we set this layout, we're operating on the "needResolve" *LayoutResources,
@@ -151,10 +153,10 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 		}
 		needResolve = walkLayout(result.Layout, needResolve)
 
-		newImp, err = e.typeResolver.ResolveTypes(result.Config, nil)
+		newImp, err = e.typeResolver.ResolveTypes(result.Config, t.Imports)
 		if err != nil {
 			e := fmt.Errorf("type resolution failed: %s", err)
-			return nil, expanderError(&t, e)
+			return nil, expanderError(t, e)
 		}
 
 		// If the new imports contain nothing, we are done. Everything is fully expanded.
@@ -163,16 +165,8 @@ func (e *expander) ExpandTemplate(t Template) (*ExpandedTemplate, error) {
 			return result, nil
 		}
 
+		// Update imports with any new imports from type resolution.
 		t.Imports = append(t.Imports, newImp...)
-		var content []byte
-		content, err = yaml.Marshal(result.Config)
-		t.Content = string(content)
-		if err != nil {
-			e := fmt.Errorf("Unable to unmarshal response from expander (%s): %s",
-				err, result.Config)
-			return nil, expanderError(&t, e)
-		}
-
 	}
 }
 
