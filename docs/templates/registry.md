@@ -26,7 +26,7 @@ consists of a MAJOR version, a MINOR version and a PATCH version, and can
 be represented as a three part string starting with the letter `v` and using
 dot delimiters between the parts. For example `v1.1.0`. 
 
-Parts may be omitted from left to right, up to but not include the MAJOR
+Parts may be omitted from right to left, up to but not include the MAJOR
 version. All omitted parts default to zero. So, for example:
 
 * `v1.1` is equivalent to `v1.1.0`, and
