@@ -137,6 +137,27 @@ func main() {
 		path := fmt.Sprintf("deployments/%s", args[1])
 		action := fmt.Sprintf("get deployment named %s", args[1])
 		callService(path, "GET", action, nil)
+	case "manifest":
+		msg := "Must specify manifest in the form <deployment>/<manifest> or <deployment> to list."
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, msg)
+			usage()
+		}
+
+		s := strings.Split(args[1], "/")
+		ls := len(s)
+		if ls < 1 || ls > 2 {
+			fmt.Fprintln(os.Stderr, fmt.Sprintf("Invalid manifest (%s), %s", args[1], msg))
+			usage()
+		}
+
+		path := fmt.Sprintf("deployments/%s/manifests", s[0])
+		if ls == 2 {
+			path = path + fmt.Sprintf("/%s", s[1])
+		}
+
+		action := fmt.Sprintf("get manifest %s", args[1])
+		callService(path, "GET", action, nil)
 	case "delete":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "No deployment name supplied")
@@ -176,11 +197,17 @@ func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
 
 	resp := callHttp(u, method, action, reader)
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, []byte(resp), "", "  "); err != nil {
+	var j interface{}
+	if err := json.Unmarshal([]byte(resp), &j); err != nil {
 		log.Fatalf("Failed to parse JSON response from service: %s", resp)
 	}
-	fmt.Println(prettyJSON.String())
+
+	y, err := yaml.Marshal(j)
+	if err != nil {
+		log.Fatalf("Failed to serialize JSON response from service: %s", resp)
+	}
+
+	fmt.Println(string(y))
 }
 
 func callHttp(path, method, action string, reader io.ReadCloser) string {
