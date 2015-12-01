@@ -1,0 +1,8 @@
+imports: ["jinja_template_with_env.jinja"]
+
+resources:
+- name: jinja_template_with_env_name
+  type: jinja_template_with_env.jinja
+  properties:
+    zone: test-zone
+

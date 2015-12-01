@@ -1,0 +1,17 @@
+config:
+  resources:
+  - name: B
+    properties:
+      zone: test-zone-b
+    type: compute.v1.instance
+  - name: B
+    type: compute.v1.instance
+layout:
+  resources:
+  - name: A
+    resources:
+    - name: B
+      type: compute.v1.instance
+    type: duplicate_names_B.jinja
+  - name: B
+    type: compute.v1.instance

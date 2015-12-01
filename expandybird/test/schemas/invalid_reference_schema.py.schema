@@ -1,0 +1,8 @@
+info:
+  title: Schema with references to something that doesnt exist
+
+imports:
+
+properties:
+  odd:
+    $ref: '#/wheeeeeee'

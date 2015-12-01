@@ -1,0 +1,9 @@
+imports: ["python_noparams.py"]
+
+resources:
+- name: myFrontend
+  type: compute.v1.instance
+  properties:
+    machineSize: big
+- name: python_noparams_name
+  type: python_noparams.py

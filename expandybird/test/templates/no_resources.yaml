@@ -1,0 +1,6 @@
+imports:
+- path: "no_resources.py"
+
+resources:
+- name: test-resource
+  type: no_resources.py

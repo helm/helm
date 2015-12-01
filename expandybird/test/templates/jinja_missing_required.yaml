@@ -1,0 +1,9 @@
+imports:
+- path: "jinja_missing_required.jinja"
+- path: "jinja_missing_required.jinja.schema"
+
+resources:
+- name: jinja_missing_required_resource_name
+  type: jinja_missing_required.jinja
+  properties:
+    less-important: an optional property

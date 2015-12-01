@@ -1,0 +1,9 @@
+info:
+  title: Schema with a lots of errors in it
+
+imports:
+
+properties:
+  exclusiveMin:
+    type: integer
+    exclusiveMinimum: 0

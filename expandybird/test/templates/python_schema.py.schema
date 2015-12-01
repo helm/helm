@@ -1,0 +1,14 @@
+info:
+  title: A simple python template that has a schema.
+
+imports:
+
+properties:
+  masterAddress:
+    type: string
+    default: slave-address
+    description: masterAddress
+  zone:
+    type: string
+    default: not-test-zone
+    description: zone

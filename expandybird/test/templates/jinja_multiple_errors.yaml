@@ -1,0 +1,12 @@
+imports:
+- path: "jinja_multiple_errors.jinja"
+- path: "jinja_multiple_errors.jinja.schema"
+
+resources:
+- name: jinja_multiple_errors
+  type: jinja_multiple_errors.jinja
+  properties:
+    number: a string
+    short-string: longer than 10 chars
+    odd: 6
+    abc: d

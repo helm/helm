@@ -1,0 +1,7 @@
+resources:
+- name: use-helper
+  type: foo
+  properties:
+    test: {{ properties['barfoo'] }}
+- name: use-helper-helper
+  type: helper.jinja

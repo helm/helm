@@ -1,0 +1,5 @@
+imports: ["python_template_with_import.py", "helpers/common.py", "helpers/common2.py", "helpers/__init__.py"]
+
+resources:
+- name: python_template_with_import_name
+  type: python_template_with_import.py

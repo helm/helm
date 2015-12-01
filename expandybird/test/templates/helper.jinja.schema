@@ -1,0 +1,4 @@
+properties:
+  foobar:
+    type: string
+    default: Use this schema

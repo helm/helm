@@ -1,0 +1,9 @@
+imports: ["python_with_exception.py"]
+
+resources:
+- name: python_with_exception_name
+  type: python_with_exception.py
+  properties:
+    masterAddress: master-address
+    project: my-project
+    zone: my-zone

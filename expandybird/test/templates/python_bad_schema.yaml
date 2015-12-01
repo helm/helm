@@ -1,0 +1,9 @@
+imports:
+- path: "python_bad_schema.py"
+- path: "python_bad_schema.py.schema"
+
+resources:
+- name: python_bad_schema
+  type: python_bad_schema.py
+  properties:
+    innocent: true

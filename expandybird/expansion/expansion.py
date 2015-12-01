@@ -140,12 +140,13 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
     # A template resource, which contains sub-resources.
     expanded_template = ExpandTemplate(resource, imports, env, validate_schema)
 
-    if expanded_template['resources'] is not None:
+    if expanded_template['resources']:
       _ValidateUniqueNames(expanded_template['resources'], resource['type'])
 
       # Process all sub-resources of this template.
       for resource_to_process in expanded_template['resources']:
-        processed_resource = _ProcessResource(resource_to_process, imports, env)
+        processed_resource = _ProcessResource(resource_to_process, imports, env,
+                                              validate_schema)
 
         # Append all sub-resources to the config resources, and the resulting
         # layout of sub-resources.
@@ -228,7 +229,7 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
       resource['properties'] = schema_validation.Validate(
           properties, schema, source_file, imports)
     except schema_validation.ValidationErrors as e:
-      raise ExpansionError(resource, e.message)
+      raise ExpansionError(resource['name'], e.message)
 
   if source_file.endswith('jinja'):
     expanded_template = ExpandJinja(

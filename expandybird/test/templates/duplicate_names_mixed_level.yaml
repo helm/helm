@@ -1,0 +1,7 @@
+imports: ["duplicate_names_B.jinja", "duplicate_names_C.jinja"]
+
+resources:
+- name: A
+  type: duplicate_names_B.jinja
+- name: B
+  type: duplicate_names_C.jinja

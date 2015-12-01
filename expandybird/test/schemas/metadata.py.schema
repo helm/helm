@@ -1,0 +1,20 @@
+info:
+  title: Schema with properties that have extra metadata
+
+imports:
+
+properties:
+  one:
+    type: integer
+    default: 1
+    metadata:
+      gcloud: is great!
+      compute: is awesome
+  alpha:
+    type: string
+    default: alpha
+    metadata:
+      - you
+      - can
+      - do
+      - anything

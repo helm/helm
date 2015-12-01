@@ -1,0 +1,10 @@
+imports:
+- path: "python_schema.py"
+- path: "python_schema.py.schema"
+
+resources:
+- name: python_schema
+  type: python_schema.py
+  properties:
+    masterAddress: master-address
+    zone: my-zone
