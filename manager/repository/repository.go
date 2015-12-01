@@ -152,6 +152,8 @@ func (r *mapBasedRepository) AddManifest(deploymentName string, manifest *manage
 
 		l[manifest.Name] = manifest
 		d.LatestManifest = manifest.Name
+		r.deployments[deploymentName] = *d
+
 		return nil
 	}()
 
