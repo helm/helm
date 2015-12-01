@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 const invalidFileName = "afilethatdoesnotexist"
@@ -36,7 +38,7 @@ type ExpanderTestCase struct {
 	ExpectedError    string
 }
 
-func (etc *ExpanderTestCase) GetTemplate(t *testing.T) *Template {
+func (etc *ExpanderTestCase) GetTemplate(t *testing.T) *common.Template {
 	template, err := NewTemplateFromFileNames(etc.TemplateFileName, etc.ImportFileNames)
 	if err != nil {
 		t.Errorf("cannot create template for test case '%s': %s\n", etc.Description, err)

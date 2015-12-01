@@ -16,8 +16,8 @@ package main
 import (
 	"github.com/ghodss/yaml"
 
+	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
-	"github.com/kubernetes/deployment-manager/manager/manager"
 	"github.com/kubernetes/deployment-manager/registry"
 	"github.com/kubernetes/deployment-manager/util"
 
@@ -286,8 +286,8 @@ func isHttp(t string) bool {
 	return strings.HasPrefix(t, "http://") || strings.HasPrefix(t, "https://")
 }
 
-func loadTemplate(args []string) *expander.Template {
-	var template *expander.Template
+func loadTemplate(args []string) *common.Template {
+	var template *common.Template
 	var err error
 	if len(args) < 2 {
 		fmt.Fprintln(os.Stderr, "No template name or configuration(s) supplied")
@@ -329,7 +329,7 @@ func getRegistryType(fullType string) *registry.Type {
 	}
 }
 
-func buildTemplateFromType(t registry.Type) *expander.Template {
+func buildTemplateFromType(t registry.Type) *common.Template {
 	downloadURL := getDownloadUrl(t)
 
 	props := make(map[string]interface{})
@@ -355,7 +355,7 @@ func buildTemplateFromType(t registry.Type) *expander.Template {
 	// Name the deployment after the type name.
 	name := fmt.Sprintf("%s:%s", t.Name, t.Version)
 
-	config := manager.Configuration{Resources: []*manager.Resource{&manager.Resource{
+	config := common.Configuration{Resources: []*common.Resource{&common.Resource{
 		Name:       name,
 		Type:       downloadURL,
 		Properties: props,
@@ -366,14 +366,14 @@ func buildTemplateFromType(t registry.Type) *expander.Template {
 		log.Fatalf("error: %s\ncannot create configuration for deployment: %v\n", err, config)
 	}
 
-	return &expander.Template{
+	return &common.Template{
 		Name:    name,
 		Content: string(y),
 		// No imports, as this is a single type from repository.
 	}
 }
 
-func marshalTemplate(template *expander.Template) io.ReadCloser {
+func marshalTemplate(template *common.Template) io.ReadCloser {
 	j, err := json.Marshal(template)
 	if err != nil {
 		log.Fatalf("cannot deploy configuration %s: %s\n", template.Name, err)

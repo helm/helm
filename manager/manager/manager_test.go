@@ -18,25 +18,27 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/kubernetes/deployment-manager/common"
 )
 
-var template = Template{Name: "test", Content: "test"}
+var template = common.Template{Name: "test", Content: "test"}
 
-var layout = Layout{
-	Resources: []*LayoutResource{&LayoutResource{Resource: Resource{Name: "test", Type: "test"}}},
+var layout = common.Layout{
+	Resources: []*common.LayoutResource{&common.LayoutResource{Resource: common.Resource{Name: "test", Type: "test"}}},
 }
-var configuration = Configuration{
-	Resources: []*Resource{&Resource{Name: "test", Type: "test"}},
+var configuration = common.Configuration{
+	Resources: []*common.Resource{&common.Resource{Name: "test", Type: "test"}},
 }
-var resourcesWithSuccessState = Configuration{
-	Resources: []*Resource{&Resource{Name: "test", Type: "test", State: &ResourceState{Status: Created}}},
+var resourcesWithSuccessState = common.Configuration{
+	Resources: []*common.Resource{&common.Resource{Name: "test", Type: "test", State: &common.ResourceState{Status: common.Created}}},
 }
-var resourcesWithFailureState = Configuration{
-	Resources: []*Resource{&Resource{
+var resourcesWithFailureState = common.Configuration{
+	Resources: []*common.Resource{&common.Resource{
 		Name: "test",
 		Type: "test",
-		State: &ResourceState{
-			Status: Failed,
+		State: &common.ResourceState{
+			Status: common.Failed,
 			Errors: []string{"test induced error"},
 		},
 	}},
@@ -49,14 +51,14 @@ var expandedConfig = ExpandedTemplate{
 var deploymentName = "deployment"
 
 var manifestName = "manifest-2"
-var manifest = Manifest{Name: manifestName, ExpandedConfig: &configuration, Layout: &layout}
-var manifestMap = map[string]*Manifest{manifest.Name: &manifest}
+var manifest = common.Manifest{Name: manifestName, ExpandedConfig: &configuration, Layout: &layout}
+var manifestMap = map[string]*common.Manifest{manifest.Name: &manifest}
 
-var deployment = Deployment{
+var deployment = common.Deployment{
 	Name: "test",
 }
 
-var deploymentList = []Deployment{deployment, {Name: "test2"}}
+var deploymentList = []common.Deployment{deployment, {Name: "test2"}}
 
 var typeInstMap = map[string][]string{"test": []string{"test"}}
 
@@ -64,7 +66,7 @@ var errTest = errors.New("test")
 
 type expanderStub struct{}
 
-func (expander *expanderStub) ExpandTemplate(t *Template) (*ExpandedTemplate, error) {
+func (expander *expanderStub) ExpandTemplate(t *common.Template) (*ExpandedTemplate, error) {
 	if reflect.DeepEqual(*t, template) {
 		return &expandedConfig, nil
 	}
@@ -74,17 +76,17 @@ func (expander *expanderStub) ExpandTemplate(t *Template) (*ExpandedTemplate, er
 
 type deployerStub struct {
 	FailCreate         bool
-	Created            []*Configuration
+	Created            []*common.Configuration
 	FailDelete         bool
-	Deleted            []*Configuration
+	Deleted            []*common.Configuration
 	FailCreateResource bool
 }
 
 func (deployer *deployerStub) reset() {
 	deployer.FailCreate = false
-	deployer.Created = make([]*Configuration, 0)
+	deployer.Created = make([]*common.Configuration, 0)
 	deployer.FailDelete = false
-	deployer.Deleted = make([]*Configuration, 0)
+	deployer.Deleted = make([]*common.Configuration, 0)
 	deployer.FailCreateResource = false
 }
 
@@ -93,11 +95,11 @@ func newDeployerStub() *deployerStub {
 	return ret
 }
 
-func (deployer *deployerStub) GetConfiguration(cached *Configuration) (*Configuration, error) {
+func (deployer *deployerStub) GetConfiguration(cached *common.Configuration) (*common.Configuration, error) {
 	return nil, nil
 }
 
-func (deployer *deployerStub) CreateConfiguration(configuration *Configuration) (*Configuration, error) {
+func (deployer *deployerStub) CreateConfiguration(configuration *common.Configuration) (*common.Configuration, error) {
 	if deployer.FailCreate {
 		return nil, errTest
 	}
@@ -109,7 +111,7 @@ func (deployer *deployerStub) CreateConfiguration(configuration *Configuration) 
 	return &resourcesWithSuccessState, nil
 }
 
-func (deployer *deployerStub) DeleteConfiguration(configuration *Configuration) (*Configuration, error) {
+func (deployer *deployerStub) DeleteConfiguration(configuration *common.Configuration) (*common.Configuration, error) {
 	if deployer.FailDelete {
 		return nil, errTest
 	}
@@ -117,34 +119,34 @@ func (deployer *deployerStub) DeleteConfiguration(configuration *Configuration) 
 	return nil, nil
 }
 
-func (deployer *deployerStub) PutConfiguration(configuration *Configuration) (*Configuration, error) {
+func (deployer *deployerStub) PutConfiguration(configuration *common.Configuration) (*common.Configuration, error) {
 	return nil, nil
 }
 
 type repositoryStub struct {
 	FailListDeployments    bool
 	Created                []string
-	ManifestAdd            map[string]*Manifest
+	ManifestAdd            map[string]*common.Manifest
 	Deleted                []string
 	GetValid               []string
 	TypeInstances          map[string][]string
 	TypeInstancesCleared   bool
 	GetTypeInstancesCalled bool
 	ListTypesCalled        bool
-	DeploymentStatuses     []DeploymentStatus
+	DeploymentStatuses     []common.DeploymentStatus
 }
 
 func (repository *repositoryStub) reset() {
 	repository.FailListDeployments = false
 	repository.Created = make([]string, 0)
-	repository.ManifestAdd = make(map[string]*Manifest)
+	repository.ManifestAdd = make(map[string]*common.Manifest)
 	repository.Deleted = make([]string, 0)
 	repository.GetValid = make([]string, 0)
 	repository.TypeInstances = make(map[string][]string)
 	repository.TypeInstancesCleared = false
 	repository.GetTypeInstancesCalled = false
 	repository.ListTypesCalled = false
-	repository.DeploymentStatuses = make([]DeploymentStatus, 0)
+	repository.DeploymentStatuses = make([]common.DeploymentStatus, 0)
 }
 
 func newRepositoryStub() *repositoryStub {
@@ -152,14 +154,14 @@ func newRepositoryStub() *repositoryStub {
 	return ret
 }
 
-func (repository *repositoryStub) ListDeployments() ([]Deployment, error) {
+func (repository *repositoryStub) ListDeployments() ([]common.Deployment, error) {
 	if repository.FailListDeployments {
 		return deploymentList, errTest
 	}
 	return deploymentList, nil
 }
 
-func (repository *repositoryStub) GetDeployment(d string) (*Deployment, error) {
+func (repository *repositoryStub) GetDeployment(d string) (*common.Deployment, error) {
 	if d == deploymentName {
 		return &deployment, nil
 	}
@@ -167,32 +169,32 @@ func (repository *repositoryStub) GetDeployment(d string) (*Deployment, error) {
 	return nil, errTest
 }
 
-func (repository *repositoryStub) GetValidDeployment(d string) (*Deployment, error) {
+func (repository *repositoryStub) GetValidDeployment(d string) (*common.Deployment, error) {
 	repository.GetValid = append(repository.GetValid, d)
 	return &deployment, nil
 }
 
-func (repository *repositoryStub) SetDeploymentStatus(name string, status DeploymentStatus) error {
+func (repository *repositoryStub) SetDeploymentStatus(name string, status common.DeploymentStatus) error {
 	repository.DeploymentStatuses = append(repository.DeploymentStatuses, status)
 	return nil
 }
 
-func (repository *repositoryStub) CreateDeployment(d string) (*Deployment, error) {
+func (repository *repositoryStub) CreateDeployment(d string) (*common.Deployment, error) {
 	repository.Created = append(repository.Created, d)
 	return &deployment, nil
 }
 
-func (repository *repositoryStub) DeleteDeployment(d string, forget bool) (*Deployment, error) {
+func (repository *repositoryStub) DeleteDeployment(d string, forget bool) (*common.Deployment, error) {
 	repository.Deleted = append(repository.Deleted, d)
 	return &deployment, nil
 }
 
-func (repository *repositoryStub) AddManifest(d string, manifest *Manifest) error {
+func (repository *repositoryStub) AddManifest(d string, manifest *common.Manifest) error {
 	repository.ManifestAdd[d] = manifest
 	return nil
 }
 
-func (repository *repositoryStub) GetLatestManifest(d string) (*Manifest, error) {
+func (repository *repositoryStub) GetLatestManifest(d string) (*common.Manifest, error) {
 	if d == deploymentName {
 		return repository.ManifestAdd[d], nil
 	}
@@ -200,7 +202,7 @@ func (repository *repositoryStub) GetLatestManifest(d string) (*Manifest, error)
 	return nil, errTest
 }
 
-func (repository *repositoryStub) ListManifests(d string) (map[string]*Manifest, error) {
+func (repository *repositoryStub) ListManifests(d string) (map[string]*common.Manifest, error) {
 	if d == deploymentName {
 		return manifestMap, nil
 	}
@@ -208,7 +210,7 @@ func (repository *repositoryStub) ListManifests(d string) (map[string]*Manifest,
 	return nil, errTest
 }
 
-func (repository *repositoryStub) GetManifest(d string, m string) (*Manifest, error) {
+func (repository *repositoryStub) GetManifest(d string, m string) (*common.Manifest, error) {
 	if d == deploymentName && m == manifestName {
 		return &manifest, nil
 	}
@@ -221,16 +223,16 @@ func (r *repositoryStub) ListTypes() []string {
 	return []string{}
 }
 
-func (r *repositoryStub) GetTypeInstances(t string) []*TypeInstance {
+func (r *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
 	r.GetTypeInstancesCalled = true
-	return []*TypeInstance{}
+	return []*common.TypeInstance{}
 }
 
 func (r *repositoryStub) ClearTypeInstances(d string) {
 	r.TypeInstancesCleared = true
 }
 
-func (r *repositoryStub) SetTypeInstances(d string, is map[string][]*TypeInstance) {
+func (r *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
 	for k, _ := range is {
 		r.TypeInstances[d] = append(r.TypeInstances[d], k)
 	}
@@ -326,7 +328,7 @@ func TestCreateDeployment(t *testing.T) {
 			testDeployer.Created[0], configuration)
 	}
 
-	if testRepository.DeploymentStatuses[0] != DeployedStatus {
+	if testRepository.DeploymentStatuses[0] != common.DeployedStatus {
 		t.Fatal("CreateDeployment success did not mark deployment as deployed")
 	}
 
@@ -355,7 +357,7 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 			testRepository.Created[0])
 	}
 
-	if testRepository.DeploymentStatuses[0] != FailedStatus {
+	if testRepository.DeploymentStatuses[0] != common.FailedStatus {
 		t.Fatal("CreateDeployment failure did not mark deployment as failed")
 	}
 
@@ -385,7 +387,7 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 			testRepository.Created[0])
 	}
 
-	if testRepository.DeploymentStatuses[0] != FailedStatus {
+	if testRepository.DeploymentStatuses[0] != common.FailedStatus {
 		t.Fatal("CreateDeployment failure did not mark deployment as failed")
 	}
 

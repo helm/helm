@@ -22,6 +22,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/util"
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 const (
@@ -31,13 +32,13 @@ const (
 
 // ExpandedTemplate is the structure returned by the expansion service.
 type ExpandedTemplate struct {
-	Config *Configuration `json:"config"`
-	Layout *Layout        `json:"layout"`
+	Config *common.Configuration `json:"config"`
+	Layout *common.Layout        `json:"layout"`
 }
 
 // Expander abstracts interactions with the expander and deployer services.
 type Expander interface {
-	ExpandTemplate(t *Template) (*ExpandedTemplate, error)
+	ExpandTemplate(t *common.Template) (*ExpandedTemplate, error)
 }
 
 // NewExpander returns a new initialized Expander.
@@ -54,7 +55,7 @@ func (e *expander) getBaseURL() string {
 	return fmt.Sprintf("%s/expand", e.expanderURL)
 }
 
-func expanderError(t *Template, err error) error {
+func expanderError(t *common.Template, err error) error {
 	return fmt.Errorf("cannot expand template named %s (%s):\n%s", t.Name, err, t.Content)
 }
 
@@ -90,14 +91,14 @@ func expanderError(t *Template, err error) error {
 // between the name#template key to exist in the layout given a particular choice of naming.
 // In practice, it would be nearly impossible to hit, but consider including properties/name/type
 // into a hash of sorts to make this robust...
-func walkLayout(l *Layout, toReplace map[string]*LayoutResource) map[string]*LayoutResource {
-	ret := map[string]*LayoutResource{}
+func walkLayout(l *common.Layout, imports []*common.ImportFile, toReplace map[string]*common.LayoutResource) map[string]*common.LayoutResource {
+	ret := map[string]*common.LayoutResource{}
 	toVisit := l.Resources
 
 	for len(toVisit) > 0 {
 		lr := toVisit[0]
 		nodeKey := lr.Resource.Name + layoutNodeKeySeparator + lr.Resource.Type
-		if len(lr.Layout.Resources) == 0 && util.IsTemplate(lr.Resource.Type) {
+		if len(lr.Layout.Resources) == 0 && util.IsTemplate(lr.Resource.Type, imports) {
 			ret[nodeKey] = lr
 		} else if toReplace[nodeKey] != nil {
 			toReplace[nodeKey].Resources = lr.Resources
@@ -112,20 +113,20 @@ func walkLayout(l *Layout, toReplace map[string]*LayoutResource) map[string]*Lay
 // ExpandTemplate expands the supplied template, and returns a configuration.
 // It will also update the imports in the provided template if any were added
 // during type resolution.
-func (e *expander) ExpandTemplate(t *Template) (*ExpandedTemplate, error) {
+func (e *expander) ExpandTemplate(t *common.Template) (*ExpandedTemplate, error) {
 	// We have a fencepost problem here.
 	// 1. Start by trying to resolve any missing templates
 	// 2. Expand the configuration using all the of the imports available to us at this point
 	// 3. Expansion may yield additional templates, so we run the type resolution again
 	// 4. If type resolution resulted in new imports being available, return to 2.
-	config := &Configuration{}
+	config := &common.Configuration{}
 	if err := yaml.Unmarshal([]byte(t.Content), config); err != nil {
 		e := fmt.Errorf("Unable to unmarshal configuration (%s): %s", err, t.Content)
 		return nil, e
 	}
 
-	var finalLayout *Layout
-	needResolve := map[string]*LayoutResource{}
+	var finalLayout *common.Layout
+	needResolve := map[string]*common.LayoutResource{}
 
 	// Start things off by attempting to resolve the templates in a first pass.
 	newImp, err := e.typeResolver.ResolveTypes(config, t.Imports)
@@ -151,7 +152,7 @@ func (e *expander) ExpandTemplate(t *Template) (*ExpandedTemplate, error) {
 		if finalLayout == nil {
 			finalLayout = result.Layout
 		}
-		needResolve = walkLayout(result.Layout, needResolve)
+		needResolve = walkLayout(result.Layout, t.Imports, needResolve)
 
 		newImp, err = e.typeResolver.ResolveTypes(result.Config, t.Imports)
 		if err != nil {
@@ -170,7 +171,7 @@ func (e *expander) ExpandTemplate(t *Template) (*ExpandedTemplate, error) {
 	}
 }
 
-func (e *expander) expandTemplate(t *Template) (*ExpandedTemplate, error) {
+func (e *expander) expandTemplate(t *common.Template) (*ExpandedTemplate, error) {
 	j, err := json.Marshal(t)
 	if err != nil {
 		return nil, err

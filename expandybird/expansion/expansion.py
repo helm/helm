@@ -136,7 +136,7 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
   layout = {'name': resource['name'],
             'type': resource['type']}
 
-  if IsTemplate(resource['type']) and resource['type'] in imports:
+  if resource['type'] in imports:
     # A template resource, which contains sub-resources.
     expanded_template = ExpandTemplate(resource, imports, env, validate_schema)
 
@@ -183,11 +183,6 @@ def _ValidateUniqueNames(template_resources, template_name='config'):
     # If this resource doesn't have a name, we will report that error later
 
 
-def IsTemplate(resource_type):
-  """Returns whether a given resource type is a Template."""
-  return resource_type.endswith('.py') or resource_type.endswith('.jinja')
-
-
 def ExpandTemplate(resource, imports, env, validate_schema=False):
   """Expands a template, calling expansion mechanism based on type.
 
@@ -206,12 +201,19 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
     ExpansionError: if there is any error occurred during expansion
   """
   source_file = resource['type']
+  path = resource['type']
 
   # Look for Template in imports.
   if source_file not in imports:
     raise ExpansionError(
         source_file,
         'Unable to find source file %s in imports.' % (source_file))
+
+  # source_file could be a short version of the template (say github short name)
+  # so we need to potentially map this into the fully resolvable name.
+  if 'path' in imports[source_file]:
+    if imports[source_file]['path']:
+      path = imports[source_file]['path']
 
   resource['imports'] = imports
 
@@ -231,13 +233,13 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
     except schema_validation.ValidationErrors as e:
       raise ExpansionError(resource['name'], e.message)
 
-  if source_file.endswith('jinja'):
+  if path.endswith('jinja'):
     expanded_template = ExpandJinja(
-        source_file, imports[source_file], resource, imports)
-  elif source_file.endswith('py'):
+        source_file, imports[source_file]['content'], resource, imports)
+  elif path.endswith('py'):
     # This is a Python template.
     expanded_template = ExpandPython(
-        imports[source_file], source_file, resource)
+        imports[source_file]['content'], source_file, resource)
   else:
     # The source file is not a jinja file or a python file.
     # This in fact should never happen due to the IsTemplate check above.
@@ -262,8 +264,8 @@ def ExpandJinja(file_name, source_template, resource, imports):
     source_template: string, the content of jinja file to be render
     resource: resource object, the resource that contains parameters to the
         jinja file
-    imports: map from string to string, the map of imported files names
-        and contents
+    imports: map from string to map {name, path}, the map of imported files names
+        fully resolved path and contents
   Returns:
     The final expanded template
   Raises:
@@ -362,9 +364,10 @@ def main():
       print >>sys.stderr, 'Invalid import definition at argv pos %d' % idx
       sys.exit(1)
     name = sys.argv[idx]
-    value = sys.argv[idx + 1]
-    imports[name] = value
-    idx += 2
+    path = sys.argv[idx + 1]
+    value = sys.argv[idx + 2]
+    imports[name] = {'content': value, 'path': path}
+    idx += 3
 
   env = {}
   env['deployment'] = os.environ['DEPLOYMENT_NAME']
