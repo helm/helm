@@ -15,6 +15,7 @@ package service
 
 import (
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/util"
 
 	"errors"
@@ -40,7 +41,7 @@ func NewService(handler restful.RouteFunction) *Service {
 	webService.Produces(restful.MIME_JSON, restful.MIME_XML)
 	webService.Route(webService.POST("/expand").To(handler).
 		Doc("Expand a template.").
-		Reads(&expander.Template{}))
+		Reads(&common.Template{}))
 	return &Service{webService}
 }
 
@@ -60,7 +61,7 @@ func (s *Service) Register(container *restful.Container) {
 func NewExpansionHandler(backend expander.Expander) restful.RouteFunction {
 	return func(req *restful.Request, resp *restful.Response) {
 		util.LogHandlerEntry("expandybird: expand", req.Request)
-		template := &expander.Template{}
+		template := &common.Template{}
 		if err := req.ReadEntity(&template); err != nil {
 			logAndReturnErrorFromHandler(http.StatusBadRequest, err.Error(), resp)
 			return

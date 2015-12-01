@@ -18,6 +18,7 @@ import (
 
 	"fmt"
 	"log"
+	"strings"
 )
 
 // GithubRegistry implements the Registry interface that talks to github.
@@ -66,7 +67,11 @@ func (g *GithubRegistry) List() ([]Type, error) {
 
 // GetURL fetches the download URL for a given Type and checks for existence of a schema file.
 func (g *GithubRegistry) GetURL(t Type) (string, error) {
-	path := g.path + "/" + t.Name + "/" + t.Version
+	path,err := g.MakeRepositoryPath(t)
+	if err != nil {
+		return "", err
+	}
+	log.Printf("Got repository path: %s", path)
 	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		log.Printf("Failed to list versions at path: %s: %v", path, err)
@@ -113,4 +118,35 @@ func (g *GithubRegistry) getDirs(dir string) ([]string, error) {
 	}
 
 	return dirs, nil
+}
+
+func (g *GithubRegistry) mapCollection(collection string) (string, error) {
+	if strings.ContainsAny(collection, "/") {
+		return "", fmt.Errorf("collection must not contain slashes, got %s", collection)
+	}
+	// TODO(vaikas): Implement lookup from the root metadata file to map collection to a path
+	return collection, nil
+}
+
+// MakeRepositoryPath constructs a github path to a given type based on a repository, and type name and version.
+// The returned repository path will be of the form:
+// [GithubRegistry.path/][Type.Collection]/Type.Name/Type.Version
+// Type.Collection will be mapped using mapCollection in the future, for now it's a straight
+// 1:1 mapping (if given)
+func (g *GithubRegistry) MakeRepositoryPath(t Type) (string, error) {
+	log.Printf("Making repository path: %v", t)
+	// First map the collection
+	collection, err := g.mapCollection(t.Collection)
+	if err != nil {
+		return "", err
+	}
+	// Construct the return path
+	p := ""
+	if len(g.path) > 0 {
+		p += g.path + "/"
+	}
+	if len(collection) > 0 {
+		p += collection + "/"
+	}
+	return p + t.Name + "/" + t.Version, nil
 }

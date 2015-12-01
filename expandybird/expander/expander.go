@@ -23,11 +23,12 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 // Expander abstracts interactions with the expander and deployer services.
 type Expander interface {
-	ExpandTemplate(template *Template) (string, error)
+	ExpandTemplate(template *common.Template) (string, error)
 }
 
 type expander struct {
@@ -39,24 +40,10 @@ func NewExpander(binary string) Expander {
 	return &expander{binary}
 }
 
-// ImportFile describes a file that we import into our templates
-// TODO: Encode the Content so that it doesn't get mangled.
-type ImportFile struct {
-	Name    string `json:"name,omitempty"`
-	Content string `json:"content"`
-}
-
-// A Template defines a single deployment.
-type Template struct {
-	Name    string        `json:"name"`
-	Content string        `json:"content"`
-	Imports []*ImportFile `json:"imports"`
-}
-
 // NewTemplateFromRootTemplate creates and returns a new template whose content
 // and imported files are constructed from reading the root template, parsing out
 // the imports section and reading the imports from there
-func NewTemplateFromRootTemplate(templateFileName string) (*Template, error) {
+func NewTemplateFromRootTemplate(templateFileName string) (*common.Template, error) {
 	templateDir := filepath.Dir(templateFileName)
 	content, err := ioutil.ReadFile(templateFileName)
 	if err != nil {
@@ -85,14 +72,14 @@ func NewTemplateFromRootTemplate(templateFileName string) (*Template, error) {
 func NewTemplateFromFileNames(
 	templateFileName string,
 	importFileNames []string,
-) (*Template, error) {
+) (*common.Template, error) {
 	name := path.Base(templateFileName)
 	content, err := ioutil.ReadFile(templateFileName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read template file (%s): %s", err, templateFileName)
 	}
 
-	imports := []*ImportFile{}
+	imports := []*common.ImportFile{}
 	for _, importFileName := range importFileNames {
 		importFileData, err := ioutil.ReadFile(importFileName)
 		if err != nil {
@@ -100,13 +87,13 @@ func NewTemplateFromFileNames(
 		}
 
 		imports = append(imports,
-			&ImportFile{
+			&common.ImportFile{
 				Name:    path.Base(importFileName),
 				Content: string(importFileData),
 			})
 	}
 
-	return &Template{
+	return &common.Template{
 		Name:    name,
 		Content: string(content),
 		Imports: imports,
@@ -190,7 +177,7 @@ func (eResponse *ExpansionResponse) Unmarshal() (*ExpansionResult, error) {
 
 // ExpandTemplate passes the given configuration to the expander and returns the
 // expanded configuration as a string on success.
-func (e *expander) ExpandTemplate(template *Template) (string, error) {
+func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
 	if e.ExpansionBinary == "" {
 		message := fmt.Sprintf("expansion binary cannot be empty")
 		return "", fmt.Errorf("error expanding template %s: %s", template.Name, message)
@@ -216,7 +203,7 @@ func (e *expander) ExpandTemplate(template *Template) (string, error) {
 	}
 
 	for _, imp := range template.Imports {
-		cmd.Args = append(cmd.Args, imp.Name, imp.Content)
+		cmd.Args = append(cmd.Args, imp.Name, imp.Path, imp.Content)
 	}
 
 	if err := cmd.Start(); err != nil {

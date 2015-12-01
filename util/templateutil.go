@@ -15,9 +15,39 @@ package util
 
 import (
 	"strings"
+	"log"
+
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 // IsTemplate returns whether a given type is a template.
-func IsTemplate(t string) bool {
-	return strings.HasSuffix(t, ".py") || strings.HasSuffix(t, ".jinja")
+func IsTemplate(t string, imports []*common.ImportFile) bool {
+	log.Printf("IsTemplate: %s : %+v", t, imports)
+	for _, imp := range imports {
+		log.Printf("Checking: %s", imp.Name)
+		if imp.Name == t {
+			return true
+		}
+	}
+	return false
+}
+
+// IsGithubShortType returns whether a given type is a type description in a short format to a github repository type.
+// For now, this means using github types:
+// github.com/owner/repo/qualifier/type:version
+// for example:
+// github.com/kubernetes/application-dm-templates/storage/redis:v1
+func IsGithubShortType(t string) bool {
+	if !strings.HasPrefix(t, "github.com/") {
+		return false
+	}
+	s := strings.Split(t, "/")
+	if len(s) != 5 {
+		return false
+	}
+	v := strings.Split(s[4], ":")
+	if len(v) != 2 {
+		return false
+	}
+	return true
 }

@@ -20,7 +20,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/kubernetes/deployment-manager/manager/manager"
+	"github.com/kubernetes/deployment-manager/common"
 	"github.com/ghodss/yaml"
 )
 
@@ -77,7 +77,7 @@ func (e *Error) appendError(err error) error {
 // action on it (create/delete/replace) and updates the State of the resource with the resulting
 // status. In case of errors with a resource, Resource.State.Errors is set. 
 // and then updates the deployment with the completion status and completion time.
-func (a *Configurator) Configure(c *manager.Configuration, o operation) (string, error) {
+func (a *Configurator) Configure(c *common.Configuration, o operation) (string, error) {
 	errors := &Error{}
 	var output []string
 	for i, resource := range c.Resources {
@@ -99,8 +99,8 @@ func (a *Configurator) Configure(c *manager.Configuration, o operation) (string,
 			if err != nil {
 				e := fmt.Errorf("yaml marshal failed for resource: %v: %v", resource.Name, err)
 				log.Println(errors.appendError(e))
-				c.Resources[i].State = &manager.ResourceState{
-					Status: manager.Aborted,
+				c.Resources[i].State = &common.ResourceState{
+					Status: common.Aborted,
 					Errors: []string{e.Error()},
 				}
 				continue
@@ -122,8 +122,8 @@ func (a *Configurator) Configure(c *manager.Configuration, o operation) (string,
 
 		if err := cmd.Start(); err != nil {
 			e := fmt.Errorf("cannot start kubetcl for resource: %v: %v", resource.Name, err)
-			c.Resources[i].State = &manager.ResourceState{
-				Status: manager.Failed,
+			c.Resources[i].State = &common.ResourceState{
+				Status: common.Failed,
 				Errors: []string{e.Error()},
 			}
 			log.Println(errors.appendError(e))
@@ -137,8 +137,8 @@ func (a *Configurator) Configure(c *manager.Configuration, o operation) (string,
 				log.Println(resource.Name + " not found, treating as success for delete")
 			} else {
 				e := fmt.Errorf("kubetcl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
-				c.Resources[i].State = &manager.ResourceState{
-					Status: manager.Failed,
+				c.Resources[i].State = &common.ResourceState{
+					Status: common.Failed,
 					Errors: []string{e.Error()},
 				}
 				log.Println(errors.appendError(e))
@@ -147,7 +147,7 @@ func (a *Configurator) Configure(c *manager.Configuration, o operation) (string,
 		}
 
 		output = append(output, combined.String())
-		c.Resources[i].State = &manager.ResourceState{Status: manager.Created}
+		c.Resources[i].State = &common.ResourceState{Status: common.Created}
 		log.Printf("kubectl succeeded for resource: %v: SysTime: %v UserTime: %v\n%v",
 			resource.Name, cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime(), combined.String())
 	}

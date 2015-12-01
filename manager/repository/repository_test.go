@@ -14,7 +14,7 @@ limitations under the License.
 package repository
 
 import (
-	"github.com/kubernetes/deployment-manager/manager/manager"
+	"github.com/kubernetes/deployment-manager/common"
 
 	"fmt"
 	"testing"
@@ -77,7 +77,7 @@ func testCreateDeploymentWithManifests(t *testing.T, count int) {
 
 	for i := 0; i < count; i++ {
 		var manifestName = fmt.Sprintf("manifest-%d", i)
-		manifest := manager.Manifest{Deployment: deploymentName, Name: manifestName}
+		manifest := common.Manifest{Deployment: deploymentName, Name: manifestName}
 		err := r.AddManifest(deploymentName, &manifest)
 		if err != nil {
 			t.Fatalf("AddManifest failed: %v", err)
@@ -136,7 +136,7 @@ func TestRepositoryDeleteWorksWithNoLatestManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed: %v", err)
 	}
-	if dDeleted.Status != manager.DeletedStatus {
+	if dDeleted.Status != common.DeletedStatus {
 		t.Fatalf("Deployment Status is not deleted")
 	}
 	if _, err := r.ListManifests(deploymentName); err == nil {
@@ -148,7 +148,7 @@ func TestRepositoryDeleteDeploymentWorksNoForget(t *testing.T) {
 	var deploymentName = "mydeployment"
 	var manifestName = "manifest-0"
 	r := NewMapBasedRepository()
-	manifest := manager.Manifest{Deployment: deploymentName, Name: manifestName}
+	manifest := common.Manifest{Deployment: deploymentName, Name: manifestName}
 	_, err := r.CreateDeployment(deploymentName)
 	if err != nil {
 		t.Fatalf("CreateDeployment failed: %v", err)
@@ -161,7 +161,7 @@ func TestRepositoryDeleteDeploymentWorksNoForget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed: %v", err)
 	}
-	if dDeleted.Status != manager.DeletedStatus {
+	if dDeleted.Status != common.DeletedStatus {
 		t.Fatalf("Deployment Status is not deleted")
 	}
 }
@@ -170,7 +170,7 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T) {
 	var deploymentName = "mydeployment"
 	var manifestName = "manifest-0"
 	r := NewMapBasedRepository()
-	manifest := manager.Manifest{Deployment: deploymentName, Name: manifestName}
+	manifest := common.Manifest{Deployment: deploymentName, Name: manifestName}
 	_, err := r.CreateDeployment(deploymentName)
 	if err != nil {
 		t.Fatalf("CreateDeployment failed: %v", err)
@@ -183,7 +183,7 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed: %v", err)
 	}
-	if dDeleted.Status != manager.CreatedStatus {
+	if dDeleted.Status != common.CreatedStatus {
 		t.Fatalf("Deployment Status is not created")
 	}
 }
@@ -191,9 +191,9 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T) {
 func TestRepositoryTypeInstances(t *testing.T) {
 	r := NewMapBasedRepository()
 
-	d1Map := map[string][]*manager.TypeInstance{
-		"t1": []*manager.TypeInstance{
-			&manager.TypeInstance{
+	d1Map := map[string][]*common.TypeInstance{
+		"t1": []*common.TypeInstance{
+			&common.TypeInstance{
 				Name:       "i1",
 				Type:       "t1",
 				Deployment: "d1",
@@ -203,9 +203,9 @@ func TestRepositoryTypeInstances(t *testing.T) {
 		},
 	}
 
-	d2Map := map[string][]*manager.TypeInstance{
-		"t2": []*manager.TypeInstance{
-			&manager.TypeInstance{
+	d2Map := map[string][]*common.TypeInstance{
+		"t2": []*common.TypeInstance{
+			&common.TypeInstance{
 				Name:       "i2",
 				Type:       "t2",
 				Deployment: "d2",
@@ -215,9 +215,9 @@ func TestRepositoryTypeInstances(t *testing.T) {
 		},
 	}
 
-	d3Map := map[string][]*manager.TypeInstance{
-		"t2": []*manager.TypeInstance{
-			&manager.TypeInstance{
+	d3Map := map[string][]*common.TypeInstance{
+		"t2": []*common.TypeInstance{
+			&common.TypeInstance{
 				Name:       "i3",
 				Type:       "t2",
 				Deployment: "d3",
