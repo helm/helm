@@ -2,28 +2,44 @@
 
 [![Go Report Card](http://goreportcard.com/badge/kubernetes/deployment-manager)](http://goreportcard.com/report/kubernetes/deployment-manager)
 
-Deployment Manager (DM) provides parameterized templates for Kubernetes resources,
-such as:
+Deployment Manager (DM) `dm` makes it easy to create, describe, update and
+delete Kubernetes resources using declarative configuration. A configuration is
+just a `YAML` file that configures Kubernetes resources or supplies parameters
+to templates. Templates are just YAML files with [Jinja](http://jinja.pocoo.org/)
+mark up or Python scripts.
 
-* [Replicated Service](templates/replicatedservice/v1)
-* [Redis](templates/redis/v1)
+For example, this simple configuration deploys the Guestbook example:
 
-Templates live in ordinary Github repositories called template registries. This
-Github repository contains a template registry, as well as the DM source code.
+```
+resources:
+- name: frontend
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v1
+  properties:
+    service_port: 80
+    container_port: 80
+    external_service: true
+    replicas: 3
+    image: gcr.io/google_containers/example-guestbook-php-redis:v3
+- name: redis
+  type: github.com/kubernetes/application-dm-templates/storage/redis:v1
+  properties: null
+```
 
-You can use DM to deploy simple configurations that use templates, such as:
+It uses two templates. The front end is a 
+[replicated service](https://github.com/kubernetes/application-dm-templates/common/replicatedservice/v1),
+which creates a service and replication controller with matching selectors, and
+the back end is a 
+[Redis cluster](https://github.com/kubernetes/application-dm-templates/storage/redis/v1),
+which creates a Redis master and two Redis slaves.
 
-* [Guestbook](examples/guestbook/guestbook.yaml)
-* [Deployment Manager](examples/bootstrap/bootstrap.yaml)
+Templates can use other templates, making it easy to create larger structures
+from smaller building blocks. For example, the Redis template uses the replicated
+service template to create the Redis master, and then again to create each Redis
+slave.
 
-A configuration is just a `YAML` file that supplies parameters. (Yes, 
-you're reading that second example correctly. It uses DM to deploy itself. See
-[examples/bootstrap/README.md](examples/bootstrap/README.md) for more information.)
-
-DM runs server side, in your Kubernetes cluster, so it can tell you what types
-you've instantiated there, including both primitive types and templates, what
-instances you've created of a given type, and even how the instances are organized.
-So, you can ask questions like:
+DM runs server side, in your Kubernetes cluster, so it can tell you what templates
+you've instantiated there, what resources they created, and even how the resources
+are organized. So, for example, you can ask questions like:
 
 * What Redis instances are running in this cluster?
 * What Redis master and slave services are part of this Redis instance?
@@ -32,13 +48,17 @@ So, you can ask questions like:
 Because DM stores its state in the cluster, not on your workstation, you can ask
 those questions from any client at any time.
 
-For more information about types, including both primitive types and templates,
-see the [design document](docs/design/design.md#types).
+Templates live in ordinary Github repositories called template registries. See
+the [Kubernetes Template Registry](https://github.com/kubernetes/application-dm-templates)
+for curated Kubernetes applications using Deployment Manager templates.
+
+For more information about configurations and templates, see the
+[design document](docs/design/design.md#types).
 
 Please hang out with us in
 [the Slack chat room](https://kubernetes.slack.com/messages/sig-configuration/)
 and/or [the Google Group](https://groups.google.com/forum/#!forum/kubernetes-sig-config)
-for the Kubernetes configuration SIG. Your feedback and contributions are welcome.
+for the Kubernetes configuration SIG.
 
 ## Installing Deployment Manager
 
@@ -84,7 +104,8 @@ parameters supplied on the command line, and deploy the resulting configurations
 #### Deploying a configuration
 
 `dm` can deploy a configuration from a file, or read one from `stdin`. This
-command deploys the canonical Guestbook example from the examples directory:
+command deploys the Guestbook example using the configuration shown above from
+the examples directory in this project:
 
 ```
 dm deploy examples/guestbook/guestbook.yaml
@@ -105,29 +126,29 @@ For more information about this example, see [examples/guestbook/README.md](exam
 #### Deploying a template directly
 
 You can also deploy a template directly, without a configuration. This command
-deploys a redis cluster with two workers from the redis template in this repository:
+deploys a redis cluster with two slaves from the redis template in the [Kubernetes
+Template Registry](https://github.com/kubernetes/application-dm-templates):
 
 ```
-dm deploy redis:v1
+dm deploy storage/redis:v1
 ```
 
 You can optionally supply values for template parameters on the command line,
 like this:
 
 ```
-dm --properties workers=3 deploy redis:v1
+dm --properties workers=3 deploy storage/redis:v1
 ```
 
 When you deploy a template directly, without a configuration, `dm` generates a
-configuration from the template and any supplied parameters, and then deploys the
-generated configuration.
+configuration from the template and the supplied parameters, and then deploys the
+configuration.
 
 For more information about deploying templates from a template registry or adding
 types to a template registry, see [the template registry documentation](docs/templates/registry.md).
 
 ### Additional commands
 
-`dm` makes it easy to configure a cluster from a set of predefined templates.
 Here's a list of available `dm` commands:
 
 ```
