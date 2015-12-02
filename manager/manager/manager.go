@@ -206,6 +206,11 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 
 	if latest != nil {
 		log.Printf("Deleting resources from the latest manifest")
+		// Clear previous state.
+		for _, r := range latest.ExpandedConfig.Resources {
+			r.State = nil
+		}
+
 		if _, err := m.deployer.DeleteConfiguration(latest.ExpandedConfig); err != nil {
 			log.Printf("Failed to delete resources from the latest manifest: %v", err)
 			return nil, err
