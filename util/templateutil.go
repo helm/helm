@@ -14,10 +14,28 @@ limitations under the License.
 package util
 
 import (
-	"strings"
+	"regexp"
+
+	"github.com/kubernetes/deployment-manager/common"
 )
 
+var re = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
+
 // IsTemplate returns whether a given type is a template.
-func IsTemplate(t string) bool {
-	return strings.HasSuffix(t, ".py") || strings.HasSuffix(t, ".jinja")
+func IsTemplate(t string, imports []*common.ImportFile) bool {
+	for _, imp := range imports {
+		if imp.Name == t {
+			return true
+		}
+	}
+	return false
+}
+
+// IsGithubShortType returns whether a given type is a type description in a short format to a github repository type.
+// For now, this means using github types:
+// github.com/owner/repo/qualifier/type:version
+// for example:
+// github.com/kubernetes/application-dm-templates/storage/redis:v1
+func IsGithubShortType(t string) bool {
+	return re.MatchString(t)
 }

@@ -24,16 +24,17 @@ import (
 	"testing"
 
 	"github.com/kubernetes/deployment-manager/util"
+	"github.com/kubernetes/deployment-manager/common"
 
 	"github.com/ghodss/yaml"
 )
 
 type mockResolver struct {
-	responses [][]*ImportFile
+	responses [][]*common.ImportFile
 	t         *testing.T
 }
 
-func (r *mockResolver) ResolveTypes(c *Configuration, i []*ImportFile) ([]*ImportFile, error) {
+func (r *mockResolver) ResolveTypes(c *common.Configuration, i []*common.ImportFile) ([]*common.ImportFile, error) {
 	if len(r.responses) < 1 {
 		return nil, nil
 	}
@@ -43,7 +44,7 @@ func (r *mockResolver) ResolveTypes(c *Configuration, i []*ImportFile) ([]*Impor
 	return ret, nil
 }
 
-var validTemplateTestCaseData = Template{
+var validTemplateTestCaseData = common.Template{
 	Name:    "TestTemplate",
 	Content: string(validContentTestCaseData),
 	Imports: validImportFilesTestCaseData,
@@ -59,10 +60,18 @@ resources:
     test-property: test-value
 `)
 
-var validImportFilesTestCaseData = []*ImportFile{
-	&ImportFile{
+var validImportFilesTestCaseData = []*common.ImportFile{
+	&common.ImportFile{
 		Name:    "test-type.py",
 		Content: "test-type.py validTemplateTestCaseData content",
+	},
+	&common.ImportFile{
+		Name:    "test.py",
+		Content: "test.py validTemplateTestCaseData content",
+	},
+	&common.ImportFile{
+		Name:    "test2.py",
+		Content: "test2.py validTemplateTestCaseData content",
 	},
 }
 
@@ -210,7 +219,7 @@ layout:
           test: test
 `
 
-var roundTripTemplate = Template{
+var roundTripTemplate = common.Template{
 	Name:    "TestTemplate",
 	Content: roundTripContent,
 	Imports: nil,
@@ -249,9 +258,9 @@ func TestExpandTemplate(t *testing.T) {
 			"expect success for ExpandTemplate with two expansions",
 			"",
 			roundTripHandler,
-			&mockResolver{[][]*ImportFile{
+			&mockResolver{[][]*common.ImportFile{
 				{},
-				{&ImportFile{Name: "test.py"}},
+				{&common.ImportFile{Name: "test.py"}},
 			}, t},
 			roundTripResponse,
 		},
@@ -334,7 +343,7 @@ func expanderSuccessHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	template := &Template{}
+	template := &common.Template{}
 	if err := json.Unmarshal(body, template); err != nil {
 		status := fmt.Sprintf("cannot unmarshal request body:%s\n%s\n", err, body)
 		http.Error(w, status, http.StatusInternalServerError)

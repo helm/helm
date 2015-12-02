@@ -15,12 +15,15 @@ package manager
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ghodss/yaml"
+	"github.com/kubernetes/deployment-manager/registry"
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 type responseAndError struct {
@@ -30,12 +33,13 @@ type responseAndError struct {
 }
 
 type resolverTestCase struct {
-	config      string
-	imports     []*ImportFile
-	responses   map[string]responseAndError
-	urlcount    int
-	expectedErr error
-	importOut   []*ImportFile
+	config           string
+	imports          []*common.ImportFile
+	responses        map[string]responseAndError
+	urlcount         int
+	expectedErr      error
+	importOut        []*common.ImportFile
+	registryProvider registry.RegistryProvider
 }
 
 type testGetter struct {
@@ -51,11 +55,66 @@ func (tg *testGetter) Get(url string) (body string, code int, err error) {
 	return ret.resp, ret.code, ret.err
 }
 
+type urlAndError struct {
+	u string
+	e error
+}
+
+type testRegistryProvider struct {
+	owner string
+	repo  string
+	r     map[string]registry.Registry
+}
+
+func newTestRegistryProvider(owner string, repository string, tests map[registry.Type]urlAndError, count int) registry.RegistryProvider {
+	r := make(map[string]registry.Registry)
+	r[owner+repository] = &testGithubRegistry{tests, count}
+	return &testRegistryProvider{owner, repository, r}
+}
+
+func (trp *testRegistryProvider) GetGithubRegistry(owner string, repository string) registry.Registry {
+	return trp.r[owner+repository]
+}
+
+type testGithubRegistry struct {
+	responses map[registry.Type]urlAndError
+	count     int
+}
+
+func (tgr *testGithubRegistry) GetURL(t registry.Type) (string, error) {
+	tgr.count = tgr.count + 1
+	ret := tgr.responses[t]
+	return ret.u, ret.e
+}
+
+func (tgr *testGithubRegistry) List() ([]registry.Type, error) {
+	return []registry.Type{}, fmt.Errorf("List should not be called in the test")
+}
+
+func testUrlConversionDriver(c resolverTestCase, tests map[string]urlAndError, t *testing.T) {
+	r := &typeResolver{
+		rp: c.registryProvider,
+	}
+	for in, expected := range tests {
+		actual, err := r.ShortTypeToDownloadURL(in)
+		if actual != expected.u {
+			t.Errorf("failed on: %s : expected %s but got %s", in, expected.u, actual)
+		}
+		if err != expected.e {
+			t.Errorf("failed on: %s : expected error %v but got %v", in, expected.e, err)
+		}
+	}
+}
+
 func testDriver(c resolverTestCase, t *testing.T) {
 	g := &testGetter{test: t, responses: c.responses}
-	r := &typeResolver{getter: g, maxUrls: 5}
+	r := &typeResolver{
+		getter:  g,
+		maxUrls: 5,
+		rp:      c.registryProvider,
+	}
 
-	conf := &Configuration{}
+	conf := &common.Configuration{}
 	dataErr := yaml.Unmarshal([]byte(c.config), conf)
 	if dataErr != nil {
 		panic("bad test data")
@@ -73,8 +132,8 @@ func testDriver(c resolverTestCase, t *testing.T) {
 		t.Errorf("Expected error %s but found %s", c.expectedErr, err)
 	}
 
-	resultImport := map[ImportFile]bool{}
-	expectedImport := map[ImportFile]bool{}
+	resultImport := map[common.ImportFile]bool{}
+	expectedImport := map[common.ImportFile]bool{}
 	for _, i := range result {
 		resultImport[*i] = true
 	}
@@ -106,7 +165,7 @@ resources:
 `
 
 func TestIncludedImport(t *testing.T) {
-	imports := []*ImportFile{&ImportFile{Name: "foo.py"}}
+	imports := []*common.ImportFile{&common.ImportFile{Name: "foo.py"}}
 	test := resolverTestCase{
 		config:  includeImport,
 		imports: imports,
@@ -121,7 +180,7 @@ resources:
 `
 
 func TestSingleUrl(t *testing.T) {
-	finalImports := []*ImportFile{&ImportFile{Name: "http://my-fake-url", Content: "my-content"}}
+	finalImports := []*common.ImportFile{&common.ImportFile{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"}}
 
 	responses := map[string]responseAndError{
 		"http://my-fake-url":        responseAndError{nil, http.StatusOK, "my-content"},
@@ -158,10 +217,10 @@ imports:
 `
 
 func TestSingleUrlWithSchema(t *testing.T) {
-	finalImports := []*ImportFile{
-		&ImportFile{Name: "http://my-fake-url", Content: "my-content"},
-		&ImportFile{Name: "schema-import", Content: "schema-import"},
-		&ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
+	finalImports := []*common.ImportFile{
+		&common.ImportFile{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"},
+		&common.ImportFile{Name: "schema-import", Content: "schema-import"},
+		&common.ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
 	}
 
 	responses := map[string]responseAndError{
@@ -236,13 +295,13 @@ imports:
 `
 
 func TestSharedImport(t *testing.T) {
-	finalImports := []*ImportFile{
-		&ImportFile{Name: "http://my-fake-url", Content: "my-content"},
-		&ImportFile{Name: "http://my-fake-url1", Content: "my-content-1"},
-		&ImportFile{Name: "schema-import", Content: "schema-import"},
-		&ImportFile{Name: "schema-import-1", Content: "schema-import"},
-		&ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
-		&ImportFile{Name: "http://my-fake-url1.schema", Content: schema2},
+	finalImports := []*common.ImportFile{
+		&common.ImportFile{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"},
+		&common.ImportFile{Name: "http://my-fake-url1", Path: "http://my-fake-url1", Content: "my-content-1"},
+		&common.ImportFile{Name: "schema-import", Content: "schema-import"},
+		&common.ImportFile{Name: "schema-import-1", Content: "schema-import"},
+		&common.ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
+		&common.ImportFile{Name: "http://my-fake-url1.schema", Content: schema2},
 	}
 
 	responses := map[string]responseAndError{
@@ -259,6 +318,82 @@ func TestSharedImport(t *testing.T) {
 		urlcount:  6,
 		responses: responses,
 		importOut: finalImports,
+	}
+	testDriver(test, t)
+}
+
+func TestShortGithubUrlMapping(t *testing.T) {
+	githubUrlMaps := map[registry.Type]urlAndError{
+		registry.Type{"common", "replicatedservice", "v1"}: urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		registry.Type{"storage", "redis", "v1"}:               urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
+	}
+
+	tests := map[string]urlAndError{
+		"github.com/kubernetes/application-dm-templates/common/replicatedservice:v1": urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		"github.com/kubernetes/application-dm-templates/storage/redis:v1":               urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
+	}
+
+	test := resolverTestCase{
+		registryProvider: newTestRegistryProvider("kubernetes", "application-dm-templates", githubUrlMaps, 2),
+	}
+	testUrlConversionDriver(test, tests, t)
+}
+
+func TestShortGithubUrlMappingDifferentOwnerAndRepo(t *testing.T) {
+	githubUrlMaps := map[registry.Type]urlAndError{
+		registry.Type{"common", "replicatedservice", "v1"}: urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		registry.Type{"storage", "redis", "v1"}:               urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/storage/redis/v1/redis.jinja", nil},
+	}
+
+	tests := map[string]urlAndError{
+		"github.com/example/mytemplates/common/replicatedservice:v1": urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		"github.com/example/mytemplates/storage/redis:v1":               urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/storage/redis/v1/redis.jinja", nil},
+	}
+
+	test := resolverTestCase{
+		registryProvider: newTestRegistryProvider("example", "mytemplates", githubUrlMaps, 2),
+	}
+	testUrlConversionDriver(test, tests, t)
+}
+
+var templateShortGithubTemplate = `
+resources:
+- name: foo
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v1
+- name: foo1
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v2
+`
+
+func TestShortGithubUrl(t *testing.T) {
+	finalImports := []*common.ImportFile{
+		&common.ImportFile{
+			Name: "github.com/kubernetes/application-dm-templates/common/replicatedservice:v1",
+			Path: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py",
+			Content: "my-content"},
+		&common.ImportFile{
+			Name: "github.com/kubernetes/application-dm-templates/common/replicatedservice:v2",
+			Path: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py",
+			Content: "my-content-2"},
+	}
+
+	responses := map[string]responseAndError{
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        responseAndError{nil, http.StatusOK, "my-content"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        responseAndError{nil, http.StatusOK, "my-content-2"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": responseAndError{nil, http.StatusNotFound, ""},
+	}
+
+	githubUrlMaps := map[registry.Type]urlAndError{
+		registry.Type{"common", "replicatedservice", "v1"}: urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		registry.Type{"common", "replicatedservice", "v2"}: urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
+	}
+
+	test := resolverTestCase{
+		config:           templateShortGithubTemplate,
+		importOut:        finalImports,
+		urlcount:         4,
+		responses:        responses,
+		registryProvider: newTestRegistryProvider("kubernetes", "application-dm-templates", githubUrlMaps, 2),
 	}
 	testDriver(test, t)
 }

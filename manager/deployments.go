@@ -29,6 +29,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/kubernetes/deployment-manager/manager/manager"
+	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/manager/repository"
 	"github.com/kubernetes/deployment-manager/util"
 )
@@ -198,17 +199,16 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler string) (string, error) {
 	vars := mux.Vars(r)
-	variable, ok := vars[variable]
+	ret, ok := vars[variable]
 	if !ok {
 		e := fmt.Errorf("%s parameter not found in URL", variable)
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return "", e
 	}
-
-	return variable, nil
+	return ret, nil
 }
 
-func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *manager.Template {
+func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {
 	util.LogHandlerEntry(handler, r)
 	b := io.LimitReader(r.Body, *maxLength*1024)
 	y, err := ioutil.ReadAll(b)
@@ -237,7 +237,7 @@ func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *manage
 		return nil
 	}
 
-	t := &manager.Template{}
+	t := &common.Template{}
 	if err := json.Unmarshal(j, t); err != nil {
 		e := fmt.Errorf("%v\n%v", err, string(j))
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)

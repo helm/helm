@@ -22,6 +22,7 @@ package registry
 // For example, a template registry containing two versions of redis
 // (implemented in jinja), and one version of replicatedservice (implemented
 // in python) would have a directory structure that looks something like this:
+// qualifier [optional] prefix to a virtual root within the repository.
 // /redis
 //   /v1
 //     redis.jinja
@@ -35,6 +36,7 @@ package registry
 //     replicatedservice.python.schema
 
 type Type struct {
+	Collection string
 	Name    string
 	Version string
 }

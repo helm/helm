@@ -25,14 +25,15 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 // Deployer abstracts interactions with the expander and deployer services.
 type Deployer interface {
-	GetConfiguration(cached *Configuration) (*Configuration, error)
-	CreateConfiguration(configuration *Configuration) (*Configuration, error)
-	DeleteConfiguration(configuration *Configuration) (*Configuration, error)
-	PutConfiguration(configuration *Configuration) (*Configuration, error)
+	GetConfiguration(cached *common.Configuration) (*common.Configuration, error)
+	CreateConfiguration(configuration *common.Configuration) (*common.Configuration, error)
+	DeleteConfiguration(configuration *common.Configuration) (*common.Configuration, error)
+	PutConfiguration(configuration *common.Configuration) (*common.Configuration, error)
 }
 
 // NewDeployer returns a new initialized Deployer.
@@ -54,9 +55,9 @@ type formatter func(err error) error
 
 // GetConfiguration reads and returns the actual configuration
 // of the resources described by a cached configuration.
-func (d *deployer) GetConfiguration(cached *Configuration) (*Configuration, error) {
+func (d *deployer) GetConfiguration(cached *common.Configuration) (*common.Configuration, error) {
 	errors := &Error{}
-	actual := &Configuration{}
+	actual := &common.Configuration{}
 	for _, resource := range cached.Resources {
 		rtype := url.QueryEscape(resource.Type)
 		rname := url.QueryEscape(resource.Name)
@@ -70,7 +71,7 @@ func (d *deployer) GetConfiguration(cached *Configuration) (*Configuration, erro
 		}
 
 		if len(body) != 0 {
-			result := &Resource{Name: resource.Name, Type: resource.Type}
+			result := &common.Resource{Name: resource.Name, Type: resource.Type}
 			if err := yaml.Unmarshal(body, &result.Properties); err != nil {
 				return nil, fmt.Errorf("cannot get configuration for resource (%v)", err)
 			}
@@ -88,22 +89,22 @@ func (d *deployer) GetConfiguration(cached *Configuration) (*Configuration, erro
 
 // CreateConfiguration deploys the set of resources described by a configuration and returns
 // the Configuration with status for each resource filled in.
-func (d *deployer) CreateConfiguration(configuration *Configuration) (*Configuration, error) {
+func (d *deployer) CreateConfiguration(configuration *common.Configuration) (*common.Configuration, error) {
 	return d.callServiceWithConfiguration("POST", "create", configuration)
 }
 
 // DeleteConfiguration deletes the set of resources described by a configuration.
-func (d *deployer) DeleteConfiguration(configuration *Configuration) (*Configuration, error) {
+func (d *deployer) DeleteConfiguration(configuration *common.Configuration) (*common.Configuration, error) {
 	return d.callServiceWithConfiguration("DELETE", "delete", configuration)
 }
 
 // PutConfiguration replaces the set of resources described by a configuration and returns
 // the Configuration with status for each resource filled in.
-func (d *deployer) PutConfiguration(configuration *Configuration) (*Configuration, error) {
+func (d *deployer) PutConfiguration(configuration *common.Configuration) (*common.Configuration, error) {
 	return d.callServiceWithConfiguration("PUT", "replace", configuration)
 }
 
-func (d *deployer) callServiceWithConfiguration(method, operation string, configuration *Configuration) (*Configuration, error) {
+func (d *deployer) callServiceWithConfiguration(method, operation string, configuration *common.Configuration) (*common.Configuration, error) {
 	callback := func(e error) error {
 		return fmt.Errorf("cannot %s configuration: %s", operation, e)
 	}
@@ -120,7 +121,7 @@ func (d *deployer) callServiceWithConfiguration(method, operation string, config
 		return nil, err
 	}
 
-	result := &Configuration{}
+	result := &common.Configuration{}
 	if len(resp) != 0 {
 		if err := yaml.Unmarshal(resp, &result); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal response: (%v)", err)

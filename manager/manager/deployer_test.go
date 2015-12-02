@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes/deployment-manager/util"
+	"github.com/kubernetes/deployment-manager/common"
 
 	"github.com/ghodss/yaml"
 )
@@ -250,8 +251,8 @@ func TestPutConfiguration(t *testing.T) {
 	}
 }
 
-func getValidConfiguration(t *testing.T) *Configuration {
-	valid := &Configuration{}
+func getValidConfiguration(t *testing.T) *common.Configuration {
+	valid := &common.Configuration{}
 	err := yaml.Unmarshal(validConfigurationTestCaseData, valid)
 	if err != nil {
 		t.Errorf("cannot unmarshal test case data:%s\n", err)
@@ -266,7 +267,7 @@ func deployerErrorHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deployerSuccessHandler(w http.ResponseWriter, r *http.Request) {
-	valid := &Configuration{}
+	valid := &common.Configuration{}
 	err := yaml.Unmarshal(validConfigurationTestCaseData, valid)
 	if err != nil {
 		status := fmt.Sprintf("cannot unmarshal test case data:%s", err)
@@ -282,7 +283,7 @@ func deployerSuccessHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := &Configuration{}
+	result := &common.Configuration{}
 	if err := yaml.Unmarshal(body, result); err != nil {
 		status := fmt.Sprintf("cannot unmarshal request body:%s", err)
 		http.Error(w, status, http.StatusInternalServerError)
