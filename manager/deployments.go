@@ -199,13 +199,13 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler string) (string, error) {
 	vars := mux.Vars(r)
-	retVariable, ok := vars[variable]
+	ret, ok := vars[variable]
 	if !ok {
 		e := fmt.Errorf("%s parameter not found in URL", variable)
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return "", e
 	}
-	return retVariable, nil
+	return ret, nil
 }
 
 func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {

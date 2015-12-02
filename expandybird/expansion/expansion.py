@@ -211,8 +211,7 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
 
   # source_file could be a short version of the template (say github short name)
   # so we need to potentially map this into the fully resolvable name.
-  if 'path' in imports[source_file]:
-    if imports[source_file]['path']:
+  if 'path' in imports[source_file] and imports[source_file]['path']:
       path = imports[source_file]['path']
 
   resource['imports'] = imports

@@ -14,17 +14,16 @@ limitations under the License.
 package util
 
 import (
-	"strings"
-	"log"
+	"regexp"
 
 	"github.com/kubernetes/deployment-manager/common"
 )
 
+var re = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
+
 // IsTemplate returns whether a given type is a template.
 func IsTemplate(t string, imports []*common.ImportFile) bool {
-	log.Printf("IsTemplate: %s : %+v", t, imports)
 	for _, imp := range imports {
-		log.Printf("Checking: %s", imp.Name)
 		if imp.Name == t {
 			return true
 		}
@@ -38,16 +37,5 @@ func IsTemplate(t string, imports []*common.ImportFile) bool {
 // for example:
 // github.com/kubernetes/application-dm-templates/storage/redis:v1
 func IsGithubShortType(t string) bool {
-	if !strings.HasPrefix(t, "github.com/") {
-		return false
-	}
-	s := strings.Split(t, "/")
-	if len(s) != 5 {
-		return false
-	}
-	v := strings.Split(s[4], ":")
-	if len(v) != 2 {
-		return false
-	}
-	return true
+	return re.MatchString(t)
 }

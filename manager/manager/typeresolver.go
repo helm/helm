@@ -31,6 +31,8 @@ const (
 	schemaSuffix  = ".schema"
 )
 
+var re = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
+
 // TypeResolver finds Types in a Configuration which aren't yet reduceable to an import file
 // or primitive, and attempts to replace them with a template from a URL.
 type TypeResolver interface {
@@ -40,7 +42,6 @@ type TypeResolver interface {
 type typeResolver struct {
 	getter  util.HTTPClient
 	maxUrls int
-	re      *regexp.Regexp
 	rp      registry.RegistryProvider
 }
 
@@ -53,7 +54,6 @@ func NewTypeResolver() TypeResolver {
 	client.Timeout = timeout
 	ret.getter = util.NewHTTPClient(3, client, util.NewSleeper())
 	ret.maxUrls = maxURLImports
-	ret.re = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
 	ret.rp = &registry.DefaultRegistryProvider{}
 	return ret
 }
@@ -109,14 +109,14 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 
 	count := 0
 	for len(toFetch) > 0 {
-		//1. If short github URL, resolve to a download URL
-		//2. Fetch import URL. Exit if no URLs left
-		//3. Check/handle HTTP status
-		//4. Store results in all ImportFiles from that URL
-		//5. Check for the optional schema file at import URL + .schema
-		//6. Repeat 2,3 for schema file
-		//7. Add each schema import to fetch if not already done
-		//8. Mark URL done. Return to 1.
+		// 1. If short github URL, resolve to a download URL
+		// 2. Fetch import URL. Exit if no URLs left
+		// 3. Check/handle HTTP status
+		// 4. Store results in all ImportFiles from that URL
+		// 5. Check for the optional schema file at import URL + .schema
+		// 6. Repeat 2,3 for schema file
+		// 7. Add each schema import to fetch if not already done
+		// 8. Mark URL done. Return to 1.
 		if count >= tr.maxUrls {
 			return nil, resolverError(config,
 				fmt.Errorf("Number of imports exceeds maximum of %d", tr.maxUrls))
@@ -215,7 +215,7 @@ func (tr *typeResolver) MapFetchableURL(t string) (string, error) {
 // for example:
 // github.com/kubernetes/application-dm-templates/storage/redis:v1
 func (tr *typeResolver) ShortTypeToDownloadURL(template string) (string, error) {
-	m := tr.re.FindStringSubmatch(template)
+	m := re.FindStringSubmatch(template)
 	if len(m) != 6 {
 		return "", fmt.Errorf("Failed to parse short github url: %s", template)
 	}

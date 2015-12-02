@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -26,8 +25,6 @@ import (
 	"github.com/kubernetes/deployment-manager/registry"
 	"github.com/kubernetes/deployment-manager/common"
 )
-
-var re = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
 
 type responseAndError struct {
 	err  error
@@ -96,7 +93,6 @@ func (tgr *testGithubRegistry) List() ([]registry.Type, error) {
 
 func testUrlConversionDriver(c resolverTestCase, tests map[string]urlAndError, t *testing.T) {
 	r := &typeResolver{
-		re: re,
 		rp: c.registryProvider,
 	}
 	for in, expected := range tests {
@@ -115,7 +111,6 @@ func testDriver(c resolverTestCase, t *testing.T) {
 	r := &typeResolver{
 		getter:  g,
 		maxUrls: 5,
-		re:      re,
 		rp:      c.registryProvider,
 	}
 

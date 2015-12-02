@@ -48,6 +48,3 @@ type Registry interface {
 	// Get the download URL for a given template and version
 	GetURL(t Type) (string, error)
 }
-
-
-
