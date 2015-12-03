@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/manager/repository"
 )
 
 // Manager manages a persistent set of Deployments.
@@ -38,11 +39,11 @@ type Manager interface {
 type manager struct {
 	expander   Expander
 	deployer   Deployer
-	repository common.Repository
+	repository repository.Repository
 }
 
 // NewManager returns a new initialized Manager.
-func NewManager(expander Expander, deployer Deployer, repository common.Repository) Manager {
+func NewManager(expander Expander, deployer Deployer, repository repository.Repository) Manager {
 	return &manager{expander, deployer, repository}
 }
 
@@ -105,8 +106,14 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 		return nil, err
 	}
 
-	actualConfig, createErr := m.deployer.CreateConfiguration(manifest.ExpandedConfig)
-	if createErr != nil {
+	if err := m.repository.AddManifest(t.Name, manifest); err != nil {
+		log.Printf("AddManifest failed %v", err)
+		m.repository.SetDeploymentStatus(t.Name, common.FailedStatus)
+		return nil, err
+	}
+
+	actualConfig, err := m.deployer.CreateConfiguration(manifest.ExpandedConfig)
+	if err != nil {
 		// Deployment failed, mark as failed
 		log.Printf("CreateConfiguration failed: %v", err)
 		m.repository.SetDeploymentStatus(t.Name, common.FailedStatus)
@@ -114,7 +121,7 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 		// return the failure as such. Otherwise, we're going to add the manifest
 		// and hence resource specific errors down below.
 		if actualConfig == nil {
-			return nil, createErr
+			return nil, err
 		}
 	} else {
 		m.repository.SetDeploymentStatus(t.Name, common.DeployedStatus)
@@ -122,20 +129,10 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 
 	// Update the manifest with the actual state of the reified resources
 	manifest.ExpandedConfig = actualConfig
-	aErr := m.repository.AddManifest(t.Name, manifest)
-	if aErr != nil {
-		log.Printf("AddManifest failed %v", aErr)
+	if err := m.repository.SetManifest(t.Name, manifest); err != nil {
+		log.Printf("SetManifest failed %v", err)
 		m.repository.SetDeploymentStatus(t.Name, common.FailedStatus)
-		// If there's an earlier error, return that instead since it contains
-		// more applicable error message. Adding manifest failure is more akin
-		// to a check fail (either deployment doesn't exist, or a manifest with the same
-		// name already exists).
-		// TODO(vaikas): Should we combine both errors and return a nicely formatted error for both?
-		if createErr != nil {
-			return nil, createErr
-		} else {
-			return nil, aErr
-		}
+		return nil, err
 	}
 
 	// Finally update the type instances for this deployment.

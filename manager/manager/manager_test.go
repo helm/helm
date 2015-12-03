@@ -127,6 +127,7 @@ type repositoryStub struct {
 	FailListDeployments    bool
 	Created                []string
 	ManifestAdd            map[string]*common.Manifest
+	ManifestSet            map[string]*common.Manifest
 	Deleted                []string
 	GetValid               []string
 	TypeInstances          map[string][]string
@@ -140,6 +141,7 @@ func (repository *repositoryStub) reset() {
 	repository.FailListDeployments = false
 	repository.Created = make([]string, 0)
 	repository.ManifestAdd = make(map[string]*common.Manifest)
+	repository.ManifestSet = make(map[string]*common.Manifest)
 	repository.Deleted = make([]string, 0)
 	repository.GetValid = make([]string, 0)
 	repository.TypeInstances = make(map[string][]string)
@@ -191,6 +193,11 @@ func (repository *repositoryStub) DeleteDeployment(d string, forget bool) (*comm
 
 func (repository *repositoryStub) AddManifest(d string, manifest *common.Manifest) error {
 	repository.ManifestAdd[d] = manifest
+	return nil
+}
+
+func (repository *repositoryStub) SetManifest(d string, manifest *common.Manifest) error {
+	repository.ManifestSet[d] = manifest
 	return nil
 }
 
@@ -323,6 +330,11 @@ func TestCreateDeployment(t *testing.T) {
 			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
 	}
 
+	if !strings.HasPrefix(testRepository.ManifestSet[template.Name].Name, "manifest-") {
+		t.Fatalf("Repository SetManifest was called with %s but expected manifest name"+
+			"to begin with manifest-.", testRepository.ManifestSet[template.Name].Name)
+	}
+
 	if !reflect.DeepEqual(*testDeployer.Created[0], configuration) || err != nil {
 		t.Fatalf("Deployer CreateConfiguration was called with %s but expected %s.",
 			testDeployer.Created[0], configuration)
@@ -396,6 +408,11 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
 	}
 
+	if !strings.HasPrefix(testRepository.ManifestSet[template.Name].Name, "manifest-") {
+		t.Fatalf("Repository SetManifest was called with %s but expected manifest name"+
+			"to begin with manifest-.", testRepository.ManifestSet[template.Name].Name)
+	}
+
 	if err != nil || !reflect.DeepEqual(d, &deployment) {
 		t.Fatalf("Expected a different set of response values from invoking CreateDeployment.\n"+
 			"Received: %v, %v. Expected: %v, %v.", d, err, &deployment, "nil")
@@ -423,6 +440,11 @@ func TestDeleteDeploymentForget(t *testing.T) {
 	if !strings.HasPrefix(testRepository.ManifestAdd[template.Name].Name, "manifest-") {
 		t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
 			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
+	}
+
+	if !strings.HasPrefix(testRepository.ManifestSet[template.Name].Name, "manifest-") {
+		t.Fatalf("Repository SetManifest was called with %s but expected manifest name"+
+			"to begin with manifest-.", testRepository.ManifestSet[template.Name].Name)
 	}
 
 	if !reflect.DeepEqual(*testDeployer.Created[0], configuration) || err != nil {

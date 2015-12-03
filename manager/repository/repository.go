@@ -25,6 +25,31 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 )
 
+// Repository manages storage for all Deployment Manager entities, as well as
+// the common operations to store, access and manage them.
+type Repository interface {
+	// Deployments.
+	ListDeployments() ([]common.Deployment, error)
+	GetDeployment(name string) (*common.Deployment, error)
+	GetValidDeployment(name string) (*common.Deployment, error)
+	CreateDeployment(name string) (*common.Deployment, error)
+	DeleteDeployment(name string, forget bool) (*common.Deployment, error)
+	SetDeploymentStatus(name string, status common.DeploymentStatus) error
+
+	// Manifests.
+	AddManifest(deploymentName string, manifest *common.Manifest) error
+	SetManifest(deploymentName string, manifest *common.Manifest) error
+	ListManifests(deploymentName string) (map[string]*common.Manifest, error)
+	GetManifest(deploymentName string, manifestName string) (*common.Manifest, error)
+	GetLatestManifest(deploymentName string) (*common.Manifest, error)
+
+	// Types.
+	ListTypes() []string
+	GetTypeInstances(typeName string) []*common.TypeInstance
+	ClearTypeInstances(deploymentName string)
+	SetTypeInstances(deploymentName string, instances map[string][]*common.TypeInstance)
+}
+
 // deploymentTypeInstanceMap stores type instances mapped by deployment name.
 // This allows for simple updating and deleting of per-deployment instances
 // when deployments are created/updated/deleted.
@@ -39,7 +64,7 @@ type mapBasedRepository struct {
 }
 
 // NewMapBasedRepository returns a new map based repository.
-func NewMapBasedRepository() common.Repository {
+func NewMapBasedRepository() Repository {
 	return &mapBasedRepository{
 		deployments: make(map[string]common.Deployment, 0),
 		manifests:   make(map[string]map[string]*common.Manifest, 0),
@@ -129,39 +154,48 @@ func (r *mapBasedRepository) CreateDeployment(name string) (*common.Deployment, 
 	return d, nil
 }
 
+// AddManifest adds a manifest to the repository and repoints the latest
+// manifest to it for the corresponding deployment.
 func (r *mapBasedRepository) AddManifest(deploymentName string, manifest *common.Manifest) error {
-	err := func() error {
-		r.Lock()
-		defer r.Unlock()
+	r.Lock()
+	defer r.Unlock()
 
-		d, err := r.GetValidDeployment(deploymentName)
-		if err != nil {
-			return err
-		}
-
-		l, err := r.listManifestsForDeployment(deploymentName)
-		if err != nil {
-			return err
-		}
-
-		// Make sure the manifest doesn't already exist, and if not, add the manifest to
-		// map of manifests this deployment has
-		if _, ok := l[manifest.Name]; ok {
-			return fmt.Errorf("Manifest %s already exists in deployment %s", manifest.Name, deploymentName)
-		}
-
-		l[manifest.Name] = manifest
-		d.LatestManifest = manifest.Name
-		r.deployments[deploymentName] = *d
-
-		return nil
-	}()
-
+	l, err := r.listManifestsForDeployment(deploymentName)
 	if err != nil {
 		return err
 	}
 
+	// Make sure the manifest doesn't already exist, and if not, add the manifest to
+	// map of manifests this deployment has
+	if _, ok := l[manifest.Name]; ok {
+		return fmt.Errorf("Manifest %s already exists in deployment %s", manifest.Name, deploymentName)
+	}
+
+	d, err := r.GetValidDeployment(deploymentName)
+	if err != nil {
+		return err
+	}
+
+	l[manifest.Name] = manifest
+	d.LatestManifest = manifest.Name
+	r.deployments[deploymentName] = *d
+
 	log.Printf("Added manifest %s to deployment: %s", manifest.Name, deploymentName)
+	return nil
+}
+
+// SetManifest sets an existing manifest in the repository to provided
+// manifest.
+func (r *mapBasedRepository) SetManifest(deploymentName string, manifest *common.Manifest) error {
+	r.Lock()
+	defer r.Unlock()
+
+	l, err := r.listManifestsForDeployment(deploymentName)
+	if err != nil {
+		return err
+	}
+
+	l[manifest.Name] = manifest
 	return nil
 }
 
