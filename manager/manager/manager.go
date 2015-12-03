@@ -125,6 +125,14 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 			return nil, err
 		}
 	} else {
+		// May be errors in the resources themselves.
+		errs := getResourceErrors(actualConfig)
+		if len(errs) > 0 {
+			e := fmt.Errorf("Found resource errors during deployment: %v", errs)
+			m.repository.SetDeploymentState(t.Name, failState(e))
+			return nil, e
+		}
+
 		m.repository.SetDeploymentState(t.Name, &common.DeploymentState{Status: common.DeployedStatus})
 	}
 
@@ -300,4 +308,15 @@ func failState(e error) *common.DeploymentState {
 		Status: common.FailedStatus,
 		Errors: []string{e.Error()},
 	}
+}
+
+func getResourceErrors(c *common.Configuration) []string {
+	var errs []string
+	for _, r := range c.Resources {
+		if r.State.Status == common.Failed {
+			errs = append(errs, r.State.Errors...)
+		}
+	}
+
+	return errs
 }
