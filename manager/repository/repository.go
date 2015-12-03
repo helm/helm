@@ -34,7 +34,7 @@ type Repository interface {
 	GetValidDeployment(name string) (*common.Deployment, error)
 	CreateDeployment(name string) (*common.Deployment, error)
 	DeleteDeployment(name string, forget bool) (*common.Deployment, error)
-	SetDeploymentStatus(name string, status common.DeploymentStatus) error
+	SetDeploymentState(name string, state *common.DeploymentState) error
 
 	// Manifests.
 	AddManifest(deploymentName string, manifest *common.Manifest) error
@@ -103,15 +103,15 @@ func (r *mapBasedRepository) GetValidDeployment(name string) (*common.Deployment
 		return nil, err
 	}
 
-	if d.Status == common.DeletedStatus {
+	if d.State.Status == common.DeletedStatus {
 		return nil, fmt.Errorf("deployment %s is deleted", name)
 	}
 
 	return d, nil
 }
 
-// SetDeploymentStatus sets the DeploymentStatus of the deployment and updates ModifiedAt
-func (r *mapBasedRepository) SetDeploymentStatus(name string, status common.DeploymentStatus) error {
+// SetDeploymentState sets the DeploymentState of the deployment and updates ModifiedAt
+func (r *mapBasedRepository) SetDeploymentState(name string, state *common.DeploymentState) error {
 	return func() error {
 		r.Lock()
 		defer r.Unlock()
@@ -121,7 +121,7 @@ func (r *mapBasedRepository) SetDeploymentStatus(name string, status common.Depl
 			return err
 		}
 
-		d.Status = status
+		d.State = state
 		d.ModifiedAt = time.Now()
 		r.deployments[name] = *d
 		return nil
@@ -140,7 +140,6 @@ func (r *mapBasedRepository) CreateDeployment(name string) (*common.Deployment, 
 		}
 
 		d := common.NewDeployment(name)
-		d.Status = common.CreatedStatus
 		d.DeployedAt = time.Now()
 		r.deployments[name] = *d
 		return d, nil
@@ -214,7 +213,7 @@ func (r *mapBasedRepository) DeleteDeployment(name string, forget bool) (*common
 
 		if !forget {
 			d.DeletedAt = time.Now()
-			d.Status = common.DeletedStatus
+			d.State = &common.DeploymentState{Status: common.DeletedStatus}
 			r.deployments[name] = *d
 		} else {
 			delete(r.deployments, name)

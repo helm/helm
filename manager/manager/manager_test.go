@@ -134,7 +134,7 @@ type repositoryStub struct {
 	TypeInstancesCleared   bool
 	GetTypeInstancesCalled bool
 	ListTypesCalled        bool
-	DeploymentStatuses     []common.DeploymentStatus
+	DeploymentStates       []*common.DeploymentState
 }
 
 func (repository *repositoryStub) reset() {
@@ -148,7 +148,7 @@ func (repository *repositoryStub) reset() {
 	repository.TypeInstancesCleared = false
 	repository.GetTypeInstancesCalled = false
 	repository.ListTypesCalled = false
-	repository.DeploymentStatuses = make([]common.DeploymentStatus, 0)
+	repository.DeploymentStates = []*common.DeploymentState{}
 }
 
 func newRepositoryStub() *repositoryStub {
@@ -176,8 +176,8 @@ func (repository *repositoryStub) GetValidDeployment(d string) (*common.Deployme
 	return &deployment, nil
 }
 
-func (repository *repositoryStub) SetDeploymentStatus(name string, status common.DeploymentStatus) error {
-	repository.DeploymentStatuses = append(repository.DeploymentStatuses, status)
+func (repository *repositoryStub) SetDeploymentState(name string, state *common.DeploymentState) error {
+	repository.DeploymentStates = append(repository.DeploymentStates, state)
 	return nil
 }
 
@@ -340,7 +340,7 @@ func TestCreateDeployment(t *testing.T) {
 			testDeployer.Created[0], configuration)
 	}
 
-	if testRepository.DeploymentStatuses[0] != common.DeployedStatus {
+	if testRepository.DeploymentStates[0].Status != common.DeployedStatus {
 		t.Fatal("CreateDeployment success did not mark deployment as deployed")
 	}
 
@@ -369,7 +369,7 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 			testRepository.Created[0])
 	}
 
-	if testRepository.DeploymentStatuses[0] != common.FailedStatus {
+	if testRepository.DeploymentStates[0].Status != common.FailedStatus {
 		t.Fatal("CreateDeployment failure did not mark deployment as failed")
 	}
 
@@ -399,7 +399,7 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 			testRepository.Created[0])
 	}
 
-	if testRepository.DeploymentStatuses[0] != common.FailedStatus {
+	if testRepository.DeploymentStates[0].Status != common.FailedStatus {
 		t.Fatal("CreateDeployment failure did not mark deployment as failed")
 	}
 
@@ -455,6 +455,10 @@ func TestDeleteDeploymentForget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed with %v", err)
 	}
+	if d.State.Status != common.DeletedStatus {
+		t.Fatalf("Expected DeletedStatus on deleted deployment")
+	}
+
 	// Make sure the resources were deleted through deployer.
 	if len(testDeployer.Deleted) > 0 {
 		c := testDeployer.Deleted[0]
