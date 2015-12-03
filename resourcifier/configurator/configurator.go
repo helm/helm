@@ -175,7 +175,7 @@ func (a *Configurator) configureResource(resource *common.Resource, o operation)
 		} else {
 			e := fmt.Errorf("kubetcl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
 			resource.State = failState(e)
-			return "", e
+			return combined.String(), e
 		}
 	}
 

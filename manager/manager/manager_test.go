@@ -455,9 +455,6 @@ func TestDeleteDeploymentForget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed with %v", err)
 	}
-	if d.State.Status != common.DeletedStatus {
-		t.Fatalf("Expected DeletedStatus on deleted deployment")
-	}
 
 	// Make sure the resources were deleted through deployer.
 	if len(testDeployer.Deleted) > 0 {
