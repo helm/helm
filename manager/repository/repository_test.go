@@ -140,7 +140,7 @@ func TestRepositoryDeleteWorksWithNoLatestManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed: %v", err)
 	}
-	if dDeleted.Status != common.DeletedStatus {
+	if dDeleted.State.Status != common.DeletedStatus {
 		t.Fatalf("Deployment Status is not deleted")
 	}
 	if _, err := r.ListManifests(deploymentName); err == nil {
@@ -165,7 +165,7 @@ func TestRepositoryDeleteDeploymentWorksNoForget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed: %v", err)
 	}
-	if dDeleted.Status != common.DeletedStatus {
+	if dDeleted.State.Status != common.DeletedStatus {
 		t.Fatalf("Deployment Status is not deleted")
 	}
 }
@@ -187,7 +187,7 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeleteDeployment failed: %v", err)
 	}
-	if dDeleted.Status != common.CreatedStatus {
+	if dDeleted.State.Status != common.CreatedStatus {
 		t.Fatalf("Deployment Status is not created")
 	}
 }

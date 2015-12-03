@@ -37,13 +37,24 @@ type Deployment struct {
 	DeployedAt     time.Time        `json:"deployedAt,omitempty"`
 	ModifiedAt     time.Time        `json:"modifiedAt,omitempty"`
 	DeletedAt      time.Time        `json:"deletedAt,omitempty"`
-	Status         DeploymentStatus `json:"status,omitempty"`
+	State          *DeploymentState `json:"state,omitempty"`
 	LatestManifest string           `json:"latestManifest,omitEmpty"`
 }
 
 // NewDeployment creates a new deployment.
 func NewDeployment(name string) *Deployment {
-	return &Deployment{Name: name, CreatedAt: time.Now(), Status: CreatedStatus}
+	return &Deployment{
+		Name:      name,
+		CreatedAt: time.Now(),
+		State:     &DeploymentState{Status: CreatedStatus},
+	}
+}
+
+// DeploymentState describes the state of a resource. It is set to the terminal
+// state depending on the outcome of an operation on the deployment.
+type DeploymentState struct {
+	Status DeploymentStatus `json:"status,omitempty"`
+	Errors []string         `json:"errors,omitempty"`
 }
 
 // DeploymentStatus is an enumeration type for the status of a deployment.

@@ -102,13 +102,13 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 	manifest, err := m.createManifest(t)
 	if err != nil {
 		log.Printf("Manifest creation failed: %v", err)
-		m.repository.SetDeploymentStatus(t.Name, common.FailedStatus)
+		m.repository.SetDeploymentState(t.Name, failState(err))
 		return nil, err
 	}
 
 	if err := m.repository.AddManifest(t.Name, manifest); err != nil {
 		log.Printf("AddManifest failed %v", err)
-		m.repository.SetDeploymentStatus(t.Name, common.FailedStatus)
+		m.repository.SetDeploymentState(t.Name, failState(err))
 		return nil, err
 	}
 
@@ -116,7 +116,8 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 	if err != nil {
 		// Deployment failed, mark as failed
 		log.Printf("CreateConfiguration failed: %v", err)
-		m.repository.SetDeploymentStatus(t.Name, common.FailedStatus)
+		m.repository.SetDeploymentState(t.Name, failState(err))
+
 		// If we failed before being able to create some of the resources, then
 		// return the failure as such. Otherwise, we're going to add the manifest
 		// and hence resource specific errors down below.
@@ -124,14 +125,14 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 			return nil, err
 		}
 	} else {
-		m.repository.SetDeploymentStatus(t.Name, common.DeployedStatus)
+		m.repository.SetDeploymentState(t.Name, &common.DeploymentState{Status: common.DeployedStatus})
 	}
 
 	// Update the manifest with the actual state of the reified resources
 	manifest.ExpandedConfig = actualConfig
 	if err := m.repository.SetManifest(t.Name, manifest); err != nil {
 		log.Printf("SetManifest failed %v", err)
-		m.repository.SetDeploymentStatus(t.Name, common.FailedStatus)
+		m.repository.SetDeploymentState(t.Name, failState(err))
 		return nil, err
 	}
 
@@ -198,6 +199,7 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 	// If there's a latest manifest, delete the underlying resources.
 	latest, err := m.repository.GetLatestManifest(name)
 	if err != nil {
+		m.repository.SetDeploymentState(name, failState(err))
 		return nil, err
 	}
 
@@ -210,6 +212,7 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 
 		if _, err := m.deployer.DeleteConfiguration(latest.ExpandedConfig); err != nil {
 			log.Printf("Failed to delete resources from the latest manifest: %v", err)
+			m.repository.SetDeploymentState(name, failState(err))
 			return nil, err
 		}
 
@@ -217,6 +220,7 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 		err = m.repository.AddManifest(name, &common.Manifest{Deployment: name, Name: generateManifestName()})
 		if err != nil {
 			log.Printf("Failed to add empty manifest")
+			m.repository.SetDeploymentState(name, failState(err))
 			return nil, err
 		}
 	}
@@ -243,20 +247,20 @@ func (m *manager) PutDeployment(name string, t *common.Template) (*common.Deploy
 	manifest, err := m.createManifest(t)
 	if err != nil {
 		log.Printf("Manifest creation failed: %v", err)
-		m.repository.SetDeploymentStatus(name, common.FailedStatus)
+		m.repository.SetDeploymentState(name, failState(err))
 		return nil, err
 	}
 
 	actualConfig, err := m.deployer.PutConfiguration(manifest.ExpandedConfig)
 	if err != nil {
-		m.repository.SetDeploymentStatus(name, common.FailedStatus)
+		m.repository.SetDeploymentState(name, failState(err))
 		return nil, err
 	}
 
 	manifest.ExpandedConfig = actualConfig
 	err = m.repository.AddManifest(t.Name, manifest)
 	if err != nil {
-		m.repository.SetDeploymentStatus(name, common.FailedStatus)
+		m.repository.SetDeploymentState(name, failState(err))
 		return nil, err
 	}
 
@@ -289,4 +293,11 @@ func (m *manager) ListInstances(typeName string) []*common.TypeInstance {
 
 func generateManifestName() string {
 	return fmt.Sprintf("manifest-%d", time.Now().UTC().UnixNano())
+}
+
+func failState(e error) *common.DeploymentState {
+	return &common.DeploymentState{
+		Status: common.FailedStatus,
+		Errors: []string{e.Error()},
+	}
 }
