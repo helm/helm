@@ -28,30 +28,6 @@ type Schema struct {
 	Imports []SchemaImport `json:"imports"`
 }
 
-// Repository manages storage for all Deployment Manager entities, as well as
-// the common operations to store, access and manage them.
-type Repository interface {
-	// Deployments.
-	ListDeployments() ([]Deployment, error)
-	GetDeployment(name string) (*Deployment, error)
-	GetValidDeployment(name string) (*Deployment, error)
-	CreateDeployment(name string) (*Deployment, error)
-	DeleteDeployment(name string, forget bool) (*Deployment, error)
-	SetDeploymentStatus(name string, status DeploymentStatus) error
-
-	// Manifests.
-	AddManifest(deploymentName string, manifest *Manifest) error
-	ListManifests(deploymentName string) (map[string]*Manifest, error)
-	GetManifest(deploymentName string, manifestName string) (*Manifest, error)
-	GetLatestManifest(deploymentName string) (*Manifest, error)
-
-	// Types.
-	ListTypes() []string
-	GetTypeInstances(typeName string) []*TypeInstance
-	ClearTypeInstances(deploymentName string)
-	SetTypeInstances(deploymentName string, instances map[string][]*TypeInstance)
-}
-
 // Deployment defines a deployment that describes
 // the creation, modification and/or deletion of a set of resources.
 type Deployment struct {

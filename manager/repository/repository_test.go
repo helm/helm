@@ -82,9 +82,13 @@ func testCreateDeploymentWithManifests(t *testing.T, count int) {
 		if err != nil {
 			t.Fatalf("AddManifest failed: %v", err)
 		}
-		_, err = r.GetDeployment(deploymentName)
+		d, err = r.GetDeployment(deploymentName)
 		if err != nil {
 			t.Fatalf("GetDeployment failed: %v", err)
+		}
+
+		if d.LatestManifest != manifestName {
+			t.Fatalf("AddManifest did not update LatestManifest: %#v", d)
 		}
 
 		mListNew, err := r.ListManifests(deploymentName)
