@@ -7,9 +7,6 @@ resources:
     external_service: true
     replicas: 3
     image: gcr.io/google_containers/example-guestbook-php-redis:v3
-    env:
-    - name: redis-master
-      value: $(ref.redis-master.name)
 - name: redis
   type: github.com/kubernetes/application-dm-templates/storage/redis:v1
   properties: null
