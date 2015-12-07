@@ -18,7 +18,7 @@ clean:
 	go clean -v $(GO_DEPS)
 
 test: build
-	-go test -v $(GO_DEPS)
+	go test -v $(GO_DEPS)
 
 push: container
 
