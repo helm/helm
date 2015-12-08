@@ -14,8 +14,10 @@ limitations under the License.
 package expander
 
 import (
+	"archive/tar"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -38,6 +40,67 @@ type expander struct {
 // NewExpander returns a new initialized Expander.
 func NewExpander(binary string) Expander {
 	return &expander{binary}
+}
+
+// NewTemplateFromArchive creates and returns a new template whose content
+// and imported files are read from the supplied archive.
+func NewTemplateFromArchive(name string, r io.Reader, importFileNames []string) (*common.Template, error) {
+	var content []byte
+	imports, err := collectImportFiles(importFileNames)
+	if err != nil {
+		return nil, err
+	}
+
+	tr := tar.NewReader(r)
+	for i := 0; true; i++ {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		if hdr.Name != name {
+			importFileData, err := ioutil.ReadAll(tr)
+			if err != nil {
+				return nil, fmt.Errorf("cannot read archive file %s: %s", hdr.Name, err)
+			}
+
+			imports = append(imports,
+				&common.ImportFile{
+					Name:    path.Base(hdr.Name),
+					Content: string(importFileData),
+				})
+		} else {
+			content, err = ioutil.ReadAll(tr)
+			if err != nil {
+				return nil, fmt.Errorf("cannot read %s from archive: %s", name, err)
+			}
+		}
+	}
+
+	if len(content) < 1 {
+		return nil, fmt.Errorf("cannot find %s in archive", name)
+	}
+
+	return &common.Template{
+		Name:    name,
+		Content: string(content),
+		Imports: imports,
+	}, nil
+}
+
+// NewTemplateFromReader creates and returns a new template whose content
+// is read from the supplied reader.
+func NewTemplateFromReader(name string, r io.Reader, importFileNames []string) (*common.Template, error) {
+	content, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read archive %s: %s", name, err)
+	}
+
+	return newTemplateFromContentAndImports(name, string(content), importFileNames)
 }
 
 // NewTemplateFromRootTemplate creates and returns a new template whose content
@@ -64,6 +127,7 @@ func NewTemplateFromRootTemplate(templateFileName string) (*common.Template, err
 			imports = append(imports, templateDir+"/"+fileName)
 		}
 	}
+
 	return NewTemplateFromFileNames(templateFileName, imports[0:])
 }
 
@@ -73,17 +137,41 @@ func NewTemplateFromFileNames(
 	templateFileName string,
 	importFileNames []string,
 ) (*common.Template, error) {
-	name := path.Base(templateFileName)
 	content, err := ioutil.ReadFile(templateFileName)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read template file (%s): %s", err, templateFileName)
+		return nil, fmt.Errorf("cannot read template file %s: %s", templateFileName, err)
 	}
 
+	name := path.Base(templateFileName)
+	return newTemplateFromContentAndImports(name, string(content), importFileNames)
+}
+
+func newTemplateFromContentAndImports(
+	name, content string,
+	importFileNames []string,
+) (*common.Template, error) {
+	if len(content) < 1 {
+		return nil, fmt.Errorf("supplied configuration is empty")
+	}
+
+	imports, err := collectImportFiles(importFileNames)
+	if err != nil {
+		return nil, err
+	}
+
+	return &common.Template{
+		Name:    name,
+		Content: content,
+		Imports: imports,
+	}, nil
+}
+
+func collectImportFiles(importFileNames []string) ([]*common.ImportFile, error) {
 	imports := []*common.ImportFile{}
 	for _, importFileName := range importFileNames {
 		importFileData, err := ioutil.ReadFile(importFileName)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read import file (%s): %s", err, importFileName)
+			return nil, fmt.Errorf("cannot read import file %s: %s", importFileName, err)
 		}
 
 		imports = append(imports,
@@ -93,11 +181,7 @@ func NewTemplateFromFileNames(
 			})
 	}
 
-	return &common.Template{
-		Name:    name,
-		Content: string(content),
-		Imports: imports,
-	}, nil
+	return imports, nil
 }
 
 // ExpansionResult describes the unmarshalled output of ExpandTemplate.

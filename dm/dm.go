@@ -21,6 +21,7 @@ import (
 	"github.com/kubernetes/deployment-manager/registry"
 	"github.com/kubernetes/deployment-manager/util"
 
+	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -61,7 +62,7 @@ var commands = []string{
 }
 
 var usage = func() {
-	message := "Usage: %s [<flags>] <command> (<template-name> | <deployment-name> | (<configuration> [<import1>...<importN>]))\n"
+	message := "Usage: %s [<flags>] <command> [(<template-name> | <deployment-name> | (<configuration> [<import1>...<importN>]))]\n"
 	fmt.Fprintf(os.Stderr, message, os.Args[0])
 	fmt.Fprintln(os.Stderr, "Commands:")
 	for _, command := range commands {
@@ -72,13 +73,15 @@ var usage = func() {
 	fmt.Fprintln(os.Stderr, "Flags:")
 	flag.PrintDefaults()
 	fmt.Fprintln(os.Stderr)
-	os.Exit(1)
+	fmt.Fprintln(os.Stderr, "--stdin requires a file name and either the file contents or a tar archive containing the named file.")
+	fmt.Fprintln(os.Stderr, "        a tar archive may include any additional files referenced directly or indirectly by the named file.")
+	panic("\n")
 }
 
 func getGitRegistry() *registry.GithubRegistry {
 	s := strings.Split(*template_registry, "/")
 	if len(s) < 2 {
-		log.Fatalf("invalid template registry: %s", *template_registry)
+		panic(fmt.Errorf("invalid template registry: %s", *template_registry))
 	}
 
 	var path = ""
@@ -90,6 +93,18 @@ func getGitRegistry() *registry.GithubRegistry {
 }
 
 func main() {
+	defer func() {
+		result := recover()
+		if result != nil {
+			log.Fatalln(result)
+		}
+	}()
+
+	execute()
+	os.Exit(0)
+}
+
+func execute() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 1 {
@@ -97,18 +112,12 @@ func main() {
 		usage()
 	}
 
-	if *stdin {
-		fmt.Printf("reading from stdin is not yet implemented")
-		os.Exit(0)
-	}
-
-	command := args[0]
-	switch command {
+	switch args[0] {
 	case "templates":
 		git := getGitRegistry()
 		templates, err := git.List()
 		if err != nil {
-			log.Fatalf("Cannot list %v", err)
+			panic(fmt.Errorf("Cannot list %v", err))
 		}
 
 		fmt.Printf("Templates:\n")
@@ -200,12 +209,12 @@ func callService(path, method, action string, reader io.ReadCloser) {
 	resp := callHttp(u, method, action, reader)
 	var j interface{}
 	if err := json.Unmarshal([]byte(resp), &j); err != nil {
-		log.Fatalf("Failed to parse JSON response from service: %s", resp)
+		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
 	}
 
 	y, err := yaml.Marshal(j)
 	if err != nil {
-		log.Fatalf("Failed to serialize JSON response from service: %s", resp)
+		panic(fmt.Errorf("Failed to serialize JSON response from service: %s", resp))
 	}
 
 	fmt.Println(string(y))
@@ -221,19 +230,19 @@ func callHttp(path, method, action string, reader io.ReadCloser) string {
 
 	response, err := client.Do(request)
 	if err != nil {
-		log.Fatalf("cannot %s: %s\n", action, err)
+		panic(fmt.Errorf("cannot %s: %s\n", action, err))
 	}
 
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatalf("cannot %s: %s\n", action, err)
+		panic(fmt.Errorf("cannot %s: %s\n", action, err))
 	}
 
 	if response.StatusCode < http.StatusOK ||
 		response.StatusCode >= http.StatusMultipleChoices {
 		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
-		log.Fatalf("cannot %s: %s\n", action, message)
+		panic(fmt.Errorf("cannot %s: %s\n", action, message))
 	}
 
 	return string(body)
@@ -250,7 +259,7 @@ func describeType(args []string) {
 
 	tUrl := getTypeUrl(args[1])
 	if tUrl == "" {
-		log.Fatalf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1])
+		panic(fmt.Errorf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1]))
 	}
 	schemaUrl := tUrl + ".schema"
 	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil))
@@ -277,7 +286,7 @@ func getDownloadUrl(t registry.Type) string {
 	git := getGitRegistry()
 	url, err := git.GetURL(t)
 	if err != nil {
-		log.Fatalf("Failed to fetch type information for \"%s:%s\": %s", t.Name, t.Version, err)
+		panic(fmt.Errorf("Failed to fetch type information for \"%s:%s\": %s", t.Name, t.Version, err))
 	}
 
 	return url
@@ -295,18 +304,43 @@ func loadTemplate(args []string) *common.Template {
 		usage()
 	}
 
-	if len(args) < 3 {
-		if t := getRegistryType(args[1]); t != nil {
-			template = buildTemplateFromType(*t)
-		} else {
-			template, err = expander.NewTemplateFromRootTemplate(args[1])
+	if *stdin {
+		if len(args) < 2 {
+			usage()
+		}
+
+		input, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			panic(err)
+		}
+
+		r := bytes.NewReader(input)
+		template, err = expander.NewTemplateFromArchive(args[1], r, args[2:])
+		if err != nil {
+			if err != tar.ErrHeader {
+				panic(err)
+			}
+
+			r := bytes.NewReader(input)
+			template, err = expander.NewTemplateFromReader(args[1], r, args[2:])
+			if err != nil {
+				panic(fmt.Errorf("cannot create configuration from supplied arguments: %s\n", err))
+			}
 		}
 	} else {
-		template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
-	}
+		if len(args) < 3 {
+			if t := getRegistryType(args[1]); t != nil {
+				template = buildTemplateFromType(*t)
+			} else {
+				template, err = expander.NewTemplateFromRootTemplate(args[1])
+			}
+		} else {
+			template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
+		}
 
-	if err != nil {
-		log.Fatalf("cannot create configuration from supplied arguments: %s\n", err)
+		if err != nil {
+			panic(fmt.Errorf("cannot create configuration from supplied arguments: %s\n", err))
+		}
 	}
 
 	// Override name if set from flags.
@@ -339,7 +373,7 @@ func buildTemplateFromType(t registry.Type) *common.Template {
 		for _, p := range plist {
 			ppair := strings.Split(p, "=")
 			if len(ppair) != 2 {
-				log.Fatalf("--properties must be in the form \"p1=v1,p2=v2,...\": %s\n", p)
+				panic(fmt.Errorf("--properties must be in the form \"p1=v1,p2=v2,...\": %s\n", p))
 			}
 
 			// support ints
@@ -364,7 +398,7 @@ func buildTemplateFromType(t registry.Type) *common.Template {
 
 	y, err := yaml.Marshal(config)
 	if err != nil {
-		log.Fatalf("error: %s\ncannot create configuration for deployment: %v\n", err, config)
+		panic(fmt.Errorf("error: %s\ncannot create configuration for deployment: %v\n", err, config))
 	}
 
 	return &common.Template{
@@ -377,7 +411,7 @@ func buildTemplateFromType(t registry.Type) *common.Template {
 func marshalTemplate(template *common.Template) io.ReadCloser {
 	j, err := json.Marshal(template)
 	if err != nil {
-		log.Fatalf("cannot deploy configuration %s: %s\n", template.Name, err)
+		panic(fmt.Errorf("cannot deploy configuration %s: %s\n", template.Name, err))
 	}
 
 	return ioutil.NopCloser(bytes.NewReader(j))
