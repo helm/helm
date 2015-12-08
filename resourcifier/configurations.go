@@ -217,7 +217,7 @@ func getConfigurator() *configurator.Configurator {
 				}
 			}
 
-			if *kubeToken == "" {
+			if *kubeToken != "" {
 				args = append(args, fmt.Sprintf("--token=%s", *kubeToken))
 			} else {
 				if *kubeUsername != "" {
