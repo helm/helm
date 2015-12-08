@@ -1,5 +1,3 @@
-# Copyright 2014 Google Inc. All Rights Reserved.
-
 """Constructs a VM."""
 
 # Verify that both ways of hierarchical imports work.

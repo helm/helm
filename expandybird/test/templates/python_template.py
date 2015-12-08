@@ -1,5 +1,3 @@
-# Copyright 2014 Google Inc. All Rights Reserved.
-
 #% description: Creates a VM running a Salt master daemon in a Docker container.
 #% parameters:
 #% - name: masterAddress
