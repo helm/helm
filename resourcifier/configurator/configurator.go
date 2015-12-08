@@ -162,7 +162,7 @@ func (a *Configurator) configureResource(resource *common.Resource, o operation)
 	cmd.Stderr = combined
 
 	if err := cmd.Start(); err != nil {
-		e := fmt.Errorf("cannot start kubetcl for resource: %v: %v", resource.Name, err)
+		e := fmt.Errorf("cannot start kubectl for resource: %v: %v", resource.Name, err)
 		resource.State = failState(e)
 		return "", e
 	}
@@ -173,7 +173,7 @@ func (a *Configurator) configureResource(resource *common.Resource, o operation)
 		if o == DeleteOperation && strings.HasSuffix(strings.TrimSpace(combined.String()), "not found") {
 			log.Println(resource.Name + " not found, treating as success for delete")
 		} else {
-			e := fmt.Errorf("kubetcl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
+			e := fmt.Errorf("kubectl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
 			resource.State = failState(e)
 			return combined.String(), e
 		}
