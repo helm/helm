@@ -1,0 +1,4 @@
+resources:
+- name: cassandra
+  type: github.com/helm/charts/cassandra
+  properties: null

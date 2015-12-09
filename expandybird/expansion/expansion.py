@@ -50,12 +50,12 @@ def Expand(config, imports=None, env=None, validate_schema=False):
   Raises:
     ExpansionError: if there is any error occurred during expansion
   """
-  try:
-    return _Expand(config, imports=imports, env=env,
-                   validate_schema=validate_schema)
-  except Exception as e:
+#  try:
+  return _Expand(config, imports=imports, env=env,
+                 validate_schema=validate_schema)
+#  except Exception as e:
     # print traceback.format_exc()
-    raise ExpansionError('config', str(e))
+#    raise ExpansionError('config', str(e))
 
 
 def _Expand(config, imports=None, env=None, validate_schema=False):

@@ -214,7 +214,6 @@ func execute() {
 			// Type is most likely a primitive.
 			tUrl = args[1]
 		} else {
-			// TODO(vaikas): Support packages properly.
 			tUrl = tUrls[0]
 		}
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tUrl))

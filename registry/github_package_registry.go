@@ -48,7 +48,6 @@ func NewGithubPackageRegistry(owner, repository string) *GithubPackageRegistry {
 }
 
 // List the types from the Registry.
-// TODO(vaikas): Figure out how the versions work here.
 func (g *GithubPackageRegistry) List() ([]Type, error) {
 	// Just list all the types at the top level.
 	types, err := g.getDirs("")
