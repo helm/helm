@@ -232,7 +232,7 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
     except schema_validation.ValidationErrors as e:
       raise ExpansionError(resource['name'], e.message)
 
-  if path.endswith('jinja'):
+  if path.endswith('jinja') or path.endswith('yaml'):
     expanded_template = ExpandJinja(
         source_file, imports[source_file]['content'], resource, imports)
   elif path.endswith('py'):

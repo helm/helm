@@ -78,7 +78,7 @@ var usage = func() {
 	panic("\n")
 }
 
-func getGitRegistry() *registry.GithubRegistry {
+func getGitRegistry() registry.Registry {
 	s := strings.Split(*template_registry, "/")
 	if len(s) < 2 {
 		panic(fmt.Errorf("invalid template registry: %s", *template_registry))
@@ -89,7 +89,11 @@ func getGitRegistry() *registry.GithubRegistry {
 		path = strings.Join(s[2:], "/")
 	}
 
-	return registry.NewGithubRegistry(s[0], s[1], path)
+	if s[0] == "helm" {
+		return registry.NewGithubPackageRegistry(s[0], s[1])
+	} else {
+		return registry.NewGithubRegistry(s[0], s[1], path)
+	}
 }
 
 func main() {
@@ -126,11 +130,17 @@ func execute() {
 			if len(t.Collection) > 0 {
 				typeSpec = t.Collection + "/"
 			}
-			typeSpec = typeSpec + t.Name + ":" + t.Version
+			typeSpec = typeSpec + t.Name
+			if len(t.Version) > 0 {
+				typeSpec = typeSpec + ":" + t.Version
+			}
+
 			fmt.Printf("%s\n", typeSpec)
-			downloadURL := getDownloadUrl(t)
 			fmt.Printf("\tshort URL: github.com/%s/%s\n", *template_registry, typeSpec)
-			fmt.Printf("\tdownload URL: %s\n", downloadURL)
+			fmt.Printf("\tdownload URL(s):\n")
+			for _, downloadURL := range getDownloadURLs(t) {
+				fmt.Printf("\t%s\n", downloadURL)
+			}
 		}
 	case "describe":
 		describeType(args)
@@ -195,10 +205,14 @@ func execute() {
 			usage()
 		}
 
-		tUrl := getTypeUrl(args[1])
-		if tUrl == "" {
+		tUrls := getTypeURLs(args[1])
+		var tUrl = ""
+		if len(tUrls) == 0 {
 			// Type is most likely a primitive.
 			tUrl = args[1]
+		} else {
+			// TODO(vaikas): Support packages properly.
+			tUrl = tUrls[0]
 		}
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tUrl))
 		action := fmt.Sprintf("list deployed instances of type %s", tUrl)
@@ -262,39 +276,39 @@ func describeType(args []string) {
 		usage()
 	}
 
-	tUrl := getTypeUrl(args[1])
-	if tUrl == "" {
+	tUrls := getTypeURLs(args[1])
+	if len(tUrls) == 0 {
 		panic(fmt.Errorf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1]))
 	}
-	schemaUrl := tUrl + ".schema"
-	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrl+")", nil))
+	schemaUrl := tUrls[0] + ".schema"
+	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrls[0]+")", nil))
 }
 
-// getTypeUrl returns URL or empty if a primitive type.
-func getTypeUrl(tName string) string {
+// getTypeURLs returns URLs or empty list if a primitive type.
+func getTypeURLs(tName string) []string {
 	if util.IsHttpUrl(tName) {
 		// User can pass raw URL to template.
-		return tName
+		return []string{tName}
 	}
 
 	// User can pass registry type.
 	t := getRegistryType(tName)
 	if t == nil {
 		// Primitive types have no associated URL.
-		return ""
+		return []string{}
 	}
 
-	return getDownloadUrl(*t)
+	return getDownloadURLs(*t)
 }
 
-func getDownloadUrl(t registry.Type) string {
+func getDownloadURLs(t registry.Type) []string {
 	git := getGitRegistry()
-	url, err := git.GetURL(t)
+	urls, err := git.GetURLs(t)
 	if err != nil {
 		panic(fmt.Errorf("Failed to fetch type information for \"%s:%s\": %s", t.Name, t.Version, err))
 	}
 
-	return url
+	return urls
 }
 
 func isHttp(t string) bool {
@@ -379,8 +393,6 @@ func getRegistryType(fullType string) *registry.Type {
 }
 
 func buildTemplateFromType(t registry.Type) *common.Template {
-	downloadURL := getDownloadUrl(t)
-
 	props := make(map[string]interface{})
 	if *properties != "" {
 		plist := strings.Split(*properties, ",")
@@ -406,7 +418,7 @@ func buildTemplateFromType(t registry.Type) *common.Template {
 
 	config := common.Configuration{Resources: []*common.Resource{&common.Resource{
 		Name:       name,
-		Type:       downloadURL,
+		Type:       getDownloadURLs(t)[0],
 		Properties: props,
 	}}}
 

@@ -16,7 +16,6 @@ package manager
 import (
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/kubernetes/deployment-manager/common"
@@ -31,8 +30,6 @@ const (
 	schemaSuffix  = ".schema"
 )
 
-var re = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
-
 // TypeResolver finds Types in a Configuration which aren't yet reduceable to an import file
 // or primitive, and attempts to replace them with a template from a URL.
 type TypeResolver interface {
@@ -43,6 +40,10 @@ type typeResolver struct {
 	getter  util.HTTPClient
 	maxUrls int
 	rp      registry.RegistryProvider
+}
+
+type fetchUnit struct {
+	urls []string
 }
 
 // NewTypeResolver returns a new initialized TypeResolver.
@@ -92,18 +93,27 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 	}
 
 	fetched := map[string][]*common.ImportFile{}
-	toFetch := make([]string, 0, tr.maxUrls)
+	// TODO(vaikas): Need to account for multiple URLs being fetched for a given type.
+	toFetch := make([]*fetchUnit, 0, tr.maxUrls)
 	for _, r := range config.Resources {
 		// Map the type to a fetchable URL (if applicable) or skip it if it's a non-fetchable type (primitive for example).
-		u, err := tr.MapFetchableURL(r.Type)
+		urls, err := tr.MapFetchableURLs(r.Type)
 		if err != nil {
 			return nil, resolverError(config, fmt.Errorf("Failed to understand download url for %s: %v", r.Type, err))
 		}
-		if len(u) > 0 && !existing[r.Type] {
-			toFetch = append(toFetch, u)
-			fetched[u] = append(fetched[u], &common.ImportFile{Name: r.Type, Path: u})
-			// Add to existing map so it is not fetched multiple times.
-			existing[r.Type] = true
+		if !existing[r.Type] {
+			f := &fetchUnit{}
+			for _, u := range urls {
+				if len(u) > 0 {
+					f.urls = append(f.urls, u)
+					// Add to existing map so it is not fetched multiple times.
+					existing[r.Type] = true
+				}
+			}
+			if len(f.urls) > 0 {
+				toFetch = append(toFetch, f)
+				fetched[f.urls[0]] = append(fetched[f.urls[0]], &common.ImportFile{Name: r.Type, Path: f.urls[0]})
+			}
 		}
 	}
 
@@ -122,13 +132,21 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 				fmt.Errorf("Number of imports exceeds maximum of %d", tr.maxUrls))
 		}
 
-		url := toFetch[0]
-		template, err := performHTTPGet(tr.getter, url, false)
-		if err != nil {
-			return nil, resolverError(config, err)
+		templates := []string{}
+		url := toFetch[0].urls[0]
+		for _, u := range toFetch[0].urls {
+			template, err := performHTTPGet(tr.getter, u, false)
+			if err != nil {
+				return nil, resolverError(config, err)
+			}
+			templates = append(templates, template)
 		}
 
 		for _, i := range fetched[url] {
+			template, err := parseContent(templates)
+			if err != nil {
+				return nil, resolverError(config, err)
+			}
 			i.Content = template
 		}
 
@@ -147,33 +165,35 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 			for _, v := range s.Imports {
 				i := &common.ImportFile{Name: v.Name}
 				var existingSchema string
-				u, conversionErr := tr.MapFetchableURL(v.Path)
+				urls, conversionErr := tr.MapFetchableURLs(v.Path)
 				if conversionErr != nil {
 					return nil, resolverError(config, fmt.Errorf("Failed to understand download url for %s: %v", v.Path, conversionErr))
 				}
-				// If it's not a fetchable URL, we need to use the type name as is, since it is a short name
-				// for a schema.
-				if len(u) == 0 {
-					u = v.Path
+				if len(urls) == 0 {
+					// If it's not a fetchable URL, we need to use the type name as is, since it is a short name
+					// for a schema.
+					urls = []string{v.Path}
 				}
-				if len(fetched[u]) == 0 {
-					// If this import URL is new to us, add it to the URLs to fetch.
-					toFetch = append(toFetch, u)
-				} else {
-					// If this is not a new import URL and we've already fetched its contents,
-					// reuse them. Also, check if we also found a schema for that import URL and
-					// record those contents for re-use as well.
-					if fetched[u][0].Content != "" {
-						i.Content = fetched[u][0].Content
-						if len(fetched[u+schemaSuffix]) > 0 {
-							existingSchema = fetched[u+schemaSuffix][0].Content
+				for _, u := range urls {
+					if len(fetched[u]) == 0 {
+						// If this import URL is new to us, add it to the URLs to fetch.
+						toFetch = append(toFetch, &fetchUnit{[]string{u}})
+					} else {
+						// If this is not a new import URL and we've already fetched its contents,
+						// reuse them. Also, check if we also found a schema for that import URL and
+						// record those contents for re-use as well.
+						if fetched[u][0].Content != "" {
+							i.Content = fetched[u][0].Content
+							if len(fetched[u+schemaSuffix]) > 0 {
+								existingSchema = fetched[u+schemaSuffix][0].Content
+							}
 						}
 					}
-				}
-				fetched[u] = append(fetched[u], i)
-				if existingSchema != "" {
-					fetched[u+schemaSuffix] = append(fetched[u+schemaSuffix],
-						&common.ImportFile{Name: v.Name + schemaSuffix, Content: existingSchema})
+					fetched[u] = append(fetched[u], i)
+					if existingSchema != "" {
+						fetched[u+schemaSuffix] = append(fetched[u+schemaSuffix],
+							&common.ImportFile{Name: v.Name + schemaSuffix, Content: existingSchema})
+					}
 				}
 			}
 
@@ -197,29 +217,70 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 	return ret, nil
 }
 
-// MapFetchableUrl checks a type to see if it is either a short git hub url or a fully specified URL
+// MapFetchableUrls checks a type to see if it is either a short git hub url or a fully specified URL
 // and returns the URL that should be used to fetch it. If the url is not fetchable (primitive type for
 // example) will return empty string.
-func (tr *typeResolver) MapFetchableURL(t string) (string, error) {
+func (tr *typeResolver) MapFetchableURLs(t string) ([]string, error) {
 	if util.IsGithubShortType(t) {
-		return tr.ShortTypeToDownloadURL(t)
+		return tr.ShortTypeToDownloadURLs(t)
+	} else if util.IsGithubShortPackageType(t) {
+		return tr.ShortTypeToPackageDownloadURLs(t)
 	} else if util.IsHttpUrl(t) {
-		return t, nil
+		return []string{t}, nil
 	}
-	return "", nil
+	return []string{}, nil
 }
 
-// ShortTypeToDownloadURL converts a github URL into downloadable URL from github.
+// ShortTypeToDownloadURLs converts a github URL into downloadable URL from github.
 // Input must be of the type and is assumed to have been validated before this call:
 // github.com/owner/repo/qualifier/type:version
 // for example:
 // github.com/kubernetes/application-dm-templates/storage/redis:v1
-func (tr *typeResolver) ShortTypeToDownloadURL(template string) (string, error) {
-	m := re.FindStringSubmatch(template)
+func (tr *typeResolver) ShortTypeToDownloadURLs(template string) ([]string, error) {
+	m := util.TemplateRegistryMatcher.FindStringSubmatch(template)
 	if len(m) != 6 {
-		return "", fmt.Errorf("Failed to parse short github url: %s", template)
+		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
 	}
 	r := tr.rp.GetGithubRegistry(m[1], m[2])
 	t := registry.Type{m[3], m[4], m[5]}
-	return r.GetURL(t)
+	return r.GetURLs(t)
+}
+
+// ShortTypeToPackageDownloadURLs converts a github URL into downloadable URLs from github.
+// Input must be of the type and is assumed to have been validated before this call:
+// github.com/owner/repo/type
+// for example:
+// github.com/helm/charts/cassandra
+func (tr *typeResolver) ShortTypeToPackageDownloadURLs(template string) ([]string, error) {
+	m := util.PackageRegistryMatcher.FindStringSubmatch(template)
+	if len(m) != 4 {
+		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
+	}
+	r := tr.rp.GetGithubPackageRegistry(m[1], m[2])
+	t := registry.Type{Name: m[3]}
+	return r.GetURLs(t)
+}
+
+func parseContent(templates []string) (string, error) {
+	if len(templates) == 1 {
+		return templates[0], nil
+	} else {
+		// If there are multiple URLs that need to be fetched, that implies it's a package
+		// of raw Kubernetes objects. We need to fetch them all as a unit and create a
+		// template representing a package out of that below.
+		fakeConfig := &common.Configuration{}
+		for _, template := range templates {
+			o, err := util.ParseKubernetesObject([]byte(template))
+			if err != nil {
+				return "", fmt.Errorf("not a kubernetes object: %+v", template)
+			}
+			// Looks like a native Kubernetes object, create a configuration out of it
+			fakeConfig.Resources = append(fakeConfig.Resources, o)
+		}
+		marshalled, err := yaml.Marshal(fakeConfig)
+		if err != nil {
+			return "", fmt.Errorf("Failed to marshal: %+v", fakeConfig)
+		}
+		return string(marshalled), nil
+	}
 }

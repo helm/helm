@@ -21,7 +21,29 @@ import (
 	"strings"
 )
 
-// GithubRegistry implements the Registry interface that talks to github.
+// GithubRegistry implements the Registry interface that talks to github and
+// implements Deployment Manager templates registry.
+// A registry root must be a directory that contains all the available templates,
+// one directory per template. Each template directory then contains version
+// directories, each of which in turn contains all the files necessary for that
+// version of the template.
+//
+// For example, a template registry containing two versions of redis
+// (implemented in jinja), and one version of replicatedservice (implemented
+// in python) would have a directory structure that looks something like this:
+// qualifier [optional] prefix to a virtual root within the repository.
+// /redis
+//   /v1
+//     redis.jinja
+//     redis.jinja.schema
+//   /v2
+//     redis.jinja
+//     redis.jinja.schema
+// /replicatedservice
+//   /v1
+//     replicatedservice.python
+//     replicatedservice.python.schema
+
 type GithubRegistry struct {
 	owner      string
 	repository string
@@ -74,15 +96,15 @@ func (g *GithubRegistry) List() ([]Type, error) {
 }
 
 // GetURL fetches the download URL for a given Type and checks for existence of a schema file.
-func (g *GithubRegistry) GetURL(t Type) (string, error) {
+func (g *GithubRegistry) GetURLs(t Type) ([]string, error) {
 	path, err := g.MakeRepositoryPath(t)
 	if err != nil {
-		return "", err
+		return []string{}, err
 	}
 	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		log.Printf("Failed to list versions at path: %s: %v", path, err)
-		return "", err
+		return []string{}, err
 	}
 	var downloadURL, typeName, schemaName string
 	for _, f := range dc {
@@ -97,12 +119,12 @@ func (g *GithubRegistry) GetURL(t Type) (string, error) {
 		}
 	}
 	if downloadURL == "" {
-		return "", fmt.Errorf("Can not find template %s:%s", t.Name, t.Version)
+		return []string{}, fmt.Errorf("Can not find template %s:%s", t.Name, t.Version)
 	}
 	if schemaName == typeName+".schema" {
-		return downloadURL, nil
+		return []string{downloadURL}, nil
 	}
-	return "", fmt.Errorf("Can not find schema for %s:%s, expected to find %s", t.Name, t.Version, typeName+".schema")
+	return []string{}, fmt.Errorf("Can not find schema for %s:%s, expected to find %s", t.Name, t.Version, typeName+".schema")
 }
 
 func (g *GithubRegistry) getDirs(dir string) ([]string, error) {
