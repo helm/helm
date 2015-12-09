@@ -41,24 +41,32 @@ func NewGithubRegistry(owner, repository, path string) *GithubRegistry {
 
 // List the types from the Registry.
 func (g *GithubRegistry) List() ([]Type, error) {
-	// First list all the types at the top level.
-	types, err := g.getDirs("")
+	// First list all the collections at the top level.
+	collections, err := g.getDirs("")
 	if err != nil {
-		log.Printf("Failed to list templates: %v", err)
+		log.Printf("Failed to list qualifiers: %v", err)
 		return nil, err
 	}
 
 	var retTypes []Type
-	for _, t := range types {
+	for _, c := range collections {
 		// Then we need to fetch the versions (directories for this type)
-		versions, err := g.getDirs(t)
+		types, err := g.getDirs(c)
 		if err != nil {
-			log.Printf("Failed to fetch versions for template: %s", t)
+			log.Printf("Failed to fetch types for collection: %s", c)
 			return nil, err
 		}
 
-		for _, v := range versions {
-			retTypes = append(retTypes, Type{Name: t, Version: v})
+		for _, t := range types {
+			// Then we need to fetch the versions (directories for this type)
+			versions, err := g.getDirs(c + "/" + t)
+			if err != nil {
+				log.Printf("Failed to fetch versions for template: %s", t)
+				return nil, err
+			}
+			for _, v := range versions {
+				retTypes = append(retTypes, Type{Name: t, Version: v, Collection: c})
+			}
 		}
 	}
 
@@ -67,11 +75,10 @@ func (g *GithubRegistry) List() ([]Type, error) {
 
 // GetURL fetches the download URL for a given Type and checks for existence of a schema file.
 func (g *GithubRegistry) GetURL(t Type) (string, error) {
-	path,err := g.MakeRepositoryPath(t)
+	path, err := g.MakeRepositoryPath(t)
 	if err != nil {
 		return "", err
 	}
-	log.Printf("Got repository path: %s", path)
 	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		log.Printf("Failed to list versions at path: %s: %v", path, err)
@@ -134,7 +141,6 @@ func (g *GithubRegistry) mapCollection(collection string) (string, error) {
 // Type.Collection will be mapped using mapCollection in the future, for now it's a straight
 // 1:1 mapping (if given)
 func (g *GithubRegistry) MakeRepositoryPath(t Type) (string, error) {
-	log.Printf("Making repository path: %v", t)
 	// First map the collection
 	collection, err := g.mapCollection(t.Collection)
 	if err != nil {

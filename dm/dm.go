@@ -358,9 +358,18 @@ func getRegistryType(fullType string) *registry.Type {
 		return nil
 	}
 
-	return &registry.Type{
-		Name:    tList[0],
-		Version: tList[1],
+	cList := strings.Split(tList[0], "/")
+	if len(cList) == 1 {
+		return &registry.Type{
+			Name:    tList[0],
+			Version: tList[1],
+		}
+	} else {
+		return &registry.Type{
+			Collection: cList[0],
+			Name:       cList[1],
+			Version:    tList[1],
+		}
 	}
 }
 
