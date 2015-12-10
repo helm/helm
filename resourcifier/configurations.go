@@ -204,7 +204,7 @@ func getConfigurator() *configurator.Configurator {
 		}
 
 		if *kubeInsecure {
-			args = append(args, "--insecure-skip-tls-verify")
+			args = append(args, fmt.Sprintf("--insecure-skip-tls-verify=%s", *kubeInsecure))
 		} else {
 			if *kubeCertAuth != "" {
 				args = append(args, fmt.Sprintf("--certificate-authority=%s", *kubeCertAuth))
@@ -216,17 +216,16 @@ func getConfigurator() *configurator.Configurator {
 					args = append(args, fmt.Sprintf("--client-key=%s", *kubeClientKey))
 				}
 			}
+		}
+		if *kubeToken != "" {
+			args = append(args, fmt.Sprintf("--token=%s", *kubeToken))
+		} else {
+			if *kubeUsername != "" {
+				args = append(args, fmt.Sprintf("--username=%s", *kubeUsername))
+			}
 
-			if *kubeToken != "" {
-				args = append(args, fmt.Sprintf("--token=%s", *kubeToken))
-			} else {
-				if *kubeUsername != "" {
-					args = append(args, fmt.Sprintf("--username=%s", *kubeUsername))
-				}
-
-				if *kubePassword != "" {
-					args = append(args, fmt.Sprintf("--password=%s", *kubePassword))
-				}
+			if *kubePassword != "" {
+				args = append(args, fmt.Sprintf("--password=%s", *kubePassword))
 			}
 		}
 	}
