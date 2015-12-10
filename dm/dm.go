@@ -122,9 +122,14 @@ func execute() {
 
 		fmt.Printf("Templates:\n")
 		for _, t := range templates {
-			fmt.Printf("%s:%s\n", t.Name, t.Version)
+			var typeSpec = ""
+			if len(t.Collection) > 0 {
+				typeSpec = t.Collection + "/"
+			}
+			typeSpec = typeSpec + t.Name + ":" + t.Version
+			fmt.Printf("%s\n", typeSpec)
 			downloadURL := getDownloadUrl(t)
-
+			fmt.Printf("\tshort URL: github.com/%s/%s\n", *template_registry, typeSpec)
 			fmt.Printf("\tdownload URL: %s\n", downloadURL)
 		}
 	case "describe":
