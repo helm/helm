@@ -62,15 +62,17 @@ for the Kubernetes configuration SIG.
 
 ## Installing Deployment Manager
 
-Follow these 3 steps to install DM:
+From a Linux or Mac OS X client:
 
-1. Make sure your Kubernetes cluster is up and running, and that you can run
-`kubectl` commands against it.
-1. Clone this repository into the src folder of your GOPATH, if you haven't already.
-See the [Kubernetes developer documentation](https://github.com/kubernetes/kubernetes/blob/master/docs/devel/development.md)
-for information on how to setup Go and use the repository.
-1. Use `kubectl` to install DM into your cluster `kubectl create -f
-install.yaml`
+```
+curl -s https://raw.githubusercontent.com/kubernetes/deployment-manager/master/get-install.sh | sh
+```
+
+and then install the DM services into your Kubernetes cluster:
+
+```
+kubectl create -f install.yaml
+```
 
 That's it. You can now use `kubectl` to see DM running in your cluster:
 
@@ -84,85 +86,37 @@ is up and running!
 
 ## Using Deployment Manager
 
-### Setting up the client
-
-The easiest way to interact with Deployment Manager is through the `dm` tool
-hitting a `kubectl` proxy. To set that up:
-
-1. Build the tool by running `make` in the deployment-manager repository.
-1. Run `kubectl proxy --port=8001 --namespace=dm &` to start a proxy that lets you interact
-with the Kubernetes API server through port 8001 on localhost. `dm` uses
-`http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager`
-as the default service address for DM.
-
-### Using the client
-
-The DM client, `dm`, can deploy configurations from the command line. It can also
-pull templates from a template registry, generate configurations from them using
-parameters supplied on the command line, and deploy the resulting configurations.
-
-#### Deploying a configuration
-
-`dm` can deploy a configuration from a file, or read one from `stdin`. This
-command deploys the Guestbook example using the configuration shown above from
-the examples directory in this project:
+Run a Kubernetes proxy to allow the dm client to connect to the cluster:
 
 ```
-dm deploy examples/guestbook/guestbook.yaml
+kubectl proxy --port=8001 --namespace=dm &
 ```
 
-You can now use `kubectl` to see Guestbook running:
+### Deploy an app
+To deploy a simple guestbook app:
 
 ```
-kubectl get service
+$ dm deploy examples/guestbook/guestbook.yaml
+$ kubectl get service
 ```
 
-Look for frontend-service. If your cluster supports external load balancing, it
-will have an external IP assigned to it, and you can navigate to it in your browser
-to see the guestbook in action. 
+The `frontend-service` should have an external IP that you can navigate to in
+your browser to play with.
 
 For more information about this example, see [examples/guestbook/README.md](examples/guestbook/README.md)
 
-#### Deploying a template directly
+### Deploying a template
 
-You can also deploy a template directly, without a configuration. This command
-deploys a redis cluster with two slaves from the redis template in the [Kubernetes
+To deploy a redis template from the [Kubernetes
 Template Registry](https://github.com/kubernetes/application-dm-templates):
-
-```
-dm deploy storage/redis:v1
-```
-
-You can optionally supply values for template parameters on the command line,
-like this:
 
 ```
 dm --properties workers=3 deploy storage/redis:v1
 ```
 
-When you deploy a template directly, without a configuration, `dm` generates a
-configuration from the template and the supplied parameters, and then deploys the
-configuration.
-
 For more information about deploying templates from a template registry or adding
-types to a template registry, see [the template registry documentation](docs/templates/registry.md).
-
-### Additional commands
-
-Here's a list of available `dm` commands:
-
-```
-expand              Expands the supplied configuration(s)
-deploy              Deploys the named template or the supplied configuration(s)
-list                Lists the deployments in the cluster
-get                 Retrieves the named deployment
-delete              Deletes the named deployment
-update              Updates a deployment using the supplied configuration(s)
-deployed-types      Lists the types deployed in the cluster
-deployed-instances  Lists the instances of the named type deployed in the cluster
-templates           Lists the templates in a given template registry
-describe            Describes the named template in a given template registry
-```
+types to a template registry, see
+[the template registry documentation](docs/templates/registry.md).
 
 ## Uninstalling Deployment Manager
 

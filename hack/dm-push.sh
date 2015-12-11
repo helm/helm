@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Run this from deployment-manager root to build and push the dm client into
-# the publicly readable GCS bucket gs://get-dm.
+# Run this from deployment-manager root to build and push the dm client plus
+# kubernetes install config into the publicly readable GCS bucket gs://get-dm.
 #
 # Must have EDIT permissions on the dm-k8s-testing GCP project.
 
@@ -17,7 +17,7 @@ echo "Building..."
 make
 
 echo "Zipping ${ZIP}..."
-zip -j ${ZIP} ${GOPATH}/bin/dm
+zip -j ${ZIP} ${GOPATH}/bin/dm install.yaml
 
 echo "Uploading ${ZIP} to ${STORAGE_BUCKET}..."
 gsutil cp ${ZIP} ${STORAGE_BUCKET}
