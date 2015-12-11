@@ -1,4 +1,4 @@
-# Copyright 2015 Google, Inc. All Rights Reserved
+# Copyright 2015 The Kubernetes Authors All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,32 +13,25 @@
 # limitations under the License.
 
 FROM golang:1.4
-MAINTAINER Jack Greenfield <jackgr@google.com>
-
-WORKDIR /usr/local/bin
 
 RUN apt-get update \
-  && apt-get install -y wget
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-ENV KUBE_PACKAGE kubernetes.tar.gz
+WORKDIR /usr/local/bin
 ENV KUBE_VERSION v1.0.5
-ENV KUBE_BASE https://github.com/kubernetes/kubernetes
-ENV KUBE_RELEASE "$KUBE_BASE"/releases/download
-ENV KUBE_DOWLOAD "$KUBE_RELEASE"/"$KUBE_VERSION"/"$KUBE_PACKAGE"
-ENV KUBE_COMMAND kubernetes/platforms/linux/amd64/kubectl
-RUN wget -O - "$KUBE_DOWLOAD" 2> /dev/null | tar xzf - -C /tmp "$KUBE_COMMAND" \
-  && mv /tmp/"$KUBE_COMMAND" . \
-  && rm -rf /tmp/kubernetes
 
-RUN apt-get purge -y --auto-remove wget
+RUN curl -fsSL -o kubectl https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
+    && chmod +x kubectl
 
-WORKDIR "$GOPATH"
+COPY . "$GOPATH"/src/resourcifier
 
-RUN mkdir -p "$GOPATH/src/github.com" && chmod 777 "$GOPATH/src/github.com"
+WORKDIR "$GOPATH"/src/resourcifier
 
-RUN go-wrapper download github.com/kubernetes/deployment-manager/resourcifier/...
-RUN go-wrapper install github.com/kubernetes/deployment-manager/resourcifier/...
+RUN go-wrapper download
+RUN go-wrapper install
 
 EXPOSE 8080
 
-ENTRYPOINT ["bin/resourcifier", "--kubectl=/usr/local/bin/kubectl"]
+ENTRYPOINT ["/go/bin/resourcifier", "--kubectl=/usr/local/bin/kubectl"]
