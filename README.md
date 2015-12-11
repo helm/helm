@@ -87,13 +87,41 @@ is up and running!
 ### Setting up the client
 
 The easiest way to interact with Deployment Manager is through the `dm` tool
-hitting a `kubectl` proxy. To set that up:
+hitting a `kubectl` proxy.
 
-1. Build the tool by running `make` in the deployment-manager repository.
-1. Run `kubectl proxy --port=8001 --namespace=dm &` to start a proxy that lets you interact
-with the Kubernetes API server through port 8001 on localhost. `dm` uses
+#### Creating a proxy
+
+You can run the following to start a proxy that lets you interact with the
+Kubernetes API server through port 8001 on `localhost`
+
+```
+kubectl proxy --port=8001 --namespace=dm &
+```
+
+`dm` will use
 `http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager`
-as the default service address for DM.
+as the default service address for the DM service.
+
+#### Getting the client
+You can get access to the client in one of two ways:
+
+1. Build the client by running `make` in the deployment-manager repository.
+1. Use the client from the container `gcr.io/dm-k8s-testing/dm`.
+
+**NOTE**: If you are using the client from the docker container, you will need
+to substitute the following docker command in place of `dm` in all of the
+examples below, or alias the command appropriately.
+
+```
+alias dm="docker run --net=host gcr.io/dm-k8s-testing/dm"
+```
+
+If you are running the docker container on a Mac, you'll also need to substitute
+your machine IP to access the Kubernetes proxy running locally:
+
+```
+alias dm="docker run gcr.io/dm-k8s-testing/dm --service http://<MACHINE IP ADDRESS>:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager"
+```
 
 ### Using the client
 
