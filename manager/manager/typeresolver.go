@@ -18,7 +18,6 @@ package manager
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -69,7 +68,6 @@ func resolverError(c *common.Configuration, err error) error {
 }
 
 func performHTTPGet(g util.HTTPClient, u string, allowMissing bool) (content string, err error) {
-	log.Printf("Fetching %s", u)
 	r, code, err := g.Get(u)
 	if err != nil {
 		return "", err
@@ -101,7 +99,6 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 	// TODO(vaikas): Need to account for multiple URLs being fetched for a given type.
 	toFetch := make([]*fetchUnit, 0, tr.maxUrls)
 	for _, r := range config.Resources {
-		log.Printf("checking: %s", r.Type)
 		// Map the type to a fetchable URL (if applicable) or skip it if it's a non-fetchable type (primitive for example).
 		urls, err := tr.MapFetchableURLs(r.Type)
 		if err != nil {
@@ -124,12 +121,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 	}
 
 	count := 0
-	log.Printf("toFetch %#v", toFetch)
-	for _, jj := range toFetch {
-		log.Printf("TOFETCH UNIT: %#v", jj)
-	}
 	for len(toFetch) > 0 {
-		log.Printf("toFetch2 %#v", toFetch)
 		// 1. If short github URL, resolve to a download URL
 		// 2. Fetch import URL. Exit if no URLs left
 		// 3. Check/handle HTTP status
