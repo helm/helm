@@ -125,6 +125,9 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 
 	count := 0
 	log.Printf("toFetch %#v", toFetch)
+	for _, jj := range toFetch {
+		log.Printf("TOFETCH UNIT: %#v", jj)
+	}
 	for len(toFetch) > 0 {
 		log.Printf("toFetch2 %#v", toFetch)
 		// 1. If short github URL, resolve to a download URL
