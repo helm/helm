@@ -46,7 +46,7 @@ def ImportsRawValidate(raw_properties, schema_name, import_map):
 
 class SchemaValidationTest(unittest.TestCase):
   """Tests of the schema portion of the template expansion library."""
-  
+
   def testDefaults(self):
     schema_name = 'defaults.jinja.schema'
     schema = ReadTestFile(schema_name)
@@ -612,6 +612,55 @@ class SchemaValidationTest(unittest.TestCase):
       self.assertIn("Invalid schema '%s'" % schema_name, e.message)
       self.assertIn("is not of type 'array' at ['imports']", e.message)
       self.assertIn("is not of type u'array' at [u'required']", e.message)
+
+  def testNoValidateReference_Simple(self):
+    schema = """
+      properties:
+        number:
+          type: integer
+    """
+    properties = """
+      number: $(ref.foo.size)
+    """
+    self.assertEquals(yaml.safe_load(properties),
+                      RawValidate(properties, 'schema', schema))
+
+  def testNoValidateReference_OtherErrorNotFiltered(self):
+    schema = """
+      properties:
+        number:
+          type: integer
+        also-number:
+          type: integer
+    """
+    properties = """
+      number: $(ref.foo.size)
+      also-number: not a number
+    """
+
+    try:
+      RawValidate(properties, 'schema', schema)
+      self.fail('Validation should fail')
+    except schema_validation.ValidationErrors as e:
+      self.assertEquals(1, len(e.errors))
+
+  def testNoValidateReference_NestedError(self):
+    schema_name = 'nested_objects.py.schema'
+    schema = ReadTestFile(schema_name)
+    properties = """
+      one:
+        name: my-database
+        size: $(ref.other-database.size)
+      two:
+        name: other-database
+        size: really big
+    """
+    try:
+      RawValidate(properties, schema_name, schema)
+      self.fail('Validation should fail')
+    except schema_validation.ValidationErrors as e:
+      self.assertEqual(1, len(e.errors))
+      self.assertIn("is not of type 'integer' at ['two', 'size']", e.message)
 
 if __name__ == '__main__':
   unittest.main()
