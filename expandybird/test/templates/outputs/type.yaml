@@ -1,0 +1,5 @@
+resources:
+- name: type-helper
+  type: type.jinja
+- name: thingy
+  type: $(ref.type-helper.type)

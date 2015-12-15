@@ -1,0 +1,18 @@
+config:
+  resources:
+  - name: one
+    type: simple-instance
+layout:
+  resources:
+  - name: one
+    outputs:
+    - name: one
+      value: 1
+    type: output_one.jinja
+  - name: conditional
+    properties:
+      value: $(ref.one.one)
+    resources:
+    - name: one
+      type: simple-instance
+    type: conditional.jinja

@@ -1,0 +1,9 @@
+resources:
+- name: one
+  type: simple-instance
+{# properties['value'] is a refernce, not yet a number. #}
+{# So this shouldn't output anything. #}
+{% if properties['value'] is number %}
+- name: two
+  type: simple-instance
+{% endif %}

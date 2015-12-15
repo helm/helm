@@ -1,0 +1,32 @@
+config:
+  resources:
+  - name: simple-name
+    type: simple-instance
+  - name: sub-consume-simple
+    properties:
+      target: 192.168.0.0
+    type: simple-instance
+  - name: consume-simple
+    properties:
+      target: 192.168.0.0
+    type: simple-instance
+layout:
+  resources:
+  - name: simple-consume-template
+    outputs:
+    - name: intermediate_ip
+      value: 192.168.0.0
+    resources:
+    - name: simple-template
+      outputs:
+      - name: ip
+        value: 192.168.0.0
+      resources:
+      - name: simple-name
+        type: simple-instance
+      type: simple.jinja
+    - name: sub-consume-simple
+      type: simple-instance
+    type: one_consume.jinja
+  - name: consume-simple
+    type: simple-instance

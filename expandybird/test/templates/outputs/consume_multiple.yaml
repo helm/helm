@@ -1,0 +1,8 @@
+resources:
+- name: simple-consume-template
+  type: one_consume.jinja
+- name: consume-simple
+  type: simple-instance
+  properties:
+    # Get the output value of simple.jinja, we expect 192.168.0.0
+    target: $(ref.simple-consume-template.intermediate_ip)

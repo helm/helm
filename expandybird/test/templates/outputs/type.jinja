@@ -1,0 +1,8 @@
+resources:
+- name: kubernetes-cluster
+  type: kubernetes.jinja
+- name: sub-thingy
+  type: $(ref.kubernetes-cluster.type)
+outputs:
+- name: type
+  value: $(ref.kubernetes-cluster.type)

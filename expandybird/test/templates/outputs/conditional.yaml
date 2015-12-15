@@ -1,0 +1,7 @@
+resources:
+- name: one
+  type: output_one.jinja
+- name: conditional
+  type: conditional.jinja
+  properties:
+    value: $(ref.one.one)

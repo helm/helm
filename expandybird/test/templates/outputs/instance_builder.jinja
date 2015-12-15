@@ -1,0 +1,8 @@
+resources:
+- name: {{ properties['instance-name'] }}
+  type: simple-instance
+  properties:
+    target: {{ properties['target-ip'] }}
+outputs:
+- name: ip
+  value: $(ref.{{ properties['instance-name'] }}.network[0].ip)

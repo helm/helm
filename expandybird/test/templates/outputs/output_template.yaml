@@ -1,0 +1,5 @@
+resources:
+- name: foo
+  type: output_template.jinja
+- name: bar
+  type: $(ref.foo.type)
