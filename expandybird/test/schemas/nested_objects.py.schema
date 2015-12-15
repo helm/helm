@@ -1,0 +1,20 @@
+info:
+  title: Schema with properties that are themselves objects
+
+imports:
+
+properties:
+  one:
+    type: object
+    properties:
+      name:
+        type: string
+      size:
+        type: integer
+  two:
+    type: object
+    properties:
+      name:
+        type: string
+      size:
+        type: integer
