@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/ghodss/yaml"
@@ -141,8 +140,6 @@ func (e *expander) ExpandTemplate(t *common.Template) (*ExpandedTemplate, error)
 
 	t.Imports = append(t.Imports, newImp...)
 
-	log.Printf("Got Imports as %#v", t.Imports)
-
 	for {
 		// Now expand with everything imported.
 		result, err := e.expandTemplate(t)
@@ -169,7 +166,6 @@ func (e *expander) ExpandTemplate(t *common.Template) (*ExpandedTemplate, error)
 		// If the new imports contain nothing, we are done. Everything is fully expanded.
 		if len(newImp) == 0 {
 			result.Layout = finalLayout
-			log.Printf("Returning config as %#v", result)
 			return result, nil
 		}
 
