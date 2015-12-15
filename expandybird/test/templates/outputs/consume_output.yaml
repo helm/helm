@@ -1,0 +1,8 @@
+resources:
+- name: simple-template
+  type: simple.jinja
+- name: consume-simple
+  type: simple-instance
+  properties:
+    # Get the output value of simple.jinja, we expect 192.168.0.0
+    target: $(ref.simple-template.ip)

@@ -1,0 +1,20 @@
+config:
+  resources:
+  - name: simple-name
+    type: simple-instance
+  - name: consume-simple
+    properties:
+      target: 192.168.0.0
+    type: simple-instance
+layout:
+  resources:
+  - name: simple-template
+    outputs:
+    - name: ip
+      value: 192.168.0.0
+    resources:
+    - name: simple-name
+      type: simple-instance
+    type: simple.jinja
+  - name: consume-simple
+    type: simple-instance

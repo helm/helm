@@ -1,0 +1,8 @@
+resources:
+- name: chain-template
+  type: one_simple.jinja
+outputs:
+- name: parent_ip
+  # We expect the ip value from one_simple.jinja, which in turn
+  # comes from simple.jinja, 192.168.0.0
+  value: $(ref.chain-template.intermediate_ip)

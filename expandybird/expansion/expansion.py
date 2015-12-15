@@ -24,10 +24,12 @@ import yaml
 
 from sandbox_loader import FileAccessRedirector
 
+import references
 import schema_validation
 
 
-def Expand(config, imports=None, env=None, validate_schema=False):
+def Expand(config, imports=None, env=None, validate_schema=False,
+    outputs=False):
   """Expand the configuration with imports.
 
   Args:
@@ -37,6 +39,7 @@ def Expand(config, imports=None, env=None, validate_schema=False):
     env: map from string to string, the map of environment variable names
         to their values
     validate_schema: True to run schema validation; False otherwise
+    outputs: True to process output values; False otherwise
   Returns:
     YAML containing the expanded configuration and its layout, in the following
     format:
@@ -51,13 +54,13 @@ def Expand(config, imports=None, env=None, validate_schema=False):
   """
   try:
     return _Expand(config, imports=imports, env=env,
-                   validate_schema=validate_schema)
+                   validate_schema=validate_schema, outputs=outputs)
   except Exception as e:
-    # print traceback.format_exc()
     raise ExpansionError('config', str(e))
 
 
-def _Expand(config, imports=None, env=None, validate_schema=False):
+def _Expand(config, imports=None, env=None, validate_schema=False,
+            outputs=False):
   """Expand the configuration with imports."""
 
   FileAccessRedirector.redirect(imports)
@@ -76,7 +79,7 @@ def _Expand(config, imports=None, env=None, validate_schema=False):
     raise Exception('Error parsing YAML: %s' % msg)
 
   # Handle empty file case
-  if not yaml_config:
+  if yaml_config is None:
     return ''
 
   # If the configuration does not have ':' in it, the yaml_config will be a
@@ -96,16 +99,20 @@ def _Expand(config, imports=None, env=None, validate_schema=False):
   # Iterate over all the resources to process.
   for resource in yaml_config['resources']:
     processed_resource = _ProcessResource(resource, imports, env,
-                                          validate_schema)
+                                          validate_schema, outputs)
 
     config['resources'].extend(processed_resource['config']['resources'])
     layout['resources'].append(processed_resource['layout'])
 
-  result = {'config': config, 'layout': layout}
+  _ProcessTargetConfig(yaml_config, outputs, config, layout)
+
+  result = {'config': config,
+            'layout': layout}
   return yaml.safe_dump(result, default_flow_style=False)
 
 
-def _ProcessResource(resource, imports, env, validate_schema=False):
+def _ProcessResource(resource, imports, env, validate_schema=False,
+                     outputs=False):
   """Processes a resource and expands if template.
 
   Args:
@@ -115,6 +122,7 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
     env: map from string to string, the map of environment variable names
         to their values
     validate_schema: True to run schema validation; False otherwise
+    outputs: True to process output values; False otherwise
   Returns:
     A map containing the layout and configuration of the expanded
     resource and any sub-resources, in the format:
@@ -136,7 +144,7 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
   layout = {'name': resource['name'],
             'type': resource['type']}
 
-  if resource['type'] in imports:
+  if imports and resource['type'] in imports:
     # A template resource, which contains sub-resources.
     expanded_template = ExpandTemplate(resource, imports, env, validate_schema)
 
@@ -146,7 +154,7 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
       # Process all sub-resources of this template.
       for resource_to_process in expanded_template['resources']:
         processed_resource = _ProcessResource(resource_to_process, imports, env,
-                                              validate_schema)
+                                              validate_schema, outputs)
 
         # Append all sub-resources to the config resources, and the resulting
         # layout of sub-resources.
@@ -160,6 +168,9 @@ def _ProcessResource(resource, imports, env, validate_schema=False):
 
         if 'properties' in resource:
           layout['properties'] = resource['properties']
+
+    _ProcessTargetConfig(expanded_template, outputs, config, layout)
+
   else:
     # A normal resource has only itself for config.
     config['resources'] = [resource]
@@ -181,6 +192,99 @@ def _ValidateUniqueNames(template_resources, template_name='config'):
                                                            template_name))
       names.add(resource['name'])
     # If this resource doesn't have a name, we will report that error later
+
+
+def IsTemplate(resource_type):
+  """Returns whether a given resource type is a Template."""
+  return resource_type.endswith('.py') or resource_type.endswith('.jinja')
+
+
+def _BuildOutputMap(resource_objs):
+  """Given the layout of an expanded template, return map of its outputs.
+
+  Args:
+    resource_objs: List of resources, some of which might be templates and have
+        outputs.
+
+  Returns:
+    Map of template_name -> output_name -> output_value
+  """
+  output_map = {}
+
+  for resource in resource_objs:
+    if 'outputs' not in resource:
+      continue
+    output_value_map = {}
+    for output_item in resource['outputs']:
+      output_value_map[output_item['name']] = output_item['value']
+    output_map[resource['name']] = output_value_map
+
+  return output_map
+
+
+def _ProcessTargetConfig(target, outputs, config, layout):
+  """Resolves outputs in the output and properties section of the config.
+
+  Args:
+    target: Config that contains unprocessed output values
+    outputs: Values to process
+    config: Config object to update
+    layout: Layout object to update
+  """
+  output_map = None
+  if 'resources' in layout:
+    output_map = _BuildOutputMap(layout['resources'])
+
+  if outputs:
+    if 'outputs' in target and target['outputs']:
+      layout['outputs'] = _ResolveOutputs(target['outputs'], output_map)
+
+    if 'resources' in config and config['resources']:
+      config['resources'] = _ResolveResources(config['resources'], output_map)
+
+
+def _ResolveOutputs(outputs, output_map):
+  """Resolves references in the outputs.
+
+  Args:
+    outputs: List of name,value dicts.
+    output_map: Result of _BuildOutputMap.
+
+  Returns:
+    Outputs with all references resolved.
+  """
+  if not output_map:
+    return outputs
+
+  for i in range(len(outputs)):
+    outputs[i] = references.PopulateReferences(outputs[i], output_map)
+
+  return outputs
+
+
+def _ResolveResources(resource_objs, output_map):
+  """Resolves references in the properties block of a resource.
+
+  Args:
+    resource_objs: The properties block to resolve references in.
+    output_map: Result of _BuildOutputMap.
+
+  Returns:
+    resource_objs with all of the references to outputs resolved.
+
+  Raises:
+    ExpansionReferenceError: if there were references to outputs that had bad
+        paths.
+  """
+  if not output_map:
+    return resource_objs
+
+  for resource in resource_objs:
+    if 'properties' in resource:
+      resource['properties'] = references.PopulateReferences(
+          resource['properties'], output_map)
+
+  return resource_objs
 
 
 def ExpandTemplate(resource, imports, env, validate_schema=False):
@@ -209,10 +313,19 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
         source_file,
         'Unable to find source file %s in imports.' % (source_file))
 
-  # source_file could be a short version of the template (say github short name)
-  # so we need to potentially map this into the fully resolvable name.
-  if 'path' in imports[source_file] and imports[source_file]['path']:
-      path = imports[source_file]['path']
+  if isinstance(imports[source_file], dict):
+    # This code path assumes a different structure for the 'imports' param.
+    # Map of String (name) to Dict ('path', 'content').
+    #
+    # source_file could be a short version of the template
+    # (say github short name)
+    # so we need to potentially map this into the fully resolvable name.
+    if 'path' in imports[source_file] and imports[source_file]['path']:
+        path = imports[source_file]['path']
+    content = imports[source_file]['content']
+  else:
+    path = source_file
+    content = imports[source_file]
 
   resource['imports'] = imports
 
@@ -234,11 +347,11 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
 
   if path.endswith('jinja'):
     expanded_template = ExpandJinja(
-        source_file, imports[source_file]['content'], resource, imports)
+        source_file, content, resource, imports)
   elif path.endswith('py'):
     # This is a Python template.
     expanded_template = ExpandPython(
-        imports[source_file]['content'], source_file, resource)
+        content, source_file, resource)
   else:
     # The source file is not a jinja file or a python file.
     # This in fact should never happen due to the IsTemplate check above.
@@ -263,8 +376,8 @@ def ExpandJinja(file_name, source_template, resource, imports):
     source_template: string, the content of jinja file to be render
     resource: resource object, the resource that contains parameters to the
         jinja file
-    imports: map from string to map {name, path}, the map of imported files names
-        fully resolved path and contents
+    imports: map from string to map {name, path}, the map of imported files
+        names fully resolved path and contents
   Returns:
     The final expanded template
   Raises:

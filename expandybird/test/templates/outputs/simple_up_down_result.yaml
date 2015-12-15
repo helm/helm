@@ -1,0 +1,39 @@
+config:
+  resources:
+  - name: mixer
+    properties:
+      target: $(ref.workflow.network[0].ip)
+    type: simple-instance
+  - name: workflow
+    properties:
+      target: $(ref.mixer.network[0].ip)
+    type: simple-instance
+layout:
+  outputs:
+  - name: frontend-ip
+    value: $(ref.mixer.network[0].ip)
+  - name: backend-ip
+    value: $(ref.workflow.network[0].ip)
+  resources:
+  - name: frontend
+    outputs:
+    - name: ip
+      value: $(ref.mixer.network[0].ip)
+    properties:
+      instance-name: mixer
+      target-ip: $(ref.backend.ip)
+    resources:
+    - name: mixer
+      type: simple-instance
+    type: instance_builder.jinja
+  - name: backend
+    outputs:
+    - name: ip
+      value: $(ref.workflow.network[0].ip)
+    properties:
+      instance-name: workflow
+      target-ip: $(ref.frontend.ip)
+    resources:
+    - name: workflow
+      type: simple-instance
+    type: instance_builder.jinja

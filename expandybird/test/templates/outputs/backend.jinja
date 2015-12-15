@@ -1,0 +1,9 @@
+resources:
+- name: {{ env['name'] }}-backend
+  type: instance_builder.jinja
+  properties:
+    instance-name: {{ env['name'] }}-backend-vm
+    target-ip: {{ properties['frontend-ip'] }}
+outputs:
+- name: ip
+  value: $(ref.{{ env['name'] }}-backend.ip)

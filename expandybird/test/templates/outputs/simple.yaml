@@ -1,0 +1,6 @@
+resources:
+- type: simple-type
+  name: simple-instance
+outputs:
+- name: ip
+  value: 192.168.0.0

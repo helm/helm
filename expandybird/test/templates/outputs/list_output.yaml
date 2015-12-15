@@ -1,0 +1,12 @@
+resources:
+- name: simple-template
+  type: list_output.jinja
+- name: consume-list
+  type: simple-instance
+  properties:
+    # Get the first output value of list_output.jinja, we expect 192.168.0.1
+    first-ip: $(ref.simple-template.ips[1])
+outputs:
+- name: second-ip
+  # We expect the 2nd ip from list_outputs.jinja, 192.168.0.2
+  value: $(ref.simple-template.ips[2])
