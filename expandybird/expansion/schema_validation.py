@@ -16,6 +16,7 @@
 import jsonschema
 import yaml
 
+import references
 import schema_validation_utils
 
 
@@ -58,6 +59,12 @@ IMPORT_SCHEMA = """
 # Validator to be used against the "imports:" section of a schema
 IMPORT_SCHEMA_VALIDATOR = jsonschema.Draft4Validator(
     yaml.safe_load(IMPORT_SCHEMA))
+
+
+def _FilterReferences(error_generator):
+  for error in error_generator:
+    if not references.HasReference(str(error.instance)):
+      yield error
 
 
 def _ValidateSchema(schema, validating_imports, schema_name, template_name):
@@ -164,7 +171,7 @@ def Validate(properties, schema_name, template_name, imports):
     list(DEFAULT_SETTER(schema).iter_errors(properties))
 
     # Now that we have default values, validate the properties
-    errors.extend(list(VALIDATOR(schema).iter_errors(properties)))
+    errors.extend(_FilterReferences(VALIDATOR(schema).iter_errors(properties)))
 
     if errors:
       raise ValidationErrors(schema_name, template_name, errors)
