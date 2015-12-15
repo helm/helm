@@ -1,0 +1,11 @@
+config:
+  resources:
+  - name: simple-instance
+    type: simple-type
+layout:
+  outputs:
+  - name: ip
+    value: 192.168.0.0
+  resources:
+  - name: simple-instance
+    type: simple-type

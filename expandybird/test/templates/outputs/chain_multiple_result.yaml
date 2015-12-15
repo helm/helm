@@ -1,0 +1,23 @@
+config:
+  resources:
+  - name: simple-name
+    type: simple-instance
+layout:
+  outputs:
+  - name: parent_ip
+    value: 192.168.0.0
+  resources:
+  - name: chain-template
+    outputs:
+    - name: intermediate_ip
+      value: 192.168.0.0
+    resources:
+    - name: simple-template
+      outputs:
+      - name: ip
+        value: 192.168.0.0
+      resources:
+      - name: simple-name
+        type: simple-instance
+      type: simple.jinja
+    type: one_simple.jinja

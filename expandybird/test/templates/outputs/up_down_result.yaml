@@ -1,0 +1,55 @@
+config:
+  resources:
+  - name: mixer-frontend-vm
+    properties:
+      target: $(ref.workflow-backend-vm.network[0].ip)
+    type: simple-instance
+  - name: workflow-backend-vm
+    properties:
+      target: $(ref.mixer-frontend-vm.network[0].ip)
+    type: simple-instance
+layout:
+  outputs:
+  - name: frontend-ip
+    value: $(ref.mixer-frontend-vm.network[0].ip)
+  - name: backend-ip
+    value: $(ref.workflow-backend-vm.network[0].ip)
+  resources:
+  - name: mixer
+    outputs:
+    - name: ip
+      value: $(ref.mixer-frontend-vm.network[0].ip)
+    properties:
+      backend-ip: $(ref.workflow.ip)
+    resources:
+    - name: mixer-frontend
+      outputs:
+      - name: ip
+        value: $(ref.mixer-frontend-vm.network[0].ip)
+      properties:
+        instance-name: mixer-frontend-vm
+        target-ip: $(ref.workflow.ip)
+      resources:
+      - name: mixer-frontend-vm
+        type: simple-instance
+      type: instance_builder.jinja
+    type: frontend.jinja
+  - name: workflow
+    outputs:
+    - name: ip
+      value: $(ref.workflow-backend-vm.network[0].ip)
+    properties:
+      frontend-ip: $(ref.mixer.ip)
+    resources:
+    - name: workflow-backend
+      outputs:
+      - name: ip
+        value: $(ref.workflow-backend-vm.network[0].ip)
+      properties:
+        instance-name: workflow-backend-vm
+        target-ip: $(ref.mixer.ip)
+      resources:
+      - name: workflow-backend-vm
+        type: simple-instance
+      type: instance_builder.jinja
+    type: backend.jinja
