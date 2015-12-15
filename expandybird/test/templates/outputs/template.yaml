@@ -1,0 +1,6 @@
+resources:
+- name: simple-template
+  type: simple.jinja
+outputs:
+- name: port
+  value: 88

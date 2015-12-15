@@ -1,3 +1,4 @@
 pyyaml
 Jinja2
 Jsonschema
+Jsonpath

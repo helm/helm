@@ -97,7 +97,10 @@ def process_imports(imports):
 
   # Now build the hierarchical modules.
   for k in imports.keys():
-    path = imports[k]['path']
+    if isinstance(imports[k], dict):
+      path = imports[k]['path']
+    else:
+      path = k
     if path.endswith('.jinja'):
       continue
     # Normalize paths and trim .py extension, if any.

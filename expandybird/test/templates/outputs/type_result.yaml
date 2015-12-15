@@ -1,0 +1,23 @@
+config:
+  resources:
+  - name: sub-thingy
+    type: my-kubernetes
+  - name: thingy
+    type: my-kubernetes
+layout:
+  resources:
+  - name: type-helper
+    outputs:
+    - name: type
+      value: my-kubernetes
+    resources:
+    - name: kubernetes-cluster
+      outputs:
+      - name: type
+        value: my-kubernetes
+      type: kubernetes.jinja
+    - name: sub-thingy
+      type: $(ref.kubernetes-cluster.type)
+    type: type.jinja
+  - name: thingy
+    type: $(ref.type-helper.type)

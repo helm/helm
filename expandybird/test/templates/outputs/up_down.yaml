@@ -1,0 +1,14 @@
+resources:
+- name: mixer
+  type: frontend.jinja
+  properties:
+    backend-ip: $(ref.workflow.ip)
+- name: workflow
+  type: backend.jinja
+  properties:
+    frontend-ip: $(ref.mixer.ip)
+outputs:
+- name: frontend-ip
+  value: $(ref.mixer.ip)
+- name: backend-ip
+  value: $(ref.workflow.ip)
