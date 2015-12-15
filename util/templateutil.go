@@ -19,7 +19,10 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 )
 
-var re = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
+var TemplateRegistryMatcher = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
+
+// RE for Registry that does not support versions and can have multiple files without imports.
+var PackageRegistryMatcher = regexp.MustCompile("github.com/(.*)/(.*)/(.*)")
 
 // IsTemplate returns whether a given type is a template.
 func IsTemplate(t string, imports []*common.ImportFile) bool {
@@ -37,5 +40,15 @@ func IsTemplate(t string, imports []*common.ImportFile) bool {
 // for example:
 // github.com/kubernetes/application-dm-templates/storage/redis:v1
 func IsGithubShortType(t string) bool {
-	return re.MatchString(t)
+	return TemplateRegistryMatcher.MatchString(t)
+}
+
+// IsGithubShortPackageType returns whether a given type is a type description in a short format to a github
+// package repository type.
+// For now, this means using github types:
+// github.com/owner/repo/type
+// for example:
+// github.com/helm/charts/cassandra
+func IsGithubShortPackageType(t string) bool {
+	return PackageRegistryMatcher.MatchString(t)
 }

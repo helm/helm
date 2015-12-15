@@ -14,37 +14,22 @@ limitations under the License.
 package registry
 
 // Registry abstracts a registry that holds templates, which can be
-// used in a Deployment Manager configurations. A registry root must be a
-// directory that contains all the available templates, one directory per
-// template. Each template directory then contains version directories, each
-// of which in turn contains all the files necessary for that version of the
-// template.
-// For example, a template registry containing two versions of redis
-// (implemented in jinja), and one version of replicatedservice (implemented
-// in python) would have a directory structure that looks something like this:
-// qualifier [optional] prefix to a virtual root within the repository.
-// /redis
-//   /v1
-//     redis.jinja
-//     redis.jinja.schema
-//   /v2
-//     redis.jinja
-//     redis.jinja.schema
-// /replicatedservice
-//   /v1
-//     replicatedservice.python
-//     replicatedservice.python.schema
-
+// used in a Deployment Manager configurations. There can be multiple
+// implementations of a registry. Currently we support Deployment Manager
+// github.com/kubernetes/application-dm-templates
+// and helm packages
+// github.com/helm/charts
+//
 type Type struct {
 	Collection string
-	Name    string
-	Version string
+	Name       string
+	Version    string
 }
 
 // Registry abstracts type interactions.
 type Registry interface {
 	// List all the templates at the given path
 	List() ([]Type, error)
-	// Get the download URL for a given template and version
-	GetURL(t Type) (string, error)
+	// Get the download URL(s) for a given type
+	GetURLs(t Type) ([]string, error)
 }

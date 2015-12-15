@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/deployment-manager/registry"
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/registry"
 )
 
 type responseAndError struct {
@@ -76,18 +76,37 @@ func (trp *testRegistryProvider) GetGithubRegistry(owner string, repository stri
 	return trp.r[owner+repository]
 }
 
+func (trp *testRegistryProvider) GetGithubPackageRegistry(owner string, repository string) registry.Registry {
+	return trp.r[owner+repository]
+}
+
 type testGithubRegistry struct {
 	responses map[registry.Type]urlAndError
 	count     int
 }
 
-func (tgr *testGithubRegistry) GetURL(t registry.Type) (string, error) {
+func (tgr *testGithubRegistry) GetURLs(t registry.Type) ([]string, error) {
 	tgr.count = tgr.count + 1
 	ret := tgr.responses[t]
-	return ret.u, ret.e
+	return []string{ret.u}, ret.e
 }
 
 func (tgr *testGithubRegistry) List() ([]registry.Type, error) {
+	return []registry.Type{}, fmt.Errorf("List should not be called in the test")
+}
+
+type testGithubPackageRegistry struct {
+	responses map[registry.Type]urlAndError
+	count     int
+}
+
+func (tgr *testGithubPackageRegistry) GetURLs(t registry.Type) ([]string, error) {
+	tgr.count = tgr.count + 1
+	ret := tgr.responses[t]
+	return []string{ret.u}, ret.e
+}
+
+func (tgr *testGithubPackageRegistry) List() ([]registry.Type, error) {
 	return []registry.Type{}, fmt.Errorf("List should not be called in the test")
 }
 
@@ -96,12 +115,12 @@ func testUrlConversionDriver(c resolverTestCase, tests map[string]urlAndError, t
 		rp: c.registryProvider,
 	}
 	for in, expected := range tests {
-		actual, err := r.ShortTypeToDownloadURL(in)
-		if actual != expected.u {
-			t.Errorf("failed on: %s : expected %s but got %s", in, expected.u, actual)
-		}
+		actual, err := r.ShortTypeToDownloadURLs(in)
 		if err != expected.e {
 			t.Errorf("failed on: %s : expected error %v but got %v", in, expected.e, err)
+		}
+		if actual[0] != expected.u {
+			t.Errorf("failed on: %s : expected %s but got %v", in, expected.u, actual)
 		}
 	}
 }
@@ -325,12 +344,12 @@ func TestSharedImport(t *testing.T) {
 func TestShortGithubUrlMapping(t *testing.T) {
 	githubUrlMaps := map[registry.Type]urlAndError{
 		registry.Type{"common", "replicatedservice", "v1"}: urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		registry.Type{"storage", "redis", "v1"}:               urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
+		registry.Type{"storage", "redis", "v1"}:            urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
 	}
 
 	tests := map[string]urlAndError{
 		"github.com/kubernetes/application-dm-templates/common/replicatedservice:v1": urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		"github.com/kubernetes/application-dm-templates/storage/redis:v1":               urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
+		"github.com/kubernetes/application-dm-templates/storage/redis:v1":            urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
 	}
 
 	test := resolverTestCase{
@@ -342,12 +361,12 @@ func TestShortGithubUrlMapping(t *testing.T) {
 func TestShortGithubUrlMappingDifferentOwnerAndRepo(t *testing.T) {
 	githubUrlMaps := map[registry.Type]urlAndError{
 		registry.Type{"common", "replicatedservice", "v1"}: urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		registry.Type{"storage", "redis", "v1"}:               urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/storage/redis/v1/redis.jinja", nil},
+		registry.Type{"storage", "redis", "v1"}:            urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/storage/redis/v1/redis.jinja", nil},
 	}
 
 	tests := map[string]urlAndError{
 		"github.com/example/mytemplates/common/replicatedservice:v1": urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		"github.com/example/mytemplates/storage/redis:v1":               urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/storage/redis/v1/redis.jinja", nil},
+		"github.com/example/mytemplates/storage/redis:v1":            urlAndError{"https://raw.githubusercontent.com/example/mytemplates/master/storage/redis/v1/redis.jinja", nil},
 	}
 
 	test := resolverTestCase{
@@ -367,12 +386,12 @@ resources:
 func TestShortGithubUrl(t *testing.T) {
 	finalImports := []*common.ImportFile{
 		&common.ImportFile{
-			Name: "github.com/kubernetes/application-dm-templates/common/replicatedservice:v1",
-			Path: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py",
+			Name:    "github.com/kubernetes/application-dm-templates/common/replicatedservice:v1",
+			Path:    "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py",
 			Content: "my-content"},
 		&common.ImportFile{
-			Name: "github.com/kubernetes/application-dm-templates/common/replicatedservice:v2",
-			Path: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py",
+			Name:    "github.com/kubernetes/application-dm-templates/common/replicatedservice:v2",
+			Path:    "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py",
 			Content: "my-content-2"},
 	}
 

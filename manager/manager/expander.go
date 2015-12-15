@@ -21,8 +21,8 @@ import (
 	"net/http"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/deployment-manager/util"
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/util"
 )
 
 const (

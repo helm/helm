@@ -155,3 +155,11 @@ type TypeInstance struct {
 	Manifest   string `json:"manifest"`   // manifest name
 	Path       string `json:"path"`       // JSON path within manifest
 }
+
+// KubernetesObject represents a native 'bare' Kubernetes object.
+type KubernetesObject struct {
+	Kind       string                 `json:"kind"`
+	ApiVersion string                 `json:"apiVersion"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	Spec       map[string]interface{} `json:"spec"`
+}

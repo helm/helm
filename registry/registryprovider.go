@@ -16,6 +16,7 @@ package registry
 // RegistryProvider returns factories for creating registries for a given RegistryType.
 type RegistryProvider interface {
 	GetGithubRegistry(owner string, repository string) Registry
+	GetGithubPackageRegistry(owner string, repository string) Registry
 }
 
 type DefaultRegistryProvider struct {
@@ -23,4 +24,8 @@ type DefaultRegistryProvider struct {
 
 func (drp *DefaultRegistryProvider) GetGithubRegistry(owner string, repository string) Registry {
 	return NewGithubRegistry(owner, repository, "")
+}
+
+func (drp *DefaultRegistryProvider) GetGithubPackageRegistry(owner string, repository string) Registry {
+	return NewGithubPackageRegistry(owner, repository)
 }
