@@ -1,4 +1,6 @@
+--allow-all-external
 pyyaml
 Jinja2
 Jsonschema
+--allow-unverified Jsonpath
 Jsonpath
