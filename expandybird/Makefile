@@ -27,6 +27,12 @@ expandybird:
 	go get -v ./...
 	go install -v ./...
 
+test:
+	python expansion/expansion_test.py && \
+	python expansion/schema_validation_test.py && \
+	python expansion/references_test.py
+
+
 clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
 	rm -f expandybird
