@@ -483,6 +483,22 @@ class ExpansionTest(unittest.TestCase):
 
     self.assertEquals(result_file, expanded_template)
 
+  def testNoPropertiesSchemaDefaults(self):
+    template = ReadTestFile('no_properties_schema_defaults.yaml')
+
+    imports = {}
+    imports['no_properties_schema_defaults.py'] = ReadTestFile(
+        'no_properties_schema_defaults.py')
+    imports['no_properties_schema_defaults.py.schema'] = ReadTestFile(
+        'no_properties_schema_defaults.py.schema')
+
+    expanded_template = expansion.Expand(
+        template, imports, validate_schema=True)
+
+    result_file = ReadTestFile('no_properties_schema_defaults_result.yaml')
+
+    self.assertEquals(result_file, expanded_template)
+
   def testNestedTemplateSchema(self):
     template = ReadTestFile('use_helper.yaml')
 
