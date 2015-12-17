@@ -1,0 +1,6 @@
+imports:
+- path: "no_properties_schema_defaults.py"
+
+resources:
+- name: test-resource
+  type: no_properties_schema_defaults.py
