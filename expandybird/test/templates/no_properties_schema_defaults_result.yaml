@@ -1,0 +1,16 @@
+config:
+  resources:
+  - name: defaultname-firewall
+    properties:
+      sourceRanges:
+      - 0.0.0.0/0
+    type: compute.v1.firewall
+layout:
+  resources:
+  - name: test-resource
+    properties:
+      firewallname: defaultname
+    resources:
+    - name: defaultname-firewall
+      type: compute.v1.firewall
+    type: no_properties_schema_defaults.py
