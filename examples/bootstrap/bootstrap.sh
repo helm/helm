@@ -18,7 +18,7 @@ if [[ -z $RESOURCIFIER ]] ; then
 	exit 1
 fi
 pkill -f $RESOURCIFIER
-$RESOURCIFIER > $LOGDIR/resourcifier.log 2>&1 --kubectl=$KUBECTL --port=8082 &
+nohup $RESOURCIFIER > $LOGDIR/resourcifier.log 2>&1 --kubectl=$KUBECTL --port=8082 &
 echo
 
 echo "Starting expandybird..."
@@ -28,7 +28,7 @@ if [[ -z $EXPANDYBIRD ]] ; then
   exit 1
 fi
 pkill -f $EXPANDYBIRD
-$EXPANDYBIRD > $LOGDIR/expandybird.log 2>&1 --port=8081 --expansion_binary=expandybird/expansion/expansion.py &
+nohup $EXPANDYBIRD > $LOGDIR/expandybird.log 2>&1 --port=8081 --expansion_binary=expandybird/expansion/expansion.py &
 echo
 
 echo "Starting deployment manager..."
@@ -38,7 +38,7 @@ if [[ -z $MANAGER ]] ; then
   exit 1
 fi
 pkill -f $MANAGER
-$MANAGER > $LOGDIR/manager.log 2>&1 --port=8080 --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
+nohup $MANAGER > $LOGDIR/manager.log 2>&1 --port=8080 --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
 echo
 
 echo "Creating dm namespace..."
@@ -51,7 +51,7 @@ echo
 
 echo "Starting kubectl proxy..."
 pkill -f "$KUBECTL proxy"
-$KUBECTL proxy --port=8001 --namespace=dm &
+nohup $KUBECTL proxy --port=8001 --namespace=dm &
 sleep 1s
 echo
 
