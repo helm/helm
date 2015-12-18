@@ -108,7 +108,7 @@ def Validate(properties, schema_name, template_name, imports):
     properties: dict, the properties to be validated
     schema_name: name of the schema file to validate
     template_name: name of the template whose properties are being validated
-    imports: the map of imported files names to file contents
+    imports: the map of imported files names to map containing path and content
 
   Returns:
     Dict containing the validated properties, with defaults filled in
@@ -122,7 +122,7 @@ def Validate(properties, schema_name, template_name, imports):
     raise ValidationErrors(schema_name, template_name,
                            ["Could not find schema file '%s'." % schema_name])
 
-  raw_schema = imports[schema_name]
+  raw_schema = imports[schema_name]['content']
 
   if properties is None:
     properties = {}
