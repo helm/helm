@@ -37,11 +37,20 @@ def RawValidate(raw_properties, schema_name, raw_schema):
                             {schema_name: raw_schema})
 
 
+def ConvertImportMap(import_map):
+  """Makes each import a map of {'content': value}."""
+  out = {}
+  for key in import_map:
+    out[key] = { 'content': import_map[key]}
+
+  return out
+
+
 def ImportsRawValidate(raw_properties, schema_name, import_map):
   """Takes raw properties, calls validate and returns yaml properties."""
   properties = yaml.safe_load(raw_properties)
   return schema_validation.Validate(properties, schema_name, 'template.py',
-                                    import_map)
+                                    ConvertImportMap(import_map))
 
 
 class SchemaValidationTest(unittest.TestCase):
