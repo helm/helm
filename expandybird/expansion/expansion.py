@@ -36,7 +36,7 @@ def Expand(config, imports=None, env=None, validate_schema=False,
   Args:
     config: string, the raw config to be expanded.
     imports: map from import file name, e.g. "helpers/constants.py" to
-        its contents.
+        map containing 'path' and 'content'.
     env: map from string to string, the map of environment variable names
         to their values
     validate_schema: True to run schema validation; False otherwise
@@ -118,8 +118,7 @@ def _ProcessResource(resource, imports, env, validate_schema=False,
 
   Args:
     resource: the resource to be processed, as a map.
-    imports: map from string to string, the map of imported files names
-        and contents
+    imports: the map of imported files names to path and content
     env: map from string to string, the map of environment variable names
         to their values
     validate_schema: True to run schema validation; False otherwise
@@ -193,11 +192,6 @@ def _ValidateUniqueNames(template_resources, template_name='config'):
                                                            template_name))
       names.add(resource['name'])
     # If this resource doesn't have a name, we will report that error later
-
-
-def IsTemplate(resource_type):
-  """Returns whether a given resource type is a Template."""
-  return resource_type.endswith('.py') or resource_type.endswith('.jinja')
 
 
 def _BuildOutputMap(resource_objs):
@@ -294,8 +288,7 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
   Args:
     resource: resource object, the resource that contains parameters to the
         jinja file
-    imports: map from string to string, the map of imported files names
-        and contents
+    imports: map of imported files names to map with path and content
     env: map from string to string, the map of environment variable names
         to their values
     validate_schema: True to run schema validation; False otherwise
@@ -314,21 +307,12 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
         source_file,
         'Unable to find source file %s in imports.' % (source_file))
 
-  if isinstance(imports[source_file], dict):
-    # This code path assumes a different structure for the 'imports' param.
-    # Map of String (name) to Dict ('path', 'content').
-    #
-    # source_file could be a short version of the template
-    # (say github short name)
-    # so we need to potentially map this into the fully resolvable name.
-    if 'path' in imports[source_file] and imports[source_file]['path']:
-        path = imports[source_file]['path']
-    content = imports[source_file]['content']
-  else:
-    path = source_file
-    content = imports[source_file]
+  # source_file could be a short version of the template (say github short name)
+  # so we need to potentially map this into the fully resolvable name.
+  if 'path' in imports[source_file] and imports[source_file]['path']:
+      path = imports[source_file]['path']
 
-  resource['imports'] = imports
+  resource['imports'] = SimpleImportMap(imports)
 
   # Populate the additional environment variables.
   if env is None:
@@ -348,11 +332,11 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
 
   if path.endswith('jinja') or path.endswith('yaml'):
     expanded_template = ExpandJinja(
-        source_file, content, resource, imports)
+        source_file, imports[source_file]['content'], resource, imports)
   elif path.endswith('py'):
     # This is a Python template.
     expanded_template = ExpandPython(
-        content, source_file, resource)
+        imports[source_file]['content'], source_file, resource)
   else:
     # The source file is not a jinja file or a python file.
     # This in fact should never happen due to the IsTemplate check above.
@@ -369,6 +353,15 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
   return parsed_template
 
 
+def SimpleImportMap(imports):
+  """Returns map(string->string) of import name to file content."""
+  out = {}
+  for key in imports:
+    out[key] = imports[key]['content']
+
+  return out
+
+
 def ExpandJinja(file_name, source_template, resource, imports):
   """Render the jinja template using jinja libraries.
 
@@ -377,8 +370,7 @@ def ExpandJinja(file_name, source_template, resource, imports):
     source_template: string, the content of jinja file to be render
     resource: resource object, the resource that contains parameters to the
         jinja file
-    imports: map from string to map {name, path}, the map of imported files
-        names fully resolved path and contents
+    imports: the map of imported files names fully resolved path and contents
   Returns:
     The final expanded template
   Raises:
@@ -386,7 +378,7 @@ def ExpandJinja(file_name, source_template, resource, imports):
   """
 
   try:
-    env = jinja2.Environment(loader=jinja2.DictLoader(imports))
+    env = jinja2.Environment(loader=jinja2.DictLoader(SimpleImportMap(imports)))
 
     template = env.from_string(source_template)
 
