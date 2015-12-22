@@ -39,6 +39,10 @@ class AllowedImportsLoader(object):
 
     try:
       data = FileAccessRedirector.allowed_imports[self.get_filename(name)]
+      # If the file existed, it is a dict containing 'content' and 'path'.
+      # Otherwise, it is just the string '\n'.
+      if isinstance(data, dict):
+        data = data['content']
     except Exception:  # pylint: disable=broad-except
       return None
 
@@ -95,14 +99,18 @@ def process_imports(imports):
   for k in imports:
     ret[k] = imports[k]
 
-  # Now build the hierarchical modules.
+  paths = []
+
   for k in imports.keys():
+    # When we see 'common/helper.py' with path 'usr/bin/.../common/helper.py'
+    # We need to evaluate 'common/helper' and 'usr/bin/.../common/helper'
+    # 'common.py' needs to exist.
+    paths.append(k)
     if isinstance(imports[k], dict):
-      path = imports[k]['path']
-    else:
-      path = k
-    if path.endswith('.jinja'):
-      continue
+      paths.append(imports[k]['path'])
+
+  # Now build the hierarchical modules.
+  for path in paths:
     # Normalize paths and trim .py extension, if any.
     normalized = os.path.splitext(os.path.normpath(path))[0]
     # If this is actually a path and not an absolute name, split it and process
