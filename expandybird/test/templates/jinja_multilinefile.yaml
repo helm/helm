@@ -1,0 +1,8 @@
+imports: ["jinja_multilinefile.jinja", "helpers/common.jinja", "multiline.txt"]
+
+resources:
+- name: jinja_multilinefile_name
+  type: jinja_multilinefile.jinja
+  properties:
+    description-file: multiline.txt
+
