@@ -344,9 +344,17 @@ def ExpandTemplate(resource, imports, env, validate_schema=False):
         resource['source'],
         'Unsupported source file: %s.' % (source_file))
 
-  parsed_template = yaml.safe_load(expanded_template)
+  if isinstance(expanded_template, basestring):
+    parsed_template = yaml.safe_load(expanded_template)
+  elif isinstance(expanded_template, dict):
+    parsed_template = expanded_template
+  else:
+    raise ExpansionError(
+        resource['type'],
+        'Python expansion must return dict, str or unicode type, '
+        'but was %s'%(type(expanded_template)))
 
-  if parsed_template is None or 'resources' not in parsed_template:
+  if not parsed_template or 'resources' not in parsed_template:
     raise ExpansionError(resource['type'],
                          'Template did not return a \'resources:\' field.')
 
@@ -401,7 +409,8 @@ def ExpandPython(python_source, file_name, params):
     params: object that contains 'imports' and 'params', the parameters to
         the python script
   Returns:
-    The final expanded template.
+    The final expanded template. Return value can be either YAML string or
+    the actual dictionary (latter preferred for performance reasons).
   """
 
   try:
