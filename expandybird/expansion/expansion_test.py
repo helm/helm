@@ -207,6 +207,25 @@ class ExpansionTest(unittest.TestCase):
 
     self.assertEquals(result_file, expanded_template)
 
+  def testJinjaMultilineFile(self):
+    template = ReadTestFile('jinja_multilinefile.yaml')
+
+    imports = {}
+    imports['jinja_multilinefile.jinja'] = ReadImportFile(
+        'jinja_multilinefile.jinja')
+    imports['helpers/common.jinja'] = ReadImportFile(
+        'helpers/common.jinja')
+    imports['multiline.txt'] = ReadImportFile('multiline.txt')
+
+    yaml_template = yaml.safe_load(template)
+
+    expanded_template = expansion.Expand(
+        str(yaml_template), imports)
+
+    result_file = ReadTestFile('jinja_multilinefile_result.yaml')
+
+    self.assertEquals(result_file, expanded_template)
+
   def testPythonWithImport(self):
     template = ReadTestFile('python_template_with_import.yaml')
 
@@ -245,6 +264,28 @@ class ExpansionTest(unittest.TestCase):
 
     result_file = ReadTestFile(
         'python_template_with_inlinedfile_result.yaml')
+
+    self.assertEquals(result_file, expanded_template)
+
+  def testPythonMultilineFile(self):
+    template = ReadTestFile('python_multilinefile.yaml')
+
+    imports = {}
+    imports['python_multilinefile.py'] = ReadImportFile(
+        'python_multilinefile.py')
+
+    imports['helpers/common.py'] = ReadImportFile('helpers/common.py')
+    imports['helpers/extra/common2.py'] = ReadImportFile(
+        'helpers/extra/common2.py')
+
+    imports['multiline.txt'] = ReadImportFile('multiline.txt')
+
+    yaml_template = yaml.safe_load(template)
+
+    expanded_template = expansion.Expand(
+        str(yaml_template), imports)
+
+    result_file = ReadTestFile('python_multilinefile_result.yaml')
 
     self.assertEquals(result_file, expanded_template)
 

@@ -1,0 +1,42 @@
+config:
+  resources:
+  - name: myFrontend-prod
+    properties:
+      description: '-----BEGIN TEST CERT-----
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Lotsof65characterlineswillfollow.Onlyseveralmorecharacterstogo!!
+
+        Thelastlineisntalways65characters.Notsurewhy...
+
+        -----END TEST CERT-----
+
+        '
+      machineSize: big
+    type: compute.v1.instance
+layout:
+  resources:
+  - name: python_multilinefile_name
+    properties:
+      description-file: multiline.txt
+    resources:
+    - name: myFrontend-prod
+      type: compute.v1.instance
+    type: python_multilinefile.py
