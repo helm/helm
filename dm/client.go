@@ -11,8 +11,10 @@ import (
 	"github.com/ghodss/yaml"
 )
 
-var DefaultHTTPTimeout time.Duration
+// The default HTTP timeout
+var DefaultHTTPTimeout time.Duration = time.Second * 10
 
+// Client is a DM client.
 type Client struct {
 	// Timeout on HTTP connections.
 	HTTPTimeout time.Duration
@@ -22,6 +24,7 @@ type Client struct {
 	Protocol string
 }
 
+// NewClient creates a new DM client. Host name is required.
 func NewClient(host string) *Client {
 	return &Client{
 		HTTPTimeout: DefaultHTTPTimeout,
@@ -30,30 +33,39 @@ func NewClient(host string) *Client {
 	}
 }
 
+// url constructs the URL.
 func (c *Client) url(path string) string {
 	// TODO: Switch to net.URL
 	return c.Protocol + "://" + c.Host + "/" + path
 }
 
 // CallService is a low-level function for making an API call.
-func (c *Client) CallService(path, method, action string, reader io.ReadCloser) {
+//
+// This calls the service and then unmarshals the returned data into dest.
+func (c *Client) CallService(path, method, action string, dest interface{}, reader io.ReadCloser) error {
 	u := c.url(path)
 
-	resp := c.callHttp(u, method, action, reader)
-	var j interface{}
-	if err := json.Unmarshal([]byte(resp), &j); err != nil {
-		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
+	resp, err := c.callHttp(u, method, action, reader)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal([]byte(resp), dest); err != nil {
+		return fmt.Errorf("Failed to parse JSON response from service: %s", resp)
 	}
 
-	y, err := yaml.Marshal(j)
+	// From here down is just printing the data.
+
+	y, err := yaml.Marshal(dest)
 	if err != nil {
-		panic(fmt.Errorf("Failed to serialize JSON response from service: %s", resp))
+		return fmt.Errorf("Failed to serialize JSON response from service: %s", resp)
 	}
 
 	fmt.Println(string(y))
+	return nil
 }
 
-func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) string {
+// callHttp is  a low-level primative for executing HTTP operations.
+func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (string, error) {
 	request, err := http.NewRequest(method, path, reader)
 	request.Header.Add("Content-Type", "application/json")
 
@@ -63,20 +75,20 @@ func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) str
 
 	response, err := client.Do(request)
 	if err != nil {
-		panic(fmt.Errorf("cannot %s: %s\n", action, err))
+		return "", fmt.Errorf("cannot %s: %s\n", action, err)
 	}
 
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		panic(fmt.Errorf("cannot %s: %s\n", action, err))
+		return "", fmt.Errorf("cannot %s: %s\n", action, err)
 	}
 
 	if response.StatusCode < http.StatusOK ||
 		response.StatusCode >= http.StatusMultipleChoices {
 		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
-		panic(fmt.Errorf("cannot %s: %s\n", action, message))
+		return "", fmt.Errorf("cannot %s: %s\n", action, message)
 	}
 
-	return string(body)
+	return string(body), nil
 }
