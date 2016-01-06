@@ -1,4 +1,4 @@
-package: github.com/engineyard/helm-dm
+package: github.com/deis/helm-dm
 import:
 - package: github.com/codegangsta/cli
 - package: github.com/kubernetes/deployment-manager

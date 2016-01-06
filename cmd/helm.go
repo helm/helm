@@ -21,7 +21,10 @@ func main() {
 func commands() []cli.Command {
 	return []cli.Command{
 		{
-			Name: "install",
+			Name:        "install",
+			Usage:       "Initialize the client and install DM on Kubernetes.",
+			Description: ``,
+			Action:      func(c *cli.Context) { install() },
 		},
 		{
 			Name: "target",
