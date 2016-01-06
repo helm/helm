@@ -1,6 +1,53 @@
-hash: 2f47b12bf634894e182800b5565efd124c6defff6291b60408cbba6a038778ae
-updated: 2016-01-06T13:51:49.954407735-08:00
+hash: 4cc1aba06a344d43c0c1005d71dc0659ada5d90f0b2235b1d8e8c7352d1251a7
+updated: 2016-01-06T14:30:55.041267875-08:00
 imports:
 - name: github.com/codegangsta/cli
   version: c31a7975863e7810c92e2e288a9ab074f9a88f29
+- name: github.com/emicklei/go-restful
+  version: ce94a9f819d7dd2b5599ff0c017b1124595a64fb
+- name: github.com/ghodss/yaml
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/golang/glog
+  version: fca8c8854093a154ff1eb580aae10276ad6b1b5f
+- name: github.com/golang/protobuf
+  version: 2402d76f3d41f928c7902a765dfc872356dd3aad
+- name: github.com/google/go-github
+  version: 63fbbb283ce4913a5ac1b6de7abae50dbf594a04
+- name: github.com/google/go-querystring
+  version: 2a60fc2ba6c19de80291203597d752e9ba58e4c0
+- name: github.com/gorilla/context
+  version: 1c83b3eabd45b6d76072b66b746c20815fb2872d
+- name: github.com/gorilla/handlers
+  version: 1af6d56d7cd39d982856bc0cee11142baf392c52
+- name: github.com/gorilla/mux
+  version: 26a6070f849969ba72b72256e9f14cf519751690
+- name: github.com/gorilla/schema
+  version: 14c555599c2a4f493c1e13fd1ea6fdf721739028
+- name: github.com/kubernetes/deployment-manager
+  version: 62f19486073edd020a11922304130f0c5c1dff20
+  subpackages:
+  - /common
+- name: github.com/mjibson/appstats
+  version: 0542d5f0e87ea3a8fa4174322b9532f5d04f9fa8
+- name: golang.org/x/crypto
+  version: 552e9d568fde9701ea1944fb01c8aadaceaa7353
+- name: golang.org/x/net
+  version: 1ade16a5450925b7496e1031938175d1f5d30d31
+- name: golang.org/x/oauth2
+  version: 2baa8a1b9338cf13d9eeb27696d761155fa480be
+- name: golang.org/x/text
+  version: cf4986612c83df6c55578ba198316d1684a9a287
+- name: google.golang.com/appengine
+  version: ""
+  repo: https://google.golang.com/appengine
+- name: google.golang.org/api
+  version: f5b7ec483f357a211c03c6722a840444c2d395dc
+- name: google.golang.org/appengine
+  version: 54bf9150c922186bfc45a00bf9dfcb91a5063275
+- name: google.golang.org/cloud
+  version: 1bff51b8fae8d33cb3dab8f7858c266ce001ee3e
+- name: google.golang.org/grpc
+  version: 78905999da08d7f87d5dd11608fa79ff8700daa8
+- name: gopkg.in/yaml.v2
+  version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
 devImports: []

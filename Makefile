@@ -4,8 +4,8 @@ endif
 
 BIN_DIR := bin
 DIST_DIR := _dist
-GO_PACKAGES := action chart config dependency log manifest release plugins/sec plugins/example codec
-MAIN_GO := helm.go
+GO_PACKAGES := cmd dm
+MAIN_GO := cmd/helm.go
 HELM_BIN := $(BIN_DIR)/helm
 PATH_WITH_HELM = PATH="$(shell pwd)/$(BIN_DIR):$(PATH)"
 
@@ -18,7 +18,7 @@ ifndef VERSION
 endif
 
 build: $(MAIN_GO)
-	go build -o $(HELM_BIN) -ldflags "-X github.com/helm/helm/cli.version=${VERSION}" $<
+	go build -o $(HELM_BIN) -ldflags "-X github.com/helm/helm/cmd.version=${VERSION}" $<
 
 bootstrap:
 	go get -u github.com/golang/lint/golint github.com/mitchellh/gox
@@ -54,7 +54,7 @@ else
 endif
 
 quicktest:
-	$(PATH_WITH_HELM) go test -short ./ $(addprefix ./,$(GO_PACKAGES))
+	$(PATH_WITH_HELM) go test -short $(addprefix ./,$(GO_PACKAGES))
 
 test: test-style
 	$(PATH_WITH_HELM) go test -v ./ $(addprefix ./,$(GO_PACKAGES))

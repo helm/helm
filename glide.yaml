@@ -1,3 +1,7 @@
 package: github.com/engineyard/helm-dm
 import:
 - package: github.com/codegangsta/cli
+- package: github.com/kubernetes/deployment-manager
+  subpackages:
+  - /common
+- package: github.com/ghodss/yaml
