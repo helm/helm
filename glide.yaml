@@ -1,2 +1,3 @@
 package: github.com/engineyard/helm-dm
-import: []
+import:
+- package: github.com/codegangsta/cli
