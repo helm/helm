@@ -39,7 +39,21 @@ func commands() []cli.Command {
 			},
 		},
 		{
-			Name: "target",
+			Name:      "target",
+			Usage:     "Displays information about cluster.",
+			ArgsUsage: "",
+			Action: func(c *cli.Context) {
+				if err := target(c.Bool("dry-run")); err != nil {
+					format.Error(err.Error())
+					os.Exit(1)
+				}
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "dry-run",
+					Usage: "Only display the underlying kubectl commands.",
+				},
+			},
 		},
 		{
 			Name: "doctor",
