@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,9 +31,10 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gorilla/mux"
 
-	"github.com/kubernetes/deployment-manager/manager/manager"
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/manager/manager"
 	"github.com/kubernetes/deployment-manager/manager/repository"
+	"github.com/kubernetes/deployment-manager/registry"
 	"github.com/kubernetes/deployment-manager/util"
 )
 
@@ -48,6 +49,7 @@ var deployments = []Route{
 	{"Expand", "/expand", "POST", expandHandlerFunc, ""},
 	{"ListTypes", "/types", "GET", listTypesHandlerFunc, ""},
 	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
+	{"ListRegistries", "/registries", "GET", listRegistriesHandlerFunc, ""},
 }
 
 var (
@@ -72,8 +74,9 @@ func init() {
 func newManager() manager.Manager {
 	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), manager.NewTypeResolver())
 	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName))
+	registryService := registry.NewInmemRepositoryService()
 	r := repository.NewMapBasedRepository()
-	return manager.NewManager(expander, deployer, r)
+	return manager.NewManager(expander, deployer, r, registryService)
 }
 
 func getServiceURL(serviceURL, serviceName string) string {
@@ -328,4 +331,16 @@ func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, backend.ListInstances(typeName), http.StatusOK)
+}
+
+// Putting Registry handlers here for now because deployments.go
+// currently owns its own Manager backend and doesn't like to share.
+func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: list registries"
+	util.LogHandlerEntry(handler, r)
+	registries, err := backend.ListRegistries()
+	if err != nil {
+		return
+	}
+	util.LogHandlerExitWithJSON(handler, w, registries, http.StatusOK)
 }

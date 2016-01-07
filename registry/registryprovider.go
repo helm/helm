@@ -30,18 +30,6 @@ type RegistryProvider interface {
 
 func NewDefaultRegistryProvider() RegistryProvider {
 	rs := NewInmemRepositoryService()
-	rs.Create(&common.Registry{
-		Name:   "charts",
-		Type:   common.Github,
-		URL:    "github.com/helm/charts",
-		Format: common.UnversionedRegistry,
-	})
-	rs.Create(&common.Registry{
-		Name:   "application-dm-templates",
-		Type:   common.Github,
-		URL:    "github.com/kubernetes/application-dm-templates",
-		Format: common.VersionedRegistry,
-	})
 	return &DefaultRegistryProvider{rs: rs}
 
 }

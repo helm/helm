@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ import (
 
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/manager/repository"
+	"github.com/kubernetes/deployment-manager/registry"
 )
 
 // Manager manages a persistent set of Deployments.
@@ -37,17 +38,23 @@ type Manager interface {
 	Expand(t *common.Template) (*common.Manifest, error)
 	ListTypes() []string
 	ListInstances(typeName string) []*common.TypeInstance
+	// Registry related functions
+	ListRegistries() ([]*common.Registry, error)
+	CreateRegistry(pr *common.Registry) error
+	GetRegistry(name string) (*common.Registry, error)
+	DeleteRegistry(name string) error
 }
 
 type manager struct {
-	expander   Expander
-	deployer   Deployer
-	repository repository.Repository
+	expander        Expander
+	deployer        Deployer
+	repository      repository.Repository
+	registryService registry.RegistryService
 }
 
 // NewManager returns a new initialized Manager.
-func NewManager(expander Expander, deployer Deployer, repository repository.Repository) Manager {
-	return &manager{expander, deployer, repository}
+func NewManager(expander Expander, deployer Deployer, repository repository.Repository, registryService registry.RegistryService) Manager {
+	return &manager{expander, deployer, repository, registryService}
 }
 
 // ListDeployments returns the list of deployments
@@ -300,6 +307,22 @@ func (m *manager) ListTypes() []string {
 
 func (m *manager) ListInstances(typeName string) []*common.TypeInstance {
 	return m.repository.GetTypeInstances(typeName)
+}
+
+func (m *manager) ListRegistries() ([]*common.Registry, error) {
+	return m.registryService.List()
+}
+
+func (m *manager) CreateRegistry(pr *common.Registry) error {
+	return m.registryService.Create(pr)
+}
+
+func (m *manager) GetRegistry(name string) (*common.Registry, error) {
+	return m.registryService.Get(name)
+}
+
+func (m *manager) DeleteRegistry(name string) error {
+	return m.registryService.Delete(name)
 }
 
 func generateManifestName() string {

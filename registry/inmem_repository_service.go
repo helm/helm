@@ -28,13 +28,30 @@ type inmemRepositoryService struct {
 }
 
 func NewInmemRepositoryService() RegistryService {
-	return &inmemRepositoryService{
+	rs := &inmemRepositoryService{
 		repositories: make(map[string]*common.Registry),
 	}
+	rs.Create(&common.Registry{
+		Name:   "charts",
+		Type:   common.Github,
+		URL:    "github.com/helm/charts",
+		Format: common.UnversionedRegistry,
+	})
+	rs.Create(&common.Registry{
+		Name:   "application-dm-templates",
+		Type:   common.Github,
+		URL:    "github.com/kubernetes/application-dm-templates",
+		Format: common.VersionedRegistry,
+	})
+	return rs
 }
 
 func (rs *inmemRepositoryService) List() ([]*common.Registry, error) {
-	return nil, nil
+	ret := []*common.Registry{}
+	for _, r := range rs.repositories {
+		ret = append(ret, r)
+	}
+	return ret, nil
 }
 
 func (rs *inmemRepositoryService) Create(repository *common.Registry) error {
