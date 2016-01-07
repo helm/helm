@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -64,23 +64,23 @@ type urlAndError struct {
 }
 
 type testRegistryProvider struct {
-	owner string
-	repo  string
-	r     map[string]registry.Registry
+	URLPrefix string
+	r         map[string]registry.Registry
 }
 
-func newTestRegistryProvider(owner string, repository string, tests map[registry.Type]urlAndError, count int) registry.RegistryProvider {
+func newTestRegistryProvider(URLPrefix string, tests map[registry.Type]urlAndError, count int) registry.RegistryProvider {
 	r := make(map[string]registry.Registry)
-	r[owner+repository] = &testGithubRegistry{tests, count}
-	return &testRegistryProvider{owner, repository, r}
+	r[URLPrefix] = &testGithubRegistry{tests, count}
+	return &testRegistryProvider{URLPrefix, r}
 }
 
-func (trp *testRegistryProvider) GetGithubRegistry(owner string, repository string) registry.Registry {
-	return trp.r[owner+repository]
-}
-
-func (trp *testRegistryProvider) GetGithubPackageRegistry(owner string, repository string) registry.Registry {
-	return trp.r[owner+repository]
+func (trp *testRegistryProvider) GetRegistry(URL string) (registry.Registry, error) {
+	for key, r := range trp.r {
+		if strings.HasPrefix(URL, key) {
+			return r, nil
+		}
+	}
+	return nil, fmt.Errorf("No registry found for %s", URL)
 }
 
 type testGithubRegistry struct {
@@ -356,7 +356,7 @@ func TestShortGithubUrlMapping(t *testing.T) {
 	}
 
 	test := resolverTestCase{
-		registryProvider: newTestRegistryProvider("kubernetes", "application-dm-templates", githubUrlMaps, 2),
+		registryProvider: newTestRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps, 2),
 	}
 	testUrlConversionDriver(test, tests, t)
 }
@@ -373,7 +373,7 @@ func TestShortGithubUrlMappingDifferentOwnerAndRepo(t *testing.T) {
 	}
 
 	test := resolverTestCase{
-		registryProvider: newTestRegistryProvider("example", "mytemplates", githubUrlMaps, 2),
+		registryProvider: newTestRegistryProvider("github.com/example/mytemplates", githubUrlMaps, 2),
 	}
 	testUrlConversionDriver(test, tests, t)
 }
@@ -415,7 +415,7 @@ func TestShortGithubUrl(t *testing.T) {
 		importOut:        finalImports,
 		urlcount:         4,
 		responses:        responses,
-		registryProvider: newTestRegistryProvider("kubernetes", "application-dm-templates", githubUrlMaps, 2),
+		registryProvider: newTestRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps, 2),
 	}
 	testDriver(test, t)
 }

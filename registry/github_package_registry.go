@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,16 +39,15 @@ type GithubPackageRegistry struct {
 }
 
 // NewGithubRegistry creates a Registry that can be used to talk to github.
-func NewGithubPackageRegistry(owner, repository string) *GithubPackageRegistry {
+func NewGithubPackageRegistry(owner, repository string, client *github.Client) *GithubPackageRegistry {
 	return &GithubPackageRegistry{
 		owner:      owner,
 		repository: repository,
-		client:     github.NewClient(nil),
+		client:     client,
 	}
 }
 
 // List the types from the Registry.
-// TODO(vaikas): Figure out how the versions work here.
 func (g *GithubPackageRegistry) List() ([]Type, error) {
 	// Just list all the types at the top level.
 	types, err := g.getDirs("")

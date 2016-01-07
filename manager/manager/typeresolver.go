@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,7 +50,7 @@ type fetchUnit struct {
 }
 
 // NewTypeResolver returns a new initialized TypeResolver.
-func NewTypeResolver() TypeResolver {
+func NewTypeResolver(rp registry.RegistryProvider) TypeResolver {
 	ret := &typeResolver{}
 	client := http.DefaultClient
 	//TODO (iantw): Make this a flag
@@ -58,7 +58,7 @@ func NewTypeResolver() TypeResolver {
 	client.Timeout = timeout
 	ret.getter = util.NewHTTPClient(3, client, util.NewSleeper())
 	ret.maxUrls = maxURLImports
-	ret.rp = &registry.DefaultRegistryProvider{}
+	ret.rp = rp
 	return ret
 }
 
@@ -244,7 +244,10 @@ func (tr *typeResolver) ShortTypeToDownloadURLs(template string) ([]string, erro
 	if len(m) != 6 {
 		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
 	}
-	r := tr.rp.GetGithubRegistry(m[1], m[2])
+	r, err := tr.rp.GetRegistry(template)
+	if err != nil {
+		return []string{}, err
+	}
 	t := registry.Type{m[3], m[4], m[5]}
 	return r.GetURLs(t)
 }
@@ -259,7 +262,10 @@ func (tr *typeResolver) ShortTypeToPackageDownloadURLs(template string) ([]strin
 	if len(m) != 4 {
 		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
 	}
-	r := tr.rp.GetGithubPackageRegistry(m[1], m[2])
+	r, err := tr.rp.GetRegistry(template)
+	if err != nil {
+		return []string{}, err
+	}
 	t := registry.Type{Name: m[3]}
 	return r.GetURLs(t)
 }
