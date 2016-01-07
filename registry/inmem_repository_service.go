@@ -70,7 +70,7 @@ func (rs *inmemRepositoryService) Delete(name string) error {
 // GetByURL returns a registry that handles the types for a given URL.
 func (rs *inmemRepositoryService) GetByURL(URL string) (*common.Registry, error) {
 	for _, r := range rs.repositories {
-		if strings.HasPrefix(r.URL, URL) {
+		if strings.HasPrefix(URL, r.URL) {
 			return r, nil
 		}
 	}
