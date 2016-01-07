@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -166,3 +166,37 @@ type KubernetesObject struct {
 	Metadata   map[string]interface{} `json:"metadata"`
 	Spec       map[string]interface{} `json:"spec"`
 }
+
+// Repository related types
+type BasicAuthCredential struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Credentials used to access the repository
+type RegistryCredential struct {
+	BasicAuth BasicAuthCredential `json:"basicauth,omitempty"`
+}
+
+type Registry struct {
+	Name       string             `json:"name,omitempty"` // Friendly name for the repo
+	Type       RegistryType       `json:"type,omitempty"` // Technology implementing the registry
+	URL        string             `json:"name,omitempty"` // URL to the root of the repo, for example: github.com/helm/charts
+	Credential RegistryCredential `json:"credential,omitempty"`
+	Format     RegistryFormat     `json:"format,omitempty"`
+}
+
+// RegistryType defines the technology that implements the registry
+type RegistryType string
+
+const (
+	Github RegistryType = "github"
+)
+
+// RegistryFormat defines the format of the registry
+type RegistryFormat string
+
+const (
+	VersionedRegistry   RegistryFormat = "versioned"
+	UnversionedRegistry RegistryFormat = "unversioned"
+)

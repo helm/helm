@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -81,22 +81,13 @@ var usage = func() {
 	panic("\n")
 }
 
-func getGitRegistry() registry.Registry {
+func getGitRegistry() (registry.Registry, error) {
+	rs := registry.NewDefaultRegistryProvider()
 	s := strings.Split(*template_registry, "/")
 	if len(s) < 2 {
 		panic(fmt.Errorf("invalid template registry: %s", *template_registry))
 	}
-
-	var path = ""
-	if len(s) > 2 {
-		path = strings.Join(s[2:], "/")
-	}
-
-	if s[0] == "helm" {
-		return registry.NewGithubPackageRegistry(s[0], s[1])
-	} else {
-		return registry.NewGithubRegistry(s[0], s[1], path)
-	}
+	return rs.GetRegistry("github.com/" + s[0] + "/" + s[1])
 }
 
 func main() {
@@ -121,7 +112,10 @@ func execute() {
 
 	switch args[0] {
 	case "templates":
-		git := getGitRegistry()
+		git, err := getGitRegistry()
+		if err != nil {
+			panic(fmt.Errorf("Cannot get registry %v", err))
+		}
 		templates, err := git.List()
 		if err != nil {
 			panic(fmt.Errorf("Cannot list %v", err))
@@ -305,7 +299,10 @@ func getTypeURLs(tName string) []string {
 }
 
 func getDownloadURLs(t registry.Type) []string {
-	git := getGitRegistry()
+	git, err := getGitRegistry()
+	if err != nil {
+		panic(fmt.Errorf("Failed to get registry"))
+	}
 	urls, err := git.GetURLs(t)
 	if err != nil {
 		panic(fmt.Errorf("Failed to fetch type information for \"%s:%s\": %s", t.Name, t.Version, err))

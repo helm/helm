@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -71,16 +71,12 @@ type testRegistryProvider struct {
 
 func newTestRegistryProvider(owner string, repository string, tests map[registry.Type]urlAndError, count int) registry.RegistryProvider {
 	r := make(map[string]registry.Registry)
-	r[owner+repository] = &testGithubRegistry{tests, count}
+	r["github.com/"+owner+"/"+repository] = &testGithubRegistry{tests, count}
 	return &testRegistryProvider{owner, repository, r}
 }
 
-func (trp *testRegistryProvider) GetGithubRegistry(owner string, repository string) registry.Registry {
-	return trp.r[owner+repository]
-}
-
-func (trp *testRegistryProvider) GetGithubPackageRegistry(owner string, repository string) registry.Registry {
-	return trp.r[owner+repository]
+func (trp *testRegistryProvider) GetRegistry(URL string) (registry.Registry, error) {
+	return trp.r[URL], nil
 }
 
 type testGithubRegistry struct {
