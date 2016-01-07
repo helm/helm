@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
+	"github.com/deis/helm-dm/format"
 )
 
 var version = "0.0.1"
@@ -24,7 +25,18 @@ func commands() []cli.Command {
 			Name:        "install",
 			Usage:       "Initialize the client and install DM on Kubernetes.",
 			Description: ``,
-			Action:      func(c *cli.Context) { install() },
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "dry-run",
+					Usage: "Show what would be installed, but don't install anything.",
+				},
+			},
+			Action: func(c *cli.Context) {
+				if err := install(c.Bool("dry-run")); err != nil {
+					format.Error(err.Error())
+					os.Exit(1)
+				}
+			},
 		},
 		{
 			Name: "target",

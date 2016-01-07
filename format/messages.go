@@ -8,12 +8,12 @@ import (
 // This is all just placeholder.
 
 func Error(msg string, v ...interface{}) {
-	msg = "[ERROR]" + msg + "\n"
+	msg = "[ERROR] " + msg + "\n"
 	fmt.Fprintf(os.Stderr, msg, v...)
 }
 
 func Info(msg string, v ...interface{}) {
-	msg = "[INFO]" + msg + "\n"
+	msg = "[INFO] " + msg + "\n"
 	fmt.Fprintf(os.Stdout, msg, v...)
 }
 

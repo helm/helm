@@ -13,6 +13,17 @@ func (r RealRunner) Get(stdin []byte, ns string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+func (r RealRunner) GetByKind(kind, name, ns string) (string, error) {
+	args := []string{"get", kind, name}
+
+	if ns != "" {
+		args = append([]string{"--namespace=" + ns}, args...)
+	}
+	cmd := command(args...)
+	o, err := cmd.CombinedOutput()
+	return string(o), err
+}
+
 // Get returns the commands to kubectl
 func (r PrintRunner) Get(stdin []byte, ns string) ([]byte, error) {
 	args := []string{"get", "-f", "-"}
@@ -24,4 +35,14 @@ func (r PrintRunner) Get(stdin []byte, ns string) ([]byte, error) {
 	assignStdin(cmd, stdin)
 
 	return []byte(cmd.String()), nil
+}
+
+func (r PrintRunner) GetByKind(kind, name, ns string) (string, error) {
+	args := []string{"get", kind, name}
+
+	if ns != "" {
+		args = append([]string{"--namespace=" + ns}, args...)
+	}
+	cmd := command(args...)
+	return cmd.String(), nil
 }

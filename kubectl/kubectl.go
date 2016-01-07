@@ -13,6 +13,13 @@ type Runner interface {
 	Delete(string, string, string) ([]byte, error)
 	// Get returns Kubernetes resources
 	Get([]byte, string) ([]byte, error)
+
+	// GetByKind gets an entry by kind, name, and namespace.
+	//
+	// If name is omitted, all entries of that kind are returned.
+	//
+	// If NS is omitted, the default NS is assumed.
+	GetByKind(kind, name, ns string) (string, error)
 }
 
 // RealRunner implements Runner to execute kubectl commands

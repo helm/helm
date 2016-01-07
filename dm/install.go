@@ -1,6 +1,7 @@
 package dm
 
 import (
+	"github.com/deis/helm-dm/format"
 	"github.com/deis/helm-dm/kubectl"
 )
 
@@ -11,6 +12,18 @@ import (
 func Install(runner kubectl.Runner) (string, error) {
 	o, err := runner.Create([]byte(InstallYAML), "dm")
 	return string(o), err
+}
+
+// IsInstalled checks whether DM has been installed.
+func IsInstalled(runner kubectl.Runner) bool {
+	// Basically, we test "all-or-nothing" here: if this returns without error
+	// we know that we have both the namespace and the manager API server.
+	out, err := runner.GetByKind("rc", "manager-rc", "dm")
+	if err != nil {
+		format.Error("Installation not found: %s %s", out, err)
+		return false
+	}
+	return true
 }
 
 // InstallYAML is the installation YAML for DM.
