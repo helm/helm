@@ -64,19 +64,23 @@ type urlAndError struct {
 }
 
 type testRegistryProvider struct {
-	owner string
-	repo  string
-	r     map[string]registry.Registry
+	URLPrefix string
+	r         map[string]registry.Registry
 }
 
-func newTestRegistryProvider(owner string, repository string, tests map[registry.Type]urlAndError, count int) registry.RegistryProvider {
+func newTestRegistryProvider(URLPrefix string, tests map[registry.Type]urlAndError, count int) registry.RegistryProvider {
 	r := make(map[string]registry.Registry)
-	r["github.com/"+owner+"/"+repository] = &testGithubRegistry{tests, count}
-	return &testRegistryProvider{owner, repository, r}
+	r[URLPrefix] = &testGithubRegistry{tests, count}
+	return &testRegistryProvider{URLPrefix, r}
 }
 
 func (trp *testRegistryProvider) GetRegistry(URL string) (registry.Registry, error) {
-	return trp.r[URL], nil
+	for key, r := range trp.r {
+		if strings.HasPrefix(URL, key) {
+			return r, nil
+		}
+	}
+	return nil, fmt.Errorf("No registry found for %s", URL)
 }
 
 type testGithubRegistry struct {
@@ -352,7 +356,7 @@ func TestShortGithubUrlMapping(t *testing.T) {
 	}
 
 	test := resolverTestCase{
-		registryProvider: newTestRegistryProvider("kubernetes", "application-dm-templates", githubUrlMaps, 2),
+		registryProvider: newTestRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps, 2),
 	}
 	testUrlConversionDriver(test, tests, t)
 }
@@ -369,7 +373,7 @@ func TestShortGithubUrlMappingDifferentOwnerAndRepo(t *testing.T) {
 	}
 
 	test := resolverTestCase{
-		registryProvider: newTestRegistryProvider("example", "mytemplates", githubUrlMaps, 2),
+		registryProvider: newTestRegistryProvider("github.com/example/mytemplates", githubUrlMaps, 2),
 	}
 	testUrlConversionDriver(test, tests, t)
 }
@@ -411,7 +415,7 @@ func TestShortGithubUrl(t *testing.T) {
 		importOut:        finalImports,
 		urlcount:         4,
 		responses:        responses,
-		registryProvider: newTestRegistryProvider("kubernetes", "application-dm-templates", githubUrlMaps, 2),
+		registryProvider: newTestRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps, 2),
 	}
 	testDriver(test, t)
 }

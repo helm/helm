@@ -50,7 +50,7 @@ type fetchUnit struct {
 }
 
 // NewTypeResolver returns a new initialized TypeResolver.
-func NewTypeResolver() TypeResolver {
+func NewTypeResolver(rp registry.RegistryProvider) TypeResolver {
 	ret := &typeResolver{}
 	client := http.DefaultClient
 	//TODO (iantw): Make this a flag
@@ -58,7 +58,7 @@ func NewTypeResolver() TypeResolver {
 	client.Timeout = timeout
 	ret.getter = util.NewHTTPClient(3, client, util.NewSleeper())
 	ret.maxUrls = maxURLImports
-	ret.rp = registry.NewDefaultRegistryProvider()
+	ret.rp = rp
 	return ret
 }
 

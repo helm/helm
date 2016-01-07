@@ -72,10 +72,10 @@ func init() {
 }
 
 func newManager() manager.Manager {
-	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), manager.NewTypeResolver())
+	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), manager.NewTypeResolver(registry.NewDefaultRegistryProvider()))
 	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName))
-	registryService := registry.NewInmemRepositoryService()
 	r := repository.NewMapBasedRepository()
+	registryService := registry.NewInmemRepositoryService()
 	return manager.NewManager(expander, deployer, r, registryService)
 }
 
