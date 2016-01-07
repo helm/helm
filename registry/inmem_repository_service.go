@@ -66,20 +66,11 @@ func (rs *inmemRepositoryService) Get(name string) (*common.Registry, error) {
 func (rs *inmemRepositoryService) Delete(name string) error {
 	return nil
 }
-func (rs *inmemRepositoryService) GetByURL(URL string) (*common.Registry, error) {
-	if !strings.HasPrefix(URL, "github.com/") {
-		return nil, fmt.Errorf("Failed to parse short github url: %s", URL)
-	}
-	s := strings.Split(URL, "/")
-	if len(s) < 3 {
-		panic(fmt.Errorf("invalid template registry: %s", URL))
-	}
 
-	toFind := "github.com/" + s[1] + "/" + s[2]
-	fmt.Printf("toFind: %s", toFind)
+// GetByURL returns a registry that handles the types for a given URL.
+func (rs *inmemRepositoryService) GetByURL(URL string) (*common.Registry, error) {
 	for _, r := range rs.repositories {
-		fmt.Printf("Checking: %s", r.URL)
-		if r.URL == toFind {
+		if strings.HasPrefix(r.URL, URL) {
 			return r, nil
 		}
 	}
