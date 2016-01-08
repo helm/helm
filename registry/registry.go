@@ -17,6 +17,8 @@ limitations under the License.
 package registry
 
 import (
+	"strings"
+
 	"github.com/kubernetes/deployment-manager/common"
 )
 
@@ -44,6 +46,26 @@ type Type struct {
 	Collection string
 	Name       string
 	Version    string
+}
+
+// ParseType takes a registry name and parses it into a *registry.Type.
+func ParseType(name string) *Type {
+	tt := &Type{}
+
+	tList := strings.Split(name, ":")
+	if len(tList) == 2 {
+		tt.Version = tList[1]
+	}
+
+	cList := strings.Split(tList[0], "/")
+
+	if len(cList) == 1 {
+		tt.Name = tList[0]
+	} else {
+		tt.Collection = cList[0]
+		tt.Name = cList[1]
+	}
+	return tt
 }
 
 // Registry abstracts type interactions.
