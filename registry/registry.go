@@ -20,13 +20,37 @@ import (
 	"strings"
 
 	"github.com/kubernetes/deployment-manager/common"
+
+	"net/url"
 )
+
+// Registry abstracts a registry that holds charts, which can be
+// used in a Deployment Manager configuration. There can be multiple
+// registry implementations.
+type Registry interface {
+	// GetRegistryName returns the name of this registry
+	GetRegistryName() string
+	// GetRegistryType returns the type of this registry.
+	GetRegistryType() common.RegistryType
+	// GetRegistryURL returns the URL for this registry.
+	GetRegistryURL() string
+
+	// ListCharts lists the versioned chart names in this registry.
+	ListCharts() ([]string, error)
+	// GetChart fetches the contents of a given chart.
+	GetChart(chartName string) (*Chart, error)
+
+	// Deprecated: Use ListCharts, instead.
+	List() ([]Type, error)
+	// Deprecated: Use GetChart, instead.
+	GetURLs(t Type) ([]string, error)
+}
 
 type RegistryService interface {
 	// List all the registries
 	List() ([]*common.Registry, error)
 	// Create a new registry
-	Create(repository *common.Registry) error
+	Create(registry *common.Registry) error
 	// Get a registry
 	Get(name string) (*common.Registry, error)
 	// Delete a registry
@@ -35,13 +59,7 @@ type RegistryService interface {
 	GetByURL(URL string) (*common.Registry, error)
 }
 
-// Registry abstracts a registry that holds templates, which can be
-// used in a Deployment Manager configurations. There can be multiple
-// implementations of a registry. Currently we support Deployment Manager
-// github.com/kubernetes/application-dm-templates
-// and helm packages
-// github.com/helm/charts
-//
+// Deprecated: Use Chart, instead
 type Type struct {
 	Collection string
 	Name       string
@@ -68,10 +86,12 @@ func ParseType(name string) *Type {
 	return tt
 }
 
-// Registry abstracts type interactions.
-type Registry interface {
-	// List all the templates at the given path
-	List() ([]Type, error)
-	// Get the download URL(s) for a given type
-	GetURLs(t Type) ([]string, error)
+type Chart struct {
+	Name         string
+	Version      SemVer
+	RegistryURL  string
+	DownloadURLs []url.URL
+
+	// TODO(jackgr): Should the metadata be strongly typed?
+	Metadata map[string]interface{}
 }

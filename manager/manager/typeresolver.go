@@ -244,7 +244,7 @@ func (tr *typeResolver) ShortTypeToDownloadURLs(template string) ([]string, erro
 	if len(m) != 6 {
 		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
 	}
-	r, err := tr.rp.GetRegistry(template)
+	r, err := tr.rp.GetRegistryByURL(template)
 	if err != nil {
 		return []string{}, err
 	}
@@ -262,7 +262,7 @@ func (tr *typeResolver) ShortTypeToPackageDownloadURLs(template string) ([]strin
 	if len(m) != 4 {
 		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
 	}
-	r, err := tr.rp.GetRegistry(template)
+	r, err := tr.rp.GetRegistryByURL(template)
 	if err != nil {
 		return []string{}, err
 	}

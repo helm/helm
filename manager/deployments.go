@@ -50,6 +50,9 @@ var deployments = []Route{
 	{"ListTypes", "/types", "GET", listTypesHandlerFunc, ""},
 	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
 	{"ListRegistries", "/registries", "GET", listRegistriesHandlerFunc, ""},
+	{"GetRegistry", "/registries/{registry}", "GET", getRegistryHandlerFunc, ""},
+	{"ListCharts", "/registries/{registry}/charts", "GET", listChartsHandlerFunc, ""},
+	{"GetChart", "/registries/{registry}/charts/{chart}", "GET", getChartHandlerFunc, ""},
 }
 
 var (
@@ -72,11 +75,13 @@ func init() {
 }
 
 func newManager() manager.Manager {
-	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), manager.NewTypeResolver(registry.NewDefaultRegistryProvider()))
+	provider := registry.NewDefaultRegistryProvider()
+	resolver := manager.NewTypeResolver(provider)
+	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), resolver)
 	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName))
 	r := repository.NewMapBasedRepository()
-	registryService := registry.NewInmemRepositoryService()
-	return manager.NewManager(expander, deployer, r, registryService)
+	service := registry.NewInmemRegistryService()
+	return manager.NewManager(expander, deployer, r, provider, service)
 }
 
 func getServiceURL(serviceURL, serviceName string) string {
@@ -342,5 +347,62 @@ func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+
 	util.LogHandlerExitWithJSON(handler, w, registries, http.StatusOK)
+}
+
+func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get registry"
+	util.LogHandlerEntry(handler, r)
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	cr, err := backend.GetRegistry(registryName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
+}
+
+func listChartsHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: list charts"
+	util.LogHandlerEntry(handler, r)
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	chartNames, err := backend.ListCharts(registryName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, chartNames, http.StatusOK)
+}
+
+func getChartHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get chart"
+	util.LogHandlerEntry(handler, r)
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	chartName, err := getPathVariable(w, r, "chart", handler)
+	if err != nil {
+		return
+	}
+
+	c, err := backend.GetChart(registryName, chartName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
 }

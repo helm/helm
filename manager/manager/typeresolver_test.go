@@ -74,13 +74,23 @@ func newTestRegistryProvider(URLPrefix string, tests map[registry.Type]urlAndErr
 	return &testRegistryProvider{URLPrefix, r}
 }
 
+// Deprecated: Use GetRegistryByURL, instead.
 func (trp *testRegistryProvider) GetRegistry(URL string) (registry.Registry, error) {
+	return trp.GetRegistryByURL(URL)
+}
+
+func (trp *testRegistryProvider) GetRegistryByURL(URL string) (registry.Registry, error) {
 	for key, r := range trp.r {
 		if strings.HasPrefix(URL, key) {
 			return r, nil
 		}
 	}
+
 	return nil, fmt.Errorf("No registry found for %s", URL)
+}
+
+func (trp *testRegistryProvider) GetRegistryByName(registryName string) (registry.Registry, error) {
+	return newRegistryStub(), nil
 }
 
 type testGithubRegistry struct {
@@ -88,12 +98,34 @@ type testGithubRegistry struct {
 	count     int
 }
 
+func (r *testGithubRegistry) GetRegistryName() string {
+	return ""
+}
+
+func (r *testGithubRegistry) GetRegistryType() common.RegistryType {
+	return common.GithubRegistryType
+}
+
+func (r *testGithubRegistry) GetRegistryURL() string {
+	return ""
+}
+
+func (r *testGithubRegistry) ListCharts() ([]string, error) {
+	return []string{}, fmt.Errorf("ListCharts should not be called in the test")
+}
+
+func (r *testGithubRegistry) GetChart(chartName string) (*registry.Chart, error) {
+	return nil, fmt.Errorf("GetChart should not be called in the test")
+}
+
+// Deprecated: Use GetChart, instead.
 func (tgr *testGithubRegistry) GetURLs(t registry.Type) ([]string, error) {
 	tgr.count = tgr.count + 1
 	ret := tgr.responses[t]
 	return []string{ret.u}, ret.e
 }
 
+// Deprecated: Use ListCharts, instead.
 func (tgr *testGithubRegistry) List() ([]registry.Type, error) {
 	return []registry.Type{}, fmt.Errorf("List should not be called in the test")
 }

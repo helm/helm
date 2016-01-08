@@ -18,6 +18,7 @@ package registry
 
 import (
 	"github.com/google/go-github/github"
+	"github.com/kubernetes/deployment-manager/common"
 
 	"fmt"
 	"log"
@@ -64,6 +65,58 @@ func NewGithubRegistry(owner, repository, path string, client *github.Client) *G
 	}
 }
 
+// GetRegistryName returns the name of this registry
+func (g *GithubRegistry) GetRegistryName() string {
+	// TODO(jackgr): implement this method
+	return ""
+}
+
+// GetRegistryType returns the type of this registry.
+func (g *GithubRegistry) GetRegistryType() common.RegistryType {
+	// TODO(jackgr): implement this method
+	return common.GithubRegistryType
+}
+
+// GetRegistryURL returns the URL for this registry.
+func (g *GithubRegistry) GetRegistryURL() string {
+	// TODO(jackgr): implement this method
+	return ""
+}
+
+// ListCharts lists the versioned chart names in this registry.
+func (g *GithubRegistry) ListCharts() ([]string, error) {
+	var result []string
+	names, err := g.getDirs("")
+	if err != nil {
+		log.Printf("Failed to fetch chart names from registry: %s/%s/%s", g.owner, g.repository, g.path)
+		return nil, err
+	}
+
+	// Fetch the chart names
+	for _, name := range names {
+		// Then fetch the versions for each chart name
+		versions, err := g.getDirs("/" + name)
+		if err != nil {
+			log.Printf("Failed to fetch versions for chart name: %s/%s/%s/%s",
+				g.owner, g.repository, g.path, name)
+			return nil, err
+		}
+
+		for _, version := range versions {
+			result = append(result, fmt.Sprintf("%s#%s", name, version))
+		}
+	}
+
+	return result, nil
+}
+
+// GetChart fetches the contents of a given chart.
+func (g *GithubRegistry) GetChart(chartName string) (*Chart, error) {
+	// TODO(jackgr): implement this method
+	return nil, nil
+}
+
+// Deprecated: Use ListCharts, instead.
 // List the types from the Registry.
 func (g *GithubRegistry) List() ([]Type, error) {
 	// First list all the collections at the top level.
@@ -98,6 +151,7 @@ func (g *GithubRegistry) List() ([]Type, error) {
 	return retTypes, nil
 }
 
+// Deprecated: Use GetChart, instead.
 // GetURL fetches the download URL for a given Type and checks for existence of a schema file.
 func (g *GithubRegistry) GetURLs(t Type) ([]string, error) {
 	path, err := g.MakeRepositoryPath(t)

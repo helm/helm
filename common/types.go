@@ -190,7 +190,7 @@ type Registry struct {
 type RegistryType string
 
 const (
-	Github RegistryType = "github"
+	GithubRegistryType RegistryType = "github"
 )
 
 // RegistryFormat defines the format of the registry

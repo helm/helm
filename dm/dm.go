@@ -82,7 +82,7 @@ var usage = func() {
 }
 
 func getGitRegistry() (registry.Registry, error) {
-	return registry.NewDefaultRegistryProvider().GetRegistry(*template_registry)
+	return registry.NewDefaultRegistryProvider().GetRegistryByURL(*template_registry)
 }
 
 func main() {

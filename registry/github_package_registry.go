@@ -17,10 +17,11 @@ limitations under the License.
 package registry
 
 import (
+	"github.com/google/go-github/github"
+	"github.com/kubernetes/deployment-manager/common"
+
 	"log"
 	"strings"
-
-	"github.com/google/go-github/github"
 )
 
 // GithubPackageRegistry implements the Registry interface that talks to github and
@@ -47,6 +48,37 @@ func NewGithubPackageRegistry(owner, repository string, client *github.Client) *
 	}
 }
 
+// GetRegistryName returns the name of this registry
+func (g *GithubPackageRegistry) GetRegistryName() string {
+	// TODO(jackgr): implement this method
+	return ""
+}
+
+// GetRegistryType returns the type of this registry.
+func (g *GithubPackageRegistry) GetRegistryType() common.RegistryType {
+	// TODO(jackgr): implement this method
+	return common.GithubRegistryType
+}
+
+// GetRegistryURL returns the URL for this registry.
+func (g *GithubPackageRegistry) GetRegistryURL() string {
+	// TODO(jackgr): implement this method
+	return ""
+}
+
+// ListCharts lists the versioned chart names in this registry.
+func (g *GithubPackageRegistry) ListCharts() ([]string, error) {
+	// TODO(jackgr): implement this method
+	return []string{}, nil
+}
+
+// GetChart fetches the contents of a given chart.
+func (g *GithubPackageRegistry) GetChart(chartName string) (*Chart, error) {
+	// TODO(jackgr): implement this method
+	return nil, nil
+}
+
+// Deprecated: Use ListCharts, instead.
 // List the types from the Registry.
 func (g *GithubPackageRegistry) List() ([]Type, error) {
 	// Just list all the types at the top level.
@@ -74,6 +106,7 @@ func (g *GithubPackageRegistry) List() ([]Type, error) {
 	return retTypes, nil
 }
 
+// Deprecated: Use GetChart, instead.
 // GetURLs fetches the download URLs for a given Type.
 func (g *GithubPackageRegistry) GetURLs(t Type) ([]string, error) {
 	path, err := g.MakeRepositoryPath(t)

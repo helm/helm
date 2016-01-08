@@ -23,53 +23,53 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 )
 
-type inmemRepositoryService struct {
-	repositories map[string]*common.Registry
+type inmemRegistryService struct {
+	registries map[string]*common.Registry
 }
 
-func NewInmemRepositoryService() RegistryService {
-	rs := &inmemRepositoryService{
-		repositories: make(map[string]*common.Registry),
+func NewInmemRegistryService() RegistryService {
+	rs := &inmemRegistryService{
+		registries: make(map[string]*common.Registry),
 	}
 	rs.Create(&common.Registry{
 		Name:   "charts",
-		Type:   common.Github,
+		Type:   common.GithubRegistryType,
 		URL:    "github.com/helm/charts",
 		Format: common.UnversionedRegistry,
 	})
 	rs.Create(&common.Registry{
 		Name:   "application-dm-templates",
-		Type:   common.Github,
+		Type:   common.GithubRegistryType,
 		URL:    "github.com/kubernetes/application-dm-templates",
 		Format: common.VersionedRegistry,
 	})
 	return rs
 }
 
-func (rs *inmemRepositoryService) List() ([]*common.Registry, error) {
+func (rs *inmemRegistryService) List() ([]*common.Registry, error) {
 	ret := []*common.Registry{}
-	for _, r := range rs.repositories {
+	for _, r := range rs.registries {
 		ret = append(ret, r)
 	}
 	return ret, nil
 }
 
-func (rs *inmemRepositoryService) Create(repository *common.Registry) error {
-	rs.repositories[repository.URL] = repository
+func (rs *inmemRegistryService) Create(registry *common.Registry) error {
+	rs.registries[registry.URL] = registry
 	return nil
 }
 
-func (rs *inmemRepositoryService) Get(name string) (*common.Registry, error) {
+func (rs *inmemRegistryService) Get(name string) (*common.Registry, error) {
 	return &common.Registry{}, nil
 }
 
-func (rs *inmemRepositoryService) Delete(name string) error {
+func (rs *inmemRegistryService) Delete(name string) error {
 	return nil
 }
 
 // GetByURL returns a registry that handles the types for a given URL.
-func (rs *inmemRepositoryService) GetByURL(URL string) (*common.Registry, error) {
-	for _, r := range rs.repositories {
+func (rs *inmemRegistryService) GetByURL(URL string) (*common.Registry, error) {
+	for _, r := range rs.registries {
 		if strings.HasPrefix(URL, r.URL) {
 			return r, nil
 		}

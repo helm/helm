@@ -66,7 +66,7 @@ var deploymentList = []common.Deployment{deployment, {Name: "test2"}}
 
 var typeInstMap = map[string][]string{"test": []string{"test"}}
 
-var errTest = errors.New("test")
+var errTest = errors.New("test error")
 
 type expanderStub struct{}
 
@@ -164,6 +164,7 @@ func (repository *repositoryStub) ListDeployments() ([]common.Deployment, error)
 	if repository.FailListDeployments {
 		return deploymentList, errTest
 	}
+
 	return deploymentList, nil
 }
 
@@ -249,11 +250,102 @@ func (r *repositoryStub) SetTypeInstances(d string, is map[string][]*common.Type
 	}
 }
 
+type registryStub struct {
+	FailListCharts   bool
+	FailGetChart     bool
+	ListChartsCalled bool
+	GetChartCalled   bool
+}
+
+func newRegistryStub() *registryStub {
+	ret := &registryStub{}
+	return ret
+}
+
+func (r *registryStub) reset() {
+	r.FailListCharts = false
+	r.FailGetChart = false
+	r.ListChartsCalled = false
+	r.GetChartCalled = false
+}
+
+var testRegistryName = "TestRegistry"
+var testRegistryURL = "https://github.com/helm/charts"
+var testChartName = "TestChart"
+
+var testChart = registry.Chart{
+	Name: testChartName,
+}
+
+var testChartList = []string{testChartName, "TestChart2"}
+
+func (r *registryStub) GetRegistryName() string {
+	return testRegistryName
+}
+
+func (r *registryStub) GetRegistryType() common.RegistryType {
+	return common.GithubRegistryType
+}
+
+func (r *registryStub) GetRegistryURL() string {
+	return testRegistryURL
+}
+
+func (r *registryStub) ListCharts() ([]string, error) {
+	if r.FailListCharts {
+		return nil, errTest
+	}
+
+	return testChartList, nil
+}
+
+func (r *registryStub) GetChart(chartName string) (*registry.Chart, error) {
+	if !r.FailGetChart {
+		if chartName == testChartName {
+			return &testChart, nil
+		}
+	}
+
+	return nil, errTest
+}
+
+// Deprecated: Use ListCharts, instead.
+func (r *registryStub) List() ([]registry.Type, error) {
+	return []registry.Type{}, nil
+}
+
+// Deprecated: Use GetChart, instead.
+func (r *registryStub) GetURLs(t registry.Type) ([]string, error) {
+	return []string{}, nil
+}
+
+type registryProviderStub struct {
+	FailGetGithubRegistry        bool
+	FailGetGithubPackageRegistry bool
+}
+
+var testRegistryOwner = "TestOwner"
+var testRegistryRepository = "TestRepository"
+
+func newRegistryProviderStub() *registryProviderStub {
+	ret := &registryProviderStub{}
+	return ret
+}
+
+func (rp *registryProviderStub) GetRegistryByURL(URL string) (registry.Registry, error) {
+	return newRegistryStub(), nil
+}
+
+func (rp *registryProviderStub) GetRegistryByName(registryName string) (registry.Registry, error) {
+	return newRegistryStub(), nil
+}
+
 var testExpander = &expanderStub{}
 var testRepository = newRepositoryStub()
 var testDeployer = newDeployerStub()
-var testRegistryService = registry.NewInmemRepositoryService()
-var testManager = NewManager(testExpander, testDeployer, testRepository, testRegistryService)
+var testRegistryService = registry.NewInmemRegistryService()
+var testProvider = newRegistryProviderStub()
+var testManager = NewManager(testExpander, testDeployer, testRepository, testProvider, testRegistryService)
 
 func TestListDeployments(t *testing.T) {
 	testRepository.reset()
