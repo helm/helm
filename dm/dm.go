@@ -22,7 +22,6 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/registry"
-	"github.com/kubernetes/deployment-manager/util"
 
 	"archive/tar"
 	"bytes"
@@ -35,6 +34,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -81,8 +81,15 @@ var usage = func() {
 	panic("\n")
 }
 
-func getGitRegistry() (registry.Registry, error) {
-	return registry.NewDefaultRegistryProvider().GetRegistryByURL(*template_registry)
+var provider = registry.NewDefaultRegistryProvider()
+
+func getGithubRegistry() registry.Registry {
+	git, err := provider.GetRegistryByShortURL(*template_registry)
+	if err != nil {
+		panic(fmt.Errorf("cannot open registry %s: %s", *template_registry, err))
+	}
+
+	return git
 }
 
 func main() {
@@ -107,30 +114,21 @@ func execute() {
 
 	switch args[0] {
 	case "templates":
-		git, err := getGitRegistry()
+		git := getGithubRegistry()
+		types, err := git.ListTypes(nil)
 		if err != nil {
-			panic(fmt.Errorf("Cannot get registry %v", err))
-		}
-		templates, err := git.List()
-		if err != nil {
-			panic(fmt.Errorf("Cannot list %v", err))
+			panic(fmt.Errorf("cannot list types in registry %s: %s", *template_registry, err))
 		}
 
 		fmt.Printf("Templates:\n")
-		for _, t := range templates {
-			var typeSpec = ""
-			if len(t.Collection) > 0 {
-				typeSpec = t.Collection + "/"
-			}
-			typeSpec = typeSpec + t.Name
-			if len(t.Version) > 0 {
-				typeSpec = typeSpec + ":" + t.Version
+		for _, t := range types {
+			fmt.Printf("%s\n", t.String())
+			urls, err := git.GetDownloadURLs(t)
+			if err != nil {
+				panic(fmt.Errorf("cannot get download urls for %s: %s", t, err))
 			}
 
-			fmt.Printf("%s\n", typeSpec)
-			fmt.Printf("\tshort URL: github.com/%s/%s\n", *template_registry, typeSpec)
-			fmt.Printf("\tdownload URL(s):\n")
-			for _, downloadURL := range getDownloadURLs(t) {
+			for _, downloadURL := range urls {
 				fmt.Printf("\t%s\n", downloadURL)
 			}
 		}
@@ -197,7 +195,7 @@ func execute() {
 			usage()
 		}
 
-		tUrls := getTypeURLs(args[1])
+		tUrls := getDownloadURLs(args[1])
 		var tUrl = ""
 		if len(tUrls) == 0 {
 			// Type is most likely a primitive.
@@ -268,46 +266,24 @@ func describeType(args []string) {
 		usage()
 	}
 
-	tUrls := getTypeURLs(args[1])
+	tUrls := getDownloadURLs(args[1])
 	if len(tUrls) == 0 {
 		panic(fmt.Errorf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1]))
 	}
+
 	schemaUrl := tUrls[0] + ".schema"
 	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrls[0]+")", nil))
 }
 
-// getTypeURLs returns URLs or empty list if a primitive type.
-func getTypeURLs(tName string) []string {
-	if util.IsHttpUrl(tName) {
-		// User can pass raw URL to template.
-		return []string{tName}
-	}
-
-	// User can pass registry type.
-	t := getRegistryType(tName)
-	if t == nil {
-		// Primitive types have no associated URL.
-		return []string{}
-	}
-
-	return getDownloadURLs(*t)
-}
-
-func getDownloadURLs(t registry.Type) []string {
-	git, err := getGitRegistry()
+// getDownloadURLs returns URLs or empty list if a primitive type.
+func getDownloadURLs(tName string) []string {
+	qName := path.Join(*template_registry, tName)
+	result, err := registry.GetDownloadURLs(provider, qName)
 	if err != nil {
-		panic(fmt.Errorf("Failed to get registry"))
-	}
-	urls, err := git.GetURLs(t)
-	if err != nil {
-		panic(fmt.Errorf("Failed to fetch type information for \"%s:%s\": %s", t.Name, t.Version, err))
+		panic(fmt.Errorf("cannot get URLs for %s: %s\n", tName, err))
 	}
 
-	return urls
-}
-
-func isHttp(t string) bool {
-	return strings.HasPrefix(t, "http://") || strings.HasPrefix(t, "https://")
+	return result
 }
 
 func loadTemplate(args []string) *common.Template {
@@ -343,8 +319,8 @@ func loadTemplate(args []string) *common.Template {
 		}
 	} else {
 		if len(args) < 3 {
-			if t := getRegistryType(args[1]); t != nil {
-				template = buildTemplateFromType(*t)
+			if t, err := registry.ParseType(args[1]); err == nil {
+				template = buildTemplateFromType(t)
 			} else {
 				template, err = expander.NewTemplateFromRootTemplate(args[1])
 			}
@@ -363,28 +339,6 @@ func loadTemplate(args []string) *common.Template {
 	}
 
 	return template
-}
-
-// TODO: needs better validation that this is actually a registry type.
-func getRegistryType(fullType string) *registry.Type {
-	tList := strings.Split(fullType, ":")
-	if len(tList) != 2 {
-		return nil
-	}
-
-	cList := strings.Split(tList[0], "/")
-	if len(cList) == 1 {
-		return &registry.Type{
-			Name:    tList[0],
-			Version: tList[1],
-		}
-	} else {
-		return &registry.Type{
-			Collection: cList[0],
-			Name:       cList[1],
-			Version:    tList[1],
-		}
-	}
 }
 
 func buildTemplateFromType(t registry.Type) *common.Template {
@@ -409,11 +363,11 @@ func buildTemplateFromType(t registry.Type) *common.Template {
 	}
 
 	// Name the deployment after the type name.
-	name := fmt.Sprintf("%s:%s", t.Name, t.Version)
+	name := fmt.Sprintf("%s:%s", t.Name, t.GetVersion())
 
 	config := common.Configuration{Resources: []*common.Resource{&common.Resource{
 		Name:       name,
-		Type:       getDownloadURLs(t)[0],
+		Type:       getDownloadURLs(t.String())[0],
 		Properties: props,
 	}}}
 

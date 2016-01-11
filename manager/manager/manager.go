@@ -19,6 +19,8 @@ package manager
 import (
 	"fmt"
 	"log"
+	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/kubernetes/deployment-manager/common"
@@ -50,9 +52,9 @@ type Manager interface {
 	GetRegistry(name string) (*common.Registry, error)
 	DeleteRegistry(name string) error
 
-	// Charts
-	ListCharts(registryName string) ([]string, error)
-	GetChart(registryName, chartName string) (*registry.Chart, error)
+	// Registry Types
+	ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error)
+	GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error)
 }
 
 type manager struct {
@@ -60,7 +62,7 @@ type manager struct {
 	deployer   Deployer
 	repository repository.Repository
 	provider   registry.RegistryProvider
-	service    registry.RegistryService
+	service    common.RegistryService
 }
 
 // NewManager returns a new initialized Manager.
@@ -68,7 +70,7 @@ func NewManager(expander Expander,
 	deployer Deployer,
 	repository repository.Repository,
 	provider registry.RegistryProvider,
-	service registry.RegistryService) Manager {
+	service common.RegistryService) Manager {
 	return &manager{expander, deployer, repository, provider, service}
 }
 
@@ -363,22 +365,25 @@ func getResourceErrors(c *common.Configuration) []string {
 	return errs
 }
 
-// ListCharts retrieves the names of the charts in a given registry.
-func (m *manager) ListCharts(registryName string) ([]string, error) {
+// ListRegistryTypes lists types in a given registry whose string values
+// conform to the supplied regular expression, or all types, if the regular
+// expression is nil.
+func (m *manager) ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error) {
 	r, err := m.provider.GetRegistryByName(registryName)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.ListCharts()
+	return r.ListTypes(regex)
 }
 
-// GetChart retrieves a given chart in a given registry.
-func (m *manager) GetChart(registryName, chartName string) (*registry.Chart, error) {
+// GetDownloadURLs returns the URLs required to download the contents
+// of a given type in a given registry.
+func (m *manager) GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error) {
 	r, err := m.provider.GetRegistryByName(registryName)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.GetChart(chartName)
+	return r.GetDownloadURLs(t)
 }

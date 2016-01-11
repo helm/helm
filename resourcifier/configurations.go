@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -238,14 +238,14 @@ func getConfigurator() *configurator.Configurator {
 
 func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler string) (string, error) {
 	vars := mux.Vars(r)
-	variable, ok := vars[variable]
+	escaped, ok := vars[variable]
 	if !ok {
 		e := errors.New(fmt.Sprintf("%s name not found in URL", variable))
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return "", e
 	}
 
-	unescaped, err := url.QueryUnescape(variable)
+	unescaped, err := url.QueryUnescape(escaped)
 	if err != nil {
 		e := fmt.Errorf("cannot decode name (%v)", variable)
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)

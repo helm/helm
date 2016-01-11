@@ -27,21 +27,25 @@ type inmemRegistryService struct {
 	registries map[string]*common.Registry
 }
 
-func NewInmemRegistryService() RegistryService {
+func NewInmemRegistryService() common.RegistryService {
 	rs := &inmemRegistryService{
 		registries: make(map[string]*common.Registry),
 	}
+
+	pFormat := fmt.Sprintf("%s;%s", common.UnversionedRegistry, common.OneLevelRegistry)
 	rs.Create(&common.Registry{
 		Name:   "charts",
 		Type:   common.GithubRegistryType,
 		URL:    "github.com/helm/charts",
-		Format: common.UnversionedRegistry,
+		Format: common.RegistryFormat(pFormat),
 	})
+
+	tFormat := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
 	rs.Create(&common.Registry{
 		Name:   "application-dm-templates",
 		Type:   common.GithubRegistryType,
 		URL:    "github.com/kubernetes/application-dm-templates",
-		Format: common.VersionedRegistry,
+		Format: common.RegistryFormat(tFormat),
 	})
 	return rs
 }

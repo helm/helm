@@ -28,45 +28,54 @@ type SemVer struct {
 	Patch uint
 }
 
-func NewSemVer(version string) (*SemVer, error) {
-	result := &SemVer{}
-	parts := strings.SplitN(version, ".", 3)
-	if len(parts) > 3 {
-		return nil, fmt.Errorf("invalid semantic version: %s", version)
-	}
+func ParseSemVer(version string) (SemVer, error) {
+	var err error
+	major, minor, patch := uint64(0), uint64(0), uint64(0)
+	if len(version) > 0 {
+		parts := strings.SplitN(version, ".", 3)
+		if len(parts) > 3 {
+			return SemVer{}, fmt.Errorf("invalid semantic version: %s", version)
+		}
 
-	major, err := strconv.ParseUint(parts[0], 10, 0)
-	if err != nil {
-		return nil, fmt.Errorf("invalid semantic version: %s", version)
-	}
+		if len(parts) < 1 {
+			return SemVer{}, fmt.Errorf("invalid semantic version: %s", version)
+		}
 
-	result.Major = uint(major)
-	if len(parts) < 3 {
-		if len(parts) < 2 {
-			if len(parts) < 1 {
-				return nil, fmt.Errorf("invalid semantic version: %s", version)
-			}
-		} else {
-			minor, err := strconv.ParseUint(parts[1], 10, 0)
+		if parts[0] != "0" {
+			major, err = strconv.ParseUint(parts[0], 10, 0)
 			if err != nil {
-				return nil, fmt.Errorf("invalid semantic version: %s", version)
+				return SemVer{}, fmt.Errorf("invalid semantic version: %s", version)
+			}
+		}
+
+		if len(parts) > 1 {
+			if parts[1] != "0" {
+				minor, err = strconv.ParseUint(parts[1], 10, 0)
+				if err != nil {
+					return SemVer{}, fmt.Errorf("invalid semantic version: %s", version)
+				}
 			}
 
-			result.Minor = uint(minor)
+			if len(parts) > 2 {
+				if parts[2] != "0" {
+					patch, err = strconv.ParseUint(parts[2], 10, 0)
+					if err != nil {
+						return SemVer{}, fmt.Errorf("invalid semantic version: %s", version)
+					}
+				}
+			}
 		}
-	} else {
-		patch, err := strconv.ParseUint(parts[2], 10, 0)
-		if err != nil {
-			return nil, fmt.Errorf("invalid semantic version: %s", version)
-		}
-
-		result.Patch = uint(patch)
 	}
 
-	return result, nil
+	return SemVer{Major: uint(major), Minor: uint(minor), Patch: uint(patch)}, nil
 }
 
-func (s *SemVer) String() string {
+func (s SemVer) IsZero() bool {
+	return s.Major == 0 && s.Minor == 0 && s.Patch == 0
+}
+
+// SemVer conforms to the Stringer interface.
+func (s SemVer) String() string {
 	result := strconv.Itoa(int(s.Major))
 	if s.Minor != 0 || s.Patch != 0 {
 		result = result + "." + strconv.Itoa(int(s.Minor))

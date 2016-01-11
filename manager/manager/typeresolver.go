@@ -100,7 +100,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 	toFetch := make([]*fetchUnit, 0, tr.maxUrls)
 	for _, r := range config.Resources {
 		// Map the type to a fetchable URL (if applicable) or skip it if it's a non-fetchable type (primitive for example).
-		urls, err := tr.MapFetchableURLs(r.Type)
+		urls, err := registry.GetDownloadURLs(tr.rp, r.Type)
 		if err != nil {
 			return nil, resolverError(config, fmt.Errorf("Failed to understand download url for %s: %v", r.Type, err))
 		}
@@ -168,7 +168,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 			for _, v := range s.Imports {
 				i := &common.ImportFile{Name: v.Name}
 				var existingSchema string
-				urls, conversionErr := tr.MapFetchableURLs(v.Path)
+				urls, conversionErr := registry.GetDownloadURLs(tr.rp, v.Path)
 				if conversionErr != nil {
 					return nil, resolverError(config, fmt.Errorf("Failed to understand download url for %s: %v", v.Path, conversionErr))
 				}
@@ -218,56 +218,6 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 	}
 
 	return ret, nil
-}
-
-// MapFetchableUrls checks a type to see if it is either a short git hub url or a fully specified URL
-// and returns the URL that should be used to fetch it. If the url is not fetchable (primitive type for
-// example) will return empty string.
-func (tr *typeResolver) MapFetchableURLs(t string) ([]string, error) {
-	if util.IsGithubShortType(t) {
-		return tr.ShortTypeToDownloadURLs(t)
-	} else if util.IsGithubShortPackageType(t) {
-		return tr.ShortTypeToPackageDownloadURLs(t)
-	} else if util.IsHttpUrl(t) {
-		return []string{t}, nil
-	}
-	return []string{}, nil
-}
-
-// ShortTypeToDownloadURLs converts a github URL into downloadable URL from github.
-// Input must be of the type and is assumed to have been validated before this call:
-// github.com/owner/repo/qualifier/type:version
-// for example:
-// github.com/kubernetes/application-dm-templates/storage/redis:v1
-func (tr *typeResolver) ShortTypeToDownloadURLs(template string) ([]string, error) {
-	m := util.TemplateRegistryMatcher.FindStringSubmatch(template)
-	if len(m) != 6 {
-		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
-	}
-	r, err := tr.rp.GetRegistryByURL(template)
-	if err != nil {
-		return []string{}, err
-	}
-	t := registry.Type{m[3], m[4], m[5]}
-	return r.GetURLs(t)
-}
-
-// ShortTypeToPackageDownloadURLs converts a github URL into downloadable URLs from github.
-// Input must be of the type and is assumed to have been validated before this call:
-// github.com/owner/repo/type
-// for example:
-// github.com/helm/charts/cassandra
-func (tr *typeResolver) ShortTypeToPackageDownloadURLs(template string) ([]string, error) {
-	m := util.PackageRegistryMatcher.FindStringSubmatch(template)
-	if len(m) != 4 {
-		return []string{}, fmt.Errorf("Failed to parse short github url: %s", template)
-	}
-	r, err := tr.rp.GetRegistryByURL(template)
-	if err != nil {
-		return []string{}, err
-	}
-	t := registry.Type{Name: m[3]}
-	return r.GetURLs(t)
 }
 
 func parseContent(templates []string) (string, error) {

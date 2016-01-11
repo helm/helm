@@ -19,7 +19,6 @@ package registry
 import (
 	"github.com/google/go-github/github"
 	"github.com/kubernetes/deployment-manager/common"
-	"github.com/kubernetes/deployment-manager/util"
 
 	"fmt"
 	"log"
@@ -28,97 +27,46 @@ import (
 	"strings"
 )
 
-// githubRegistry implements the Registry interface and talks to github.
-// The registry short URL and format determine how types are laid out in the
-// registry.
-type githubRegistry struct {
-	name       string
-	shortURL   string
-	owner      string
-	repository string
-	path       string
-	format     common.RegistryFormat
-	client     *github.Client
+// GithubTemplateRegistry implements the Registry interface and implements a
+// Deployment Manager templates registry.
+// A registry root must be a directory that contains all the available templates,
+// one directory per template. Each template directory then contains version
+// directories, each of which in turn contains all the files necessary for that
+// version of the template.
+//
+// For example, a template registry containing two versions of redis
+// (implemented in jinja), and one version of replicatedservice (implemented
+// in python) would have a directory structure that looks something like this:
+// qualifier [optional] prefix to a virtual root within the repository.
+// /redis
+//   /v1
+//     redis.jinja
+//     redis.jinja.schema
+//   /v2
+//     redis.jinja
+//     redis.jinja.schema
+// /replicatedservice
+//   /v1
+//     replicatedservice.python
+//     replicatedservice.python.schema
+type GithubTemplateRegistry struct {
+	githubRegistry
 }
 
-// newGithubRegistry creates a githubRegistry.
-func newGithubRegistry(name, shortURL string, format common.RegistryFormat, client *github.Client) (githubRegistry, error) {
-	trimmed := util.TrimURLScheme(shortURL)
-	owner, repository, path, err := parseGithubShortURL(trimmed)
+// NewGithubTemplateRegistry creates a GithubTemplateRegistry.
+func NewGithubTemplateRegistry(name, shortURL string, client *github.Client) (GithubTemplateRegistry, error) {
+	format := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
+	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), client)
 	if err != nil {
-		return githubRegistry{}, fmt.Errorf("cannot create Github template registry %s: %s", name, err)
+		return GithubTemplateRegistry{}, err
 	}
 
-	return githubRegistry{
-		name:       name,
-		shortURL:   trimmed,
-		owner:      owner,
-		repository: repository,
-		path:       path,
-		format:     format,
-		client:     client,
-	}, nil
-}
-
-func parseGithubShortURL(shortURL string) (string, string, string, error) {
-	if !strings.HasPrefix(shortURL, "github.com/") {
-		return "", "", "", fmt.Errorf("invalid Github short URL: %s", shortURL)
-	}
-
-	tPath := strings.TrimPrefix(shortURL, "github.com/")
-	parts := strings.Split(tPath, "/")
-
-	// Handle the case where there's no path after owner and repository.
-	if len(parts) == 2 {
-		return parts[0], parts[1], "", nil
-	}
-
-	// Handle the case where there's a path after owner and repository.
-	if len(parts) == 3 {
-		return parts[0], parts[1], parts[2], nil
-	}
-
-	return "", "", "", fmt.Errorf("invalid Github short URL: %s", shortURL)
-}
-
-// GetRegistryName returns the name of this registry
-func (g githubRegistry) GetRegistryName() string {
-	return g.name
-}
-
-// GetRegistryType returns the type of this registry.
-func (g githubRegistry) GetRegistryType() common.RegistryType {
-	return common.GithubRegistryType
-}
-
-// GetRegistryShortURL returns the short URL for this registry.
-func (g githubRegistry) GetRegistryShortURL() string {
-	return g.shortURL
-}
-
-// GetRegistryFormat returns the format of this registry.
-func (g githubRegistry) GetRegistryFormat() common.RegistryFormat {
-	return g.format
-}
-
-// GetRegistryOwner returns the owner name for this registry
-func (g githubRegistry) GetRegistryOwner() string {
-	return g.owner
-}
-
-// GetRegistryRepository returns the repository name for this registry.
-func (g githubRegistry) GetRegistryRepository() string {
-	return g.repository
-}
-
-// GetRegistryName returns the name of this registry
-func (g githubRegistry) GetRegistryPath() string {
-	return g.path
+	return GithubTemplateRegistry{githubRegistry: gr}, nil
 }
 
 // ListTypes lists types in this registry whose string values conform to the
 // supplied regular expression, or all types, if the regular expression is nil.
-func (g githubRegistry) ListTypes(regex *regexp.Regexp) ([]Type, error) {
+func (g GithubTemplateRegistry) ListTypes(regex *regexp.Regexp) ([]Type, error) {
 	// First list all the collections at the top level.
 	collections, err := g.getDirs("")
 	if err != nil {
@@ -160,7 +108,7 @@ func (g githubRegistry) ListTypes(regex *regexp.Regexp) ([]Type, error) {
 }
 
 // GetDownloadURLs fetches the download URLs for a given Type and checks for existence of a schema file.
-func (g githubRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
+func (g GithubTemplateRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	path, err := g.MakeRepositoryPath(t)
 	if err != nil {
 		return nil, err
@@ -199,7 +147,7 @@ func (g githubRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	return []*url.URL{result}, nil
 }
 
-func (g githubRegistry) getDirs(dir string) ([]string, error) {
+func (g GithubTemplateRegistry) getDirs(dir string) ([]string, error) {
 	var path = g.path
 	if dir != "" {
 		path = g.path + "/" + dir
@@ -221,7 +169,7 @@ func (g githubRegistry) getDirs(dir string) ([]string, error) {
 	return dirs, nil
 }
 
-func (g githubRegistry) mapCollection(collection string) (string, error) {
+func (g GithubTemplateRegistry) mapCollection(collection string) (string, error) {
 	if strings.ContainsAny(collection, "/") {
 		return "", fmt.Errorf("collection must not contain slashes, got %s", collection)
 	}
@@ -231,10 +179,10 @@ func (g githubRegistry) mapCollection(collection string) (string, error) {
 
 // MakeRepositoryPath constructs a github path to a given type based on a repository, and type name and version.
 // The returned repository path will be of the form:
-// [githubRegistry.path/][Type.Collection]/Type.Name/Type.Version
+// [GithubTemplateRegistry.path/][Type.Collection]/Type.Name/Type.Version
 // Type.Collection will be mapped using mapCollection in the future, for now it's a straight
 // 1:1 mapping (if given)
-func (g githubRegistry) MakeRepositoryPath(t Type) (string, error) {
+func (g GithubTemplateRegistry) MakeRepositoryPath(t Type) (string, error) {
 	// First map the collection
 	collection, err := g.mapCollection(t.Collection)
 	if err != nil {

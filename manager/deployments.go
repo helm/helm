@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -25,7 +26,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -51,8 +54,8 @@ var deployments = []Route{
 	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
 	{"ListRegistries", "/registries", "GET", listRegistriesHandlerFunc, ""},
 	{"GetRegistry", "/registries/{registry}", "GET", getRegistryHandlerFunc, ""},
-	{"ListCharts", "/registries/{registry}/charts", "GET", listChartsHandlerFunc, ""},
-	{"GetChart", "/registries/{registry}/charts/{chart}", "GET", getChartHandlerFunc, ""},
+	{"ListRegistryTypes", "/registries/{registry}/types", "GET", listRegistryTypesHandlerFunc, ""},
+	{"GetDownloadURLs", "/registries/{registry}/types/{type}", "GET", getDownloadURLsHandlerFunc, ""},
 }
 
 var (
@@ -210,13 +213,21 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler string) (string, error) {
 	vars := mux.Vars(r)
-	ret, ok := vars[variable]
+	escaped, ok := vars[variable]
 	if !ok {
-		e := fmt.Errorf("%s parameter not found in URL", variable)
+		e := errors.New(fmt.Sprintf("%s name not found in URL", variable))
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return "", e
 	}
-	return ret, nil
+
+	unescaped, err := url.QueryUnescape(escaped)
+	if err != nil {
+		e := fmt.Errorf("cannot decode name (%v)", variable)
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return "", e
+	}
+
+	return unescaped, nil
 }
 
 func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {
@@ -368,37 +379,53 @@ func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
 }
 
-func listChartsHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	handler := "manager: list charts"
+func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: list registry types"
 	util.LogHandlerEntry(handler, r)
 	registryName, err := getPathVariable(w, r, "registry", handler)
 	if err != nil {
 		return
 	}
 
-	chartNames, err := backend.ListCharts(registryName)
+	var regex *regexp.Regexp
+	regexString, err := getPathVariable(w, r, "regex", handler)
+	if err == nil {
+		regex, err = regexp.Compile(regexString)
+		if err != nil {
+			util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+			return
+		}
+	}
+
+	registryTypes, err := backend.ListRegistryTypes(registryName, regex)
 	if err != nil {
 		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
 		return
 	}
 
-	util.LogHandlerExitWithJSON(handler, w, chartNames, http.StatusOK)
+	util.LogHandlerExitWithJSON(handler, w, registryTypes, http.StatusOK)
 }
 
-func getChartHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	handler := "manager: get chart"
+func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get download URLs"
 	util.LogHandlerEntry(handler, r)
 	registryName, err := getPathVariable(w, r, "registry", handler)
 	if err != nil {
 		return
 	}
 
-	chartName, err := getPathVariable(w, r, "chart", handler)
+	typeName, err := getPathVariable(w, r, "type", handler)
 	if err != nil {
 		return
 	}
 
-	c, err := backend.GetChart(registryName, chartName)
+	tt, err := registry.ParseType(typeName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+		return
+	}
+
+	c, err := backend.GetDownloadURLs(registryName, tt)
 	if err != nil {
 		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
 		return

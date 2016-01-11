@@ -230,121 +230,31 @@ func (repository *repositoryStub) GetManifest(d string, m string) (*common.Manif
 	return nil, errTest
 }
 
-func (r *repositoryStub) ListTypes() []string {
-	r.ListTypesCalled = true
+func (tgr *repositoryStub) ListTypes() []string {
+	tgr.ListTypesCalled = true
 	return []string{}
 }
 
-func (r *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
-	r.GetTypeInstancesCalled = true
+func (tgr *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
+	tgr.GetTypeInstancesCalled = true
 	return []*common.TypeInstance{}
 }
 
-func (r *repositoryStub) ClearTypeInstances(d string) {
-	r.TypeInstancesCleared = true
+func (tgr *repositoryStub) ClearTypeInstances(d string) {
+	tgr.TypeInstancesCleared = true
 }
 
-func (r *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
+func (tgr *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
 	for k, _ := range is {
-		r.TypeInstances[d] = append(r.TypeInstances[d], k)
+		tgr.TypeInstances[d] = append(tgr.TypeInstances[d], k)
 	}
-}
-
-type registryStub struct {
-	FailListCharts   bool
-	FailGetChart     bool
-	ListChartsCalled bool
-	GetChartCalled   bool
-}
-
-func newRegistryStub() *registryStub {
-	ret := &registryStub{}
-	return ret
-}
-
-func (r *registryStub) reset() {
-	r.FailListCharts = false
-	r.FailGetChart = false
-	r.ListChartsCalled = false
-	r.GetChartCalled = false
-}
-
-var testRegistryName = "TestRegistry"
-var testRegistryURL = "https://github.com/helm/charts"
-var testChartName = "TestChart"
-
-var testChart = registry.Chart{
-	Name: testChartName,
-}
-
-var testChartList = []string{testChartName, "TestChart2"}
-
-func (r *registryStub) GetRegistryName() string {
-	return testRegistryName
-}
-
-func (r *registryStub) GetRegistryType() common.RegistryType {
-	return common.GithubRegistryType
-}
-
-func (r *registryStub) GetRegistryURL() string {
-	return testRegistryURL
-}
-
-func (r *registryStub) ListCharts() ([]string, error) {
-	if r.FailListCharts {
-		return nil, errTest
-	}
-
-	return testChartList, nil
-}
-
-func (r *registryStub) GetChart(chartName string) (*registry.Chart, error) {
-	if !r.FailGetChart {
-		if chartName == testChartName {
-			return &testChart, nil
-		}
-	}
-
-	return nil, errTest
-}
-
-// Deprecated: Use ListCharts, instead.
-func (r *registryStub) List() ([]registry.Type, error) {
-	return []registry.Type{}, nil
-}
-
-// Deprecated: Use GetChart, instead.
-func (r *registryStub) GetURLs(t registry.Type) ([]string, error) {
-	return []string{}, nil
-}
-
-type registryProviderStub struct {
-	FailGetGithubRegistry        bool
-	FailGetGithubPackageRegistry bool
-}
-
-var testRegistryOwner = "TestOwner"
-var testRegistryRepository = "TestRepository"
-
-func newRegistryProviderStub() *registryProviderStub {
-	ret := &registryProviderStub{}
-	return ret
-}
-
-func (rp *registryProviderStub) GetRegistryByURL(URL string) (registry.Registry, error) {
-	return newRegistryStub(), nil
-}
-
-func (rp *registryProviderStub) GetRegistryByName(registryName string) (registry.Registry, error) {
-	return newRegistryStub(), nil
 }
 
 var testExpander = &expanderStub{}
 var testRepository = newRepositoryStub()
 var testDeployer = newDeployerStub()
 var testRegistryService = registry.NewInmemRegistryService()
-var testProvider = newRegistryProviderStub()
+var testProvider = newTestRegistryProvider("", nil)
 var testManager = NewManager(testExpander, testDeployer, testRepository, testProvider, testRegistryService)
 
 func TestListDeployments(t *testing.T) {
@@ -614,4 +524,24 @@ func TestListInstances(t *testing.T) {
 	if !testRepository.GetTypeInstancesCalled {
 		t.Fatal("expected repository GetTypeInstances() call.")
 	}
+}
+
+// TODO(jackgr): Implement TestListRegistryTypes
+func TestListRegistryTypes(t *testing.T) {
+	/*
+		types, err := testManager.ListRegistryTypes("", nil)
+		if err != nil {
+		    t.Fatalf("cannot list registry types: %s", err)
+		}
+	*/
+}
+
+// TODO(jackgr): Implement TestGetDownloadURLs
+func TestGetDownloadURLs(t *testing.T) {
+	/*
+		    urls, err := testManager.GetDownloadURLs("", registry.Type{})
+			if err != nil {
+			    t.Fatalf("cannot list get download urls: %s", err)
+			}
+	*/
 }
