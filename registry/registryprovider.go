@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"github.com/google/go-github/github"
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/util"
 
@@ -28,55 +27,71 @@ import (
 	"sync"
 )
 
-// RegistryProvider returns factories for creating registry clients.
+// RegistryProvider is a factory for Registry instances.
 type RegistryProvider interface {
 	GetRegistryByShortURL(URL string) (Registry, error)
 	GetRegistryByName(registryName string) (Registry, error)
+}
+
+// GithubRegistryProvider is a factory for GithubRegistry instances.
+type GithubRegistryProvider interface {
 	GetGithubRegistry(cr common.Registry) (GithubRegistry, error)
 }
 
 func NewDefaultRegistryProvider() RegistryProvider {
+	return NewRegistryProvider(nil, nil)
+}
+
+func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider) RegistryProvider {
+	if rs == nil {
+		rs = NewInmemRegistryService()
+	}
+
 	registries := make(map[string]Registry)
-	rs := NewInmemRegistryService()
-	return &DefaultRegistryProvider{registries: registries, rs: rs}
+	rp := registryProvider{rs: rs, registries: registries}
+	if grp == nil {
+		grp = rp
+	}
+
+	rp.grp = grp
+	return rp
 }
 
-type DefaultRegistryProvider struct {
+type registryProvider struct {
 	sync.RWMutex
-	registries map[string]Registry
 	rs         common.RegistryService
+	grp        GithubRegistryProvider
+	registries map[string]Registry
 }
 
-// Deprecated: Use GetRegistryByShortURL instead.
-func (drp DefaultRegistryProvider) GetRegistryByURL(URL string) (Registry, error) {
-	return drp.GetRegistryByShortURL(URL)
-}
+func (rp registryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
+	rp.RLock()
+	defer rp.RUnlock()
 
-func (drp DefaultRegistryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
-	drp.RLock()
-	defer drp.RUnlock()
-
-	r := drp.findRegistryByShortURL(URL)
+	r := rp.findRegistryByShortURL(URL)
 	if r == nil {
-		cr, err := drp.rs.GetByURL(URL)
+		cr, err := rp.rs.GetByURL(URL)
 		if err != nil {
 			return nil, err
 		}
 
-		r, err := drp.GetGithubRegistry(*cr)
+		r, err := rp.GetGithubRegistry(*cr)
 		if err != nil {
 			return nil, err
 		}
 
-		drp.registries[r.GetRegistryName()] = r
+		rp.registries[r.GetRegistryName()] = r
 	}
 
 	return r, nil
 }
 
-func (drp DefaultRegistryProvider) findRegistryByShortURL(URL string) Registry {
-	for _, r := range drp.registries {
-		if strings.HasPrefix(URL, r.GetRegistryShortURL()) {
+// findRegistryByShortURL trims the scheme from both the supplied URL
+// and the short URL returned by GetRegistryShortURL.
+func (rp registryProvider) findRegistryByShortURL(URL string) Registry {
+	trimmed := util.TrimURLScheme(URL)
+	for _, r := range rp.registries {
+		if strings.HasPrefix(trimmed, util.TrimURLScheme(r.GetRegistryShortURL())) {
 			return r
 		}
 	}
@@ -84,23 +99,23 @@ func (drp DefaultRegistryProvider) findRegistryByShortURL(URL string) Registry {
 	return nil
 }
 
-func (drp DefaultRegistryProvider) GetRegistryByName(registryName string) (Registry, error) {
-	drp.RLock()
-	defer drp.RUnlock()
+func (rp registryProvider) GetRegistryByName(registryName string) (Registry, error) {
+	rp.RLock()
+	defer rp.RUnlock()
 
-	r, ok := drp.registries[registryName]
+	r, ok := rp.registries[registryName]
 	if !ok {
-		cr, err := drp.rs.Get(registryName)
+		cr, err := rp.rs.Get(registryName)
 		if err != nil {
 			return nil, err
 		}
 
-		r, err := drp.GetGithubRegistry(*cr)
+		r, err := rp.GetGithubRegistry(*cr)
 		if err != nil {
 			return nil, err
 		}
 
-		drp.registries[r.GetRegistryName()] = r
+		rp.registries[r.GetRegistryName()] = r
 	}
 
 	return r, nil
@@ -116,15 +131,15 @@ func ParseRegistryFormat(rf common.RegistryFormat) map[common.RegistryFormat]boo
 	return result
 }
 
-func (drp DefaultRegistryProvider) GetGithubRegistry(cr common.Registry) (GithubRegistry, error) {
+func (rp registryProvider) GetGithubRegistry(cr common.Registry) (GithubRegistry, error) {
 	if cr.Type == common.GithubRegistryType {
 		fMap := ParseRegistryFormat(cr.Format)
 		if fMap[common.UnversionedRegistry] && fMap[common.OneLevelRegistry] {
-			return NewGithubPackageRegistry(cr.Name, cr.URL, github.NewClient(nil))
+			return NewGithubPackageRegistry(cr.Name, cr.URL, nil)
 		}
 
 		if fMap[common.VersionedRegistry] && fMap[common.CollectionRegistry] {
-			return NewGithubTemplateRegistry(cr.Name, cr.URL, github.NewClient(nil))
+			return NewGithubTemplateRegistry(cr.Name, cr.URL, nil)
 		}
 
 		return nil, fmt.Errorf("unknown registry format: %s", cr.Format)

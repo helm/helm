@@ -38,15 +38,32 @@ type githubRegistry struct {
 	repository string
 	path       string
 	format     common.RegistryFormat
-	client     *github.Client
+	service    RepositoryService
+}
+
+type RepositoryService interface {
+	GetContents(
+		owner, repo, path string,
+		opt *github.RepositoryContentGetOptions,
+	) (
+		fileContent *github.RepositoryContent,
+		directoryContent []*github.RepositoryContent,
+		resp *github.Response,
+		err error,
+	)
 }
 
 // newGithubRegistry creates a githubRegistry.
-func newGithubRegistry(name, shortURL string, format common.RegistryFormat, client *github.Client) (githubRegistry, error) {
+func newGithubRegistry(name, shortURL string, format common.RegistryFormat, service RepositoryService) (githubRegistry, error) {
 	trimmed := util.TrimURLScheme(shortURL)
 	owner, repository, path, err := parseGithubShortURL(trimmed)
 	if err != nil {
 		return githubRegistry{}, fmt.Errorf("cannot create Github template registry %s: %s", name, err)
+	}
+
+	if service == nil {
+		client := github.NewClient(nil)
+		service = client.Repositories
 	}
 
 	return githubRegistry{
@@ -56,7 +73,7 @@ func newGithubRegistry(name, shortURL string, format common.RegistryFormat, clie
 		repository: repository,
 		path:       path,
 		format:     format,
-		client:     client,
+		service:    service,
 	}, nil
 }
 
@@ -165,7 +182,7 @@ func (g githubRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
+	_, dc, _, err := g.service.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list versions at path %s: %v", path, err)
 	}
@@ -205,7 +222,7 @@ func (g githubRegistry) getDirs(dir string) ([]string, error) {
 		path = g.path + "/" + dir
 	}
 
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
+	_, dc, _, err := g.service.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		log.Printf("Failed to get contents at path: %s: %v", path, err)
 		return nil, err

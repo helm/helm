@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"github.com/google/go-github/github"
 	"github.com/kubernetes/deployment-manager/common"
 
 	"fmt"
@@ -41,9 +40,9 @@ type GithubPackageRegistry struct {
 }
 
 // NewGithubPackageRegistry creates a GithubPackageRegistry.
-func NewGithubPackageRegistry(name, shortURL string, client *github.Client) (GithubPackageRegistry, error) {
+func NewGithubPackageRegistry(name, shortURL string, service RepositoryService) (GithubPackageRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.UnversionedRegistry, common.OneLevelRegistry)
-	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), client)
+	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), service)
 	if err != nil {
 		return GithubPackageRegistry{}, err
 	}
@@ -64,7 +63,7 @@ func (g GithubPackageRegistry) ListTypes(regex *regexp.Regexp) ([]Type, error) {
 	var retTypes []Type
 	for _, t := range types {
 		// Check to see if there's a Chart.yaml file in the directory
-		_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, t, nil)
+		_, dc, _, err := g.service.GetContents(g.owner, g.repository, t, nil)
 		if err != nil {
 			log.Printf("Failed to list package files at path: %s: %v", t, err)
 			return nil, err
@@ -87,7 +86,7 @@ func (g GithubPackageRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 		return nil, err
 	}
 
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
+	_, dc, _, err := g.service.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		log.Printf("Failed to list package files at path: %s: %v", path, err)
 		return nil, err
@@ -111,7 +110,7 @@ func (g GithubPackageRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 }
 
 func (g GithubPackageRegistry) getDirs(dir string) ([]string, error) {
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, dir, nil)
+	_, dc, _, err := g.service.GetContents(g.owner, g.repository, dir, nil)
 	if err != nil {
 		log.Printf("Failed to get contents at path: %s: %v", dir, err)
 		return nil, err

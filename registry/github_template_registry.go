@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"github.com/google/go-github/github"
 	"github.com/kubernetes/deployment-manager/common"
 
 	"fmt"
@@ -54,9 +53,9 @@ type GithubTemplateRegistry struct {
 }
 
 // NewGithubTemplateRegistry creates a GithubTemplateRegistry.
-func NewGithubTemplateRegistry(name, shortURL string, client *github.Client) (GithubTemplateRegistry, error) {
+func NewGithubTemplateRegistry(name, shortURL string, service RepositoryService) (GithubTemplateRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
-	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), client)
+	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), service)
 	if err != nil {
 		return GithubTemplateRegistry{}, err
 	}
@@ -113,7 +112,7 @@ func (g GithubTemplateRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
+	_, dc, _, err := g.service.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list versions at path %s: %v", path, err)
 	}
@@ -153,7 +152,7 @@ func (g GithubTemplateRegistry) getDirs(dir string) ([]string, error) {
 		path = g.path + "/" + dir
 	}
 
-	_, dc, _, err := g.client.Repositories.GetContents(g.owner, g.repository, path, nil)
+	_, dc, _, err := g.service.GetContents(g.owner, g.repository, path, nil)
 	if err != nil {
 		log.Printf("Failed to get contents at path: %s: %v", path, err)
 		return nil, err
