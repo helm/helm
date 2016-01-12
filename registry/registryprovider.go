@@ -48,7 +48,7 @@ func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider) 
 	}
 
 	registries := make(map[string]Registry)
-	rp := registryProvider{rs: rs, registries: registries}
+	rp := &registryProvider{rs: rs, registries: registries}
 	if grp == nil {
 		grp = rp
 	}
@@ -68,22 +68,23 @@ func (rp registryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
 	rp.RLock()
 	defer rp.RUnlock()
 
-	r := rp.findRegistryByShortURL(URL)
-	if r == nil {
+	result := rp.findRegistryByShortURL(URL)
+	if result == nil {
 		cr, err := rp.rs.GetByURL(URL)
 		if err != nil {
 			return nil, err
 		}
 
-		r, err := rp.GetGithubRegistry(*cr)
+		r, err := rp.grp.GetGithubRegistry(*cr)
 		if err != nil {
 			return nil, err
 		}
 
 		rp.registries[r.GetRegistryName()] = r
+		result = r
 	}
 
-	return r, nil
+	return result, nil
 }
 
 // findRegistryByShortURL trims the scheme from both the supplied URL
@@ -103,27 +104,28 @@ func (rp registryProvider) GetRegistryByName(registryName string) (Registry, err
 	rp.RLock()
 	defer rp.RUnlock()
 
-	r, ok := rp.registries[registryName]
+	result, ok := rp.registries[registryName]
 	if !ok {
 		cr, err := rp.rs.Get(registryName)
 		if err != nil {
 			return nil, err
 		}
 
-		r, err := rp.GetGithubRegistry(*cr)
+		r, err := rp.grp.GetGithubRegistry(*cr)
 		if err != nil {
 			return nil, err
 		}
 
 		rp.registries[r.GetRegistryName()] = r
+		result = r
 	}
 
-	return r, nil
+	return result, nil
 }
 
 func ParseRegistryFormat(rf common.RegistryFormat) map[common.RegistryFormat]bool {
 	split := strings.Split(string(rf), ";")
-	var result map[common.RegistryFormat]bool
+	var result = map[common.RegistryFormat]bool{}
 	for _, format := range split {
 		result[common.RegistryFormat(format)] = true
 	}
@@ -207,6 +209,10 @@ func ShortTypeToDownloadURLs(rp RegistryProvider, t string) ([]string, error) {
 	r, err := rp.GetRegistryByShortURL(t)
 	if err != nil {
 		return nil, err
+	}
+
+	if r == nil {
+		panic(fmt.Errorf("cannot get github registry for %s", t))
 	}
 
 	tt, err := NewType(m[3], m[4], m[5])

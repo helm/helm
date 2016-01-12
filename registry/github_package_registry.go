@@ -17,6 +17,7 @@ limitations under the License.
 package registry
 
 import (
+	"github.com/google/go-github/github"
 	"github.com/kubernetes/deployment-manager/common"
 
 	"fmt"
@@ -40,14 +41,19 @@ type GithubPackageRegistry struct {
 }
 
 // NewGithubPackageRegistry creates a GithubPackageRegistry.
-func NewGithubPackageRegistry(name, shortURL string, service RepositoryService) (GithubPackageRegistry, error) {
+func NewGithubPackageRegistry(name, shortURL string, service RepositoryService) (*GithubPackageRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.UnversionedRegistry, common.OneLevelRegistry)
-	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), service)
-	if err != nil {
-		return GithubPackageRegistry{}, err
+	if service == nil {
+		client := github.NewClient(nil)
+		service = client.Repositories
 	}
 
-	return GithubPackageRegistry{githubRegistry: gr}, nil
+	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), service)
+	if err != nil {
+		return nil, err
+	}
+
+	return &GithubPackageRegistry{githubRegistry: *gr}, nil
 }
 
 // ListTypes lists types in this registry whose string values conform to the

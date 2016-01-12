@@ -228,6 +228,7 @@ func TestTooManyImports(t *testing.T) {
 		responses:   responses,
 		expectedErr: errors.New("Number of imports exceeds maximum of 5"),
 	}
+
 	testDriver(test, t)
 }
 
@@ -270,6 +271,7 @@ func TestSharedImport(t *testing.T) {
 		responses: responses,
 		importOut: finalImports,
 	}
+
 	testDriver(test, t)
 }
 
@@ -300,17 +302,19 @@ func TestShortGithubUrl(t *testing.T) {
 		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": responseAndError{nil, http.StatusNotFound, ""},
 	}
 
-	githubUrlMaps := map[registry.Type]urlAndError{
-		registry.NewTypeOrDie("common", "replicatedservice", "v1"): urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		registry.NewTypeOrDie("common", "replicatedservice", "v2"): urlAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
+	githubUrlMaps := map[registry.Type]registry.TestURLAndError{
+		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
 	}
 
+	grp := registry.NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps)
 	test := resolverTestCase{
 		config:           templateShortGithubTemplate,
 		importOut:        finalImports,
 		urlcount:         4,
 		responses:        responses,
-		registryProvider: newTestRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps),
+		registryProvider: registry.NewRegistryProvider(nil, grp),
 	}
+
 	testDriver(test, t)
 }
