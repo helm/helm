@@ -108,7 +108,17 @@ func (g GithubTemplateRegistry) ListTypes(regex *regexp.Regexp) ([]Type, error) 
 		}
 	}
 
-	// TODO(jackgr): Use the supplied regex to filter the results.
+	if regex != nil {
+		var matchTypes []Type
+		for _, retType := range retTypes {
+			if regex.MatchString(retType.String()) {
+				matchTypes = append(matchTypes, retType)
+			}
+		}
+
+		return matchTypes, nil
+	}
+
 	return retTypes, nil
 }
 
