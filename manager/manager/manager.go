@@ -343,6 +343,17 @@ func (m *manager) DeleteRegistry(name string) error {
 	return m.service.Delete(name)
 }
 
+// Set the credential for a registry.
+// May not be supported by some registry services.
+func (m *manager) SetCredential(name string, credential common.RegistryCredential) error {
+	return m.service.SetCredential(name, credential)
+}
+
+// Get the credential for a registry.
+func (m *manager) GetCredential(name string) (common.RegistryCredential, error) {
+	return m.service.GetCredential(name)
+}
+
 func generateManifestName() string {
 	return fmt.Sprintf("manifest-%d", time.Now().UTC().UnixNano())
 }

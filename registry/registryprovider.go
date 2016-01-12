@@ -33,13 +33,15 @@ type RegistryProvider interface {
 	GetRegistryByName(registryName string) (Registry, error)
 }
 
-// GithubRegistryProvider is a factory for GithubRegistry instances.
-type GithubRegistryProvider interface {
-	GetGithubRegistry(cr common.Registry) (GithubRegistry, error)
+type registryProvider struct {
+	sync.RWMutex
+	rs         common.RegistryService
+	grp        GithubRegistryProvider
+	registries map[string]Registry
 }
 
 func NewDefaultRegistryProvider() RegistryProvider {
-	return NewRegistryProvider(nil, nil)
+	return NewRegistryProvider(nil, NewGithubRegistryProvider())
 }
 
 func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider) RegistryProvider {
@@ -47,21 +49,13 @@ func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider) 
 		rs = NewInmemRegistryService()
 	}
 
-	registries := make(map[string]Registry)
-	rp := &registryProvider{rs: rs, registries: registries}
 	if grp == nil {
-		grp = rp
+		grp = NewGithubRegistryProvider()
 	}
 
-	rp.grp = grp
+	registries := make(map[string]Registry)
+	rp := &registryProvider{rs: rs, grp: grp, registries: registries}
 	return rp
-}
-
-type registryProvider struct {
-	sync.RWMutex
-	rs         common.RegistryService
-	grp        GithubRegistryProvider
-	registries map[string]Registry
 }
 
 func (rp registryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
@@ -133,7 +127,20 @@ func ParseRegistryFormat(rf common.RegistryFormat) map[common.RegistryFormat]boo
 	return result
 }
 
-func (rp registryProvider) GetGithubRegistry(cr common.Registry) (GithubRegistry, error) {
+// GithubRegistryProvider is a factory for GithubRegistry instances.
+type GithubRegistryProvider interface {
+	GetGithubRegistry(cr common.Registry) (GithubRegistry, error)
+}
+
+type githubRegistryProvider struct {
+}
+
+// NewGithubRegistryProvider creates a GithubRegistryProvider.
+func NewGithubRegistryProvider() GithubRegistryProvider {
+	return &githubRegistryProvider{}
+}
+
+func (grp githubRegistryProvider) GetGithubRegistry(cr common.Registry) (GithubRegistry, error) {
 	if cr.Type == common.GithubRegistryType {
 		fMap := ParseRegistryFormat(cr.Format)
 		if fMap[common.UnversionedRegistry] && fMap[common.OneLevelRegistry] {

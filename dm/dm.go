@@ -22,6 +22,7 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/registry"
+	"github.com/kubernetes/deployment-manager/util"
 
 	"archive/tar"
 	"bytes"
@@ -35,6 +36,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +50,8 @@ var (
 	service           = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager", "URL for deployment manager")
 	binary            = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
 	timeout           = flag.Int("timeout", 10, "Time in seconds to wait for response")
+	regex_string      = flag.String("regex", "", "Regular expression to filter the templates listed in a template registry")
+	apitoken          = flag.String("apitoken", "", "Github api token that overrides GITHUB_API_TOKEN environment variable")
 )
 
 var commands = []string{
@@ -81,9 +85,52 @@ var usage = func() {
 	panic("\n")
 }
 
-var provider = registry.NewDefaultRegistryProvider()
+// TODO(jackgr): Move all registry related operations to the server side.
+var registryProvider registry.RegistryProvider
+
+func getRegistryProvider() registry.RegistryProvider {
+	if registryProvider == nil {
+		rs := registry.NewInmemRegistryService()
+		r, err := rs.GetByURL(*template_registry)
+		if err != nil {
+			r := newRegistry(*template_registry)
+			if err := rs.Create(r); err != nil {
+				panic(fmt.Errorf("cannot configure registry at %s: %s", r.URL, err))
+			}
+		}
+
+		if *apitoken == "" {
+			*apitoken = os.Getenv("DM_GITHUB_API_TOKEN")
+		}
+
+		if *apitoken != "" {
+			credential := common.RegistryCredential{
+				APIToken: common.APITokenCredential(*apitoken),
+			}
+
+			if err := rs.SetCredential(r.Name, credential); err != nil {
+				panic(fmt.Errorf("cannot configure registry at %s: %s", r.Name, err))
+			}
+		}
+
+		registryProvider = registry.NewRegistryProvider(rs, nil)
+	}
+
+	return registryProvider
+}
+
+func newRegistry(URL string) *common.Registry {
+	tFormat := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
+	return &common.Registry{
+		Name:   util.TrimURLScheme(URL),
+		Type:   common.GithubRegistryType,
+		URL:    URL,
+		Format: common.RegistryFormat(tFormat),
+	}
+}
 
 func getGithubRegistry() registry.Registry {
+	provider := getRegistryProvider()
 	git, err := provider.GetRegistryByShortURL(*template_registry)
 	if err != nil {
 		panic(fmt.Errorf("cannot open registry %s: %s", *template_registry, err))
@@ -114,13 +161,21 @@ func execute() {
 
 	switch args[0] {
 	case "templates":
-		git := getGithubRegistry()
-		types, err := git.ListTypes(nil)
-		if err != nil {
-			panic(fmt.Errorf("cannot list types in registry %s: %s", *template_registry, err))
+		var regex *regexp.Regexp
+		if *regex_string != "" {
+			var err error
+			regex, err = regexp.Compile(*regex_string)
+			if err != nil {
+				panic(fmt.Errorf("cannot compile regular expression %s: %s", *regex_string, err))
+			}
 		}
 
-		fmt.Printf("Templates:\n")
+		git := getGithubRegistry()
+		types, err := git.ListTypes(regex)
+		if err != nil {
+			panic(fmt.Errorf("cannot list templates in registry %s: %s", *template_registry, err))
+		}
+
 		for _, t := range types {
 			fmt.Printf("%s\n", t.String())
 			urls, err := git.GetDownloadURLs(t)
@@ -278,6 +333,7 @@ func describeType(args []string) {
 // getDownloadURLs returns URLs or empty list if a primitive type.
 func getDownloadURLs(tName string) []string {
 	qName := path.Join(*template_registry, tName)
+	provider := getRegistryProvider()
 	result, err := registry.GetDownloadURLs(provider, qName)
 	if err != nil {
 		panic(fmt.Errorf("cannot get URLs for %s: %s\n", tName, err))

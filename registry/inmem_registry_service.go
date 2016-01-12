@@ -17,19 +17,20 @@ limitations under the License.
 package registry
 
 import (
+	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/util"
+
 	"fmt"
 	"strings"
-
-	"github.com/kubernetes/deployment-manager/common"
 )
 
 type inmemRegistryService struct {
-	registries map[string]*common.Registry
+	registries map[string]*common.AuthenticatedRegistry
 }
 
 func NewInmemRegistryService() common.RegistryService {
 	rs := &inmemRegistryService{
-		registries: make(map[string]*common.Registry),
+		registries: make(map[string]*common.AuthenticatedRegistry),
 	}
 
 	pFormat := fmt.Sprintf("%s;%s", common.UnversionedRegistry, common.OneLevelRegistry)
@@ -47,36 +48,98 @@ func NewInmemRegistryService() common.RegistryService {
 		URL:    "github.com/kubernetes/application-dm-templates",
 		Format: common.RegistryFormat(tFormat),
 	})
+
 	return rs
 }
 
+// List returns the list of known registries.
 func (rs *inmemRegistryService) List() ([]*common.Registry, error) {
 	ret := []*common.Registry{}
 	for _, r := range rs.registries {
-		ret = append(ret, r)
+		ret = append(ret, &r.Registry)
 	}
+
 	return ret, nil
 }
 
+// Create creates an authenticated registry.
 func (rs *inmemRegistryService) Create(registry *common.Registry) error {
-	rs.registries[registry.URL] = registry
+	rs.registries[registry.Name] = &common.AuthenticatedRegistry{Registry: *registry}
 	return nil
 }
 
+// Get returns a registry with a given name.
 func (rs *inmemRegistryService) Get(name string) (*common.Registry, error) {
-	return &common.Registry{}, nil
+	r, ok := rs.registries[name]
+	if !ok {
+		return nil, fmt.Errorf("Failed to find registry named %s", name)
+	}
+
+	return &r.Registry, nil
 }
 
+// GetAuthenticatedRegistry returns an authenticated registry with a given name.
+func (rs *inmemRegistryService) GetAuthenticatedRegistry(name string) (*common.AuthenticatedRegistry, error) {
+	r, ok := rs.registries[name]
+	if !ok {
+		return nil, fmt.Errorf("Failed to find registry named %s", name)
+	}
+
+	return r, nil
+}
+
+// Create deletes the authenticated registry with a given name.
 func (rs *inmemRegistryService) Delete(name string) error {
+	_, ok := rs.registries[name]
+	if !ok {
+		return fmt.Errorf("Failed to find registry named %s", name)
+	}
+
+	delete(rs.registries, name)
 	return nil
 }
 
 // GetByURL returns a registry that handles the types for a given URL.
 func (rs *inmemRegistryService) GetByURL(URL string) (*common.Registry, error) {
+	trimmed := util.TrimURLScheme(URL)
 	for _, r := range rs.registries {
-		if strings.HasPrefix(URL, r.URL) {
+		if strings.HasPrefix(trimmed, util.TrimURLScheme(r.URL)) {
+			return &r.Registry, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Failed to find registry for url: %s", URL)
+}
+
+// GetAuthenticatedRegistryByURL returns an authenticated registry that handles the types for a given URL.
+func (rs *inmemRegistryService) GetAuthenticatedRegistryByURL(URL string) (*common.AuthenticatedRegistry, error) {
+	trimmed := util.TrimURLScheme(URL)
+	for _, r := range rs.registries {
+		if strings.HasPrefix(trimmed, util.TrimURLScheme(r.URL)) {
 			return r, nil
 		}
 	}
-	return nil, fmt.Errorf("Failed to find registry for github url: %s", URL)
+
+	return nil, fmt.Errorf("Failed to find registry for url: %s", URL)
+}
+
+// Set the credential for a registry.
+func (rs *inmemRegistryService) SetCredential(name string, credential common.RegistryCredential) error {
+	r, ok := rs.registries[name]
+	if !ok {
+		return fmt.Errorf("Failed to find registry named %s", name)
+	}
+
+	r.Credential = credential
+	return nil
+}
+
+// Get the credential for a registry.
+func (rs *inmemRegistryService) GetCredential(name string) (common.RegistryCredential, error) {
+	r, ok := rs.registries[name]
+	if !ok {
+		return common.RegistryCredential{}, fmt.Errorf("Failed to find registry named %s", name)
+	}
+
+	return r.Credential, nil
 }

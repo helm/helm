@@ -173,8 +173,11 @@ type BasicAuthCredential struct {
 	Password string `json:"password"`
 }
 
-// Credentials used to access the repository
+type APITokenCredential string
+
+// Credential used to access the repository
 type RegistryCredential struct {
+	APIToken  APITokenCredential  `json:"apitoken,omitempty"`
 	BasicAuth BasicAuthCredential `json:"basicauth,omitempty"`
 }
 
@@ -187,7 +190,7 @@ type Registry struct {
 	Format RegistryFormat `json:"format,omitempty"` // Format of the registry
 }
 
-// AuthenticatedRegistry describes a type registry with credentials.
+// AuthenticatedRegistry describes a type registry with credential.
 // Broke this out of Registry, so that we can pass around instances of Registry
 // without worrying about secrets.
 type AuthenticatedRegistry struct {
@@ -229,8 +232,17 @@ type RegistryService interface {
 	Create(registry *Registry) error
 	// Get a registry
 	Get(name string) (*Registry, error)
+	// Get a registry with credential.
+	GetAuthenticatedRegistry(name string) (*AuthenticatedRegistry, error)
 	// Delete a registry
 	Delete(name string) error
 	// Find a registry that backs the given URL
 	GetByURL(URL string) (*Registry, error)
+	// GetAuthenticatedRegistryByURL returns an authenticated registry that handles the types for a given URL.
+	GetAuthenticatedRegistryByURL(URL string) (*AuthenticatedRegistry, error)
+	// Set the credential for a registry.
+	// May not be supported by some registry services.
+	SetCredential(name string, credential RegistryCredential) error
+	// Get the credential for a registry.
+	GetCredential(name string) (RegistryCredential, error)
 }
