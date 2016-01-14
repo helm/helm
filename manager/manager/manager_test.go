@@ -66,7 +66,7 @@ var deploymentList = []common.Deployment{deployment, {Name: "test2"}}
 
 var typeInstMap = map[string][]string{"test": []string{"test"}}
 
-var errTest = errors.New("test")
+var errTest = errors.New("test error")
 
 type expanderStub struct{}
 
@@ -164,6 +164,7 @@ func (repository *repositoryStub) ListDeployments() ([]common.Deployment, error)
 	if repository.FailListDeployments {
 		return deploymentList, errTest
 	}
+
 	return deploymentList, nil
 }
 
@@ -229,31 +230,32 @@ func (repository *repositoryStub) GetManifest(d string, m string) (*common.Manif
 	return nil, errTest
 }
 
-func (r *repositoryStub) ListTypes() []string {
-	r.ListTypesCalled = true
+func (tgr *repositoryStub) ListTypes() []string {
+	tgr.ListTypesCalled = true
 	return []string{}
 }
 
-func (r *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
-	r.GetTypeInstancesCalled = true
+func (tgr *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
+	tgr.GetTypeInstancesCalled = true
 	return []*common.TypeInstance{}
 }
 
-func (r *repositoryStub) ClearTypeInstances(d string) {
-	r.TypeInstancesCleared = true
+func (tgr *repositoryStub) ClearTypeInstances(d string) {
+	tgr.TypeInstancesCleared = true
 }
 
-func (r *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
+func (tgr *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
 	for k, _ := range is {
-		r.TypeInstances[d] = append(r.TypeInstances[d], k)
+		tgr.TypeInstances[d] = append(tgr.TypeInstances[d], k)
 	}
 }
 
 var testExpander = &expanderStub{}
 var testRepository = newRepositoryStub()
 var testDeployer = newDeployerStub()
-var testRegistryService = registry.NewInmemRepositoryService()
-var testManager = NewManager(testExpander, testDeployer, testRepository, testRegistryService)
+var testRegistryService = registry.NewInmemRegistryService()
+var testProvider = registry.NewRegistryProvider(nil, registry.NewTestGithubRegistryProvider("", nil))
+var testManager = NewManager(testExpander, testDeployer, testRepository, testProvider, testRegistryService)
 
 func TestListDeployments(t *testing.T) {
 	testRepository.reset()
@@ -522,4 +524,24 @@ func TestListInstances(t *testing.T) {
 	if !testRepository.GetTypeInstancesCalled {
 		t.Fatal("expected repository GetTypeInstances() call.")
 	}
+}
+
+// TODO(jackgr): Implement TestListRegistryTypes
+func TestListRegistryTypes(t *testing.T) {
+	/*
+		types, err := testManager.ListRegistryTypes("", nil)
+		if err != nil {
+		    t.Fatalf("cannot list registry types: %s", err)
+		}
+	*/
+}
+
+// TODO(jackgr): Implement TestGetDownloadURLs
+func TestGetDownloadURLs(t *testing.T) {
+	/*
+		    urls, err := testManager.GetDownloadURLs("", registry.Type{})
+			if err != nil {
+			    t.Fatalf("cannot list get download urls: %s", err)
+			}
+	*/
 }

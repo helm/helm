@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -25,7 +26,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -50,6 +53,9 @@ var deployments = []Route{
 	{"ListTypes", "/types", "GET", listTypesHandlerFunc, ""},
 	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
 	{"ListRegistries", "/registries", "GET", listRegistriesHandlerFunc, ""},
+	{"GetRegistry", "/registries/{registry}", "GET", getRegistryHandlerFunc, ""},
+	{"ListRegistryTypes", "/registries/{registry}/types", "GET", listRegistryTypesHandlerFunc, ""},
+	{"GetDownloadURLs", "/registries/{registry}/types/{type}", "GET", getDownloadURLsHandlerFunc, ""},
 }
 
 var (
@@ -72,11 +78,13 @@ func init() {
 }
 
 func newManager() manager.Manager {
-	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), manager.NewTypeResolver(registry.NewDefaultRegistryProvider()))
+	provider := registry.NewDefaultRegistryProvider()
+	resolver := manager.NewTypeResolver(provider)
+	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), resolver)
 	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName))
 	r := repository.NewMapBasedRepository()
-	registryService := registry.NewInmemRepositoryService()
-	return manager.NewManager(expander, deployer, r, registryService)
+	service := registry.NewInmemRegistryService()
+	return manager.NewManager(expander, deployer, r, provider, service)
 }
 
 func getServiceURL(serviceURL, serviceName string) string {
@@ -205,13 +213,21 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler string) (string, error) {
 	vars := mux.Vars(r)
-	ret, ok := vars[variable]
+	escaped, ok := vars[variable]
 	if !ok {
-		e := fmt.Errorf("%s parameter not found in URL", variable)
+		e := errors.New(fmt.Sprintf("%s name not found in URL", variable))
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return "", e
 	}
-	return ret, nil
+
+	unescaped, err := url.QueryUnescape(escaped)
+	if err != nil {
+		e := fmt.Errorf("cannot decode name (%v)", variable)
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return "", e
+	}
+
+	return unescaped, nil
 }
 
 func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {
@@ -342,5 +358,78 @@ func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+
 	util.LogHandlerExitWithJSON(handler, w, registries, http.StatusOK)
+}
+
+func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get registry"
+	util.LogHandlerEntry(handler, r)
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	cr, err := backend.GetRegistry(registryName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
+}
+
+func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: list registry types"
+	util.LogHandlerEntry(handler, r)
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	var regex *regexp.Regexp
+	regexString, err := getPathVariable(w, r, "regex", handler)
+	if err == nil {
+		regex, err = regexp.Compile(regexString)
+		if err != nil {
+			util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+			return
+		}
+	}
+
+	registryTypes, err := backend.ListRegistryTypes(registryName, regex)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, registryTypes, http.StatusOK)
+}
+
+func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get download URLs"
+	util.LogHandlerEntry(handler, r)
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	typeName, err := getPathVariable(w, r, "type", handler)
+	if err != nil {
+		return
+	}
+
+	tt, err := registry.ParseType(typeName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+		return
+	}
+
+	c, err := backend.GetDownloadURLs(registryName, tt)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
 }

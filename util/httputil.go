@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,26 @@ import (
 
 	"github.com/ghodss/yaml"
 )
+
+// ConvertURLsToStrings converts a slice of *url.URL to a slice of string.
+func ConvertURLsToStrings(urls []*url.URL) []string {
+	var result []string
+	for _, u := range urls {
+		result = append(result, u.String())
+	}
+
+	return result
+}
+
+// TrimURLScheme removes the scheme, if any, from an URL.
+func TrimURLScheme(URL string) string {
+	parts := strings.SplitAfter(URL, "://")
+	if len(parts) > 1 {
+		return parts[1]
+	}
+
+	return URL
+}
 
 // A HandlerTester is a function that takes an HTTP method, an URL path, and a
 // reader for a request body, creates a request from them, and serves it to the

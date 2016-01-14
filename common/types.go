@@ -173,30 +173,76 @@ type BasicAuthCredential struct {
 	Password string `json:"password"`
 }
 
-// Credentials used to access the repository
+type APITokenCredential string
+
+// Credential used to access the repository
 type RegistryCredential struct {
+	APIToken  APITokenCredential  `json:"apitoken,omitempty"`
 	BasicAuth BasicAuthCredential `json:"basicauth,omitempty"`
 }
 
+// Registry describes a template registry
+// TODO(jackr): Fix ambiguity re: whether or not URL has a scheme.
 type Registry struct {
-	Name       string             `json:"name,omitempty"` // Friendly name for the repo
-	Type       RegistryType       `json:"type,omitempty"` // Technology implementing the registry
-	URL        string             `json:"name,omitempty"` // URL to the root of the repo, for example: github.com/helm/charts
+	Name   string         `json:"name,omitempty"`   // Friendly name for the registry
+	Type   RegistryType   `json:"type,omitempty"`   // Technology implementing the registry
+	URL    string         `json:"name,omitempty"`   // URL to the root of the registry
+	Format RegistryFormat `json:"format,omitempty"` // Format of the registry
+}
+
+// AuthenticatedRegistry describes a type registry with credential.
+// Broke this out of Registry, so that we can pass around instances of Registry
+// without worrying about secrets.
+type AuthenticatedRegistry struct {
+	Registry
 	Credential RegistryCredential `json:"credential,omitempty"`
-	Format     RegistryFormat     `json:"format,omitempty"`
 }
 
 // RegistryType defines the technology that implements the registry
 type RegistryType string
 
 const (
-	Github RegistryType = "github"
+	GithubRegistryType RegistryType = "github"
 )
 
-// RegistryFormat defines the format of the registry
+// RegistryFormat is a semi-colon delimited string that describes the format
+// of a registry.
 type RegistryFormat string
 
 const (
-	VersionedRegistry   RegistryFormat = "versioned"
+	// Versioning.
+	// If a registry if versioned, then types appear under versions.
+	VersionedRegistry RegistryFormat = "versioned"
+	// If a registry is unversioned, then types appear under their names.
 	UnversionedRegistry RegistryFormat = "unversioned"
+
+	// Organization.
+	// In a collection registry, types are grouped into collections.
+	CollectionRegistry RegistryFormat = "collection"
+	// In a one level registry, all types appear at the top level.
+	OneLevelRegistry RegistryFormat = "onelevel"
 )
+
+// RegistryService maintains a set of registries that defines the scope of all
+// registry based operations, such as search and type resolution.
+type RegistryService interface {
+	// List all the registries
+	List() ([]*Registry, error)
+	// Create a new registry
+	Create(registry *Registry) error
+	// Get a registry
+	Get(name string) (*Registry, error)
+	// Get a registry with credential.
+	GetAuthenticatedRegistry(name string) (*AuthenticatedRegistry, error)
+	// Delete a registry
+	Delete(name string) error
+	// Find a registry that backs the given URL
+	GetByURL(URL string) (*Registry, error)
+	// GetAuthenticatedRegistryByURL returns an authenticated registry that handles the types for a given URL.
+	GetAuthenticatedRegistryByURL(URL string) (*AuthenticatedRegistry, error)
+	// Set the credential for a registry.
+	// May not be supported by some registry services.
+	SetCredential(name string, credential RegistryCredential) error
+	// Get the credential for a registry.
+	GetCredential(name string) (RegistryCredential, error)
+}

@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +25,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/common"
-	"github.com/kubernetes/deployment-manager/util"
 )
 
 const (
@@ -101,7 +100,7 @@ func walkLayout(l *common.Layout, imports []*common.ImportFile, toReplace map[st
 	for len(toVisit) > 0 {
 		lr := toVisit[0]
 		nodeKey := lr.Resource.Name + layoutNodeKeySeparator + lr.Resource.Type
-		if len(lr.Layout.Resources) == 0 && util.IsTemplate(lr.Resource.Type, imports) {
+		if len(lr.Layout.Resources) == 0 && isTemplate(lr.Resource.Type, imports) {
 			ret[nodeKey] = lr
 		} else if toReplace[nodeKey] != nil {
 			toReplace[nodeKey].Resources = lr.Resources
@@ -111,6 +110,17 @@ func walkLayout(l *common.Layout, imports []*common.ImportFile, toReplace map[st
 	}
 
 	return ret
+}
+
+// isTemplate returns whether a given type is a template.
+func isTemplate(t string, imports []*common.ImportFile) bool {
+	for _, imp := range imports {
+		if imp.Name == t {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ExpandTemplate expands the supplied template, and returns a configuration.

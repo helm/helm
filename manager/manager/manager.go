@@ -19,6 +19,8 @@ package manager
 import (
 	"fmt"
 	"log"
+	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/kubernetes/deployment-manager/common"
@@ -28,33 +30,48 @@ import (
 
 // Manager manages a persistent set of Deployments.
 type Manager interface {
+	// Deployments
 	ListDeployments() ([]common.Deployment, error)
 	GetDeployment(name string) (*common.Deployment, error)
 	CreateDeployment(t *common.Template) (*common.Deployment, error)
 	DeleteDeployment(name string, forget bool) (*common.Deployment, error)
 	PutDeployment(name string, t *common.Template) (*common.Deployment, error)
+
+	// Manifests
 	ListManifests(deploymentName string) (map[string]*common.Manifest, error)
 	GetManifest(deploymentName string, manifest string) (*common.Manifest, error)
 	Expand(t *common.Template) (*common.Manifest, error)
+
+	// Types
 	ListTypes() []string
 	ListInstances(typeName string) []*common.TypeInstance
-	// Registry related functions
+
+	// Registries
 	ListRegistries() ([]*common.Registry, error)
 	CreateRegistry(pr *common.Registry) error
 	GetRegistry(name string) (*common.Registry, error)
 	DeleteRegistry(name string) error
+
+	// Registry Types
+	ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error)
+	GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error)
 }
 
 type manager struct {
-	expander        Expander
-	deployer        Deployer
-	repository      repository.Repository
-	registryService registry.RegistryService
+	expander   Expander
+	deployer   Deployer
+	repository repository.Repository
+	provider   registry.RegistryProvider
+	service    common.RegistryService
 }
 
 // NewManager returns a new initialized Manager.
-func NewManager(expander Expander, deployer Deployer, repository repository.Repository, registryService registry.RegistryService) Manager {
-	return &manager{expander, deployer, repository, registryService}
+func NewManager(expander Expander,
+	deployer Deployer,
+	repository repository.Repository,
+	provider registry.RegistryProvider,
+	service common.RegistryService) Manager {
+	return &manager{expander, deployer, repository, provider, service}
 }
 
 // ListDeployments returns the list of deployments
@@ -309,20 +326,32 @@ func (m *manager) ListInstances(typeName string) []*common.TypeInstance {
 	return m.repository.GetTypeInstances(typeName)
 }
 
+// ListRegistries returns the list of registries
 func (m *manager) ListRegistries() ([]*common.Registry, error) {
-	return m.registryService.List()
+	return m.service.List()
 }
 
 func (m *manager) CreateRegistry(pr *common.Registry) error {
-	return m.registryService.Create(pr)
+	return m.service.Create(pr)
 }
 
 func (m *manager) GetRegistry(name string) (*common.Registry, error) {
-	return m.registryService.Get(name)
+	return m.service.Get(name)
 }
 
 func (m *manager) DeleteRegistry(name string) error {
-	return m.registryService.Delete(name)
+	return m.service.Delete(name)
+}
+
+// Set the credential for a registry.
+// May not be supported by some registry services.
+func (m *manager) SetCredential(name string, credential common.RegistryCredential) error {
+	return m.service.SetCredential(name, credential)
+}
+
+// Get the credential for a registry.
+func (m *manager) GetCredential(name string) (common.RegistryCredential, error) {
+	return m.service.GetCredential(name)
 }
 
 func generateManifestName() string {
@@ -345,4 +374,27 @@ func getResourceErrors(c *common.Configuration) []string {
 	}
 
 	return errs
+}
+
+// ListRegistryTypes lists types in a given registry whose string values
+// conform to the supplied regular expression, or all types, if the regular
+// expression is nil.
+func (m *manager) ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error) {
+	r, err := m.provider.GetRegistryByName(registryName)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.ListTypes(regex)
+}
+
+// GetDownloadURLs returns the URLs required to download the contents
+// of a given type in a given registry.
+func (m *manager) GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error) {
+	r, err := m.provider.GetRegistryByName(registryName)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.GetDownloadURLs(t)
 }
