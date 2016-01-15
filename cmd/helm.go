@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
+	dep "github.com/deis/helm-dm/deploy"
 	"github.com/deis/helm-dm/format"
 )
 
@@ -22,7 +23,7 @@ func main() {
 func commands() []cli.Command {
 	return []cli.Command{
 		{
-			Name:        "install",
+			Name:        "init",
 			Usage:       "Initialize the client and install DM on Kubernetes.",
 			Description: ``,
 			Flags: []cli.Flag{
@@ -33,7 +34,7 @@ func commands() []cli.Command {
 			},
 			Action: func(c *cli.Context) {
 				if err := install(c.Bool("dry-run")); err != nil {
-					format.Error(err.Error())
+					format.Error("%s (Run 'helm doctor' for more information)", err)
 					os.Exit(1)
 				}
 			},
@@ -44,7 +45,7 @@ func commands() []cli.Command {
 			ArgsUsage: "",
 			Action: func(c *cli.Context) {
 				if err := target(c.Bool("dry-run")); err != nil {
-					format.Error(err.Error())
+					format.Error("%s (Is the cluster running?)", err)
 					os.Exit(1)
 				}
 			},
@@ -59,7 +60,66 @@ func commands() []cli.Command {
 			Name: "doctor",
 		},
 		{
-			Name: "deploy",
+			Name:    "deploy",
+			Aliases: []string{"install"},
+			Usage:   "Deploy a chart into the cluster.",
+			Action: func(c *cli.Context) {
+
+				args := c.Args()
+				if len(args) < 1 {
+					format.Error("First argument, filename, is required. Try 'helm deploy --help'")
+					os.Exit(1)
+				}
+
+				props, err := parseProperties(c.String("properties"))
+				if err != nil {
+					format.Error("Failed to parse properties: %s", err)
+					os.Exit(1)
+				}
+
+				d := &dep.Deployment{
+					Name:       c.String("Name"),
+					Properties: props,
+					Filename:   args[0],
+					Imports:    args[1:],
+					Repository: c.String("repository"),
+				}
+
+				if c.Bool("stdin") {
+					d.Input = os.Stdin
+				}
+
+				if err := deploy(d, c.Bool("dry-run")); err != nil {
+					format.Error("%s (Try running 'helm doctor')", err)
+					os.Exit(1)
+				}
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "dry-run",
+					Usage: "Only display the underlying kubectl commands.",
+				},
+				cli.BoolFlag{
+					Name:  "stdin,i",
+					Usage: "Read a configuration from STDIN.",
+				},
+				cli.StringFlag{
+					Name:  "name",
+					Usage: "Name of deployment, used for deploy and update commands (defaults to template name)",
+				},
+				// TODO: I think there is a Generic flag type that we can implement parsing with.
+				cli.StringFlag{
+					Name:  "properties,p",
+					Usage: "A comma-separated list of key=value pairs: 'foo=bar,foo2=baz'.",
+				},
+				cli.StringFlag{
+					// FIXME: This is not right. It's sort of a half-baked forward
+					// port of dm.go.
+					Name:  "repository",
+					Usage: "The default repository",
+					Value: "kubernetes/application-dm-templates",
+				},
+			},
 		},
 		{
 			Name: "search",
