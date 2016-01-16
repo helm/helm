@@ -89,7 +89,7 @@ func commands() []cli.Command {
 					d.Input = os.Stdin
 				}
 
-				if err := deploy(d, c.Bool("dry-run")); err != nil {
+				if err := deploy(d, c.String("host"), c.Bool("dry-run")); err != nil {
 					format.Error("%s (Try running 'helm doctor')", err)
 					os.Exit(1)
 				}
@@ -118,6 +118,12 @@ func commands() []cli.Command {
 					Name:  "repository",
 					Usage: "The default repository",
 					Value: "kubernetes/application-dm-templates",
+				},
+				cli.StringFlag{
+					Name:   "host,u",
+					Usage:  "The URL of the DM server.",
+					EnvVar: "HELM_HOST",
+					Value:  "https://localhost:8181/FIXME_NOT_RIGHT",
 				},
 			},
 		},
