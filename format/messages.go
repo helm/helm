@@ -20,3 +20,13 @@ func Info(msg string, v ...interface{}) {
 func Msg(msg string, v ...interface{}) {
 	fmt.Fprintf(os.Stdout, msg, v...)
 }
+
+func Success(msg string, v ...interface{}) {
+	msg = "[Success] " + msg + "\n"
+	fmt.Fprintf(os.Stdout, msg, v...)
+}
+
+func Warning(msg string, v ...interface{}) {
+	msg = "[Warning] " + msg + "\n"
+	fmt.Fprintf(os.Stdout, msg, v...)
+}
