@@ -169,7 +169,11 @@ func (grp githubRegistryProvider) createGithubClient(credentialName string) (*gi
 			return github.NewClient(tc), nil
 		}
 		if c.BasicAuth.Username != "" && c.BasicAuth.Password != "" {
-
+			tp := github.BasicAuthTransport{
+				Username: c.BasicAuth.Username,
+				Password: c.BasicAuth.Password,
+			}
+			return github.NewClient(tp.Client()), nil
 		}
 
 	}

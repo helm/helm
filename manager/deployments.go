@@ -246,30 +246,9 @@ func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler s
 
 func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {
 	util.LogHandlerEntry(handler, r)
-	b := io.LimitReader(r.Body, *maxLength*1024)
-	y, err := ioutil.ReadAll(b)
+	j, err := getJsonFromRequest(w, r, handler)
+
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return nil
-	}
-
-	// Reject the input if it exceeded the length limit,
-	// since we may not have read all of it into the buffer.
-	if _, err = b.Read(make([]byte, 0, 1)); err != io.EOF {
-		e := fmt.Errorf("template exceeds maximum length of %d KB", *maxLength)
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
-		return nil
-	}
-
-	if err := r.Body.Close(); err != nil {
-		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
-		return nil
-	}
-
-	j, err := yaml.YAMLToJSON(y)
-	if err != nil {
-		e := fmt.Errorf("%v\n%v", err, string(y))
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return nil
 	}
 
@@ -450,30 +429,8 @@ func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {
 	util.LogHandlerEntry(handler, r)
-	b := io.LimitReader(r.Body, *maxLength*1024)
-	y, err := ioutil.ReadAll(b)
+	j, err := getJsonFromRequest(w, r, handler)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return nil
-	}
-
-	// Reject the input if it exceeded the length limit,
-	// since we may not have read all of it into the buffer.
-	if _, err = b.Read(make([]byte, 0, 1)); err != io.EOF {
-		e := fmt.Errorf("template exceeds maximum length of %d KB", *maxLength)
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
-		return nil
-	}
-
-	if err := r.Body.Close(); err != nil {
-		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
-		return nil
-	}
-
-	j, err := yaml.YAMLToJSON(y)
-	if err != nil {
-		e := fmt.Errorf("%v\n%v", err, string(y))
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return nil
 	}
 
@@ -497,11 +454,12 @@ func createCredentialHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := getCredential(w, r, handler)
-
-	err = backend.CreateCredential(credentialName, c)
-	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+	if c != nil {
+		err = backend.CreateCredential(credentialName, c)
+		if err != nil {
+			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+			return
+		}
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
@@ -522,4 +480,29 @@ func getCredentialHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
+}
+
+func getJsonFromRequest(w http.ResponseWriter, r *http.Request, handler string) ([]byte, error) {
+	util.LogHandlerEntry(handler, r)
+	b := io.LimitReader(r.Body, *maxLength*1024)
+	y, err := ioutil.ReadAll(b)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return []byte{}, err
+	}
+
+	// Reject the input if it exceeded the length limit,
+	// since we may not have read all of it into the buffer.
+	if _, err = b.Read(make([]byte, 0, 1)); err != io.EOF {
+		e := fmt.Errorf("template exceeds maximum length of %d KB", *maxLength)
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return []byte{}, err
+	}
+
+	if err := r.Body.Close(); err != nil {
+		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+		return []byte{}, err
+	}
+
+	return yaml.YAMLToJSON(y)
 }
