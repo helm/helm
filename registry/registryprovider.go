@@ -17,10 +17,13 @@ limitations under the License.
 package registry
 
 import (
+	"github.com/google/go-github/github"
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/util"
+	"golang.org/x/oauth2"
 
 	"fmt"
+	"log"
 	"net/url"
 	"regexp"
 	"strings"
@@ -37,24 +40,29 @@ type registryProvider struct {
 	sync.RWMutex
 	rs         common.RegistryService
 	grp        GithubRegistryProvider
+	cp         common.CredentialProvider
 	registries map[string]Registry
 }
 
-func NewDefaultRegistryProvider() RegistryProvider {
-	return NewRegistryProvider(nil, NewGithubRegistryProvider())
+func NewDefaultRegistryProvider(cp common.CredentialProvider) RegistryProvider {
+	return NewRegistryProvider(nil, NewGithubRegistryProvider(cp), cp)
 }
 
-func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider) RegistryProvider {
+func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider, cp common.CredentialProvider) RegistryProvider {
 	if rs == nil {
 		rs = NewInmemRegistryService()
 	}
 
+	if cp == nil {
+		cp = NewInmemCredentialProvider()
+	}
+
 	if grp == nil {
-		grp = NewGithubRegistryProvider()
+		grp = NewGithubRegistryProvider(cp)
 	}
 
 	registries := make(map[string]Registry)
-	rp := &registryProvider{rs: rs, grp: grp, registries: registries}
+	rp := &registryProvider{rs: rs, grp: grp, cp: cp, registries: registries}
 	return rp
 }
 
@@ -98,23 +106,19 @@ func (rp registryProvider) GetRegistryByName(registryName string) (Registry, err
 	rp.RLock()
 	defer rp.RUnlock()
 
-	result, ok := rp.registries[registryName]
-	if !ok {
-		cr, err := rp.rs.Get(registryName)
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := rp.grp.GetGithubRegistry(*cr)
-		if err != nil {
-			return nil, err
-		}
-
-		rp.registries[r.GetRegistryName()] = r
-		result = r
+	cr, err := rp.rs.Get(registryName)
+	if err != nil {
+		return nil, err
 	}
 
-	return result, nil
+	r, err := rp.grp.GetGithubRegistry(*cr)
+	if err != nil {
+		return nil, err
+	}
+
+	rp.registries[r.GetRegistryName()] = r
+
+	return r, nil
 }
 
 func ParseRegistryFormat(rf common.RegistryFormat) map[common.RegistryFormat]bool {
@@ -133,22 +137,63 @@ type GithubRegistryProvider interface {
 }
 
 type githubRegistryProvider struct {
+	cp common.CredentialProvider
 }
 
 // NewGithubRegistryProvider creates a GithubRegistryProvider.
-func NewGithubRegistryProvider() GithubRegistryProvider {
-	return &githubRegistryProvider{}
+func NewGithubRegistryProvider(cp common.CredentialProvider) GithubRegistryProvider {
+	if cp == nil {
+		panic(fmt.Errorf("CP IS NIL: %v", cp))
+	}
+	return &githubRegistryProvider{cp: cp}
 }
 
+func (grp githubRegistryProvider) createGithubClient(credentialName string) (*github.Client, error) {
+	if credentialName == "" {
+		return github.NewClient(nil), nil
+	}
+	c, err := grp.cp.GetCredential(credentialName)
+
+	if err != nil {
+		log.Printf("Failed to fetch credential %s: %v", credentialName, err)
+		log.Print("Trying to use unauthenticated client")
+		return github.NewClient(nil), nil
+	}
+
+	if c != nil {
+		if c.APIToken != "" {
+			ts := oauth2.StaticTokenSource(
+				&oauth2.Token{AccessToken: string(c.APIToken)},
+			)
+			tc := oauth2.NewClient(oauth2.NoContext, ts)
+			return github.NewClient(tc), nil
+		}
+		if c.BasicAuth.Username != "" && c.BasicAuth.Password != "" {
+
+		}
+
+	}
+	return nil, fmt.Errorf("No suitable credential found for %s", credentialName)
+
+}
+
+// GetGithubRegistry returns a new GithubRegistry. If there's a credential that is specified, will try
+// to fetch it and use it, and if there's no credential found, will fall back to unauthenticated client.
 func (grp githubRegistryProvider) GetGithubRegistry(cr common.Registry) (GithubRegistry, error) {
 	if cr.Type == common.GithubRegistryType {
+		// If there's a credential that we need to use, fetch it and create a client for it.
+		client, err := grp.createGithubClient(cr.CredentialName)
+		if err != nil {
+			return nil, err
+		}
+
 		fMap := ParseRegistryFormat(cr.Format)
 		if fMap[common.UnversionedRegistry] && fMap[common.OneLevelRegistry] {
-			return NewGithubPackageRegistry(cr.Name, cr.URL, nil)
+			return NewGithubPackageRegistry(cr.Name, cr.URL, nil, client)
 		}
 
 		if fMap[common.VersionedRegistry] && fMap[common.CollectionRegistry] {
-			return NewGithubTemplateRegistry(cr.Name, cr.URL, nil)
+			return NewGithubTemplateRegistry(cr.Name, cr.URL, nil, client)
 		}
 
 		return nil, fmt.Errorf("unknown registry format: %s", cr.Format)

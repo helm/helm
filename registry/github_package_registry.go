@@ -41,11 +41,14 @@ type GithubPackageRegistry struct {
 }
 
 // NewGithubPackageRegistry creates a GithubPackageRegistry.
-func NewGithubPackageRegistry(name, shortURL string, service RepositoryService) (*GithubPackageRegistry, error) {
+func NewGithubPackageRegistry(name, shortURL string, service GithubRepositoryService, client *github.Client) (*GithubPackageRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.UnversionedRegistry, common.OneLevelRegistry)
 	if service == nil {
-		client := github.NewClient(nil)
-		service = client.Repositories
+		if client == nil {
+			service = github.NewClient(nil).Repositories
+		} else {
+			service = client.Repositories
+		}
 	}
 
 	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), service)

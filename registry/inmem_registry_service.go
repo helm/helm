@@ -25,28 +25,30 @@ import (
 )
 
 type inmemRegistryService struct {
-	registries map[string]*common.AuthenticatedRegistry
+	registries map[string]*common.Registry
 }
 
 func NewInmemRegistryService() common.RegistryService {
 	rs := &inmemRegistryService{
-		registries: make(map[string]*common.AuthenticatedRegistry),
+		registries: make(map[string]*common.Registry),
 	}
 
 	pFormat := fmt.Sprintf("%s;%s", common.UnversionedRegistry, common.OneLevelRegistry)
 	rs.Create(&common.Registry{
-		Name:   "charts",
-		Type:   common.GithubRegistryType,
-		URL:    "github.com/helm/charts",
-		Format: common.RegistryFormat(pFormat),
+		Name:           "charts",
+		Type:           common.GithubRegistryType,
+		URL:            "github.com/helm/charts",
+		Format:         common.RegistryFormat(pFormat),
+		CredentialName: "default",
 	})
 
 	tFormat := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
 	rs.Create(&common.Registry{
-		Name:   "application-dm-templates",
-		Type:   common.GithubRegistryType,
-		URL:    "github.com/kubernetes/application-dm-templates",
-		Format: common.RegistryFormat(tFormat),
+		Name:           "application-dm-templates",
+		Type:           common.GithubRegistryType,
+		URL:            "github.com/kubernetes/application-dm-templates",
+		Format:         common.RegistryFormat(tFormat),
+		CredentialName: "default",
 	})
 
 	return rs
@@ -56,15 +58,15 @@ func NewInmemRegistryService() common.RegistryService {
 func (rs *inmemRegistryService) List() ([]*common.Registry, error) {
 	ret := []*common.Registry{}
 	for _, r := range rs.registries {
-		ret = append(ret, &r.Registry)
+		ret = append(ret, r)
 	}
 
 	return ret, nil
 }
 
-// Create creates an authenticated registry.
+// Create creates a registry.
 func (rs *inmemRegistryService) Create(registry *common.Registry) error {
-	rs.registries[registry.Name] = &common.AuthenticatedRegistry{Registry: *registry}
+	rs.registries[registry.Name] = registry
 	return nil
 }
 
@@ -75,11 +77,11 @@ func (rs *inmemRegistryService) Get(name string) (*common.Registry, error) {
 		return nil, fmt.Errorf("Failed to find registry named %s", name)
 	}
 
-	return &r.Registry, nil
+	return r, nil
 }
 
-// GetAuthenticatedRegistry returns an authenticated registry with a given name.
-func (rs *inmemRegistryService) GetAuthenticatedRegistry(name string) (*common.AuthenticatedRegistry, error) {
+// GetRegistry returns a registry with a given name.
+func (rs *inmemRegistryService) GetRegistry(name string) (*common.Registry, error) {
 	r, ok := rs.registries[name]
 	if !ok {
 		return nil, fmt.Errorf("Failed to find registry named %s", name)
@@ -88,7 +90,7 @@ func (rs *inmemRegistryService) GetAuthenticatedRegistry(name string) (*common.A
 	return r, nil
 }
 
-// Create deletes the authenticated registry with a given name.
+// Delete deletes the registry with a given name.
 func (rs *inmemRegistryService) Delete(name string) error {
 	_, ok := rs.registries[name]
 	if !ok {
@@ -104,15 +106,15 @@ func (rs *inmemRegistryService) GetByURL(URL string) (*common.Registry, error) {
 	trimmed := util.TrimURLScheme(URL)
 	for _, r := range rs.registries {
 		if strings.HasPrefix(trimmed, util.TrimURLScheme(r.URL)) {
-			return &r.Registry, nil
+			return r, nil
 		}
 	}
 
 	return nil, fmt.Errorf("Failed to find registry for url: %s", URL)
 }
 
-// GetAuthenticatedRegistryByURL returns an authenticated registry that handles the types for a given URL.
-func (rs *inmemRegistryService) GetAuthenticatedRegistryByURL(URL string) (*common.AuthenticatedRegistry, error) {
+// GetRegistryByURL returns a registry that handles the types for a given URL.
+func (rs *inmemRegistryService) GetRegistryByURL(URL string) (*common.Registry, error) {
 	trimmed := util.TrimURLScheme(URL)
 	for _, r := range rs.registries {
 		if strings.HasPrefix(trimmed, util.TrimURLScheme(r.URL)) {
@@ -121,25 +123,4 @@ func (rs *inmemRegistryService) GetAuthenticatedRegistryByURL(URL string) (*comm
 	}
 
 	return nil, fmt.Errorf("Failed to find registry for url: %s", URL)
-}
-
-// Set the credential for a registry.
-func (rs *inmemRegistryService) SetCredential(name string, credential common.RegistryCredential) error {
-	r, ok := rs.registries[name]
-	if !ok {
-		return fmt.Errorf("Failed to find registry named %s", name)
-	}
-
-	r.Credential = credential
-	return nil
-}
-
-// Get the credential for a registry.
-func (rs *inmemRegistryService) GetCredential(name string) (common.RegistryCredential, error) {
-	r, ok := rs.registries[name]
-	if !ok {
-		return common.RegistryCredential{}, fmt.Errorf("Failed to find registry named %s", name)
-	}
-
-	return r.Credential, nil
 }

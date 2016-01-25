@@ -56,14 +56,17 @@ var deployments = []Route{
 	{"GetRegistry", "/registries/{registry}", "GET", getRegistryHandlerFunc, ""},
 	{"ListRegistryTypes", "/registries/{registry}/types", "GET", listRegistryTypesHandlerFunc, ""},
 	{"GetDownloadURLs", "/registries/{registry}/types/{type}", "GET", getDownloadURLsHandlerFunc, ""},
+	{"CreateCredential", "/credentials/{credential}", "POST", createCredentialHandlerFunc, "JSON"},
+	{"GetCredential", "/credentials/{credential}", "GET", getCredentialHandlerFunc, ""},
 }
 
 var (
-	maxLength    = flag.Int64("maxLength", 1024, "The maximum length (KB) of a template.")
-	expanderName = flag.String("expander", "expandybird-service", "The DNS name of the expander service.")
-	expanderURL  = flag.String("expanderURL", "", "The URL for the expander service.")
-	deployerName = flag.String("deployer", "resourcifier-service", "The DNS name of the deployer service.")
-	deployerURL  = flag.String("deployerURL", "", "The URL for the deployer service.")
+	maxLength      = flag.Int64("maxLength", 1024, "The maximum length (KB) of a template.")
+	expanderName   = flag.String("expander", "expandybird-service", "The DNS name of the expander service.")
+	expanderURL    = flag.String("expanderURL", "", "The URL for the expander service.")
+	deployerName   = flag.String("deployer", "resourcifier-service", "The DNS name of the deployer service.")
+	deployerURL    = flag.String("deployerURL", "", "The URL for the deployer service.")
+	credentialFile = flag.String("credentialFile", "", "Local file to use for credentials.")
 )
 
 var backend manager.Manager
@@ -74,17 +77,28 @@ func init() {
 	}
 
 	routes = append(routes, deployments...)
-	backend = newManager()
+	var credentialProvider common.CredentialProvider
+	if *credentialFile != "" {
+		var err error
+		credentialProvider, err = registry.NewFilebasedCredentialProvider(*credentialFile)
+		if err != nil {
+			panic(fmt.Errorf("cannot create credential provider %s: %s", *credentialFile, err))
+		}
+	} else {
+		credentialProvider = registry.NewInmemCredentialProvider()
+	}
+	backend = newManager(credentialProvider)
 }
 
-func newManager() manager.Manager {
-	provider := registry.NewDefaultRegistryProvider()
-	resolver := manager.NewTypeResolver(provider)
+func newManager(cp common.CredentialProvider) manager.Manager {
+	registryProvider := registry.NewDefaultRegistryProvider(cp)
+	resolver := manager.NewTypeResolver(registryProvider)
 	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), resolver)
 	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName))
 	r := repository.NewMapBasedRepository()
 	service := registry.NewInmemRegistryService()
-	return manager.NewManager(expander, deployer, r, provider, service)
+	credentialProvider := cp
+	return manager.NewManager(expander, deployer, r, registryProvider, service, credentialProvider)
 }
 
 func getServiceURL(serviceURL, serviceName string) string {
@@ -426,6 +440,82 @@ func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c, err := backend.GetDownloadURLs(registryName, tt)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
+}
+
+func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {
+	util.LogHandlerEntry(handler, r)
+	b := io.LimitReader(r.Body, *maxLength*1024)
+	y, err := ioutil.ReadAll(b)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return nil
+	}
+
+	// Reject the input if it exceeded the length limit,
+	// since we may not have read all of it into the buffer.
+	if _, err = b.Read(make([]byte, 0, 1)); err != io.EOF {
+		e := fmt.Errorf("template exceeds maximum length of %d KB", *maxLength)
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return nil
+	}
+
+	if err := r.Body.Close(); err != nil {
+		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+		return nil
+	}
+
+	j, err := yaml.YAMLToJSON(y)
+	if err != nil {
+		e := fmt.Errorf("%v\n%v", err, string(y))
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return nil
+	}
+
+	t := &common.RegistryCredential{}
+	if err := json.Unmarshal(j, t); err != nil {
+		e := fmt.Errorf("%v\n%v", err, string(j))
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return nil
+	}
+
+	return t
+}
+
+func createCredentialHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: create credential"
+	util.LogHandlerEntry(handler, r)
+	defer r.Body.Close()
+	credentialName, err := getPathVariable(w, r, "credential", handler)
+	if err != nil {
+		return
+	}
+
+	c := getCredential(w, r, handler)
+
+	err = backend.CreateCredential(credentialName, c)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
+}
+
+func getCredentialHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get credential"
+	util.LogHandlerEntry(handler, r)
+	credentialName, err := getPathVariable(w, r, "credential", handler)
+	if err != nil {
+		return
+	}
+
+	c, err := backend.GetCredential(credentialName)
 	if err != nil {
 		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
 		return

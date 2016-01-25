@@ -45,7 +45,7 @@ func TestShortGithubUrlTemplateMapping(t *testing.T) {
 	}
 
 	grp := NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps)
-	testUrlConversionDriver(NewRegistryProvider(nil, grp), tests, t)
+	testUrlConversionDriver(NewRegistryProvider(nil, grp, NewInmemCredentialProvider()), tests, t)
 }
 
 func TestShortGithubUrlPackageMapping(t *testing.T) {
@@ -60,5 +60,5 @@ func TestShortGithubUrlPackageMapping(t *testing.T) {
 	}
 
 	grp := NewTestGithubRegistryProvider("github.com/helm/charts", githubUrlMaps)
-	testUrlConversionDriver(NewRegistryProvider(nil, grp), tests, t)
+	testUrlConversionDriver(NewRegistryProvider(nil, grp, NewInmemCredentialProvider()), tests, t)
 }

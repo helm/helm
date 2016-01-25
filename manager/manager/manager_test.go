@@ -254,8 +254,9 @@ var testExpander = &expanderStub{}
 var testRepository = newRepositoryStub()
 var testDeployer = newDeployerStub()
 var testRegistryService = registry.NewInmemRegistryService()
-var testProvider = registry.NewRegistryProvider(nil, registry.NewTestGithubRegistryProvider("", nil))
-var testManager = NewManager(testExpander, testDeployer, testRepository, testProvider, testRegistryService)
+var testCredentialProvider = registry.NewInmemCredentialProvider()
+var testProvider = registry.NewRegistryProvider(nil, registry.NewTestGithubRegistryProvider("", nil), testCredentialProvider)
+var testManager = NewManager(testExpander, testDeployer, testRepository, testProvider, testRegistryService, testCredentialProvider)
 
 func TestListDeployments(t *testing.T) {
 	testRepository.reset()
