@@ -313,7 +313,7 @@ func TestShortGithubUrl(t *testing.T) {
 		importOut:        finalImports,
 		urlcount:         4,
 		responses:        responses,
-		registryProvider: registry.NewRegistryProvider(nil, grp),
+		registryProvider: registry.NewRegistryProvider(nil, grp, registry.NewInmemCredentialProvider()),
 	}
 
 	testDriver(test, t)

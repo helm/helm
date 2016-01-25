@@ -25,20 +25,23 @@ import (
 	"strings"
 )
 
-// githubRegistry implements the Registry interface and talks to github.
+// githubRegistry is the base class for the Registry interface and talks to github. Actual implementations are
+// in GithubPackageRegistry and GithubTemplateRegistry.
 // The registry short URL and format determine how types are laid out in the
 // registry.
 type githubRegistry struct {
-	name       string
-	shortURL   string
-	owner      string
-	repository string
-	path       string
-	format     common.RegistryFormat
-	service    RepositoryService
+	name           string
+	shortURL       string
+	owner          string
+	repository     string
+	path           string
+	format         common.RegistryFormat
+	credentialName string
+	service        GithubRepositoryService
 }
 
-type RepositoryService interface {
+// GithubRepositoryService defines the interface that's defined in github.com/go-github/repos_contents.go GetContents method.
+type GithubRepositoryService interface {
 	GetContents(
 		owner, repo, path string,
 		opt *github.RepositoryContentGetOptions,
@@ -51,7 +54,7 @@ type RepositoryService interface {
 }
 
 // newGithubRegistry creates a githubRegistry.
-func newGithubRegistry(name, shortURL string, format common.RegistryFormat, service RepositoryService) (*githubRegistry, error) {
+func newGithubRegistry(name, shortURL string, format common.RegistryFormat, service GithubRepositoryService) (*githubRegistry, error) {
 	trimmed := util.TrimURLScheme(shortURL)
 	owner, repository, path, err := parseGithubShortURL(trimmed)
 	if err != nil {

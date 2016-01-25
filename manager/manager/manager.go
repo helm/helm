@@ -55,23 +55,29 @@ type Manager interface {
 	// Registry Types
 	ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error)
 	GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error)
+
+	// Credentials
+	CreateCredential(name string, c *common.RegistryCredential) error
+	GetCredential(name string) (*common.RegistryCredential, error)
 }
 
 type manager struct {
-	expander   Expander
-	deployer   Deployer
-	repository repository.Repository
-	provider   registry.RegistryProvider
-	service    common.RegistryService
+	expander           Expander
+	deployer           Deployer
+	repository         repository.Repository
+	registryProvider   registry.RegistryProvider
+	service            common.RegistryService
+	credentialProvider common.CredentialProvider
 }
 
 // NewManager returns a new initialized Manager.
 func NewManager(expander Expander,
 	deployer Deployer,
 	repository repository.Repository,
-	provider registry.RegistryProvider,
-	service common.RegistryService) Manager {
-	return &manager{expander, deployer, repository, provider, service}
+	registryProvider registry.RegistryProvider,
+	service common.RegistryService,
+	credentialProvider common.CredentialProvider) Manager {
+	return &manager{expander, deployer, repository, registryProvider, service, credentialProvider}
 }
 
 // ListDeployments returns the list of deployments
@@ -343,17 +349,6 @@ func (m *manager) DeleteRegistry(name string) error {
 	return m.service.Delete(name)
 }
 
-// Set the credential for a registry.
-// May not be supported by some registry services.
-func (m *manager) SetCredential(name string, credential common.RegistryCredential) error {
-	return m.service.SetCredential(name, credential)
-}
-
-// Get the credential for a registry.
-func (m *manager) GetCredential(name string) (common.RegistryCredential, error) {
-	return m.service.GetCredential(name)
-}
-
 func generateManifestName() string {
 	return fmt.Sprintf("manifest-%d", time.Now().UTC().UnixNano())
 }
@@ -380,7 +375,7 @@ func getResourceErrors(c *common.Configuration) []string {
 // conform to the supplied regular expression, or all types, if the regular
 // expression is nil.
 func (m *manager) ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error) {
-	r, err := m.provider.GetRegistryByName(registryName)
+	r, err := m.registryProvider.GetRegistryByName(registryName)
 	if err != nil {
 		return nil, err
 	}
@@ -391,10 +386,19 @@ func (m *manager) ListRegistryTypes(registryName string, regex *regexp.Regexp) (
 // GetDownloadURLs returns the URLs required to download the contents
 // of a given type in a given registry.
 func (m *manager) GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error) {
-	r, err := m.provider.GetRegistryByName(registryName)
+	r, err := m.registryProvider.GetRegistryByName(registryName)
 	if err != nil {
 		return nil, err
 	}
 
 	return r.GetDownloadURLs(t)
+}
+
+// CreateCredential creates a credential that can be used to authenticate to registry
+func (m *manager) CreateCredential(name string, c *common.RegistryCredential) error {
+	return m.credentialProvider.SetCredential(name, c)
+}
+
+func (m *manager) GetCredential(name string) (*common.RegistryCredential, error) {
+	return m.credentialProvider.GetCredential(name)
 }

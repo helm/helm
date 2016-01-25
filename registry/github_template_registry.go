@@ -54,10 +54,9 @@ type GithubTemplateRegistry struct {
 }
 
 // NewGithubTemplateRegistry creates a GithubTemplateRegistry.
-func NewGithubTemplateRegistry(name, shortURL string, service RepositoryService) (*GithubTemplateRegistry, error) {
+func NewGithubTemplateRegistry(name, shortURL string, service GithubRepositoryService, client *github.Client) (*GithubTemplateRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
 	if service == nil {
-		client := github.NewClient(nil)
 		service = client.Repositories
 	}
 

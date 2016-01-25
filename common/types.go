@@ -184,18 +184,11 @@ type RegistryCredential struct {
 // Registry describes a template registry
 // TODO(jackr): Fix ambiguity re: whether or not URL has a scheme.
 type Registry struct {
-	Name   string         `json:"name,omitempty"`   // Friendly name for the registry
-	Type   RegistryType   `json:"type,omitempty"`   // Technology implementing the registry
-	URL    string         `json:"name,omitempty"`   // URL to the root of the registry
-	Format RegistryFormat `json:"format,omitempty"` // Format of the registry
-}
-
-// AuthenticatedRegistry describes a type registry with credential.
-// Broke this out of Registry, so that we can pass around instances of Registry
-// without worrying about secrets.
-type AuthenticatedRegistry struct {
-	Registry
-	Credential RegistryCredential `json:"credential,omitempty"`
+	Name           string         `json:"name,omitempty"`           // Friendly name for the registry
+	Type           RegistryType   `json:"type,omitempty"`           // Technology implementing the registry
+	URL            string         `json:"name,omitempty"`           // URL to the root of the registry
+	Format         RegistryFormat `json:"format,omitempty"`         // Format of the registry
+	CredentialName string         `json:"credentialname,omitempty"` // Name of the credential to use
 }
 
 // RegistryType defines the technology that implements the registry
@@ -233,16 +226,22 @@ type RegistryService interface {
 	// Get a registry
 	Get(name string) (*Registry, error)
 	// Get a registry with credential.
-	GetAuthenticatedRegistry(name string) (*AuthenticatedRegistry, error)
+	GetRegistry(name string) (*Registry, error)
 	// Delete a registry
 	Delete(name string) error
 	// Find a registry that backs the given URL
 	GetByURL(URL string) (*Registry, error)
-	// GetAuthenticatedRegistryByURL returns an authenticated registry that handles the types for a given URL.
-	GetAuthenticatedRegistryByURL(URL string) (*AuthenticatedRegistry, error)
+	// GetRegistryByURL returns a registry that handles the types for a given URL.
+	GetRegistryByURL(URL string) (*Registry, error)
+}
+
+// CredentialProvider provides credentials for registries.
+type CredentialProvider interface {
 	// Set the credential for a registry.
 	// May not be supported by some registry services.
-	SetCredential(name string, credential RegistryCredential) error
-	// Get the credential for a registry.
-	GetCredential(name string) (RegistryCredential, error)
+	SetCredential(name string, credential *RegistryCredential) error
+
+	// GetCredential returns the specified credential or nil if there's no credential.
+	// Error is non-nil if fetching the credential failed.
+	GetCredential(name string) (*RegistryCredential, error)
 }

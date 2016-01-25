@@ -91,7 +91,7 @@ var registryProvider registry.RegistryProvider
 func getRegistryProvider() registry.RegistryProvider {
 	if registryProvider == nil {
 		rs := registry.NewInmemRegistryService()
-		r, err := rs.GetByURL(*template_registry)
+		_, err := rs.GetByURL(*template_registry)
 		if err != nil {
 			r := newRegistry(*template_registry)
 			if err := rs.Create(r); err != nil {
@@ -99,6 +99,7 @@ func getRegistryProvider() registry.RegistryProvider {
 			}
 		}
 
+		cp := registry.NewInmemCredentialProvider()
 		if *apitoken == "" {
 			*apitoken = os.Getenv("DM_GITHUB_API_TOKEN")
 		}
@@ -107,13 +108,12 @@ func getRegistryProvider() registry.RegistryProvider {
 			credential := common.RegistryCredential{
 				APIToken: common.APITokenCredential(*apitoken),
 			}
-
-			if err := rs.SetCredential(r.Name, credential); err != nil {
-				panic(fmt.Errorf("cannot configure registry at %s: %s", r.Name, err))
+			if err := cp.SetCredential("default", &credential); err != nil {
+				panic(fmt.Errorf("cannot set credential at %s: %s", "default", err))
 			}
 		}
 
-		registryProvider = registry.NewRegistryProvider(rs, nil)
+		registryProvider = registry.NewRegistryProvider(rs, nil, cp)
 	}
 
 	return registryProvider
@@ -122,10 +122,11 @@ func getRegistryProvider() registry.RegistryProvider {
 func newRegistry(URL string) *common.Registry {
 	tFormat := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
 	return &common.Registry{
-		Name:   util.TrimURLScheme(URL),
-		Type:   common.GithubRegistryType,
-		URL:    URL,
-		Format: common.RegistryFormat(tFormat),
+		Name:           util.TrimURLScheme(URL),
+		Type:           common.GithubRegistryType,
+		URL:            URL,
+		Format:         common.RegistryFormat(tFormat),
+		CredentialName: "default",
 	}
 }
 
