@@ -375,14 +375,16 @@ func loadTemplate(args []string) *common.Template {
 			}
 		}
 	} else {
-		if len(args) < 3 {
+		// See if the first argument is a local file. It could either be a type, or it could be a configuration. If
+		// it's a local file, it's configuration.
+		if _, err := os.Stat(args[1]); err == nil {
+			template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
+		} else {
 			if t, err := registry.ParseType(args[1]); err == nil {
 				template = buildTemplateFromType(t)
 			} else {
 				template, err = expander.NewTemplateFromRootTemplate(args[1])
 			}
-		} else {
-			template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
 		}
 
 		if err != nil {
