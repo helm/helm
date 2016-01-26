@@ -26,10 +26,10 @@ resources:
 ```
 
 It uses two templates. The front end is a 
-[replicated service](https://github.com/kubernetes/application-dm-templates/common/replicatedservice/v1),
+[replicated service](https://github.com/kubernetes/application-dm-templates/tree/master/common/replicatedservice/v1),
 which creates a service and replication controller with matching selectors, and
 the back end is a 
-[Redis cluster](https://github.com/kubernetes/application-dm-templates/storage/redis/v1),
+[Redis cluster](https://github.com/kubernetes/application-dm-templates/tree/master/storage/redis/v1),
 which creates a Redis master and two Redis slaves.
 
 Templates can use other templates, making it easy to create larger structures
