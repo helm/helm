@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -281,10 +282,7 @@ func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
 		Args: []string{e.ExpansionBinary, template.Content},
 		// TODO(vagababov): figure out whether do we even need "PROJECT" and
 		// "DEPLOYMENT_NAME" variables here.
-		Env: []string{
-			"PROJECT=" + template.Name,
-			"DEPLOYMENT_NAME=" + template.Name,
-		},
+		Env:    append(os.Environ(), "PROJECT="+template.Name, "DEPLOYMENT_NAME="+template.Name),
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
