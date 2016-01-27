@@ -61,12 +61,13 @@ var deployments = []Route{
 }
 
 var (
-	maxLength      = flag.Int64("maxLength", 1024, "The maximum length (KB) of a template.")
-	expanderName   = flag.String("expander", "expandybird-service", "The DNS name of the expander service.")
-	expanderURL    = flag.String("expanderURL", "", "The URL for the expander service.")
-	deployerName   = flag.String("deployer", "resourcifier-service", "The DNS name of the deployer service.")
-	deployerURL    = flag.String("deployerURL", "", "The URL for the deployer service.")
-	credentialFile = flag.String("credentialFile", "", "Local file to use for credentials.")
+	maxLength         = flag.Int64("maxLength", 1024, "The maximum length (KB) of a template.")
+	expanderName      = flag.String("expander", "expandybird-service", "The DNS name of the expander service.")
+	expanderURL       = flag.String("expanderURL", "", "The URL for the expander service.")
+	deployerName      = flag.String("deployer", "resourcifier-service", "The DNS name of the deployer service.")
+	deployerURL       = flag.String("deployerURL", "", "The URL for the deployer service.")
+	credentialFile    = flag.String("credentialFile", "", "Local file to use for credentials.")
+	credentialSecrets = flag.Bool("credentialSecrets", true, "Use secrets for credentials.")
 )
 
 var backend manager.Manager
@@ -79,11 +80,16 @@ func init() {
 	routes = append(routes, deployments...)
 	var credentialProvider common.CredentialProvider
 	if *credentialFile != "" {
+		if *credentialSecrets {
+			panic(fmt.Errorf("Both credentialFile and credentialSecrets are set"))
+		}
 		var err error
 		credentialProvider, err = registry.NewFilebasedCredentialProvider(*credentialFile)
 		if err != nil {
 			panic(fmt.Errorf("cannot create credential provider %s: %s", *credentialFile, err))
 		}
+	} else if *credentialSecrets {
+		credentialProvider = registry.NewSecretsCredentialProvider()
 	} else {
 		credentialProvider = registry.NewInmemCredentialProvider()
 	}
@@ -424,7 +430,11 @@ func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
+	urls := []string{}
+	for _, u := range c {
+		urls = append(urls, u.String())
+	}
+	util.LogHandlerExitWithJSON(handler, w, urls, http.StatusOK)
 }
 
 func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {

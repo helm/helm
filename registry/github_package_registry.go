@@ -124,7 +124,6 @@ func (g GithubPackageRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 			}
 		}
 	}
-
 	return downloadURLs, nil
 }
 

@@ -23,13 +23,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/common"
-
-	/*
-		"net/url"
-		"regexp"
-		"strings"
-		"sync"
-	*/)
+)
 
 // CredentialProvider provides credentials for registries.
 type FilebasedCredentialProvider struct {
