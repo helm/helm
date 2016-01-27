@@ -38,7 +38,7 @@ if [[ -z $MANAGER ]] ; then
   exit 1
 fi
 pkill -f $MANAGER
-nohup $MANAGER > $LOGDIR/manager.log 2>&1 --port=8080 --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
+nohup $MANAGER > $LOGDIR/manager.log 2>&1 --port=8080  --kubectl=$KUBECTL --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
 echo
 
 echo "Creating dm namespace..."

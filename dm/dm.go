@@ -21,8 +21,6 @@ import (
 
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/expandybird/expander"
-	"github.com/kubernetes/deployment-manager/registry"
-	"github.com/kubernetes/deployment-manager/util"
 
 	"archive/tar"
 	"bytes"
@@ -35,8 +33,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -46,10 +42,10 @@ var (
 	deployment_name   = flag.String("name", "", "Name of deployment, used for deploy and update commands (defaults to template name)")
 	stdin             = flag.Bool("stdin", false, "Reads a configuration from the standard input")
 	properties        = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
-	template_registry = flag.String("registry", "github.com/kubernetes/application-dm-templates", "Registry (github.com/owner/repo)")
+	template_registry = flag.String("registry", "application-dm-templates", "Registry name")
 	service           = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager", "URL for deployment manager")
 	binary            = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
-	timeout           = flag.Int("timeout", 10, "Time in seconds to wait for response")
+	timeout           = flag.Int("timeout", 20, "Time in seconds to wait for response")
 	regex_string      = flag.String("regex", "", "Regular expression to filter the templates listed in a template registry")
 	username          = flag.String("username", "", "Github user name that overrides GITHUB_USERNAME environment variable")
 	password          = flag.String("password", "", "Github password that overrides GITHUB_PASSWORD environment variable")
@@ -67,6 +63,7 @@ var commands = []string{
 	"deployed-types \t\t Lists the types deployed in the cluster",
 	"deployed-instances \t Lists the instances of the named type deployed in the cluster",
 	"templates \t\t Lists the templates in a given template registry",
+	"registries \t\t Lists the registries available",
 	"describe \t\t Describes the named template in a given template registry",
 }
 
@@ -85,45 +82,6 @@ var usage = func() {
 	fmt.Fprintln(os.Stderr, "--stdin requires a file name and either the file contents or a tar archive containing the named file.")
 	fmt.Fprintln(os.Stderr, "        a tar archive may include any additional files referenced directly or indirectly by the named file.")
 	panic("\n")
-}
-
-// TODO(jackgr): Move all registry related operations to the server side.
-var registryProvider registry.RegistryProvider
-
-func getRegistryProvider() registry.RegistryProvider {
-	if registryProvider == nil {
-		rs := registry.NewInmemRegistryService()
-		_, err := rs.GetByURL(*template_registry)
-		if err != nil {
-			r := newRegistry(*template_registry)
-			if err := rs.Create(r); err != nil {
-				panic(fmt.Errorf("cannot configure registry at %s: %s", r.URL, err))
-			}
-		}
-
-		cp := registry.NewInmemCredentialProvider()
-		credential := getGithubCredential()
-		if credential != nil {
-			if err := cp.SetCredential("default", credential); err != nil {
-				panic(fmt.Errorf("cannot set credential at %s: %s", "default", err))
-			}
-		}
-
-		registryProvider = registry.NewRegistryProvider(rs, nil, cp)
-	}
-
-	return registryProvider
-}
-
-func newRegistry(URL string) *common.Registry {
-	tFormat := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
-	return &common.Registry{
-		Name:           util.TrimURLScheme(URL),
-		Type:           common.GithubRegistryType,
-		URL:            URL,
-		Format:         common.RegistryFormat(tFormat),
-		CredentialName: "default",
-	}
 }
 
 func getGithubCredential() *common.RegistryCredential {
@@ -160,16 +118,6 @@ func getGithubCredential() *common.RegistryCredential {
 	return nil
 }
 
-func getGithubRegistry() registry.Registry {
-	provider := getRegistryProvider()
-	git, err := provider.GetRegistryByShortURL(*template_registry)
-	if err != nil {
-		panic(fmt.Errorf("cannot open registry %s: %s", *template_registry, err))
-	}
-
-	return git
-}
-
 func main() {
 	defer func() {
 		result := recover()
@@ -192,32 +140,8 @@ func execute() {
 
 	switch args[0] {
 	case "templates":
-		var regex *regexp.Regexp
-		if *regex_string != "" {
-			var err error
-			regex, err = regexp.Compile(*regex_string)
-			if err != nil {
-				panic(fmt.Errorf("cannot compile regular expression %s: %s", *regex_string, err))
-			}
-		}
-
-		git := getGithubRegistry()
-		types, err := git.ListTypes(regex)
-		if err != nil {
-			panic(fmt.Errorf("cannot list templates in registry %s: %s", *template_registry, err))
-		}
-
-		for _, t := range types {
-			fmt.Printf("%s\n", t.String())
-			urls, err := git.GetDownloadURLs(t)
-			if err != nil {
-				panic(fmt.Errorf("cannot get download urls for %s: %s", t, err))
-			}
-
-			for _, downloadURL := range urls {
-				fmt.Printf("\t%s\n", downloadURL)
-			}
-		}
+		path := fmt.Sprintf("registries/%s/types", args[1])
+		callService(path, "GET", "list templates", nil)
 	case "describe":
 		describeType(args)
 	case "expand":
@@ -293,6 +217,8 @@ func execute() {
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tUrl))
 		action := fmt.Sprintf("list deployed instances of type %s", tUrl)
 		callService(path, "GET", action, nil)
+	case "registries":
+		callService("registries", "GET", "list registries", nil)
 	default:
 		usage()
 	}
@@ -361,16 +287,19 @@ func describeType(args []string) {
 	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrls[0]+")", nil))
 }
 
-// getDownloadURLs returns URLs or empty list if a primitive type.
+// getDownloadURLs returns URLs for a type in the given registry
 func getDownloadURLs(tName string) []string {
-	qName := path.Join(*template_registry, tName)
-	provider := getRegistryProvider()
-	result, err := registry.GetDownloadURLs(provider, qName)
-	if err != nil {
-		panic(fmt.Errorf("cannot get URLs for %s: %s\n", tName, err))
+	path := fmt.Sprintf("%s/registries/%s/types/%s", *service, *template_registry, url.QueryEscape(tName))
+	resp := callHttp(path, "GET", "get download urls", nil)
+	u := []string{}
+	if err := json.Unmarshal([]byte(resp), &u); err != nil {
+		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
 	}
-
-	return result
+	urls := []string{}
+	for _, url := range u {
+		urls = append(urls, url)
+	}
+	return urls
 }
 
 func loadTemplate(args []string) *common.Template {
@@ -408,13 +337,13 @@ func loadTemplate(args []string) *common.Template {
 		// See if the first argument is a local file. It could either be a type, or it could be a configuration. If
 		// it's a local file, it's configuration.
 		if _, err := os.Stat(args[1]); err == nil {
-			template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
-		} else {
-			if t, err := registry.ParseType(args[1]); err == nil {
-				template = buildTemplateFromType(t)
+			if len(args) > 2 {
+				template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
 			} else {
 				template, err = expander.NewTemplateFromRootTemplate(args[1])
 			}
+		} else {
+			template = buildTemplateFromType(args[1])
 		}
 
 		if err != nil {
@@ -430,7 +359,7 @@ func loadTemplate(args []string) *common.Template {
 	return template
 }
 
-func buildTemplateFromType(t registry.Type) *common.Template {
+func buildTemplateFromType(t string) *common.Template {
 	props := make(map[string]interface{})
 	if *properties != "" {
 		plist := strings.Split(*properties, ",")
@@ -452,11 +381,11 @@ func buildTemplateFromType(t registry.Type) *common.Template {
 	}
 
 	// Name the deployment after the type name.
-	name := fmt.Sprintf("%s:%s", t.Name, t.GetVersion())
+	name := t
 
 	config := common.Configuration{Resources: []*common.Resource{&common.Resource{
 		Name:       name,
-		Type:       getDownloadURLs(t.String())[0],
+		Type:       getDownloadURLs(t)[0],
 		Properties: props,
 	}}}
 

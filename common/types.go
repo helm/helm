@@ -167,6 +167,14 @@ type KubernetesObject struct {
 	Spec       map[string]interface{} `json:"spec"`
 }
 
+// KubernetesSecret represents a Kubernetes secret
+type KubernetesSecret struct {
+	Kind       string            `json:"kind"`
+	ApiVersion string            `json:"apiVersion"`
+	Metadata   map[string]string `json:"metadata"`
+	Data       map[string]string `json:"data,omitempty"`
+}
+
 // Repository related types
 type BasicAuthCredential struct {
 	Username string `json:"username"`
@@ -186,7 +194,7 @@ type RegistryCredential struct {
 type Registry struct {
 	Name           string         `json:"name,omitempty"`           // Friendly name for the registry
 	Type           RegistryType   `json:"type,omitempty"`           // Technology implementing the registry
-	URL            string         `json:"name,omitempty"`           // URL to the root of the registry
+	URL            string         `json:"url,omitempty"`            // URL to the root of the registry
 	Format         RegistryFormat `json:"format,omitempty"`         // Format of the registry
 	CredentialName string         `json:"credentialname,omitempty"` // Name of the credential to use
 }

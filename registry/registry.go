@@ -59,7 +59,7 @@ type GithubRegistry interface {
 type Type struct {
 	Collection string
 	Name       string
-	version    SemVer
+	Version    SemVer
 }
 
 // NewType initializes a type
@@ -98,7 +98,7 @@ func (t Type) String() string {
 // GetVersion returns the type version with the letter "v" prepended.
 func (t Type) GetVersion() string {
 	var result string
-	version := t.version.String()
+	version := t.Version.String()
 	if version != "0" {
 		result = "v" + version
 	}
@@ -115,7 +115,7 @@ func (t *Type) SetVersion(version string) error {
 		return err
 	}
 
-	t.version = s
+	t.Version = s
 	return nil
 }
 
