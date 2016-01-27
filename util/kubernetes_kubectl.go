@@ -86,25 +86,24 @@ func NewKubernetesKubectl(config *KubernetesConfig) Kubernetes {
 }
 
 func (k *KubernetesKubectl) Get(name string, resourceType string) (string, error) {
-	args := []string{"get"}
 	// Specify output as json rather than human readable for easier machine parsing
-	args = append(args, "-o", "json")
-	args = append(args, resourceType)
-	args = append(args, name)
+	args := []string{"get",
+		"-o",
+		"json",
+		resourceType,
+		name}
 	return k.execute(args, "")
 }
 
 func (k *KubernetesKubectl) Create(resource string) (string, error) {
 	args := []string{"create"}
-	//	args = append(args, resourceType)
-	//	args = append(args, name)
 	return k.execute(args, resource)
 }
 
 func (k *KubernetesKubectl) Delete(name string, resourceType string) (string, error) {
-	args := []string{"delete"}
-	args = append(args, resourceType)
-	args = append(args, name)
+	args := []string{"delete",
+		resourceType,
+		name}
 	return k.execute(args, "")
 }
 
