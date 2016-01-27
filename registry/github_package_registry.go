@@ -124,10 +124,6 @@ func (g GithubPackageRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 			}
 		}
 	}
-
-	for _, ll := range downloadURLs {
-		log.Printf("Found DOWNLOAD URL AS: %#v", ll.String())
-	}
 	return downloadURLs, nil
 }
 

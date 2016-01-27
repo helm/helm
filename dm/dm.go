@@ -295,11 +295,7 @@ func getDownloadURLs(tName string) []string {
 	if err := json.Unmarshal([]byte(resp), &u); err != nil {
 		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
 	}
-	urls := []string{}
-	for _, url := range u {
-		urls = append(urls, url)
-	}
-	return urls
+	return u
 }
 
 func loadTemplate(args []string) *common.Template {

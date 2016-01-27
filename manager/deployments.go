@@ -80,6 +80,9 @@ func init() {
 	routes = append(routes, deployments...)
 	var credentialProvider common.CredentialProvider
 	if *credentialFile != "" {
+		if *credentialSecrets {
+			panic(fmt.Errorf("Both credentialFile and credentialSecrets are set"))
+		}
 		var err error
 		credentialProvider, err = registry.NewFilebasedCredentialProvider(*credentialFile)
 		if err != nil {
@@ -427,7 +430,7 @@ func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var urls = []string{}
+	urls := []string{}
 	for _, u := range c {
 		urls = append(urls, u.String())
 	}
