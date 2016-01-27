@@ -51,6 +51,8 @@ var (
 	binary            = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
 	timeout           = flag.Int("timeout", 10, "Time in seconds to wait for response")
 	regex_string      = flag.String("regex", "", "Regular expression to filter the templates listed in a template registry")
+	username          = flag.String("username", "", "Github user name that overrides GITHUB_USERNAME environment variable")
+	password          = flag.String("password", "", "Github password that overrides GITHUB_PASSWORD environment variable")
 	apitoken          = flag.String("apitoken", "", "Github api token that overrides GITHUB_API_TOKEN environment variable")
 )
 
@@ -100,15 +102,9 @@ func getRegistryProvider() registry.RegistryProvider {
 		}
 
 		cp := registry.NewInmemCredentialProvider()
-		if *apitoken == "" {
-			*apitoken = os.Getenv("DM_GITHUB_API_TOKEN")
-		}
-
-		if *apitoken != "" {
-			credential := common.RegistryCredential{
-				APIToken: common.APITokenCredential(*apitoken),
-			}
-			if err := cp.SetCredential("default", &credential); err != nil {
+		credential := getGithubCredential()
+		if credential != nil {
+			if err := cp.SetCredential("default", credential); err != nil {
 				panic(fmt.Errorf("cannot set credential at %s: %s", "default", err))
 			}
 		}
@@ -128,6 +124,40 @@ func newRegistry(URL string) *common.Registry {
 		Format:         common.RegistryFormat(tFormat),
 		CredentialName: "default",
 	}
+}
+
+func getGithubCredential() *common.RegistryCredential {
+	*apitoken = strings.TrimSpace(*apitoken)
+	if *apitoken == "" {
+		*apitoken = strings.TrimSpace(os.Getenv("GITHUB_API_TOKEN"))
+	}
+
+	if *apitoken != "" {
+		return &common.RegistryCredential{
+			APIToken: common.APITokenCredential(*apitoken),
+		}
+	}
+
+	*username = strings.TrimSpace(*username)
+	if *username == "" {
+		*username = strings.TrimSpace(os.Getenv("GITHUB_USERNAME"))
+	}
+
+	if *username != "" {
+		*password = strings.TrimSpace(*password)
+		if *password == "" {
+			*password = strings.TrimSpace(os.Getenv("GITHUB_PASSWORD"))
+		}
+
+		return &common.RegistryCredential{
+			BasicAuth: common.BasicAuthCredential{
+				Username: *username,
+				Password: *password,
+			},
+		}
+	}
+
+	return nil
 }
 
 func getGithubRegistry() registry.Registry {
