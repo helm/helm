@@ -14,6 +14,8 @@ import (
 	"github.com/kubernetes/deployment-manager/log"
 )
 
+const ChartfileName string = "Chart.yaml"
+
 const (
 	preTemplates string = "templates/"
 	preHooks     string = "hooks/"
@@ -42,11 +44,13 @@ type Chart interface {
 	// Dir returns a directory where the chart can be accessed.
 	Dir() string
 
+	// Close cleans up a chart.
 	Close() error
 }
 
 type dirChart struct {
 	chartfile *Chartfile
+	dir       string
 }
 
 func (d *dirChart) Chartfile() *Chartfile {
@@ -99,6 +103,7 @@ func LoadDir(chart string) (Chart, error) {
 
 	c := &dirChart{
 		chartfile: cf,
+		dir:       chart,
 	}
 
 	return c, nil
@@ -128,10 +133,20 @@ func Load(archive string) (Chart, error) {
 	defer unzipped.Close()
 
 	untarred := tar.NewReader(unzipped)
-	return loadTar(untarred)
+	c, err := loadTar(untarred)
+	if err != nil {
+		return c, err
+	}
+
+	cf, err := LoadChartfile(filepath.Join(c.tmpDir, ChartfileName))
+	if err != nil {
+		return c, err
+	}
+	c.chartfile = cf
+	return c, nil
 }
 
-func loadTar(r *tar.Reader) (Chart, error) {
+func loadTar(r *tar.Reader) (*tarChart, error) {
 	td, err := ioutil.TempDir("", "chart-")
 	if err != nil {
 		return nil, err
