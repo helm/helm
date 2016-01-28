@@ -1,11 +1,23 @@
 package chart
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/helm/helm/manifest"
+	"github.com/kubernetes/deployment-manager/log"
+)
+
+const (
+	preTemplates string = "templates/"
+	preHooks     string = "hooks/"
+	preDocs      string = "docs/"
 )
 
 // Chart represents a complete chart.
@@ -13,31 +25,67 @@ import (
 // A chart consists of the following parts:
 //
 // 	- Chart.yaml: In code, we refer to this as the Chartfile
-// 	- manifests/*.yaml: The Kubernetes manifests
+// 	- templates/*: The template directory
+// 	- README.md: Optional README file
+// 	- LICENSE: Optional license file
+// 	- hooks/: Optional hooks registry
+//	- docs/: Optional docs directory
 //
-// On the Chart object, the manifests are sorted by type into a handful of
-// recognized Kubernetes API v1 objects.
+// Packed charts are stored in gzipped tar archives (.tgz). Unpackaged charts
+// are directories where the directory name is the Chartfile.Name.
 //
-// TODO: Investigate treating these as unversioned.
-type Chart struct {
-	Chartfile *Chartfile
+// Optionally, a chart might also locate a provenance (.prov) file that it
+// can use for cryptographic signing.
+type Chart interface {
+	// Chartfile resturns a *Chartfile for this chart.
+	Chartfile() *Chartfile
+	// Dir returns a directory where the chart can be accessed.
+	Dir() string
 
-	// Kind is a map of Kind to an array of manifests.
-	//
-	// For example, Kind["Pod"] has an array of Pod manifests.
-	Kind map[string][]*manifest.Manifest
-
-	// Manifests is an array of Manifest objects.
-	Manifests []*manifest.Manifest
+	Close() error
 }
 
-// Load loads an entire chart.
+type dirChart struct {
+	chartfile *Chartfile
+}
+
+func (d *dirChart) Chartfile() *Chartfile {
+	return d.chartfile
+}
+
+func (d *dirChart) Dir() string {
+	return "."
+}
+
+func (d *dirChart) Close() error {
+	return nil
+}
+
+type tarChart struct {
+	chartfile *Chartfile
+	tmpDir    string
+}
+
+func (t *tarChart) Chartfile() *Chartfile {
+	return t.chartfile
+}
+
+func (t *tarChart) Dir() string {
+	return "."
+}
+
+func (t *tarChart) Close() error {
+	// Remove the temp directory.
+	return os.RemoveAll(t.tmpDir)
+}
+
+// LoadDir loads an entire chart from a directory.
 //
 // This includes the Chart.yaml (*Chartfile) and all of the manifests.
 //
 // If you are just reading the Chart.yaml file, it is substantially more
 // performant to use LoadChartfile.
-func Load(chart string) (*Chart, error) {
+func LoadDir(chart string) (Chart, error) {
 	if fi, err := os.Stat(chart); err != nil {
 		return nil, err
 	} else if !fi.IsDir() {
@@ -49,59 +97,103 @@ func Load(chart string) (*Chart, error) {
 		return nil, err
 	}
 
-	c := &Chart{
-		Chartfile: cf,
-		Kind:      map[string][]*manifest.Manifest{},
+	c := &dirChart{
+		chartfile: cf,
 	}
-
-	ms, err := manifest.ParseDir(chart)
-	if err != nil {
-		return c, err
-	}
-
-	c.attachManifests(ms)
 
 	return c, nil
 }
 
-const (
-	// AnnFile is the annotation key for a file's origin.
-	AnnFile = "chart.helm.sh/file"
-
-	// AnnChartVersion is the annotation key for a chart's version.
-	AnnChartVersion = "chart.helm.sh/version"
-
-	// AnnChartDesc is the annotation key for a chart's description.
-	AnnChartDesc = "chart.helm.sh/description"
-
-	// AnnChartName is the annotation key for a chart name.
-	AnnChartName = "chart.helm.sh/name"
-)
-
-// attachManifests sorts manifests into their respective categories, adding to the Chart.
-func (c *Chart) attachManifests(manifests []*manifest.Manifest) {
-	c.Manifests = manifests
-	for _, m := range manifests {
-		c.Kind[m.Kind] = append(c.Kind[m.Kind], m)
+// Load loads a chart from a chart archive.
+//
+// A chart archive is a gzipped tar archive that follows the Chart format
+// specification.
+func Load(archive string) (Chart, error) {
+	if fi, err := os.Stat(archive); err != nil {
+		return nil, err
+	} else if fi.IsDir() {
+		return nil, errors.New("cannot load a directory with chart.Load()")
 	}
+
+	raw, err := os.Open(archive)
+	if err != nil {
+		return nil, err
+	}
+	defer raw.Close()
+
+	unzipped, err := gzip.NewReader(raw)
+	if err != nil {
+		return nil, err
+	}
+	defer unzipped.Close()
+
+	untarred := tar.NewReader(unzipped)
+	return loadTar(untarred)
 }
 
-// UnknownKinds returns a list of kinds that this chart contains, but which were not in the passed in array.
-//
-// A Chart will store all kinds that are given to it. This makes it possible to get a list of kinds that are not
-// known beforehand.
-func (c *Chart) UnknownKinds(known []string) []string {
-	lookup := make(map[string]bool, len(known))
-	for _, k := range known {
-		lookup[k] = true
+func loadTar(r *tar.Reader) (Chart, error) {
+	td, err := ioutil.TempDir("", "chart-")
+	if err != nil {
+		return nil, err
+	}
+	c := &tarChart{
+		chartfile: &Chartfile{},
+		tmpDir:    td,
 	}
 
-	u := []string{}
-	for n := range c.Kind {
-		if _, ok := lookup[n]; !ok {
-			u = append(u, n)
+	firstDir := ""
+
+	hdr, err := r.Next()
+	for err == nil {
+		log.Debug("Reading %s", hdr.Name)
+
+		// This is to prevent malformed tar attacks.
+		hdr.Name = filepath.Clean(hdr.Name)
+
+		if firstDir == "" {
+			fi := hdr.FileInfo()
+			if fi.IsDir() {
+				log.Debug("Discovered app named %s", hdr.Name)
+				firstDir = hdr.Name
+			} else {
+				log.Warn("Unexpected file at root of archive: %s", hdr.Name)
+			}
+		} else if strings.HasPrefix(hdr.Name, firstDir) {
+			log.Debug("Extracting %s to %s", hdr.Name, c.tmpDir)
+
+			// We know this has the prefix, so we know there won't be an error.
+			rel, _ := filepath.Rel(firstDir, hdr.Name)
+
+			// If tar record is a directory, create one in the tmpdir and return.
+			if hdr.FileInfo().IsDir() {
+				os.MkdirAll(filepath.Join(c.tmpDir, rel), 0755)
+				hdr, err = r.Next()
+				continue
+			}
+
+			dest := filepath.Join(c.tmpDir, rel)
+			f, err := os.Create(filepath.Join(c.tmpDir, rel))
+			if err != nil {
+				log.Warn("Could not create %s: %s", dest, err)
+				hdr, err = r.Next()
+				continue
+			}
+			if _, err := io.Copy(f, r); err != nil {
+				log.Warn("Failed to copy %s: %s", dest, err)
+			}
+			f.Close()
+		} else {
+			log.Warn("Unexpected file outside of chart: %s", hdr.Name)
 		}
+		hdr, err = r.Next()
 	}
 
-	return u
+	if err != nil && err != io.EOF {
+		log.Warn("Unexpected error reading tar: %s", err)
+		c.Close()
+		return c, err
+	}
+	log.Info("Reached end of Tar file")
+
+	return c, nil
 }
