@@ -27,11 +27,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
-	"net"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/ghodss/yaml"
 	"github.com/gorilla/mux"
@@ -183,57 +180,20 @@ func putConfigurationHandlerFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func getConfigurator() *configurator.Configurator {
-	if *kubePath == "" {
-		log.Fatalf("kubectl path cannot be empty")
+	kubernetesConfig := &util.KubernetesConfig{
+		KubePath:       *kubePath,
+		KubeService:    *kubeService,
+		KubeServer:     *kubeServer,
+		KubeInsecure:   *kubeInsecure,
+		KubeConfig:     *kubeConfig,
+		KubeCertAuth:   *kubeCertAuth,
+		KubeClientCert: *kubeClientCert,
+		KubeClientKey:  *kubeClientKey,
+		KubeToken:      *kubeToken,
+		KubeUsername:   *kubeUsername,
+		KubePassword:   *kubePassword,
 	}
-
-	// If a configuration file is specified, then it will provide the server
-	// address and credentials. If not, then we check for the server address
-	// and credentials as individual flags.
-	var args []string
-	if *kubeConfig != "" {
-		*kubeConfig = os.ExpandEnv(*kubeConfig)
-		args = append(args, fmt.Sprintf("--kubeconfig=%s", *kubeConfig))
-	} else {
-		if *kubeServer != "" {
-			args = append(args, fmt.Sprintf("--server=https://%s", *kubeServer))
-		} else if *kubeService != "" {
-			addrs, err := net.LookupHost(*kubeService)
-			if err != nil || len(addrs) < 1 {
-				log.Fatalf("cannot resolve DNS name: %v", *kubeService)
-			}
-
-			args = append(args, fmt.Sprintf("--server=https://%s", addrs[0]))
-		}
-
-		if *kubeInsecure {
-			args = append(args, fmt.Sprintf("--insecure-skip-tls-verify=%s", *kubeInsecure))
-		} else {
-			if *kubeCertAuth != "" {
-				args = append(args, fmt.Sprintf("--certificate-authority=%s", *kubeCertAuth))
-				if *kubeClientCert == "" {
-					args = append(args, fmt.Sprintf("--client-certificate=%s", *kubeClientCert))
-				}
-
-				if *kubeClientKey == "" {
-					args = append(args, fmt.Sprintf("--client-key=%s", *kubeClientKey))
-				}
-			}
-		}
-		if *kubeToken != "" {
-			args = append(args, fmt.Sprintf("--token=%s", *kubeToken))
-		} else {
-			if *kubeUsername != "" {
-				args = append(args, fmt.Sprintf("--username=%s", *kubeUsername))
-			}
-
-			if *kubePassword != "" {
-				args = append(args, fmt.Sprintf("--password=%s", *kubePassword))
-			}
-		}
-	}
-
-	return configurator.NewConfigurator(*kubePath, args)
+	return configurator.NewConfigurator(util.NewKubernetesKubectl(kubernetesConfig))
 }
 
 func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler string) (string, error) {

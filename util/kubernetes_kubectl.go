@@ -107,6 +107,11 @@ func (k *KubernetesKubectl) Delete(name string, resourceType string) (string, er
 	return k.execute(args, "")
 }
 
+func (k *KubernetesKubectl) Replace(resource string) (string, error) {
+	args := []string{"replace"}
+	return k.execute(args, resource)
+}
+
 func (k *KubernetesKubectl) execute(args []string, input string) (string, error) {
 	if len(input) > 0 {
 		args = append(args, "-f", "-")
@@ -123,13 +128,15 @@ func (k *KubernetesKubectl) execute(args []string, input string) (string, error)
 	cmd.Stderr = combined
 
 	if err := cmd.Start(); err != nil {
-		log.Printf("cannot start kubectl %#v", err)
+		log.Printf("cannot start kubectl %s %#v", combined.String(), err)
 		return combined.String(), err
 	}
 
 	if err := cmd.Wait(); err != nil {
-		log.Printf("kubectl failed:  %#v", err)
+		log.Printf("kubectl failed: %s  %#v", combined.String(), err)
 		return combined.String(), err
 	}
+	log.Printf("kubectl succeeded: SysTime: %v UserTime: %v\n%v",
+		cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime(), combined.String())
 	return combined.String(), nil
 }
