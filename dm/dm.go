@@ -65,6 +65,8 @@ var commands = []string{
 	"templates \t\t Lists the templates in a given template registry",
 	"registries \t\t Lists the registries available",
 	"describe \t\t Describes the named template in a given template registry",
+	"getcredential \t\t Gets the named credential used by a registry",
+	"setcredential \t\t Sets a credential used by a registry",
 }
 
 var usage = func() {
@@ -153,6 +155,21 @@ func execute() {
 		callService("deployments", "POST", action, marshalTemplate(template))
 	case "list":
 		callService("deployments", "GET", "list deployments", nil)
+	case "getcredential":
+		path := fmt.Sprintf("credentials/%s", args[1])
+		callService(path, "GET", "get credential", nil)
+	case "setcredential":
+		c := getGithubCredential()
+		if c == nil {
+			panic(fmt.Errorf("Failed to create a credential from flags/arguments"))
+		}
+		y, err := yaml.Marshal(c)
+		if err != nil {
+			panic(fmt.Errorf("Failed to serialize credential: %#v : %s", c, err))
+		}
+
+		path := fmt.Sprintf("credentials/%s", args[1])
+		callService(path, "POST", "get credential", ioutil.NopCloser(bytes.NewReader(y)))
 	case "get":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "No deployment name supplied")
