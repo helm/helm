@@ -1,0 +1,28 @@
+#helm:generate foo
+name: frobnitz
+description: This is a frobniz.
+version: "1.2.3-alpha.1+12345"
+keywords:
+  - frobnitz
+  - sprocket
+  - dodad
+maintainers:
+  - name: The Helm Team
+    email: helm@example.com
+  - name: Someone Else
+    email: nobody@example.com
+source:
+  - https://example.com/foo/bar
+home: http://example.com
+dependencies:
+  - name: thingerbob
+    location: https://example.com/charts/thingerbob-3.2.1.tgz
+    version: ^3
+environment:
+  - name: Kubernetes
+    version: ~1.1
+    extensions:
+      - extensions/v1beta1
+      - extensions/v1beta1/daemonset
+    apiGroups:
+      - 3rdParty
