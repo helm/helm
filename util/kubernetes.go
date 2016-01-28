@@ -37,6 +37,6 @@ type KubernetesConfig struct {
 type Kubernetes interface {
 	Get(name string, resourceType string) (string, error)
 	Create(resource string) (string, error)
-	Delete(name string, resourceType string) (string, error)
+	Delete(resource string) (string, error)
 	Replace(resource string) (string, error)
 }
