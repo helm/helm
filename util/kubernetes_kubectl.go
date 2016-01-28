@@ -100,11 +100,9 @@ func (k *KubernetesKubectl) Create(resource string) (string, error) {
 	return k.execute(args, resource)
 }
 
-func (k *KubernetesKubectl) Delete(name string, resourceType string) (string, error) {
-	args := []string{"delete",
-		resourceType,
-		name}
-	return k.execute(args, "")
+func (k *KubernetesKubectl) Delete(resource string) (string, error) {
+	args := []string{"delete"}
+	return k.execute(args, resource)
 }
 
 func (k *KubernetesKubectl) Replace(resource string) (string, error) {

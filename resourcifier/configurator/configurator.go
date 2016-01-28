@@ -165,7 +165,12 @@ func (a *Configurator) configureResource(resource *common.Resource, o operation)
 	case GetOperation:
 		return a.k.Get(resource.Name, resource.Type)
 	case DeleteOperation:
-		ret, err = a.k.Delete(resource.Name, resource.Type)
+		obj, err := marshalResource(resource)
+		if err != nil {
+			resource.State = failState(err)
+			return "", err
+		}
+		ret, err = a.k.Delete(obj)
 		// Treat deleting a non-existent resource as success.
 		if err != nil {
 			if strings.HasSuffix(strings.TrimSpace(ret), "not found") {
