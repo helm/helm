@@ -31,8 +31,8 @@ func TestLoadChartfile(t *testing.T) {
 		t.Errorf("Expected second dependency to be thingerbob: %q", f.Dependencies[0].Name)
 	}
 
-	if f.Source[0] != "https://example.com/helm" {
-		t.Errorf("Expected https://example.com/helm, got %s", f.Source)
+	if f.Source[0] != "https://example.com/foo/bar" {
+		t.Errorf("Expected https://example.com/foo/bar, got %s", f.Source)
 	}
 }
 

@@ -6,10 +6,13 @@ import (
 	"github.com/kubernetes/deployment-manager/log"
 )
 
-const testfile = "testdata/frobnitz/Chart.yaml"
-const testdir = "testdata/frobnitz/"
-const testarchive = "testdata/frobnitz-0.0.1.tgz"
-const testill = "testdata/ill-1.2.3.tgz"
+const (
+	testfile    = "testdata/frobnitz/Chart.yaml"
+	testdir     = "testdata/frobnitz/"
+	testarchive = "testdata/frobnitz-0.0.1.tgz"
+	testill     = "testdata/ill-1.2.3.tgz"
+	testnochart = "testdata/nochart.tgz"
+)
 
 func init() {
 	log.IsDebugging = true
@@ -60,5 +63,12 @@ func TestLoadIll(t *testing.T) {
 	if c.Chartfile() == nil {
 		t.Error("No chartfile was loaded.")
 		return
+	}
+}
+
+func TestLoadNochart(t *testing.T) {
+	_, err := Load(testnochart)
+	if err == nil {
+		t.Error("Nochart should not have loaded at all.")
 	}
 }
