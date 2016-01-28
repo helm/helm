@@ -1,0 +1,26 @@
+config:
+  resources:
+  - name: simple-name
+    type: simple-instance
+  - name: consume-list
+    properties:
+      first-ip: 192.168.0.1
+    type: simple-instance
+layout:
+  outputs:
+  - name: second-ip
+    value: 192.168.0.2
+  resources:
+  - name: simple-template
+    outputs:
+    - name: ips
+      value:
+      - 192.168.0.0
+      - 192.168.0.1
+      - 192.168.0.2
+    resources:
+    - name: simple-name
+      type: simple-instance
+    type: list_output.jinja
+  - name: consume-list
+    type: simple-instance

@@ -1,0 +1,7 @@
+resources:
+- name: simple-template
+  type: simple.jinja
+outputs:
+- name: parent_ip
+  # We expect the ip value from simple.jinja, 192.168.0.0
+  value: $(ref.simple-template.ip)

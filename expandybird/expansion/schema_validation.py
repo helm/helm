@@ -17,6 +17,7 @@
 import jsonschema
 import yaml
 
+import references
 import schema_validation_utils
 
 
@@ -61,6 +62,12 @@ IMPORT_SCHEMA_VALIDATOR = jsonschema.Draft4Validator(
     yaml.safe_load(IMPORT_SCHEMA))
 
 
+def _FilterReferences(error_generator):
+  for error in error_generator:
+    if not references.HasReference(str(error.instance)):
+      yield error
+
+
 def _ValidateSchema(schema, validating_imports, schema_name, template_name):
   """Validate that the passed in schema file is correctly formatted.
 
@@ -101,7 +108,7 @@ def Validate(properties, schema_name, template_name, imports):
     properties: dict, the properties to be validated
     schema_name: name of the schema file to validate
     template_name: name of the template whose properties are being validated
-    imports: the map of imported files names to file contents
+    imports: the map of imported files names to map containing path and content
 
   Returns:
     Dict containing the validated properties, with defaults filled in
@@ -115,7 +122,7 @@ def Validate(properties, schema_name, template_name, imports):
     raise ValidationErrors(schema_name, template_name,
                            ["Could not find schema file '%s'." % schema_name])
 
-  raw_schema = imports[schema_name]
+  raw_schema = imports[schema_name]['content']
 
   if properties is None:
     properties = {}
@@ -165,7 +172,7 @@ def Validate(properties, schema_name, template_name, imports):
     list(DEFAULT_SETTER(schema).iter_errors(properties))
 
     # Now that we have default values, validate the properties
-    errors.extend(list(VALIDATOR(schema).iter_errors(properties)))
+    errors.extend(_FilterReferences(VALIDATOR(schema).iter_errors(properties)))
 
     if errors:
       raise ValidationErrors(schema_name, template_name, errors)

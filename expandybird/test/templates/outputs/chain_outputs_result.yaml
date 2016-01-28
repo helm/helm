@@ -1,0 +1,17 @@
+config:
+  resources:
+  - name: simple-name
+    type: simple-instance
+layout:
+  outputs:
+  - name: parent_ip
+    value: 192.168.0.0
+  resources:
+  - name: simple-template
+    outputs:
+    - name: ip
+      value: 192.168.0.0
+    resources:
+    - name: simple-name
+      type: simple-instance
+    type: simple.jinja

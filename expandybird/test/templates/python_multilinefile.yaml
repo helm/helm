@@ -1,0 +1,8 @@
+imports: ["python_multilinefile.py", "helpers/common.py", "helpers/common2.py", "helpers/__init__.py", "multiline.txt"]
+
+resources:
+- name: python_multilinefile_name
+  type: python_multilinefile.py
+  properties:
+    description-file: multiline.txt
+
