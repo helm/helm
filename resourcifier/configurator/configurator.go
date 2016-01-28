@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,26 +17,22 @@ limitations under the License.
 package configurator
 
 import (
-	"bytes"
 	"fmt"
 	"log"
-	"os/exec"
 	"regexp"
 	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/util"
 )
 
-// TODO(jackgr): Define an interface and a struct type for Configurator and move initialization to the caller.
-
 type Configurator struct {
-	KubePath  string
-	Arguments []string
+	k util.Kubernetes
 }
 
-func NewConfigurator(kubectlPath string, arguments []string) *Configurator {
-	return &Configurator{kubectlPath, arguments}
+func NewConfigurator(kubernetes util.Kubernetes) *Configurator {
+	return &Configurator{kubernetes}
 }
 
 // operation is an enumeration type for kubectl operations.
@@ -49,10 +45,6 @@ const (
 	GetOperation     operation = "get"
 	ReplaceOperation operation = "replace"
 )
-
-func (o operation) String() string {
-	return string(o)
-}
 
 // TODO(jackgr): Configure resources without dependencies in parallel.
 
@@ -128,65 +120,64 @@ func (a *Configurator) Configure(c *common.Configuration, o operation) (string, 
 	return strings.Join(output, "\n"), nil
 }
 
-func (a *Configurator) configureResource(resource *common.Resource, o operation) (string, error) {
-	args := []string{o.String()}
-	if o == GetOperation {
-		args = append(args, "-o", "yaml")
-		if resource.Type != "" {
-			args = append(args, resource.Type)
-			if resource.Name != "" {
-				args = append(args, resource.Name)
-			}
-		}
-	}
-
-	var y []byte
+func marshalResource(resource *common.Resource) (string, error) {
 	if len(resource.Properties) > 0 {
-		var err error
-		y, err = yaml.Marshal(resource.Properties)
+		y, err := yaml.Marshal(resource.Properties)
 		if err != nil {
-			e := fmt.Errorf("yaml marshal failed for resource: %v: %v", resource.Name, err)
-			resource.State = failState(e)
-			return "", e
+			return "", fmt.Errorf("yaml marshal failed for resource: %v: %v", resource.Name, err)
 		}
+		return string(y), nil
 	}
+	return "", nil
+}
 
-	if len(y) > 0 {
-		args = append(args, "-f", "-")
-	}
+func (a *Configurator) configureResource(resource *common.Resource, o operation) (string, error) {
+	ret := ""
+	var err error
 
-	args = append(args, a.Arguments...)
-	cmd := exec.Command(a.KubePath, args...)
-	cmd.Stdin = bytes.NewBuffer(y)
-
-	// Combine stdout and stderr into a single dynamically resized buffer
-	combined := &bytes.Buffer{}
-	cmd.Stdout = combined
-	cmd.Stderr = combined
-
-	if err := cmd.Start(); err != nil {
-		e := fmt.Errorf("cannot start kubectl for resource: %v: %v", resource.Name, err)
-		resource.State = failState(e)
-		return "", e
-	}
-
-	if err := cmd.Wait(); err != nil {
-		// Treat delete special. If a delete is issued and a resource is not found, treat it as
-		// success.
-		if o == DeleteOperation && strings.HasSuffix(strings.TrimSpace(combined.String()), "not found") {
-			log.Println(resource.Name + " not found, treating as success for delete")
+	switch o {
+	case CreateOperation:
+		obj, err := marshalResource(resource)
+		if err != nil {
+			resource.State = failState(err)
+			return "", err
+		}
+		ret, err = a.k.Create(obj)
+		if err != nil {
+			resource.State = failState(err)
 		} else {
-			e := fmt.Errorf("kubectl failed for resource: %v: %v: %v", resource.Name, err, combined.String())
-			resource.State = failState(e)
-			return combined.String(), e
+			resource.State = &common.ResourceState{Status: common.Created}
 		}
+		return ret, nil
+	case ReplaceOperation:
+		obj, err := marshalResource(resource)
+		if err != nil {
+			resource.State = failState(err)
+			return "", err
+		}
+		ret, err = a.k.Replace(obj)
+		if err != nil {
+			resource.State = failState(err)
+		} else {
+			resource.State = &common.ResourceState{Status: common.Created}
+		}
+		return ret, nil
+	case GetOperation:
+		return a.k.Get(resource.Name, resource.Type)
+	case DeleteOperation:
+		ret, err = a.k.Delete(resource.Name, resource.Type)
+		// Treat deleting a non-existent resource as success.
+		if err != nil {
+			if strings.HasSuffix(strings.TrimSpace(ret), "not found") {
+				resource.State = &common.ResourceState{Status: common.Created}
+				return ret, nil
+			}
+			resource.State = failState(err)
+		}
+		return ret, err
+	default:
+		return "", fmt.Errorf("invalid operation %s for resource: %v: %v", o, resource.Name, err)
 	}
-
-	log.Printf("kubectl succeeded for resource: %v: SysTime: %v UserTime: %v\n%v",
-		resource.Name, cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime(), combined.String())
-
-	resource.State = &common.ResourceState{Status: common.Created}
-	return combined.String(), nil
 }
 
 func failState(e error) *common.ResourceState {
