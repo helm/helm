@@ -22,6 +22,8 @@ type Client struct {
 	Host string
 	// The protocol. Currently only http and https are supported.
 	Protocol string
+	// Transport
+	Transport http.RoundTripper
 }
 
 // NewClient creates a new DM client. Host name is required.
@@ -30,6 +32,7 @@ func NewClient(host string) *Client {
 		HTTPTimeout: DefaultHTTPTimeout,
 		Protocol:    "https",
 		Host:        host,
+		Transport:   NewDebugTransport(nil),
 	}
 }
 
@@ -70,7 +73,8 @@ func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (st
 	request.Header.Add("Content-Type", "application/json")
 
 	client := http.Client{
-		Timeout: time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
+		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
+		Transport: c.Transport,
 	}
 
 	response, err := client.Do(request)
@@ -91,4 +95,14 @@ func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (st
 	}
 
 	return string(body), nil
+}
+
+func (c *Client) ListDeployments() error {
+	var d interface{}
+	if err := c.CallService("deployments", "GET", "foo", &d, nil); err != nil {
+		return err
+	}
+
+	fmt.Printf("%#v\n", d)
+	return nil
 }
