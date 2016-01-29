@@ -96,3 +96,13 @@ func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (st
 
 	return string(body), nil
 }
+
+func (c *Client) ListDeployments() error {
+	var d interface{}
+	if err := c.CallService("deployments", "GET", "foo", &d, nil); err != nil {
+		return err
+	}
+
+	fmt.Printf("%#v\n", d)
+	return nil
+}
