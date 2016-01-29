@@ -16,7 +16,7 @@ func TestTypeConversion(t *testing.T) {
 	for in, expect := range tests {
 		out, err := ParseType(in)
 		if err != nil {
-			t.Errorf("Error parsing type string %s: $s", in, err)
+			t.Errorf("Error parsing type string %s: %s", in, err)
 		}
 
 		if out.Name != expect.Name {
