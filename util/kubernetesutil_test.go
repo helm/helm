@@ -143,7 +143,7 @@ func testConversion(t *testing.T, object []byte, expected []byte) {
 
 	result, err := ParseKubernetesObject(object)
 	if err != nil {
-		t.Fatalf("ParseKubernetesObject failed: %v")
+		t.Fatalf("ParseKubernetesObject failed: %v", err)
 	}
 	// Since the object name gets created on the fly, we have to rejigger the returned object
 	// slightly to make sure the DeepEqual works as expected.
