@@ -26,26 +26,16 @@ ENV KUBE_VERSION v1.0.5
 RUN curl -fsSL -o kubectl https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
     && chmod +x kubectl
 
-RUN mkdir -p "$GOPATH/src/github.com" && chmod 777 "$GOPATH/src/github.com"
+COPY . "$GOPATH"/src
 
-WORKDIR "$GOPATH/src/github.com"
+WORKDIR "$GOPATH"/src/manager
 
-RUN mkdir -p manager && chmod 777 manager
-COPY manager manager
+RUN go-wrapper download
+RUN go-wrapper install
 
-RUN mkdir -p util && chmod 777 util
-COPY util util
-
-RUN mkdir -p version && chmod 777 version
-COPY version version
-
-WORKDIR "$GOPATH"
-
-RUN mkdir -p "$GOPATH/src/github.com" && chmod 777 "$GOPATH/src/github.com"
-
-RUN go-wrapper download github.com/kubernetes/deployment-manager/manager/...
-RUN go-wrapper install github.com/kubernetes/deployment-manager/manager/...
+RUN cp "$GOPATH"/bin/manager /usr/local/bin
+RUN /bin/rm -rf "$GOPATH"
 
 EXPOSE 8080
 
-ENTRYPOINT ["bin/manager", "--kubectl=/usr/local/bin/kubectl"]
+ENTRYPOINT ["/usr/local/bin/manager", "--kubectl=/usr/local/bin/kubectl"]

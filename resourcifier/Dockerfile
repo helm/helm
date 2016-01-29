@@ -25,13 +25,16 @@ ENV KUBE_VERSION v1.0.5
 RUN curl -fsSL -o kubectl https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
     && chmod +x kubectl
 
-COPY . "$GOPATH"/src/resourcifier
+COPY . "$GOPATH"/src
 
 WORKDIR "$GOPATH"/src/resourcifier
 
 RUN go-wrapper download
 RUN go-wrapper install
 
+RUN cp "$GOPATH"/bin/resourcifier /usr/local/bin
+RUN /bin/rm -rf "$GOPATH"
+
 EXPOSE 8080
 
-ENTRYPOINT ["/go/bin/resourcifier", "--kubectl=/usr/local/bin/kubectl"]
+ENTRYPOINT ["/usr/local/bin/resourcifier", "--kubectl=/usr/local/bin/kubectl"]
