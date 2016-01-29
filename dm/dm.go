@@ -120,6 +120,10 @@ func getGithubCredential() *common.RegistryCredential {
 	return nil
 }
 
+func init() {
+	flag.Usage = usage
+}
+
 func main() {
 	defer func() {
 		result := recover()
