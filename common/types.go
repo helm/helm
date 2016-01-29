@@ -110,7 +110,7 @@ type Template struct {
 // ImportFile describes a base64 encoded file imported by a Template.
 type ImportFile struct {
 	Name    string `json:"name,omitempty"`
-	Path    string `json:"path",omitempty` // Actual URL for the file
+	Path    string `json:"path,omitempty"` // Actual URL for the file
 	Content string `json:"content"`
 }
 
