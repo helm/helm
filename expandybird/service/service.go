@@ -33,7 +33,7 @@ type Service struct {
 	*restful.WebService
 }
 
-// NewService creates and returns a new Service, initalized with a new
+// NewService creates and returns a new Service, initialized with a new
 // restful.WebService configured with a route that dispatches to the supplied
 // handler. The new Service must be registered before accepting traffic by
 // calling Register.
