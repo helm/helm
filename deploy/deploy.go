@@ -162,8 +162,8 @@ func getGitRegistry(reg string) (registry.Registry, error) {
 	}
 
 	if s[0] == "helm" {
-		return registry.NewGithubPackageRegistry(s[0], s[1]), nil
+		return registry.NewGithubPackageRegistry(s[0], s[1], nil), nil
 	} else {
-		return registry.NewGithubRegistry(s[0], s[1], path), nil
+		return registry.NewGithubRegistry(s[0], s[1], path, nil), nil
 	}
 }
