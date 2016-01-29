@@ -147,6 +147,13 @@ spec:
       containers:
       - env: []
         image: gcr.io/dm-k8s-testing/manager:latest
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          timeoutSeconds: 1
         name: manager
         ports:
         - containerPort: 8080

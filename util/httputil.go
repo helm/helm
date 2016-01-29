@@ -129,6 +129,15 @@ func LogAndReturnError(handler string, statusCode int, err error, w http.Respons
 	http.Error(w, err.Error(), statusCode)
 }
 
+// LogHandlerExitWithText converts the given string to []byte,
+// writes it to the response body, returns the given status,
+// and then logs the response
+func LogHandlerExitWithText(handler string, w http.ResponseWriter, v string, statusCode int) {
+	msg := []byte(v)
+	WriteResponse(handler, w, msg, "text/plain; charset=UTF-8", statusCode)
+	LogHandlerExit(handler, statusCode, string(msg), w)
+}
+
 // LogHandlerExitWithJSON marshals the given object as JSON,
 // writes it to the response body, returns the given status, and then logs the
 // response.
