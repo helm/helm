@@ -57,7 +57,7 @@ func NewKubernetesKubectl(config *KubernetesConfig) Kubernetes {
 		}
 
 		if config.KubeInsecure {
-			args = append(args, fmt.Sprintf("--insecure-skip-tls-verify=%s", config.KubeInsecure))
+			args = append(args, fmt.Sprintf("--insecure-skip-tls-verify=%t", config.KubeInsecure))
 		} else {
 			if config.KubeCertAuth != "" {
 				args = append(args, fmt.Sprintf("--certificate-authority=%s", config.KubeCertAuth))
