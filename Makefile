@@ -4,10 +4,10 @@ endif
 
 BIN_DIR := bin
 DIST_DIR := _dist
-GO_PACKAGES := cmd dm
-MAIN_GO := cmd/helm.go
-HELM_BIN := $(BIN_DIR)/helm
-PATH_WITH_HELM = PATH="$(shell pwd)/$(BIN_DIR):$(PATH)"
+GO_PACKAGES := cmd/helm dm
+MAIN_GO := github.com/deis/helm-dm/cmd/helm
+HELM_BIN := helm-dm
+PATH_WITH_HELM = PATH="$(shell pwd)/$(BIN_DIR)/helm:$(PATH)"
 
 VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null)+$(shell git rev-parse --short HEAD)
 
@@ -17,8 +17,8 @@ ifndef VERSION
   VERSION := git-$(shell git rev-parse --short HEAD)
 endif
 
-build: $(MAIN_GO)
-	go build -o $(HELM_BIN) -ldflags "-X github.com/helm/helm/cmd.version=${VERSION}" $<
+build:
+	go build -o bin/${HELM_BIN} -ldflags "-s -X main.version=${VERSION}" $(MAIN_GO)
 
 bootstrap:
 	go get -u github.com/golang/lint/golint github.com/mitchellh/gox
@@ -41,17 +41,7 @@ dist: build-all
 
 install: build
 	install -d ${DESTDIR}/usr/local/bin/
-	install -m 755 $(HELM_BIN) ${DESTDIR}/usr/local/bin/helm
-
-prep-bintray-json:
-# TRAVIS_TAG is set to the tag name if the build is a tag
-ifdef TRAVIS_TAG
-	@jq '.version.name |= "$(VERSION)"' _scripts/ci/bintray-template.json | \
-		jq '.package.repo |= "helm"' > _scripts/ci/bintray-ci.json
-else
-	@jq '.version.name |= "$(VERSION)"' _scripts/ci/bintray-template.json \
-		> _scripts/ci/bintray-ci.json
-endif
+	install -m 755 bin/${HELM_BIN} ${DESTDIR}/usr/local/bin/${HELM_BIN}
 
 quicktest:
 	$(PATH_WITH_HELM) go test -short $(addprefix ./,$(GO_PACKAGES))
@@ -67,7 +57,7 @@ test-style:
 		golint $$i; \
 	done
 	@for i in . $(GO_PACKAGES); do \
-		go vet github.com/helm/helm/$$i; \
+		go vet github.com/deis/helm-dm/$$i; \
 	done
 
 .PHONY: bootstrap \
@@ -76,7 +66,6 @@ test-style:
 				clean \
 				dist \
 				install \
-				prep-bintray-json \
 				quicktest \
 				test \
 				test-charts \
