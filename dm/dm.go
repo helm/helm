@@ -83,7 +83,7 @@ var usage = func() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "--stdin requires a file name and either the file contents or a tar archive containing the named file.")
 	fmt.Fprintln(os.Stderr, "        a tar archive may include any additional files referenced directly or indirectly by the named file.")
-	panic("\n")
+	os.Exit(0)
 }
 
 func getGithubCredential() *common.RegistryCredential {
@@ -120,6 +120,10 @@ func getGithubCredential() *common.RegistryCredential {
 	return nil
 }
 
+func init() {
+	flag.Usage = usage
+}
+
 func main() {
 	defer func() {
 		result := recover()
@@ -136,7 +140,6 @@ func execute() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "No command supplied")
 		usage()
 	}
 
@@ -173,7 +176,7 @@ func execute() {
 	case "get":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "No deployment name supplied")
-			usage()
+			os.Exit(1)
 		}
 
 		path := fmt.Sprintf("deployments/%s", args[1])
@@ -183,14 +186,14 @@ func execute() {
 		msg := "Must specify manifest in the form <deployment>/<manifest> or <deployment> to list."
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, msg)
-			usage()
+			os.Exit(1)
 		}
 
 		s := strings.Split(args[1], "/")
 		ls := len(s)
 		if ls < 1 || ls > 2 {
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("Invalid manifest (%s), %s", args[1], msg))
-			usage()
+			os.Exit(1)
 		}
 
 		path := fmt.Sprintf("deployments/%s/manifests", s[0])
@@ -203,7 +206,7 @@ func execute() {
 	case "delete":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "No deployment name supplied")
-			usage()
+			os.Exit(1)
 		}
 
 		path := fmt.Sprintf("deployments/%s", args[1])
@@ -219,7 +222,7 @@ func execute() {
 	case "deployed-instances":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "No type name supplied")
-			usage()
+			os.Exit(1)
 		}
 
 		tUrls := getDownloadURLs(args[1])
@@ -237,7 +240,9 @@ func execute() {
 	case "registries":
 		callService("registries", "GET", "list registries", nil)
 	default:
-		usage()
+		fmt.Fprintf(os.Stderr, "Error: unknown command '%s' for 'dm'\n", args[0])
+		fmt.Fprintln(os.Stderr, "Run 'dm --help' for usage")
+		os.Exit(1)
 	}
 }
 
@@ -292,7 +297,7 @@ func callHttp(path, method, action string, reader io.ReadCloser) string {
 func describeType(args []string) {
 	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "No type name or URL supplied")
-		usage()
+		os.Exit(1)
 	}
 
 	tUrls := getDownloadURLs(args[1])
@@ -320,12 +325,12 @@ func loadTemplate(args []string) *common.Template {
 	var err error
 	if len(args) < 2 {
 		fmt.Fprintln(os.Stderr, "No template name or configuration(s) supplied")
-		usage()
+		os.Exit(1)
 	}
 
 	if *stdin {
 		if len(args) < 2 {
-			usage()
+			os.Exit(1)
 		}
 
 		input, err := ioutil.ReadAll(os.Stdin)
