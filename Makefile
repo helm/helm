@@ -49,5 +49,3 @@ $(TARGETS) : % : $(addsuffix %,$(SUBDIRS))
 $(SUBDIRS_TARGETS) :
 	$(MAKE) -C $(@D) $(@F:.%=%)
 
-test:
-	go test -v ./...
