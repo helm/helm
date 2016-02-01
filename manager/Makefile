@@ -22,6 +22,12 @@ TAG := latest
 ROOT_DIR := $(abspath ./..)
 DIR = $(ROOT_DIR)
 
+info:
+	@echo "Build tag: ${TAG}"
+	@echo "Registry: ${DOCKER_REGISTRY}"
+	@echo "Project: ${PROJECT}"
+	@echo "Image: ${IMAGE}"
+
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)
 	gcloud docker push $(PREFIX)/$(IMAGE):$(TAG)
