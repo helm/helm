@@ -42,3 +42,6 @@ container:
 
 clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
+
+test:
+	go test -v ./...

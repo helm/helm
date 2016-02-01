@@ -47,3 +47,5 @@ clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
 	rm -f expandybird
 
+test:
+	go test -v ./...
