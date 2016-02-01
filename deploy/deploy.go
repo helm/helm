@@ -105,7 +105,11 @@ func registryType(name string) (*registry.Type, error) {
 		return nil, errors.New("No version")
 	}
 
-	tt := registry.Type{Version: tList[1]}
+	semver, err := registry.ParseSemVer(tList[1])
+	if err != nil {
+		return nil, err
+	}
+	tt := registry.Type{Version: semver}
 
 	cList := strings.Split(tList[0], "/")
 
@@ -126,14 +130,14 @@ func buildTemplateFromType(t *registry.Type, reg string, props map[string]interf
 	if err != nil {
 		return nil, err
 	}
-	gurls, err := git.GetURLs(*t)
+	gurls, err := git.GetDownloadURLs(*t)
 	if err != nil {
 		return nil, err
 	}
 
 	config := common.Configuration{Resources: []*common.Resource{&common.Resource{
 		Name:       name,
-		Type:       gurls[0],
+		Type:       gurls[0].Host,
 		Properties: props,
 	}}}
 
@@ -156,14 +160,22 @@ func getGitRegistry(reg string) (registry.Registry, error) {
 		return nil, fmt.Errorf("invalid template registry: %s", reg)
 	}
 
-	path := ""
-	if len(s) > 2 {
-		path = s[3]
-	}
+	//path := ""
+	//if len(s) > 2 {
+	//path = s[3]
+	//}
 
 	if s[0] == "helm" {
-		return registry.NewGithubPackageRegistry(s[0], s[1], nil), nil
+		r, err := registry.NewGithubPackageRegistry(s[0], s[1], nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		return r, nil
 	} else {
-		return registry.NewGithubRegistry(s[0], s[1], path, nil), nil
+		r, err := registry.NewGithubTemplateRegistry(s[0], s[1], nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		return r, nil
 	}
 }
