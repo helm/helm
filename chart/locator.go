@@ -14,17 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/* package URL handles Helm-DM URLs
-
-Helm uses three kinds of URLs:
-
-	- Fully qualified (long) names: https://example.com/foo/bar-1.2.3.tgz
-	- Short names: helm:example.com/foo/bar#1.2.3
-	- Local names: file:///foo/bar
-
-This package provides utilities for working with this type of URL.
-*/
-package url
+package chart
 
 import (
 	"errors"
@@ -35,10 +25,10 @@ import (
 )
 
 // ErrLocal indicates that a local URL was used as a remote URL.
-var ErrLocal = errors.New("cannot use local URL as remote")
+var ErrLocal = errors.New("cannot use local Locator as remote")
 
 // ErrRemote indicates that a remote URL was used as a local URL.
-var ErrRemote = errors.New("cannot use remote URL as local")
+var ErrRemote = errors.New("cannot use remote Locator as local")
 
 const (
 	SchemeHTTP  = "http"
@@ -60,7 +50,7 @@ func init() {
 	tnregexp = regexp.MustCompile("^" + TarNameRegex + "$")
 }
 
-type URL struct {
+type Locator struct {
 	// The scheme of the URL. Typically one of http, https, helm, or file.
 	Scheme string
 	// The host information, if applicable.
@@ -80,18 +70,7 @@ type URL struct {
 	original string
 }
 
-func Parse(path string) (*URL, error) {
-
-	// TODO: Do we want to support file:///foo/bar.tgz?
-	//if strings.HasPrefix(path, SchemeFile+":") {
-	//path := strings.TrimPrefix(path, SchemeFile+":")
-	//return &URL{
-	//LocalRef: filepath.Clean(path),
-	//isLocal:  true,
-	//original: path,
-	//}, nil
-	//}
-
+func Parse(path string) (*Locator, error) {
 	u, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -104,7 +83,7 @@ func Parse(path string) (*URL, error) {
 			return nil, fmt.Errorf("both bucket and chart name are required in %s: %s", path, u.Path)
 		}
 		// Need to parse opaque data into bucket and chart.
-		return &URL{
+		return &Locator{
 			Scheme:   u.Scheme,
 			Host:     parts[0],
 			Bucket:   parts[1],
@@ -125,7 +104,7 @@ func Parse(path string) (*URL, error) {
 			return nil, err
 		}
 
-		return &URL{
+		return &Locator{
 			Scheme:   u.Scheme,
 			Host:     u.Host,
 			Bucket:   parts[1],
@@ -134,7 +113,7 @@ func Parse(path string) (*URL, error) {
 			original: path,
 		}, nil
 	case SchemeFile:
-		return &URL{
+		return &Locator{
 			LocalRef: u.Path,
 			isLocal:  true,
 			original: path,
@@ -143,7 +122,7 @@ func Parse(path string) (*URL, error) {
 		// In this case...
 		// - if the path is relative or absolute, return it as-is.
 		// - if it's a URL of an unknown scheme, return it as is.
-		return &URL{
+		return &Locator{
 			LocalRef: path,
 			isLocal:  true,
 			original: path,
@@ -153,21 +132,21 @@ func Parse(path string) (*URL, error) {
 }
 
 // IsLocal returns true if this is a local path.
-func (u *URL) IsLocal() bool {
+func (u *Locator) IsLocal() bool {
 	return u.isLocal
 }
 
 // Local returns a local version of the path.
 //
 // This will return an error if the URL does not reference a local chart.
-func (u *URL) Local() (string, error) {
+func (u *Locator) Local() (string, error) {
 	return u.LocalRef, nil
 }
 
 // Short returns a short form URL.
 //
 // This will return an error if the URL references a local chart.
-func (u *URL) Short() (string, error) {
+func (u *Locator) Short() (string, error) {
 	if u.IsLocal() {
 		return "", ErrLocal
 	}
@@ -184,7 +163,7 @@ func (u *URL) Short() (string, error) {
 // If secure is true, this will return an HTTPS URL, otherwise HTTP.
 //
 // This will return an error if the URL references a local chart.
-func (u *URL) Long(secure bool) (string, error) {
+func (u *Locator) Long(secure bool) (string, error) {
 	if u.IsLocal() {
 		return "", ErrLocal
 	}

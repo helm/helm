@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package url
+package chart
 
 import (
 	"testing"
 )
 
 func TestParse(t *testing.T) {
-	tests := map[string]URL{
-		"helm:host/bucket/name#1.2.3":        URL{Scheme: "helm", Host: "host", Bucket: "bucket", Name: "name", Version: "1.2.3"},
-		"https://host/bucket/name-1.2.3.tgz": URL{Scheme: "https", Host: "host", Bucket: "bucket", Name: "name", Version: "1.2.3"},
-		"http://host/bucket/name-1.2.3.tgz":  URL{Scheme: "http", Host: "host", Bucket: "bucket", Name: "name", Version: "1.2.3"},
+	tests := map[string]Locator{
+		"helm:host/bucket/name#1.2.3":        Locator{Scheme: "helm", Host: "host", Bucket: "bucket", Name: "name", Version: "1.2.3"},
+		"https://host/bucket/name-1.2.3.tgz": Locator{Scheme: "https", Host: "host", Bucket: "bucket", Name: "name", Version: "1.2.3"},
+		"http://host/bucket/name-1.2.3.tgz":  Locator{Scheme: "http", Host: "host", Bucket: "bucket", Name: "name", Version: "1.2.3"},
 	}
 
 	for start, expect := range tests {
