@@ -1,0 +1,55 @@
+hash: 0bcb72b361ed27dccc62c1f6551b21e57c0478ffdc5b2c70c2a0cebab31b4180
+updated: 2016-01-28T16:05:55.056196328-07:00
+imports:
+- name: github.com/aokoli/goutils
+  version: 9c37978a95bd5c709a15883b6242714ea6709e64
+- name: github.com/emicklei/go-restful
+  version: b86acf97a74ed7603ac78d012f5535b4d587b156
+- name: github.com/ghodss/yaml
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+- name: github.com/golang/protobuf
+  version: 45bba206dd5270d96bac4942dcfe515726613249
+- name: github.com/google/go-github
+  version: b8b4ac742977310ff6e75140a403a38dab109977
+  subpackages:
+  - /github
+- name: github.com/google/go-querystring
+  version: 2a60fc2ba6c19de80291203597d752e9ba58e4c0
+- name: github.com/gorilla/context
+  version: 1c83b3eabd45b6d76072b66b746c20815fb2872d
+- name: github.com/gorilla/handlers
+  version: 44328eee346b9614b3fe8ca84e72fe23736afbfb
+- name: github.com/gorilla/mux
+  version: 26a6070f849969ba72b72256e9f14cf519751690
+- name: github.com/gorilla/schema
+  version: 14c555599c2a4f493c1e13fd1ea6fdf721739028
+- name: github.com/Masterminds/semver
+  version: c4f7ef0702f269161a60489ccbbc9f1241ad1265
+- name: github.com/Masterminds/sprig
+  version: 93e0202ba8792558ba3767a3707d8e896eda95c0
+- name: github.com/mjibson/appstats
+  version: 0542d5f0e87ea3a8fa4174322b9532f5d04f9fa8
+- name: golang.org/x/crypto
+  version: 1f22c0103821b9390939b6776727195525381532
+- name: golang.org/x/net
+  version: 04b9de9b512f58addf28c9853d50ebef61c3953e
+- name: golang.org/x/oauth2
+  version: 8a57ed94ffd43444c0879fe75701732a38afc985
+- name: golang.org/x/text
+  version: 6d3c22c4525a4da167968fa2479be5524d2e8bd0
+- name: google.golang.com/appengine
+  version: ""
+  repo: https://google.golang.com/appengine
+- name: google.golang.org/api
+  version: f6ba98773d96b877b246f3a9266493dfc11e276b
+- name: google.golang.org/appengine
+  version: 6bde959377a90acb53366051d7d587bfd7171354
+- name: google.golang.org/cloud
+  version: fb10e8da373d97f6ba5e648299a10b3b91f14cd5
+- name: google.golang.org/grpc
+  version: 23d551898cf40a24d0ce7a859c75b322a7035673
+- name: gopkg.in/yaml.v2
+  version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
+devImports: []
