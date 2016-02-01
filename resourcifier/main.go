@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/kubernetes/deployment-manager/util"
 	"github.com/kubernetes/deployment-manager/version"
 
 	"flag"
@@ -38,7 +39,9 @@ type Route struct {
 	Type        string
 }
 
-var routes = []Route{}
+var routes = []Route{
+	{"HealthCheck", "/healthz", "GET", healthCheckHandlerFunc, ""},
+}
 
 // port to listen on
 var port = flag.Int("port", 8080, "The port to listen on")
@@ -73,4 +76,10 @@ func main() {
 	log.Printf("Version: %s", version.DeploymentManagerVersion)
 	log.Printf("Listening on port %d...", *port)
 	log.Fatal(http.ListenAndServe(address, handler))
+}
+
+func healthCheckHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get health"
+	util.LogHandlerEntry(handler, r)
+	util.LogHandlerExitWithText(handler, w, "OK", http.StatusOK)
 }
