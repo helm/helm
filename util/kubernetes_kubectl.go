@@ -126,15 +126,17 @@ func (k *KubernetesKubectl) execute(args []string, input string) (string, error)
 	cmd.Stderr = combined
 
 	if err := cmd.Start(); err != nil {
-		log.Printf("cannot start kubectl %s %#v", combined.String(), err)
-		return combined.String(), err
+		e := fmt.Errorf("cannot start kubectl %s %#v", combined.String(), err)
+		log.Printf("%s", e)
+		return combined.String(), e
 	}
 
 	if err := cmd.Wait(); err != nil {
-		log.Printf("kubectl failed: %s  %#v", combined.String(), err)
-		return combined.String(), err
+		e := fmt.Errorf("kubectl failed %s", combined.String())
+		log.Printf("%s", e)
+		return combined.String(), e
 	}
-	log.Printf("kubectl succeeded: SysTime: %v UserTime: %v\n%v",
-		cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime(), combined.String())
+	log.Printf("kubectl succeeded: SysTime: %v UserTime: %v",
+		cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime())
 	return combined.String(), nil
 }

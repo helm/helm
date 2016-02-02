@@ -51,6 +51,14 @@ func NewInmemRegistryService() common.RegistryService {
 		CredentialName: "default",
 	})
 
+	gFormat := fmt.Sprintf("%s", common.CollectionRegistry)
+	rs.Create(&common.Registry{
+		Name:   "charts_gcs",
+		Type:   common.GCSRegistryType,
+		URL:    "gs://helm-charts-test",
+		Format: common.RegistryFormat(gFormat),
+	})
+
 	return rs
 }
 

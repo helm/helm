@@ -22,6 +22,7 @@ import (
 	"github.com/kubernetes/deployment-manager/util"
 
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -38,6 +39,7 @@ type githubRegistry struct {
 	format         common.RegistryFormat
 	credentialName string
 	service        GithubRepositoryService
+	httpClient     *http.Client
 }
 
 // GithubRepositoryService defines the interface that's defined in github.com/go-github/repos_contents.go GetContents method.
@@ -54,7 +56,7 @@ type GithubRepositoryService interface {
 }
 
 // newGithubRegistry creates a githubRegistry.
-func newGithubRegistry(name, shortURL string, format common.RegistryFormat, service GithubRepositoryService) (*githubRegistry, error) {
+func newGithubRegistry(name, shortURL string, format common.RegistryFormat, httpClient *http.Client, service GithubRepositoryService) (*githubRegistry, error) {
 	trimmed := util.TrimURLScheme(shortURL)
 	owner, repository, path, err := parseGithubShortURL(trimmed)
 	if err != nil {
@@ -69,6 +71,7 @@ func newGithubRegistry(name, shortURL string, format common.RegistryFormat, serv
 		path:       path,
 		format:     format,
 		service:    service,
+		httpClient: httpClient,
 	}, nil
 }
 

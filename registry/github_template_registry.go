@@ -22,6 +22,7 @@ import (
 
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -54,13 +55,13 @@ type GithubTemplateRegistry struct {
 }
 
 // NewGithubTemplateRegistry creates a GithubTemplateRegistry.
-func NewGithubTemplateRegistry(name, shortURL string, service GithubRepositoryService, client *github.Client) (*GithubTemplateRegistry, error) {
+func NewGithubTemplateRegistry(name, shortURL string, service GithubRepositoryService, httpClient *http.Client, client *github.Client) (*GithubTemplateRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.CollectionRegistry)
 	if service == nil {
 		service = client.Repositories
 	}
 
-	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), service)
+	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), httpClient, service)
 	if err != nil {
 		return nil, err
 	}
@@ -211,4 +212,8 @@ func (g GithubTemplateRegistry) MakeRepositoryPath(t Type) (string, error) {
 		p += collection + "/"
 	}
 	return p + t.Name + "/" + t.GetVersion(), nil
+}
+
+func (g GithubTemplateRegistry) Do(req *http.Request) (resp *http.Response, err error) {
+	return g.httpClient.Do(req)
 }

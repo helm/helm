@@ -18,6 +18,7 @@ package manager
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"reflect"
 	"strings"
@@ -50,19 +51,20 @@ type testGetter struct {
 	test      *testing.T
 }
 
-func (tg *testGetter) Get(url string) (body string, code int, err error) {
+func (tg testGetter) Get(url string) (body string, code int, err error) {
 	tg.count = tg.count + 1
 	ret := tg.responses[url]
-
+	log.Printf("GET RETURNING: '%s' '%d'", ret.resp, tg.count)
 	return ret.resp, ret.code, ret.err
 }
 
 func testDriver(c resolverTestCase, t *testing.T) {
 	g := &testGetter{test: t, responses: c.responses}
+	log.Printf("getter: %#v", g)
 	r := &typeResolver{
-		getter:  g,
 		maxUrls: 5,
 		rp:      c.registryProvider,
+		c:       g,
 	}
 
 	conf := &common.Configuration{}
@@ -74,7 +76,7 @@ func testDriver(c resolverTestCase, t *testing.T) {
 	result, err := r.ResolveTypes(conf, c.imports)
 
 	if g.count != c.urlcount {
-		t.Errorf("Expected %d url GETs but only %d found", c.urlcount, g.count)
+		t.Errorf("Expected %d url GETs but only %d found %#v", c.urlcount, g.count, g)
 	}
 
 	if (err != nil && c.expectedErr == nil) || (err == nil && c.expectedErr != nil) {
@@ -307,13 +309,19 @@ func TestShortGithubUrl(t *testing.T) {
 		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
 	}
 
+	gcsUrlMaps := map[registry.Type]registry.TestURLAndError{
+		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
+	}
+
 	grp := registry.NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps)
+	gcsrp := registry.NewTestGCSRegistryProvider("gs://charts", gcsUrlMaps)
 	test := resolverTestCase{
 		config:           templateShortGithubTemplate,
 		importOut:        finalImports,
 		urlcount:         4,
 		responses:        responses,
-		registryProvider: registry.NewRegistryProvider(nil, grp, registry.NewInmemCredentialProvider()),
+		registryProvider: registry.NewRegistryProvider(nil, grp, gcsrp, registry.NewInmemCredentialProvider()),
 	}
 
 	testDriver(test, t)

@@ -22,7 +22,8 @@ import (
 
 func testUrlConversionDriver(rp RegistryProvider, tests map[string]TestURLAndError, t *testing.T) {
 	for in, expected := range tests {
-		actual, err := GetDownloadURLs(rp, in)
+		// TODO(vaikas): Test to make sure it's the right registry.
+		actual, _, err := GetDownloadURLs(rp, in)
 		if err != expected.Err {
 			t.Fatalf("failed on: %s : expected error %v but got %v", in, expected.Err, err)
 		}
@@ -45,7 +46,8 @@ func TestShortGithubUrlTemplateMapping(t *testing.T) {
 	}
 
 	grp := NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps)
-	testUrlConversionDriver(NewRegistryProvider(nil, grp, NewInmemCredentialProvider()), tests, t)
+	// TODO(vaikas): XXXX FIXME Add gcsrp
+	testUrlConversionDriver(NewRegistryProvider(nil, grp, nil, NewInmemCredentialProvider()), tests, t)
 }
 
 func TestShortGithubUrlPackageMapping(t *testing.T) {
@@ -60,5 +62,6 @@ func TestShortGithubUrlPackageMapping(t *testing.T) {
 	}
 
 	grp := NewTestGithubRegistryProvider("github.com/helm/charts", githubUrlMaps)
-	testUrlConversionDriver(NewRegistryProvider(nil, grp, NewInmemCredentialProvider()), tests, t)
+	// TODO(vaikas): XXXX FIXME Add gcsrp
+	testUrlConversionDriver(NewRegistryProvider(nil, grp, nil, NewInmemCredentialProvider()), tests, t)
 }

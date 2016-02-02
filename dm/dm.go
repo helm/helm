@@ -50,6 +50,8 @@ var (
 	username          = flag.String("username", "", "Github user name that overrides GITHUB_USERNAME environment variable")
 	password          = flag.String("password", "", "Github password that overrides GITHUB_PASSWORD environment variable")
 	apitoken          = flag.String("apitoken", "", "Github api token that overrides GITHUB_API_TOKEN environment variable")
+	serviceaccount    = flag.String("serviceaccount", "", "Service account file containing JWT token")
+	registryfile      = flag.String("registryfile", "", "File containing registry specification")
 )
 
 var commands = []string{
@@ -67,6 +69,7 @@ var commands = []string{
 	"describe \t\t Describes the named template in a given template registry",
 	"getcredential \t\t Gets the named credential used by a registry",
 	"setcredential \t\t Sets a credential used by a registry",
+	"createregistry \t\t Creates a registry that holds charts",
 }
 
 var usage = func() {
@@ -86,7 +89,7 @@ var usage = func() {
 	os.Exit(0)
 }
 
-func getGithubCredential() *common.RegistryCredential {
+func getCredential() *common.RegistryCredential {
 	*apitoken = strings.TrimSpace(*apitoken)
 	if *apitoken == "" {
 		*apitoken = strings.TrimSpace(os.Getenv("GITHUB_API_TOKEN"))
@@ -117,11 +120,27 @@ func getGithubCredential() *common.RegistryCredential {
 		}
 	}
 
+	if *serviceaccount != "" {
+		b, err := ioutil.ReadFile(*serviceaccount)
+		if err != nil {
+			log.Fatalf("Unable to read service account file: %v", err)
+		}
+		return &common.RegistryCredential{
+			ServiceAccount: common.JWTTokenCredential(string(b)),
+		}
+	}
 	return nil
 }
 
 func init() {
 	flag.Usage = usage
+}
+
+func getRegistry() ([]byte, error) {
+	if *registryfile == "" {
+		log.Fatalf("No registryfile specified (-registryfile)")
+	}
+	return ioutil.ReadFile(*registryfile)
 }
 
 func main() {
@@ -145,6 +164,10 @@ func execute() {
 
 	switch args[0] {
 	case "templates":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "No registry name supplied")
+			usage()
+		}
 		path := fmt.Sprintf("registries/%s/types", args[1])
 		callService(path, "GET", "list templates", nil)
 	case "describe":
@@ -162,7 +185,7 @@ func execute() {
 		path := fmt.Sprintf("credentials/%s", args[1])
 		callService(path, "GET", "get credential", nil)
 	case "setcredential":
-		c := getGithubCredential()
+		c := getCredential()
 		if c == nil {
 			panic(fmt.Errorf("Failed to create a credential from flags/arguments"))
 		}
@@ -172,7 +195,14 @@ func execute() {
 		}
 
 		path := fmt.Sprintf("credentials/%s", args[1])
-		callService(path, "POST", "get credential", ioutil.NopCloser(bytes.NewReader(y)))
+		callService(path, "POST", "set credential", ioutil.NopCloser(bytes.NewReader(y)))
+	case "createregistry":
+		reg, err := getRegistry()
+		if err != nil {
+			panic(fmt.Errorf("Failed to create a registry from arguments: %#v", err))
+		}
+		path := fmt.Sprintf("registries/%s", args[1])
+		callService(path, "POST", "set registry", ioutil.NopCloser(bytes.NewReader(reg)))
 	case "get":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "No deployment name supplied")
@@ -300,13 +330,20 @@ func describeType(args []string) {
 		os.Exit(1)
 	}
 
-	tUrls := getDownloadURLs(args[1])
+	tUrls := getDownloadURLs(url.QueryEscape(args[1]))
 	if len(tUrls) == 0 {
 		panic(fmt.Errorf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1]))
 	}
 
-	schemaUrl := tUrls[0] + ".schema"
-	fmt.Println(callHttp(schemaUrl, "GET", "get schema for type ("+tUrls[0]+")", nil))
+	if !strings.Contains(tUrls[0], ".prov") {
+		// It's not a chart, so grab the schema
+		path := fmt.Sprintf("registries/%s/download?file=%s.schema", *template_registry, url.QueryEscape(tUrls[0]))
+		callService(path, "GET", "get schema for type ("+tUrls[0]+")", nil)
+	} else {
+		// It's a chart, so grab the provenance file
+		path := fmt.Sprintf("registries/%s/download?file=%s", *template_registry, url.QueryEscape(tUrls[0]))
+		callService(path, "GET", "get file", nil)
+	}
 }
 
 // getDownloadURLs returns URLs for a type in the given registry

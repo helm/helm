@@ -23,6 +23,7 @@ import (
 	"github.com/kubernetes/deployment-manager/util"
 
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -53,7 +54,7 @@ func NewTestGithubRegistryProvider(shortURL string, responses map[Type]TestURLAn
 func (tgrp testGithubRegistryProvider) GetGithubRegistry(cr common.Registry) (GithubRegistry, error) {
 	trimmed := util.TrimURLScheme(cr.URL)
 	if strings.HasPrefix(trimmed, tgrp.shortURL) {
-		ghr, err := newGithubRegistry(cr.Name, trimmed, cr.Format, nil)
+		ghr, err := newGithubRegistry(cr.Name, trimmed, cr.Format, http.DefaultClient, nil)
 		if err != nil {
 			panic(fmt.Errorf("cannot create a github registry: %s", err))
 		}
@@ -79,4 +80,42 @@ func (tgr testGithubRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	}
 
 	return []*url.URL{URL}, result.Err
+}
+
+func (g testGithubRegistry) Do(req *http.Request) (resp *http.Response, err error) {
+	return nil, fmt.Errorf("Not implemented yet")
+}
+
+type testGCSRegistryProvider struct {
+	shortURL  string
+	responses map[Type]TestURLAndError
+}
+
+type testGCSRegistry struct {
+	GCSRegistry
+	responses map[Type]TestURLAndError
+}
+
+func NewTestGCSRegistryProvider(shortURL string, responses map[Type]TestURLAndError) GCSRegistryProvider {
+	return testGCSRegistryProvider{
+		shortURL:  util.TrimURLScheme(shortURL),
+		responses: responses,
+	}
+}
+
+func (tgrp testGCSRegistryProvider) GetGCSRegistry(cr common.Registry) (ObjectStorageRegistry, error) {
+	trimmed := util.TrimURLScheme(cr.URL)
+	if strings.HasPrefix(trimmed, tgrp.shortURL) {
+		gcsr, err := NewGCSRegistry(cr.Name, trimmed, http.DefaultClient, nil)
+		if err != nil {
+			panic(fmt.Errorf("cannot create gcs registry: %s", err))
+		}
+
+		return &testGCSRegistry{
+			GCSRegistry: *gcsr,
+			responses:   tgrp.responses,
+		}, nil
+	}
+
+	panic(fmt.Errorf("unknown registry: %v", cr))
 }
