@@ -17,6 +17,7 @@ limitations under the License.
 package chart
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/kubernetes/deployment-manager/log"
@@ -30,11 +31,16 @@ const (
 	testnochart = "testdata/nochart.tgz"
 )
 
+// Type canaries. If these fail, they will fail at compile time.
+var _ chartLoader = &dirChart{}
+var _ chartLoader = &tarChart{}
+
 func init() {
 	log.IsDebugging = true
 }
 
 func TestLoadDir(t *testing.T) {
+
 	c, err := LoadDir(testdir)
 	if err != nil {
 		t.Errorf("Failed to load chart: %s", err)
@@ -51,6 +57,7 @@ func TestLoadDir(t *testing.T) {
 }
 
 func TestLoad(t *testing.T) {
+
 	c, err := Load(testarchive)
 	if err != nil {
 		t.Errorf("Failed to load chart: %s", err)
@@ -80,11 +87,55 @@ func TestLoadIll(t *testing.T) {
 		t.Error("No chartfile was loaded.")
 		return
 	}
+
+	// Ill does not have an icon.
+	if i, err := c.Icon(); err == nil {
+		t.Errorf("Expected icon to be missing. Got %s", i)
+	}
 }
 
 func TestLoadNochart(t *testing.T) {
 	_, err := Load(testnochart)
 	if err == nil {
 		t.Error("Nochart should not have loaded at all.")
+	}
+}
+
+func TestChart(t *testing.T) {
+	c, err := LoadDir(testdir)
+	if err != nil {
+		t.Errorf("Failed to load chart: %s", err)
+	}
+	defer c.Close()
+
+	if c.Dir() != c.loader.dir() {
+		t.Errorf("Unexpected location for directory: %s", c.Dir())
+	}
+
+	if c.Chartfile().Name != c.loader.chartfile().Name {
+		t.Errorf("Unexpected chart file name: %s", c.Chartfile().Name)
+	}
+
+	d := c.DocsDir()
+	if d != filepath.Join(testdir, preDocs) {
+		t.Errorf("Unexpectedly, docs are in %s", d)
+	}
+
+	d = c.TemplatesDir()
+	if d != filepath.Join(testdir, preTemplates) {
+		t.Errorf("Unexpectedly, templates are in %s", d)
+	}
+
+	d = c.HooksDir()
+	if d != filepath.Join(testdir, preHooks) {
+		t.Errorf("Unexpectedly, hooks are in %s", d)
+	}
+
+	i, err := c.Icon()
+	if err != nil {
+		t.Errorf("No icon found in test chart: %s", err)
+	}
+	if i != filepath.Join(testdir, preIcon) {
+		t.Errorf("Unexpectedly, icon is in %s", i)
 	}
 }

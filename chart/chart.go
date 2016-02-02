@@ -36,6 +36,7 @@ const (
 	preTemplates string = "templates/"
 	preHooks     string = "hooks/"
 	preDocs      string = "docs/"
+	preIcon      string = "icon.svg"
 )
 
 // Chart represents a complete chart.
@@ -54,47 +55,93 @@ const (
 //
 // Optionally, a chart might also locate a provenance (.prov) file that it
 // can use for cryptographic signing.
-type Chart interface {
+type Chart struct {
+	loader chartLoader
+}
+
+// Close the chart.
+//
+// Charts should always be closed when no longer needed.
+func (c *Chart) Close() error {
+	return c.loader.close()
+}
+
+// Chartfile gets the Chartfile (Chart.yaml) for this chart.
+func (c *Chart) Chartfile() *Chartfile {
+	return c.loader.chartfile()
+}
+
+// Dir() returns the directory where the charts are located.
+func (c *Chart) Dir() string {
+	return c.loader.dir()
+}
+
+// DocsDir returns the directory where the chart's documentation is stored.
+func (c *Chart) DocsDir() string {
+	return filepath.Join(c.loader.dir(), preDocs)
+}
+
+// HooksDir returns the directory where the hooks are stored.
+func (c *Chart) HooksDir() string {
+	return filepath.Join(c.loader.dir(), preHooks)
+}
+
+// TemplatesDir returns the directory where the templates are stored.
+func (c *Chart) TemplatesDir() string {
+	return filepath.Join(c.loader.dir(), preTemplates)
+}
+
+// Icon returns the path to the icon.svg file.
+//
+// If an icon is not found in the chart, this will return an error.
+func (c *Chart) Icon() (string, error) {
+	i := filepath.Join(c.Dir(), preIcon)
+	_, err := os.Stat(i)
+	return i, err
+}
+
+// chartLoader provides load, close, and save implementations for a chart.
+type chartLoader interface {
 	// Chartfile resturns a *Chartfile for this chart.
-	Chartfile() *Chartfile
+	chartfile() *Chartfile
 	// Dir returns a directory where the chart can be accessed.
-	Dir() string
+	dir() string
 
 	// Close cleans up a chart.
-	Close() error
+	close() error
 }
 
 type dirChart struct {
-	chartfile *Chartfile
-	dir       string
+	chartyaml *Chartfile
+	chartdir  string
 }
 
-func (d *dirChart) Chartfile() *Chartfile {
-	return d.chartfile
+func (d *dirChart) chartfile() *Chartfile {
+	return d.chartyaml
 }
 
-func (d *dirChart) Dir() string {
-	return "."
+func (d *dirChart) dir() string {
+	return d.chartdir
 }
 
-func (d *dirChart) Close() error {
+func (d *dirChart) close() error {
 	return nil
 }
 
 type tarChart struct {
-	chartfile *Chartfile
+	chartyaml *Chartfile
 	tmpDir    string
 }
 
-func (t *tarChart) Chartfile() *Chartfile {
-	return t.chartfile
+func (t *tarChart) chartfile() *Chartfile {
+	return t.chartyaml
 }
 
-func (t *tarChart) Dir() string {
-	return "."
+func (t *tarChart) dir() string {
+	return t.tmpDir
 }
 
-func (t *tarChart) Close() error {
+func (t *tarChart) close() error {
 	// Remove the temp directory.
 	return os.RemoveAll(t.tmpDir)
 }
@@ -105,7 +152,7 @@ func (t *tarChart) Close() error {
 //
 // If you are just reading the Chart.yaml file, it is substantially more
 // performant to use LoadChartfile.
-func LoadDir(chart string) (Chart, error) {
+func LoadDir(chart string) (*Chart, error) {
 	if fi, err := os.Stat(chart); err != nil {
 		return nil, err
 	} else if !fi.IsDir() {
@@ -117,19 +164,21 @@ func LoadDir(chart string) (Chart, error) {
 		return nil, err
 	}
 
-	c := &dirChart{
-		chartfile: cf,
-		dir:       chart,
+	cl := &dirChart{
+		chartyaml: cf,
+		chartdir:  chart,
 	}
 
-	return c, nil
+	return &Chart{
+		loader: cl,
+	}, nil
 }
 
 // Load loads a chart from a chart archive.
 //
 // A chart archive is a gzipped tar archive that follows the Chart format
 // specification.
-func Load(archive string) (Chart, error) {
+func Load(archive string) (*Chart, error) {
 	if fi, err := os.Stat(archive); err != nil {
 		return nil, err
 	} else if fi.IsDir() {
@@ -151,15 +200,15 @@ func Load(archive string) (Chart, error) {
 	untarred := tar.NewReader(unzipped)
 	c, err := loadTar(untarred)
 	if err != nil {
-		return c, err
+		return nil, err
 	}
 
 	cf, err := LoadChartfile(filepath.Join(c.tmpDir, ChartfileName))
 	if err != nil {
-		return c, err
+		return nil, err
 	}
-	c.chartfile = cf
-	return c, nil
+	c.chartyaml = cf
+	return &Chart{loader: c}, nil
 }
 
 func loadTar(r *tar.Reader) (*tarChart, error) {
@@ -168,7 +217,7 @@ func loadTar(r *tar.Reader) (*tarChart, error) {
 		return nil, err
 	}
 	c := &tarChart{
-		chartfile: &Chartfile{},
+		chartyaml: &Chartfile{},
 		tmpDir:    td,
 	}
 
@@ -221,7 +270,7 @@ func loadTar(r *tar.Reader) (*tarChart, error) {
 
 	if err != nil && err != io.EOF {
 		log.Warn("Unexpected error reading tar: %s", err)
-		c.Close()
+		c.close()
 		return c, err
 	}
 	log.Info("Reached end of Tar file")
