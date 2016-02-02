@@ -69,12 +69,17 @@ func LoadChartfile(filename string) (*Chartfile, error) {
 
 // Save saves a Chart.yaml file
 func (c *Chartfile) Save(filename string) error {
-	b, err := yaml.Marshal(c)
+	b, err := c.Marshal()
 	if err != nil {
 		return err
 	}
 
 	return ioutil.WriteFile(filename, b, 0644)
+}
+
+// Marshal encodes the chart file into YAML.
+func (c *Chartfile) Marshal() ([]byte, error) {
+	return yaml.Marshal(c)
 }
 
 // VersionOK returns true if the given version meets the constraints.

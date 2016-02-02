@@ -39,6 +39,8 @@ const (
 	preIcon      string = "icon.svg"
 )
 
+var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
+
 // Chart represents a complete chart.
 //
 // A chart consists of the following parts:
@@ -144,6 +146,69 @@ func (t *tarChart) dir() string {
 func (t *tarChart) close() error {
 	// Remove the temp directory.
 	return os.RemoveAll(t.tmpDir)
+}
+
+// New creates a new chart in a directory.
+//
+// Inside of dir, this will create a directory based on the name of
+// chartfile.Name. It will then write the Chart.yaml into this directory and
+// create the (empty) appropriate directories.
+//
+// The returned *Chart will point to the newly created directory.
+//
+// If dir does not exist, this will return an error.
+// If Chart.yaml or any directories cannot be created, this will return an
+// error. In such a case, this will attempt to clean up by removing the
+// new chart directory.
+func Create(chartfile *Chartfile, dir string) (*Chart, error) {
+	path, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi, err := os.Stat(path); err != nil {
+		return nil, err
+	} else if !fi.IsDir() {
+		return nil, fmt.Errorf("no such directory %s", path)
+	}
+
+	n := fname(chartfile.Name)
+	cdir := filepath.Join(path, n)
+	if _, err := os.Stat(cdir); err == nil {
+		return nil, fmt.Errorf("directory already exists: %s", cdir)
+	}
+	if err := os.MkdirAll(cdir, 0755); err != nil {
+		return nil, err
+	}
+
+	rollback := func() {
+		// TODO: Should we log failures here?
+		os.RemoveAll(cdir)
+	}
+
+	if err := chartfile.Save(filepath.Join(cdir, ChartfileName)); err != nil {
+		rollback()
+		return nil, err
+	}
+
+	for _, d := range []string{preHooks, preDocs, preTemplates} {
+		if err := os.MkdirAll(filepath.Join(cdir, d), 0755); err != nil {
+			rollback()
+			return nil, err
+		}
+	}
+
+	return &Chart{
+		loader: &dirChart{chartyaml: chartfile, chartdir: cdir},
+	}, nil
+}
+
+// fname prepares names for the filesystem
+func fname(name string) string {
+	// Right now, we don't do anything. Do we need to encode any particular
+	// characters? What characters are legal in a chart name, but not in file
+	// names on Windows, Linux, or OSX.
+	return name
 }
 
 // LoadDir loads an entire chart from a directory.
