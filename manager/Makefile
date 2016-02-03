@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include ../include.mk
+
 .PHONY : all build test push container clean .project
 
 DOCKER_REGISTRY := gcr.io
@@ -41,5 +43,21 @@ container:
 clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
 
-test:
-	go test -v ./...
+.PHONY: test
+test: lint vet test-unit
+
+.PHONY: test-unit
+test-unit:
+	$(GO_TEST)
+
+.PHONY: lint
+lint:
+	$(GO_LINT)
+
+.PHONY: vet
+vet:
+	$(GO_VET)
+
+.PHONY: setup-gotools
+setup-gotools:
+	$(SETUP_GOTOOLS)

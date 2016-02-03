@@ -63,3 +63,7 @@ lint:
 .PHONY: vet
 vet:
 	$(GO_VET)
+
+.PHONY: setup-gotools
+setup-gotools:
+	$(SETUP_GOTOOLS)
