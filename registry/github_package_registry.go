@@ -22,6 +22,7 @@ import (
 
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -41,7 +42,7 @@ type GithubPackageRegistry struct {
 }
 
 // NewGithubPackageRegistry creates a GithubPackageRegistry.
-func NewGithubPackageRegistry(name, shortURL string, service GithubRepositoryService, client *github.Client) (*GithubPackageRegistry, error) {
+func NewGithubPackageRegistry(name, shortURL string, service GithubRepositoryService, httpClient *http.Client, client *github.Client) (*GithubPackageRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.UnversionedRegistry, common.OneLevelRegistry)
 	if service == nil {
 		if client == nil {
@@ -51,7 +52,7 @@ func NewGithubPackageRegistry(name, shortURL string, service GithubRepositorySer
 		}
 	}
 
-	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), service)
+	gr, err := newGithubRegistry(name, shortURL, common.RegistryFormat(format), httpClient, service)
 	if err != nil {
 		return nil, err
 	}
@@ -150,4 +151,8 @@ func (g GithubPackageRegistry) getDirs(dir string) ([]string, error) {
 func (g GithubPackageRegistry) MakeRepositoryPath(t Type) (string, error) {
 	// Construct the return path
 	return t.Name + "/manifests", nil
+}
+
+func (g GithubPackageRegistry) Do(req *http.Request) (resp *http.Response, err error) {
+	return g.httpClient.Do(req)
 }

@@ -38,6 +38,6 @@ func (fcp *InmemCredentialProvider) GetCredential(name string) (*common.Registry
 }
 
 func (fcp *InmemCredentialProvider) SetCredential(name string, credential *common.RegistryCredential) error {
-	fcp.credentials[name] = &common.RegistryCredential{credential.APIToken, credential.BasicAuth}
+	fcp.credentials[name] = &common.RegistryCredential{credential.APIToken, credential.BasicAuth, credential.ServiceAccount}
 	return nil
 }

@@ -50,19 +50,21 @@ type testGetter struct {
 	test      *testing.T
 }
 
-func (tg *testGetter) Get(url string) (body string, code int, err error) {
-	tg.count = tg.count + 1
-	ret := tg.responses[url]
+var count = 0
 
+func (tg testGetter) Get(url string) (body string, code int, err error) {
+	count = count + 1
+	ret := tg.responses[url]
 	return ret.resp, ret.code, ret.err
 }
 
 func testDriver(c resolverTestCase, t *testing.T) {
 	g := &testGetter{test: t, responses: c.responses}
+	count = 0
 	r := &typeResolver{
-		getter:  g,
 		maxUrls: 5,
 		rp:      c.registryProvider,
+		c:       g,
 	}
 
 	conf := &common.Configuration{}
@@ -73,8 +75,8 @@ func testDriver(c resolverTestCase, t *testing.T) {
 
 	result, err := r.ResolveTypes(conf, c.imports)
 
-	if g.count != c.urlcount {
-		t.Errorf("Expected %d url GETs but only %d found", c.urlcount, g.count)
+	if count != c.urlcount {
+		t.Errorf("Expected %d url GETs but only %d found %#v", c.urlcount, g.count, g)
 	}
 
 	if (err != nil && c.expectedErr == nil) || (err == nil && c.expectedErr != nil) {
@@ -295,11 +297,11 @@ func TestShortGithubUrl(t *testing.T) {
 			Content: "my-content-2"},
 	}
 
-	responses := map[string]responseAndError{
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        responseAndError{nil, http.StatusOK, "my-content"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        responseAndError{nil, http.StatusOK, "my-content-2"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": responseAndError{nil, http.StatusNotFound, ""},
+	downloadResponses := map[string]registry.DownloadResponse{
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        registry.DownloadResponse{nil, http.StatusOK, "my-content"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": registry.DownloadResponse{nil, http.StatusNotFound, ""},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        registry.DownloadResponse{nil, http.StatusOK, "my-content-2"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": registry.DownloadResponse{nil, http.StatusNotFound, ""},
 	}
 
 	githubUrlMaps := map[registry.Type]registry.TestURLAndError{
@@ -307,13 +309,19 @@ func TestShortGithubUrl(t *testing.T) {
 		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
 	}
 
-	grp := registry.NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps)
+	gcsUrlMaps := map[registry.Type]registry.TestURLAndError{
+		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
+	}
+
+	grp := registry.NewTestGithubRegistryProviderWithDownloads("github.com/kubernetes/application-dm-templates", githubUrlMaps, downloadResponses)
+	gcsrp := registry.NewTestGCSRegistryProvider("gs://charts", gcsUrlMaps)
 	test := resolverTestCase{
 		config:           templateShortGithubTemplate,
 		importOut:        finalImports,
-		urlcount:         4,
-		responses:        responses,
-		registryProvider: registry.NewRegistryProvider(nil, grp, registry.NewInmemCredentialProvider()),
+		urlcount:         0,
+		responses:        map[string]responseAndError{},
+		registryProvider: registry.NewRegistryProvider(nil, grp, gcsrp, registry.NewInmemCredentialProvider()),
 	}
 
 	testDriver(test, t)

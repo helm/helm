@@ -26,6 +26,7 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/manager/repository"
 	"github.com/kubernetes/deployment-manager/registry"
+	"github.com/kubernetes/deployment-manager/util"
 )
 
 // Manager manages a persistent set of Deployments.
@@ -55,6 +56,7 @@ type Manager interface {
 	// Registry Types
 	ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error)
 	GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error)
+	GetFile(registryName string, url string) (string, error)
 
 	// Credentials
 	CreateCredential(name string, c *common.RegistryCredential) error
@@ -392,6 +394,21 @@ func (m *manager) GetDownloadURLs(registryName string, t registry.Type) ([]*url.
 	}
 
 	return r.GetDownloadURLs(t)
+}
+
+// GetFile returns a file from the backing registry
+func (m *manager) GetFile(registryName string, url string) (string, error) {
+	r, err := m.registryProvider.GetRegistryByName(registryName)
+	if err != nil {
+		return "", err
+	}
+
+	getter := util.NewHTTPClient(3, r, util.NewSleeper())
+	body, _, err := getter.Get(url)
+	if err != nil {
+		return "", err
+	}
+	return body, nil
 }
 
 // CreateCredential creates a credential that can be used to authenticate to registry

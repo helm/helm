@@ -120,8 +120,6 @@ func (scp *SecretsCredentialProvider) SetCredential(name string, credential *com
 		log.Printf("yaml marshal failed for kubernetes object: %s: %v", name, err)
 		return err
 	}
-	log.Printf("Calling with: %s", string(ko))
-	o, err := scp.k.Create(string(ko))
-	log.Printf("Create returned: %s", o)
+	_, err = scp.k.Create(string(ko))
 	return err
 }

@@ -54,8 +54,10 @@ var deployments = []Route{
 	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
 	{"ListRegistries", "/registries", "GET", listRegistriesHandlerFunc, ""},
 	{"GetRegistry", "/registries/{registry}", "GET", getRegistryHandlerFunc, ""},
+	{"CreateRegistry", "/registries/{registry}", "POST", createRegistryHandlerFunc, "JSON"},
 	{"ListRegistryTypes", "/registries/{registry}/types", "GET", listRegistryTypesHandlerFunc, ""},
 	{"GetDownloadURLs", "/registries/{registry}/types/{type}", "GET", getDownloadURLsHandlerFunc, ""},
+	{"GetFile", "/registries/{registry}/download", "GET", getFileHandlerFunc, ""},
 	{"CreateCredential", "/credentials/{credential}", "POST", createCredentialHandlerFunc, "JSON"},
 	{"GetCredential", "/credentials/{credential}", "GET", getCredentialHandlerFunc, ""},
 }
@@ -97,12 +99,12 @@ func init() {
 }
 
 func newManager(cp common.CredentialProvider) manager.Manager {
-	registryProvider := registry.NewDefaultRegistryProvider(cp)
-	resolver := manager.NewTypeResolver(registryProvider)
+	service := registry.NewInmemRegistryService()
+	registryProvider := registry.NewDefaultRegistryProvider(cp, service)
+	resolver := manager.NewTypeResolver(registryProvider, util.DefaultHTTPClient())
 	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), resolver)
 	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName))
 	r := repository.NewMapBasedRepository()
-	service := registry.NewInmemRegistryService()
 	credentialProvider := cp
 	return manager.NewManager(expander, deployer, r, registryProvider, service, credentialProvider)
 }
@@ -378,6 +380,49 @@ func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
 }
 
+func getRegistry(w http.ResponseWriter, r *http.Request, handler string) *common.Registry {
+	util.LogHandlerEntry(handler, r)
+	j, err := getJsonFromRequest(w, r, handler)
+	if err != nil {
+		return nil
+	}
+
+	t := &common.Registry{}
+	if err := json.Unmarshal(j, t); err != nil {
+		e := fmt.Errorf("%v\n%v", err, string(j))
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return nil
+	}
+
+	return t
+}
+
+func createRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: create registry"
+	util.LogHandlerEntry(handler, r)
+	defer r.Body.Close()
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	reg := getRegistry(w, r, handler)
+	if reg.Name != registryName {
+		e := fmt.Errorf("Registry name does not match %s != %s", reg.Name, registryName)
+		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+		return
+	}
+	if reg != nil {
+		err = backend.CreateRegistry(reg)
+		if err != nil {
+			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+			return
+		}
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, reg, http.StatusOK)
+}
+
 func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	handler := "manager: list registry types"
 	util.LogHandlerEntry(handler, r)
@@ -435,6 +480,28 @@ func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		urls = append(urls, u.String())
 	}
 	util.LogHandlerExitWithJSON(handler, w, urls, http.StatusOK)
+}
+
+func getFileHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get file"
+	util.LogHandlerEntry(handler, r)
+	registryName, err := getPathVariable(w, r, "registry", handler)
+	if err != nil {
+		return
+	}
+
+	file := r.FormValue("file")
+	if file == "" {
+		return
+	}
+
+	b, err := backend.GetFile(registryName, file)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, b, http.StatusOK)
 }
 
 func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {

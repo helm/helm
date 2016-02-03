@@ -182,11 +182,13 @@ type BasicAuthCredential struct {
 }
 
 type APITokenCredential string
+type JWTTokenCredential string
 
 // Credential used to access the repository
 type RegistryCredential struct {
-	APIToken  APITokenCredential  `json:"apitoken,omitempty"`
-	BasicAuth BasicAuthCredential `json:"basicauth,omitempty"`
+	APIToken       APITokenCredential  `json:"apitoken,omitempty"`
+	BasicAuth      BasicAuthCredential `json:"basicauth,omitempty"`
+	ServiceAccount JWTTokenCredential  `json:"serviceaccount,omitempty"`
 }
 
 // Registry describes a template registry
@@ -204,6 +206,7 @@ type RegistryType string
 
 const (
 	GithubRegistryType RegistryType = "github"
+	GCSRegistryType    RegistryType = "gcs"
 )
 
 // RegistryFormat is a semi-colon delimited string that describes the format

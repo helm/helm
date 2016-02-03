@@ -18,6 +18,7 @@ package registry
 
 import (
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/util"
 
 	"fmt"
 	"net/url"
@@ -29,6 +30,9 @@ import (
 // used in a Deployment Manager configuration. There can be multiple
 // registry implementations.
 type Registry interface {
+	// Also handles http.Client.Do method for authenticated File accesses
+	util.HTTPDoer
+
 	// GetRegistryName returns the name of this registry
 	GetRegistryName() string
 	// GetRegistryType returns the type of this registry.
@@ -54,6 +58,13 @@ type GithubRegistry interface {
 	GetRegistryRepository() string
 	// GetRegistryPath returns the path to the registry in the repository.
 	GetRegistryPath() string
+}
+
+// ObjectStorageRegistry abstracts a registry that resides in an Object Storage, for
+// example Google Cloud Storage or AWS S3, etc.
+type ObjectStorageRegistry interface {
+	Registry // An ObjectStorageRegistry is a Registry.
+	GetBucket() string
 }
 
 type Type struct {
