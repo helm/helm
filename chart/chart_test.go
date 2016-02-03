@@ -17,6 +17,7 @@ limitations under the License.
 package chart
 
 import (
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -57,7 +58,6 @@ func TestLoadDir(t *testing.T) {
 }
 
 func TestLoad(t *testing.T) {
-
 	c, err := Load(testarchive)
 	if err != nil {
 		t.Errorf("Failed to load chart: %s", err)
@@ -65,6 +65,27 @@ func TestLoad(t *testing.T) {
 	}
 	defer c.Close()
 
+	if c.Chartfile() == nil {
+		t.Error("No chartfile was loaded.")
+		return
+	}
+
+	if c.Chartfile().Name != "frobnitz" {
+		t.Errorf("Expected name to be frobnitz, got %q", c.Chartfile().Name)
+	}
+}
+
+func TestLoadData(t *testing.T) {
+	data, err := ioutil.ReadFile(testarchive)
+	if err != nil {
+		t.Errorf("Failed to read testarchive file: %s", err)
+		return
+	}
+	c, err := LoadData(data)
+	if err != nil {
+		t.Errorf("Failed to load chart: %s", err)
+		return
+	}
 	if c.Chartfile() == nil {
 		t.Error("No chartfile was loaded.")
 		return
