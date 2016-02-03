@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include include.mk
+
 SUBDIRS := expandybird/. resourcifier/. manager/.
 TARGETS := all build test push container clean
 
@@ -34,10 +36,6 @@ clean:
 test: build
 	go test -v $(GO_DEPS)
 
-.PHONY: setup-gotools
-setup-gotools:
-	$(SETUP_GOTOOLS)
-
 push: container
 
 container: .project .docker
@@ -52,4 +50,3 @@ $(TARGETS) : % : $(addsuffix %,$(SUBDIRS))
 
 $(SUBDIRS_TARGETS) :
 	$(MAKE) -C $(@D) $(@F:.%=%)
-
