@@ -45,8 +45,8 @@ type typeResolver struct {
 }
 
 type fetchableURL struct {
-	registry registry.Registry
-	url      string
+	reg registry.Registry
+	url string
 }
 
 type fetchUnit struct {
@@ -64,10 +64,8 @@ func resolverError(c *common.Configuration, err error) error {
 }
 
 func (tr *typeResolver) performHTTPGet(d util.HTTPDoer, u string, allowMissing bool) (content string, err error) {
-	var g util.HTTPClient
-	if d == nil {
-		g = tr.c
-	} else {
+	g := tr.c
+	if d != nil {
 		g = util.NewHTTPClient(3, d, util.NewSleeper())
 	}
 	r, code, err := g.Get(u)
@@ -102,7 +100,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 	toFetch := make([]*fetchUnit, 0, tr.maxUrls)
 	for _, r := range config.Resources {
 		// Map the type to a fetchable URL (if applicable) or skip it if it's a non-fetchable type (primitive for example).
-		urls, registry, err := registry.GetDownloadURLs(tr.rp, r.Type)
+		urls, urlRegistry, err := registry.GetDownloadURLs(tr.rp, r.Type)
 		if err != nil {
 			return nil, resolverError(config, fmt.Errorf("Failed to understand download url for %s: %v", r.Type, err))
 		}
@@ -110,7 +108,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 			f := &fetchUnit{}
 			for _, u := range urls {
 				if len(u) > 0 {
-					f.urls = append(f.urls, fetchableURL{registry, u})
+					f.urls = append(f.urls, fetchableURL{urlRegistry, u})
 					// Add to existing map so it is not fetched multiple times.
 					existing[r.Type] = true
 				}
@@ -140,7 +138,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 		templates := []string{}
 		url := toFetch[0].urls[0]
 		for _, u := range toFetch[0].urls {
-			template, err := tr.performHTTPGet(u.registry, u.url, false)
+			template, err := tr.performHTTPGet(u.reg, u.url, false)
 			if err != nil {
 				return nil, resolverError(config, err)
 			}
@@ -156,7 +154,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 		}
 
 		schemaURL := url.url + schemaSuffix
-		sch, err := tr.performHTTPGet(url.registry, schemaURL, true)
+		sch, err := tr.performHTTPGet(url.reg, schemaURL, true)
 		if err != nil {
 			return nil, resolverError(config, err)
 		}
@@ -170,7 +168,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 			for _, v := range s.Imports {
 				i := &common.ImportFile{Name: v.Name}
 				var existingSchema string
-				urls, registry, conversionErr := registry.GetDownloadURLs(tr.rp, v.Path)
+				urls, urlRegistry, conversionErr := registry.GetDownloadURLs(tr.rp, v.Path)
 				if conversionErr != nil {
 					return nil, resolverError(config, fmt.Errorf("Failed to understand download url for %s: %v", v.Path, conversionErr))
 				}
@@ -182,7 +180,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 				for _, u := range urls {
 					if len(fetched[u]) == 0 {
 						// If this import URL is new to us, add it to the URLs to fetch.
-						toFetch = append(toFetch, &fetchUnit{[]fetchableURL{fetchableURL{registry, u}}})
+						toFetch = append(toFetch, &fetchUnit{[]fetchableURL{fetchableURL{urlRegistry, u}}})
 					} else {
 						// If this is not a new import URL and we've already fetched its contents,
 						// reuse them. Also, check if we also found a schema for that import URL and

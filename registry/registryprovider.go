@@ -163,7 +163,7 @@ type githubRegistryProvider struct {
 // NewGithubRegistryProvider creates a GithubRegistryProvider.
 func NewGithubRegistryProvider(cp common.CredentialProvider) GithubRegistryProvider {
 	if cp == nil {
-		panic(fmt.Errorf("cp is nil: %v", cp))
+		panic(fmt.Errorf("no credential provider"))
 	}
 	return &githubRegistryProvider{cp: cp}
 }
@@ -234,7 +234,7 @@ type gcsRegistryProvider struct {
 // NewGCSRegistryProvider creates a GCSRegistryProvider.
 func NewGCSRegistryProvider(cp common.CredentialProvider) GCSRegistryProvider {
 	if cp == nil {
-		panic(fmt.Errorf("cp is nil: %v", cp))
+		panic(fmt.Errorf("no credential provider"))
 	}
 	return &gcsRegistryProvider{cp: cp}
 }
