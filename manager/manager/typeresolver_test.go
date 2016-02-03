@@ -18,7 +18,6 @@ package manager
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"reflect"
 	"strings"
@@ -51,16 +50,17 @@ type testGetter struct {
 	test      *testing.T
 }
 
+var count = 0
+
 func (tg testGetter) Get(url string) (body string, code int, err error) {
-	tg.count = tg.count + 1
+	count = count + 1
 	ret := tg.responses[url]
-	log.Printf("GET RETURNING: '%s' '%d'", ret.resp, tg.count)
 	return ret.resp, ret.code, ret.err
 }
 
 func testDriver(c resolverTestCase, t *testing.T) {
 	g := &testGetter{test: t, responses: c.responses}
-	log.Printf("getter: %#v", g)
+	count = 0
 	r := &typeResolver{
 		maxUrls: 5,
 		rp:      c.registryProvider,
@@ -75,7 +75,7 @@ func testDriver(c resolverTestCase, t *testing.T) {
 
 	result, err := r.ResolveTypes(conf, c.imports)
 
-	if g.count != c.urlcount {
+	if count != c.urlcount {
 		t.Errorf("Expected %d url GETs but only %d found %#v", c.urlcount, g.count, g)
 	}
 
@@ -297,11 +297,11 @@ func TestShortGithubUrl(t *testing.T) {
 			Content: "my-content-2"},
 	}
 
-	responses := map[string]responseAndError{
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        responseAndError{nil, http.StatusOK, "my-content"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        responseAndError{nil, http.StatusOK, "my-content-2"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": responseAndError{nil, http.StatusNotFound, ""},
+	downloadResponses := map[string]registry.DownloadResponse{
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        registry.DownloadResponse{nil, http.StatusOK, "my-content"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": registry.DownloadResponse{nil, http.StatusNotFound, ""},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        registry.DownloadResponse{nil, http.StatusOK, "my-content-2"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": registry.DownloadResponse{nil, http.StatusNotFound, ""},
 	}
 
 	githubUrlMaps := map[registry.Type]registry.TestURLAndError{
@@ -314,13 +314,13 @@ func TestShortGithubUrl(t *testing.T) {
 		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
 	}
 
-	grp := registry.NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps)
+	grp := registry.NewTestGithubRegistryProviderWithDownloads("github.com/kubernetes/application-dm-templates", githubUrlMaps, downloadResponses)
 	gcsrp := registry.NewTestGCSRegistryProvider("gs://charts", gcsUrlMaps)
 	test := resolverTestCase{
 		config:           templateShortGithubTemplate,
 		importOut:        finalImports,
-		urlcount:         4,
-		responses:        responses,
+		urlcount:         0,
+		responses:        map[string]responseAndError{},
 		registryProvider: registry.NewRegistryProvider(nil, grp, gcsrp, registry.NewInmemCredentialProvider()),
 	}
 

@@ -19,6 +19,9 @@ package registry
 // TODO(jackgr): Mock github repository service to test package and template registry implementations.
 
 import (
+	"bytes"
+	"io/ioutil"
+
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/util"
 
@@ -34,20 +37,36 @@ type TestURLAndError struct {
 	Err error
 }
 
+type DownloadResponse struct {
+	Err  error
+	Code int
+	Body string
+}
+
 type testGithubRegistryProvider struct {
-	shortURL  string
-	responses map[Type]TestURLAndError
+	shortURL          string
+	responses         map[Type]TestURLAndError
+	downloadResponses map[string]DownloadResponse
 }
 
 type testGithubRegistry struct {
 	githubRegistry
-	responses map[Type]TestURLAndError
+	responses         map[Type]TestURLAndError
+	downloadResponses map[string]DownloadResponse
 }
 
 func NewTestGithubRegistryProvider(shortURL string, responses map[Type]TestURLAndError) GithubRegistryProvider {
 	return testGithubRegistryProvider{
 		shortURL:  util.TrimURLScheme(shortURL),
 		responses: responses,
+	}
+}
+
+func NewTestGithubRegistryProviderWithDownloads(shortURL string, responses map[Type]TestURLAndError, downloadResponses map[string]DownloadResponse) GithubRegistryProvider {
+	return testGithubRegistryProvider{
+		shortURL:          util.TrimURLScheme(shortURL),
+		responses:         responses,
+		downloadResponses: downloadResponses,
 	}
 }
 
@@ -60,8 +79,9 @@ func (tgrp testGithubRegistryProvider) GetGithubRegistry(cr common.Registry) (Gi
 		}
 
 		return &testGithubRegistry{
-			githubRegistry: *ghr,
-			responses:      tgrp.responses,
+			githubRegistry:    *ghr,
+			responses:         tgrp.responses,
+			downloadResponses: tgrp.downloadResponses,
 		}, nil
 	}
 
@@ -83,7 +103,8 @@ func (tgr testGithubRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 }
 
 func (g testGithubRegistry) Do(req *http.Request) (resp *http.Response, err error) {
-	return nil, fmt.Errorf("Not implemented yet")
+	response := g.downloadResponses[req.URL.String()]
+	return &http.Response{StatusCode: response.Code, Body: ioutil.NopCloser(bytes.NewBufferString(response.Body))}, response.Err
 }
 
 type testGCSRegistryProvider struct {
