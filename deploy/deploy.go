@@ -1,16 +1,16 @@
 package deploy
 
 import (
-	"archive/tar"
-	"errors"
-	"fmt"
+	//"archive/tar"
+	//"errors"
+	//"fmt"
 	"os"
-	"strings"
+	//"strings"
 
-	"github.com/ghodss/yaml"
+	//"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/common"
-	"github.com/kubernetes/deployment-manager/expandybird/expander"
-	"github.com/kubernetes/deployment-manager/registry"
+	//"github.com/kubernetes/deployment-manager/expandybird/expander"
+	//"github.com/kubernetes/deployment-manager/registry"
 )
 
 // Deployer is capable of deploying an object to a back-end.
@@ -48,17 +48,19 @@ type Deployment struct {
 // This will generate the Template based on other information.
 func (d *Deployment) Prepare() error {
 
-	tpl, err := d.resolveTemplate()
-	if err != nil {
-		return err
-	}
+	/*
+		tpl, err := d.resolveTemplate()
+		if err != nil {
+			return err
+		}
 
-	// If a deployment Name is specified, set that explicitly.
-	if d.Name != "" {
-		tpl.Name = d.Name
-	}
+		// If a deployment Name is specified, set that explicitly.
+		if d.Name != "" {
+			tpl.Name = d.Name
+		}
 
-	d.Template = tpl
+		d.Template = tpl
+	*/
 
 	return nil
 }
@@ -68,6 +70,7 @@ func (d *Deployment) Commit(host string) error {
 	return nil
 }
 
+/*
 // resolveTemplate resolves what kind of template is being loaded, and then returns the template.
 func (d *Deployment) resolveTemplate() (*common.Template, error) {
 	// If some input has been specified, read it.
@@ -179,3 +182,4 @@ func getGitRegistry(reg string) (registry.Registry, error) {
 		return r, nil
 	}
 }
+*/
