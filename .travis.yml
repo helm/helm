@@ -9,4 +9,5 @@ install:
   - sudo pip install -r expandybird/requirements.txt
 
 script:
+  - make setup-gotools
   - make test

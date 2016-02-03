@@ -34,6 +34,10 @@ clean:
 test: build
 	go test -v $(GO_DEPS)
 
+.PHONY: setup-gotools
+setup-gotools:
+	$(SETUP_GOTOOLS)
+
 push: container
 
 container: .project .docker
