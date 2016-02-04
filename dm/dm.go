@@ -65,7 +65,7 @@ var commands = []string{
 	"update \t\t\t Updates a deployment using the supplied configuration(s)",
 	"deployed-types \t\t Lists the types deployed in the cluster",
 	"deployed-instances \t Lists the instances of the named type deployed in the cluster",
-	"templates \t\t Lists the templates in a given template registry",
+	"templates \t\t Lists the templates in a given template registry (specified with --registry)",
 	"registries \t\t Lists the registries available",
 	"describe \t\t Describes the named template in a given template registry",
 	"getcredential \t\t Gets the named credential used by a registry",
@@ -165,11 +165,7 @@ func execute() {
 
 	switch args[0] {
 	case "templates":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "No registry name supplied")
-			usage()
-		}
-		path := fmt.Sprintf("registries/%s/types", args[1])
+		path := fmt.Sprintf("registries/%s/types", *template_registry)
 		callService(path, "GET", "list templates", nil)
 	case "describe":
 		describeType(args)
@@ -202,7 +198,7 @@ func execute() {
 		if err != nil {
 			panic(fmt.Errorf("Failed to create a registry from arguments: %#v", err))
 		}
-		path := fmt.Sprintf("registries/%s", args[1])
+		path := fmt.Sprintf("registries/%s", *template_registry)
 		callService(path, "POST", "create registry", ioutil.NopCloser(bytes.NewReader(reg)))
 	case "get":
 		if len(args) < 2 {
