@@ -1,6 +1,6 @@
 # Deployment Manager
 
-[![Go Report Card](http://goreportcard.com/badge/kubernetes/deployment-manager)](http://goreportcard.com/report/kubernetes/deployment-manager)
+[![Build Status](https://travis-ci.org/kubernetes/deployment-manager.svg?branch=master)](https://travis-ci.org/kubernetes/deployment-manager) [![Go Report Card](http://goreportcard.com/badge/kubernetes/deployment-manager)](http://goreportcard.com/report/kubernetes/deployment-manager)
 
 Deployment Manager (DM) `dm` makes it easy to create, describe, update and
 delete Kubernetes resources using declarative configuration. A configuration is
