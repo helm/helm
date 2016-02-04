@@ -67,7 +67,15 @@ func commands() []cli.Command {
 			},
 		},
 		{
-			Name: "doctor",
+			Name:      "doctor",
+			Usage:     "Run a series of checks for necessary prerequisites.",
+			ArgsUsage: "",
+			Action: func(c *cli.Context) {
+				if err := doctor(); err != nil {
+					format.Error("%s", err)
+					os.Exit(1)
+				}
+			},
 		},
 		{
 			Name:    "deploy",
