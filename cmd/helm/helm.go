@@ -33,6 +33,71 @@ func main() {
 func commands() []cli.Command {
 	return []cli.Command{
 		{
+			Name:  "dm",
+			Usage: "Manage DM on Kubernetes",
+			Subcommands: []cli.Command{
+				{
+					Name:        "install",
+					Usage:       "Install DM on Kubernetes.",
+					Description: ``,
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:  "dry-run",
+							Usage: "Show what would be installed, but don't install anything.",
+						},
+					},
+					Action: func(c *cli.Context) {
+						if err := install(c.Bool("dry-run")); err != nil {
+							format.Error("%s (Run 'helm doctor' for more information)", err)
+							os.Exit(1)
+						}
+					},
+				},
+				{
+					Name:        "uninstall",
+					Usage:       "Uninstall the DM from Kubernetes.",
+					Description: ``,
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:  "dry-run",
+							Usage: "Show what would be installed, but don't install anything.",
+						},
+					},
+					Action: func(c *cli.Context) {
+						if err := uninstall(c.Bool("dry-run")); err != nil {
+							format.Error("%s (Run 'helm doctor' for more information)", err)
+							os.Exit(1)
+						}
+					},
+				},
+				{
+					Name:  "status",
+					Usage: "Show status of DM.",
+					Action: func(c *cli.Context) {
+						format.Error("Not yet implemented")
+						os.Exit(1)
+					},
+				},
+				{
+					Name:      "target",
+					Usage:     "Displays information about cluster.",
+					ArgsUsage: "",
+					Action: func(c *cli.Context) {
+						if err := target(c.Bool("dry-run")); err != nil {
+							format.Error("%s (Is the cluster running?)", err)
+							os.Exit(1)
+						}
+					},
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:  "dry-run",
+							Usage: "Only display the underlying kubectl commands.",
+						},
+					},
+				},
+			},
+		},
+		{
 			Name:        "init",
 			Usage:       "Initialize the client and install DM on Kubernetes.",
 			Description: ``,
@@ -47,23 +112,6 @@ func commands() []cli.Command {
 					format.Error("%s (Run 'helm doctor' for more information)", err)
 					os.Exit(1)
 				}
-			},
-		},
-		{
-			Name:      "target",
-			Usage:     "Displays information about cluster.",
-			ArgsUsage: "",
-			Action: func(c *cli.Context) {
-				if err := target(c.Bool("dry-run")); err != nil {
-					format.Error("%s (Is the cluster running?)", err)
-					os.Exit(1)
-				}
-			},
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "dry-run",
-					Usage: "Only display the underlying kubectl commands.",
-				},
 			},
 		},
 		{
