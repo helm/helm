@@ -1,3 +1,10 @@
+.PHONY: info
+info:
+	@echo "Build tag: ${TAG}"
+	@echo "Registry: ${DOCKER_REGISTRY}"
+	@echo "Project: ${PROJECT}"
+	@echo "Image: ${IMAGE}"
+
 .PHONY: test-unit
 test-unit:
 	@echo Running tests...
@@ -7,11 +14,13 @@ test-unit:
 lint:
 	@echo Running golint...
 	golint ./...
+	@echo -----------------
 
 .PHONY: vet
 vet:
 	@echo Running go vet...
 	go vet ./...
+	@echo -----------------
 
 .PHONY: setup-gotools
 setup-gotools:

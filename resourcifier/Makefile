@@ -16,7 +16,7 @@
 
 include ../include.mk
 
-.PHONY : all build test push container clean
+.PHONY : all build push container clean
 
 DOCKER_REGISTRY := gcr.io
 PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
@@ -25,12 +25,6 @@ TAG := latest
 
 ROOT_DIR := $(abspath ./..)
 DIR = $(ROOT_DIR)
-
-info:
-	@echo "Build tag: ${TAG}"
-	@echo "Registry: ${DOCKER_REGISTRY}"
-	@echo "Project: ${PROJECT}"
-	@echo "Image: ${IMAGE}"
 
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)

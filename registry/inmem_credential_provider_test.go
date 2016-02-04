@@ -68,6 +68,6 @@ func TestSetAndGetBasicAuth(t *testing.T) {
 	cp := NewInmemCredentialProvider()
 	tc := &testCase{"testcredential",
 		&common.RegistryCredential{
-			BasicAuth: common.BasicAuthCredential{"user", "pass"}}, nil}
+			BasicAuth: common.BasicAuthCredential{Username: "user", Password: "pass"}}, nil}
 	verifySetAndGetCredential(t, cp, tc)
 }
