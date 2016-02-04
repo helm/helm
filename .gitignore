@@ -4,3 +4,4 @@ resourcifier/pkg/*
 resourcifier/bin/*
 manager/pkg/*
 .project
+vendor/*

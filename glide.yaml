@@ -1,0 +1,11 @@
+package: github.com/kubernetes/deployment-manager
+import:
+- package: github.com/emicklei/go-restful
+- package: github.com/ghodss/yaml
+- package: github.com/google/go-github
+  subpackages:
+  - /github
+- package: github.com/gorilla/handlers
+- package: github.com/gorilla/mux
+- package: gopkg.in/yaml.v2
+- package: github.com/Masterminds/semver
