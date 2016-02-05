@@ -1,0 +1,24 @@
+language: go
+
+env:
+  - GO15VENDOREXPERIMENT=1
+
+branches:
+  only:
+    - master
+    - /^v?(?:[0-9]+\.){2}[0-9]+.*$/
+
+cache:
+  directories:
+    - $GOPATH/src/github.com/deis/helm-dm/vendor
+
+go:
+  - 1.5
+
+install:
+  - wget "https://github.com/Masterminds/glide/releases/download/0.8.3/glide-0.8.3-linux-amd64.tar.gz"
+  - mkdir -p $HOME/bin
+  - tar -vxz -C $HOME/bin --strip=1 -f glide-0.8.3-linux-amd64.tar.gz
+  - export PATH="$HOME/bin:$PATH" GLIDE_HOME="$HOME/.glide"
+
+script: make bootstrap build test
