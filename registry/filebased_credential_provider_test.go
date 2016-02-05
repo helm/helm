@@ -55,6 +55,6 @@ func TestSetAndGetBasicAuthFilebased(t *testing.T) {
 	}
 	tc := &testCase{"test2",
 		&common.RegistryCredential{
-			BasicAuth: common.BasicAuthCredential{"user", "password"}}, nil}
+			BasicAuth: common.BasicAuthCredential{Username: "user", Password: "password"}}, nil}
 	testGetCredential(t, cp, tc)
 }

@@ -14,7 +14,9 @@
 
 # If you update this image please check the tag value before pushing.
 
-.PHONY : all build test push container clean
+include ../include.mk
+
+.PHONY : all build push container clean
 
 DOCKER_REGISTRY := gcr.io
 PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
@@ -23,12 +25,6 @@ TAG := latest
 
 ROOT_DIR := $(abspath ./..)
 DIR = $(ROOT_DIR)
-
-info:
-	@echo "Build tag: ${TAG}"
-	@echo "Registry: ${DOCKER_REGISTRY}"
-	@echo "Project: ${PROJECT}"
-	@echo "Image: ${IMAGE}"
 
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)
@@ -42,3 +38,6 @@ container:
 
 clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
+
+.PHONY: test
+test: lint vet test-unit

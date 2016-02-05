@@ -298,20 +298,20 @@ func TestShortGithubUrl(t *testing.T) {
 	}
 
 	downloadResponses := map[string]registry.DownloadResponse{
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        registry.DownloadResponse{nil, http.StatusOK, "my-content"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": registry.DownloadResponse{nil, http.StatusNotFound, ""},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        registry.DownloadResponse{nil, http.StatusOK, "my-content-2"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": registry.DownloadResponse{nil, http.StatusNotFound, ""},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        registry.DownloadResponse{Err: nil, Code: http.StatusOK, Body: "my-content"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": registry.DownloadResponse{Err: nil, Code: http.StatusNotFound, Body: ""},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        registry.DownloadResponse{Err: nil, Code: http.StatusOK, Body: "my-content-2"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": registry.DownloadResponse{Err: nil, Code: http.StatusNotFound, Body: ""},
 	}
 
 	githubUrlMaps := map[registry.Type]registry.TestURLAndError{
-		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
 	}
 
 	gcsUrlMaps := map[registry.Type]registry.TestURLAndError{
-		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
 	}
 
 	grp := registry.NewTestGithubRegistryProviderWithDownloads("github.com/kubernetes/application-dm-templates", githubUrlMaps, downloadResponses)

@@ -74,7 +74,7 @@ func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider, 
 	return rp
 }
 
-func (rp registryProvider) getRegistry(cr common.Registry) (Registry, error) {
+func (rp *registryProvider) getRegistry(cr common.Registry) (Registry, error) {
 	switch cr.Type {
 	case common.GithubRegistryType:
 		return rp.grp.GetGithubRegistry(cr)
@@ -86,7 +86,7 @@ func (rp registryProvider) getRegistry(cr common.Registry) (Registry, error) {
 	}
 }
 
-func (rp registryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
+func (rp *registryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
 	rp.RLock()
 	defer rp.RUnlock()
 
@@ -111,7 +111,7 @@ func (rp registryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
 
 // findRegistryByShortURL trims the scheme from both the supplied URL
 // and the short URL returned by GetRegistryShortURL.
-func (rp registryProvider) findRegistryByShortURL(URL string) Registry {
+func (rp *registryProvider) findRegistryByShortURL(URL string) Registry {
 	trimmed := util.TrimURLScheme(URL)
 	for _, r := range rp.registries {
 		if strings.HasPrefix(trimmed, util.TrimURLScheme(r.GetRegistryShortURL())) {
@@ -122,7 +122,7 @@ func (rp registryProvider) findRegistryByShortURL(URL string) Registry {
 	return nil
 }
 
-func (rp registryProvider) GetRegistryByName(registryName string) (Registry, error) {
+func (rp *registryProvider) GetRegistryByName(registryName string) (Registry, error) {
 	rp.RLock()
 	defer rp.RUnlock()
 

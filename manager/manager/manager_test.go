@@ -325,7 +325,7 @@ func TestCreateDeployment(t *testing.T) {
 	d, err := testManager.CreateDeployment(&template)
 	if !reflect.DeepEqual(d, &deployment) || err != nil {
 		t.Fatalf("Expected a different set of response values from invoking CreateDeployment."+
-			"Received: %s, %s. Expected: %s, %s.", d, err, &deployment, "nil")
+			"Received: %v, %s. Expected: %#v, %s.", d, err, &deployment, "nil")
 	}
 
 	if testRepository.Created[0] != template.Name {
@@ -383,7 +383,7 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 
 	if err != errTest || d != nil {
 		t.Fatalf("Expected a different set of response values from invoking CreateDeployment."+
-			"Received: %s, %s. Expected: %s, %s.", d, err, "nil", errTest)
+			"Received: %v, %s. Expected: %s, %s.", d, err, "nil", errTest)
 	}
 
 	if testRepository.TypeInstancesCleared {
@@ -437,7 +437,7 @@ func TestDeleteDeploymentForget(t *testing.T) {
 	d, err := testManager.CreateDeployment(&template)
 	if !reflect.DeepEqual(d, &deployment) || err != nil {
 		t.Fatalf("Expected a different set of response values from invoking CreateDeployment."+
-			"Received: %s, %s. Expected: %s, %s.", d, err, &deployment, "nil")
+			"Received: %v, %s. Expected: %#v, %s.", d, err, &deployment, "nil")
 	}
 
 	if testRepository.Created[0] != template.Name {

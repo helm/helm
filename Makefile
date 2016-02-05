@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include include.mk
+
 SUBDIRS := expandybird/. resourcifier/. manager/.
 TARGETS := all build test push container clean
 

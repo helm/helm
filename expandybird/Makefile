@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include ../include.mk
+
 .PHONY : all build test push container clean
 
 DOCKER_REGISTRY := gcr.io
@@ -20,12 +22,6 @@ IMAGE := expandybird
 TAG := latest
 
 DIR := .
-
-info:
-	@echo "Build tag: ${TAG}"
-	@echo "Registry: ${DOCKER_REGISTRY}"
-	@echo "Project: ${PROJECT}"
-	@echo "Image: ${IMAGE}"
 
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)
@@ -47,3 +43,5 @@ clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
 	rm -f expandybird
 
+.PHONY: test
+test: lint vet test-unit

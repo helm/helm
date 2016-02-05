@@ -77,7 +77,7 @@ func listConfigurationsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := &common.Configuration{
-		[]*common.Resource{
+		Resources: []*common.Resource{
 			{Type: rtype},
 		},
 	}
@@ -106,7 +106,7 @@ func getConfigurationHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := &common.Configuration{
-		[]*common.Resource{
+		Resources: []*common.Resource{
 			{Name: rname, Type: rtype},
 		},
 	}

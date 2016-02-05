@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY : all build test push container clean .project
+include ../include.mk
+
+.PHONY : all build push container clean .project
 
 DOCKER_REGISTRY := gcr.io
 PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
@@ -21,12 +23,6 @@ TAG := latest
 
 ROOT_DIR := $(abspath ./..)
 DIR = $(ROOT_DIR)
-
-info:
-	@echo "Build tag: ${TAG}"
-	@echo "Registry: ${DOCKER_REGISTRY}"
-	@echo "Project: ${PROJECT}"
-	@echo "Image: ${IMAGE}"
 
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)
@@ -41,3 +37,5 @@ container:
 clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
 
+.PHONY: test
+test: lint vet test-unit
