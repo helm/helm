@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,7 +13,7 @@ import (
 func pack(cxt *cli.Context) error {
 	args := cxt.Args()
 	if len(args) < 1 {
-		return fmt.Errorf("'helm package' requires a path to a chart directory as an argument.")
+		return errors.New("'helm package' requires a path to a chart directory as an argument")
 	}
 
 	dir := args[0]

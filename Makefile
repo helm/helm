@@ -4,7 +4,7 @@ endif
 
 BIN_DIR := bin
 DIST_DIR := _dist
-GO_PACKAGES := cmd/helm dm
+GO_PACKAGES := cmd/helm dm deploy format kubectl
 MAIN_GO := github.com/deis/helm-dm/cmd/helm
 HELM_BIN := helm-dm
 PATH_WITH_HELM = PATH="$(shell pwd)/$(BIN_DIR)/helm:$(PATH)"
@@ -47,7 +47,7 @@ quicktest:
 	$(PATH_WITH_HELM) go test -short $(addprefix ./,$(GO_PACKAGES))
 
 test: test-style
-	$(PATH_WITH_HELM) go test -v ./ $(addprefix ./,$(GO_PACKAGES))
+	$(PATH_WITH_HELM) go test -v $(addprefix ./,$(GO_PACKAGES))
 
 test-style:
 	@if [ $(shell gofmt -e -l -s *.go $(GO_PACKAGES)) ]; then \

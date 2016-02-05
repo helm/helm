@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/deployment-manager/chart"
@@ -10,7 +10,7 @@ import (
 func create(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		return fmt.Errorf("'helm create' requires a chart name as an argument.")
+		return errors.New("'helm create' requires a chart name as an argument")
 	}
 
 	cf := &chart.Chartfile{

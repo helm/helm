@@ -7,16 +7,19 @@ import (
 
 // This is all just placeholder.
 
-func Error(msg string, v ...interface{}) {
+// Err prints an error message to Stderr.
+func Err(msg string, v ...interface{}) {
 	msg = "[ERROR] " + msg + "\n"
 	fmt.Fprintf(os.Stderr, msg, v...)
 }
 
+// Info prints an informational message to Stdout.
 func Info(msg string, v ...interface{}) {
 	msg = "[INFO] " + msg + "\n"
 	fmt.Fprintf(os.Stdout, msg, v...)
 }
 
+// Msg prints a raw message to Stdout.
 func Msg(msg string, v ...interface{}) {
 	fmt.Fprintf(os.Stdout, msg, v...)
 }

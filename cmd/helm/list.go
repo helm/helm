@@ -14,7 +14,7 @@ func listCmd() cli.Command {
 		Usage: "Lists the deployments in the cluster",
 		Action: func(c *cli.Context) {
 			if err := list(c.GlobalString("host")); err != nil {
-				format.Error("%s (Is the cluster running?)", err)
+				format.Err("%s (Is the cluster running?)", err)
 				os.Exit(1)
 			}
 		},

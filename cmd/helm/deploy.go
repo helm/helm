@@ -13,13 +13,13 @@ import (
 func deploy(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		format.Error("First argument, filename, is required. Try 'helm deploy --help'")
+		format.Err("First argument, filename, is required. Try 'helm deploy --help'")
 		os.Exit(1)
 	}
 
 	props, err := parseProperties(c.String("properties"))
 	if err != nil {
-		format.Error("Failed to parse properties: %s", err)
+		format.Err("Failed to parse properties: %s", err)
 		os.Exit(1)
 	}
 
@@ -36,7 +36,6 @@ func deploy(c *cli.Context) error {
 	}
 
 	return doDeploy(d, c.GlobalString("host"), c.Bool("dry-run"))
-	return nil
 }
 
 func doDeploy(cfg *dep.Deployment, host string, dry bool) error {

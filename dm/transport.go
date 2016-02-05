@@ -15,6 +15,7 @@ type debugTransport struct {
 	http.RoundTripper
 }
 
+// NewDebugTransport returns a debugging implementation of a RoundTripper.
 func NewDebugTransport(rt http.RoundTripper) http.RoundTripper {
 	return debugTransport{
 		RoundTripper: rt,

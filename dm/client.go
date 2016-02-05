@@ -14,7 +14,7 @@ import (
 )
 
 // The default HTTP timeout
-var DefaultHTTPTimeout time.Duration = time.Second * 10
+var DefaultHTTPTimeout = time.Second * 10
 
 // Client is a DM client.
 type Client struct {
@@ -50,7 +50,7 @@ func (c *Client) url(path string) string {
 func (c *Client) CallService(path, method, action string, dest interface{}, reader io.ReadCloser) error {
 	u := c.url(path)
 
-	resp, err := c.callHttp(u, method, action, reader)
+	resp, err := c.callHTTP(u, method, action, reader)
 	if err != nil {
 		return err
 	}
@@ -69,8 +69,8 @@ func (c *Client) CallService(path, method, action string, dest interface{}, read
 	return nil
 }
 
-// callHttp is  a low-level primative for executing HTTP operations.
-func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (string, error) {
+// callHTTP is  a low-level primative for executing HTTP operations.
+func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (string, error) {
 	request, err := http.NewRequest(method, path, reader)
 	request.Header.Add("Content-Type", "application/json")
 
@@ -99,6 +99,7 @@ func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (st
 	return string(body), nil
 }
 
+// ListDeployments lists the deployments in DM.
 func (c *Client) ListDeployments() error {
 	var d interface{}
 	if err := c.CallService("deployments", "GET", "foo", &d, nil); err != nil {
@@ -109,6 +110,7 @@ func (c *Client) ListDeployments() error {
 	return nil
 }
 
+// DeployChart sends a chart to DM for deploying.
 func (c *Client) DeployChart(filename, deployname string) error {
 	f, err := os.Open(filename)
 	if err != nil {

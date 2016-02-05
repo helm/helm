@@ -13,6 +13,7 @@ func (r RealRunner) Get(stdin []byte, ns string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+// GetByKind gets a named thing by kind.
 func (r RealRunner) GetByKind(kind, name, ns string) (string, error) {
 	args := []string{"get", kind, name}
 
@@ -37,6 +38,7 @@ func (r PrintRunner) Get(stdin []byte, ns string) ([]byte, error) {
 	return []byte(cmd.String()), nil
 }
 
+// GetByKind gets a named thing by kind.
 func (r PrintRunner) GetByKind(kind, name, ns string) (string, error) {
 	args := []string{"get", kind, name}
 

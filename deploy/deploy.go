@@ -78,6 +78,7 @@ func (d *Deployment) Prepare() error {
 	return nil
 }
 
+// Chart retrieves the chart from teh deployment.
 func (d *Deployment) Chart() *chart.Chart {
 	return d.lchart
 }
