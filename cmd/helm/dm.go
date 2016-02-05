@@ -27,7 +27,7 @@ func uninstall(dryRun bool) error {
 
 	out, err := dm.Uninstall(runner)
 	if err != nil {
-		format.Error("Error uninstalling: %s %s", out, err)
+		format.Err("Error uninstalling: %s %s", out, err)
 	}
 	format.Msg(out)
 	return nil

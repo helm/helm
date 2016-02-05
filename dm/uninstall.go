@@ -4,7 +4,7 @@ import (
 	"github.com/deis/helm-dm/kubectl"
 )
 
-// uninstall uses kubectl to uninstall the base DM.
+// Uninstall uses kubectl to uninstall the base DM.
 //
 // Returns the string output received from the operation, and an error if the
 // command failed.

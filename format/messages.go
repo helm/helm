@@ -24,11 +24,13 @@ func Msg(msg string, v ...interface{}) {
 	fmt.Fprintf(os.Stdout, msg, v...)
 }
 
+// Success is an achievement marked by pretty output.
 func Success(msg string, v ...interface{}) {
 	msg = "[Success] " + msg + "\n"
 	fmt.Fprintf(os.Stdout, msg, v...)
 }
 
+// Warning emits a warning message.
 func Warning(msg string, v ...interface{}) {
 	msg = "[Warning] " + msg + "\n"
 	fmt.Fprintf(os.Stdout, msg, v...)
