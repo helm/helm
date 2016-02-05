@@ -1,4 +1,5 @@
 # Helm
+[![Build Status](https://travis-ci.com/deis/helm-dm.svg?token=squRCxmMZdFNSQ9qAtbQ&branch=master)](https://travis-ci.com/deis/helm-dm)
 
 Experimental Helm fork.
 
