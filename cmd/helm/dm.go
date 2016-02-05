@@ -8,14 +8,15 @@ import (
 	"github.com/deis/helm-dm/kubectl"
 )
 
-var ErrAlreadyInstalled error = errors.New("Already Installed")
+// ErrAlreadyInstalled indicates that DM is already installed.
+var ErrAlreadyInstalled = errors.New("Already Installed")
 
 func install(dryRun bool) error {
 	runner := getKubectlRunner(dryRun)
 
 	out, err := dm.Install(runner)
 	if err != nil {
-		format.Error("Error installing: %s %s", out, err)
+		format.Err("Error installing: %s %s", out, err)
 	}
 	format.Msg(out)
 	return nil
@@ -26,7 +27,7 @@ func uninstall(dryRun bool) error {
 
 	out, err := dm.Uninstall(runner)
 	if err != nil {
-		format.Error("Error uninstalling: %s %s", out, err)
+		format.Err("Error uninstalling: %s %s", out, err)
 	}
 	format.Msg(out)
 	return nil

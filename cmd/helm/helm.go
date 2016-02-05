@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	dep "github.com/deis/helm-dm/deploy"
 	"github.com/deis/helm-dm/format"
 )
 
@@ -48,7 +47,7 @@ func commands() []cli.Command {
 					},
 					Action: func(c *cli.Context) {
 						if err := install(c.Bool("dry-run")); err != nil {
-							format.Error("%s (Run 'helm doctor' for more information)", err)
+							format.Err("%s (Run 'helm doctor' for more information)", err)
 							os.Exit(1)
 						}
 					},
@@ -65,7 +64,7 @@ func commands() []cli.Command {
 					},
 					Action: func(c *cli.Context) {
 						if err := uninstall(c.Bool("dry-run")); err != nil {
-							format.Error("%s (Run 'helm doctor' for more information)", err)
+							format.Err("%s (Run 'helm doctor' for more information)", err)
 							os.Exit(1)
 						}
 					},
@@ -74,7 +73,7 @@ func commands() []cli.Command {
 					Name:  "status",
 					Usage: "Show status of DM.",
 					Action: func(c *cli.Context) {
-						format.Error("Not yet implemented")
+						format.Err("Not yet implemented")
 						os.Exit(1)
 					},
 				},
@@ -84,7 +83,7 @@ func commands() []cli.Command {
 					ArgsUsage: "",
 					Action: func(c *cli.Context) {
 						if err := target(c.Bool("dry-run")); err != nil {
-							format.Error("%s (Is the cluster running?)", err)
+							format.Err("%s (Is the cluster running?)", err)
 							os.Exit(1)
 						}
 					},
@@ -109,7 +108,7 @@ func commands() []cli.Command {
 			},
 			Action: func(c *cli.Context) {
 				if err := install(c.Bool("dry-run")); err != nil {
-					format.Error("%s (Run 'helm doctor' for more information)", err)
+					format.Err("%s (Run 'helm doctor' for more information)", err)
 					os.Exit(1)
 				}
 			},
@@ -120,46 +119,27 @@ func commands() []cli.Command {
 			ArgsUsage: "",
 			Action: func(c *cli.Context) {
 				if err := doctor(); err != nil {
-					format.Error("%s", err)
+					format.Err("%s", err)
 					os.Exit(1)
 				}
 			},
 		},
 		{
+			Name:   "create",
+			Usage:  "Create a new local chart for editing.",
+			Action: func(c *cli.Context) { run(c, create) },
+		},
+		{
+			Name:    "package",
+			Aliases: []string{"pack"},
+			Usage:   "Given a chart directory, package it into a release.",
+			Action:  func(c *cli.Context) { run(c, pack) },
+		},
+		{
 			Name:    "deploy",
 			Aliases: []string{"install"},
 			Usage:   "Deploy a chart into the cluster.",
-			Action: func(c *cli.Context) {
-
-				args := c.Args()
-				if len(args) < 1 {
-					format.Error("First argument, filename, is required. Try 'helm deploy --help'")
-					os.Exit(1)
-				}
-
-				props, err := parseProperties(c.String("properties"))
-				if err != nil {
-					format.Error("Failed to parse properties: %s", err)
-					os.Exit(1)
-				}
-
-				d := &dep.Deployment{
-					Name:       c.String("Name"),
-					Properties: props,
-					Filename:   args[0],
-					Imports:    args[1:],
-					Repository: c.String("repository"),
-				}
-
-				if c.Bool("stdin") {
-					d.Input = os.Stdin
-				}
-
-				if err := deploy(d, c.GlobalString("host"), c.Bool("dry-run")); err != nil {
-					format.Error("%s (Try running 'helm doctor')", err)
-					os.Exit(1)
-				}
-			},
+			Action:  func(c *cli.Context) { run(c, deploy) },
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "dry-run",
@@ -191,5 +171,12 @@ func commands() []cli.Command {
 			Name: "search",
 		},
 		listCmd(),
+	}
+}
+
+func run(c *cli.Context, f func(c *cli.Context) error) {
+	if err := f(c); err != nil {
+		os.Stderr.Write([]byte(err.Error()))
+		os.Exit(1)
 	}
 }

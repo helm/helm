@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/deis/helm-dm/dm"
+	"github.com/deis/helm-dm/format"
 	"github.com/deis/helm-dm/kubectl"
 )
 

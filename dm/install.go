@@ -20,7 +20,7 @@ func IsInstalled(runner kubectl.Runner) bool {
 	// we know that we have both the namespace and the manager API server.
 	out, err := runner.GetByKind("rc", "manager-rc", "dm")
 	if err != nil {
-		format.Error("Installation not found: %s %s", out, err)
+		format.Err("Installation not found: %s %s", out, err)
 		return false
 	}
 	return true

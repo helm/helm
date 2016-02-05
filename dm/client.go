@@ -6,13 +6,15 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/ghodss/yaml"
 )
 
 // The default HTTP timeout
-var DefaultHTTPTimeout time.Duration = time.Second * 10
+var DefaultHTTPTimeout = time.Second * 10
 
 // Client is a DM client.
 type Client struct {
@@ -48,7 +50,7 @@ func (c *Client) url(path string) string {
 func (c *Client) CallService(path, method, action string, dest interface{}, reader io.ReadCloser) error {
 	u := c.url(path)
 
-	resp, err := c.callHttp(u, method, action, reader)
+	resp, err := c.callHTTP(u, method, action, reader)
 	if err != nil {
 		return err
 	}
@@ -67,8 +69,8 @@ func (c *Client) CallService(path, method, action string, dest interface{}, read
 	return nil
 }
 
-// callHttp is  a low-level primative for executing HTTP operations.
-func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (string, error) {
+// callHTTP is  a low-level primative for executing HTTP operations.
+func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (string, error) {
 	request, err := http.NewRequest(method, path, reader)
 	request.Header.Add("Content-Type", "application/json")
 
@@ -97,6 +99,7 @@ func (c *Client) callHttp(path, method, action string, reader io.ReadCloser) (st
 	return string(body), nil
 }
 
+// ListDeployments lists the deployments in DM.
 func (c *Client) ListDeployments() error {
 	var d interface{}
 	if err := c.CallService("deployments", "GET", "foo", &d, nil); err != nil {
@@ -104,5 +107,51 @@ func (c *Client) ListDeployments() error {
 	}
 
 	fmt.Printf("%#v\n", d)
+	return nil
+}
+
+// DeployChart sends a chart to DM for deploying.
+func (c *Client) DeployChart(filename, deployname string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	request, err := http.NewRequest("POST", "/v2/deployments/", f)
+
+	// There is an argument to be made for using the legacy x-octet-stream for
+	// this. But since we control both sides, we should use the standard one.
+	// Also, gzip (x-compress) is usually treated as a content encoding. In this
+	// case it probably is not, but it makes more sense to follow the standard,
+	// even though we don't assume the remote server will strip it off.
+	request.Header.Add("Content-Type", "application/x-tar")
+	request.Header.Add("Content-Encoding", "gzip")
+	request.Header.Add("X-Deployment-Name", deployname)
+	request.Header.Add("X-Chart-Name", filepath.Base(filename))
+
+	client := http.Client{
+		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
+		Transport: c.Transport,
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	// FIXME: We only want 200 OK or 204(?) CREATED
+	if response.StatusCode < http.StatusOK ||
+		response.StatusCode >= http.StatusMultipleChoices {
+		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
+		return fmt.Errorf("Failed to post: %s", message)
+	}
+
 	return nil
 }
