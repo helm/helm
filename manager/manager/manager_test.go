@@ -230,23 +230,23 @@ func (repository *repositoryStub) GetManifest(d string, m string) (*common.Manif
 	return nil, errTest
 }
 
-func (tgr *repositoryStub) ListTypes() []string {
-	tgr.ListTypesCalled = true
+func (repository *repositoryStub) ListTypes() []string {
+	repository.ListTypesCalled = true
 	return []string{}
 }
 
-func (tgr *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
-	tgr.GetTypeInstancesCalled = true
+func (repository *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
+	repository.GetTypeInstancesCalled = true
 	return []*common.TypeInstance{}
 }
 
-func (tgr *repositoryStub) ClearTypeInstances(d string) {
-	tgr.TypeInstancesCleared = true
+func (repository *repositoryStub) ClearTypeInstances(d string) {
+	repository.TypeInstancesCleared = true
 }
 
-func (tgr *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
-	for k, _ := range is {
-		tgr.TypeInstances[d] = append(tgr.TypeInstances[d], k)
+func (repository *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
+	for k := range is {
+		repository.TypeInstances[d] = append(repository.TypeInstances[d], k)
 	}
 }
 

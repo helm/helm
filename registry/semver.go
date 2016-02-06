@@ -22,12 +22,14 @@ import (
 	"strings"
 )
 
+// SemVer holds a semantic version as defined by semver.io.
 type SemVer struct {
 	Major uint
 	Minor uint
 	Patch uint
 }
 
+// ParseSemVer parses a semantic version string.
 func ParseSemVer(version string) (SemVer, error) {
 	var err error
 	major, minor, patch := uint64(0), uint64(0), uint64(0)
@@ -70,6 +72,7 @@ func ParseSemVer(version string) (SemVer, error) {
 	return SemVer{Major: uint(major), Minor: uint(minor), Patch: uint(patch)}, nil
 }
 
+// IsZero returns true if the semantic version is zero.
 func (s SemVer) IsZero() bool {
 	return s.Major == 0 && s.Minor == 0 && s.Patch == 0
 }

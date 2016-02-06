@@ -18,7 +18,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -237,7 +236,7 @@ func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler s
 	vars := mux.Vars(r)
 	escaped, ok := vars[variable]
 	if !ok {
-		e := errors.New(fmt.Sprintf("%s name not found in URL", variable))
+		e := fmt.Errorf("%s name not found in URL", variable)
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return "", e
 	}
@@ -254,7 +253,7 @@ func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler s
 
 func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {
 	util.LogHandlerEntry(handler, r)
-	j, err := getJsonFromRequest(w, r, handler)
+	j, err := getJSONFromRequest(w, r, handler)
 
 	if err != nil {
 		return nil
@@ -382,7 +381,7 @@ func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 func getRegistry(w http.ResponseWriter, r *http.Request, handler string) *common.Registry {
 	util.LogHandlerEntry(handler, r)
-	j, err := getJsonFromRequest(w, r, handler)
+	j, err := getJSONFromRequest(w, r, handler)
 	if err != nil {
 		return nil
 	}
@@ -506,7 +505,7 @@ func getFileHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {
 	util.LogHandlerEntry(handler, r)
-	j, err := getJsonFromRequest(w, r, handler)
+	j, err := getJSONFromRequest(w, r, handler)
 	if err != nil {
 		return nil
 	}
@@ -559,7 +558,7 @@ func getCredentialHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
 }
 
-func getJsonFromRequest(w http.ResponseWriter, r *http.Request, handler string) ([]byte, error) {
+func getJSONFromRequest(w http.ResponseWriter, r *http.Request, handler string) ([]byte, error) {
 	util.LogHandlerEntry(handler, r)
 	b := io.LimitReader(r.Body, *maxLength*1024)
 	y, err := ioutil.ReadAll(b)

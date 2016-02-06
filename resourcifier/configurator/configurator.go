@@ -27,10 +27,12 @@ import (
 	"github.com/kubernetes/deployment-manager/util"
 )
 
+// Configurator configures a Kubernetes cluster using kubectl.
 type Configurator struct {
 	k util.Kubernetes
 }
 
+// NewConfigurator creates a new Configurator.
 func NewConfigurator(kubernetes util.Kubernetes) *Configurator {
 	return &Configurator{kubernetes}
 }
@@ -69,7 +71,7 @@ func (e *Error) appendError(err error) error {
 	return err
 }
 
-// resource name -> set of dependencies.
+// DependencyMap maps a resource name to a set of dependencies.
 type DependencyMap map[string]map[string]bool
 
 var refRe = regexp.MustCompile("\\$\\(ref\\.([^\\.]+)\\.([^\\)]+)\\)")

@@ -200,7 +200,7 @@ func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler s
 	vars := mux.Vars(r)
 	escaped, ok := vars[variable]
 	if !ok {
-		e := errors.New(fmt.Sprintf("%s name not found in URL", variable))
+		e := fmt.Errorf("%s name not found in URL", variable)
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return "", e
 	}
@@ -226,7 +226,7 @@ func getConfiguration(w http.ResponseWriter, r *http.Request, handler string) *c
 	// Reject the input if it exceeded the length limit,
 	// since we may not have read all of it into the buffer.
 	if _, err = b.Read(make([]byte, 0, 1)); err != io.EOF {
-		e := fmt.Errorf("configuration exceeds maximum length of %d KB.", *maxLength)
+		e := fmt.Errorf("configuration exceeds maximum length of %d KB", *maxLength)
 		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
 		return nil
 	}

@@ -72,6 +72,7 @@ type httpClient struct {
 	sleep   Sleeper
 }
 
+// DefaultHTTPClient returns a default http client.
 func DefaultHTTPClient() HTTPClient {
 	return NewHTTPClient(3, http.DefaultClient, NewSleeper())
 }
@@ -115,6 +116,7 @@ func readBody(b io.ReadCloser, ctype string, encoding string) (body string, err 
 	return string(bytes), err
 }
 
+// Get does an HTTP GET on the receiver.
 func (client httpClient) Get(url string) (body string, code int, err error) {
 	retryCount := client.retries
 	numRetries := uint(0)

@@ -153,6 +153,7 @@ func (g GithubPackageRegistry) MakeRepositoryPath(t Type) (string, error) {
 	return t.Name + "/manifests", nil
 }
 
+// Do performs an HTTP operation on the receiver's httpClient.
 func (g GithubPackageRegistry) Do(req *http.Request) (resp *http.Response, err error) {
 	return g.httpClient.Do(req)
 }

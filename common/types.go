@@ -162,7 +162,7 @@ type TypeInstance struct {
 // KubernetesObject represents a native 'bare' Kubernetes object.
 type KubernetesObject struct {
 	Kind       string                 `json:"kind"`
-	ApiVersion string                 `json:"apiVersion"`
+	APIVersion string                 `json:"apiVersion"`
 	Metadata   map[string]interface{} `json:"metadata"`
 	Spec       map[string]interface{} `json:"spec"`
 }
@@ -170,21 +170,26 @@ type KubernetesObject struct {
 // KubernetesSecret represents a Kubernetes secret
 type KubernetesSecret struct {
 	Kind       string            `json:"kind"`
-	ApiVersion string            `json:"apiVersion"`
+	APIVersion string            `json:"apiVersion"`
 	Metadata   map[string]string `json:"metadata"`
 	Data       map[string]string `json:"data,omitempty"`
 }
 
 // Repository related types
+
+// BasicAuthCredential holds a username and password.
 type BasicAuthCredential struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
+// APITokenCredential defines an API token.
 type APITokenCredential string
+
+// JWTTokenCredential defines a JWT token.
 type JWTTokenCredential string
 
-// Credential used to access the repository
+// RegistryCredential holds a credential used to access a registry.
 type RegistryCredential struct {
 	APIToken       APITokenCredential  `json:"apitoken,omitempty"`
 	BasicAuth      BasicAuthCredential `json:"basicauth,omitempty"`
@@ -204,6 +209,7 @@ type Registry struct {
 // RegistryType defines the technology that implements the registry
 type RegistryType string
 
+// Constants that identify the supported registry layouts.
 const (
 	GithubRegistryType RegistryType = "github"
 	GCSRegistryType    RegistryType = "gcs"
@@ -215,15 +221,17 @@ type RegistryFormat string
 
 const (
 	// Versioning.
-	// If a registry if versioned, then types appear under versions.
+
+	// VersionedRegistry identifies a versioned registry, where types appear under versions.
 	VersionedRegistry RegistryFormat = "versioned"
-	// If a registry is unversioned, then types appear under their names.
+	// UnversionedRegistry identifies an unversioned registry, where types appear under their names.
 	UnversionedRegistry RegistryFormat = "unversioned"
 
 	// Organization.
-	// In a collection registry, types are grouped into collections.
+
+	// CollectionRegistry identfies a collection registry, where types are grouped into collections.
 	CollectionRegistry RegistryFormat = "collection"
-	// In a one level registry, all types appear at the top level.
+	// OneLevelRegistry identifies a one level registry, where all types appear at the top level.
 	OneLevelRegistry RegistryFormat = "onelevel"
 )
 

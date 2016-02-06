@@ -50,10 +50,14 @@ type GCSRegistry struct {
 }
 
 // RE for GCS storage
+
+// ChartFormatMatcher matches the chart name format
 var ChartFormatMatcher = regexp.MustCompile("(.*)-(.*).tgz")
+
+// URLFormatMatcher matches the GCS URL format (gs:).
 var URLFormatMatcher = regexp.MustCompile("gs://(.*)")
 
-// NewGithubTemplateRegistry creates a GithubTemplateRegistry.
+// NewGCSRegistry creates a GCS registry.
 func NewGCSRegistry(name, shortURL string, httpClient *http.Client, gcsService *storage.Service) (*GCSRegistry, error) {
 	format := fmt.Sprintf("%s;%s", common.VersionedRegistry, common.OneLevelRegistry)
 	trimmed := util.TrimURLScheme(shortURL)
@@ -73,14 +77,17 @@ func NewGCSRegistry(name, shortURL string, httpClient *http.Client, gcsService *
 		nil
 }
 
+// GetRegistryName returns the name of the registry.
 func (g GCSRegistry) GetRegistryName() string {
 	return g.name
 }
 
+// GetBucket returns the registry bucket.
 func (g GCSRegistry) GetBucket() string {
 	return g.bucket
 }
 
+// GetRegistryType returns the registry type.
 func (g GCSRegistry) GetRegistryType() common.RegistryType {
 	return common.GCSRegistryType
 }
@@ -123,10 +130,12 @@ func (g GCSRegistry) ListTypes(regex *regexp.Regexp) ([]Type, error) {
 	return types, nil
 }
 
+// GetRegistryFormat returns the registry format.
 func (g GCSRegistry) GetRegistryFormat() common.RegistryFormat {
 	return common.CollectionRegistry
 }
 
+// GetRegistryShortURL returns the short URL for the registry.
 func (g GCSRegistry) GetRegistryShortURL() string {
 	return g.shortURL
 }
@@ -152,6 +161,7 @@ func (g GCSRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	return ret, err
 }
 
+// Do performs an HTTP operation on the receiver's httpClient.
 func (g GCSRegistry) Do(req *http.Request) (resp *http.Response, err error) {
 	return g.httpClient.Do(req)
 }

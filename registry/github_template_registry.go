@@ -214,6 +214,7 @@ func (g GithubTemplateRegistry) MakeRepositoryPath(t Type) (string, error) {
 	return p + t.Name + "/" + t.GetVersion(), nil
 }
 
+// Do performs an HTTP operation on the receiver's httpClient.
 func (g GithubTemplateRegistry) Do(req *http.Request) (resp *http.Response, err error) {
 	return g.httpClient.Do(req)
 }

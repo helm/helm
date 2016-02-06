@@ -22,14 +22,17 @@ import (
 	"fmt"
 )
 
+// InmemCredentialProvider is a memory based credential provider.
 type InmemCredentialProvider struct {
 	credentials map[string]*common.RegistryCredential
 }
 
+// NewInmemCredentialProvider creates a new memory based credential provider.
 func NewInmemCredentialProvider() common.CredentialProvider {
 	return &InmemCredentialProvider{credentials: make(map[string]*common.RegistryCredential)}
 }
 
+// GetCredential returns a credential by name.
 func (fcp *InmemCredentialProvider) GetCredential(name string) (*common.RegistryCredential, error) {
 	if val, ok := fcp.credentials[name]; ok {
 		return val, nil
@@ -37,6 +40,7 @@ func (fcp *InmemCredentialProvider) GetCredential(name string) (*common.Registry
 	return nil, fmt.Errorf("no such credential : %s", name)
 }
 
+// SetCredential sets a credential by name.
 func (fcp *InmemCredentialProvider) SetCredential(name string, credential *common.RegistryCredential) error {
 	fcp.credentials[name] = &common.RegistryCredential{APIToken: credential.APIToken, BasicAuth: credential.BasicAuth, ServiceAccount: credential.ServiceAccount}
 	return nil

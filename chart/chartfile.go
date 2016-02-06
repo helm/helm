@@ -49,7 +49,7 @@ type Dependency struct {
 	Location string `yaml:"location"`
 }
 
-// Specify environmental constraints.
+// EnvConstraint specifies environmental constraints.
 type EnvConstraint struct {
 	Name       string   `yaml:"name"`
 	Version    string   `yaml:"version"`

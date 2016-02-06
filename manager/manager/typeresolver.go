@@ -223,23 +223,23 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 func parseContent(templates []string) (string, error) {
 	if len(templates) == 1 {
 		return templates[0], nil
-	} else {
-		// If there are multiple URLs that need to be fetched, that implies it's a package
-		// of raw Kubernetes objects. We need to fetch them all as a unit and create a
-		// template representing a package out of that below.
-		fakeConfig := &common.Configuration{}
-		for _, template := range templates {
-			o, err := util.ParseKubernetesObject([]byte(template))
-			if err != nil {
-				return "", fmt.Errorf("not a kubernetes object: %+v", template)
-			}
-			// Looks like a native Kubernetes object, create a configuration out of it
-			fakeConfig.Resources = append(fakeConfig.Resources, o)
-		}
-		marshalled, err := yaml.Marshal(fakeConfig)
-		if err != nil {
-			return "", fmt.Errorf("Failed to marshal: %+v", fakeConfig)
-		}
-		return string(marshalled), nil
 	}
+
+	// If there are multiple URLs that need to be fetched, that implies it's a package
+	// of raw Kubernetes objects. We need to fetch them all as a unit and create a
+	// template representing a package out of that below.
+	fakeConfig := &common.Configuration{}
+	for _, template := range templates {
+		o, err := util.ParseKubernetesObject([]byte(template))
+		if err != nil {
+			return "", fmt.Errorf("not a kubernetes object: %+v", template)
+		}
+		// Looks like a native Kubernetes object, create a configuration out of it
+		fakeConfig.Resources = append(fakeConfig.Resources, o)
+	}
+	marshalled, err := yaml.Marshal(fakeConfig)
+	if err != nil {
+		return "", fmt.Errorf("Failed to marshal: %+v", fakeConfig)
+	}
+	return string(marshalled), nil
 }
