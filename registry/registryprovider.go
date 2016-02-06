@@ -168,6 +168,7 @@ type githubRegistryProvider struct {
 // NewGithubRegistryProvider creates a GithubRegistryProvider.
 func NewGithubRegistryProvider(cp common.CredentialProvider) GithubRegistryProvider {
 	if cp == nil {
+	    // TODO: replace this panic with an error return.
 		panic(fmt.Errorf("no credential provider"))
 	}
 	return &githubRegistryProvider{cp: cp}
@@ -239,6 +240,7 @@ type gcsRegistryProvider struct {
 // NewGCSRegistryProvider creates a GCSRegistryProvider.
 func NewGCSRegistryProvider(cp common.CredentialProvider) GCSRegistryProvider {
 	if cp == nil {
+	    // TODO: replace this panic with an error return.
 		panic(fmt.Errorf("no credential provider"))
 	}
 	return &gcsRegistryProvider{cp: cp}
@@ -350,7 +352,7 @@ func ShortTypeToDownloadURLs(rp RegistryProvider, t string) ([]string, Registry,
 	}
 
 	if r == nil {
-		panic(fmt.Errorf("cannot get github registry for %s", t))
+		return nil, nil, fmt.Errorf("cannot get github registry for %s", t)
 	}
 
 	tt, err := NewType(m[3], m[4], m[5])
