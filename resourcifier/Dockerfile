@@ -25,9 +25,9 @@ ENV KUBE_VERSION v1.0.5
 RUN curl -fsSL -o kubectl https://storage.googleapis.com/kubernetes-release/release/$KUBE_VERSION/bin/linux/amd64/kubectl \
     && chmod +x kubectl
 
-COPY . "$GOPATH"/src
+COPY . "$GOPATH"/src/github.com/kubernetes/deployment-manager
 
-WORKDIR "$GOPATH"/src/resourcifier
+WORKDIR "$GOPATH"/src/github.com/kubernetes/deployment-manager/resourcifier
 
 RUN go-wrapper download
 RUN go-wrapper install
