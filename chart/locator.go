@@ -30,6 +30,7 @@ var ErrLocal = errors.New("cannot use local Locator as remote")
 // ErrRemote indicates that a remote URL was used as a local URL.
 var ErrRemote = errors.New("cannot use remote Locator as local")
 
+// Constants defining recognized URL schemes.
 const (
 	SchemeHTTP  = "http"
 	SchemeHTTPS = "https"
@@ -50,6 +51,7 @@ func init() {
 	tnregexp = regexp.MustCompile("^" + TarNameRegex + "$")
 }
 
+// Locator describes the location of a Chart.
 type Locator struct {
 	// The scheme of the URL. Typically one of http, https, helm, or file.
 	Scheme string
@@ -70,6 +72,7 @@ type Locator struct {
 	original string
 }
 
+// Parse parses a URL into a Locator.
 func Parse(path string) (*Locator, error) {
 	u, err := url.Parse(path)
 	if err != nil {

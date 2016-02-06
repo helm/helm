@@ -48,10 +48,12 @@ type registryProvider struct {
 	registries map[string]Registry
 }
 
+// NewDefaultRegistryProvider creates a default registry provider with the supplied credential.
 func NewDefaultRegistryProvider(cp common.CredentialProvider, rs common.RegistryService) RegistryProvider {
 	return NewRegistryProvider(rs, NewGithubRegistryProvider(cp), NewGCSRegistryProvider(cp), cp)
 }
 
+// NewRegistryProvider creates a new registry provider using the supplied arguments.
 func NewRegistryProvider(rs common.RegistryService, grp GithubRegistryProvider, gcsrp GCSRegistryProvider, cp common.CredentialProvider) RegistryProvider {
 	if rs == nil {
 		rs = NewInmemRegistryService()
@@ -86,6 +88,7 @@ func (rp *registryProvider) getRegistry(cr common.Registry) (Registry, error) {
 	}
 }
 
+// GetRegistryByShortURL returns the registry identified by a short URL.
 func (rp *registryProvider) GetRegistryByShortURL(URL string) (Registry, error) {
 	rp.RLock()
 	defer rp.RUnlock()
@@ -122,6 +125,7 @@ func (rp *registryProvider) findRegistryByShortURL(URL string) Registry {
 	return nil
 }
 
+// GetRegistryByName returns a registry by name.
 func (rp *registryProvider) GetRegistryByName(registryName string) (Registry, error) {
 	rp.RLock()
 	defer rp.RUnlock()
@@ -141,6 +145,7 @@ func (rp *registryProvider) GetRegistryByName(registryName string) (Registry, er
 	return r, nil
 }
 
+// ParseRegistryFormat creates a map from a registry format string.
 func ParseRegistryFormat(rf common.RegistryFormat) map[common.RegistryFormat]bool {
 	split := strings.Split(string(rf), ";")
 	var result = map[common.RegistryFormat]bool{}
@@ -315,7 +320,7 @@ func GetDownloadURLs(rp RegistryProvider, t string) ([]string, Registry, error) 
 		return ShortTypeToPackageDownloadURLs(rp, t)
 	} else if IsGCSShortType(t) {
 		return ShortTypeToGCSDownloadUrls(rp, t)
-	} else if util.IsHttpUrl(t) {
+	} else if util.IsHTTPURL(t) {
 		result, err := url.Parse(t)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot parse download URL %s: %s", t, err)
@@ -389,6 +394,7 @@ func ShortTypeToPackageDownloadURLs(rp RegistryProvider, t string) ([]string, Re
 	return util.ConvertURLsToStrings(urls), r, err
 }
 
+// ShortTypeToGCSDownloadUrls returns the download URLs for a short type name.
 func ShortTypeToGCSDownloadUrls(rp RegistryProvider, t string) ([]string, Registry, error) {
 	m := GCSRegistryMatcher.FindStringSubmatch(t)
 	if len(m) != 3 {

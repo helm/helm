@@ -33,6 +33,7 @@ type KubernetesKubectl struct {
 	Arguments []string
 }
 
+// NewKubernetesKubectl creates a new Kubernetes kubectl wrapper.
 func NewKubernetesKubectl(config *KubernetesConfig) Kubernetes {
 	if config.KubePath == "" {
 		log.Fatalf("kubectl path cannot be empty")
@@ -85,6 +86,7 @@ func NewKubernetesKubectl(config *KubernetesConfig) Kubernetes {
 	return &KubernetesKubectl{config.KubePath, args}
 }
 
+// Get runs a kubectl get command for a named resource of a given type.
 func (k *KubernetesKubectl) Get(name string, resourceType string) (string, error) {
 	// Specify output as json rather than human readable for easier machine parsing
 	args := []string{"get",
@@ -95,16 +97,19 @@ func (k *KubernetesKubectl) Get(name string, resourceType string) (string, error
 	return k.execute(args, "")
 }
 
+// Create runs a kubectl create command for a given resource.
 func (k *KubernetesKubectl) Create(resource string) (string, error) {
 	args := []string{"create"}
 	return k.execute(args, resource)
 }
 
+// Delete runs a kubectl delete command for a given resource.
 func (k *KubernetesKubectl) Delete(resource string) (string, error) {
 	args := []string{"delete"}
 	return k.execute(args, resource)
 }
 
+// Replace runs a kubectl replace command for a given resource.
 func (k *KubernetesKubectl) Replace(resource string) (string, error) {
 	args := []string{"replace"}
 	return k.execute(args, resource)

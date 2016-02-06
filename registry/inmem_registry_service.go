@@ -28,6 +28,7 @@ type inmemRegistryService struct {
 	registries map[string]*common.Registry
 }
 
+// NewInmemRegistryService returns a new memory based registry service.
 func NewInmemRegistryService() common.RegistryService {
 	rs := &inmemRegistryService{
 		registries: make(map[string]*common.Registry),

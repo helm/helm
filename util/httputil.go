@@ -233,8 +233,8 @@ func ToJSONOrError(v interface{}) string {
 	return string(j)
 }
 
-// IsHttpURL returns whether a string is an HTTP URL.
-func IsHttpUrl(s string) bool {
+// IsHTTPURL returns true if a string is an HTTP URL.
+func IsHTTPURL(s string) bool {
 	u, err := url.Parse(s)
 	if err != nil {
 		return false

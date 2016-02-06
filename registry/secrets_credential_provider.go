@@ -46,12 +46,13 @@ var kubernetesConfig *util.KubernetesConfig
 
 const secretType = "Secret"
 
-// CredentialProvider provides credentials for registries.
+// SecretsCredentialProvider provides credentials for registries from Kubernertes secrets.
 type SecretsCredentialProvider struct {
 	// Actual object that talks to secrets service.
 	k util.Kubernetes
 }
 
+// NewSecretsCredentialProvider creates a new secrets credential provider.
 func NewSecretsCredentialProvider() common.CredentialProvider {
 	kubernetesConfig := &util.KubernetesConfig{
 		KubePath:       *kubePath,
@@ -87,6 +88,7 @@ func parseCredential(credential string) (*common.RegistryCredential, error) {
 	return r, nil
 }
 
+// GetCredential returns a credential by name.
 func (scp *SecretsCredentialProvider) GetCredential(name string) (*common.RegistryCredential, error) {
 	o, err := scp.k.Get(name, secretType)
 	if err != nil {
@@ -95,6 +97,7 @@ func (scp *SecretsCredentialProvider) GetCredential(name string) (*common.Regist
 	return parseCredential(o)
 }
 
+// SetCredential sets a credential by name.
 func (scp *SecretsCredentialProvider) SetCredential(name string, credential *common.RegistryCredential) error {
 	// Marshal the credential & base64 encode it.
 	b, err := yaml.Marshal(credential)
@@ -111,7 +114,7 @@ func (scp *SecretsCredentialProvider) SetCredential(name string, credential *com
 	data["credential"] = enc
 	obj := &common.KubernetesSecret{
 		Kind:       secretType,
-		ApiVersion: "v1",
+		APIVersion: "v1",
 		Metadata:   metadata,
 		Data:       data,
 	}

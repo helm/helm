@@ -30,6 +30,7 @@ import (
 	"github.com/kubernetes/deployment-manager/log"
 )
 
+// ChartfileName is the default Chart file name.
 const ChartfileName string = "Chart.yaml"
 
 const (
@@ -73,7 +74,7 @@ func (c *Chart) Chartfile() *Chartfile {
 	return c.loader.chartfile()
 }
 
-// Dir() returns the directory where the charts are located.
+// Dir returns the directory where the charts are located.
 func (c *Chart) Dir() string {
 	return c.loader.dir()
 }
@@ -148,7 +149,7 @@ func (t *tarChart) close() error {
 	return os.RemoveAll(t.tmpDir)
 }
 
-// New creates a new chart in a directory.
+// Create creates a new chart in a directory.
 //
 // Inside of dir, this will create a directory based on the name of
 // chartfile.Name. It will then write the Chart.yaml into this directory and

@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func testUrlConversionDriver(rp RegistryProvider, tests map[string]TestURLAndError, t *testing.T) {
+func testURLConversionDriver(rp RegistryProvider, tests map[string]TestURLAndError, t *testing.T) {
 	for in, expected := range tests {
 		// TODO(vaikas): Test to make sure it's the right registry.
 		actual, _, err := GetDownloadURLs(rp, in)
@@ -34,8 +34,8 @@ func testUrlConversionDriver(rp RegistryProvider, tests map[string]TestURLAndErr
 	}
 }
 
-func TestShortGithubUrlTemplateMapping(t *testing.T) {
-	githubUrlMaps := map[Type]TestURLAndError{
+func TestShortGithubURLTemplateMapping(t *testing.T) {
+	githubURLMaps := map[Type]TestURLAndError{
 		NewTypeOrDie("common", "replicatedservice", "v1"): TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
 		NewTypeOrDie("storage", "redis", "v1"):            TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
 	}
@@ -45,13 +45,13 @@ func TestShortGithubUrlTemplateMapping(t *testing.T) {
 		"github.com/kubernetes/application-dm-templates/storage/redis:v1":            TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
 	}
 
-	grp := NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubUrlMaps)
+	grp := NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubURLMaps)
 	// TODO(vaikas): XXXX FIXME Add gcsrp
-	testUrlConversionDriver(NewRegistryProvider(nil, grp, nil, NewInmemCredentialProvider()), tests, t)
+	testURLConversionDriver(NewRegistryProvider(nil, grp, nil, NewInmemCredentialProvider()), tests, t)
 }
 
-func TestShortGithubUrlPackageMapping(t *testing.T) {
-	githubUrlMaps := map[Type]TestURLAndError{
+func TestShortGithubURLPackageMapping(t *testing.T) {
+	githubURLMaps := map[Type]TestURLAndError{
 		NewTypeOrDie("", "mongodb", ""): TestURLAndError{"https://raw.githubusercontent.com/helm/charts/master/mongodb/manifests/mongodb.yaml", nil},
 		NewTypeOrDie("", "redis", ""):   TestURLAndError{"https://raw.githubusercontent.com/helm/charts/master/redis/manifests/redis.yaml", nil},
 	}
@@ -61,7 +61,7 @@ func TestShortGithubUrlPackageMapping(t *testing.T) {
 		"github.com/helm/charts/redis":   TestURLAndError{"https://raw.githubusercontent.com/helm/charts/master/redis/manifests/redis.yaml", nil},
 	}
 
-	grp := NewTestGithubRegistryProvider("github.com/helm/charts", githubUrlMaps)
+	grp := NewTestGithubRegistryProvider("github.com/helm/charts", githubURLMaps)
 	// TODO(vaikas): XXXX FIXME Add gcsrp
-	testUrlConversionDriver(NewRegistryProvider(nil, grp, nil, NewInmemCredentialProvider()), tests, t)
+	testURLConversionDriver(NewRegistryProvider(nil, grp, nil, NewInmemCredentialProvider()), tests, t)
 }

@@ -16,7 +16,7 @@ limitations under the License.
 
 package util
 
-// KubernetesConfiguration defines the configuration options for talking to Kubernetes master
+// KubernetesConfig defines the configuration options for talking to Kubernetes master
 type KubernetesConfig struct {
 	KubePath       string // The path to kubectl binary
 	KubeService    string // DNS name of the kubernetes service

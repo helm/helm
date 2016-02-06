@@ -304,18 +304,18 @@ func TestShortGithubUrl(t *testing.T) {
 		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": registry.DownloadResponse{Err: nil, Code: http.StatusNotFound, Body: ""},
 	}
 
-	githubUrlMaps := map[registry.Type]registry.TestURLAndError{
+	githubURLMaps := map[registry.Type]registry.TestURLAndError{
 		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
 		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
 	}
 
-	gcsUrlMaps := map[registry.Type]registry.TestURLAndError{
+	gcsURLMaps := map[registry.Type]registry.TestURLAndError{
 		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
 		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
 	}
 
-	grp := registry.NewTestGithubRegistryProviderWithDownloads("github.com/kubernetes/application-dm-templates", githubUrlMaps, downloadResponses)
-	gcsrp := registry.NewTestGCSRegistryProvider("gs://charts", gcsUrlMaps)
+	grp := registry.NewTestGithubRegistryProviderWithDownloads("github.com/kubernetes/application-dm-templates", githubURLMaps, downloadResponses)
+	gcsrp := registry.NewTestGCSRegistryProvider("gs://charts", gcsURLMaps)
 	test := resolverTestCase{
 		config:           templateShortGithubTemplate,
 		importOut:        finalImports,

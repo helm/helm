@@ -25,17 +25,19 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 )
 
-// CredentialProvider provides credentials for registries.
+// FilebasedCredentialProvider provides credentials for registries.
 type FilebasedCredentialProvider struct {
 	// Actual backing store
 	backingCredentialProvider common.CredentialProvider
 }
 
+// NamedRegistryCredential associates a name with a RegistryCredential.
 type NamedRegistryCredential struct {
 	Name string `json:"name,omitempty"`
 	common.RegistryCredential
 }
 
+// NewFilebasedCredentialProvider creates a file based credential provider.
 func NewFilebasedCredentialProvider(filename string) (common.CredentialProvider, error) {
 	icp := NewInmemCredentialProvider()
 	c, err := readCredentialsFile(filename)
@@ -66,10 +68,12 @@ func parseCredentials(bytes []byte) ([]NamedRegistryCredential, error) {
 	return r, nil
 }
 
+// GetCredential returns a credential by name.
 func (fcp *FilebasedCredentialProvider) GetCredential(name string) (*common.RegistryCredential, error) {
 	return fcp.backingCredentialProvider.GetCredential(name)
 }
 
+// SetCredential sets a credential by name.
 func (fcp *FilebasedCredentialProvider) SetCredential(name string, credential *common.RegistryCredential) error {
 	return fmt.Errorf("SetCredential operation not supported with FilebasedCredentialProvider")
 }

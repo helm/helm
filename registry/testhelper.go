@@ -32,11 +32,13 @@ import (
 	"strings"
 )
 
+// TestURLAndError associates a URL with an error string for testing.
 type TestURLAndError struct {
 	URL string
 	Err error
 }
 
+// DownloadResponse holds a mock http reponse for testing.
 type DownloadResponse struct {
 	Err  error
 	Code int
@@ -55,6 +57,7 @@ type testGithubRegistry struct {
 	downloadResponses map[string]DownloadResponse
 }
 
+// NewTestGithubRegistryProvider creates a test github registry provider.
 func NewTestGithubRegistryProvider(shortURL string, responses map[Type]TestURLAndError) GithubRegistryProvider {
 	return testGithubRegistryProvider{
 		shortURL:  util.TrimURLScheme(shortURL),
@@ -62,6 +65,7 @@ func NewTestGithubRegistryProvider(shortURL string, responses map[Type]TestURLAn
 	}
 }
 
+// NewTestGithubRegistryProviderWithDownloads creates a test github registry provider with download responses.
 func NewTestGithubRegistryProviderWithDownloads(shortURL string, responses map[Type]TestURLAndError, downloadResponses map[string]DownloadResponse) GithubRegistryProvider {
 	return testGithubRegistryProvider{
 		shortURL:          util.TrimURLScheme(shortURL),
@@ -70,6 +74,7 @@ func NewTestGithubRegistryProviderWithDownloads(shortURL string, responses map[T
 	}
 }
 
+// GetGithubRegistry is a mock implementation of the same method on GithubRegistryProvider.
 func (tgrp testGithubRegistryProvider) GetGithubRegistry(cr common.Registry) (GithubRegistry, error) {
 	trimmed := util.TrimURLScheme(cr.URL)
 	if strings.HasPrefix(trimmed, tgrp.shortURL) {
@@ -88,10 +93,12 @@ func (tgrp testGithubRegistryProvider) GetGithubRegistry(cr common.Registry) (Gi
 	panic(fmt.Errorf("unknown registry: %v", cr))
 }
 
+// ListTypes is a mock implementation of the same method on GithubRegistryProvider.
 func (tgr testGithubRegistry) ListTypes(regex *regexp.Regexp) ([]Type, error) {
 	panic(fmt.Errorf("ListTypes should not be called in the test"))
 }
 
+// GetDownloadURLs is a mock implementation of the same method on GithubRegistryProvider.
 func (tgr testGithubRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	result := tgr.responses[t]
 	URL, err := url.Parse(result.URL)
@@ -102,8 +109,9 @@ func (tgr testGithubRegistry) GetDownloadURLs(t Type) ([]*url.URL, error) {
 	return []*url.URL{URL}, result.Err
 }
 
-func (g testGithubRegistry) Do(req *http.Request) (resp *http.Response, err error) {
-	response := g.downloadResponses[req.URL.String()]
+// Do is a mock implementation of the same method on GithubRegistryProvider.
+func (tgr testGithubRegistry) Do(req *http.Request) (resp *http.Response, err error) {
+	response := tgr.downloadResponses[req.URL.String()]
 	return &http.Response{StatusCode: response.Code, Body: ioutil.NopCloser(bytes.NewBufferString(response.Body))}, response.Err
 }
 
@@ -117,6 +125,7 @@ type testGCSRegistry struct {
 	responses map[Type]TestURLAndError
 }
 
+// NewTestGCSRegistryProvider creates a test GCS registry provider.
 func NewTestGCSRegistryProvider(shortURL string, responses map[Type]TestURLAndError) GCSRegistryProvider {
 	return testGCSRegistryProvider{
 		shortURL:  util.TrimURLScheme(shortURL),
@@ -124,6 +133,7 @@ func NewTestGCSRegistryProvider(shortURL string, responses map[Type]TestURLAndEr
 	}
 }
 
+// GetDownloadURLs is a mock implementation of the same method on GCSRegistryProvider.
 func (tgrp testGCSRegistryProvider) GetGCSRegistry(cr common.Registry) (ObjectStorageRegistry, error) {
 	trimmed := util.TrimURLScheme(cr.URL)
 	if strings.HasPrefix(trimmed, tgrp.shortURL) {

@@ -67,6 +67,7 @@ type ObjectStorageRegistry interface {
 	GetBucket() string
 }
 
+// Type describes a type stored in a registry.
 type Type struct {
 	Collection string
 	Name       string

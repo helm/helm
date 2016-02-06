@@ -1,4 +1,5 @@
-/* Package log provides simple convenience wrappers for logging.
+/*
+Package log provides simple convenience wrappers for logging.
 
 Following convention, this provides functions for logging warnings, errors, information
 and debugging.
@@ -10,21 +11,21 @@ import (
 	"os"
 )
 
-// LogReceiver can receive log messages from this package.
-type LogReceiver interface {
+// Receiver can receive log messages from this package.
+type Receiver interface {
 	Printf(format string, v ...interface{})
 }
 
 // Logger is the destination for this package.
 //
 // The logger that this prints to.
-var Logger LogReceiver = log.New(os.Stderr, "", log.LstdFlags)
+var Logger Receiver = log.New(os.Stderr, "", log.LstdFlags)
 
 // IsDebugging controls debugging output.
 //
 // If this is true, debugging messages will be printed. Expensive debugging
 // operations can be wrapped in `if log.IsDebugging {}`.
-var IsDebugging bool = false
+var IsDebugging = false
 
 // Err prints an error of severity ERROR to the log.
 func Err(msg string, v ...interface{}) {

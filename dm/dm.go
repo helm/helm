@@ -39,20 +39,20 @@ import (
 )
 
 var (
-	deployment_name = flag.String("name", "", "Name of deployment, used for deploy and update commands (defaults to template name)")
-	stdin           = flag.Bool("stdin", false, "Reads a configuration from the standard input")
-	properties      = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
+	deploymentName = flag.String("name", "", "Name of deployment, used for deploy and update commands (defaults to template name)")
+	stdin          = flag.Bool("stdin", false, "Reads a configuration from the standard input")
+	properties     = flag.String("properties", "", "Properties to use when deploying a template (e.g., --properties k1=v1,k2=v2)")
 	// TODO(vaikas): CHange the default name once we figure out where the charts live.
-	template_registry = flag.String("registry", "application-dm-templates", "Registry name")
-	service           = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager", "URL for deployment manager")
-	binary            = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
-	timeout           = flag.Int("timeout", 20, "Time in seconds to wait for response")
-	regex_string      = flag.String("regex", "", "Regular expression to filter the templates listed in a template registry")
-	username          = flag.String("username", "", "Github user name that overrides GITHUB_USERNAME environment variable")
-	password          = flag.String("password", "", "Github password that overrides GITHUB_PASSWORD environment variable")
-	apitoken          = flag.String("apitoken", "", "Github api token that overrides GITHUB_API_TOKEN environment variable")
-	serviceaccount    = flag.String("serviceaccount", "", "Service account file containing JWT token")
-	registryfile      = flag.String("registryfile", "", "File containing registry specification")
+	templateRegistry = flag.String("registry", "application-dm-templates", "Registry name")
+	service          = flag.String("service", "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager", "URL for deployment manager")
+	binary           = flag.String("binary", "../expandybird/expansion/expansion.py", "Path to template expansion binary")
+	timeout          = flag.Int("timeout", 20, "Time in seconds to wait for response")
+	regexString      = flag.String("regex", "", "Regular expression to filter the templates listed in a template registry")
+	username         = flag.String("username", "", "Github user name that overrides GITHUB_USERNAME environment variable")
+	password         = flag.String("password", "", "Github password that overrides GITHUB_PASSWORD environment variable")
+	apitoken         = flag.String("apitoken", "", "Github api token that overrides GITHUB_API_TOKEN environment variable")
+	serviceaccount   = flag.String("serviceaccount", "", "Service account file containing JWT token")
+	registryfile     = flag.String("registryfile", "", "File containing registry specification")
 )
 
 var commands = []string{
@@ -165,7 +165,7 @@ func execute() {
 
 	switch args[0] {
 	case "templates":
-		path := fmt.Sprintf("registries/%s/types", *template_registry)
+		path := fmt.Sprintf("registries/%s/types", *templateRegistry)
 		callService(path, "GET", "list templates", nil)
 	case "describe":
 		describeType(args)
@@ -198,7 +198,7 @@ func execute() {
 		if err != nil {
 			panic(fmt.Errorf("Failed to create a registry from arguments: %#v", err))
 		}
-		path := fmt.Sprintf("registries/%s", *template_registry)
+		path := fmt.Sprintf("registries/%s", *templateRegistry)
 		callService(path, "POST", "create registry", ioutil.NopCloser(bytes.NewReader(reg)))
 	case "get":
 		if len(args) < 2 {
@@ -253,16 +253,16 @@ func execute() {
 		}
 
 		tUrls := getDownloadURLs(args[1])
-		var tUrl = ""
+		var tURL = ""
 		if len(tUrls) == 0 {
 			// Type is most likely a primitive.
-			tUrl = args[1]
+			tURL = args[1]
 		} else {
 			// TODO(vaikas): Support packages properly.
-			tUrl = tUrls[0]
+			tURL = tUrls[0]
 		}
-		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tUrl))
-		action := fmt.Sprintf("list deployed instances of type %s", tUrl)
+		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tURL))
+		action := fmt.Sprintf("list deployed instances of type %s", tURL)
 		callService(path, "GET", action, nil)
 	case "registries":
 		callService("registries", "GET", "list registries", nil)
@@ -276,7 +276,7 @@ func execute() {
 func callService(path, method, action string, reader io.ReadCloser) {
 	u := fmt.Sprintf("%s/%s", *service, path)
 
-	resp := callHttp(u, method, action, reader)
+	resp := callHTTP(u, method, action, reader)
 	var j interface{}
 	if err := json.Unmarshal([]byte(resp), &j); err != nil {
 		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
@@ -290,7 +290,7 @@ func callService(path, method, action string, reader io.ReadCloser) {
 	fmt.Println(string(y))
 }
 
-func callHttp(path, method, action string, reader io.ReadCloser) string {
+func callHTTP(path, method, action string, reader io.ReadCloser) string {
 	request, err := http.NewRequest(method, path, reader)
 	request.Header.Add("Content-Type", "application/json")
 
@@ -334,19 +334,19 @@ func describeType(args []string) {
 
 	if !strings.Contains(tUrls[0], ".prov") {
 		// It's not a chart, so grab the schema
-		path := fmt.Sprintf("registries/%s/download?file=%s.schema", *template_registry, url.QueryEscape(tUrls[0]))
+		path := fmt.Sprintf("registries/%s/download?file=%s.schema", *templateRegistry, url.QueryEscape(tUrls[0]))
 		callService(path, "GET", "get schema for type ("+tUrls[0]+")", nil)
 	} else {
 		// It's a chart, so grab the provenance file
-		path := fmt.Sprintf("registries/%s/download?file=%s", *template_registry, url.QueryEscape(tUrls[0]))
+		path := fmt.Sprintf("registries/%s/download?file=%s", *templateRegistry, url.QueryEscape(tUrls[0]))
 		callService(path, "GET", "get file", nil)
 	}
 }
 
 // getDownloadURLs returns URLs for a type in the given registry
 func getDownloadURLs(tName string) []string {
-	path := fmt.Sprintf("%s/registries/%s/types/%s", *service, *template_registry, url.QueryEscape(tName))
-	resp := callHttp(path, "GET", "get download urls", nil)
+	path := fmt.Sprintf("%s/registries/%s/types/%s", *service, *templateRegistry, url.QueryEscape(tName))
+	resp := callHTTP(path, "GET", "get download urls", nil)
 	u := []string{}
 	if err := json.Unmarshal([]byte(resp), &u); err != nil {
 		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
@@ -404,8 +404,8 @@ func loadTemplate(args []string) *common.Template {
 	}
 
 	// Override name if set from flags.
-	if *deployment_name != "" {
-		template.Name = *deployment_name
+	if *deploymentName != "" {
+		template.Name = *deploymentName
 	}
 
 	return template
