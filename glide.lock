@@ -1,5 +1,5 @@
-hash: fce0581223b80f7a04fbb4ad4bd7ff8fa3d12e879dba894ba448770933731887
-updated: 2016-02-02T17:30:13.283644703-07:00
+hash: 71e9a5a2d1f27a0ecfa70595154f87fee9f5519ba6bdea4d01834bab5aa29074
+updated: 2016-02-06T17:26:31.257079434-08:00
 imports:
 - name: github.com/codegangsta/cli
   version: cf1f63a7274872768d4037305d572b70b1199397
@@ -13,8 +13,6 @@ imports:
   version: 45bba206dd5270d96bac4942dcfe515726613249
 - name: github.com/google/go-github
   version: b8b4ac742977310ff6e75140a403a38dab109977
-  subpackages:
-  - /github
 - name: github.com/google/go-querystring
   version: 2a60fc2ba6c19de80291203597d752e9ba58e4c0
 - name: github.com/gorilla/context
@@ -27,8 +25,6 @@ imports:
   version: 14c555599c2a4f493c1e13fd1ea6fdf721739028
 - name: github.com/kubernetes/deployment-manager
   version: ""
-  repo: https://github.com/technosophos/deployment-manager
-  vcs: git
   subpackages:
   - /common
 - name: github.com/Masterminds/semver
@@ -43,6 +39,15 @@ imports:
   version: 8a57ed94ffd43444c0879fe75701732a38afc985
 - name: golang.org/x/text
   version: 5aaa1a807bf8a2f763540b140e7805973476eb88
+- name: google.golang.com/appengine/datastore
+  version: ""
+  repo: https://google.golang.com/appengine/datastore
+- name: google.golang.com/appengine/memcache
+  version: ""
+  repo: https://google.golang.com/appengine/memcache
+- name: google.golang.com/appengine/user
+  version: ""
+  repo: https://google.golang.com/appengine/user
 - name: google.golang.org/api
   version: 8fa1015948e6fc21c025050624e4c4e2f4f405c4
 - name: google.golang.org/appengine

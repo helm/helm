@@ -4,9 +4,6 @@ ignore:
 import:
 - package: github.com/codegangsta/cli
 - package: github.com/kubernetes/deployment-manager
-  version: feat/chartfile
-  repo: https://github.com/technosophos/deployment-manager
-  vcs: git
   subpackages:
   - /common
 - package: github.com/ghodss/yaml

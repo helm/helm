@@ -6,8 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -15,6 +17,9 @@ import (
 
 // The default HTTP timeout
 var DefaultHTTPTimeout = time.Second * 10
+
+// The default HTTP Protocol
+var DefaultHTTPProtocol = "http"
 
 // Client is a DM client.
 type Client struct {
@@ -26,29 +31,61 @@ type Client struct {
 	Protocol string
 	// Transport
 	Transport http.RoundTripper
+	// Debug enables http logging
+	Debug bool
+
+	// Base URL for remote service
+	baseURL *url.URL
 }
 
 // NewClient creates a new DM client. Host name is required.
 func NewClient(host string) *Client {
+	url, _ := DefaultServerURL(host)
+
 	return &Client{
 		HTTPTimeout: DefaultHTTPTimeout,
-		Protocol:    "https",
-		Host:        host,
-		Transport:   NewDebugTransport(nil),
+		baseURL:     url,
+		Transport:   http.DefaultTransport,
 	}
 }
 
+// SetDebug enables debug mode which logs http
+func (c *Client) SetDebug(enable bool) *Client {
+	c.Debug = enable
+	return c
+}
+
+// transport wraps client transport if debug is enabled
+func (c *Client) transport() http.RoundTripper {
+	if c.Debug {
+		return NewDebugTransport(c.Transport)
+	}
+	return c.Transport
+}
+
+// SetTransport sets a custom Transport. Defaults to http.DefaultTransport
+func (c *Client) SetTransport(tr http.RoundTripper) *Client {
+	c.Transport = tr
+	return c
+}
+
 // url constructs the URL.
-func (c *Client) url(path string) string {
-	// TODO: Switch to net.URL
-	return c.Protocol + "://" + c.Host + "/" + path
+func (c *Client) url(rawurl string) (string, error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return "", err
+	}
+	return c.baseURL.ResolveReference(u).String(), nil
 }
 
 // CallService is a low-level function for making an API call.
 //
 // This calls the service and then unmarshals the returned data into dest.
 func (c *Client) CallService(path, method, action string, dest interface{}, reader io.ReadCloser) error {
-	u := c.url(path)
+	u, err := c.url(path)
+	if err != nil {
+		return err
+	}
 
 	resp, err := c.callHTTP(u, method, action, reader)
 	if err != nil {
@@ -76,7 +113,7 @@ func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (st
 
 	client := http.Client{
 		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
-		Transport: c.Transport,
+		Transport: c.transport(),
 	}
 
 	response, err := client.Do(request)
@@ -154,4 +191,28 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	}
 
 	return nil
+}
+
+// DefaultServerURL converts a host, host:port, or URL string to the default base server API path
+// to use with a Client
+func DefaultServerURL(host string) (*url.URL, error) {
+	if host == "" {
+		return nil, fmt.Errorf("host must be a URL or a host:port pair")
+	}
+	base := host
+	hostURL, err := url.Parse(base)
+	if err != nil {
+		return nil, err
+	}
+	if hostURL.Scheme == "" {
+		hostURL, err = url.Parse(DefaultHTTPProtocol + "://" + base)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(hostURL.Path) > 0 && !strings.HasSuffix(hostURL.Path, "/") {
+		hostURL.Path = hostURL.Path + "/"
+	}
+
+	return hostURL, nil
 }

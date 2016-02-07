@@ -22,7 +22,6 @@ func listCmd() cli.Command {
 }
 
 func list(host string) error {
-	client := dm.NewClient(host)
-	client.Protocol = "http"
+	client := dm.NewClient(host).SetDebug(true)
 	return client.ListDeployments()
 }
