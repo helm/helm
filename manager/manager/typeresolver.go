@@ -105,17 +105,19 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 			return nil, resolverError(config, fmt.Errorf("Failed to understand download url for %s: %v", r.Type, err))
 		}
 		if !existing[r.Type] {
-			f := &fetchUnit{}
-			for _, u := range urls {
-				if len(u) > 0 {
-					f.urls = append(f.urls, fetchableURL{urlRegistry, u})
-					// Add to existing map so it is not fetched multiple times.
-					existing[r.Type] = true
+			// Add to existing map so it is not fetched multiple times.
+			existing[r.Type] = true
+			if len(urls) > 0 {
+				f := &fetchUnit{}
+				for _, u := range urls {
+					if len(u) > 0 {
+						f.urls = append(f.urls, fetchableURL{urlRegistry, u})
+					}
 				}
-			}
-			if len(f.urls) > 0 {
-				toFetch = append(toFetch, f)
-				fetched[f.urls[0].url] = append(fetched[f.urls[0].url], &common.ImportFile{Name: r.Type, Path: f.urls[0].url})
+				if len(f.urls) > 0 {
+					toFetch = append(toFetch, f)
+					fetched[f.urls[0].url] = append(fetched[f.urls[0].url], &common.ImportFile{Name: r.Type, Path: f.urls[0].url})
+				}
 			}
 		}
 	}
@@ -221,20 +223,31 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 }
 
 func parseContent(templates []string) (string, error) {
+	// Try to parse the content as a slice of Kubernetes objects
+	kos, err := parseKubernetesObjects(templates)
+	if err == nil {
+		return kos, nil
+	}
+
+	// If there's only one template, return it without asking questions
 	if len(templates) == 1 {
 		return templates[0], nil
 	}
 
-	// If there are multiple URLs that need to be fetched, that implies it's a package
-	// of raw Kubernetes objects. We need to fetch them all as a unit and create a
-	// template representing a package out of that below.
+	return "", fmt.Errorf("cannot parse content: %v", templates)
+}
+
+// parseKubernetesObjects tries to parse the content as a package of raw Kubernetes objects.
+// If the content parses, it returns a configuration representing the package containing one
+// resource per object.
+func parseKubernetesObjects(templates []string) (string, error) {
 	fakeConfig := &common.Configuration{}
 	for _, template := range templates {
 		o, err := util.ParseKubernetesObject([]byte(template))
 		if err != nil {
 			return "", fmt.Errorf("not a kubernetes object: %+v", template)
 		}
-		// Looks like a native Kubernetes object, create a configuration out of it
+		// Looks like a native Kubernetes object, so add a resource that wraps it to the result.
 		fakeConfig.Resources = append(fakeConfig.Resources, o)
 	}
 	marshalled, err := yaml.Marshal(fakeConfig)
