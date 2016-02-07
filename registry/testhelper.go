@@ -38,7 +38,7 @@ type TestURLAndError struct {
 	Err error
 }
 
-// DownloadResponse holds a mock http reponse for testing.
+// DownloadResponse holds a mock http response for testing.
 type DownloadResponse struct {
 	Err  error
 	Code int
