@@ -1,6 +1,8 @@
 package dm
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -56,5 +58,41 @@ func TestURL(t *testing.T) {
 		if tc.url != p {
 			t.Errorf("expected %s, got %s", tc.url, p)
 		}
+	}
+}
+
+type fakeClient struct {
+	*Client
+	server   *httptest.Server
+	handler  http.HandlerFunc
+	response []byte
+}
+
+func (c *fakeClient) setup() *fakeClient {
+	c.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(c.response)
+	})
+	c.server = httptest.NewServer(c.handler)
+	c.Client = NewClient(c.server.URL)
+	return c
+}
+
+func (c *fakeClient) teardown() {
+	c.server.Close()
+}
+
+func TestListDeployments(t *testing.T) {
+	fc := &fakeClient{
+		response: []byte(`["guestbook.yaml"]`),
+	}
+	defer fc.teardown()
+
+	l, err := fc.setup().ListDeployments()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(l) != 1 {
+		t.Fatal("expected a single deployment")
 	}
 }

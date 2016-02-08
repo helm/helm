@@ -8,6 +8,7 @@ import (
 )
 
 var version = "0.0.1"
+var isDebugging bool
 
 func main() {
 	app := cli.NewApp()
@@ -24,6 +25,15 @@ func main() {
 			EnvVar: "HELM_HOST",
 			Value:  "https://localhost:8181/FIXME_NOT_RIGHT",
 		},
+		cli.BoolFlag{
+			Name:  "debug",
+			Usage: "Enable verbose debugging output",
+		},
+	}
+
+	app.Before = func(ctx *cli.Context) error {
+		isDebugging = ctx.Bool("debug")
+		return nil
 	}
 
 	app.Run(os.Args)
