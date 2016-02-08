@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -28,6 +27,5 @@ func list(host string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(list)
-	return nil
+	return format.YAML(list)
 }
