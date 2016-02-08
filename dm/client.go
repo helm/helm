@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/ghodss/yaml"
 )
 
 // The default HTTP timeout
@@ -94,15 +92,6 @@ func (c *Client) CallService(path, method, action string, dest interface{}, read
 	if err := json.Unmarshal([]byte(resp), dest); err != nil {
 		return fmt.Errorf("Failed to parse JSON response from service: %s", resp)
 	}
-
-	// From here down is just printing the data.
-
-	y, err := yaml.Marshal(dest)
-	if err != nil {
-		return fmt.Errorf("Failed to serialize JSON response from service: %s", resp)
-	}
-
-	fmt.Println(string(y))
 	return nil
 }
 
@@ -137,14 +126,13 @@ func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (st
 }
 
 // ListDeployments lists the deployments in DM.
-func (c *Client) ListDeployments() error {
-	var d interface{}
-	if err := c.CallService("deployments", "GET", "foo", &d, nil); err != nil {
-		return err
+func (c *Client) ListDeployments() ([]string, error) {
+	var l []string
+	if err := c.CallService("deployments", "GET", "foo", &l, nil); err != nil {
+		return nil, err
 	}
 
-	fmt.Printf("%#v\n", d)
-	return nil
+	return l, nil
 }
 
 // DeployChart sends a chart to DM for deploying.

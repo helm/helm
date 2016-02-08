@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -23,5 +24,10 @@ func listCmd() cli.Command {
 
 func list(host string) error {
 	client := dm.NewClient(host).SetDebug(true)
-	return client.ListDeployments()
+	list, err := client.ListDeployments()
+	if err != nil {
+		return err
+	}
+	fmt.Println(list)
+	return nil
 }
