@@ -47,7 +47,7 @@ quicktest:
 	$(PATH_WITH_HELM) go test -short $(addprefix ./,$(GO_PACKAGES))
 
 test: test-style
-	$(PATH_WITH_HELM) go test -v $(addprefix ./,$(GO_PACKAGES))
+	$(PATH_WITH_HELM) go test -v -cover $(addprefix ./,$(GO_PACKAGES))
 
 test-style:
 	@if [ $(shell gofmt -e -l -s *.go $(GO_PACKAGES)) ]; then \
