@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 // The default HTTP timeout
@@ -125,10 +127,34 @@ func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (st
 	return string(body), nil
 }
 
+// DefaultServerURL converts a host, host:port, or URL string to the default base server API path
+// to use with a Client
+func DefaultServerURL(host string) (*url.URL, error) {
+	if host == "" {
+		return nil, fmt.Errorf("host must be a URL or a host:port pair")
+	}
+	base := host
+	hostURL, err := url.Parse(base)
+	if err != nil {
+		return nil, err
+	}
+	if hostURL.Scheme == "" {
+		hostURL, err = url.Parse(DefaultHTTPProtocol + "://" + base)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(hostURL.Path) > 0 && !strings.HasSuffix(hostURL.Path, "/") {
+		hostURL.Path = hostURL.Path + "/"
+	}
+
+	return hostURL, nil
+}
+
 // ListDeployments lists the deployments in DM.
 func (c *Client) ListDeployments() ([]string, error) {
 	var l []string
-	if err := c.CallService("deployments", "GET", "foo", &l, nil); err != nil {
+	if err := c.CallService("deployments", "GET", "list deployments", &l, nil); err != nil {
 		return nil, err
 	}
 
@@ -181,26 +207,11 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	return nil
 }
 
-// DefaultServerURL converts a host, host:port, or URL string to the default base server API path
-// to use with a Client
-func DefaultServerURL(host string) (*url.URL, error) {
-	if host == "" {
-		return nil, fmt.Errorf("host must be a URL or a host:port pair")
-	}
-	base := host
-	hostURL, err := url.Parse(base)
-	if err != nil {
+// GetDeployment retrieves the supplied deployment
+func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
+	var deployment *common.Deployment
+	if err := c.CallService(filepath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
 		return nil, err
 	}
-	if hostURL.Scheme == "" {
-		hostURL, err = url.Parse(DefaultHTTPProtocol + "://" + base)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(hostURL.Path) > 0 && !strings.HasSuffix(hostURL.Path, "/") {
-		hostURL.Path = hostURL.Path + "/"
-	}
-
-	return hostURL, nil
+	return deployment, nil
 }

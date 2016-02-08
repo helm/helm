@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 func TestDefaultServerURL(t *testing.T) {
@@ -94,5 +96,25 @@ func TestListDeployments(t *testing.T) {
 
 	if len(l) != 1 {
 		t.Fatal("expected a single deployment")
+	}
+}
+
+func TestGetDeployment(t *testing.T) {
+	fc := &fakeClient{
+		response: []byte(`{"name":"guestbook.yaml","id":0,"createdAt":"2016-02-08T12:17:49.251658308-08:00","deployedAt":"2016-02-08T12:17:49.251658589-08:00","modifiedAt":"2016-02-08T12:17:51.177518098-08:00","deletedAt":"0001-01-01T00:00:00Z","state":{"status":"Deployed"},"latestManifest":"manifest-1454962670728402229"}`),
+	}
+	defer fc.teardown()
+
+	d, err := fc.setup().GetDeployment("guestbook.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if d.Name != "guestbook.yaml" {
+		t.Fatalf("expected deployment name 'guestbook.yaml', got '%s'", d.Name)
+	}
+
+	if d.State.Status != common.DeployedStatus {
+		t.Fatalf("expected deployment status 'Deployed', got '%s'", d.State.Status)
 	}
 }

@@ -181,6 +181,7 @@ func commands() []cli.Command {
 			Name: "search",
 		},
 		listCmd(),
+		getCmd(),
 	}
 }
 

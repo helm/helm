@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/codegangsta/cli"
 	"github.com/deis/helm-dm/dm"
 	"github.com/deis/helm-dm/format"
@@ -10,19 +8,15 @@ import (
 
 func listCmd() cli.Command {
 	return cli.Command{
-		Name:  "list",
-		Usage: "Lists the deployments in the cluster",
-		Action: func(c *cli.Context) {
-			if err := list(c.GlobalString("host")); err != nil {
-				format.Err("%s (Is the cluster running?)", err)
-				os.Exit(1)
-			}
-		},
+		Name:   "list",
+		Usage:  "Lists the deployments in the cluster",
+		Action: func(c *cli.Context) { run(c, list) },
 	}
 }
 
-func list(host string) error {
-	client := dm.NewClient(host).SetDebug(isDebugging)
+func list(c *cli.Context) error {
+	host := c.GlobalString("host")
+	client := dm.NewClient(host).SetDebug(c.GlobalBool("debug"))
 	list, err := client.ListDeployments()
 	if err != nil {
 		return err
