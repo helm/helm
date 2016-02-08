@@ -23,7 +23,7 @@ func listCmd() cli.Command {
 }
 
 func list(host string) error {
-	client := dm.NewClient(host).SetDebug(true)
+	client := dm.NewClient(host).SetDebug(isDebugging)
 	list, err := client.ListDeployments()
 	if err != nil {
 		return err
