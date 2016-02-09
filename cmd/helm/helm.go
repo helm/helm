@@ -8,7 +8,6 @@ import (
 )
 
 var version = "0.0.1"
-var isDebugging bool
 
 func main() {
 	app := cli.NewApp()
@@ -30,12 +29,6 @@ func main() {
 			Usage: "Enable verbose debugging output",
 		},
 	}
-
-	app.Before = func(ctx *cli.Context) error {
-		isDebugging = ctx.Bool("debug")
-		return nil
-	}
-
 	app.Run(os.Args)
 }
 
