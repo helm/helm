@@ -3,6 +3,7 @@ package dm
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/kubernetes/deployment-manager/common"
@@ -65,15 +66,11 @@ func TestURL(t *testing.T) {
 
 type fakeClient struct {
 	*Client
-	server   *httptest.Server
-	handler  http.HandlerFunc
-	response []byte
+	server  *httptest.Server
+	handler http.HandlerFunc
 }
 
 func (c *fakeClient) setup() *fakeClient {
-	c.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(c.response)
-	})
 	c.server = httptest.NewServer(c.handler)
 	c.Client = NewClient(c.server.URL)
 	return c
@@ -83,9 +80,22 @@ func (c *fakeClient) teardown() {
 	c.server.Close()
 }
 
+func TestUserAgent(t *testing.T) {
+	fc := &fakeClient{
+		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.HasPrefix(r.UserAgent(), "helm") {
+				t.Error("user agent is not set")
+			}
+		}),
+	}
+	fc.setup().ListDeployments()
+}
+
 func TestListDeployments(t *testing.T) {
 	fc := &fakeClient{
-		response: []byte(`["guestbook.yaml"]`),
+		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`["guestbook.yaml"]`))
+		}),
 	}
 	defer fc.teardown()
 
@@ -101,7 +111,9 @@ func TestListDeployments(t *testing.T) {
 
 func TestGetDeployment(t *testing.T) {
 	fc := &fakeClient{
-		response: []byte(`{"name":"guestbook.yaml","id":0,"createdAt":"2016-02-08T12:17:49.251658308-08:00","deployedAt":"2016-02-08T12:17:49.251658589-08:00","modifiedAt":"2016-02-08T12:17:51.177518098-08:00","deletedAt":"0001-01-01T00:00:00Z","state":{"status":"Deployed"},"latestManifest":"manifest-1454962670728402229"}`),
+		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`{"name":"guestbook.yaml","id":0,"createdAt":"2016-02-08T12:17:49.251658308-08:00","deployedAt":"2016-02-08T12:17:49.251658589-08:00","modifiedAt":"2016-02-08T12:17:51.177518098-08:00","deletedAt":"0001-01-01T00:00:00Z","state":{"status":"Deployed"},"latestManifest":"manifest-1454962670728402229"}`))
+		}),
 	}
 	defer fc.teardown()
 

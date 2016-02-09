@@ -100,6 +100,9 @@ func (c *Client) CallService(path, method, action string, dest interface{}, read
 // callHTTP is  a low-level primative for executing HTTP operations.
 func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (string, error) {
 	request, err := http.NewRequest(method, path, reader)
+
+	// TODO: dynamically set version
+	request.Header.Set("User-Agent", "helm/0.0.1")
 	request.Header.Add("Content-Type", "application/json")
 
 	client := http.Client{
