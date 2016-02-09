@@ -69,6 +69,12 @@ func (c *Client) SetTransport(tr http.RoundTripper) *Client {
 	return c
 }
 
+// SetTimeout sets a timeout for http connections
+func (c *Client) SetTimeout(seconds int) *Client {
+	c.HTTPTimeout = time.Duration(time.Duration(seconds) * time.Second)
+	return c
+}
+
 // url constructs the URL.
 func (c *Client) url(rawurl string) (string, error) {
 	u, err := url.Parse(rawurl)

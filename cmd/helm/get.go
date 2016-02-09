@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/codegangsta/cli"
-	"github.com/deis/helm-dm/dm"
 	"github.com/deis/helm-dm/format"
 )
 
@@ -22,10 +21,7 @@ func get(c *cli.Context) error {
 		return errors.New("First argument, deployment name, is required. Try 'helm get --help'")
 	}
 	name := args[0]
-	host := c.GlobalString("host")
-	client := dm.NewClient(host).SetDebug(c.GlobalBool("debug"))
-
-	deployment, err := client.GetDeployment(name)
+	deployment, err := client(c).GetDeployment(name)
 	if err != nil {
 		return err
 	}

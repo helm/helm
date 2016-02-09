@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
+	"github.com/deis/helm-dm/dm"
 	"github.com/deis/helm-dm/format"
 )
 
@@ -23,6 +24,11 @@ func main() {
 			Usage:  "The URL of the DM server.",
 			EnvVar: "HELM_HOST",
 			Value:  "https://localhost:8181/FIXME_NOT_RIGHT",
+		},
+		cli.IntFlag{
+			Name:  "timeout",
+			Usage: "Time in seconds to wait for response",
+			Value: 10,
 		},
 		cli.BoolFlag{
 			Name:  "debug",
@@ -183,4 +189,11 @@ func run(c *cli.Context, f func(c *cli.Context) error) {
 		os.Stderr.Write([]byte(err.Error()))
 		os.Exit(1)
 	}
+}
+
+func client(c *cli.Context) *dm.Client {
+	host := c.GlobalString("host")
+	debug := c.GlobalBool("debug")
+	timeout := c.GlobalInt("timeout")
+	return dm.NewClient(host).SetDebug(debug).SetTimeout(timeout)
 }

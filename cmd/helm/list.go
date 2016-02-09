@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/codegangsta/cli"
-	"github.com/deis/helm-dm/dm"
 	"github.com/deis/helm-dm/format"
 )
 
@@ -15,9 +14,7 @@ func listCmd() cli.Command {
 }
 
 func list(c *cli.Context) error {
-	host := c.GlobalString("host")
-	client := dm.NewClient(host).SetDebug(c.GlobalBool("debug"))
-	list, err := client.ListDeployments()
+	list, err := client(c).ListDeployments()
 	if err != nil {
 		return err
 	}
