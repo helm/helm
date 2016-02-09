@@ -1,0 +1,72 @@
+#helm:generate dm_template
+{% set PROPERTIES = properties or {} %}
+{% set PROJECT = PROPERTIES['project'] or 'dm-k8s-testing' %}
+{% set NFS_SERVER = PROPERTIES['nfs-server'] or {} %}
+{% set NFS_SERVER_IP = NFS_SERVER['ip'] or '10.0.253.247' %}
+{% set NFS_SERVER_PORT = NFS_SERVER['port'] or 2049 %}
+{% set NFS_SERVER_DISK = NFS_SERVER['disk'] or 'nfs-disk' %}
+{% set NFS_SERVER_DISK_FSTYPE = NFS_SERVER['fstype'] or 'ext4' %}
+{% set NGINX = PROPERTIES['nginx'] or {} %}
+{% set NGINX_PORT = 80 %}
+{% set NGINX_REPLICAS = NGINX['replicas'] or 2 %}
+{% set WORDPRESS_PHP = PROPERTIES['wordpress-php'] or {} %}
+{% set WORDPRESS_PHP_REPLICAS = WORDPRESS_PHP['replicas'] or 2 %}
+{% set WORDPRESS_PHP_PORT = WORDPRESS_PHP['port'] or 9000 %}
+{% set MYSQL = PROPERTIES['mysql'] or {} %}
+{% set MYSQL_PORT = MYSQL['port'] or 3306 %}
+{% set MYSQL_PASSWORD = MYSQL['password'] or 'mysql-password' %}
+{% set MYSQL_DISK = MYSQL['disk'] or 'mysql-disk' %}
+{% set MYSQL_DISK_FSTYPE = MYSQL['fstype'] or 'ext4' %}
+
+resources:
+- name: nfs
+  type: github.com/kubernetes/application-dm-templates/storage/nfs:v1
+  properties:
+    ip: {{ NFS_SERVER_IP }}
+    port: {{ NFS_SERVER_PORT }}
+    disk: {{ NFS_SERVER_DISK }}
+    fstype: {{NFS_SERVER_DISK_FSTYPE }}
+- name: nginx
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v2
+  properties:
+    service_port: {{ NGINX_PORT }}
+    container_port: {{ NGINX_PORT }}
+    replicas: {{ NGINX_REPLICAS }}
+    external_service: true
+    image: gcr.io/{{ PROJECT }}/nginx:latest
+    volumes:
+      - mount_path: /var/www/html
+        persistentVolumeClaim:
+          claimName: nfs
+- name: mysql
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v2
+  properties:
+    service_port: {{ MYSQL_PORT }}
+    container_port: {{ MYSQL_PORT }}
+    replicas: 1
+    image: mysql:5.6
+    env:
+      - name: MYSQL_ROOT_PASSWORD
+        value: {{ MYSQL_PASSWORD }}
+    volumes:
+      - mount_path: /var/lib/mysql
+        gcePersistentDisk:
+          pdName: {{ MYSQL_DISK }}
+          fsType: {{ MYSQL_DISK_FSTYPE }}
+- name: wordpress-php
+  type: github.com/kubernetes/application-dm-templates/common/replicatedservice:v2
+  properties:
+    service_name: wordpress-php
+    service_port: {{ WORDPRESS_PHP_PORT }}
+    container_port: {{ WORDPRESS_PHP_PORT }}
+    replicas: 2
+    image: wordpress:fpm
+    env:
+      - name: WORDPRESS_DB_PASSWORD
+        value: {{ MYSQL_PASSWORD }}
+      - name: WORDPRESS_DB_HOST
+        value: mysql-service
+    volumes:
+      - mount_path: /var/www/html
+        persistentVolumeClaim:
+          claimName: nfs

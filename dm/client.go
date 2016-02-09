@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -178,7 +179,8 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	}
 	defer f.Close()
 
-	request, err := http.NewRequest("POST", "/v2/deployments/", f)
+	u, err := c.url("/v2/deployments")
+	request, err := http.NewRequest("POST", u, f)
 
 	// There is an argument to be made for using the legacy x-octet-stream for
 	// this. But since we control both sides, we should use the standard one.
@@ -192,7 +194,7 @@ func (c *Client) DeployChart(filename, deployname string) error {
 
 	client := http.Client{
 		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
-		Transport: c.Transport,
+		Transport: c.transport(),
 	}
 
 	response, err := client.Do(request)
@@ -200,17 +202,14 @@ func (c *Client) DeployChart(filename, deployname string) error {
 		return err
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	if err != nil {
-		return err
-	}
-
-	// FIXME: We only want 200 OK or 204(?) CREATED
-	if response.StatusCode < http.StatusOK ||
-		response.StatusCode >= http.StatusMultipleChoices {
-		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
-		return fmt.Errorf("Failed to post: %s", message)
+	// We only want 201 CREATED. Admittedly, we could accept 200 and 202.
+	if response.StatusCode < http.StatusCreated {
+		body, err := ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("Failed to post: %d %s - %s", response.StatusCode, response.Status, body)
 	}
 
 	return nil
@@ -219,7 +218,7 @@ func (c *Client) DeployChart(filename, deployname string) error {
 // GetDeployment retrieves the supplied deployment
 func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
-	if err := c.CallService(filepath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
+	if err := c.CallService(path.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
 		return nil, err
 	}
 	return deployment, nil
