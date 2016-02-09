@@ -36,6 +36,8 @@ import (
 	"github.com/kubernetes/deployment-manager/common"
 	"github.com/kubernetes/deployment-manager/manager/manager"
 	"github.com/kubernetes/deployment-manager/manager/repository"
+	"github.com/kubernetes/deployment-manager/manager/repository/persistent"
+	"github.com/kubernetes/deployment-manager/manager/repository/transient"
 	"github.com/kubernetes/deployment-manager/registry"
 	"github.com/kubernetes/deployment-manager/util"
 )
@@ -69,6 +71,9 @@ var (
 	deployerURL       = flag.String("deployerURL", "", "The URL for the deployer service.")
 	credentialFile    = flag.String("credentialFile", "", "Local file to use for credentials.")
 	credentialSecrets = flag.Bool("credentialSecrets", true, "Use secrets for credentials.")
+	mongoName         = flag.String("mongoName", "mongodb", "The DNS name of the mongodb service.")
+	mongoPort         = flag.String("mongoPort", "27017", "The port of the mongodb service.")
+	mongoAddress      = flag.String("mongoAddress", "mongodb:27017", "The address of the mongodb service.")
 )
 
 var backend manager.Manager
@@ -97,27 +102,39 @@ func init() {
 	backend = newManager(credentialProvider)
 }
 
+const expanderPort = "8080"
+const deployerPort = "8080"
+
 func newManager(cp common.CredentialProvider) manager.Manager {
 	service := registry.NewInmemRegistryService()
 	registryProvider := registry.NewDefaultRegistryProvider(cp, service)
 	resolver := manager.NewTypeResolver(registryProvider, util.DefaultHTTPClient())
-	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName), resolver)
-	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName))
-	r := repository.NewMapBasedRepository()
-	credentialProvider := cp
-	return manager.NewManager(expander, deployer, r, registryProvider, service, credentialProvider)
+	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName, expanderPort), resolver)
+	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName, deployerPort))
+	address := strings.TrimPrefix(getServiceURL(*mongoAddress, *mongoName, *mongoPort), "https://")
+	repository := createRepository(address)
+	return manager.NewManager(expander, deployer, repository, registryProvider, service, cp)
 }
 
-func getServiceURL(serviceURL, serviceName string) string {
+func createRepository(address string) repository.Repository {
+	r, err := persistent.NewRepository(address)
+	if err != nil {
+		r = transient.NewRepository()
+	}
+
+	return r
+}
+
+func getServiceURL(serviceURL, serviceName, servicePort string) string {
 	if serviceURL == "" {
 		serviceURL = makeEnvVariableURL(serviceName)
 		if serviceURL == "" {
 			addrs, err := net.LookupHost(serviceName)
 			if err != nil || len(addrs) < 1 {
-				log.Fatalf("cannot resolve service:%v. environment:%v", serviceName, os.Environ())
+				log.Fatalf("cannot resolve service:%v. environment:%v\n", serviceName, os.Environ())
 			}
 
-			serviceURL = fmt.Sprintf("https://%s", addrs[0])
+			serviceURL = fmt.Sprintf("https://%s:%s", addrs[0], servicePort)
 		}
 	}
 
@@ -130,7 +147,7 @@ func getServiceURL(serviceURL, serviceName string) string {
 func makeEnvVariableURL(str string) string {
 	prefix := makeEnvVariableName(str)
 	url := os.Getenv(prefix + "_PORT")
-	return strings.Replace(url, "tcp", "http", 1)
+	return strings.Replace(url, "tcp", "https", 1)
 }
 
 // makeEnvVariableName is copied from the Kubernetes source,
@@ -335,7 +352,13 @@ func expandHandlerFunc(w http.ResponseWriter, r *http.Request) {
 func listTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	handler := "manager: list types"
 	util.LogHandlerEntry(handler, r)
-	util.LogHandlerExitWithJSON(handler, w, backend.ListTypes(), http.StatusOK)
+	types, err := backend.ListTypes()
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, types, http.StatusOK)
 }
 
 func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request) {
@@ -346,7 +369,13 @@ func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.LogHandlerExitWithJSON(handler, w, backend.ListInstances(typeName), http.StatusOK)
+	instances, err := backend.ListInstances(typeName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, instances, http.StatusOK)
 }
 
 // Putting Registry handlers here for now because deployments.go

@@ -160,6 +160,7 @@ func newRepositoryStub() *repositoryStub {
 	return ret
 }
 
+// Deployments.
 func (repository *repositoryStub) ListDeployments() ([]common.Deployment, error) {
 	if repository.FailListDeployments {
 		return deploymentList, errTest
@@ -181,11 +182,6 @@ func (repository *repositoryStub) GetValidDeployment(d string) (*common.Deployme
 	return &deployment, nil
 }
 
-func (repository *repositoryStub) SetDeploymentState(name string, state *common.DeploymentState) error {
-	repository.DeploymentStates = append(repository.DeploymentStates, state)
-	return nil
-}
-
 func (repository *repositoryStub) CreateDeployment(d string) (*common.Deployment, error) {
 	repository.Created = append(repository.Created, d)
 	return &deployment, nil
@@ -196,22 +192,20 @@ func (repository *repositoryStub) DeleteDeployment(d string, forget bool) (*comm
 	return &deployment, nil
 }
 
-func (repository *repositoryStub) AddManifest(d string, manifest *common.Manifest) error {
-	repository.ManifestAdd[d] = manifest
+func (repository *repositoryStub) SetDeploymentState(name string, state *common.DeploymentState) error {
+	repository.DeploymentStates = append(repository.DeploymentStates, state)
 	return nil
 }
 
-func (repository *repositoryStub) SetManifest(d string, manifest *common.Manifest) error {
-	repository.ManifestSet[d] = manifest
+// Manifests.
+func (repository *repositoryStub) AddManifest(manifest *common.Manifest) error {
+	repository.ManifestAdd[manifest.Deployment] = manifest
 	return nil
 }
 
-func (repository *repositoryStub) GetLatestManifest(d string) (*common.Manifest, error) {
-	if d == deploymentName {
-		return repository.ManifestAdd[d], nil
-	}
-
-	return nil, errTest
+func (repository *repositoryStub) SetManifest(manifest *common.Manifest) error {
+	repository.ManifestSet[manifest.Deployment] = manifest
+	return nil
 }
 
 func (repository *repositoryStub) ListManifests(d string) (map[string]*common.Manifest, error) {
@@ -230,25 +224,42 @@ func (repository *repositoryStub) GetManifest(d string, m string) (*common.Manif
 	return nil, errTest
 }
 
-func (repository *repositoryStub) ListTypes() []string {
-	repository.ListTypesCalled = true
-	return []string{}
-}
-
-func (repository *repositoryStub) GetTypeInstances(t string) []*common.TypeInstance {
-	repository.GetTypeInstancesCalled = true
-	return []*common.TypeInstance{}
-}
-
-func (repository *repositoryStub) ClearTypeInstances(d string) {
-	repository.TypeInstancesCleared = true
-}
-
-func (repository *repositoryStub) SetTypeInstances(d string, is map[string][]*common.TypeInstance) {
-	for k := range is {
-		repository.TypeInstances[d] = append(repository.TypeInstances[d], k)
+func (repository *repositoryStub) GetLatestManifest(d string) (*common.Manifest, error) {
+	if d == deploymentName {
+		return repository.ManifestAdd[d], nil
 	}
+
+	return nil, errTest
 }
+
+// Types.
+func (repository *repositoryStub) ListTypes() ([]string, error) {
+	repository.ListTypesCalled = true
+	return []string{}, nil
+}
+
+func (repository *repositoryStub) GetTypeInstances(t string) ([]*common.TypeInstance, error) {
+	repository.GetTypeInstancesCalled = true
+	return []*common.TypeInstance{}, nil
+}
+
+func (repository *repositoryStub) ClearTypeInstancesForDeployment(d string) error {
+	repository.TypeInstancesCleared = true
+	return nil
+}
+
+func (repository *repositoryStub) AddTypeInstances(is map[string][]*common.TypeInstance) error {
+	for t, instances := range is {
+		for _, instance := range instances {
+			d := instance.Deployment
+			repository.TypeInstances[d] = append(repository.TypeInstances[d], t)
+		}
+	}
+
+	return nil
+}
+
+func (repository *repositoryStub) Close() {}
 
 var testExpander = &expanderStub{}
 var testRepository = newRepositoryStub()
