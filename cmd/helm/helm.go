@@ -4,11 +4,11 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
+	"github.com/deis/helm-dm/dm"
 	"github.com/deis/helm-dm/format"
 )
 
 var version = "0.0.1"
-var isDebugging bool
 
 func main() {
 	app := cli.NewApp()
@@ -25,17 +25,16 @@ func main() {
 			EnvVar: "HELM_HOST",
 			Value:  "https://localhost:8181/FIXME_NOT_RIGHT",
 		},
+		cli.IntFlag{
+			Name:  "timeout",
+			Usage: "Time in seconds to wait for response",
+			Value: 10,
+		},
 		cli.BoolFlag{
 			Name:  "debug",
 			Usage: "Enable verbose debugging output",
 		},
 	}
-
-	app.Before = func(ctx *cli.Context) error {
-		isDebugging = ctx.Bool("debug")
-		return nil
-	}
-
 	app.Run(os.Args)
 }
 
@@ -181,6 +180,7 @@ func commands() []cli.Command {
 			Name: "search",
 		},
 		listCmd(),
+		getCmd(),
 	}
 }
 
@@ -189,4 +189,11 @@ func run(c *cli.Context, f func(c *cli.Context) error) {
 		os.Stderr.Write([]byte(err.Error()))
 		os.Exit(1)
 	}
+}
+
+func client(c *cli.Context) *dm.Client {
+	host := c.GlobalString("host")
+	debug := c.GlobalBool("debug")
+	timeout := c.GlobalInt("timeout")
+	return dm.NewClient(host).SetDebug(debug).SetTimeout(timeout)
 }

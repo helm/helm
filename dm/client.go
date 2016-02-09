@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kubernetes/deployment-manager/common"
 )
 
 // The default HTTP timeout
@@ -67,6 +69,12 @@ func (c *Client) SetTransport(tr http.RoundTripper) *Client {
 	return c
 }
 
+// SetTimeout sets a timeout for http connections
+func (c *Client) SetTimeout(seconds int) *Client {
+	c.HTTPTimeout = time.Duration(time.Duration(seconds) * time.Second)
+	return c
+}
+
 // url constructs the URL.
 func (c *Client) url(rawurl string) (string, error) {
 	u, err := url.Parse(rawurl)
@@ -98,6 +106,9 @@ func (c *Client) CallService(path, method, action string, dest interface{}, read
 // callHTTP is  a low-level primative for executing HTTP operations.
 func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (string, error) {
 	request, err := http.NewRequest(method, path, reader)
+
+	// TODO: dynamically set version
+	request.Header.Set("User-Agent", "helm/0.0.1")
 	request.Header.Add("Content-Type", "application/json")
 
 	client := http.Client{
@@ -125,10 +136,34 @@ func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (st
 	return string(body), nil
 }
 
+// DefaultServerURL converts a host, host:port, or URL string to the default base server API path
+// to use with a Client
+func DefaultServerURL(host string) (*url.URL, error) {
+	if host == "" {
+		return nil, fmt.Errorf("host must be a URL or a host:port pair")
+	}
+	base := host
+	hostURL, err := url.Parse(base)
+	if err != nil {
+		return nil, err
+	}
+	if hostURL.Scheme == "" {
+		hostURL, err = url.Parse(DefaultHTTPProtocol + "://" + base)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(hostURL.Path) > 0 && !strings.HasSuffix(hostURL.Path, "/") {
+		hostURL.Path = hostURL.Path + "/"
+	}
+
+	return hostURL, nil
+}
+
 // ListDeployments lists the deployments in DM.
 func (c *Client) ListDeployments() ([]string, error) {
 	var l []string
-	if err := c.CallService("deployments", "GET", "foo", &l, nil); err != nil {
+	if err := c.CallService("deployments", "GET", "list deployments", &l, nil); err != nil {
 		return nil, err
 	}
 
@@ -181,26 +216,11 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	return nil
 }
 
-// DefaultServerURL converts a host, host:port, or URL string to the default base server API path
-// to use with a Client
-func DefaultServerURL(host string) (*url.URL, error) {
-	if host == "" {
-		return nil, fmt.Errorf("host must be a URL or a host:port pair")
-	}
-	base := host
-	hostURL, err := url.Parse(base)
-	if err != nil {
+// GetDeployment retrieves the supplied deployment
+func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
+	var deployment *common.Deployment
+	if err := c.CallService(filepath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
 		return nil, err
 	}
-	if hostURL.Scheme == "" {
-		hostURL, err = url.Parse(DefaultHTTPProtocol + "://" + base)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(hostURL.Path) > 0 && !strings.HasSuffix(hostURL.Path, "/") {
-		hostURL.Path = hostURL.Path + "/"
-	}
-
-	return hostURL, nil
+	return deployment, nil
 }
