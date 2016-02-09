@@ -7,6 +7,18 @@ import (
 	"github.com/kubernetes/deployment-manager/chart"
 )
 
+func init() {
+	addCommands(createCmd())
+}
+
+func createCmd() cli.Command {
+	return cli.Command{
+		Name:   "create",
+		Usage:  "Create a new local chart for editing.",
+		Action: func(c *cli.Context) { run(c, create) },
+	}
+}
+
 func create(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {

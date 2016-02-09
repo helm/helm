@@ -5,6 +5,10 @@ import (
 	"github.com/deis/helm-dm/format"
 )
 
+func init() {
+	addCommands(listCmd())
+}
+
 func listCmd() cli.Command {
 	return cli.Command{
 		Name:   "list",
