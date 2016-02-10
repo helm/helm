@@ -85,6 +85,10 @@ func (c *Client) url(rawurl string) (string, error) {
 	return c.baseURL.ResolveReference(u).String(), nil
 }
 
+func (c *Client) agent() string {
+	return fmt.Sprintf("helm/%s", "0.0.1")
+}
+
 // CallService is a low-level function for making an API call.
 //
 // This calls the service and then unmarshals the returned data into dest.
@@ -109,29 +113,28 @@ func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (st
 	request, err := http.NewRequest(method, path, reader)
 
 	// TODO: dynamically set version
-	request.Header.Set("User-Agent", "helm/0.0.1")
+	request.Header.Set("User-Agent", c.agent())
 	request.Header.Add("Content-Type", "application/json")
 
-	client := http.Client{
-		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
+	client := &http.Client{
+		Timeout:   c.HTTPTimeout,
 		Transport: c.transport(),
 	}
 
 	response, err := client.Do(request)
 	if err != nil {
-		return "", fmt.Errorf("cannot %s: %s\n", action, err)
+		return "", err
 	}
 
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return "", fmt.Errorf("cannot %s: %s\n", action, err)
+		return "", err
 	}
 
-	if response.StatusCode < http.StatusOK ||
-		response.StatusCode >= http.StatusMultipleChoices {
-		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
-		return "", fmt.Errorf("cannot %s: %s\n", action, message)
+	s := response.StatusCode
+	if s < http.StatusOK || s >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("request '%s %s' failed with %d: %s\n", action, path, s, body)
 	}
 
 	return string(body), nil
@@ -194,9 +197,10 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	request.Header.Add("Content-Encoding", "gzip")
 	request.Header.Add("X-Deployment-Name", deployname)
 	request.Header.Add("X-Chart-Name", filepath.Base(filename))
+	request.Header.Set("User-Agent", c.agent())
 
-	client := http.Client{
-		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
+	client := &http.Client{
+		Timeout:   c.HTTPTimeout,
 		Transport: c.transport(),
 	}
 
