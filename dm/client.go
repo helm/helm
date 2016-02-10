@@ -224,3 +224,12 @@ func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
 	}
 	return deployment, nil
 }
+
+// DeleteDeployment deletes the supplied deployment
+func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
+	var deployment *common.Deployment
+	if err := c.CallService(filepath.Join("deployments", name), "DELETE", "delete deployment", &deployment, nil); err != nil {
+		return nil, err
+	}
+	return deployment, nil
+}
