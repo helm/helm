@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	fancypath "path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -84,6 +85,10 @@ func (c *Client) url(rawurl string) (string, error) {
 	return c.baseURL.ResolveReference(u).String(), nil
 }
 
+func (c *Client) agent() string {
+	return fmt.Sprintf("helm/%s", "0.0.1")
+}
+
 // CallService is a low-level function for making an API call.
 //
 // This calls the service and then unmarshals the returned data into dest.
@@ -108,29 +113,28 @@ func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (st
 	request, err := http.NewRequest(method, path, reader)
 
 	// TODO: dynamically set version
-	request.Header.Set("User-Agent", "helm/0.0.1")
+	request.Header.Set("User-Agent", c.agent())
 	request.Header.Add("Content-Type", "application/json")
 
-	client := http.Client{
-		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
+	client := &http.Client{
+		Timeout:   c.HTTPTimeout,
 		Transport: c.transport(),
 	}
 
 	response, err := client.Do(request)
 	if err != nil {
-		return "", fmt.Errorf("cannot %s: %s\n", action, err)
+		return "", err
 	}
 
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return "", fmt.Errorf("cannot %s: %s\n", action, err)
+		return "", err
 	}
 
-	if response.StatusCode < http.StatusOK ||
-		response.StatusCode >= http.StatusMultipleChoices {
-		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
-		return "", fmt.Errorf("cannot %s: %s\n", action, message)
+	s := response.StatusCode
+	if s < http.StatusOK || s >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("request '%s %s' failed with %d: %s\n", action, path, s, body)
 	}
 
 	return string(body), nil
@@ -176,9 +180,13 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
-	request, err := http.NewRequest("POST", "/v2/deployments/", f)
+	u, err := c.url("/v2/deployments")
+	request, err := http.NewRequest("POST", u, f)
+	if err != nil {
+		f.Close()
+		return err
+	}
 
 	// There is an argument to be made for using the legacy x-octet-stream for
 	// this. But since we control both sides, we should use the standard one.
@@ -189,10 +197,11 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	request.Header.Add("Content-Encoding", "gzip")
 	request.Header.Add("X-Deployment-Name", deployname)
 	request.Header.Add("X-Chart-Name", filepath.Base(filename))
+	request.Header.Set("User-Agent", c.agent())
 
-	client := http.Client{
-		Timeout:   time.Duration(time.Duration(DefaultHTTPTimeout) * time.Second),
-		Transport: c.Transport,
+	client := &http.Client{
+		Timeout:   c.HTTPTimeout,
+		Transport: c.transport(),
 	}
 
 	response, err := client.Do(request)
@@ -200,17 +209,14 @@ func (c *Client) DeployChart(filename, deployname string) error {
 		return err
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	if err != nil {
-		return err
-	}
-
-	// FIXME: We only want 200 OK or 204(?) CREATED
-	if response.StatusCode < http.StatusOK ||
-		response.StatusCode >= http.StatusMultipleChoices {
-		message := fmt.Sprintf("status code: %d status: %s : %s", response.StatusCode, response.Status, body)
-		return fmt.Errorf("Failed to post: %s", message)
+	// We only want 201 CREATED. Admittedly, we could accept 200 and 202.
+	if response.StatusCode < http.StatusCreated {
+		body, err := ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("failed to post: %d %s - %s", response.StatusCode, response.Status, body)
 	}
 
 	return nil
@@ -219,7 +225,7 @@ func (c *Client) DeployChart(filename, deployname string) error {
 // GetDeployment retrieves the supplied deployment
 func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
-	if err := c.CallService(filepath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
+	if err := c.CallService(fancypath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
 		return nil, err
 	}
 	return deployment, nil

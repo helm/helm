@@ -29,7 +29,7 @@ func main() {
 			Name:   "host,u",
 			Usage:  "The URL of the DM server.",
 			EnvVar: "HELM_HOST",
-			Value:  "https://localhost:8181/FIXME_NOT_RIGHT",
+			Value:  "https://localhost:8000/",
 		},
 		cli.IntFlag{
 			Name:  "timeout",

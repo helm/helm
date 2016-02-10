@@ -1,8 +1,10 @@
 package dm
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -128,5 +130,42 @@ func TestGetDeployment(t *testing.T) {
 
 	if d.State.Status != common.DeployedStatus {
 		t.Fatalf("expected deployment status 'Deployed', got '%s'", d.State.Status)
+	}
+}
+
+func TestDeployChart(t *testing.T) {
+	testfile := "../testdata/charts/frobnitz-0.0.1.tgz"
+	testname := "sparkles"
+
+	fi, err := os.Stat(testfile)
+	if err != nil {
+		t.Fatalf("could not stat file %s: %s", testfile, err)
+	}
+	expectedSize := int(fi.Size())
+
+	fc := &fakeClient{
+		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			data, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("Failed to read data off of request: %s", err)
+			}
+			if len(data) != expectedSize {
+				t.Errorf("Expected content length %d, got %d", expectedSize, len(data))
+			}
+
+			if cn := r.Header.Get("x-chart-name"); cn != "frobnitz-0.0.1.tgz" {
+				t.Errorf("Expected frobnitz-0.0.1.tgz, got %q", cn)
+			}
+			if dn := r.Header.Get("x-deployment-name"); dn != "sparkles" {
+				t.Errorf("Expected sparkles, got %q", dn)
+			}
+
+			w.WriteHeader(201)
+		}),
+	}
+	defer fc.teardown()
+
+	if err := fc.setup().DeployChart(testfile, testname); err != nil {
+		t.Fatal(err)
 	}
 }

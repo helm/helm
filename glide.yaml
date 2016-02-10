@@ -8,3 +8,4 @@ import:
   - /common
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
+- package: github.com/aokoli/goutils

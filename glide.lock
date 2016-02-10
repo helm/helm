@@ -1,61 +1,21 @@
-hash: 71e9a5a2d1f27a0ecfa70595154f87fee9f5519ba6bdea4d01834bab5aa29074
-updated: 2016-02-06T17:26:31.257079434-08:00
+hash: c54a5f678965132636637023cd71e4d4065360b229242718f7f6e7674ac8d1c1
+updated: 2016-02-09T16:35:44.56035745-07:00
 imports:
+- name: github.com/aokoli/goutils
+  version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/codegangsta/cli
-  version: cf1f63a7274872768d4037305d572b70b1199397
-- name: github.com/emicklei/go-restful
-  version: b86acf97a74ed7603ac78d012f5535b4d587b156
+  version: 8cea2901d4b2c28b97001e67a7d2d60e227f3da6
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
-- name: github.com/golang/glog
-  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
-- name: github.com/golang/protobuf
-  version: 45bba206dd5270d96bac4942dcfe515726613249
-- name: github.com/google/go-github
-  version: b8b4ac742977310ff6e75140a403a38dab109977
-- name: github.com/google/go-querystring
-  version: 2a60fc2ba6c19de80291203597d752e9ba58e4c0
-- name: github.com/gorilla/context
-  version: 1c83b3eabd45b6d76072b66b746c20815fb2872d
-- name: github.com/gorilla/handlers
-  version: b3aff83722cb2ae031a70cae984650e3a16cd20e
-- name: github.com/gorilla/mux
-  version: 26a6070f849969ba72b72256e9f14cf519751690
-- name: github.com/gorilla/schema
-  version: 14c555599c2a4f493c1e13fd1ea6fdf721739028
 - name: github.com/kubernetes/deployment-manager
-  version: ""
+  version: 4fe37ea6342991e4d0519e48d1fd6fca061baf5c
   subpackages:
   - /common
+  - chart
+  - common
+  - log
 - name: github.com/Masterminds/semver
   version: c4f7ef0702f269161a60489ccbbc9f1241ad1265
-- name: github.com/mjibson/appstats
-  version: 0542d5f0e87ea3a8fa4174322b9532f5d04f9fa8
-- name: golang.org/x/crypto
-  version: 1f22c0103821b9390939b6776727195525381532
-- name: golang.org/x/net
-  version: 6c581b96a7d38dd755f986fcf4f29665597694c0
-- name: golang.org/x/oauth2
-  version: 8a57ed94ffd43444c0879fe75701732a38afc985
-- name: golang.org/x/text
-  version: 5aaa1a807bf8a2f763540b140e7805973476eb88
-- name: google.golang.com/appengine/datastore
-  version: ""
-  repo: https://google.golang.com/appengine/datastore
-- name: google.golang.com/appengine/memcache
-  version: ""
-  repo: https://google.golang.com/appengine/memcache
-- name: google.golang.com/appengine/user
-  version: ""
-  repo: https://google.golang.com/appengine/user
-- name: google.golang.org/api
-  version: 8fa1015948e6fc21c025050624e4c4e2f4f405c4
-- name: google.golang.org/appengine
-  version: 6bde959377a90acb53366051d7d587bfd7171354
-- name: google.golang.org/cloud
-  version: 5a3b06f8b5da3b7c3a93da43163b872c86c509ef
-- name: google.golang.org/grpc
-  version: 5d64098b94ee9dbbea8ddc130208696bcd199ba4
 - name: gopkg.in/yaml.v2
   version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
 devImports: []
