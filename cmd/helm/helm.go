@@ -13,7 +13,7 @@ var version = "0.0.1"
 var commands []cli.Command
 
 func init() {
-	commands = cmds()
+	addCommands(cmds()...)
 }
 
 func main() {
