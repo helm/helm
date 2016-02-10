@@ -7,9 +7,9 @@ import (
 func TestPrintCreate(t *testing.T) {
 	var client Runner = PrintRunner{}
 
-	expected := `[CMD] kubectl --namespace=default-namespace create -f - < some stdin data`
+	expected := `[CMD] kubectl create -f - < some stdin data`
 
-	out, err := client.Create([]byte("some stdin data"), "default-namespace")
+	out, err := client.Create([]byte("some stdin data"))
 	if err != nil {
 		t.Error(err)
 	}

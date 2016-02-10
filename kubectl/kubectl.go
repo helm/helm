@@ -8,11 +8,11 @@ type Runner interface {
 	// ClusterInfo returns Kubernetes cluster info
 	ClusterInfo() ([]byte, error)
 	// Create uploads a chart to Kubernetes
-	Create([]byte, string) ([]byte, error)
+	Create(stdin []byte) ([]byte, error)
 	// Delete removes a chart from Kubernetes.
-	Delete(string, string, string) ([]byte, error)
+	Delete(name string, ktype string) ([]byte, error)
 	// Get returns Kubernetes resources
-	Get([]byte, string) ([]byte, error)
+	Get(stdin []byte, ns string) ([]byte, error)
 
 	// GetByKind gets an entry by kind, name, and namespace.
 	//

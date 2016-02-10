@@ -10,7 +10,7 @@ import (
 // Returns the string output received from the operation, and an error if the
 // command failed.
 func Install(runner kubectl.Runner) (string, error) {
-	o, err := runner.Create([]byte(InstallYAML), "dm")
+	o, err := runner.Create([]byte(InstallYAML))
 	return string(o), err
 }
 
