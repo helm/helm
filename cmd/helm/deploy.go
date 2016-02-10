@@ -10,7 +10,6 @@ import (
 	"github.com/aokoli/goutils"
 	"github.com/codegangsta/cli"
 	dep "github.com/deis/helm-dm/deploy"
-	"github.com/deis/helm-dm/dm"
 	"github.com/deis/helm-dm/format"
 	"github.com/kubernetes/deployment-manager/chart"
 )
@@ -79,10 +78,10 @@ func deploy(c *cli.Context) error {
 		d.Input = os.Stdin
 	}
 
-	return doDeploy(d, c.GlobalString("host"), c.Bool("dry-run"))
+	return doDeploy(d, c)
 }
 
-func doDeploy(cfg *dep.Deployment, host string, dry bool) error {
+func doDeploy(cfg *dep.Deployment, cxt *cli.Context) error {
 	if cfg.Filename == "" {
 		return errors.New("A filename must be specified. For a tar archive, this is the name of the root template in the archive.")
 	}
@@ -125,12 +124,12 @@ func doDeploy(cfg *dep.Deployment, host string, dry bool) error {
 		cfg.Name = n
 	}
 
-	if dry {
+	if cxt.Bool("dry-run") {
 		format.Info("Prepared deploy %q using file %q", cfg.Name, cfg.Filename)
 		return nil
 	}
 
-	c := dm.NewClient(host)
+	c := client(cxt)
 	return c.DeployChart(cfg.Filename, cfg.Name)
 }
 

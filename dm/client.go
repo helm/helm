@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	fancypath "path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -177,10 +177,13 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	u, err := c.url("/v2/deployments")
 	request, err := http.NewRequest("POST", u, f)
+	if err != nil {
+		f.Close()
+		return err
+	}
 
 	// There is an argument to be made for using the legacy x-octet-stream for
 	// this. But since we control both sides, we should use the standard one.
@@ -209,7 +212,7 @@ func (c *Client) DeployChart(filename, deployname string) error {
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Failed to post: %d %s - %s", response.StatusCode, response.Status, body)
+		return fmt.Errorf("failed to post: %d %s - %s", response.StatusCode, response.Status, body)
 	}
 
 	return nil
@@ -218,7 +221,7 @@ func (c *Client) DeployChart(filename, deployname string) error {
 // GetDeployment retrieves the supplied deployment
 func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
-	if err := c.CallService(path.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
+	if err := c.CallService(fancypath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
 		return nil, err
 	}
 	return deployment, nil
