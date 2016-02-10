@@ -10,6 +10,45 @@ import (
 	"github.com/kubernetes/deployment-manager/chart"
 )
 
+func init() {
+	addCommands(deployCmd())
+}
+
+func deployCmd() cli.Command {
+	return cli.Command{
+		Name:    "deploy",
+		Aliases: []string{"install"},
+		Usage:   "Deploy a chart into the cluster.",
+		Action:  func(c *cli.Context) { run(c, deploy) },
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "dry-run",
+				Usage: "Only display the underlying kubectl commands.",
+			},
+			cli.BoolFlag{
+				Name:  "stdin,i",
+				Usage: "Read a configuration from STDIN.",
+			},
+			cli.StringFlag{
+				Name:  "name",
+				Usage: "Name of deployment, used for deploy and update commands (defaults to template name)",
+			},
+			// TODO: I think there is a Generic flag type that we can implement parsing with.
+			cli.StringFlag{
+				Name:  "properties,p",
+				Usage: "A comma-separated list of key=value pairs: 'foo=bar,foo2=baz'.",
+			},
+			cli.StringFlag{
+				// FIXME: This is not right. It's sort of a half-baked forward
+				// port of dm.go.
+				Name:  "repository",
+				Usage: "The default repository",
+				Value: "kubernetes/application-dm-templates",
+			},
+		},
+	}
+}
+
 func deploy(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {

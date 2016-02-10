@@ -7,6 +7,10 @@ import (
 	"github.com/deis/helm-dm/format"
 )
 
+func init() {
+	addCommands(getCmd())
+}
+
 func getCmd() cli.Command {
 	return cli.Command{
 		Name:   "get",

@@ -10,6 +10,19 @@ import (
 	"github.com/kubernetes/deployment-manager/chart"
 )
 
+func init() {
+	addCommands(packageCmd())
+}
+
+func packageCmd() cli.Command {
+	return cli.Command{
+		Name:    "package",
+		Aliases: []string{"pack"},
+		Usage:   "Given a chart directory, package it into a release.",
+		Action:  func(c *cli.Context) { run(c, pack) },
+	}
+}
+
 func pack(cxt *cli.Context) error {
 	args := cxt.Args()
 	if len(args) < 1 {
