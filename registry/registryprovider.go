@@ -247,10 +247,6 @@ func NewGCSRegistryProvider(cp common.CredentialProvider) GCSRegistryProvider {
 // GetGCSRegistry returns a new Google Cloud Storage . If there's a credential that is specified, will try
 // to fetch it and use it, and if there's no credential found, will fall back to unauthenticated client.
 func (gcsrp gcsRegistryProvider) GetGCSRegistry(cr common.Registry) (ObjectStorageRegistry, error) {
-	// If there's a credential that we need to use, fetch it and create a client for it.
-	if cr.CredentialName == "" {
-		return nil, fmt.Errorf("No CredentialName specified for %s", cr.Name)
-	}
 	client, err := gcsrp.createGCSClient(cr.CredentialName)
 	if err != nil {
 		return nil, err
@@ -263,10 +259,15 @@ func (gcsrp gcsRegistryProvider) GetGCSRegistry(cr common.Registry) (ObjectStora
 }
 
 func (gcsrp gcsRegistryProvider) createGCSClient(credentialName string) (*http.Client, error) {
+	if credentialName == "" {
+		return http.DefaultClient, nil
+	}
+
 	c, err := gcsrp.cp.GetCredential(credentialName)
 	if err != nil {
 		log.Printf("Failed to fetch credential %s: %v", credentialName, err)
-		return nil, fmt.Errorf("Failed to fetch Credential %s: %s", credentialName, err)
+		log.Print("Trying to use unauthenticated client")
+		return http.DefaultClient, nil
 	}
 
 	config, err := google.JWTConfigFromJSON([]byte(c.ServiceAccount), storage.DevstorageReadOnlyScope)
