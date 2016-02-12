@@ -134,7 +134,7 @@ func (c *Client) callHTTP(path, method, action string, reader io.ReadCloser) (st
 
 	s := response.StatusCode
 	if s < http.StatusOK || s >= http.StatusMultipleChoices {
-		return "", fmt.Errorf("request '%s %s' failed with %d: %s\n", action, path, s, body)
+		return "", &HTTPError{StatusCode: s, Message: string(body), URL: request.URL}
 	}
 
 	return string(body), nil
@@ -210,16 +210,36 @@ func (c *Client) DeployChart(filename, deployname string) error {
 	}
 
 	// We only want 201 CREATED. Admittedly, we could accept 200 and 202.
-	if response.StatusCode < http.StatusCreated {
+	if response.StatusCode != http.StatusCreated {
 		body, err := ioutil.ReadAll(response.Body)
 		response.Body.Close()
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("failed to post: %d %s - %s", response.StatusCode, response.Status, body)
+		return &HTTPError{StatusCode: response.StatusCode, Message: string(body), URL: request.URL}
 	}
 
 	return nil
+}
+
+// HTTPError is an error caused by an unexpected HTTP status code.
+//
+// The StatusCode will not necessarily be a 4xx or 5xx. Any unexpected code
+// may be returned.
+type HTTPError struct {
+	StatusCode int
+	Message    string
+	URL        *url.URL
+}
+
+// Error implements the error interface.
+func (e *HTTPError) Error() string {
+	return e.Message
+}
+
+// String implmenets the io.Stringer interface.
+func (e *HTTPError) String() string {
+	return e.Error()
 }
 
 // GetDeployment retrieves the supplied deployment
