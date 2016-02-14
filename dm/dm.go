@@ -206,26 +206,19 @@ func execute() {
 			os.Exit(1)
 		}
 
-		path := fmt.Sprintf("deployments/%s", args[1])
+		path := fmt.Sprintf("deployments/%s", url.QueryEscape(args[1]))
 		action := fmt.Sprintf("get deployment named %s", args[1])
 		callService(path, "GET", action, nil)
 	case "manifest":
-		msg := "Must specify manifest in the form <deployment>/<manifest> or <deployment> to list."
-		if len(args) < 2 {
+		msg := "Must specify manifest in the form <deployment> <manifest> or just <deployment> to list."
+		if len(args) < 2 || len(args) > 3 {
 			fmt.Fprintln(os.Stderr, msg)
 			os.Exit(1)
 		}
 
-		s := strings.Split(args[1], "/")
-		ls := len(s)
-		if ls < 1 || ls > 2 {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Invalid manifest (%s), %s", args[1], msg))
-			os.Exit(1)
-		}
-
-		path := fmt.Sprintf("deployments/%s/manifests", s[0])
-		if ls == 2 {
-			path = path + fmt.Sprintf("/%s", s[1])
+		path := fmt.Sprintf("deployments/%s/manifests", url.QueryEscape(args[1]))
+		if len(args) > 2 {
+			path = path + fmt.Sprintf("/%s", url.QueryEscape(args[2]))
 		}
 
 		action := fmt.Sprintf("get manifest %s", args[1])
@@ -236,12 +229,12 @@ func execute() {
 			os.Exit(1)
 		}
 
-		path := fmt.Sprintf("deployments/%s", args[1])
+		path := fmt.Sprintf("deployments/%s", url.QueryEscape(args[1]))
 		action := fmt.Sprintf("delete deployment named %s", args[1])
 		callService(path, "DELETE", action, nil)
 	case "update":
 		template := loadTemplate(args)
-		path := fmt.Sprintf("deployments/%s", template.Name)
+		path := fmt.Sprintf("deployments/%s", url.QueryEscape(template.Name))
 		action := fmt.Sprintf("delete deployment named %s", template.Name)
 		callService(path, "PUT", action, marshalTemplate(template))
 	case "deployed-types":
@@ -274,9 +267,14 @@ func execute() {
 }
 
 func callService(path, method, action string, reader io.ReadCloser) {
-	u := fmt.Sprintf("%s/%s", *service, path)
+	var URL *url.URL
+	URL, err := url.Parse(*service)
+	if err != nil {
+		panic(fmt.Errorf("cannot parse url (%s): %s\n", path, err))
+	}
 
-	resp := callHTTP(u, method, action, reader)
+	URL.Path += path
+	resp := callHTTP(URL.String(), method, action, reader)
 	var j interface{}
 	if err := json.Unmarshal([]byte(resp), &j); err != nil {
 		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
