@@ -245,15 +245,7 @@ func execute() {
 			os.Exit(1)
 		}
 
-		tUrls := getDownloadURLs(args[1])
-		var tURL = ""
-		if len(tUrls) == 0 {
-			// Type is most likely a primitive.
-			tURL = args[1]
-		} else {
-			// TODO(vaikas): Support packages properly.
-			tURL = tUrls[0]
-		}
+		tURL := args[1]
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tURL))
 		action := fmt.Sprintf("list deployed instances of type %s", tURL)
 		callService(path, "GET", action, nil)
@@ -431,24 +423,12 @@ func buildTemplateFromType(t string) *common.Template {
 	}
 
 	// Name the deployment after the type name.
-	name := t
-
-	config := common.Configuration{Resources: []*common.Resource{&common.Resource{
-		Name:       name,
-		Type:       getDownloadURLs(t)[0],
-		Properties: props,
-	}}}
-
-	y, err := yaml.Marshal(config)
+	template, err := expander.NewTemplateFromType(t, t, props)
 	if err != nil {
-		panic(fmt.Errorf("error: %s\ncannot create configuration for deployment: %v\n", err, config))
+		panic(fmt.Errorf("cannot create configuration from type (%s): %s\n", t, err))
 	}
 
-	return &common.Template{
-		Name:    name,
-		Content: string(y),
-		// No imports, as this is a single type from repository.
-	}
+	return template
 }
 
 func marshalTemplate(template *common.Template) io.ReadCloser {
