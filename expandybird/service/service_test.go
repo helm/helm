@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,15 +26,15 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/util"
 
 	restful "github.com/emicklei/go-restful"
 )
 
 func GetTemplateReader(t *testing.T, description string, templateFileName string) io.Reader {
-	template, err := expander.NewTemplateFromFileNames(templateFileName, importFileNames)
+	template, err := util.NewTemplateFromFileNames(templateFileName, importFileNames)
 	if err != nil {
 		t.Errorf("cannot create template for test case (%s): %s\n", err, description)
 	}

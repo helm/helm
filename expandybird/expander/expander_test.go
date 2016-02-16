@@ -17,8 +17,6 @@ limitations under the License.
 package expander
 
 import (
-	"archive/tar"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,11 +26,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/util"
 )
-
-const invalidFileName = "afilethatdoesnotexist"
 
 var importFileNames = []string{
 	"../test/replicatedservice.py",
@@ -51,7 +47,7 @@ type ExpanderTestCase struct {
 }
 
 func (etc *ExpanderTestCase) GetTemplate(t *testing.T) *common.Template {
-	template, err := NewTemplateFromFileNames(etc.TemplateFileName, etc.ImportFileNames)
+	template, err := util.NewTemplateFromFileNames(etc.TemplateFileName, etc.ImportFileNames)
 	if err != nil {
 		t.Fatalf("cannot create template for test case '%s': %s", etc.Description, err)
 	}
@@ -108,131 +104,14 @@ func testExpandTemplateFromFile(t *testing.T, fileName, baseName string, importF
 	expandAndVerifyOutput(t, actualOutput, description)
 }
 
-var (
-	testTemplateName       = "expandybird"
-	testTemplateType       = "replicatedservice.py"
-	testTemplateProperties = `
-service_port: 8080
-target_port: 8080
-container_port: 8080
-external_service: true
-replicas: 3
-image: gcr.io/dm-k8s-testing/expandybird
-labels:
-  app: expandybird
-`
-)
-
-func TestNewTemplateFromType(t *testing.T) {
-	var properties map[string]interface{}
-	if err := yaml.Unmarshal([]byte(testTemplateProperties), &properties); err != nil {
-		t.Fatalf("cannot unmarshal test data: %s", err)
-	}
-
-	_, err := NewTemplateFromType(testTemplateName, testTemplateType, properties)
-	if err != nil {
-		t.Fatalf("cannot create template from type %s: %s", testTemplateType, err)
-	}
-}
-
-func TestNewTemplateFromReader(t *testing.T) {
-	r := bytes.NewReader([]byte{})
-	if _, err := NewTemplateFromReader("test", r, nil); err == nil {
-		t.Fatalf("expected error did not occur for empty input: %s", err)
-	}
-
-	r = bytes.NewReader([]byte("test"))
-	if _, err := NewTemplateFromReader("test", r, nil); err != nil {
-		t.Fatalf("cannot read test template: %s", err)
-	}
-}
-
-type archiveBuilder []struct {
-	Name, Body string
-}
-
-var invalidFiles = archiveBuilder{
-	{"testFile1.yaml", ""},
-}
-
-var validFiles = archiveBuilder{
-	{"testFile1.yaml", "testFile:1"},
-	{"testFile2.yaml", "testFile:2"},
-}
-
-func generateArchive(t *testing.T, files archiveBuilder) *bytes.Reader {
-	buffer := new(bytes.Buffer)
-	tw := tar.NewWriter(buffer)
-	for _, file := range files {
-		hdr := &tar.Header{
-			Name: file.Name,
-			Mode: 0600,
-			Size: int64(len(file.Body)),
-		}
-
-		if err := tw.WriteHeader(hdr); err != nil {
-			t.Fatal(err)
-		}
-
-		if _, err := tw.Write([]byte(file.Body)); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := tw.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	r := bytes.NewReader(buffer.Bytes())
-	return r
-}
-
-func TestNewTemplateFromArchive(t *testing.T) {
-	r := bytes.NewReader([]byte{})
-	if _, err := NewTemplateFromArchive("", r, nil); err == nil {
-		t.Fatalf("expected error did not occur for empty input: %s", err)
-	}
-
-	r = bytes.NewReader([]byte("test"))
-	if _, err := NewTemplateFromArchive("", r, nil); err == nil {
-		t.Fatalf("expected error did not occur for non archive file:%s", err)
-	}
-
-	r = generateArchive(t, invalidFiles)
-	if _, err := NewTemplateFromArchive(invalidFiles[0].Name, r, nil); err == nil {
-		t.Fatalf("expected error did not occur for empty file in archive")
-	}
-
-	r = generateArchive(t, validFiles)
-	if _, err := NewTemplateFromArchive("", r, nil); err == nil {
-		t.Fatalf("expected error did not occur for missing file in archive")
-	}
-
-	r = generateArchive(t, validFiles)
-	if _, err := NewTemplateFromArchive(validFiles[1].Name, r, nil); err != nil {
-		t.Fatalf("cannnot create template from valid archive")
-	}
-}
-
-func TestNewTemplateFromFileNames(t *testing.T) {
-	if _, err := NewTemplateFromFileNames(invalidFileName, importFileNames); err == nil {
-		t.Fatalf("expected error did not occur for invalid template file name")
-	}
-
-	_, err := NewTemplateFromFileNames(invalidFileName, []string{"afilethatdoesnotexist"})
-	if err == nil {
-		t.Fatalf("expected error did not occur for invalid import file names")
-	}
-}
-
 func TestExpandTemplateFromReader(t *testing.T) {
 	baseName := path.Base(validFileName)
-	testExpandTemplateFromFile(t, validFileName, baseName, importFileNames, NewTemplateFromReader)
+	testExpandTemplateFromFile(t, validFileName, baseName, importFileNames, util.NewTemplateFromReader)
 }
 
 func TestExpandTemplateFromArchive(t *testing.T) {
 	baseName := path.Base(validFileName)
-	testExpandTemplateFromFile(t, archiveFileName, baseName, nil, NewTemplateFromArchive)
+	testExpandTemplateFromFile(t, archiveFileName, baseName, nil, util.NewTemplateFromArchive)
 }
 
 var ExpanderTestCases = []ExpanderTestCase{
