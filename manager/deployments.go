@@ -495,12 +495,18 @@ func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	values, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
 	var regex *regexp.Regexp
-	regexString, err := getPathVariable(w, r, "regex", handler)
-	if err == nil {
+	regexString := values.Get("regex")
+	if regexString != "" {
 		regex, err = regexp.Compile(regexString)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
 			return
 		}
 	}

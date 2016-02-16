@@ -166,6 +166,10 @@ func execute() {
 	switch args[0] {
 	case "templates":
 		path := fmt.Sprintf("registries/%s/types", *templateRegistry)
+		if *regexString != "" {
+			path += fmt.Sprintf("?%s", url.QueryEscape(*regexString))
+		}
+
 		callService(path, "GET", "list templates", nil)
 	case "describe":
 		if len(args) != 2 {
