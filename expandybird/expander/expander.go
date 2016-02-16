@@ -46,6 +46,8 @@ func NewExpander(binary string) Expander {
 	return &expander{binary}
 }
 
+// NewTemplateFromType creates and returns a new template whose content
+// is a YAML marshaled resource assembled from the supplied arguments.
 func NewTemplateFromType(name, typeName string, properties map[string]interface{}) (*common.Template, error) {
 	resource := &common.Resource{
 		Name:       name,

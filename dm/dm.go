@@ -168,7 +168,13 @@ func execute() {
 		path := fmt.Sprintf("registries/%s/types", *templateRegistry)
 		callService(path, "GET", "list templates", nil)
 	case "describe":
-		describeType(args)
+		if len(args) != 2 {
+			fmt.Fprintln(os.Stderr, "No type name or URL supplied")
+			os.Exit(1)
+		}
+
+		path := fmt.Sprintf("types/%s/metadata", url.QueryEscape(args[1]))
+		callService(path, "GET", "get metadata for type", nil)
 	case "expand":
 		template := loadTemplate(args)
 		callService("expand", "POST", "expand configuration", marshalTemplate(template))
@@ -306,42 +312,6 @@ func callHTTP(path, method, action string, reader io.ReadCloser) string {
 	}
 
 	return string(body)
-}
-
-// describeType prints the schema for a type specified by either a
-// template URL or a fully qualified registry type name (e.g.,
-// <type-name>:<version>)
-func describeType(args []string) {
-	if len(args) != 2 {
-		fmt.Fprintln(os.Stderr, "No type name or URL supplied")
-		os.Exit(1)
-	}
-
-	tUrls := getDownloadURLs(url.QueryEscape(args[1]))
-	if len(tUrls) == 0 {
-		panic(fmt.Errorf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1]))
-	}
-
-	if !strings.Contains(tUrls[0], ".prov") {
-		// It's not a chart, so grab the schema
-		path := fmt.Sprintf("registries/%s/download?file=%s.schema", *templateRegistry, url.QueryEscape(tUrls[0]))
-		callService(path, "GET", "get schema for type ("+tUrls[0]+")", nil)
-	} else {
-		// It's a chart, so grab the provenance file
-		path := fmt.Sprintf("registries/%s/download?file=%s", *templateRegistry, url.QueryEscape(tUrls[0]))
-		callService(path, "GET", "get file", nil)
-	}
-}
-
-// getDownloadURLs returns URLs for a type in the given registry
-func getDownloadURLs(tName string) []string {
-	path := fmt.Sprintf("%s/registries/%s/types/%s", *service, *templateRegistry, url.QueryEscape(tName))
-	resp := callHTTP(path, "GET", "get download urls", nil)
-	u := []string{}
-	if err := json.Unmarshal([]byte(resp), &u); err != nil {
-		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
-	}
-	return u
 }
 
 func loadTemplate(args []string) *common.Template {
