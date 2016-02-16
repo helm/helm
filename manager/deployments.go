@@ -53,6 +53,8 @@ var deployments = []Route{
 	{"Expand", "/expand", "POST", expandHandlerFunc, ""},
 	{"ListTypes", "/types", "GET", listTypesHandlerFunc, ""},
 	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
+	{"GetRegistryForType", "/types/{type}/registry", "GET", getRegistryForTypeHandlerFunc, ""},
+	{"GetMetadataForType", "/types/{type}/metadata", "GET", getMetadataForTypeHandlerFunc, ""},
 	{"ListRegistries", "/registries", "GET", listRegistriesHandlerFunc, ""},
 	{"GetRegistry", "/registries/{registry}", "GET", getRegistryHandlerFunc, ""},
 	{"CreateRegistry", "/registries/{registry}", "POST", createRegistryHandlerFunc, "JSON"},
@@ -378,6 +380,40 @@ func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	util.LogHandlerExitWithJSON(handler, w, instances, http.StatusOK)
 }
 
+func getRegistryForTypeHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get type registry"
+	util.LogHandlerEntry(handler, r)
+	typeName, err := getPathVariable(w, r, "type", handler)
+	if err != nil {
+		return
+	}
+
+	registry, err := backend.GetRegistryForType(typeName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, registry, http.StatusOK)
+}
+
+func getMetadataForTypeHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	handler := "manager: get type metadata"
+	util.LogHandlerEntry(handler, r)
+	typeName, err := getPathVariable(w, r, "type", handler)
+	if err != nil {
+		return
+	}
+
+	metadata, err := backend.GetMetadataForType(typeName)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, metadata, http.StatusOK)
+}
+
 // Putting Registry handlers here for now because deployments.go
 // currently owns its own Manager backend and doesn't like to share.
 func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request) {
@@ -459,12 +495,18 @@ func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	values, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
+		return
+	}
+
 	var regex *regexp.Regexp
-	regexString, err := getPathVariable(w, r, "regex", handler)
-	if err == nil {
+	regexString := values.Get("regex")
+	if regexString != "" {
 		regex, err = regexp.Compile(regexString)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
+			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
 			return
 		}
 	}

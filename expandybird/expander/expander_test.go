@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ghodss/yaml"
 	"github.com/kubernetes/deployment-manager/common"
 )
 
@@ -105,6 +106,33 @@ func testExpandTemplateFromFile(t *testing.T, fileName, baseName string, importF
 
 	description := fmt.Sprintf("test expand template from file: %s", fileName)
 	expandAndVerifyOutput(t, actualOutput, description)
+}
+
+var (
+	testTemplateName       = "expandybird"
+	testTemplateType       = "replicatedservice.py"
+	testTemplateProperties = `
+service_port: 8080
+target_port: 8080
+container_port: 8080
+external_service: true
+replicas: 3
+image: gcr.io/dm-k8s-testing/expandybird
+labels:
+  app: expandybird
+`
+)
+
+func TestNewTemplateFromType(t *testing.T) {
+	var properties map[string]interface{}
+	if err := yaml.Unmarshal([]byte(testTemplateProperties), &properties); err != nil {
+		t.Fatalf("cannot unmarshal test data: %s", err)
+	}
+
+	_, err := NewTemplateFromType(testTemplateName, testTemplateType, properties)
+	if err != nil {
+		t.Fatalf("cannot create template from type %s: %s", testTemplateType, err)
+	}
 }
 
 func TestNewTemplateFromReader(t *testing.T) {

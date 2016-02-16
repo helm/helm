@@ -166,9 +166,19 @@ func execute() {
 	switch args[0] {
 	case "templates":
 		path := fmt.Sprintf("registries/%s/types", *templateRegistry)
+		if *regexString != "" {
+			path += fmt.Sprintf("?%s", url.QueryEscape(*regexString))
+		}
+
 		callService(path, "GET", "list templates", nil)
 	case "describe":
-		describeType(args)
+		if len(args) != 2 {
+			fmt.Fprintln(os.Stderr, "No type name or URL supplied")
+			os.Exit(1)
+		}
+
+		path := fmt.Sprintf("types/%s/metadata", url.QueryEscape(args[1]))
+		callService(path, "GET", "get metadata for type", nil)
 	case "expand":
 		template := loadTemplate(args)
 		callService("expand", "POST", "expand configuration", marshalTemplate(template))
@@ -206,26 +216,19 @@ func execute() {
 			os.Exit(1)
 		}
 
-		path := fmt.Sprintf("deployments/%s", args[1])
+		path := fmt.Sprintf("deployments/%s", url.QueryEscape(args[1]))
 		action := fmt.Sprintf("get deployment named %s", args[1])
 		callService(path, "GET", action, nil)
 	case "manifest":
-		msg := "Must specify manifest in the form <deployment>/<manifest> or <deployment> to list."
-		if len(args) < 2 {
+		msg := "Must specify manifest in the form <deployment> <manifest> or just <deployment> to list."
+		if len(args) < 2 || len(args) > 3 {
 			fmt.Fprintln(os.Stderr, msg)
 			os.Exit(1)
 		}
 
-		s := strings.Split(args[1], "/")
-		ls := len(s)
-		if ls < 1 || ls > 2 {
-			fmt.Fprintln(os.Stderr, fmt.Sprintf("Invalid manifest (%s), %s", args[1], msg))
-			os.Exit(1)
-		}
-
-		path := fmt.Sprintf("deployments/%s/manifests", s[0])
-		if ls == 2 {
-			path = path + fmt.Sprintf("/%s", s[1])
+		path := fmt.Sprintf("deployments/%s/manifests", url.QueryEscape(args[1]))
+		if len(args) > 2 {
+			path = path + fmt.Sprintf("/%s", url.QueryEscape(args[2]))
 		}
 
 		action := fmt.Sprintf("get manifest %s", args[1])
@@ -236,12 +239,12 @@ func execute() {
 			os.Exit(1)
 		}
 
-		path := fmt.Sprintf("deployments/%s", args[1])
+		path := fmt.Sprintf("deployments/%s", url.QueryEscape(args[1]))
 		action := fmt.Sprintf("delete deployment named %s", args[1])
 		callService(path, "DELETE", action, nil)
 	case "update":
 		template := loadTemplate(args)
-		path := fmt.Sprintf("deployments/%s", template.Name)
+		path := fmt.Sprintf("deployments/%s", url.QueryEscape(template.Name))
 		action := fmt.Sprintf("delete deployment named %s", template.Name)
 		callService(path, "PUT", action, marshalTemplate(template))
 	case "deployed-types":
@@ -252,15 +255,7 @@ func execute() {
 			os.Exit(1)
 		}
 
-		tUrls := getDownloadURLs(args[1])
-		var tURL = ""
-		if len(tUrls) == 0 {
-			// Type is most likely a primitive.
-			tURL = args[1]
-		} else {
-			// TODO(vaikas): Support packages properly.
-			tURL = tUrls[0]
-		}
+		tURL := args[1]
 		path := fmt.Sprintf("types/%s/instances", url.QueryEscape(tURL))
 		action := fmt.Sprintf("list deployed instances of type %s", tURL)
 		callService(path, "GET", action, nil)
@@ -274,9 +269,14 @@ func execute() {
 }
 
 func callService(path, method, action string, reader io.ReadCloser) {
-	u := fmt.Sprintf("%s/%s", *service, path)
+	var URL *url.URL
+	URL, err := url.Parse(*service)
+	if err != nil {
+		panic(fmt.Errorf("cannot parse url (%s): %s\n", path, err))
+	}
 
-	resp := callHTTP(u, method, action, reader)
+	URL.Path += path
+	resp := callHTTP(URL.String(), method, action, reader)
 	var j interface{}
 	if err := json.Unmarshal([]byte(resp), &j); err != nil {
 		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
@@ -316,42 +316,6 @@ func callHTTP(path, method, action string, reader io.ReadCloser) string {
 	}
 
 	return string(body)
-}
-
-// describeType prints the schema for a type specified by either a
-// template URL or a fully qualified registry type name (e.g.,
-// <type-name>:<version>)
-func describeType(args []string) {
-	if len(args) != 2 {
-		fmt.Fprintln(os.Stderr, "No type name or URL supplied")
-		os.Exit(1)
-	}
-
-	tUrls := getDownloadURLs(url.QueryEscape(args[1]))
-	if len(tUrls) == 0 {
-		panic(fmt.Errorf("Invalid type name, must be a template URL or in the form \"<type-name>:<version>\": %s", args[1]))
-	}
-
-	if !strings.Contains(tUrls[0], ".prov") {
-		// It's not a chart, so grab the schema
-		path := fmt.Sprintf("registries/%s/download?file=%s.schema", *templateRegistry, url.QueryEscape(tUrls[0]))
-		callService(path, "GET", "get schema for type ("+tUrls[0]+")", nil)
-	} else {
-		// It's a chart, so grab the provenance file
-		path := fmt.Sprintf("registries/%s/download?file=%s", *templateRegistry, url.QueryEscape(tUrls[0]))
-		callService(path, "GET", "get file", nil)
-	}
-}
-
-// getDownloadURLs returns URLs for a type in the given registry
-func getDownloadURLs(tName string) []string {
-	path := fmt.Sprintf("%s/registries/%s/types/%s", *service, *templateRegistry, url.QueryEscape(tName))
-	resp := callHTTP(path, "GET", "get download urls", nil)
-	u := []string{}
-	if err := json.Unmarshal([]byte(resp), &u); err != nil {
-		panic(fmt.Errorf("Failed to parse JSON response from service: %s", resp))
-	}
-	return u
 }
 
 func loadTemplate(args []string) *common.Template {
@@ -433,24 +397,12 @@ func buildTemplateFromType(t string) *common.Template {
 	}
 
 	// Name the deployment after the type name.
-	name := t
-
-	config := common.Configuration{Resources: []*common.Resource{&common.Resource{
-		Name:       name,
-		Type:       getDownloadURLs(t)[0],
-		Properties: props,
-	}}}
-
-	y, err := yaml.Marshal(config)
+	template, err := expander.NewTemplateFromType(t, t, props)
 	if err != nil {
-		panic(fmt.Errorf("error: %s\ncannot create configuration for deployment: %v\n", err, config))
+		panic(fmt.Errorf("cannot create configuration from type (%s): %s\n", t, err))
 	}
 
-	return &common.Template{
-		Name:    name,
-		Content: string(y),
-		// No imports, as this is a single type from repository.
-	}
+	return template
 }
 
 func marshalTemplate(template *common.Template) io.ReadCloser {

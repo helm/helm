@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/kubernetes/deployment-manager/common"
@@ -46,6 +47,8 @@ type Manager interface {
 	// Types
 	ListTypes() ([]string, error)
 	ListInstances(typeName string) ([]*common.TypeInstance, error)
+	GetRegistryForType(typeName string) (string, error)
+	GetMetadataForType(typeName string) (string, error)
 
 	// Registries
 	ListRegistries() ([]*common.Registry, error)
@@ -334,6 +337,42 @@ func (m *manager) ListInstances(typeName string) ([]*common.TypeInstance, error)
 	return m.repository.GetTypeInstances(typeName)
 }
 
+// GetRegistryForType returns the registry where a type resides.
+func (m *manager) GetRegistryForType(typeName string) (string, error) {
+	_, r, err := registry.GetDownloadURLs(m.registryProvider, typeName)
+	if err != nil {
+		return "", err
+	}
+
+	return r.GetRegistryName(), nil
+}
+
+// GetMetadataForType returns the metadata for type.
+func (m *manager) GetMetadataForType(typeName string) (string, error) {
+	URLs, r, err := registry.GetDownloadURLs(m.registryProvider, typeName)
+	if err != nil {
+		return "", err
+	}
+
+	if len(URLs) < 1 {
+		return "", nil
+	}
+
+	// If it's a chart, we want the provenance file
+	fPath := URLs[0]
+	if !strings.Contains(fPath, ".prov") {
+		// It's not a chart, so we want the schema
+		fPath += ".schema"
+	}
+
+	metadata, err := getFileFromRegistry(fPath, r)
+	if err != nil {
+		return "", fmt.Errorf("cannot get metadata for type (%s): %s", typeName, err)
+	}
+
+	return metadata, nil
+}
+
 // ListRegistries returns the list of registries
 func (m *manager) ListRegistries() ([]*common.Registry, error) {
 	return m.service.List()
@@ -403,11 +442,16 @@ func (m *manager) GetFile(registryName string, url string) (string, error) {
 		return "", err
 	}
 
+	return getFileFromRegistry(url, r)
+}
+
+func getFileFromRegistry(url string, r registry.Registry) (string, error) {
 	getter := util.NewHTTPClient(3, r, util.NewSleeper())
 	body, _, err := getter.Get(url)
 	if err != nil {
 		return "", err
 	}
+
 	return body, nil
 }
 

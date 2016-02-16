@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,6 +44,30 @@ type expander struct {
 // NewExpander returns a new initialized Expander.
 func NewExpander(binary string) Expander {
 	return &expander{binary}
+}
+
+// NewTemplateFromType creates and returns a new template whose content
+// is a YAML marshaled resource assembled from the supplied arguments.
+func NewTemplateFromType(name, typeName string, properties map[string]interface{}) (*common.Template, error) {
+	resource := &common.Resource{
+		Name:       name,
+		Type:       typeName,
+		Properties: properties,
+	}
+
+	config := common.Configuration{Resources: []*common.Resource{resource}}
+	content, err := yaml.Marshal(config)
+	if err != nil {
+		return nil, fmt.Errorf("error: %s\ncannot marshal configuration: %v\n", err, config)
+	}
+
+	template := &common.Template{
+		Name:    name,
+		Content: string(content),
+		Imports: []*common.ImportFile{},
+	}
+
+	return template, nil
 }
 
 // NewTemplateFromArchive creates and returns a new template whose content
