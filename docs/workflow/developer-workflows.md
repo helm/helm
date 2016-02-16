@@ -1,44 +1,220 @@
-# Helm/DM Developer Workflows
+# Helm/DM Developer Experience Workflows
 
-This document explains how Helm/DM can be used under different developer workflows. When we talk about _developer workflow_, we are interested in the process that Helm Chart developers undertake, moving from initially creating a chart to officially releasing a chart.
+The purpose of this document is to outline the various workflows used in
+our target use cases. It is broken into three major sections:
+
+- A section on the anticipated workflow patterns for the  `helm` command line tool
+- A section on development workflow models
+- A section providing sample workflow implementations for the workflow
+  models
+
+The document is designed to address user experience, not the
+implementation of the tools.
 
 ## tl;dr: The Workflows
 
 Helm and DM expose tools for creating, managing, and deploying charts.
 This document outlines those tools, and then provides several possible
-workflows.
+high-level workflows.
 
-We envision four workflows, each satisfying different organizational needs.
+We envision four high-level workflows, each satisfying different organizational needs.
 
 - Helm Official: The workflow used for contributing to the official Helm charts repository.
 - Public Unofficial: A public workflow used by another org
 - Private: Non-public repository
 - Private Development: Charts without repositories
 
-Each of these workflows can be accommodated by the existing Helm tools and assumptions.
+## Helm Workflows and User Experience
 
-## Workflow Capabilities
+In this section we examine several workflows that we feel are central to
+the experience of deploying, managing, and building applications using
+Helm. Each workflow is followed by a basic model of where the processing
+of commands occurs.
 
-- `helm init`: Initialize the Helm client and server. The client initializes itself,
-  and can optionally install the DM manifests on a k8s cluster.
+### User Workflow
+
+The user workflow is the common case. This answers stories for the "tire
+kicker" and "standard user" personas.
+
+#### Simple deployment:
+
+```
+$ helm deploy helm:example.com/foo/bar
+Created wonky-panda
+```
+
+- The client sends the server a request to deploy `helm:example.com/foo/bar`.
+- The server assigns a random name `wonky-panda`, fetches the chart from
+  object storage, and goes about the deployment process.
+
+#### Find out about params:
+
+In this operation, helm reads a chart and returns the list of parameters
+that can be supplied in a template:
+
+```
+$ helm list-params helm:example.com/foo/bar
+Params:
+- bgcolor: The background color for the home page (hex code or HTML colors)
+- title: The title of the app
+```
+
+- The client sends the request to the API server
+- The API server fetches the chart, analyzes it, and returns the list of
+  parameters.
+
+#### Generate the params for me:
+
+In this operation, helm generates a parameter values file for the user.
+
+```
+$ helm gen-params helm:example.com/foo/bar
+Created: values.yaml
+$ edit values.yaml
+```
+
+- The client sends the request to the server
+- The server returns a stub file
+- The client writes the file to disk
+
+#### Deploy with params:
+
+In this operation, the user deploys a chart with an associated values
+file.
+
+```
+$ helm deploy helm:example.com/foo/bar values.yaml
+Created taco-tuesday
+```
+
+- The client sends a request with the name of the chart and the values
+  file.
+- The API server generates a name (`taco-tuesday`)
+- The API server fetches the request chart, sends the chart and values
+  through the template resolution phase, and deploys the results.
+
+If we allow the user to pass in a name (overriding the generated name),
+then the server must first guarantee that this name is unique.
+
+#### Get the info about named deployment.
+
+A deployment, as we have seen, is a named instance of a chart.
+Operations that operate on these instances use the name to refer to the
+instance.
+
+```
+$ helm status taco-tuesday
+OK
+Located at: 10.10.10.77:8080
+```
+
+- The client sends the API server a request for the status of
+  `taco-tuesday`.
+- The API server looks up pertinent data and returns it.
+- The client displays the data.
+
+#### Edit and redeploy:
+
+Redeployment is taking an existing _instance_ and changing its template
+values, and then re-deploying it.
+
+```
+$ edit values.yaml
+$ helm redeploy taco-tuesday values.yaml
+Redeployed taco-tuesday
+```
+
+- The client sends the instance name and the new values to the server
+- The server coalesces the values into the existing instance and then
+  restarts.
+
+#### Uninstall:
+
+```
+$ helm uninstall taco-tuesday
+Destroyed taco-tuesday
+```
+
+- The client sends the DELETE instance name command
+- The API server destroys the resource
+
+### Power User Features
+
+Users familiar with the system may desire additional tools.
+
+#### Name a deploy
+
+```
+$ helm deploy -name skinny-pigeon example.com/foo/bar
+```
+
+This follows the deployment process above. The server _must_ ensure that
+the name is unique.
+
+#### Get values for an app:
+```
+$ helm get-values taco-tuesday
+Stored in values.yaml
+$ helm redeploy taco-tuesday values.yaml
+```
+
+- The client sends the instance name to the values endpoint
+- The server returns the values file used to generate the instance.
+- The client writes this to a file (or, perhaps, to STDOUT)
+
+#### Get fully generated manifest files
+
+```
+$ helm get-manifests taco-tuesday
+Created manifest.yaml
+```
+
+- The client sends the instance name to the manifests endpoint
+- The server returns the manifests, as generated during the
+  deploy/redeploy cycle done prior.
+
+### Developer Workflow
+
+This section covers the experience of the chart developer.
+
+In this case, when the client detects that it is working with a local
+chart, it bundles the chart, and sends the entire chart, not just the
+values.
+
+```
+$ helm create mychart
+Created mychart/Chart.yaml
+$ helm lint mychart
+OK
+$ helm deploy .
+Uploading ./mychart as localchart/mychart-0.0.1.tgz
+Created skinny-pigeon
+$ helm status skinny-pigeon
+OK
+$ edit something
+$ helm redeploy skinny-pigeon
+Redeployed skinny-pigeon
+```
+
+- `helm create` and `helm lint` are client side operations
+- `helm deploy`, `helm status`, and `helm redeploy` are explained above.
+
+
+### Additional Helm Commands
+
+The following commands are not anticipated to be part of the daily
+workflow, but do have occasional uses. Because they are less common,
+many of these are grouped into sections of subcommands.
+
 - `helm dm install|uninstall|status|target`: Get information about a
   cluster. This is a mix of client and server activities.
-- `helm create`: Create a new chart from scratch. This is a client-side action.
-- `helm deploy`: Deploy a chart. The client packages the chart. The
-  server creates a deployment, expands templates, and then deploys.
 - `helm repo add|rm|list`: Manage repositories. The client pushes
   requests to the manager, which manages repositories.
-- `helm lint`: Test that a chart conforms to the spec. This is client
-  side.
 - `helm doctor`: Fix client communication problems.
-- `helm get` or `helm deployment get`: Get details about a deployed
-  application.
 - `helm package`: Package a directory into a chart. Client side.
 - `helm release`: Push a package to the repository. Client sends directly
   to repository.
-- `helm describe`: Describe a deployment. Processed on the manager.
 - `helm list`: List deployments. Processed on the manager
-- `helm delete`: Remove a deployment. Processed on the manager.
 - `helm search`: Search for available charts matching a given pattern.
   This is processed on the manager.
 
@@ -47,9 +223,9 @@ broad characteristics of the four workflows. The Development Cycle
 section covers how the developer cycle plays out for each of the four
 workflows.
 
-## An Overview of Four Workflows
+## An Overview of Four Team Workflows
 
-This section provides an introduction to the four workflows outline
+This section provides an introduction to the four workflows outlined
 above, calling out characteristics of each workflow that define it
 against other workflows.
 
