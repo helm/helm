@@ -20,7 +20,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"github.com/kubernetes/deployment-manager/common"
-	"github.com/kubernetes/deployment-manager/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/util"
 
 	"archive/tar"
 	"bytes"
@@ -337,14 +337,14 @@ func loadTemplate(args []string) *common.Template {
 		}
 
 		r := bytes.NewReader(input)
-		template, err = expander.NewTemplateFromArchive(args[1], r, args[2:])
+		template, err = util.NewTemplateFromArchive(args[1], r, args[2:])
 		if err != nil {
 			if err != tar.ErrHeader {
 				panic(err)
 			}
 
 			r := bytes.NewReader(input)
-			template, err = expander.NewTemplateFromReader(args[1], r, args[2:])
+			template, err = util.NewTemplateFromReader(args[1], r, args[2:])
 			if err != nil {
 				panic(fmt.Errorf("cannot create configuration from supplied arguments: %s\n", err))
 			}
@@ -354,9 +354,9 @@ func loadTemplate(args []string) *common.Template {
 		// it's a local file, it's configuration.
 		if _, err := os.Stat(args[1]); err == nil {
 			if len(args) > 2 {
-				template, err = expander.NewTemplateFromFileNames(args[1], args[2:])
+				template, err = util.NewTemplateFromFileNames(args[1], args[2:])
 			} else {
-				template, err = expander.NewTemplateFromRootTemplate(args[1])
+				template, err = util.NewTemplateFromRootTemplate(args[1])
 			}
 		} else {
 			template = buildTemplateFromType(args[1])
@@ -397,7 +397,7 @@ func buildTemplateFromType(t string) *common.Template {
 	}
 
 	// Name the deployment after the type name.
-	template, err := expander.NewTemplateFromType(t, t, props)
+	template, err := util.NewTemplateFromType(t, t, props)
 	if err != nil {
 		panic(fmt.Errorf("cannot create configuration from type (%s): %s\n", t, err))
 	}
