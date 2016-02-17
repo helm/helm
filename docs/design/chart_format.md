@@ -136,10 +136,10 @@ Templates are stored in a separate directory for the following reasons:
 
 * This future-proofs the format: we can add other directories at the top level and deprecate `templates/`.
 * It allows authors to add other files (such as documentation) in a straightforward way that will not confuse definitions-aware tools.
-* It allows for the possibility that a definition may be embedded inside of project code.
+* It allows for the possibility that a chart definition may be embedded inside of project code.
 
 
-Charts must not assume that they can perform file system operations to load another chart or supporting resources directly via the filesystem, nor should they store any operational files outside of the chart directory. It should be possible to archive the chart directory (e.g. `tar -cf ROOT.tar ROOT/`) and not lose any necessary information.
+Charts must not assume that they can perform file system operations to load another chart or supporting resources directly via the filesystem, nor should they store any operational files outside of the chart directory. This point becomes important in the case where there is python/jinja or other executable code inside the chart. These executable components especially should not assume they can access the filesystem. It should be possible to archive the chart directory (e.g. `tar -cf ROOT.tar ROOT/`) and not lose any necessary information. A chart is an all-encompassing unit that can be processed by the client/server.
 
 ### Generators and Templates
 The contents inside of the `templates/` directory may contain directives that can be processed by an external processor. Such a processor may read these files and generate new content.
@@ -263,7 +263,7 @@ Fields:
 
 * Name: A human-readable name of the definition. This may contain UTF-8 alphanumeric text, together with dash and underscore characters.
 * Description: A human-readable description of the definition, not to exceed one paragraph of text. No text formatting is supported. A description may use any printable text characters allowed by the file format.
-* Version: A SemVer 2 semantic version of the chart (template files). While the chart may reflect the version of the software it describes, this is not necessary. However, to follow semantic versioning constraints, every revision of the chart MUST increment the version in a way that indicates incremental change (e.g. simply changing the build ID is insufficient, as by definition it does not indicate incremental change over another build ID).
+* Version: A SemVer 2 semantic version of the chart (template files). Refer to the [instruction on semver.org](http://semver.org/).
 * Keywords: A list of human-readable keywords. A keyword may contain alphanumeric text and spaces.
 * Maintainers: A list of author objects, where an author object has two properties:
    ** Name: Author name
@@ -315,7 +315,7 @@ Dependencies hold between charts. That is, one chart may depend upon another cha
 
 The resolution of dependencies is not covered in this proposal, as it is an implementation detail of the DM service.
 ### Releasing a Chart
-A chart is _released_ when the source of the chart is tested, versioned, packaged into a gzipped tar file, and provenanced. Testing and provenancing attach badges to the Chart that attest to its quality and provenance. At that point, that particular release of a chart is considered immutable. No further changes are allowed. To enforce immutability through tamper detection, Charts can be digitally signed.
+A chart is _released_ when the source of the chart is tested, versioned, packaged into a gzipped tar file, and provenanced. Testing and provenancing attach badges to the Chart that attest to its quality and provenance. At that point, that particular release of a chart is considered immutable. No further changes are allowed. To enforce immutability through tamper detection, Charts must be digitally signed.
 
 
 Releases must follow a SemVer 2 version pattern.
@@ -523,7 +523,7 @@ helm:example.com/charts/nginx#~2.1    // Version range
 helm:example.com/charts/nginx         // Latest release
 ```
 
-The first of the above two short names is equivalent to helm:example.com/charts/nginx-1.2.3.tgz. The second example uses a semantic version filter ~1.2, which means “>=1.2.0, <1.3.0”, or “any patch version of 1.2”. Other filters include the “^” operator (^1 is “any minor version in the 1.x line), and “>”, “>=”, “=”, “<”, and “<=” operators. These are standard SemVer filter operators.
+The first of the above three short names is equivalent to helm:example.com/charts/nginx-1.2.3.tgz. The second example uses a semantic version filter ~1.2, which means “>=1.2.0, <1.3.0”, or “any patch version of 1.2”. Other filters include the “^” operator (^1 is “any minor version in the 1.x line), and “>”, “>=”, “=”, “<”, and “<=” operators. These are standard SemVer filter operators.
 
 
 Any short form handler should be able to resolve the default short form as specified above.
@@ -533,7 +533,7 @@ Any short form handler should be able to resolve the default short form as speci
 During chart development, and in other special circumstances, it may be desirable to work with an unversioned, unpackaged local copy of a chart. For the sake of consistency across products, an explicit naming formula is to be followed.
 
 
-In cases where a local path is used in lieu of a full or short name, the path string _must_ begin with either a dot (.) or a slash (/) or the file schema(`file`:).
+In cases where a local path is used in lieu of a full or short name, the path string _must_ begin with either a dot (.) or a slash (/) or the file schema(`file:`).
 
 
 Legal examples of this include:
