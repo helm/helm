@@ -456,9 +456,9 @@ Stories:
 
 
 - As an operator, I want a build that is 100% reproducible (exact versions)
-- As an app dev, I want to be able to search for definitions...
+- As an app dev, I want to be able to search for chart definitions using keys definied in the [chart file](#the-chart-file)...
         * by keyword, where one app may have multiple keywords (e.g. Redis has storage, message queue)
-        * by name, where name may be "fuzzy"
+        * by name (meaning name of the chart), where name may be "fuzzy".
         * by author
         * by last updated date
 - As a service dev, I want a well-defined set of practices to follow
