@@ -36,6 +36,39 @@ of commands occurs.
 The user workflow is the common case. This answers stories for the "tire
 kicker" and "standard user" personas.
 
+#### Installation
+
+Currently, the client can be used with no installation. However, installing the server side component is done like this:
+
+```
+$ helm dm install
+```
+
+- Client uses existing `kubectl` configuration to install built-in manifests.
+
+General pattern:
+```
+helm dm install
+```
+
+#### Searching
+
+```
+$ helm search bar
+helm:example.com/foo/bar - A basic chart
+helm:example.com/foo/barracuda - A fishy chart
+helm:example.com/foo/barbecue - A smoky chart
+```
+
+- Client submits the query to the manager
+- Server searches the available chart repos
+
+General pattern:
+```
+helm search PATTERN
+```
+
+
 #### Simple deployment:
 
 ```
@@ -46,6 +79,12 @@ Created wonky-panda
 - The client sends the server a request to deploy `helm:example.com/foo/bar`.
 - The server assigns a random name `wonky-panda`, fetches the chart from
   object storage, and goes about the deployment process.
+  
+General patterns:
+```
+helm deploy [-f CONFIG] [-n NAME] [CHART]
+```
+
 
 #### Find out about params:
 
@@ -62,6 +101,12 @@ Params:
 - The client sends the request to the API server
 - The API server fetches the chart, analyzes it, and returns the list of
   parameters.
+  
+General pattern:
+```
+helm list-params CHART
+```
+
 
 #### Generate the params for me:
 
@@ -77,13 +122,18 @@ $ edit values.yaml
 - The server returns a stub file
 - The client writes the file to disk
 
+General pattern:
+```
+helm gen-params CHART [CHART...]
+```
+
 #### Deploy with params:
 
 In this operation, the user deploys a chart with an associated values
 file.
 
 ```
-$ helm deploy helm:example.com/foo/bar values.yaml
+$ helm deploy -f values.yaml helm:example.com/foo/bar 
 Created taco-tuesday
 ```
 
@@ -95,6 +145,13 @@ Created taco-tuesday
 
 If we allow the user to pass in a name (overriding the generated name),
 then the server must first guarantee that this name is unique.
+
+Alternately, just the values file may be specified, since it contains a reference to the base chart.
+
+```
+$ helm deploy -f values.yaml
+Created taco-wednesday
+```
 
 #### Get the info about named deployment.
 
@@ -113,6 +170,11 @@ Located at: 10.10.10.77:8080
 - The API server looks up pertinent data and returns it.
 - The client displays the data.
 
+General pattern:
+```
+helm status NAME
+```
+
 #### Edit and redeploy:
 
 Redeployment is taking an existing _instance_ and changing its template
@@ -120,13 +182,19 @@ values, and then re-deploying it.
 
 ```
 $ edit values.yaml
-$ helm redeploy taco-tuesday values.yaml
+$ helm redeploy -f values.yaml taco-tuesday
 Redeployed taco-tuesday
 ```
 
 - The client sends the instance name and the new values to the server
 - The server coalesces the values into the existing instance and then
   restarts.
+
+General pattern:
+```
+helm redeploy [-f CONFIG] NAME
+```
+
 
 #### Uninstall:
 
@@ -137,6 +205,12 @@ Destroyed taco-tuesday
 
 - The client sends the DELETE instance name command
 - The API server destroys the resource
+
+General pattern:
+```
+helm uninstall NAME [NAME...]
+```
+
 
 ### Power User Features
 
@@ -162,16 +236,69 @@ $ helm redeploy taco-tuesday values.yaml
 - The server returns the values file used to generate the instance.
 - The client writes this to a file (or, perhaps, to STDOUT)
 
+General pattern:
+```
+helm get-values NAME [NAME...]
+```
+
+When more than one name is specified, the resulting file will contain configs for all names.
+
 #### Get fully generated manifest files
 
 ```
-$ helm get-manifests taco-tuesday
+$ helm manifest get taco-tuesday
 Created manifest.yaml
 ```
 
 - The client sends the instance name to the manifests endpoint
 - The server returns the manifests, as generated during the
   deploy/redeploy cycle done prior.
+
+General pattern:
+```
+helm manifest get NAME [NAME...]
+```
+
+#### Auto-detecting helm problems
+
+```
+$ helm doctor
+```
+
+#### Listing all installed charts
+
+```
+$ helm chart list
+helm:example.com/foo/bar#1.1.1 
+helm:example.com/foo/bar#1.1.2
+helm:example.com/foo/barbecue#0.1.0
+```
+
+#### Get instances of a chart
+
+```
+$ helm chart get helm:example.com/foo/bar 
+taco-tuesday
+taco-wednesday
+```
+
+### Listing deployments
+
+```
+$ helm deployment list
+skinny-pigeon
+taco-tuesday
+taco-wednesday
+```
+
+### Getting details of a deployment
+
+_NB: Might not need this._
+
+```
+$ helm deployment get skinny-pigeon
+DETAILS
+```
 
 ### Developer Workflow
 
@@ -199,31 +326,111 @@ Redeployed skinny-pigeon
 - `helm create` and `helm lint` are client side operations
 - `helm deploy`, `helm status`, and `helm redeploy` are explained above.
 
+General pattern for create:
+```
+helm create [--from NAME] CHARTNAME
+```
 
-### Additional Helm Commands
+Where `NAME` will result in fetching the generated values from the cluster.
 
-The following commands are not anticipated to be part of the daily
-workflow, but do have occasional uses. Because they are less common,
-many of these are grouped into sections of subcommands.
+General pattern for lint:
+```
+helm lint PATH
+```
 
-- `helm dm install|uninstall|status|target`: Get information about a
-  cluster. This is a mix of client and server activities.
-- `helm repo add|rm|list`: Manage repositories. The client pushes
-  requests to the manager, which manages repositories.
-- `helm doctor`: Fix client communication problems.
-- `helm package`: Package a directory into a chart. Client side.
-- `helm release`: Push a package to the repository. Client sends directly
-  to repository.
-- `helm list`: List deployments. Processed on the manager
-- `helm search`: Search for available charts matching a given pattern.
-  This is processed on the manager.
+#### Packaging and Releasing packages
+
+Package a chart:
+
+```
+$ helm package .
+Created foo-1.1.2.tgz
+```
+
+Releasing a chart:
+
+```
+$ helm release -u https://example.com/bucket ./foo-1.1.2.tgz
+Uploaded to https://example.com/bucket/foo-1.1.2.tgz
+```
+
+
+### Helm Cluster Management Commands
+
+#### Install
+```
+$ helm dm install
+```
+- Client installs using the current kubectl configuration
+
+#### Uninstall
+
+```
+$ helm dm uninstall
+```
+
+#### Check which cluster is the current target for helm
+
+```
+$ helm dm target
+API Endpoint: https://10.21.21.21/
+```
+
+#### View status of DM service
+
+```
+$ helm dm status
+OK
+```
+
+### Repository Configuration
+
+#### Listing repositories
+
+```
+$ helm repo list
+```
+
+#### Adding credentials
+
+```
+$ helm credential add TOKEN SECRET
+Created token-foo
+```
+
+#### Adding a repository with credentials
+
+```
+$ helm repo add -c token-foo https://example.com/charts
+```
+
+The URL is of the form `PROTO://HOST[:PORT]/BUCKET`.
+
+#### Removing repositories
+
+```
+$ helm repo rm https://example.com/charts
+```
+
+#### Listing Credentials
+
+```
+$ helm credential list
+token-foo: TOKEN
+```
+
+#### Removing credentials
+
+```
+$ helm credential rm token-foo
+```
+
+## An Overview of Four Team Workflows
 
 The remainder of this document is broken into two major sections: The Overview covers the
 broad characteristics of the four workflows. The Development Cycle
 section covers how the developer cycle plays out for each of the four
 workflows.
-
-## An Overview of Four Team Workflows
 
 This section provides an introduction to the four workflows outlined
 above, calling out characteristics of each workflow that define it
