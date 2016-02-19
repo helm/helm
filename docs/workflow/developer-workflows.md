@@ -3,7 +3,7 @@
 The purpose of this document is to outline the various workflows used in
 our target use cases. It is broken into three major sections:
 
-- A section on the anticipated workflow patterns for the  `helm` command line tool
+- A section on the anticipated workflow patterns for the  `helm` command line tool. This walks through every command.
 - A section on development workflow models
 - A section providing sample workflow implementations for the workflow
   models
@@ -265,6 +265,13 @@ helm manifest get NAME [NAME...]
 $ helm doctor
 ```
 
+- The client performs local diagnostics and diagnostics of Kubernetes and the DM server.
+
+General pattern:
+```
+helm doctor
+```
+
 #### Listing all installed charts
 
 ```
@@ -274,12 +281,32 @@ helm:example.com/foo/bar#1.1.2
 helm:example.com/foo/barbecue#0.1.0
 ```
 
+- The client sends the server a request for all charts installed
+- The server computes and responds
+
+General pattern:
+```
+helm chart list
+```
+
 #### Get instances of a chart
+
+NB: We might rename this `helm chart instances`, as that is less vague.
 
 ```
 $ helm chart get helm:example.com/foo/bar 
 taco-tuesday
 taco-wednesday
+```
+
+- The client sends a request to the API server.
+- The server responds with a list of deployment instance names.
+
+This retrieves a shallow list, and does not inspect instances for ancestor charts.
+
+General pattern:
+```
+helm chart get CHART
 ```
 
 ### Listing deployments
@@ -289,6 +316,14 @@ $ helm deployment list
 skinny-pigeon
 taco-tuesday
 taco-wednesday
+```
+
+- The client requests a list from the server
+- The server returns the list
+
+General pattern:
+```
+helm deployment list
 ```
 
 ### Getting details of a deployment
@@ -354,6 +389,12 @@ $ helm release -u https://example.com/bucket ./foo-1.1.2.tgz
 Uploaded to https://example.com/bucket/foo-1.1.2.tgz
 ```
 
+General pattern:
+```
+helm package PATH
+helm release [-u destination] PATH|FILE
+```
+
 
 ### Helm Cluster Management Commands
 
@@ -363,10 +404,22 @@ $ helm dm install
 ```
 - Client installs using the current kubectl configuration
 
+General pattern:
+```
+helm dm install
+```
+
 #### Uninstall
 
 ```
 $ helm dm uninstall
+```
+
+- The client interacts with the Kubernetes API server
+
+General pattern:
+```
+helm dm uninstall
 ```
 
 #### Check which cluster is the current target for helm
@@ -376,11 +429,25 @@ $ helm dm target
 API Endpoint: https://10.21.21.21/
 ```
 
+- The client interacts with the local Kubernetes config and the Kubernetes API server
+
+General pattern:
+```
+helm search PATTERN
+```
+
 #### View status of DM service
 
 ```
 $ helm dm status
 OK
+```
+
+- The client interacts with the Kubernetes API server
+
+General pattern:
+```
+helm dm status
 ```
 
 ### Repository Configuration
@@ -391,11 +458,27 @@ OK
 $ helm repo list
 ```
 
+- The client request info from the server
+- The server provides information about which repositories it is aware of
+
+General pattern:
+```
+helm repo list
+```
+
 #### Adding credentials
 
 ```
-$ helm credential add TOKEN SECRET
+$ helm credential add aff34... 89897a...
 Created token-foo
+```
+
+- The client sends a request to the server
+- The server creates a new token and returns a name
+
+General pattern:
+```
+helm credential add TOKEN SECRET
 ```
 
 #### Adding a repository with credentials
@@ -406,10 +489,23 @@ $ helm repo add -c token-foo https://example.com/charts
 
 The URL is of the form `PROTO://HOST[:PORT]/BUCKET`.
 
+General pattern:
+```
+helm repo add [-c TOKEN_NAME] REPO_URL
+```
+
 #### Removing repositories
 
 ```
 $ helm repo rm https://example.com/charts
+```
+
+- The client sends a request to the server
+- The server removes the repo from the known list
+
+General pattern:
+```
+helm repo rm REPO_URL
 ```
 
 #### Listing Credentials
@@ -419,10 +515,26 @@ $ helm credential list
 token-foo: TOKEN
 ```
 
+- The client requests a list of tokens
+- The server returns the name and the token, but not the secret
+
+General pattern:
+```
+helm credential list [PATTERN]
+```
+
 #### Removing credentials
 
 ```
 $ helm credential rm token-foo
+```
+
+- The client sends a request to the server
+- The server deletes the credential
+
+General pattern:
+```
+helm credential rm CREDENTIAL_NAME
 ```
 
 ## An Overview of Four Team Workflows
