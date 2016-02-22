@@ -32,6 +32,7 @@ WORKDIR "$GOPATH"/src/github.com/kubernetes/deployment-manager/resourcifier
 RUN go-wrapper download
 RUN go-wrapper install
 
+WORKDIR /usr/local/bin
 RUN cp "$GOPATH"/bin/resourcifier /usr/local/bin
 RUN /bin/rm -rf "$GOPATH"
 

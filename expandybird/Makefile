@@ -14,14 +14,15 @@
 
 include ../include.mk
 
-.PHONY : all build test push container clean
+.PHONY : all build push container clean .project
 
 DOCKER_REGISTRY := gcr.io
 PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
 IMAGE := expandybird
 TAG := latest
 
-DIR := .
+ROOT_DIR := $(abspath ./..)
+DIR = $(ROOT_DIR)
 
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)
@@ -30,18 +31,11 @@ else
 	docker push $(PREFIX)/$(IMAGE):$(TAG)
 endif
 
-container: expandybird
-	cp $(shell which expandybird) .
-	docker build -t $(PREFIX)/$(IMAGE):$(TAG) $(DIR)
-	rm -f expandybird
-
-expandybird:
-	go get -v ./...
-	go install -v ./...
+container:
+	docker build -t $(PREFIX)/$(IMAGE):$(TAG) -f Dockerfile $(DIR)
 
 clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
-	rm -f expandybird
 
 .PHONY: test
 test: lint vet test-unit
