@@ -18,6 +18,7 @@ package chart
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"errors"
 	"fmt"
@@ -238,6 +239,29 @@ func LoadDir(chart string) (*Chart, error) {
 	return &Chart{
 		loader: cl,
 	}, nil
+}
+
+// LoadData loads a chart from data, where data is a []byte containing a gzipped tar file.
+func LoadData(data []byte) (*Chart, error) {
+	b := bytes.NewBuffer(data)
+	unzipped, err := gzip.NewReader(b)
+	if err != nil {
+		return nil, err
+	}
+	defer unzipped.Close()
+
+	untarred := tar.NewReader(unzipped)
+	c, err := loadTar(untarred)
+	if err != nil {
+		return nil, err
+	}
+
+	cf, err := LoadChartfile(filepath.Join(c.tmpDir, ChartfileName))
+	if err != nil {
+		return nil, err
+	}
+	c.chartyaml = cf
+	return &Chart{loader: c}, nil
 }
 
 // Load loads a chart from a chart archive.
