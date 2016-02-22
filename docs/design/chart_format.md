@@ -346,7 +346,7 @@ The format for a repository has packages stored in a flat namespace, with versio
 * Brevity is desirable when developers have occasion to type these URLs directly, as is done in chart/template references (see, for example, the [S3 API](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingObjects.html)).
 
 ### Aside: Why Not Git(Hub) or VCS?
-In their first incarnations, both Helm and DM used GitHub-backed repositories. The Helm team believes we made a huge mistake by going this route. This method suffers from some severe limitations. The proposal above is designed to work around those limitations.
+In their first incarnations, both Helm and DM used GitHub-backed repositories for released charts. The Helm team believes we made a huge mistake by going this route. This method suffers from some severe limitations (listed below). The proposal above is designed to work around those limitations.
 
 
 * Versioning Multiple Things
@@ -374,6 +374,9 @@ The object storage based repository solution above solves all of these problems 
 * Providing a method for verifying immutability of a version by checksum
 * Removing vendor reliance
 * Separating the concept of code from the concept of release artifact
+
+
+We want to make clear that a chart may be developed in any place (such as Github repositories). This aside is referring to released and versioned charts that can be stored and shared. We do not dictate where a chart is developed.
 
 ## Chart References: Long form, short form, and local reference
 There are three reference forms for a chart. A fully qualified (long) form, a mnemonic (short) form, and a local path spec.
