@@ -116,7 +116,7 @@ An optional `docs/` directory may be present, and may contain one or more docume
 An optional `hooks/` directory may be present. **This is reserved for future use.** A deployment engine may specify lifecycle hooks, such as `pre-install`, `pre-render`, `post-install` and `post-render`. Lifecycle hooks provide an opportunity for a chart author to run additional steps in the processing pipeline. Implementations of these hooks are stored here. _No other files may be stored in this directory._
 
 ### Directory Layout
-A chart is laid out as follows. The top level directory (represented by the placeholder ROOT) must be the name of the chart. For example, if the chart is named `nginx`, the ROOT directory must be named `nginx/`.
+A chart is laid out as follows. The top level directory (represented by the placeholder ROOT) must be the name of the chart (verified by linter). For example, if the chart is named `nginx`, the ROOT directory must be named `nginx/`.
 
 ```
 ROOT/
