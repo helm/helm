@@ -20,12 +20,12 @@ replication controller and a service with the same selector, so that the service
 exposes ports from the pods managed by the replication controller.
 
 We have created a parameterized template for this kind of replicated service 
-called [Replicated Service](../../templates/replicatedservice/v1), and we use it
+called [Replicated Service](https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1), and we use it
 three times in the Guestbook example.
 
 The template is defined by a
-[Python script](../../templates/replicatedservice/v1/replicatedservice.py). It 
-also has a [schema](../../templates/replicatedservice/v1/replicatedservice.py.schema).
+[Python script](https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py). It 
+also has a [schema](https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema).
 Schemas are optional. If provided, they are used to validate template invocations
 that appear in configurations.
 
@@ -42,7 +42,7 @@ The front end is a replicated service with 3 replicas:
 
 ```
 - name: frontend
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/application-dm-templates/common/replicatedservice/v1/replicatedservice.py
   properties:
     service_port: 80
     container_port: 80
@@ -57,8 +57,8 @@ not just the template name.)
 #### The Redis cluster
 
 The Redis cluster consists of two replicated services: a master with a single replica
-and the slaves with 2 replicas. It's defined by [this template](../../templates/redis/v1/redis.jinja), 
-which is a [Jinja](http://jinja.pocoo.org/) file with a [schema](../../templates/redis/v1/redis.jinja.schema).
+and the slaves with 2 replicas. It's defined by [this template](https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja), 
+which is a [Jinja](http://jinja.pocoo.org/) file with a [schema](https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja.schema).
 
 ```
 {% set REDIS_PORT = 6379 %}
@@ -66,7 +66,7 @@ which is a [Jinja](http://jinja.pocoo.org/) file with a [schema](../../templates
 
 resources:
 - name: redis-master
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py
   properties:
     # This has to be overwritten since service names are hard coded in the code
     service_name: redis-master
@@ -78,7 +78,7 @@ resources:
     image: redis
 
 - name: redis-slave
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py
   properties:
     # This has to be overwritten since service names are hard coded in the code
     service_name: redis-slave
@@ -103,7 +103,7 @@ cluster using the `deployed-types` command:
 ```
 dm deployed-types 
 
-["Service","ReplicationController","redis.jinja","https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v1/replicatedservice.py"]
+["Service","ReplicationController","redis.jinja","https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py"]
 ```
 
 This output shows 2 primitive types (Service and ReplicationController), and 2
