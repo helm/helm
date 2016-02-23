@@ -62,7 +62,7 @@ The nginx service is a replicated service with 2 replicas:
 
 ```
 - name: nginx
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ NGINX_PORT }}
     container_port: {{ NGINX_PORT }}
@@ -82,7 +82,7 @@ The wordpress-php service is a replicated service with 2 replicas:
 
 ```
 - name: wordpress-php
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py
   properties:
     service_name: wordpress-php
     service_port: {{ WORDPRESS_PHP_PORT }}
@@ -105,7 +105,7 @@ The MySQL service is a replicated service with a single replica:
 
 ```
 - name: mysql
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  type: https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py
   properties:
     service_port: {{ MYSQL_PORT }}
     container_port: {{ MYSQL_PORT }}
@@ -126,7 +126,7 @@ The NFS service is a replicated service with a single replica that is available 
 
 ```
 - name: nfs
-  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/nfs/v1/nfs.jinja
+  type: https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/nfs/v1/nfs.jinja
   properties:
     ip: {{ NFS_SERVER_IP }}
     port: {{ NFS_SERVER_PORT }}
