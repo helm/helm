@@ -64,6 +64,7 @@ func NewHandlerTester(handler http.Handler) HandlerTester {
 		}
 
 		r.Header.Set("Content-Type", ctype)
+		r.Header.Set("Accept", "*/*")
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 		return w, nil
@@ -87,6 +88,7 @@ func NewServerTester(handler http.Handler) ServerTester {
 		}
 
 		r.Header.Set("Content-Type", ctype)
+		r.Header.Set("Accept", "*/*")
 		return http.DefaultClient.Do(r)
 	}
 }
@@ -110,6 +112,10 @@ func (h HandlerTester) TestWithURL(method, urlString string) (*httptest.Response
 // it with the given HTTP method and URL string using HandlerTester.TestWithURL.
 func TestHandlerWithURL(handler http.Handler, method, urlString string) (*httptest.ResponseRecorder, error) {
 	return NewHandlerTester(handler).TestWithURL(method, urlString)
+}
+
+func LogHandlerText(handler string, v string) {
+	log.Printf("%s: %s\n", handler, v)
 }
 
 // LogHandlerEntry logs the start of the given handler handling the given request.

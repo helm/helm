@@ -86,6 +86,8 @@ func NewExpansionHandler(backend expander.Expander) restful.RouteFunction {
 		}
 
 		util.LogHandlerExit("expandybird", http.StatusOK, "OK", resp.ResponseWriter)
+		message := fmt.Sprintf("\nConfig:\n%s\nLayout:\n%s\n", response.Config, response.Layout) 
+		util.LogHandlerText("expandybird", message)
 		resp.WriteEntity(response)
 	}
 }
