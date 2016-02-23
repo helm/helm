@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"path/filepath"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/deployment-manager/chart"
@@ -25,12 +26,14 @@ func create(c *cli.Context) error {
 		return errors.New("'helm create' requires a chart name as an argument")
 	}
 
+	dir, name := filepath.Split(args[0])
+
 	cf := &chart.Chartfile{
-		Name:        args[0],
+		Name:        name,
 		Description: "Created by Helm",
 		Version:     "0.1.0",
 	}
 
-	_, err := chart.Create(cf, ".")
+	_, err := chart.Create(cf, dir)
 	return err
 }
