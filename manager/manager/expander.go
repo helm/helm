@@ -192,7 +192,7 @@ func (e *expander) expandTemplate(t *common.Template) (*ExpandedTemplate, error)
 
 	response, err := http.Post(e.getBaseURL(), "application/json", ioutil.NopCloser(bytes.NewReader(j)))
 	if err != nil {
-		e := fmt.Errorf("call failed (%s) with payload:\n%s\n", e.getBaseURL(), err, string(j))
+		e := fmt.Errorf("call failed (%s) with payload:\n%s\n", err, string(j))
 		return nil, e
 	}
 

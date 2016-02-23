@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.4-cross
+FROM golang:1.6
 
 ENV GOLANG_CROSSPLATFORMS \
 	darwin/amd64 \

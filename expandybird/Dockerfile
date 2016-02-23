@@ -22,9 +22,8 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# following lines copied from golang:1.4
+# following lines copied from golang:1.6
 
-# gcc for cgo
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
         gcc \
@@ -32,18 +31,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
     && rm -rf /var/lib/apt/lists/*
 
-ENV GOLANG_VERSION 1.4.3
-ENV GOLANG_DOWNLOAD_URL https://golang.org/dl/go$GOLANG_VERSION.src.tar.gz
-ENV GOLANG_DOWNLOAD_SHA1 486db10dc571a55c8d795365070f66d343458c48
+ENV GOLANG_VERSION 1.6
+ENV GOLANG_DOWNLOAD_URL https://golang.org/dl/go$GOLANG_VERSION.linux-amd64.tar.gz
+ENV GOLANG_DOWNLOAD_SHA256 5470eac05d273c74ff8bac7bef5bad0b5abbd1c4052efbdbc8db45332e836b0b
 
 RUN curl -fsSL "$GOLANG_DOWNLOAD_URL" -o golang.tar.gz \
-    && echo "$GOLANG_DOWNLOAD_SHA1  golang.tar.gz" | sha1sum -c - \
-    && tar -C /usr/src -xzf golang.tar.gz \
-    && rm golang.tar.gz \
-    && cd /usr/src/go/src && ./make.bash --no-clean 2>&1
+    && echo "$GOLANG_DOWNLOAD_SHA256  golang.tar.gz" | sha256sum -c - \
+    && tar -C /usr/local -xzf golang.tar.gz \
+    && rm golang.tar.gz
 
 ENV GOPATH /go
-ENV PATH $GOPATH/bin:/usr/src/go/bin:$PATH
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
 RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 
