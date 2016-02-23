@@ -190,9 +190,18 @@ func (e *expander) expandTemplate(t *common.Template) (*ExpandedTemplate, error)
 		return nil, err
 	}
 
-	response, err := http.Post(e.getBaseURL(), "application/json", ioutil.NopCloser(bytes.NewReader(j)))
+	reader := ioutil.NopCloser(bytes.NewReader(j))
+	request, err := http.NewRequest("POST", e.getBaseURL(), reader)
 	if err != nil {
-		e := fmt.Errorf("http POST failed: %s", err)
+		return nil, err
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "*/*")
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		e := fmt.Errorf("call failed (%s) with payload:\n%s\n", err, string(j))
 		return nil, e
 	}
 

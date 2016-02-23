@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.4
+FROM golang:1.6
 MAINTAINER Jack Greenfield <jackgr@google.com>
 
 RUN apt-get update \
@@ -33,6 +33,7 @@ WORKDIR "$GOPATH"/src/github.com/kubernetes/deployment-manager/manager
 RUN go-wrapper download
 RUN go-wrapper install
 
+WORKDIR /usr/local/bin
 RUN cp "$GOPATH"/bin/manager /usr/local/bin
 RUN /bin/rm -rf "$GOPATH"
 

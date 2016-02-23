@@ -113,7 +113,7 @@ func newManager(cp common.CredentialProvider) manager.Manager {
 	resolver := manager.NewTypeResolver(registryProvider, util.DefaultHTTPClient())
 	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName, expanderPort), resolver)
 	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName, deployerPort))
-	address := strings.TrimPrefix(getServiceURL(*mongoAddress, *mongoName, *mongoPort), "https://")
+	address := strings.TrimPrefix(getServiceURL(*mongoAddress, *mongoName, *mongoPort), "http://")
 	repository := createRepository(address)
 	return manager.NewManager(expander, deployer, repository, registryProvider, service, cp)
 }
@@ -136,7 +136,7 @@ func getServiceURL(serviceURL, serviceName, servicePort string) string {
 				log.Fatalf("cannot resolve service:%v. environment:%v\n", serviceName, os.Environ())
 			}
 
-			serviceURL = fmt.Sprintf("https://%s:%s", addrs[0], servicePort)
+			serviceURL = fmt.Sprintf("http://%s:%s", addrs[0], servicePort)
 		}
 	}
 
@@ -149,7 +149,7 @@ func getServiceURL(serviceURL, serviceName, servicePort string) string {
 func makeEnvVariableURL(str string) string {
 	prefix := makeEnvVariableName(str)
 	url := os.Getenv(prefix + "_PORT")
-	return strings.Replace(url, "tcp", "https", 1)
+	return strings.Replace(url, "tcp", "http", 1)
 }
 
 // makeEnvVariableName is copied from the Kubernetes source,

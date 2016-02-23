@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
- 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,8 +17,8 @@ limitations under the License.
 package service
 
 import (
-	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/common"
+	"github.com/kubernetes/deployment-manager/expandybird/expander"
 	"github.com/kubernetes/deployment-manager/util"
 
 	"errors"
@@ -44,7 +44,8 @@ func NewService(handler restful.RouteFunction) *Service {
 	webService.Produces(restful.MIME_JSON, restful.MIME_XML)
 	webService.Route(webService.POST("/expand").To(handler).
 		Doc("Expand a template.").
-		Reads(&common.Template{}))
+		Reads(&common.Template{}).
+		Writes(&expander.ExpansionResponse{}))
 	return &Service{webService}
 }
 
@@ -85,6 +86,8 @@ func NewExpansionHandler(backend expander.Expander) restful.RouteFunction {
 		}
 
 		util.LogHandlerExit("expandybird", http.StatusOK, "OK", resp.ResponseWriter)
+		message := fmt.Sprintf("\nConfig:\n%s\nLayout:\n%s\n", response.Config, response.Layout) 
+		util.LogHandlerText("expandybird", message)
 		resp.WriteEntity(response)
 	}
 }
