@@ -1,17 +1,11 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"os"
-	"regexp"
-	"strings"
+	"io/ioutil"
 
-	"github.com/aokoli/goutils"
 	"github.com/codegangsta/cli"
-	dep "github.com/deis/helm-dm/deploy"
-	"github.com/deis/helm-dm/format"
-	"github.com/kubernetes/deployment-manager/chart"
+	"github.com/kubernetes/deployment-manager/common"
+	"gopkg.in/yaml.v2"
 )
 
 func init() {
@@ -29,9 +23,9 @@ func deployCmd() cli.Command {
 				Name:  "dry-run",
 				Usage: "Only display the underlying kubectl commands.",
 			},
-			cli.BoolFlag{
-				Name:  "stdin,i",
-				Usage: "Read a configuration from STDIN.",
+			cli.StringFlag{
+				Name:  "config,c",
+				Usage: "The configuration YAML file for this deployment.",
 			},
 			cli.StringFlag{
 				Name:  "name",
@@ -42,110 +36,57 @@ func deployCmd() cli.Command {
 				Name:  "properties,p",
 				Usage: "A comma-separated list of key=value pairs: 'foo=bar,foo2=baz'.",
 			},
-			cli.StringFlag{
-				// FIXME: This is not right. It's sort of a half-baked forward
-				// port of dm.go.
-				Name:  "repository",
-				Usage: "The default repository",
-				Value: "kubernetes/application-dm-templates",
-			},
 		},
 	}
 }
 
 func deploy(c *cli.Context) error {
+
+	// If there is a configuration file, use it.
+	cfg := &common.Configuration{}
+	if c.String("config") != "" {
+		if err := loadConfig(cfg, c.String("config")); err != nil {
+			return err
+		}
+	} else {
+		cfg.Resources = []*common.Resource{
+			{
+				Properties: map[string]interface{}{},
+			},
+		}
+	}
+
+	// If there is a chart specified on the commandline, override the config
+	// file with it.
 	args := c.Args()
-	if len(args) < 1 {
-		format.Err("First argument, filename, is required. Try 'helm deploy --help'")
-		os.Exit(1)
+	if len(args) > 0 {
+		cfg.Resources[0].Type = args[0]
 	}
 
-	props, err := parseProperties(c.String("properties"))
-	if err != nil {
-		format.Err("Failed to parse properties: %s", err)
-		os.Exit(1)
+	// Override the name if one is passed in.
+	if name := c.String("name"); len(name) > 0 {
+		cfg.Resources[0].Name = name
 	}
 
-	d := &dep.Deployment{
-		Name:       c.String("Name"),
-		Properties: props,
-		Filename:   args[0],
-		Imports:    args[1:],
-		Repository: c.String("repository"),
+	if props, err := parseProperties(c.String("properties")); err != nil {
+		return err
+	} else if len(props) > 0 {
+		// Coalesce the properties into the first props. We have no way of
+		// knowing which resource the properties are supposed to be part
+		// of.
+		for n, v := range props {
+			cfg.Resources[0].Properties[n] = v
+		}
 	}
 
-	if c.Bool("stdin") {
-		d.Input = os.Stdin
-	}
-
-	return doDeploy(d, c)
+	return client(c).PostDeployment(cfg)
 }
 
-func doDeploy(cfg *dep.Deployment, cxt *cli.Context) error {
-	if cfg.Filename == "" {
-		return errors.New("A filename must be specified. For a tar archive, this is the name of the root template in the archive.")
-	}
-
-	fi, err := os.Stat(cfg.Filename)
+// loadConfig loads a file into a common.Configuration.
+func loadConfig(c *common.Configuration, filename string) error {
+	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
 	}
-
-	if fi.IsDir() {
-		format.Info("Chart is directory")
-		c, err := chart.LoadDir(cfg.Filename)
-		if err != nil {
-			return err
-		}
-		if cfg.Name == "" {
-			cfg.Name = genName(c.Chartfile().Name)
-		}
-
-		// TODO: Is it better to generate the file in temp dir like this, or
-		// just put it in the CWD?
-		//tdir, err := ioutil.TempDir("", "helm-")
-		//if err != nil {
-		//format.Warn("Could not create temporary directory. Using .")
-		//tdir = "."
-		//} else {
-		//defer os.RemoveAll(tdir)
-		//}
-		tdir := "."
-		tfile, err := chart.Save(c, tdir)
-		if err != nil {
-			return err
-		}
-		cfg.Filename = tfile
-	} else if cfg.Name == "" {
-		n, _, e := parseTarName(cfg.Filename)
-		if e != nil {
-			return e
-		}
-		cfg.Name = n
-	}
-
-	if cxt.Bool("dry-run") {
-		format.Info("Prepared deploy %q using file %q", cfg.Name, cfg.Filename)
-		return nil
-	}
-
-	c := client(cxt)
-	return c.DeployChart(cfg.Filename, cfg.Name)
-}
-
-func genName(pname string) string {
-	s, _ := goutils.RandomAlphaNumeric(8)
-	return fmt.Sprintf("%s-%s", pname, s)
-}
-
-func parseTarName(name string) (string, string, error) {
-	tnregexp := regexp.MustCompile(chart.TarNameRegex)
-	if strings.HasSuffix(name, ".tgz") {
-		name = strings.TrimSuffix(name, ".tgz")
-	}
-	v := tnregexp.FindStringSubmatch(name)
-	if v == nil {
-		return name, "", fmt.Errorf("invalid name %s", name)
-	}
-	return v[1], v[2], nil
+	return yaml.Unmarshal(data, c)
 }
