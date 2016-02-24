@@ -174,14 +174,14 @@ func (c *Client) ListDeployments() ([]string, error) {
 	return l, nil
 }
 
-// DeployChart sends a chart to DM for deploying.
-func (c *Client) DeployChart(filename, deployname string) error {
+// UploadChart sends a chart to DM for deploying.
+func (c *Client) PostChart(filename, deployname string) error {
 	f, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
 
-	u, err := c.url("/v2/deployments")
+	u, err := c.url("/v2/charts")
 	request, err := http.NewRequest("POST", u, f)
 	if err != nil {
 		f.Close()
@@ -238,4 +238,8 @@ func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 		return nil, err
 	}
 	return deployment, nil
+}
+
+func (c *Client) PostDeployment(cfg *common.Configuration) error {
+	return c.CallService("/deployments", "POST", "post deployment", cfg, nil)
 }

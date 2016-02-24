@@ -50,8 +50,8 @@ test: test-style
 	$(PATH_WITH_HELM) go test -v -cover $(addprefix ./,$(GO_PACKAGES))
 
 test-style:
-	@if [ $(shell gofmt -e -l -s *.go $(GO_PACKAGES)) ]; then \
-		echo "gofmt check failed:"; gofmt -e -l -s *.go $(GO_PACKAGES); exit 1; \
+	@if [ $(shell gofmt -e -l -s $(GO_PACKAGES)) ]; then \
+		echo "gofmt check failed:"; gofmt -e -d -s $(GO_PACKAGES); exit 1; \
 	fi
 	@for i in . $(GO_PACKAGES); do \
 		golint $$i; \

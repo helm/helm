@@ -1,10 +1,9 @@
 package dm
 
 import (
-	"io/ioutil"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -133,39 +132,28 @@ func TestGetDeployment(t *testing.T) {
 	}
 }
 
-func TestDeployChart(t *testing.T) {
-	testfile := "../testdata/charts/frobnitz-0.0.1.tgz"
-	testname := "sparkles"
-
-	fi, err := os.Stat(testfile)
-	if err != nil {
-		t.Fatalf("could not stat file %s: %s", testfile, err)
+func TestPostDeployment(t *testing.T) {
+	cfg := &common.Configuration{
+		[]*common.Resource{
+			{
+				Name: "foo",
+				Type: "helm:example.com/foo/bar",
+				Properties: map[string]interface{}{
+					"port": ":8080",
+				},
+			},
+		},
 	}
-	expectedSize := int(fi.Size())
 
 	fc := &fakeClient{
 		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			data, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				t.Errorf("Failed to read data off of request: %s", err)
-			}
-			if len(data) != expectedSize {
-				t.Errorf("Expected content length %d, got %d", expectedSize, len(data))
-			}
-
-			if cn := r.Header.Get("x-chart-name"); cn != "frobnitz-0.0.1.tgz" {
-				t.Errorf("Expected frobnitz-0.0.1.tgz, got %q", cn)
-			}
-			if dn := r.Header.Get("x-deployment-name"); dn != "sparkles" {
-				t.Errorf("Expected sparkles, got %q", dn)
-			}
-
-			w.WriteHeader(201)
+			w.WriteHeader(http.StatusCreated)
+			fmt.Fprintln(w, "{}")
 		}),
 	}
 	defer fc.teardown()
 
-	if err := fc.setup().DeployChart(testfile, testname); err != nil {
-		t.Fatal(err)
+	if err := fc.setup().PostDeployment(cfg); err != nil {
+		t.Fatalf("failed to post deployment: %s", err)
 	}
 }
