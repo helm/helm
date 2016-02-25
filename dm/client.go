@@ -264,6 +264,7 @@ func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 	return deployment, nil
 }
 
+// PostDeployment posts a deployment objec to the manager service.
 func (c *Client) PostDeployment(cfg *common.Configuration) error {
 	return c.CallService("/deployments", "POST", "post deployment", cfg, nil)
 }

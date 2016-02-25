@@ -134,7 +134,7 @@ func TestGetDeployment(t *testing.T) {
 
 func TestPostDeployment(t *testing.T) {
 	cfg := &common.Configuration{
-		[]*common.Resource{
+		Resources: []*common.Resource{
 			{
 				Name: "foo",
 				Type: "helm:example.com/foo/bar",

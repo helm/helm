@@ -38,6 +38,7 @@ func Warning(msg string, v ...interface{}) {
 	fmt.Fprintf(os.Stdout, msg, v...)
 }
 
+// YAML prints an object in YAML format.
 func YAML(v interface{}) error {
 	y, err := yaml.Marshal(v)
 	if err != nil {
