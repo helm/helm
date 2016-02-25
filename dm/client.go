@@ -174,18 +174,21 @@ func (c *Client) ListDeployments() ([]string, error) {
 	return l, nil
 }
 
-// UploadChart sends a chart to DM for deploying.
-func (c *Client) PostChart(filename, deployname string) error {
+// PostChart sends a chart to DM for deploying.
+//
+// This returns the location for the new chart, typically of the form
+// `helm:repo/bucket/name-version.tgz`.
+func (c *Client) PostChart(filename, deployname string) (string, error) {
 	f, err := os.Open(filename)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	u, err := c.url("/v2/charts")
 	request, err := http.NewRequest("POST", u, f)
 	if err != nil {
 		f.Close()
-		return err
+		return "", err
 	}
 
 	// There is an argument to be made for using the legacy x-octet-stream for
@@ -206,7 +209,7 @@ func (c *Client) PostChart(filename, deployname string) error {
 
 	response, err := client.Do(request)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// We only want 201 CREATED. Admittedly, we could accept 200 and 202.
@@ -214,12 +217,13 @@ func (c *Client) PostChart(filename, deployname string) error {
 		body, err := ioutil.ReadAll(response.Body)
 		response.Body.Close()
 		if err != nil {
-			return err
+			return "", err
 		}
-		return &HTTPError{StatusCode: response.StatusCode, Message: string(body), URL: request.URL}
+		return "", &HTTPError{StatusCode: response.StatusCode, Message: string(body), URL: request.URL}
 	}
 
-	return nil
+	loc := response.Header.Get("Location")
+	return loc, nil
 }
 
 // HTTPError is an error caused by an unexpected HTTP status code.
