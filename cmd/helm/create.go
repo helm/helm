@@ -14,9 +14,10 @@ func init() {
 
 func createCmd() cli.Command {
 	return cli.Command{
-		Name:   "create",
-		Usage:  "Create a new local chart for editing.",
-		Action: func(c *cli.Context) { run(c, create) },
+		Name:      "create",
+		Usage:     "Create a new local chart for editing.",
+		Action:    func(c *cli.Context) { run(c, create) },
+		ArgsUsage: "NAME",
 	}
 }
 

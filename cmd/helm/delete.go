@@ -13,9 +13,10 @@ func init() {
 
 func deleteCmd() cli.Command {
 	return cli.Command{
-		Name:   "delete",
-		Usage:  "Deletes the supplied deployment",
-		Action: func(c *cli.Context) { run(c, deleteDeployment) },
+		Name:      "delete",
+		Usage:     "Deletes the supplied deployment",
+		ArgsUsage: "DEPLOYMENT",
+		Action:    func(c *cli.Context) { run(c, deleteDeployment) },
 	}
 }
 
