@@ -92,7 +92,7 @@ In this operation, helm reads a chart and returns the list of parameters
 that can be supplied in a template:
 
 ```
-$ helm list-params helm:example.com/foo/bar
+$ helm chart show helm:example.com/foo/bar
 Params:
 - bgcolor: The background color for the home page (hex code or HTML colors)
 - title: The title of the app
@@ -104,7 +104,7 @@ Params:
   
 General pattern:
 ```
-helm list-params CHART
+helm chart show CHART
 ```
 
 
@@ -113,7 +113,7 @@ helm list-params CHART
 In this operation, helm generates a parameter values file for the user.
 
 ```
-$ helm gen-params helm:example.com/foo/bar
+$ helm chart params helm:example.com/foo/bar
 Created: values.yaml
 $ edit values.yaml
 ```
@@ -124,7 +124,7 @@ $ edit values.yaml
 
 General pattern:
 ```
-helm gen-params CHART [CHART...]
+helm chart params CHART [CHART...]
 ```
 
 #### Deploy with params:
@@ -196,10 +196,10 @@ helm redeploy [-f CONFIG] NAME
 ```
 
 
-#### Uninstall:
+#### Delete:
 
 ```
-$ helm uninstall taco-tuesday
+$ helm delete taco-tuesday
 Destroyed taco-tuesday
 ```
 
@@ -227,7 +227,7 @@ the name is unique.
 
 #### Get values for an app:
 ```
-$ helm get-values taco-tuesday
+$ helm deployment params taco-tuesday
 Stored in values.yaml
 $ helm redeploy taco-tuesday values.yaml
 ```
@@ -238,7 +238,7 @@ $ helm redeploy taco-tuesday values.yaml
 
 General pattern:
 ```
-helm get-values NAME [NAME...]
+helm deployment params NAME [NAME...]
 ```
 
 When more than one name is specified, the resulting file will contain configs for all names.
@@ -246,7 +246,7 @@ When more than one name is specified, the resulting file will contain configs fo
 #### Get fully generated manifest files
 
 ```
-$ helm manifest get taco-tuesday
+$ helm deployment manifest taco-tuesday
 Created manifest.yaml
 ```
 
@@ -256,7 +256,7 @@ Created manifest.yaml
 
 General pattern:
 ```
-helm manifest get NAME [NAME...]
+helm deployment manifest NAME [NAME...]
 ```
 
 #### Auto-detecting helm problems
@@ -331,7 +331,7 @@ helm deployment list
 _NB: Might not need this._
 
 ```
-$ helm deployment get skinny-pigeon
+$ helm deployment show skinny-pigeon
 DETAILS
 ```
 
