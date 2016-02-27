@@ -1,7 +1,7 @@
 package dm
 
 import (
-	"github.com/deis/helm-dm/kubectl"
+	"github.com/deis/helm-dm/pkg/kubectl"
 )
 
 // Uninstall uses kubectl to uninstall the base DM.

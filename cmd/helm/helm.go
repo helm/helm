@@ -4,8 +4,8 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/deis/helm-dm/dm"
-	"github.com/deis/helm-dm/format"
+	"github.com/deis/helm-dm/pkg/dm"
+	"github.com/deis/helm-dm/pkg/format"
 )
 
 var version = "0.0.1"

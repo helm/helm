@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/deis/helm-dm/format"
-	"github.com/deis/helm-dm/kubectl"
+	"github.com/deis/helm-dm/pkg/format"
+	"github.com/deis/helm-dm/pkg/kubectl"
 )
 
 func target(dryRun bool) error {
