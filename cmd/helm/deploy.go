@@ -15,15 +15,11 @@ func init() {
 
 func deployCmd() cli.Command {
 	return cli.Command{
-		Name:    "deploy",
-		Aliases: []string{"install"},
-		Usage:   "Deploy a chart into the cluster.",
-		Action:  func(c *cli.Context) { run(c, deploy) },
+		Name:      "deploy",
+		Usage:     "Deploy a chart into the cluster.",
+		ArgsUsage: "[CHART]",
+		Action:    func(c *cli.Context) { run(c, deploy) },
 		Flags: []cli.Flag{
-			cli.BoolFlag{
-				Name:  "dry-run",
-				Usage: "Only display the underlying kubectl commands.",
-			},
 			cli.StringFlag{
 				Name:  "config,c",
 				Usage: "The configuration YAML file for this deployment.",

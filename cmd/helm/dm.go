@@ -25,6 +25,7 @@ func dmCmd() cli.Command {
 			{
 				Name:        "install",
 				Usage:       "Install DM on Kubernetes.",
+				ArgsUsage:   "",
 				Description: ``,
 				Flags: []cli.Flag{
 					cli.BoolFlag{
@@ -42,6 +43,7 @@ func dmCmd() cli.Command {
 			{
 				Name:        "uninstall",
 				Usage:       "Uninstall the DM from Kubernetes.",
+				ArgsUsage:   "",
 				Description: ``,
 				Flags: []cli.Flag{
 					cli.BoolFlag{
@@ -57,8 +59,9 @@ func dmCmd() cli.Command {
 				},
 			},
 			{
-				Name:  "status",
-				Usage: "Show status of DM.",
+				Name:      "status",
+				Usage:     "Show status of DM.",
+				ArgsUsage: "",
 				Action: func(c *cli.Context) {
 					format.Err("Not yet implemented")
 					os.Exit(1)

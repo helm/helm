@@ -13,9 +13,10 @@ func init() {
 
 func getCmd() cli.Command {
 	return cli.Command{
-		Name:   "get",
-		Usage:  "Retrieves the supplied deployment",
-		Action: func(c *cli.Context) { run(c, get) },
+		Name:      "get",
+		ArgsUsage: "DEPLOYMENT",
+		Usage:     "Retrieves the supplied deployment",
+		Action:    func(c *cli.Context) { run(c, get) },
 	}
 }
 
