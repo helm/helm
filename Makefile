@@ -4,7 +4,9 @@ endif
 
 BIN_DIR := bin
 DIST_DIR := _dist
-GO_PACKAGES := cmd/helm dm deploy format kubectl
+#GO_PACKAGES := cmd/helm dm format kubectl
+GO_DIRS ?= $(shell glide nv -x )
+GO_PKGS ?= $(shell glide nv)
 MAIN_GO := github.com/deis/helm-dm/cmd/helm
 HELM_BIN := helm-dm
 PATH_WITH_HELM = PATH="$(shell pwd)/$(BIN_DIR)/helm:$(PATH)"
@@ -44,19 +46,19 @@ install: build
 	install -m 755 bin/${HELM_BIN} ${DESTDIR}/usr/local/bin/${HELM_BIN}
 
 quicktest:
-	$(PATH_WITH_HELM) go test -short $(addprefix ./,$(GO_PACKAGES))
+	$(PATH_WITH_HELM) go test -short ${GO_PKGS}
 
 test: test-style
-	$(PATH_WITH_HELM) go test -v -cover $(addprefix ./,$(GO_PACKAGES))
+	$(PATH_WITH_HELM) go test -v -cover ${GO_PKGS}
 
 test-style:
-	@if [ $(shell gofmt -e -l -s $(GO_PACKAGES)) ]; then \
-		echo "gofmt check failed:"; gofmt -e -d -s $(GO_PACKAGES); exit 1; \
+	@if [ $(shell gofmt -e -l -s $(GO_DIRS)) ]; then \
+		echo "gofmt check failed:"; gofmt -e -d -s $(GO_DIRS); exit 1; \
 	fi
-	@for i in . $(GO_PACKAGES); do \
+	@for i in . $(GO_DIRS); do \
 		golint $$i; \
 	done
-	@for i in . $(GO_PACKAGES); do \
+	@for i in . $(GO_DIRS); do \
 		go vet github.com/deis/helm-dm/$$i; \
 	done
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"os"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/deployment-manager/common"
@@ -60,7 +61,17 @@ func deploy(c *cli.Context) error {
 	// file with it.
 	args := c.Args()
 	if len(args) > 0 {
-		cfg.Resources[0].Type = args[0]
+		cname := args[0]
+		if isLocalChart(cname) {
+			// If we get here, we need to first package then upload the chart.
+			loc, err := doUpload(cname, "", c)
+			if err != nil {
+				return err
+			}
+			cfg.Resources[0].Name = loc
+		} else {
+			cfg.Resources[0].Type = cname
+		}
 	}
 
 	// Override the name if one is passed in.
@@ -80,6 +91,12 @@ func deploy(c *cli.Context) error {
 	}
 
 	return client(c).PostDeployment(cfg)
+}
+
+// isLocalChart returns true if the given path can be statted.
+func isLocalChart(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // loadConfig loads a file into a common.Configuration.
