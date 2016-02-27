@@ -15,7 +15,6 @@ func init() {
 func deployCmd() cli.Command {
 	return cli.Command{
 		Name:      "deploy",
-		Aliases:   []string{"install"},
 		Usage:     "Deploy a chart into the cluster.",
 		ArgsUsage: "[CHART]",
 		Action:    func(c *cli.Context) { run(c, deploy) },
