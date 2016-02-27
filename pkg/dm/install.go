@@ -1,8 +1,8 @@
 package dm
 
 import (
-	"github.com/deis/helm-dm/format"
-	"github.com/deis/helm-dm/kubectl"
+	"github.com/deis/helm-dm/pkg/format"
+	"github.com/deis/helm-dm/pkg/kubectl"
 )
 
 // Install uses kubectl to install the base DM.

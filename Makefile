@@ -55,11 +55,11 @@ test-style:
 	@if [ $(shell gofmt -e -l -s $(GO_DIRS)) ]; then \
 		echo "gofmt check failed:"; gofmt -e -d -s $(GO_DIRS); exit 1; \
 	fi
-	@for i in . $(GO_DIRS); do \
+	@for i in $(GO_PKGS); do \
 		golint $$i; \
 	done
-	@for i in . $(GO_DIRS); do \
-		go vet github.com/deis/helm-dm/$$i; \
+	@for i in $(GO_DIRS); do \
+		go tool vet $$i; \
 	done
 
 .PHONY: bootstrap \

@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/codegangsta/cli"
-	"github.com/deis/helm-dm/format"
+	"github.com/deis/helm-dm/pkg/format"
 )
 
 func init() {

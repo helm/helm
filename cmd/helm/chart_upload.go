@@ -9,7 +9,7 @@ import (
 
 	"github.com/aokoli/goutils"
 	"github.com/codegangsta/cli"
-	"github.com/deis/helm-dm/format"
+	"github.com/deis/helm-dm/pkg/format"
 	"github.com/kubernetes/deployment-manager/chart"
 )
 

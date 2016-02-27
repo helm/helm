@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/codegangsta/cli"
-	"github.com/deis/helm-dm/dm"
-	"github.com/deis/helm-dm/format"
-	"github.com/deis/helm-dm/kubectl"
+	"github.com/deis/helm-dm/pkg/dm"
+	"github.com/deis/helm-dm/pkg/format"
+	"github.com/deis/helm-dm/pkg/kubectl"
 )
 
 func init() {
