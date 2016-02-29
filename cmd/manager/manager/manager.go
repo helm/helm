@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
+	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/pkg/registry"
 	"github.com/kubernetes/deployment-manager/pkg/util"
 )

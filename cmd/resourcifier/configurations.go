@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/cmd/resourcifier/configurator"
+	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/pkg/util"
 
 	"encoding/json"

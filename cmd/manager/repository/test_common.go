@@ -213,8 +213,8 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T, r Repository) {
 // TestRepositoryTypeInstances checks that type instances can be listed and retrieved successfully.
 func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 	d1Map := map[string][]*common.TypeInstance{
-		"t1": []*common.TypeInstance{
-			&common.TypeInstance{
+		"t1": {
+			{
 				Name:       "i1",
 				Type:       "t1",
 				Deployment: "d1",
@@ -225,8 +225,8 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 	}
 
 	d2Map := map[string][]*common.TypeInstance{
-		"t2": []*common.TypeInstance{
-			&common.TypeInstance{
+		"t2": {
+			{
 				Name:       "i2",
 				Type:       "t2",
 				Deployment: "d2",
@@ -237,8 +237,8 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 	}
 
 	d3Map := map[string][]*common.TypeInstance{
-		"t2": []*common.TypeInstance{
-			&common.TypeInstance{
+		"t2": {
+			{
 				Name:       "i3",
 				Type:       "t2",
 				Deployment: "d3",

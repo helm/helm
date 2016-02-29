@@ -17,8 +17,8 @@ limitations under the License.
 package service
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/cmd/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/pkg/util"
 
 	"errors"
@@ -86,7 +86,7 @@ func NewExpansionHandler(backend expander.Expander) restful.RouteFunction {
 		}
 
 		util.LogHandlerExit("expandybird", http.StatusOK, "OK", resp.ResponseWriter)
-		message := fmt.Sprintf("\nConfig:\n%s\nLayout:\n%s\n", response.Config, response.Layout) 
+		message := fmt.Sprintf("\nConfig:\n%s\nLayout:\n%s\n", response.Config, response.Layout)
 		util.LogHandlerText("expandybird", message)
 		resp.WriteEntity(response)
 	}

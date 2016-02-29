@@ -36,13 +36,13 @@ func testURLConversionDriver(rp RegistryProvider, tests map[string]TestURLAndErr
 
 func TestShortGithubURLTemplateMapping(t *testing.T) {
 	githubURLMaps := map[Type]TestURLAndError{
-		NewTypeOrDie("common", "replicatedservice", "v1"): TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		NewTypeOrDie("storage", "redis", "v1"):            TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
+		NewTypeOrDie("common", "replicatedservice", "v1"): {"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		NewTypeOrDie("storage", "redis", "v1"):            {"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
 	}
 
 	tests := map[string]TestURLAndError{
-		"github.com/kubernetes/application-dm-templates/common/replicatedservice:v1": TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
-		"github.com/kubernetes/application-dm-templates/storage/redis:v1":            TestURLAndError{"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
+		"github.com/kubernetes/application-dm-templates/common/replicatedservice:v1": {"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", nil},
+		"github.com/kubernetes/application-dm-templates/storage/redis:v1":            {"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/storage/redis/v1/redis.jinja", nil},
 	}
 
 	grp := NewTestGithubRegistryProvider("github.com/kubernetes/application-dm-templates", githubURLMaps)
@@ -52,13 +52,13 @@ func TestShortGithubURLTemplateMapping(t *testing.T) {
 
 func TestShortGithubURLPackageMapping(t *testing.T) {
 	githubURLMaps := map[Type]TestURLAndError{
-		NewTypeOrDie("", "mongodb", ""): TestURLAndError{"https://raw.githubusercontent.com/helm/charts/master/mongodb/manifests/mongodb.yaml", nil},
-		NewTypeOrDie("", "redis", ""):   TestURLAndError{"https://raw.githubusercontent.com/helm/charts/master/redis/manifests/redis.yaml", nil},
+		NewTypeOrDie("", "mongodb", ""): {"https://raw.githubusercontent.com/helm/charts/master/mongodb/manifests/mongodb.yaml", nil},
+		NewTypeOrDie("", "redis", ""):   {"https://raw.githubusercontent.com/helm/charts/master/redis/manifests/redis.yaml", nil},
 	}
 
 	tests := map[string]TestURLAndError{
-		"github.com/helm/charts/mongodb": TestURLAndError{"https://raw.githubusercontent.com/helm/charts/master/mongodb/manifests/mongodb.yaml", nil},
-		"github.com/helm/charts/redis":   TestURLAndError{"https://raw.githubusercontent.com/helm/charts/master/redis/manifests/redis.yaml", nil},
+		"github.com/helm/charts/mongodb": {"https://raw.githubusercontent.com/helm/charts/master/mongodb/manifests/mongodb.yaml", nil},
+		"github.com/helm/charts/redis":   {"https://raw.githubusercontent.com/helm/charts/master/redis/manifests/redis.yaml", nil},
 	}
 
 	grp := NewTestGithubRegistryProvider("github.com/helm/charts", githubURLMaps)

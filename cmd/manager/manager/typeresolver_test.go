@@ -118,7 +118,7 @@ resources:
 `
 
 func TestIncludedImport(t *testing.T) {
-	imports := []*common.ImportFile{&common.ImportFile{Name: "foo.py"}}
+	imports := []*common.ImportFile{{Name: "foo.py"}}
 	test := resolverTestCase{
 		config:  includeImport,
 		imports: imports,
@@ -133,11 +133,11 @@ resources:
 `
 
 func TestSingleUrl(t *testing.T) {
-	finalImports := []*common.ImportFile{&common.ImportFile{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"}}
+	finalImports := []*common.ImportFile{{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"}}
 
 	responses := map[string]responseAndError{
-		"http://my-fake-url":        responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":        {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema": {nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
@@ -151,7 +151,7 @@ func TestSingleUrl(t *testing.T) {
 
 func TestSingleUrlWith500(t *testing.T) {
 	responses := map[string]responseAndError{
-		"http://my-fake-url": responseAndError{nil, http.StatusInternalServerError, "my-content"},
+		"http://my-fake-url": {nil, http.StatusInternalServerError, "my-content"},
 	}
 
 	test := resolverTestCase{
@@ -171,16 +171,16 @@ imports:
 
 func TestSingleUrlWithSchema(t *testing.T) {
 	finalImports := []*common.ImportFile{
-		&common.ImportFile{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"},
-		&common.ImportFile{Name: "schema-import", Content: "schema-import"},
-		&common.ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
+		{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"},
+		{Name: "schema-import", Content: "schema-import"},
+		{Name: "http://my-fake-url.schema", Content: schema1},
 	}
 
 	responses := map[string]responseAndError{
-		"http://my-fake-url":        responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url.schema": responseAndError{nil, http.StatusOK, schema1},
-		"my-next-url":               responseAndError{nil, http.StatusOK, "schema-import"},
-		"my-next-url.schema":        responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":        {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema": {nil, http.StatusOK, schema1},
+		"my-next-url":               {nil, http.StatusOK, "schema-import"},
+		"my-next-url.schema":        {nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
@@ -210,18 +210,18 @@ resources:
 
 func TestTooManyImports(t *testing.T) {
 	responses := map[string]responseAndError{
-		"http://my-fake-url":         responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url.schema":  responseAndError{nil, http.StatusNotFound, ""},
-		"http://my-fake-url1":        responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url1.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"http://my-fake-url2":        responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url2.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"http://my-fake-url3":        responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url3.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"http://my-fake-url4":        responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url4.schema": responseAndError{nil, http.StatusNotFound, ""},
-		"http://my-fake-url5":        responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url5.schema": responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":         {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema":  {nil, http.StatusNotFound, ""},
+		"http://my-fake-url1":        {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url1.schema": {nil, http.StatusNotFound, ""},
+		"http://my-fake-url2":        {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url2.schema": {nil, http.StatusNotFound, ""},
+		"http://my-fake-url3":        {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url3.schema": {nil, http.StatusNotFound, ""},
+		"http://my-fake-url4":        {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url4.schema": {nil, http.StatusNotFound, ""},
+		"http://my-fake-url5":        {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url5.schema": {nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
@@ -250,21 +250,21 @@ imports:
 
 func TestSharedImport(t *testing.T) {
 	finalImports := []*common.ImportFile{
-		&common.ImportFile{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"},
-		&common.ImportFile{Name: "http://my-fake-url1", Path: "http://my-fake-url1", Content: "my-content-1"},
-		&common.ImportFile{Name: "schema-import", Content: "schema-import"},
-		&common.ImportFile{Name: "schema-import-1", Content: "schema-import"},
-		&common.ImportFile{Name: "http://my-fake-url.schema", Content: schema1},
-		&common.ImportFile{Name: "http://my-fake-url1.schema", Content: schema2},
+		{Name: "http://my-fake-url", Path: "http://my-fake-url", Content: "my-content"},
+		{Name: "http://my-fake-url1", Path: "http://my-fake-url1", Content: "my-content-1"},
+		{Name: "schema-import", Content: "schema-import"},
+		{Name: "schema-import-1", Content: "schema-import"},
+		{Name: "http://my-fake-url.schema", Content: schema1},
+		{Name: "http://my-fake-url1.schema", Content: schema2},
 	}
 
 	responses := map[string]responseAndError{
-		"http://my-fake-url":         responseAndError{nil, http.StatusOK, "my-content"},
-		"http://my-fake-url.schema":  responseAndError{nil, http.StatusOK, schema1},
-		"http://my-fake-url1":        responseAndError{nil, http.StatusOK, "my-content-1"},
-		"http://my-fake-url1.schema": responseAndError{nil, http.StatusOK, schema2},
-		"my-next-url":                responseAndError{nil, http.StatusOK, "schema-import"},
-		"my-next-url.schema":         responseAndError{nil, http.StatusNotFound, ""},
+		"http://my-fake-url":         {nil, http.StatusOK, "my-content"},
+		"http://my-fake-url.schema":  {nil, http.StatusOK, schema1},
+		"http://my-fake-url1":        {nil, http.StatusOK, "my-content-1"},
+		"http://my-fake-url1.schema": {nil, http.StatusOK, schema2},
+		"my-next-url":                {nil, http.StatusOK, "schema-import"},
+		"my-next-url.schema":         {nil, http.StatusNotFound, ""},
 	}
 
 	test := resolverTestCase{
@@ -287,31 +287,31 @@ resources:
 
 func TestShortGithubUrl(t *testing.T) {
 	finalImports := []*common.ImportFile{
-		&common.ImportFile{
+		{
 			Name:    "github.com/kubernetes/application-dm-templates/common/replicatedservice:v1",
 			Path:    "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py",
 			Content: "my-content"},
-		&common.ImportFile{
+		{
 			Name:    "github.com/kubernetes/application-dm-templates/common/replicatedservice:v2",
 			Path:    "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py",
 			Content: "my-content-2"},
 	}
 
 	downloadResponses := map[string]registry.DownloadResponse{
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        registry.DownloadResponse{Err: nil, Code: http.StatusOK, Body: "my-content"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": registry.DownloadResponse{Err: nil, Code: http.StatusNotFound, Body: ""},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        registry.DownloadResponse{Err: nil, Code: http.StatusOK, Body: "my-content-2"},
-		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": registry.DownloadResponse{Err: nil, Code: http.StatusNotFound, Body: ""},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py":        {Err: nil, Code: http.StatusOK, Body: "my-content"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py.schema": {Err: nil, Code: http.StatusNotFound, Body: ""},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py":        {Err: nil, Code: http.StatusOK, Body: "my-content-2"},
+		"https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py.schema": {Err: nil, Code: http.StatusNotFound, Body: ""},
 	}
 
 	githubURLMaps := map[registry.Type]registry.TestURLAndError{
-		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
-		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v1"): {URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v2"): {URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
 	}
 
 	gcsURLMaps := map[registry.Type]registry.TestURLAndError{
-		registry.NewTypeOrDie("common", "replicatedservice", "v1"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
-		registry.NewTypeOrDie("common", "replicatedservice", "v2"): registry.TestURLAndError{URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v1"): {URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v1/replicatedservice.py", Err: nil},
+		registry.NewTypeOrDie("common", "replicatedservice", "v2"): {URL: "https://raw.githubusercontent.com/kubernetes/application-dm-templates/master/common/replicatedservice/v2/replicatedservice.py", Err: nil},
 	}
 
 	grp := registry.NewTestGithubRegistryProviderWithDownloads("github.com/kubernetes/application-dm-templates", githubURLMaps, downloadResponses)

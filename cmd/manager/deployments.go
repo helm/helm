@@ -33,11 +33,11 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gorilla/mux"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/cmd/manager/manager"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository/persistent"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository/transient"
+	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/pkg/registry"
 	"github.com/kubernetes/deployment-manager/pkg/util"
 )

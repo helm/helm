@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
+	"github.com/kubernetes/deployment-manager/pkg/common"
 )
 
 // deploymentTypeInstanceMap stores type instances mapped by deployment name.

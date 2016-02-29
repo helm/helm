@@ -180,7 +180,7 @@ func (tr *typeResolver) ResolveTypes(config *common.Configuration, imports []*co
 				for _, u := range urls {
 					if len(fetched[u]) == 0 {
 						// If this import URL is new to us, add it to the URLs to fetch.
-						toFetch = append(toFetch, &fetchUnit{[]fetchableURL{fetchableURL{urlRegistry, u}}})
+						toFetch = append(toFetch, &fetchUnit{[]fetchableURL{{urlRegistry, u}}})
 					} else {
 						// If this is not a new import URL and we've already fetched its contents,
 						// reuse them. Also, check if we also found a schema for that import URL and

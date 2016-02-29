@@ -29,16 +29,16 @@ import (
 var template = common.Template{Name: "test", Content: "test"}
 
 var layout = common.Layout{
-	Resources: []*common.LayoutResource{&common.LayoutResource{Resource: common.Resource{Name: "test", Type: "test"}}},
+	Resources: []*common.LayoutResource{{Resource: common.Resource{Name: "test", Type: "test"}}},
 }
 var configuration = common.Configuration{
-	Resources: []*common.Resource{&common.Resource{Name: "test", Type: "test"}},
+	Resources: []*common.Resource{{Name: "test", Type: "test"}},
 }
 var resourcesWithSuccessState = common.Configuration{
-	Resources: []*common.Resource{&common.Resource{Name: "test", Type: "test", State: &common.ResourceState{Status: common.Created}}},
+	Resources: []*common.Resource{{Name: "test", Type: "test", State: &common.ResourceState{Status: common.Created}}},
 }
 var resourcesWithFailureState = common.Configuration{
-	Resources: []*common.Resource{&common.Resource{
+	Resources: []*common.Resource{{
 		Name: "test",
 		Type: "test",
 		State: &common.ResourceState{
@@ -64,7 +64,7 @@ var deployment = common.Deployment{
 
 var deploymentList = []common.Deployment{deployment, {Name: "test2"}}
 
-var typeInstMap = map[string][]string{"test": []string{"test"}}
+var typeInstMap = map[string][]string{"test": {"test"}}
 
 var errTest = errors.New("test error")
 
