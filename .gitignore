@@ -1,4 +1,4 @@
 *.pyc
 .project
-vendor/*
 /bin
+/vendor/*

@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifndef GOPATH
+$(error No GOPATH set)
+endif
+
 include include.mk
 
-GO_PKGS := $(shell glide nv)
+GO_DIRS ?= $(shell glide nv -x )
+GO_PKGS ?= $(shell glide nv)
 
 .PHONY: build
 build:
@@ -26,9 +31,10 @@ all: build
 .PHONY: clean
 clean:
 	go clean -v $(GO_PKGS)
+	rm -rf bin
 
-.PHONY: clean
-test: build lint vet test-unit
+.PHONY: test
+test: build test-style test-unit
 
 .PHONY: push
 push: container
@@ -39,12 +45,18 @@ container: .project .docker
 .PHONY: test-unit
 test-unit:
 	@echo Running tests...
-	go test -v $(shell glide nv)
+	go test -v $(GO_PKGS)
+
+.PHONY: .test-style
+test-style: lint vet
+	@if [ $(shell gofmt -e -l -s $(GO_DIRS)) ]; then \
+		echo "gofmt check failed:"; gofmt -e -d -s $(GO_DIRS); exit 1; \
+	fi
 
 .PHONY: lint
 lint:
 	@echo Running golint...
-	@for i in $(shell glide nv); do \
+	@for i in $(GO_PKGS); do \
 		golint $$i; \
 	done
 	@echo -----------------
@@ -52,17 +64,18 @@ lint:
 .PHONY: vet
 vet:
 	@echo Running go vet...
-	@for i in $(shell glide nv -x); do \
+	@for i in $(GO_DIRS); do \
 		go tool vet $$i; \
 	done
 	@echo -----------------
 
-.PHONY: setup-gotools
-setup-gotools:
-	@echo Installing golint
+.PHONY: bootstrap
+bootstrap:
+	@echo Installing deps
 	go get -u github.com/golang/lint/golint
-	@echo Installing vet
-	go get -u -v golang.org/x/tools/cmd/vet
+	go get -u golang.org/x/tools/cmd/vet
+	go get -u github.com/mitchellh/gox
+	glide install
 
 .PHONY: .project
 .project:
@@ -71,3 +84,4 @@ setup-gotools:
 .PHONY: .docker
 .docker:
 	@if [[ -z `which docker` ]] || ! docker version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
+

@@ -1,5 +1,8 @@
 package: github.com/kubernetes/deployment-manager
 import:
+- package: github.com/Masterminds/semver
+- package: github.com/aokoli/goutils
+- package: github.com/codegangsta/cli
 - package: github.com/emicklei/go-restful
 - package: github.com/ghodss/yaml
 - package: github.com/google/go-github
@@ -9,3 +12,5 @@ import:
 - package: github.com/gorilla/mux
 - package: gopkg.in/yaml.v2
 - package: github.com/Masterminds/semver
+ignore:
+- google.golang.com/appengine
