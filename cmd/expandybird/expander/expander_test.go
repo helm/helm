@@ -37,7 +37,7 @@ var importFileNames = []string{
 var validFileName = "../test/ValidContent.yaml"
 var outputFileName = "../test/ExpectedOutput.yaml"
 var archiveFileName = "../test/TestArchive.tar"
-var expanderName = "../expansion/expansion.py"
+var expanderName = "../../../expansion/expansion.py"
 
 type ExpanderTestCase struct {
 	Description      string

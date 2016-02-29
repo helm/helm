@@ -33,7 +33,7 @@ import (
 var port = flag.Int("port", 8080, "Port to listen on")
 
 // path to expansion binary
-var expansionBinary = flag.String("expansion_binary", "../expansion/expansion.py",
+var expansionBinary = flag.String("expansion_binary", "../../../expansion/expansion.py",
 	"The path to the expansion binary that will be used to expand the template.")
 
 func main() {

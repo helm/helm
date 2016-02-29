@@ -26,8 +26,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/cmd/expandybird/expander"
+	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/pkg/util"
 
 	restful "github.com/emicklei/go-restful"
@@ -112,7 +112,7 @@ var ServiceWrapperTestCases = []ServiceWrapperTestCase{
 }
 
 func TestServiceWrapper(t *testing.T) {
-	backend := expander.NewExpander("../expansion/expansion.py")
+	backend := expander.NewExpander("../../../expansion/expansion.py")
 	wrapper := NewService(NewExpansionHandler(backend))
 	container := restful.NewContainer()
 	container.ServeMux = http.NewServeMux()
