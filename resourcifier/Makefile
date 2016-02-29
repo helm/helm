@@ -21,7 +21,6 @@ include ../include.mk
 DOCKER_REGISTRY := gcr.io
 PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
 IMAGE := resourcifier
-TAG := latest
 
 ROOT_DIR := $(abspath ./..)
 DIR = $(ROOT_DIR)
