@@ -8,7 +8,7 @@ resources:
     container_port: 8080
     external_service: false
     replicas: 2
-    image: gcr.io/dm-k8s-testing/expandybird:latest
+    image: gcr.io/dm-k8s-prod/expandybird:latest
     labels:
       app: dm
 - name: resourcifier
@@ -20,7 +20,7 @@ resources:
     container_port: 8080
     external_service: false
     replicas: 2
-    image: gcr.io/dm-k8s-testing/resourcifier:latest
+    image: gcr.io/dm-k8s-prod/resourcifier:latest
     labels:
       app: dm
 - name: manager
@@ -32,6 +32,6 @@ resources:
     container_port: 8080
     external_service: false
     replicas: 1
-    image: gcr.io/dm-k8s-testing/manager:latest
+    image: gcr.io/dm-k8s-prod/manager:latest
     labels:
       app: dm

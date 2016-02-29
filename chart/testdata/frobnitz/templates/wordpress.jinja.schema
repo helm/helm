@@ -8,7 +8,7 @@ info:
 properties:
   project:
     type: string
-    default: dm-k8s-testing
+    default: dm-k8s-prod
     description: Project location to load the images from.
   nfs-service:
     type: object
