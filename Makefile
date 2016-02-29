@@ -14,39 +14,60 @@
 
 include include.mk
 
-SUBDIRS := expandybird/. resourcifier/. manager/.
-TARGETS := all build test push container clean
+GO_PKGS := $(shell glide nv)
 
-SUBDIRS_TARGETS := \
-	$(foreach t,$(TARGETS),$(addsuffix $t,$(SUBDIRS)))
-
-GO_DEPS := github.com/kubernetes/deployment-manager/util/... github.com/kubernetes/deployment-manager/version/... github.com/kubernetes/deployment-manager/expandybird/... github.com/kubernetes/deployment-manager/resourcifier/... github.com/kubernetes/deployment-manager/manager/... github.com/kubernetes/deployment-manager/dm/...
-
-.PHONY : all build test clean $(TARGETS) $(SUBDIRS_TARGETS) .project .docker
-
+.PHONY: build
 build:
-	go get -v $(GO_DEPS)
-	go install -v $(GO_DEPS)
+	@scripts/build-go.sh
 
+.PHONY: all
 all: build
 
+.PHONY: clean
 clean:
-	go clean -v $(GO_DEPS)
+	go clean -v $(GO_PKGS)
 
-test: build
-	go test -v $(GO_DEPS)
+.PHONY: clean
+test: build lint vet test-unit
 
+.PHONY: push
 push: container
 
+.PHONY: container
 container: .project .docker
 
+.PHONY: test-unit
+test-unit:
+	@echo Running tests...
+	go test -v $(shell glide nv)
+
+.PHONY: lint
+lint:
+	@echo Running golint...
+	@for i in $(shell glide nv); do \
+		golint $$i; \
+	done
+	@echo -----------------
+
+.PHONY: vet
+vet:
+	@echo Running go vet...
+	@for i in $(shell glide nv -x); do \
+		go tool vet $$i; \
+	done
+	@echo -----------------
+
+.PHONY: setup-gotools
+setup-gotools:
+	@echo Installing golint
+	go get -u github.com/golang/lint/golint
+	@echo Installing vet
+	go get -u -v golang.org/x/tools/cmd/vet
+
+.PHONY: .project
 .project:
 	@if [[ -z "${PROJECT}" ]]; then echo "PROJECT variable must be set"; exit 1; fi
 
+.PHONY: .docker
 .docker:
 	@if [[ -z `which docker` ]] || ! docker version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
-
-$(TARGETS) : % : $(addsuffix %,$(SUBDIRS))
-
-$(SUBDIRS_TARGETS) :
-	$(MAKE) -C $(@D) $(@F:.%=%)
