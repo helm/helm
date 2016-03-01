@@ -25,6 +25,10 @@ GO_PKGS ?= $(shell glide nv)
 build:
 	@scripts/build-go.sh
 
+.PHONY: build-cross
+build-cross:
+	@BUILD_CROSS=1 scripts/build-go.sh
+
 .PHONY: all
 all: build
 
