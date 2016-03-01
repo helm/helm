@@ -8,9 +8,6 @@ language: go
 go:
   - 1.6
 
-install:
-  - sudo pip install -r expandybird/requirements.txt
-
 script:
   - make bootstrap test
 
@@ -24,3 +21,4 @@ install:
   - mkdir -p $HOME/bin
   - tar -vxz -C $HOME/bin --strip=1 -f glide-$GLIDE_VERSION-linux-amd64.tar.gz
   - export PATH="$HOME/bin:$PATH" GLIDE_HOME="$HOME/.glide"
+  - sudo pip install -r expandybird/requirements.txt
