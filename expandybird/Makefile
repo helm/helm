@@ -19,6 +19,7 @@ include ../include.mk
 DOCKER_REGISTRY := gcr.io
 PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
 IMAGE := expandybird
+TAG := latest
 
 ROOT_DIR := $(abspath ./..)
 DIR = $(ROOT_DIR)

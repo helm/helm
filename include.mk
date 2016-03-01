@@ -5,8 +5,6 @@ info:
 	@echo "Project: ${PROJECT}"
 	@echo "Image: ${IMAGE}"
 
-TAG := $(shell echo `date +"%s"`_`date +"%N"`)
-
 .PHONY: test-unit
 test-unit:
 	@echo Running tests...
