@@ -51,7 +51,7 @@ config:
           spec:
             containers:
             - env: []
-              image: gcr.io/dm-k8s-testing/expandybird
+              image: gcr.io/dm-k8s-prod/expandybird
               name: expandybird
               ports:
               - containerPort: 8080
@@ -63,7 +63,7 @@ layout:
     properties:
       container_port: 8080
       external_service: true
-      image: gcr.io/dm-k8s-testing/expandybird
+      image: gcr.io/dm-k8s-prod/expandybird
       labels:
         app: expandybird
       replicas: 3
