@@ -12,41 +12,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifndef GOPATH
+$(error No GOPATH set)
+endif
+
 include include.mk
 
-SUBDIRS := expandybird/. resourcifier/. manager/.
-TARGETS := all build test push container clean
+GO_DIRS ?= $(shell glide nv -x )
+GO_PKGS ?= $(shell glide nv)
 
-SUBDIRS_TARGETS := \
-	$(foreach t,$(TARGETS),$(addsuffix $t,$(SUBDIRS)))
-
-GO_DEPS := github.com/kubernetes/deployment-manager/util/... github.com/kubernetes/deployment-manager/version/... github.com/kubernetes/deployment-manager/expandybird/... github.com/kubernetes/deployment-manager/resourcifier/... github.com/kubernetes/deployment-manager/manager/... github.com/kubernetes/deployment-manager/dm/...
-
-.PHONY : all build test clean $(TARGETS) $(SUBDIRS_TARGETS) .project .docker
-
+.PHONY: build
 build:
-	go get -v $(GO_DEPS)
-	go install -v $(GO_DEPS)
+	@scripts/build-go.sh
 
+.PHONY: build-cross
+build-cross:
+	@BUILD_CROSS=1 scripts/build-go.sh
+
+.PHONY: all
 all: build
 
+.PHONY: clean
 clean:
-	go clean -v $(GO_DEPS)
+	go clean -v $(GO_PKGS)
+	rm -rf bin
 
-test: build
-	go test -v $(GO_DEPS)
+.PHONY: test
+test: build test-style test-unit
 
+.PHONY: push
 push: container
 
+.PHONY: container
 container: .project .docker
 
+.PHONY: test-unit
+test-unit:
+	@echo Running tests...
+	go test -v $(GO_PKGS)
+
+.PHONY: .test-style
+test-style: lint vet
+	@if [[ -z $(shell gofmt -e -l -s $(GO_DIRS) | wc -l) ]]; then \
+		echo "gofmt check failed:"; gofmt -e -d -s $(GO_DIRS); exit 1; \
+	fi
+
+.PHONY: lint
+lint:
+	@echo Running golint...
+	@for i in $(GO_PKGS); do \
+		golint $$i; \
+	done
+	@echo -----------------
+
+.PHONY: vet
+vet:
+	@echo Running go vet...
+	@for i in $(GO_DIRS); do \
+		go tool vet $$i; \
+	done
+	@echo -----------------
+
+.PHONY: bootstrap
+bootstrap:
+	@echo Installing deps
+	go get -u github.com/golang/lint/golint
+	go get -u golang.org/x/tools/cmd/vet
+	go get -u github.com/mitchellh/gox
+	glide install
+
+.PHONY: .project
 .project:
 	@if [[ -z "${PROJECT}" ]]; then echo "PROJECT variable must be set"; exit 1; fi
 
+.PHONY: .docker
 .docker:
 	@if [[ -z `which docker` ]] || ! docker version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
 
-$(TARGETS) : % : $(addsuffix %,$(SUBDIRS))
-
-$(SUBDIRS_TARGETS) :
-	$(MAKE) -C $(@D) $(@F:.%=%)

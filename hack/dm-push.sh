@@ -17,23 +17,21 @@
 # Run this from deployment-manager root to build and push the dm client plus
 # kubernetes install config into the publicly readable GCS bucket gs://get-dm.
 #
-# Must have EDIT permissions on the dm-k8s-prod GCP project.
+# Must have EDIT permissions on the dm-k8s-testing GCP project.
 
 set -euo pipefail
 
-DEFAULT_TAG=v1.2
-DEFAULT_BINARY=${GOPATH}/bin/dm
-DEFAULT_PLATFORM=$(uname | tr '[:upper:]' '[:lower:]')
-DEFAULT_ARCH=$(uname -m)
+PLATFORM=$(uname | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
 
 STORAGE_BUCKET=gs://get-dm
-ZIP=dm-${TAG:-DEFAULT_TAG}-${PLATFORM:-DEFAULT_PLATFORM}-${ARCH:-DEFAULT_ARCH}.zip
+ZIP=dm-latest-${PLATFORM}-${ARCH}.zip
 
 echo "Building..."
 make
 
 echo "Zipping ${ZIP}..."
-zip -j ${ZIP} ${BINARY:-DEFAULT_BINARY} install.yaml
+zip -j ${ZIP} ${GOPATH}/bin/dm install.yaml
 
 echo "Uploading ${ZIP} to ${STORAGE_BUCKET}..."
 gsutil cp ${ZIP} ${STORAGE_BUCKET}
