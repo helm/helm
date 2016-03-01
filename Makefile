@@ -53,7 +53,7 @@ test-unit:
 
 .PHONY: .test-style
 test-style: lint vet
-	@if [ $(shell gofmt -e -l -s $(GO_DIRS) | wc -l) ]; then \
+	@if [[ -z $(shell gofmt -e -l -s $(GO_DIRS) | wc -l) ]]; then \
 		echo "gofmt check failed:"; gofmt -e -d -s $(GO_DIRS); exit 1; \
 	fi
 
