@@ -2,3 +2,9 @@
 .project
 /bin
 /vendor/*
+/rootfs/manager/bin/manager
+/rootfs/manager/bin/kubectl
+/rootfs/resourcifier/bin/resourcifier
+/rootfs/resourcifier/bin/kubectl
+/rootfs/expandybird/bin/expandybird
+/rootfs/expandybird/opt/expansion
