@@ -272,10 +272,10 @@ func callService(path, method, action string, reader io.ReadCloser) {
 	var URL *url.URL
 	URL, err := url.Parse(*service)
 	if err != nil {
-		panic(fmt.Errorf("cannot parse url (%s): %s\n", *service, err))
+		panic(fmt.Errorf("cannot parse url (%s): %s\n", path, err))
 	}
 
-	URL.Path = strings.TrimRight(URL.Path, "/") + "/" + strings.TrimLeft(path, "/")
+  URL.Path = strings.TrimRight(URL.Path, "/") + "/" + strings.TrimLeft(path, "/")
 	resp := callHTTP(URL.String(), method, action, reader)
 	var j interface{}
 	if err := json.Unmarshal([]byte(resp), &j); err != nil {

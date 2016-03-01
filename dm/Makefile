@@ -14,7 +14,7 @@
 
 SHELL := /bin/bash
 
-GOLANG_CROSSPLATFORMS := darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm windows/386 windows/amd64
+GOLANG_CROSSPLATFORMS="darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm windows/386 windows/amd64"
 
 all: build binary
 
@@ -22,15 +22,13 @@ build:
 	docker build -t dm .
 
 binary:
-	- docker stop dm
-	- docker rm dm
 	docker run --name dm dm
-	for platform in ${GOLANG_CROSSPLATFORMS}; do \
+	for platform in $$GOLANG_CROSSPLATFORMS; do \
 		echo $$platform; \
 		docker cp dm:/go/src/dm/dm-$${platform%/*}-$${platform##*/} .; \
 	done
 
 clean:
-	- docker rm dm
-	- docker rmi dm
-	rm -f dm-*
+	docker rm dm
+	docker rmi dm
+	rm dm-*
