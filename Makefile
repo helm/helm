@@ -73,12 +73,26 @@ vet:
 	done
 	@echo -----------------
 
+HAS_GLIDE := $(shell command -v glide)
+HAS_GOLINT := $(shell command -v golint)
+HAS_GOVET := $(shell command -v go tool vet)
+HAS_GOX := $(shell command -v gox)
+
 .PHONY: bootstrap
 bootstrap:
 	@echo Installing deps
+ifndef HAS_GLIDE
+	go get github.com/Masterminds/glide
+endif
+ifndef HAS_GOLINT
 	go get -u github.com/golang/lint/golint
+endif
+ifndef HAS_GOVET
 	go get -u golang.org/x/tools/cmd/vet
+endif
+ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
+endif
 	glide install
 
 .PHONY: .project
