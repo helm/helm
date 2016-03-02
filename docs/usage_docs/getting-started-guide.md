@@ -9,7 +9,7 @@
 - HAProxy
 - redis
 
-All of the Helm charts live at [github.com/kubernetes/charts](https://github.com/kubernetes/charts). If you want to make your own charts we have a guide for [authoring charts](authoring_charts.md). Charts should follow the defined [chart format](/docs/deisgn/chart_format.md).
+All of the Helm charts live at [github.com/kubernetes/charts](https://github.com/kubernetes/charts). If you want to make your own charts we have a guide for [authoring charts](authoring_charts.md). Charts should follow the defined [chart format](/docs/design/chart_format.md).
 
 Get started with the following steps:
 
@@ -17,6 +17,6 @@ Get started with the following steps:
 
 2. Then, run `make build`. This will install all the binaries you need in `bin/` in the root of the directory.
 
-3. To start playing with helm, run `./bin/helm`
+3. To see a list of helm commands, run `./bin/helm`
 
 4. `helm dm install` to install the server side component.
