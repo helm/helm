@@ -37,15 +37,5 @@ The current core maintainers of Helm (in alphabetical order):
 
 ### Code Reviews
 
-Before being merged, every pull request must have at least two LGTMs ("Looks Good To Me"), and at least one of these must come from one of the core maintainers listed above.
-
-## Becoming a Core Maintainer
-
-Generally, potential core maintainers are selected by the Helm core maintainers based in
-part on the following criteria:
-
-* Sustained contributions to the project over a period of time (usually months)
-* A willingness to help users on GitHub and in the Helm Slack room for [Kubernetes](http://slack.kubernetes.io/)
-* A friendly attitude
-
-The Helm core maintainers must unanimously agree before inviting a community member to join as a maintainer, although in many cases the candidate has already been acting in the capacity of a contributing maintainer for some time, and has been consulted on issues, pull requests, etc.
+Before being merged, every pull request must have at least one LGTM
+from a core maintainer.
