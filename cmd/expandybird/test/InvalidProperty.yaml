@@ -19,4 +19,4 @@ resources:
   properties:
     service_port: 8080
     target_port: 8080
-    invalidproperty: gcr.io/dm-k8s-testing/expandybird
+    invalidproperty: gcr.io/dm-k8s-prod/expandybird
