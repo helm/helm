@@ -5,7 +5,6 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/deployment-manager/pkg/dm"
-	"github.com/kubernetes/deployment-manager/pkg/format"
 )
 
 var version = "0.0.1"
@@ -46,23 +45,6 @@ func main() {
 
 func cmds() []cli.Command {
 	return []cli.Command{
-		{
-			Name:        "init",
-			Usage:       "Initialize the client and install DM on Kubernetes.",
-			Description: ``,
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "dry-run",
-					Usage: "Show what would be installed, but don't install anything.",
-				},
-			},
-			Action: func(c *cli.Context) {
-				if err := install(c.Bool("dry-run")); err != nil {
-					format.Err("%s (Run 'helm doctor' for more information)", err)
-					os.Exit(1)
-				}
-			},
-		},
 		{
 			Name: "search",
 		},
