@@ -12,30 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DOCKER_REGISTRY := gcr.io
-PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
 IMAGE ?= resourcifier
-TAG ?= git-$(shell git rev-parse --short HEAD)
-FULL_IMAGE := $(PREFIX)/$(IMAGE)
+	KUBE_VERSION ?= v1.1.7
 
-KUBE_VERSION ?= v1.1.7
+include ../include.mk
 
-.PHONY: container
-container: binary kubectl
-	docker build -t $(FULL_IMAGE):latest -f Dockerfile .
-	docker tag $(FULL_IMAGE):latest $(FULL_IMAGE):$(TAG)
+.PHONY: extras
+extras: expansion kubectl
 
-.PHONY: push
-push: container
-ifeq ($(DOCKER_REGISTRY),gcr.io)
-	gcloud docker push $(PREFIX)/$(IMAGE):$(TAG)
-else
-	docker push $(PREFIX)/$(IMAGE):$(TAG)
-endif
+.PHONY: expansion
+expansion:
+	cp -R ../../expansion ./opt
 
-binary:
-	cp ../../bin/linux-amd64/resourcifier ./bin
-
+.PHONY: kubectl
 kubectl:
 	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl
 	chmod +x bin/kubectl
+	
