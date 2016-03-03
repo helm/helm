@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+.PHONY: info
+info:
+	$(MAKE) -C $(ROOTFS) $@
+	
+.PHONY: gocheck
 ifndef GOPATH
-$(error No GOPATH set)
+	$(error No GOPATH set)
 endif
-
-include include.mk
 
 GO_DIRS ?= $(shell glide nv -x )
 GO_PKGS ?= $(shell glide nv)
 
 .PHONY: build
-build:
+build: gocheck
 	@scripts/build-go.sh
 
 .PHONY: build-cross
-build-cross:
+build-cross: gocheck
 	@BUILD_CROSS=1 scripts/build-go.sh
 
 .PHONY: all
@@ -40,14 +43,18 @@ clean:
 .PHONY: test
 test: build test-style test-unit
 
+ROOTFS := rootfs
+
 .PHONY: push
-push: container
+push: all
+	$(MAKE) -C $(ROOTFS) $@
 
 .PHONY: container
-container: .project .docker
+container: all
+	$(MAKE) -C $(ROOTFS) $@
 
 .PHONY: test-unit
-test-unit:
+test-unit: 
 	@echo Running tests...
 	go test -v $(GO_PKGS)
 
@@ -94,12 +101,3 @@ ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
 	glide install
-
-.PHONY: .project
-.project:
-	@if [[ -z "${PROJECT}" ]]; then echo "PROJECT variable must be set"; exit 1; fi
-
-.PHONY: .docker
-.docker:
-	@if [[ -z `which docker` ]] || ! docker version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
-
