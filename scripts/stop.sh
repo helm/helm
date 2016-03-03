@@ -1,21 +1,21 @@
 #!/bin/bash
 
 echo "Stopping resourcifier..."
-RESOURCIFIER=`which resourcifier`
+RESOURCIFIER=bin/resourcifier
 if [[ ! -z $RESOURCIFIER ]] ; then
 	pkill -f $RESOURCIFIER
 fi
 echo
 
 echo "Stopping expandybird..."
-EXPANDYBIRD=`which expandybird`
+EXPANDYBIRD=bin/expandybird
 if [[ ! -z $EXPANDYBIRD ]] ; then
 	pkill -f $EXPANDYBIRD
 fi
 echo
 
 echo "Stopping deployment manager..."
-MANAGER=`which manager`
+MANAGER=bin/manager
 if [[ ! -z $MANAGER ]] ; then
 	pkill -f $MANAGER
 fi
