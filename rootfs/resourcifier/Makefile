@@ -13,19 +13,14 @@
 # limitations under the License.
 
 IMAGE ?= resourcifier
-	KUBE_VERSION ?= v1.1.7
+KUBE_VERSION ?= v1.1.7
 
 include ../include.mk
 
 .PHONY: extras
-extras: expansion kubectl
-
-.PHONY: expansion
-expansion:
-	cp -R ../../expansion ./opt
+extras: kubectl
 
 .PHONY: kubectl
 kubectl:
 	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl
 	chmod +x bin/kubectl
-	
