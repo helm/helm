@@ -48,9 +48,28 @@ func dmCmd() cli.Command {
 						Name:  "dry-run",
 						Usage: "Show what would be installed, but don't install anything.",
 					},
+					cli.StringFlag{
+						Name:   "resourcifier-image",
+						Usage:  "The full image name of the Docker image for resourcifier.",
+						EnvVar: "HELM_RESOURCIFIER_IMAGE",
+					},
+					cli.StringFlag{
+						Name:   "expandybird-image",
+						Usage:  "The full image name of the Docker image for expandybird.",
+						EnvVar: "HELM_EXPANDYBIRD_IMAGE",
+					},
+					cli.StringFlag{
+						Name:   "manager-image",
+						Usage:  "The full image name of the Docker image for manager.",
+						EnvVar: "HELM_MANAGER_IMAGE",
+					},
 				},
 				Action: func(c *cli.Context) {
-					if err := install(c.Bool("dry-run")); err != nil {
+					dry := c.Bool("dry-run")
+					ri := c.String("resourcifier-image")
+					ei := c.String("expandybird-image")
+					mi := c.String("manager-image")
+					if err := install(dry, ei, mi, ri); err != nil {
 						format.Err("%s (Run 'helm doctor' for more information)", err)
 						os.Exit(1)
 					}
@@ -104,12 +123,17 @@ func dmCmd() cli.Command {
 	}
 }
 
-func install(dryRun bool) error {
+func install(dryRun bool, ebImg, manImg, resImg string) error {
 	runner := getKubectlRunner(dryRun)
 
-	out, err := dm.Install(runner)
+	i := dm.NewInstaller()
+	i.Manager["Image"] = manImg
+	i.Resourcifier["Image"] = resImg
+	i.Expandybird["Image"] = ebImg
+
+	out, err := i.Install(runner)
 	if err != nil {
-		format.Err("Error installing: %s %s", out, err)
+		return err
 	}
 	format.Msg(out)
 	return nil
