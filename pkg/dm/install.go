@@ -17,17 +17,56 @@ limitations under the License.
 package dm
 
 import (
+	"bytes"
+	"text/template"
+
+	"github.com/Masterminds/sprig"
 	"github.com/kubernetes/deployment-manager/pkg/format"
 	"github.com/kubernetes/deployment-manager/pkg/kubectl"
 )
+
+// Installer is capable of installing DM into Kubernetes.
+//
+// See InstallYAML.
+type Installer struct {
+	// TODO: At some point we could transform these from maps to structs.
+
+	// Expandybird params are used to render the expandybird manifest.
+	Expandybird map[string]interface{}
+	// Resourcifier params are used to render the resourcifier manifest.
+	Resourcifier map[string]interface{}
+	// Manager params are used to render the manager manifest.
+	Manager map[string]interface{}
+}
+
+// NewInstaller creates a new Installer.
+func NewInstaller() *Installer {
+	return &Installer{
+		Expandybird:  map[string]interface{}{},
+		Resourcifier: map[string]interface{}{},
+		Manager:      map[string]interface{}{},
+	}
+}
 
 // Install uses kubectl to install the base DM.
 //
 // Returns the string output received from the operation, and an error if the
 // command failed.
-func Install(runner kubectl.Runner) (string, error) {
-	o, err := runner.Create([]byte(InstallYAML))
+func (i *Installer) Install(runner kubectl.Runner) (string, error) {
+	b, err := i.expand()
+	if err != nil {
+		return "", err
+	}
+
+	o, err := runner.Create(b)
 	return string(o), err
+}
+
+func (i *Installer) expand() ([]byte, error) {
+	var b bytes.Buffer
+	t := template.Must(template.New("manifest").Funcs(sprig.TxtFuncMap()).Parse(InstallYAML))
+	err := t.Execute(&b, i)
+	return b.Bytes(), err
 }
 
 // IsInstalled checks whether DM has been installed.
@@ -104,7 +143,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: gcr.io/dm-k8s-testing/expandybird:latest
+        image: {{default "gcr.io/dm-k8s-testing/expandybird:latest" .Expandybird.Image}}
         name: expandybird
         ports:
         - containerPort: 8080
@@ -148,7 +187,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: gcr.io/dm-k8s-testing/resourcifier:latest
+        image: {{ default "gcr.io/dm-k8s-testing/resourcifier:latest" .Resourcifier.Image }}
         name: resourcifier
         ports:
         - containerPort: 8080
@@ -192,7 +231,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: gcr.io/dm-k8s-testing/manager:latest
+        image: {{ default "gcr.io/dm-k8s-testing/manager:latest" .Manager.Image }}
         name: manager
         ports:
         - containerPort: 8080
