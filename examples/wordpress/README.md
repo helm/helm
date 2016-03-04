@@ -42,7 +42,7 @@ The template contains the following variables:
 
 ```
 {% set PROPERTIES = properties or {} %}
-{% set PROJECT = PROPERTIES['project'] or 'dm-k8s-testing' %}
+{% set PROJECT = PROPERTIES['project'] or 'dm-k8s-prod' %}
 {% set NFS_SERVER = PROPERTIES['nfs-server'] or {} %}
 {% set NFS_SERVER_IP = NFS_SERVER['ip'] or '10.0.253.247' %}
 {% set NFS_SERVER_PORT = NFS_SERVER['port'] or 2049 %}

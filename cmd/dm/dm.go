@@ -288,7 +288,7 @@ func callService(path, method, action string, reader io.ReadCloser) {
 	var URL *url.URL
 	URL, err := url.Parse(*service)
 	if err != nil {
-		panic(fmt.Errorf("cannot parse url (%s): %s\n", path, err))
+		panic(fmt.Errorf("cannot parse url (%s): %s\n", *service, err))
 	}
 
 	URL.Path = strings.TrimRight(URL.Path, "/") + "/" + strings.TrimLeft(path, "/")

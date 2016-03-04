@@ -39,7 +39,7 @@ target_port: 8080
 container_port: 8080
 external_service: true
 replicas: 3
-image: gcr.io/dm-k8s-testing/expandybird
+image: gcr.io/dm-k8s-prod/expandybird
 labels:
   app: expandybird
 `
