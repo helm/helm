@@ -12,29 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include ../include.mk
+SUBDIRS := expandybird/. resourcifier/. manager/.
+TARGETS := info push container
 
-.PHONY : all build push container clean .project
+SUBDIRS_TARGETS := \
+	$(foreach t,$(TARGETS),$(addsuffix $t,$(SUBDIRS)))
 
-DOCKER_REGISTRY := gcr.io
-PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
-IMAGE := expandybird
+.PHONY : $(TARGETS) $(SUBDIRS_TARGETS)
 
-ROOT_DIR := $(abspath ./..)
-DIR = $(ROOT_DIR)
+$(TARGETS) : % : $(addsuffix %,$(SUBDIRS))
 
-push: container
-ifeq ($(DOCKER_REGISTRY),gcr.io)
-	gcloud docker push $(PREFIX)/$(IMAGE):$(TAG)
-else
-	docker push $(PREFIX)/$(IMAGE):$(TAG)
-endif
-
-container:
-	docker build -t $(PREFIX)/$(IMAGE):$(TAG) -f Dockerfile $(DIR)
-
-clean:
-	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
-
-.PHONY: test
-test: lint vet test-unit
+$(SUBDIRS_TARGETS) :
+	$(MAKE) -C $(@D) $(@F:.%=%)
