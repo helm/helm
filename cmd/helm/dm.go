@@ -62,9 +62,16 @@ func dmCmd() cli.Command {
 				Name:      "status",
 				Usage:     "Show status of DM.",
 				ArgsUsage: "",
+				Flags: []cli.Flag{
+					cli.BoolFlag{
+						Name:  "dry-run",
+						Usage: "Only display the underlying kubectl commands.",
+					},
+				},
 				Action: func(c *cli.Context) {
-					format.Err("Not yet implemented")
-					os.Exit(1)
+					if err := status(c.Bool("dry-run")); err != nil {
+						os.Exit(1)
+					}
 				},
 			},
 			{
@@ -107,6 +114,20 @@ func uninstall(dryRun bool) error {
 		format.Err("Error uninstalling: %s %s", out, err)
 	}
 	format.Msg(out)
+	return nil
+}
+
+func status(dryRun bool) error {
+	client := kubectl.Client
+	if dryRun {
+		client = kubectl.PrintRunner{}
+	}
+
+	out, err := client.GetByKind("pods", "", "dm")
+	if err != nil {
+		return err
+	}
+	format.Msg(string(out))
 	return nil
 }
 

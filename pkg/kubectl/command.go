@@ -17,6 +17,7 @@ func command(args ...string) *cmd {
 }
 
 func assignStdin(cmd *cmd, in []byte) {
+	fmt.Println(string(in))
 	cmd.Stdin = bytes.NewBuffer(in)
 }
 
