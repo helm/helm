@@ -1,5 +1,5 @@
-hash: 2d8e32786782b7979a79850cfc489866a74c068e865f433a73ed4f50ef2644e9
-updated: 2016-02-29T11:21:24.093936684-08:00
+hash: d9beab9a799ac8dd0d76c4f7a3a32753d44833dd3527b3caa8e786865ea26816
+updated: 2016-03-04T09:54:13.155442463-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -11,10 +11,6 @@ imports:
   - log
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
-- name: github.com/golang/protobuf
-  version: 6aaa8d47701fa6cf07e914ec01fde3d4a1fe79c3
-  subpackages:
-  - proto
 - name: github.com/google/go-github
   version: b8b4ac742977310ff6e75140a403a38dab109977
   subpackages:
@@ -31,6 +27,8 @@ imports:
   version: 26a6070f849969ba72b72256e9f14cf519751690
 - name: github.com/Masterminds/semver
   version: c4f7ef0702f269161a60489ccbbc9f1241ad1265
+- name: github.com/Masterminds/sprig
+  version: fd057ca403105755181f84645696d705a58852dd
 - name: golang.org/x/net
   version: 04b9de9b512f58addf28c9853d50ebef61c3953e
   subpackages:
@@ -50,18 +48,6 @@ imports:
   - gensupport
   - googleapi
   - googleapi/internal/uritemplates
-- name: google.golang.org/appengine
-  version: 6bde959377a90acb53366051d7d587bfd7171354
-  subpackages:
-  - urlfetch
-  - internal
-  - internal/urlfetch
-  - internal/app_identity
-  - internal/modules
-  - internal/base
-  - internal/datastore
-  - internal/log
-  - internal/remote_api
 - name: google.golang.org/cloud
   version: fb10e8da373d97f6ba5e648299a10b3b91f14cd5
   subpackages:
@@ -71,7 +57,6 @@ imports:
   version: d90005c5262a3463800497ea5a89aed5fe22c886
   subpackages:
   - bson
-  - internal/sasl
   - internal/scram
 - name: gopkg.in/yaml.v2
   version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
