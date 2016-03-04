@@ -29,9 +29,13 @@ func (r RealRunner) Get(stdin []byte, ns string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-// GetByKind gets a named thing by kind.
+// GetByKind gets resources by kind, name(optional), and namespace(optional)
 func (r RealRunner) GetByKind(kind, name, ns string) (string, error) {
-	args := []string{"get", kind, name}
+	args := []string{"get", kind}
+
+	if name != "" {
+		args = append([]string{name}, args...)
+	}
 
 	if ns != "" {
 		args = append([]string{"--namespace=" + ns}, args...)
@@ -54,9 +58,13 @@ func (r PrintRunner) Get(stdin []byte, ns string) ([]byte, error) {
 	return []byte(cmd.String()), nil
 }
 
-// GetByKind gets a named thing by kind.
+// GetByKind gets resources by kind, name(optional), and namespace(optional)
 func (r PrintRunner) GetByKind(kind, name, ns string) (string, error) {
-	args := []string{"get", kind, name}
+	args := []string{"get", kind}
+
+	if name != "" {
+		args = append([]string{name}, args...)
+	}
 
 	if ns != "" {
 		args = append([]string{"--namespace=" + ns}, args...)
