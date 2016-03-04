@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-DOCKER_REGISTRY := gcr.io
-PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
+include ../docker.mk
+
 IMAGE ?= manager
 TAG ?= git-$(shell git rev-parse --short HEAD)
 FULL_IMAGE := $(PREFIX)/$(IMAGE)
@@ -22,7 +22,7 @@ KUBE_VERSION ?= v1.1.7
 .PHONY: container
 container: binary kubectl
 	docker build -t $(FULL_IMAGE):latest -f Dockerfile .
-	docker tag $(FULL_IMAGE):latest $(FULL_IMAGE):$(TAG)
+	docker tag -f $(FULL_IMAGE):latest $(FULL_IMAGE):$(TAG)
 
 .PHONY: push
 push: container
@@ -35,6 +35,3 @@ endif
 binary:
 	cp ../../bin/linux-amd64/manager ./bin
 
-kubectl:
-	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl
-	chmod +x bin/kubectl

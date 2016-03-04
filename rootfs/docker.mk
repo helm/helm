@@ -11,27 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-include ../docker.mk
+DOCKER_REGISTRY ?= gcr.io
 
-IMAGE ?= expandybird
-TAG ?= git-$(shell git rev-parse --short HEAD)
-FULL_IMAGE := $(PREFIX)/$(IMAGE)
+# Legacy support for $PROJECT
+DOCKER_PROJECT ?= $(PROJECT)
 
-.PHONY: container
-container: binary expansion
-	docker build -t $(FULL_IMAGE):latest -f Dockerfile .
-	docker tag -f $(FULL_IMAGE):latest $(FULL_IMAGE):$(TAG)
-
-.PHONY: push
-push: container
-ifeq ($(DOCKER_REGISTRY),gcr.io)
-	gcloud docker push $(PREFIX)/$(IMAGE):$(TAG)
+# Support both local and remote repos, and support no project.
+ifdef $(DOCKER_PROJECT)
+PREFIX := $(DOCKER_REGISTRY)/$(DOCKER_PROJECT)
 else
-	docker push $(PREFIX)/$(IMAGE):$(TAG)
+PREFIX := $(DOCKER_REGISTRY)
 endif
 
-expansion:
-	cp -R ../../expansion ./opt
+TAG ?= git-$(shell git rev-parse --short HEAD)
 
-binary:
-	cp ../../bin/linux-amd64/expandybird ./bin
+ROOT_DIR := $(abspath ./..)
+kubectl:
+ifeq ("$(wildcard bin/$(KUBE_VERSION))", "")
+	touch bin/$(KUBE_VERSION)
+	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl
+	chmod +x bin/kubectl
+endif

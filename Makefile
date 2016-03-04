@@ -77,6 +77,7 @@ HAS_GLIDE := $(shell command -v glide)
 HAS_GOLINT := $(shell command -v golint)
 HAS_GOVET := $(shell command -v go tool vet)
 HAS_GOX := $(shell command -v gox)
+HAS_DOCKER := $(shell command -v docker)
 
 .PHONY: bootstrap
 bootstrap:
@@ -94,12 +95,19 @@ ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
 	glide install
+ifndef HAS_DOCKER
+	$(warning You must install Docker manually)
+endif
 
 .PHONY: .project
 .project:
-	@if [[ -z "${PROJECT}" ]]; then echo "PROJECT variable must be set"; exit 1; fi
+	$(info Docker registry: $(PREFIX))
+ifeq ($(PREFIX),gcr.io)
+	$(error "You must set at least one of the following environment variables: DOCKER_PROJECT, DOCKER_REGISTRY")
+endif
 
 .PHONY: .docker
 .docker:
-	@if [[ -z `which docker` ]] || ! docker version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
-
+ifndef HAS_DOCKER
+	$(error You must install docker)
+endif
