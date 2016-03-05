@@ -19,8 +19,3 @@ include ../include.mk
 
 .PHONY: extras
 extras: kubectl
-
-.PHONY: kubectl
-kubectl:
-	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl
-	chmod +x bin/kubectl

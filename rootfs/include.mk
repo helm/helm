@@ -15,7 +15,17 @@
 # If you update this image please check the tag value before pushing.
 
 DOCKER_REGISTRY ?= gcr.io
-PREFIX := $(DOCKER_REGISTRY)/$(PROJECT)
+
+# Legacy support for $PROJECT
+DOCKER_PROJECT ?= $(PROJECT)
+
+# Support both local and remote repos, and support no project.
+ifdef $(DOCKER_PROJECT)
+PREFIX := $(DOCKER_REGISTRY)/$(DOCKER_PROJECT)
+else
+PREFIX := $(DOCKER_REGISTRY)
+endif
+
 FULL_IMAGE := $(PREFIX)/$(IMAGE)
 
 TAG ?= git-$(shell git rev-parse --short HEAD)
@@ -25,6 +35,7 @@ PLATFORM ?= $(DEFAULT_PLATFORM)
 
 DEFAULT_ARCH := $(shell uname -m)
 ARCH ?= $(DEFAULT_ARCH)
+
 
 .PHONY: info
 info:
@@ -51,10 +62,12 @@ container: .project .docker binary extras
 	docker tag -f $(FULL_IMAGE):latest $(FULL_IMAGE):$(TAG)
 
 .project:
-	@if [[ -z "${PROJECT}" ]]; then echo "PROJECT variable must be set"; exit 1; fi
+ifeq ($(DOCKER_REGISTRY), gcr.io)
+	$(error "One or both of DOCKER_REGISTRY and DOCKER_PROJECT must be set.")
+endif
 
 .docker:
-	@if [[ -z `which docker` ]] || ! docker version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
+	@if [[ -z `which docker` ]] || ! docker --version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
 
 CROSS_IMAGE := $(PLATFORM)-$(ARCH)/$(IMAGE)/$(IMAGE)
 
@@ -67,3 +80,11 @@ binary:
 		echo cp ../../bin/$(IMAGE) ./bin ; \
 		cp ../../bin/$(IMAGE) ./bin ; \
 	fi
+
+.PHONY: kubectl
+kubectl:
+ifeq ("$(wildcard bin/$(KUBE_VERSION))", "")
+	touch bin/$(KUBE_VERSION)
+	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl
+	chmod +x bin/kubectl
+endif
