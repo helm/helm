@@ -123,13 +123,13 @@ types to a template registry, see
 You can uninstall Deployment Manager using the same configuration:
 
 ```
-kubectl delete -f install.yaml
+helm dm delete
 ```
 
 ## Building the Container Images
 
 This project runs Deployment Manager on Kubernetes as three replicated services.
-By default, install.yaml uses prebuilt images stored in Google Container Registry
+By default, `helm` uses prebuilt images stored in Google Container Registry
 to install them. However, you can build your own container images and push them
 to your own project in the Google Container Registry: 
 
