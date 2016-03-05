@@ -71,7 +71,7 @@ curl -s https://raw.githubusercontent.com/kubernetes/deployment-manager/master/g
 and then install the DM services into your Kubernetes cluster:
 
 ```
-kubectl create -f install.yaml
+helm dm install
 ```
 
 That's it. You can now use `kubectl` to see DM running in your cluster:
