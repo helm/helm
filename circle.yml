@@ -19,6 +19,7 @@ dependencies:
     - export PATH="$HOME/bin:$PATH" GLIDE_HOME="$HOME/.glide"
     - cd $GOPATH/src/$IMPORT_PATH
     - sudo pip install -r expansion/requirements.txt
+    - sudo pip install flake8
 
 test:
   override:
