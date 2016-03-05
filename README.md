@@ -1,6 +1,6 @@
 # Deployment Manager
 
-[![Build Status](https://travis-ci.org/kubernetes/deployment-manager.svg?branch=master)](https://travis-ci.org/kubernetes/deployment-manager) [![Go Report Card](http://goreportcard.com/badge/kubernetes/deployment-manager)](http://goreportcard.com/report/kubernetes/deployment-manager)
+[![Circle CI](https://circleci.com/gh/kubernetes/deployment-manager.svg?style=svg)](https://circleci.com/gh/kubernetes/deployment-manager) [![Go Report Card](http://goreportcard.com/badge/kubernetes/deployment-manager)](http://goreportcard.com/report/kubernetes/deployment-manager)
 
 Deployment Manager (DM) `dm` makes it easy to create, describe, update and
 delete Kubernetes resources using declarative configuration. A configuration is
@@ -25,10 +25,10 @@ resources:
   properties: null
 ```
 
-It uses two templates. The front end is a 
+It uses two templates. The front end is a
 [replicated service](https://github.com/kubernetes/application-dm-templates/tree/master/common/replicatedservice/v1),
 which creates a service and replication controller with matching selectors, and
-the back end is a 
+the back end is a
 [Redis cluster](https://github.com/kubernetes/application-dm-templates/tree/master/storage/redis/v1),
 which creates a Redis master and two Redis slaves.
 
@@ -131,7 +131,7 @@ helm dm delete
 This project runs Deployment Manager on Kubernetes as three replicated services.
 By default, `helm` uses prebuilt images stored in Google Container Registry
 to install them. However, you can build your own container images and push them
-to your own project in the Google Container Registry: 
+to your own project in the Google Container Registry:
 
 1. Set the environment variable `PROJECT` to the name of a project known to
 GCloud.
@@ -157,4 +157,3 @@ We use the same [workflow](https://github.com/kubernetes/kubernetes/blob/master/
 DM uses the same concepts and languages as
 [Google Cloud Deployment Manager](https://cloud.google.com/deployment-manager/overview),
 but creates resources in Kubernetes clusters, not in Google Cloud Platform projects.
-
