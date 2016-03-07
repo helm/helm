@@ -104,7 +104,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: gcr.io/dm-k8s-testing/expandybird:latest
+        image: gcr.io/dm-k8s-prod/expandybird:v1.2
         name: expandybird
         ports:
         - containerPort: 8080
@@ -148,7 +148,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: gcr.io/dm-k8s-testing/resourcifier:latest
+        image: gcr.io/dm-k8s-prod/resourcifier:v1.2
         name: resourcifier
         ports:
         - containerPort: 8080
@@ -192,7 +192,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: gcr.io/dm-k8s-testing/manager:latest
+        image: gcr.io/dm-k8s-prod/manager:v1.2
         name: manager
         ports:
         - containerPort: 8080
