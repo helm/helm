@@ -33,7 +33,8 @@ else
 endif
 
 container:
-	docker build -t $(PREFIX)/$(IMAGE):$(TAG) -f Dockerfile $(DIR)
+	docker build -t $(PREFIX)/$(IMAGE):latest -f Dockerfile $(DIR)
+	docker tag -f $(PREFIX)/$(IMAGE):latest $(PREFIX)/$(IMAGE):$(TAG)
 
 clean:
 	-docker rmi $(PREFIX)/$(IMAGE):$(TAG)
