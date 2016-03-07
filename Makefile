@@ -80,10 +80,10 @@ vet:
 	done
 	@echo -----------------
 
-HAS_GLIDE := $(shell command -v glide)
-HAS_GOLINT := $(shell command -v golint)
-HAS_GOVET := $(shell command -v go tool vet)
-HAS_GOX := $(shell command -v gox)
+HAS_GLIDE := $(shell command -v glide;)
+HAS_GOLINT := $(shell command -v golint;)
+HAS_GOVET := $(shell command -v go tool vet;)
+HAS_GOX := $(shell command -v gox;)
 
 .PHONY: bootstrap
 bootstrap:
