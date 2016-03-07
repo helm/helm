@@ -15,6 +15,13 @@ Follow either of the two links above to access the appropriate CLA and instructi
 
 ***NOTE***: Only original source code from you and other people that have signed the CLA can be accepted into the main repository.
 
+## Order of Development
+
+The project uses a combination of milestones and priority labels on GitHub issues to help development flow smoothly. While exceptions may be required on occasion, the team observes the following guidelines:
+
+ * PRs should only be submitted for issues in the current milestone. PRs for other milestones will not be reviewed or merged until the milestone for the issue(s) they address has started.
+ * PRs should be submitted more or less in issue priority order, with the caveat that because different issues may take different amounts of time to work, PRs may arrive out of order at times. However, lower priority PRs may not be reviewed or merged until higher priority PRs have been processed, and the review or merging of lower priority PRs may be interrupted by the arrival of higher priority PRs.
+
 ## How to Contribute A Patch
 
 ### Overview
