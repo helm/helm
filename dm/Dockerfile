@@ -15,21 +15,23 @@
 FROM golang:1.6
 
 ENV GOLANG_CROSSPLATFORMS \
-	darwin/amd64 \
+	darwin/386 darwin/amd64 \
 	freebsd/386 freebsd/amd64 freebsd/arm \
 	linux/386 linux/amd64 linux/arm \
 	windows/386 windows/amd64
 
-RUN mkdir -p "$GOPATH/src/github.com" && chmod -R 777 "$GOPATH/src/github.com"
+RUN mkdir -p "$GOPATH"/src/github.com/kubernetes/deployment-manager/dm && chmod -R 777 "$GOPATH"
 
-COPY . "$GOPATH"/src/dm
+COPY . "$GOPATH"/src/github.com/kubernetes/deployment-manager
 
-WORKDIR "$GOPATH"/src/dm
+WORKDIR "$GOPATH"/src/github.com/kubernetes/deployment-manager/dm"
 
 RUN go-wrapper download
 RUN set -ex \
     && for platform in $GOLANG_CROSSPLATFORMS; do \
+        echo ${platform} ; \
 		GOOS=${platform%/*} \
 		GOARCH=${platform##*/} \
-		go build -v -o dm-${platform%/*}-${platform##*/}; \
+		go build -v -o dm-${platform%/*}-${platform##*/} ; \
+		echo ; \
     done
