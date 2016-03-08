@@ -15,13 +15,22 @@
 
 set -euo pipefail
 
-DEFAULT_TAG=v1.2
-DEFAULT_BINARY=${GOPATH}/bin/dm
+DEFAULT_TAG=v1.2.1
 DEFAULT_PLATFORM=$(uname | tr '[:upper:]' '[:lower:]')
 DEFAULT_ARCH=$(uname -m)
 
+if [[ "${DEFAULT_ARCH}" == x86_64 ]]; then
+	DEFAULT_ARCH=amd64
+fi
+
+PLATFORM=${PLATFORM:-${DEFAULT_PLATFORM}}
+ARCH=${ARCH:-${DEFAULT_ARCH}}
+TAG=${TAG:-${DEFAULT_TAG}}
+
+BINARY=dm-${PLATFORM}-${ARCH}
+ZIP=dm-${TAG}-${PLATFORM}-${ARCH}.zip
+
 STORAGE_URL=http://get-dm.storage.googleapis.com
-ZIP=dm-${TAG:-DEFAULT_TAG}-${PLATFORM:-DEFAULT_PLATFORM}-${ARCH:-DEFAULT_ARCH}.zip
 
 echo "Downloading ${ZIP}..."
 curl -Ls "${STORAGE_URL}/${ZIP}" -O
@@ -29,6 +38,7 @@ curl -Ls "${STORAGE_URL}/${ZIP}" -O
 unzip -qo ${ZIP}
 rm ${ZIP}
 
+mv ${BINARY} dm
 chmod +x dm
 
 cat <<EOF

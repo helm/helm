@@ -16,10 +16,16 @@ SHELL := /bin/bash
 
 GOLANG_CROSSPLATFORMS := darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm windows/386 windows/amd64
 
+ROOT_DIR := $(abspath ./..)
+DIR := $(ROOT_DIR)
+
+STORAGE_BUCKET=gs://get-dm
+TAG=v1.2.1
+
 all: build binary
 
 build:
-	docker build -t dm .
+	docker build -t dm -f Dockerfile $(DIR)
 
 binary:
 	- docker stop dm
@@ -27,7 +33,19 @@ binary:
 	docker run --name dm dm
 	for platform in ${GOLANG_CROSSPLATFORMS}; do \
 		echo $$platform; \
-		docker cp dm:/go/src/dm/dm-$${platform%/*}-$${platform##*/} .; \
+		docker cp dm:/go/src/github.com/kubernetes/deployment-manager/dm/dm-$${platform%/*}-$${platform##*/} .; \
+	done
+
+push:
+	for platform in ${GOLANG_CROSSPLATFORMS}; do \
+		echo $$platform; \
+		PLATFORM=$${platform%/*} && \
+		ARCH=$${platform##*/} && \
+		BINARY=dm-$${PLATFORM}-$${ARCH} && \
+		ZIP=dm-${TAG}-$${PLATFORM}-$${ARCH}.zip && \
+		zip -j $${ZIP} $${BINARY} ../install.yaml && \
+		gsutil cp $${ZIP} ${STORAGE_BUCKET} && \
+		rm $${ZIP} ; \
 	done
 
 clean:

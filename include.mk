@@ -5,7 +5,8 @@ info:
 	@echo "Project: ${PROJECT}"
 	@echo "Image: ${IMAGE}"
 
-TAG ?= $(shell echo `date +"%s"`_`date +"%N"`)
+DEFAULT_TAG := git-$(shell git rev-parse --short HEAD)
+TAG ?= ${DEFAULT_TAG}
 
 .PHONY: test-unit
 test-unit:
