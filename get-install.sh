@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-DEFAULT_TAG=v1.2
+DEFAULT_TAG=v1.2.1
 DEFAULT_BINARY=${GOPATH}/bin/dm
 DEFAULT_PLATFORM=$(uname | tr '[:upper:]' '[:lower:]')
 DEFAULT_ARCH=$(uname -m)
