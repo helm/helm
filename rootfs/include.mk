@@ -63,7 +63,9 @@ container: .project .docker binary extras
 
 .project:
 ifeq ($(DOCKER_REGISTRY), gcr.io)
-	$(error "One or both of DOCKER_REGISTRY and DOCKER_PROJECT must be set.")
+ifeq ($(DOCKER_PROJECT),)
+	$(error "Both DOCKER_REGISTRY and DOCKER_PROJECT must be set.")
+endif
 endif
 
 .docker:
