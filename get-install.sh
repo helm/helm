@@ -21,7 +21,7 @@ DEFAULT_PLATFORM=$(uname | tr '[:upper:]' '[:lower:]')
 DEFAULT_ARCH=$(uname -m)
 
 STORAGE_URL=http://get-dm.storage.googleapis.com
-ZIP=dm-${TAG:-DEFAULT_TAG}-${PLATFORM:-DEFAULT_PLATFORM}-${ARCH:-DEFAULT_ARCH}.zip
+ZIP=dm-${TAG:-${DEFAULT_TAG}}-${PLATFORM:-${DEFAULT_PLATFORM}}-${ARCH:-${DEFAULT_ARCH}}.zip
 
 echo "Downloading ${ZIP}..."
 curl -Ls "${STORAGE_URL}/${ZIP}" -O
