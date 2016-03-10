@@ -1,0 +1,49 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+GLIDE_VERSION = "0.9.1"
+GO_VERSION = "1.6"
+
+$bootstrap=<<SCRIPT
+apt-get update
+apt-get -y install wget
+wget -qO- https://get.docker.com/ | sh
+gpasswd -a vagrant docker
+service docker restart
+SCRIPT
+
+$helm=<<SCRIPT
+curl -L https://storage.googleapis.com/golang/go#{GO_VERSION}.linux-amd64.tar.gz -o go#{GO_VERSION}.linux-amd64.tar.gz
+tar -C /usr/local -xzf go#{GO_VERSION}.linux-amd64.tar.gz
+wget "https://github.com/Masterminds/glide/releases/download/#{GLIDE_VERSION}/glide-#{GLIDE_VERSION}-linux-amd64.tar.gz"
+su vagrant -c "mkdir -p /home/vagrant/bin"
+su vagrant -c "mkdir -p /home/vagrant/src/github.com/kubernetes/deployment-manager"
+chgrp vagrant -R /home/vagrant/src
+chown vagrant -R /home/vagrant/src
+su vagrant -c "tar -vxz -C /home/vagrant/bin --strip=1 -f glide-#{GLIDE_VERSION}-linux-amd64.tar.gz"
+su vagrant -c "echo 'export GLIDE_HOME=/home/vagrant/.glide' >> ~/.profile"
+su vagrant -c "echo 'export PATH=$PATH:/usr/local/go/bin:/home/vagrant/bin' >> ~/.profile"
+su vagrant -c "echo 'export GOPATH=/home/vagrant' >> ~/.profile"
+SCRIPT
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # Every Vagrant virtual environment requires a box to build off of.
+
+  config.vm.box = "ubuntu/trusty64"
+
+  config.vm.network "private_network", ip: "192.168.33.10"
+
+  config.vm.provider "virtualbox" do |vb|
+     vb.customize ["modifyvm", :id, "--memory", "2048"]
+  end
+
+  config.vm.synced_folder "../", "/home/vagrant/src/github.com/kubernetes/deployment-manager"
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provision :shell, inline: $bootstrap 
+  config.vm.provision :shell, inline: $helm
+
+end
