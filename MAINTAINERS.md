@@ -16,7 +16,7 @@ is the most interesting or fun.
 
 ## Types of Maintainers
 
-The Helm project includes two types of maintainers: collaborators and core maintainers.
+The Helm project includes two types of official maintainers: collaborators and core maintainers.
 
 ### Helm Collaborators
 
@@ -28,23 +28,27 @@ The duties of a collaborator include:
 * Shape the Helm roadmap and lead efforts to accomplish roadmap milestones
 * Participate actively in feature development and bug fixing
 * Answer questions and help users
+* Participate in planning meetings
 
 ### Helm Core Maintainers
 
-Helm core maintainers help shape the direction of the Helm project.  In addition to the duties of a Collaborator, Helm Core Maintainers also:
+In addition to the duties of a Collaborator, Helm Core Maintainers also:
 
- * Run project planning meetings
- * Place GitHub issues into GitHub milestones
- * Prioritize issues within a milestone
+* Coordinate planning meetings
+* Triage GitHub issues for milestone planning
+* Escalate emergency issues (broken builds, security flaws) outside of
+  the normal planning process
 
-The current core maintainers of Helm (in alphabetical order):
+The current core maintainers of Helm:
 
 * Jack Greenfield - [@jackgr](https://github.com/jackgr)
 * Matt Butcher - [@technosophos](https://github.com/technosophos)
 
 ## Project Planning
 
-The Helm core maintainers hold regular planning meetings to set the project direction, milestones, and relative prioritization of issues.  Planning meetings are coordinated via the #Helm room in the [Kubernetes Slack](http://slack.kubernetes.io/).  In order to solicit feedback from the community, planning meetings are run in public whenever possible.
+The Helm team holds regular planning meetings to set the project direction, milestones, and relative prioritization of issues.  Planning meetings are coordinated via the #Helm room in the [Kubernetes Slack](http://slack.kubernetes.io/).
+
+In order to solicit feedback from the community, planning meetings are run in public whenever possible.
 
 ## Becoming a Maintainer
 
