@@ -14,3 +14,4 @@ import:
 - package: github.com/gorilla/mux
 - package: gopkg.in/yaml.v2
 - package: github.com/Masterminds/sprig
+- package: github.com/Masterminds/httputil

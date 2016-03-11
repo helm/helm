@@ -17,75 +17,64 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/deployment-manager/cmd/manager/router"
 	"github.com/kubernetes/deployment-manager/pkg/version"
 
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
-
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 )
 
-// Route defines a routing table entry to be registered with gorilla/mux.
-type Route struct {
-	Name        string
-	Path        string
-	Methods     string
-	HandlerFunc http.HandlerFunc
-	Type        string
-}
-
-var routes = []Route{
-	{"HealthCheck", "/healthz", "GET", healthCheckHandlerFunc, ""},
-}
-
-// port to listen on
-var port = flag.Int("port", 8080, "The port to listen on")
-
-func init() {
-	if !flag.Parsed() {
-		flag.Parse()
-	}
-}
+var (
+	port              = flag.Int("port", 8080, "The port to listen on")
+	maxLength         = flag.Int64("maxLength", 1024, "The maximum length (KB) of a template.")
+	expanderName      = flag.String("expander", "expandybird-service", "The DNS name of the expander service.")
+	expanderURL       = flag.String("expanderURL", "", "The URL for the expander service.")
+	deployerName      = flag.String("deployer", "resourcifier-service", "The DNS name of the deployer service.")
+	deployerURL       = flag.String("deployerURL", "", "The URL for the deployer service.")
+	credentialFile    = flag.String("credentialFile", "", "Local file to use for credentials.")
+	credentialSecrets = flag.Bool("credentialSecrets", true, "Use secrets for credentials.")
+	mongoName         = flag.String("mongoName", "mongodb", "The DNS name of the mongodb service.")
+	mongoPort         = flag.String("mongoPort", "27017", "The port of the mongodb service.")
+	mongoAddress      = flag.String("mongoAddress", "mongodb:27017", "The address of the mongodb service.")
+)
 
 func main() {
-	if !flag.Parsed() {
-		flag.Parse()
+	// Set up dependencies
+	c := &router.Context{
+		Config: parseFlags(),
 	}
 
-	router := mux.NewRouter()
-	router.StrictSlash(true)
-	for _, route := range routes {
-		handler := http.Handler(http.HandlerFunc(route.HandlerFunc))
-		switch route.Type {
-		case "JSON":
-			handler = handlers.ContentTypeHandler(handler, "application/json")
-		case "":
-			break
-		default:
-			log.Fatalf("invalid route type: %v", route.Type)
-		}
-
-		r := router.NewRoute()
-		r.Name(route.Name).
-			Path(route.Path).
-			Methods(route.Methods).
-			Handler(handler)
+	if err := setupDependencies(c); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
-	address := fmt.Sprintf(":%d", *port)
-	handler := handlers.CombinedLoggingHandler(os.Stderr, router)
-	log.Printf("Version: %s", version.Version)
-	log.Printf("Listening on port %d...", *port)
-	log.Fatal(http.ListenAndServe(address, handler))
+	// Set up routes
+	routes := registerRoutes(c)
+
+	// Now create a server.
+	c.Log("Starting Manager %s on %s", version.Version, c.Config.Address)
+	if err := http.ListenAndServe(c.Config.Address, router.NewHandler(c, routes)); err != nil {
+		c.Err("Server exited with error %s", err)
+		os.Exit(1)
+	}
 }
 
-func healthCheckHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	handler := "manager: get health"
-	util.LogHandlerEntry(handler, r)
-	util.LogHandlerExitWithText(handler, w, "OK", http.StatusOK)
+func parseFlags() *router.Config {
+	flag.Parse()
+	return &router.Config{
+		Address:           fmt.Sprintf(":%d", *port),
+		MaxTemplateLength: *maxLength,
+		ExpanderName:      *expanderName,
+		ExpanderURL:       *expanderURL,
+		DeployerName:      *deployerName,
+		DeployerURL:       *deployerURL,
+		CredentialFile:    *credentialFile,
+		CredentialSecrets: *credentialSecrets,
+		MongoName:         *mongoName,
+		MongoPort:         *mongoPort,
+		MongoAddress:      *mongoAddress,
+	}
 }

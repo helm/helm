@@ -18,7 +18,7 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,11 +32,11 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/gorilla/mux"
-
 	"github.com/kubernetes/deployment-manager/cmd/manager/manager"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository/persistent"
 	"github.com/kubernetes/deployment-manager/cmd/manager/repository/transient"
+	"github.com/kubernetes/deployment-manager/cmd/manager/router"
 	"github.com/kubernetes/deployment-manager/pkg/common"
 	"github.com/kubernetes/deployment-manager/pkg/registry"
 	"github.com/kubernetes/deployment-manager/pkg/util"
@@ -65,57 +65,84 @@ var deployments = []Route{
 	{"GetCredential", "/credentials/{credential}", "GET", getCredentialHandlerFunc, ""},
 }
 
-var (
-	maxLength         = flag.Int64("maxLength", 1024, "The maximum length (KB) of a template.")
-	expanderName      = flag.String("expander", "expandybird-service", "The DNS name of the expander service.")
-	expanderURL       = flag.String("expanderURL", "", "The URL for the expander service.")
-	deployerName      = flag.String("deployer", "resourcifier-service", "The DNS name of the deployer service.")
-	deployerURL       = flag.String("deployerURL", "", "The URL for the deployer service.")
-	credentialFile    = flag.String("credentialFile", "", "Local file to use for credentials.")
-	credentialSecrets = flag.Bool("credentialSecrets", true, "Use secrets for credentials.")
-	mongoName         = flag.String("mongoName", "mongodb", "The DNS name of the mongodb service.")
-	mongoPort         = flag.String("mongoPort", "27017", "The port of the mongodb service.")
-	mongoAddress      = flag.String("mongoAddress", "mongodb:27017", "The address of the mongodb service.")
-)
-
+// Deprecated. Use Context.Manager instead.
 var backend manager.Manager
 
-func init() {
-	if !flag.Parsed() {
-		flag.Parse()
+// Route defines a routing table entry to be registered with gorilla/mux.
+//
+// Route is deprecated. Use router.Routes instead.
+type Route struct {
+	Name        string
+	Path        string
+	Methods     string
+	HandlerFunc http.HandlerFunc
+	Type        string
+}
+
+func registerRoutes(c *router.Context) router.Routes {
+	re := regexp.MustCompile("{[a-z]+}")
+
+	r := router.NewRoutes()
+	r.Add("GET /healthz", healthz)
+
+	// TODO: Replace these routes with updated ones.
+	for _, d := range deployments {
+		path := fmt.Sprintf("%s %s", d.Methods, re.ReplaceAllString(d.Path, "*"))
+		fmt.Printf("\t%s\n", path)
+		r.Add(path, func(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+			d.HandlerFunc(w, r)
+			return nil
+		})
 	}
 
-	routes = append(routes, deployments...)
+	return r
+}
+
+func healthz(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	c.Log("manager: healthz checkpoint")
+	// TODO: This should check the availability of the repository, and fail if it
+	// cannot connect.
+	fmt.Fprintln(w, "OK")
+	return nil
+}
+
+func setupDependencies(c *router.Context) error {
 	var credentialProvider common.CredentialProvider
-	if *credentialFile != "" {
-		if *credentialSecrets {
-			panic(fmt.Errorf("Both credentialFile and credentialSecrets are set"))
+	if c.Config.CredentialFile != "" {
+		if c.Config.CredentialSecrets {
+			return errors.New("Both credentialFile and credentialSecrets are set")
 		}
 		var err error
-		credentialProvider, err = registry.NewFilebasedCredentialProvider(*credentialFile)
+		credentialProvider, err = registry.NewFilebasedCredentialProvider(c.Config.CredentialFile)
 		if err != nil {
-			panic(fmt.Errorf("cannot create credential provider %s: %s", *credentialFile, err))
+			return fmt.Errorf("cannot create credential provider %s: %s", c.Config.CredentialFile, err)
 		}
 	} else if *credentialSecrets {
 		credentialProvider = registry.NewSecretsCredentialProvider()
 	} else {
 		credentialProvider = registry.NewInmemCredentialProvider()
 	}
-	backend = newManager(credentialProvider)
+	c.CredentialProvider = credentialProvider
+	c.Manager = newManager(c)
+
+	// FIXME: As soon as we can, we need to get rid of this.
+	backend = c.Manager
+	return nil
 }
 
 const expanderPort = "8080"
 const deployerPort = "8080"
 
-func newManager(cp common.CredentialProvider) manager.Manager {
+func newManager(c *router.Context) manager.Manager {
+	cfg := c.Config
 	service := registry.NewInmemRegistryService()
-	registryProvider := registry.NewDefaultRegistryProvider(cp, service)
+	registryProvider := registry.NewDefaultRegistryProvider(c.CredentialProvider, service)
 	resolver := manager.NewTypeResolver(registryProvider, util.DefaultHTTPClient())
-	expander := manager.NewExpander(getServiceURL(*expanderURL, *expanderName, expanderPort), resolver)
-	deployer := manager.NewDeployer(getServiceURL(*deployerURL, *deployerName, deployerPort))
-	address := strings.TrimPrefix(getServiceURL(*mongoAddress, *mongoName, *mongoPort), "http://")
+	expander := manager.NewExpander(getServiceURL(cfg.ExpanderURL, cfg.ExpanderName, expanderPort), resolver)
+	deployer := manager.NewDeployer(getServiceURL(cfg.DeployerURL, cfg.DeployerName, deployerPort))
+	address := strings.TrimPrefix(getServiceURL(cfg.MongoAddress, cfg.MongoName, cfg.MongoPort), "http://")
 	repository := createRepository(address)
-	return manager.NewManager(expander, deployer, repository, registryProvider, service, cp)
+	return manager.NewManager(expander, deployer, repository, registryProvider, service, c.CredentialProvider)
 }
 
 func createRepository(address string) repository.Repository {
