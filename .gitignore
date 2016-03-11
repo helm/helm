@@ -1,5 +1,6 @@
 *.pyc
 .project
+coverage.out
 nohup.out
 /bin
 /vendor/*
