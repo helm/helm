@@ -62,6 +62,10 @@ for the Kubernetes configuration SIG.
 
 ## Installing Deployment Manager
 
+Note: if you're exploring or using the project, you'll probably want to pull
+(the latest release)[https://github.com/kubernetes/deployment-manager/releases/latest], 
+since there may be undiscovered or unresolved issues at HEAD.
+
 From a Linux or Mac OS X client:
 
 ```
