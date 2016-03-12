@@ -42,7 +42,7 @@ func deleteDeployment(c *cli.Context) error {
 		return errors.New("First argument, deployment name, is required. Try 'helm get --help'")
 	}
 	name := args[0]
-	deployment, err := client(c).DeleteDeployment(name)
+	deployment, err := NewClient(c).DeleteDeployment(name)
 	if err != nil {
 		return err
 	}

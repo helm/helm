@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/dm"
+	"github.com/kubernetes/deployment-manager/pkg/client"
 	"github.com/kubernetes/deployment-manager/pkg/format"
 	"github.com/kubernetes/deployment-manager/pkg/kubectl"
 )
@@ -133,7 +133,7 @@ func dmCmd() cli.Command {
 func install(dryRun bool, ebImg, manImg, resImg string) error {
 	runner := getKubectlRunner(dryRun)
 
-	i := dm.NewInstaller()
+	i := client.NewInstaller()
 	i.Manager["Image"] = manImg
 	i.Resourcifier["Image"] = resImg
 	i.Expandybird["Image"] = ebImg
@@ -149,7 +149,7 @@ func install(dryRun bool, ebImg, manImg, resImg string) error {
 func uninstall(dryRun bool) error {
 	runner := getKubectlRunner(dryRun)
 
-	out, err := dm.Uninstall(runner)
+	out, err := client.Uninstall(runner)
 	if err != nil {
 		format.Err("Error uninstalling: %s %s", out, err)
 	}

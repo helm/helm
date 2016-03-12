@@ -20,7 +20,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/dm"
+	"github.com/kubernetes/deployment-manager/pkg/client"
 )
 
 var version = "0.0.1"
@@ -78,9 +78,9 @@ func run(c *cli.Context, f func(c *cli.Context) error) {
 	}
 }
 
-func client(c *cli.Context) *dm.Client {
+func NewClient(c *cli.Context) *client.Client {
 	host := c.GlobalString("host")
 	debug := c.GlobalBool("debug")
 	timeout := c.GlobalInt("timeout")
-	return dm.NewClient(host).SetDebug(debug).SetTimeout(timeout)
+	return client.NewClient(host).SetDebug(debug).SetTimeout(timeout)
 }

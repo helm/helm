@@ -93,7 +93,7 @@ func doUpload(filename, cname string, cxt *cli.Context) (string, error) {
 		return "", nil
 	}
 
-	c := client(cxt)
+	c := NewClient(cxt)
 	return c.PostChart(filename, cname)
 }
 

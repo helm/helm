@@ -34,7 +34,7 @@ func listCmd() cli.Command {
 }
 
 func list(c *cli.Context) error {
-	list, err := client(c).ListDeployments()
+	list, err := NewClient(c).ListDeployments()
 	if err != nil {
 		return err
 	}
