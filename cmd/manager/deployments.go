@@ -99,7 +99,7 @@ func registerRoutes(c *router.Context) router.Routes {
 }
 
 func healthz(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	c.Log("manager: healthz checkpoint")
+	log.Println("manager: healthz checkpoint")
 	// TODO: This should check the availability of the repository, and fail if it
 	// cannot connect.
 	fmt.Fprintln(w, "OK")

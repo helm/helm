@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/* Package router is an HTTP router.
+/*Package router is an HTTP router.
 
 This router provides appropriate dependency injection/encapsulation for the
 HTTP routing layer. This removes the requirement to set global variables for
@@ -29,16 +29,14 @@ request and response.
 package router
 
 import (
-	"fmt"
+	"log"
 	"net/http"
-	"os"
 
 	"github.com/Masterminds/httputil"
 	"github.com/kubernetes/deployment-manager/cmd/manager/manager"
 	"github.com/kubernetes/deployment-manager/pkg/common"
+	helmhttp "github.com/kubernetes/deployment-manager/pkg/httputil"
 )
-
-const LogAccess = "Access: %s %s"
 
 // Config holds the global configuration parameters passed into the router.
 //
@@ -80,34 +78,8 @@ type Context struct {
 	Config *Config
 	// Manager is a deployment-manager/manager/manager.Manager
 	Manager            manager.Manager
-	Encoder            Encoder
+	Encoder            helmhttp.Encoder
 	CredentialProvider common.CredentialProvider
-}
-
-func (c *Context) Log(msg string, v ...interface{}) {
-	// FIXME: This should be configurable via the context.
-	fmt.Fprintf(os.Stdout, msg+"\n", v...)
-}
-
-func (c *Context) Err(msg string, v ...interface{}) {
-	// FIXME: This should be configurable via the context.
-	fmt.Fprintf(os.Stderr, msg+"\n", v...)
-}
-
-// NotFound writes a 404 error to the client and logs an error.
-func NotFound(w http.ResponseWriter, r *http.Request) {
-	// TODO: Log this.
-	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprintln(w, "File Not Found")
-}
-
-// Fatal writes a 500 response to the client and logs the message.
-//
-// Additional arguments are past into the the formatter as params to msg.
-func Fatal(w http.ResponseWriter, r *http.Request, msg string, v ...interface{}) {
-	// TODO: Log this.
-	w.WriteHeader(http.StatusInternalServerError)
-	fmt.Fprintln(w, "Internal Server Error")
 }
 
 // HandlerFunc responds to an individual HTTP request.
@@ -124,7 +96,7 @@ type Handler struct {
 	routes   Routes
 }
 
-// Create a new Handler.
+// NewHandler creates a new Handler.
 //
 // Routes cannot be modified after construction. The order that the route
 // names are returned by Routes.Paths() determines the lookup order.
@@ -145,20 +117,20 @@ func NewHandler(c *Context, r Routes) *Handler {
 
 // ServeHTTP serves an HTTP request.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.c.Log(LogAccess, r.Method, r.URL)
+	log.Printf(helmhttp.LogAccess, r.Method, r.URL)
 	route, err := h.resolver.Resolve(r)
 	if err != nil {
-		NotFound(w, r)
+		helmhttp.NotFound(w, r)
 		return
 	}
 
 	fn, ok := h.routes.Get(route)
 	if !ok {
-		Fatal(w, r, "route %s missing", route)
+		helmhttp.Fatal(w, r, "route %s missing", route)
 	}
 
 	if err := fn(w, r, h.c); err != nil {
-		Fatal(w, r, err.Error())
+		helmhttp.Fatal(w, r, err.Error())
 	}
 }
 

@@ -22,6 +22,7 @@ import (
 
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 )
@@ -55,9 +56,9 @@ func main() {
 	routes := registerRoutes(c)
 
 	// Now create a server.
-	c.Log("Starting Manager %s on %s", version.Version, c.Config.Address)
+	log.Printf("Starting Manager %s on %s", version.Version, c.Config.Address)
 	if err := http.ListenAndServe(c.Config.Address, router.NewHandler(c, routes)); err != nil {
-		c.Err("Server exited with error %s", err)
+		log.Printf("Server exited with error %s", err)
 		os.Exit(1)
 	}
 }

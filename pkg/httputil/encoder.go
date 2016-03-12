@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package router
+package httputil
 
 import (
 	"encoding/json"
@@ -28,26 +28,35 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+// Encoder takes input and translate it to an expected encoded output.
+//
+// Implementations of encoders may use details of the HTTP request and response
+// to correctly encode an object for return to the client.
+//
+// Encoders are expected to produce output, even if that output is an error
+// message.
 type Encoder interface {
 	// Encode encoders a given response
 	//
 	// When an encoder fails, it logs any necessary data and then responds to
 	// the client.
-	Encode(http.ResponseWriter, *http.Request, *Context, interface{})
+	Encode(http.ResponseWriter, *http.Request, interface{})
 }
 
-// AcceptEncodder uses the accept headers on a request to determine the response type.
+// AcceptEncoder uses the accept headers on a request to determine the response type.
 //
 // It supports the following encodings:
 //	- application/json: passed to encoding/json.Marshal
 //	- text/yaml: passed to gopkg.in/yaml.v2.Marshal
 //	- text/plain: passed to fmt.Sprintf("%V")
+//
+// It treats `application/x-yaml` as `text/yaml`.
 type AcceptEncoder struct {
 	DefaultEncoding string
 }
 
 // Encode encodeds the given interface to the first available type in the Accept header.
-func (e *AcceptEncoder) Encode(w http.ResponseWriter, r *http.Request, c *Context, out interface{}) {
+func (e *AcceptEncoder) Encode(w http.ResponseWriter, r *http.Request, out interface{}) {
 	a := r.Header.Get("accept")
 	fn := encoders[e.DefaultEncoding]
 	mt := e.DefaultEncoding
@@ -82,6 +91,7 @@ func (e *AcceptEncoder) parseAccept(h string) (string, Marshaler) {
 	return e.DefaultEncoding, encoders[e.DefaultEncoding]
 }
 
+// Marshaler marshals an interface{} into a []byte.
 type Marshaler func(interface{}) ([]byte, error)
 
 var encoders = map[string]Marshaler{
@@ -91,6 +101,7 @@ var encoders = map[string]Marshaler{
 	"text/plain":         textMarshal,
 }
 
+// ErrUnsupportedKind indicates that the marshal cannot marshal a particular Go Kind (e.g. struct or chan).
 var ErrUnsupportedKind = errors.New("unsupported kind")
 
 // textMarshal marshals v into a text representation ONLY IN NARROW CASES.

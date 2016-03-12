@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package router
+package httputil
 
 import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -72,14 +73,13 @@ func TestTextMarshal(t *testing.T) {
 }
 
 func TestAcceptEncoder(t *testing.T) {
-	c := &Context{
-		Encoder: &AcceptEncoder{DefaultEncoding: "application/json"},
+	enc := &AcceptEncoder{
+		DefaultEncoding: "application/json",
 	}
-	fn := func(w http.ResponseWriter, r *http.Request, c *Context) error {
-		c.Encoder.Encode(w, r, c, []string{"hello", "world"})
-		return nil
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		enc.Encode(w, r, []string{"hello", "world"})
 	}
-	s := httpHarness(c, "GET /", fn)
+	s := httptest.NewServer(http.HandlerFunc(fn))
 	defer s.Close()
 
 	res, err := http.Get(s.URL)
