@@ -9,56 +9,63 @@ We'd love to accept your patches! Before we can take them, we have to jump a cou
 Please fill out either the individual or corporate Contributor License Agreement (CLA).
 
   * If you are an individual writing original source code and you're sure you own the intellectual property, then you'll need to sign an [individual CLA](http://code.google.com/legal/individual-cla-v1.0.html).
-    * If you work for a company that wants to allow you to contribute your work, then you'll need to sign a [corporate CLA](http://code.google.com/legal/corporate-cla-v1.0.html).
+  * If you work for a company that wants to allow you to contribute your work, then you'll need to sign a [corporate CLA](http://code.google.com/legal/corporate-cla-v1.0.html).
 
 Follow either of the two links above to access the appropriate CLA and instructions for how to sign and return it. Once we receive it, we'll be able to accept your pull requests.
 
 ***NOTE***: Only original source code from you and other people that have signed the CLA can be accepted into the main repository.
 
-## Order of Development
+## Development Lifecycle
 
 The project uses a combination of milestones and priority labels on GitHub issues to help development flow smoothly. While exceptions may be required on occasion, the team observes the following guidelines:
 
- * PRs should only be submitted for issues in the current milestone. PRs for other milestones will not be reviewed or merged until the milestone for the issue(s) they address has started.
- * PRs should be submitted more or less in issue priority order, with the caveat that because different issues may take different amounts of time to work, PRs may arrive out of order at times. However, lower priority PRs may not be reviewed or merged until higher priority PRs have been processed, and the review or merging of lower priority PRs may be interrupted by the arrival of higher priority PRs.
+* At appropriate intervals, the Helm team creates a milestone and assigns
+  issues to it. This represents the team's priorities and intent.
+* PRs/Issues related to the current milestone are prioritized over other PRs.
+* PRs/Issues that fix a broken master build (or meet other P0 criteria) are
+  prioritized over other PRs.
 
 ## How to Contribute A Patch
 
 ### Overview
 
 1. Submit an issue describing your proposed change to the repo in question.
-1. The repo owner will respond to your issue promptly.
+1. A collaborator will respond to your issue.
 1. If your proposed change is accepted, and you haven't already done so, sign a Contributor License Agreement (see details above).
 1. Fork the desired repo, develop and test your code changes.
 1. Submit a pull request.
 
-### Design Document
+### Feature Proposals
 
-If the change you are proposing is substantial, before opening a pull request, ensure you reference a design document that can be discussed in the open.
+Before adding a feature or making a major change to the code, open an
+issue marked as a _proposal_ and explain your idea. For complex changes,
+you may be asked to produce a design document.
 
 ### Single Issue
 
 When fixing or implementing a GitHub issue, resist the temptation to refactor nearby code or to fix that potential bug you noticed. Instead, open a new pull request just for that change.
 
-It's hard to reach agreement on the merit of a PR when it isn't focused. Keeping concerns separated allows pull requests to be tested, reviewed, and merged more quickly.
+Keeping concerns separated allows pull requests to be tested, reviewed, and merged more quickly.
 
 Squash and rebase the commit or commits in your pull request into logical units of work with `git`. Include tests and documentation changes in the same commit, so that a revert would remove all traces of the feature or fix.
 
-Most pull requests will reference a GitHub issue. In the PR description–not in the commit itself–include a line such as "Closes #1234". The issue referenced will then be closed when your PR is merged.
+If a PR completely resolves an existing issue, this should be noted. In the PR description–not in the commit itself–include a line such as "Closes #1234". The issue referenced will then be closed when your PR is merged. If it otherwise relates to an existing issue, that should be noted in the comment as well.
 
 ### Include Tests & Documentation
 
-If you change or add functionality, your changes should include the necessary tests to prove that it works. While working on local code changes, always run the tests.  Any change that could affect a user's experience also needs a change or addition to the relevant documentation.  
+If you change or add functionality, your changes should include the necessary tests to prove that it works. While working on local code changes, always run the tests.  Any change that could affect a user's experience also needs a change or addition to the relevant documentation.
 
 Pull requests that do not include sufficient tests or documentation will be rejected.
 
-### Code Standards
+### Coding Standards
 
 Go code should always be run through `gofmt` on the default settings. Lines of code may be up to 99 characters long. Documentation strings and tests are required for all public methods. Use of third-party go packages should be minimal, but when doing so, vendor code using [Glide](http://glide.sh/).
 
+Python code should conform to [PEP8](https://www.python.org/dev/peps/pep-0008/).
+
 ### Merge Approval
 
-Helm collaborators may add "LGTM" (Looks Good To Me) or an equivalent comment to indicate that a PR is acceptable. Any code change (other than a simple typo fix or one-line documentation change) requires at least one LGTM.  No pull requests can be merged until at least one Helm collaborator signs off with an LGTM.
+Helm collaborators may add "LGTM" (Looks Good To Me) or an equivalent comment to indicate that a PR is acceptable. Any change requires at least one LGTM.  No pull requests can be merged until at least one Helm collaborator signs off with an LGTM.
 
 If the PR is from a Helm collaborator, then he or she should be the one to merge and close it. This keeps the commit stream clean and gives the collaborator the benefit of revisiting the PR before deciding whether or not to merge the changes.
 
