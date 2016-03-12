@@ -18,7 +18,7 @@ package main
 
 import (
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/dm"
+	"github.com/kubernetes/deployment-manager/pkg/client"
 	"github.com/kubernetes/deployment-manager/pkg/format"
 	"github.com/kubernetes/deployment-manager/pkg/kubectl"
 )
@@ -39,7 +39,7 @@ func doctorCmd() cli.Command {
 func doctor(c *cli.Context) error {
 	var runner kubectl.Runner
 	runner = &kubectl.RealRunner{}
-	if dm.IsInstalled(runner) {
+	if client.IsInstalled(runner) {
 		format.Success("You have everything you need. Go forth my friend!")
 	} else {
 		format.Warning("Looks like you don't have DM installed.\nRun: `helm install`")

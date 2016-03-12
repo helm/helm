@@ -42,7 +42,7 @@ func get(c *cli.Context) error {
 		return errors.New("First argument, deployment name, is required. Try 'helm get --help'")
 	}
 	name := args[0]
-	deployment, err := client(c).GetDeployment(name)
+	deployment, err := NewClient(c).GetDeployment(name)
 	if err != nil {
 		return err
 	}
