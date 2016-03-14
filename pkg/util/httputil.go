@@ -114,6 +114,7 @@ func TestHandlerWithURL(handler http.Handler, method, urlString string) (*httpte
 	return NewHandlerTester(handler).TestWithURL(method, urlString)
 }
 
+// LogHandlerText logs a line of text for a handler.
 func LogHandlerText(handler string, v string) {
 	log.Printf("%s: %s\n", handler, v)
 }

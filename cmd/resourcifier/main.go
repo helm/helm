@@ -17,9 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/util"
-	"github.com/kubernetes/deployment-manager/pkg/version"
-
 	"flag"
 	"fmt"
 	"log"
@@ -28,6 +25,8 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/deployment-manager/pkg/version"
 )
 
 // Route defines a routing table entry to be registered with gorilla/mux.
