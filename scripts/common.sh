@@ -32,7 +32,7 @@ assign_version() {
 
 assign_ldflags() {
   if [[ -z "${LDFLAGS:-}" ]]; then
-    LDFLAGS="-s -X ${REPO}/pkg/version.DeploymentManagerVersion=${VERSION}"
+    LDFLAGS="-s -X ${REPO}/pkg/version.Version=${VERSION}"
   fi
 }
 
