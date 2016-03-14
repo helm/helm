@@ -72,10 +72,14 @@ HAS_GLIDE := $(shell command -v glide;)
 HAS_GOLINT := $(shell command -v golint;)
 HAS_GOVET := $(shell command -v go tool vet;)
 HAS_GOX := $(shell command -v gox;)
+HAS_PIP := $(shell command -v pip;)
 
 .PHONY: bootstrap
 bootstrap:
 	@echo Installing deps
+ifndef HAS_PIP
+	$(error Please install the latest version of Python pip)
+endif
 ifndef HAS_GLIDE
 	go get github.com/Masterminds/glide
 endif
@@ -89,3 +93,4 @@ ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
 	glide install
+	@echo Please run pip install -r expansion/requirements.txt. You might need sudo.
