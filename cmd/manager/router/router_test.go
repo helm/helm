@@ -24,23 +24,18 @@ import (
 	"testing"
 )
 
-// Canary
-var v Routes = routeMap{}
-
 func TestHandler(t *testing.T) {
 	c := &Context{}
-	r := NewRoutes()
 
-	r.Add("GET /", func(w http.ResponseWriter, r *http.Request, c *Context) error {
+	h := NewHandler(c)
+	h.Add("GET /", func(w http.ResponseWriter, r *http.Request, c *Context) error {
 		fmt.Fprintln(w, "hello")
 		return nil
 	})
-	r.Add("POST /", func(w http.ResponseWriter, r *http.Request, c *Context) error {
+	h.Add("POST /", func(w http.ResponseWriter, r *http.Request, c *Context) error {
 		fmt.Fprintln(w, "goodbye")
 		return nil
 	})
-
-	h := NewHandler(c, r)
 
 	s := httptest.NewServer(h)
 	defer s.Close()
@@ -58,15 +53,4 @@ func TestHandler(t *testing.T) {
 	if "hello\n" != string(data) {
 		t.Errorf("Expected 'hello', got %q", data)
 	}
-}
-
-// httpHarness is a simple test server fixture.
-// Simple fixture for standing up a test server with a single route.
-//
-// You must Close() the returned server.
-func httpHarness(c *Context, route string, fn HandlerFunc) *httptest.Server {
-	r := NewRoutes()
-	r.Add(route, fn)
-	h := NewHandler(c, r)
-	return httptest.NewServer(h)
 }

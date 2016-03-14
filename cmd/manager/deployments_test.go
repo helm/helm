@@ -28,9 +28,8 @@ func TestHealthz(t *testing.T) {
 //
 // You must Close() the returned server.
 func httpHarness(c *router.Context, route string, fn router.HandlerFunc) *httptest.Server {
-	r := router.NewRoutes()
-	r.Add(route, fn)
-	h := router.NewHandler(c, r)
+	h := router.NewHandler(c)
+	h.Add(route, fn)
 	return httptest.NewServer(h)
 }
 

@@ -53,11 +53,12 @@ func main() {
 	}
 
 	// Set up routes
-	routes := registerRoutes(c)
+	handler := router.NewHandler(c)
+	registerRoutes(c, handler)
 
 	// Now create a server.
 	log.Printf("Starting Manager %s on %s", version.Version, c.Config.Address)
-	if err := http.ListenAndServe(c.Config.Address, router.NewHandler(c, routes)); err != nil {
+	if err := http.ListenAndServe(c.Config.Address, handler); err != nil {
 		log.Printf("Server exited with error %s", err)
 		os.Exit(1)
 	}

@@ -79,23 +79,20 @@ type Route struct {
 	Type        string
 }
 
-func registerRoutes(c *router.Context) router.Routes {
+func registerRoutes(c *router.Context, h *router.Handler) {
 	re := regexp.MustCompile("{[a-z]+}")
 
-	r := router.NewRoutes()
-	r.Add("GET /healthz", healthz)
+	h.Add("GET /healthz", healthz)
 
 	// TODO: Replace these routes with updated ones.
 	for _, d := range deployments {
 		path := fmt.Sprintf("%s %s", d.Methods, re.ReplaceAllString(d.Path, "*"))
 		fmt.Printf("\t%s\n", path)
-		r.Add(path, func(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+		h.Add(path, func(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 			d.HandlerFunc(w, r)
 			return nil
 		})
 	}
-
-	return r
 }
 
 func healthz(w http.ResponseWriter, r *http.Request, c *router.Context) error {
