@@ -62,6 +62,9 @@ build_binaries() {
     targets=("${ALL_TARGETS[@]}")
   fi
 
+  assign_version
+  assign_ldflags
+
   for t in "${targets[@]}"; do
     if [[ -n "$build_cross" ]]; then
       build_binary_cross "$t"
