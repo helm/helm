@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/chart"
+	"github.com/kubernetes/helm/pkg/chart"
 )
 
 func init() {

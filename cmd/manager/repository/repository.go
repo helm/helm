@@ -18,7 +18,7 @@ limitations under the License.
 package repository
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 )
 
 // Repository manages storage for all Deployment Manager entities, as well as

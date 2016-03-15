@@ -32,15 +32,15 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/gorilla/mux"
-	"github.com/kubernetes/deployment-manager/cmd/manager/manager"
-	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
-	"github.com/kubernetes/deployment-manager/cmd/manager/repository/persistent"
-	"github.com/kubernetes/deployment-manager/cmd/manager/repository/transient"
-	"github.com/kubernetes/deployment-manager/cmd/manager/router"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/httputil"
-	"github.com/kubernetes/deployment-manager/pkg/registry"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/cmd/manager/manager"
+	"github.com/kubernetes/helm/cmd/manager/repository"
+	"github.com/kubernetes/helm/cmd/manager/repository/persistent"
+	"github.com/kubernetes/helm/cmd/manager/repository/transient"
+	"github.com/kubernetes/helm/cmd/manager/router"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/httputil"
+	"github.com/kubernetes/helm/pkg/registry"
+	"github.com/kubernetes/helm/pkg/util"
 )
 
 var deployments = []Route{

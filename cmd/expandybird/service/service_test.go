@@ -26,9 +26,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/cmd/expandybird/expander"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/cmd/expandybird/expander"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/util"
 
 	restful "github.com/emicklei/go-restful"
 )

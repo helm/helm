@@ -24,7 +24,7 @@ import (
 	"os/exec"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 )
 
 // Expander abstracts interactions with the expander and deployer services.

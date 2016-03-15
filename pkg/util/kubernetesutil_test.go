@@ -23,7 +23,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 )
 
 var serviceInput = `

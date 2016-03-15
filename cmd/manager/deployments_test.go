@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/cmd/manager/router"
+	"github.com/kubernetes/helm/cmd/manager/router"
 )
 
 func TestHealthz(t *testing.T) {

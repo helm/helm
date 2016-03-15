@@ -2,7 +2,7 @@
 
 DM lets configurations instantiate [templates](../design/design.md#templates)
 using both [imports](../design/design.md#template-imports) and
-[references](../design/design.md#template-references). 
+[references](../design/design.md#template-references).
 
 Because template references can use any public HTTP endpoint, they provide
 a way to share templates. While you can store templates anywhere you want and
@@ -24,7 +24,7 @@ Every template must therefore carry a version based on the
 [Semantic Versioning](http://semver.org/) specification. A template version
 consists of a MAJOR version, a MINOR version and a PATCH version, and can
 be represented as a three part string starting with the letter `v` and using
-dot delimiters between the parts. For example `v1.1.0`. 
+dot delimiters between the parts. For example `v1.1.0`.
 
 Parts may be omitted from right to left, up to but not include the MAJOR
 version. All omitted parts default to zero. So, for example:
@@ -53,15 +53,15 @@ Every template version should include a configuration named `example.yaml`
 that can be used to deploy an instance of the template. This file, along with
 any supporting files it requires, may be used automatically in the future by
 a template testing framework to validate the template, and should therefore be
-well formed. 
+well formed.
 
 ## Template Organization
 
 Technically, all you need to reference a template is a directory at a public
 HTTP endpoint that contains a template file named either `<template-name>.py`
-or `<template-name>.jinja`, depending on the implementation language, along 
-with any supporting files it might require, such as an optional schema file 
-named `<template-name>.py.schema` or `<template-name>.jinja.schema`, respectively, 
+or `<template-name>.jinja`, depending on the implementation language, along
+with any supporting files it might require, such as an optional schema file
+named `<template-name>.py.schema` or `<template-name>.jinja.schema`, respectively,
 helper files used by the implementation, files imported by the schema, and so on.
 
 ### Basic structure
@@ -109,13 +109,13 @@ templateA/
     helper.py
 ```
 
-In this example, `templateA` is a template directory, and `v1`, `v1.01`, and 
+In this example, `templateA` is a template directory, and `v1`, `v1.01`, and
 `v1.1` are template version directories that hold the versions of `templateA`.
 
 ### Registry based template references
 
-In general, 
-[templates references](https://github.com/kubernetes/deployment-manager/blob/master/docs/design/design.md#template-references)
+In general,
+[templates references](https://github.com/kubernetes/helm/blob/master/docs/design/design.md#template-references)
 are just URLs to HTTP endpoints. However, because a template registry follows
 the conventions outlined above, references to templates in a template registry
 can be shorter and simpler than generalized template references.
@@ -164,7 +164,7 @@ This example, where template directories are organized by category, is also vali
 
 ```
 templates/
-  big-data/  
+  big-data/
     templateA/
       v1/
       ...

@@ -25,8 +25,8 @@ import (
 
 	"github.com/aokoli/goutils"
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/chart"
-	"github.com/kubernetes/deployment-manager/pkg/format"
+	"github.com/kubernetes/helm/pkg/chart"
+	"github.com/kubernetes/helm/pkg/format"
 )
 
 func uploadChart(c *cli.Context) error {

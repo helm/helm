@@ -17,7 +17,7 @@ limitations under the License.
 package registry
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 
 	"fmt"
 )

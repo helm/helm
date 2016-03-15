@@ -18,8 +18,8 @@ package registry
 
 import (
 	"github.com/google/go-github/github"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/util"
 
 	"fmt"
 	"net/http"

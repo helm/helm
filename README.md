@@ -1,6 +1,6 @@
 # Deployment Manager
 
-[![Circle CI](https://circleci.com/gh/kubernetes/deployment-manager.svg?style=svg)](https://circleci.com/gh/kubernetes/deployment-manager) [![Go Report Card](http://goreportcard.com/badge/kubernetes/deployment-manager)](http://goreportcard.com/report/kubernetes/deployment-manager)
+[![Circle CI](https://circleci.com/gh/kubernetes/helm.svg?style=svg)](https://circleci.com/gh/kubernetes/helm) [![Go Report Card](http://goreportcard.com/badge/kubernetes/helm)](http://goreportcard.com/report/kubernetes/helm)
 
 Deployment Manager (DM) `dm` makes it easy to create, describe, update and
 delete Kubernetes resources using declarative configuration. A configuration is
@@ -63,13 +63,13 @@ for the Kubernetes configuration SIG.
 ## Installing Deployment Manager
 
 Note: if you're exploring or using the project, you'll probably want to pull
-(the latest release)[https://github.com/kubernetes/deployment-manager/releases/latest], 
+(the latest release)[https://github.com/kubernetes/helm/releases/latest],
 since there may be undiscovered or unresolved issues at HEAD.
 
 From a Linux or Mac OS X client:
 
 ```
-curl -s https://raw.githubusercontent.com/kubernetes/deployment-manager/master/get-install.sh | sh
+curl -s https://raw.githubusercontent.com/kubernetes/helm/master/get-install.sh | sh
 ```
 
 and then install the DM services into your Kubernetes cluster:

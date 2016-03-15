@@ -24,7 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kubernetes/deployment-manager/pkg/log"
+	"github.com/kubernetes/helm/pkg/log"
 )
 
 // Save creates an archived chart to the given directory.

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 )
 
 func TestDefaultServerURL(t *testing.T) {

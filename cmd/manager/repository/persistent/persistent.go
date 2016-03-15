@@ -25,8 +25,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/cmd/manager/repository"
+	"github.com/kubernetes/helm/pkg/common"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"

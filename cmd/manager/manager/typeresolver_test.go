@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/registry"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/registry"
 )
 
 type responseAndError struct {

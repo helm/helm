@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubernetes/deployment-manager/cmd/manager/router"
-	"github.com/kubernetes/deployment-manager/pkg/version"
+	"github.com/kubernetes/helm/cmd/manager/router"
+	"github.com/kubernetes/helm/pkg/version"
 
 	"flag"
 	"fmt"

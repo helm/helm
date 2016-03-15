@@ -17,8 +17,8 @@ limitations under the License.
 package registry
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/util"
 
 	//        "golang.org/x/net/context"
 	//        "golang.org/x/oauth2/google"

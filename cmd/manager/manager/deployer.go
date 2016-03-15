@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 )
 
 // Deployer abstracts interactions with the expander and deployer services.

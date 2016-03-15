@@ -20,8 +20,8 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/client"
-	"github.com/kubernetes/deployment-manager/pkg/version"
+	"github.com/kubernetes/helm/pkg/client"
+	"github.com/kubernetes/helm/pkg/version"
 )
 
 var commands []cli.Command

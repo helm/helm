@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/pkg/log"
+	"github.com/kubernetes/helm/pkg/log"
 )
 
 const (

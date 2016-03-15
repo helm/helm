@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/format"
+	"github.com/kubernetes/helm/pkg/format"
 )
 
 func init() {
