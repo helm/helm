@@ -1,5 +1,5 @@
-hash: d9beab9a799ac8dd0d76c4f7a3a32753d44833dd3527b3caa8e786865ea26816
-updated: 2016-03-04T09:54:13.155442463-07:00
+hash: f34e830b237fcba5202f84c55b21764226b7e8c201f7622e9639c7a628e33b0b
+updated: 2016-03-14T10:53:18.091793732-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -25,10 +25,12 @@ imports:
   version: 8f2758070a82adb7a3ad6b223a0b91878f32d400
 - name: github.com/gorilla/mux
   version: 26a6070f849969ba72b72256e9f14cf519751690
+- name: github.com/Masterminds/httputil
+  version: e9b977e9cf16f9d339573e18f0f1f7ce5d3f419a
 - name: github.com/Masterminds/semver
   version: c4f7ef0702f269161a60489ccbbc9f1241ad1265
 - name: github.com/Masterminds/sprig
-  version: fd057ca403105755181f84645696d705a58852dd
+  version: 0199893f008a87287bf2b4e3e390e66bb074c659
 - name: golang.org/x/net
   version: 04b9de9b512f58addf28c9853d50ebef61c3953e
   subpackages:

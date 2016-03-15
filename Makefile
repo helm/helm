@@ -56,7 +56,7 @@ container: all
 .PHONY: test-unit
 test-unit:
 	@echo Running tests...
-	go test -v $(GO_PKGS)
+	go test -race -v $(GO_PKGS)
 
 .PHONY: test-flake8
 test-flake8:
