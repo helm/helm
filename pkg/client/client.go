@@ -299,7 +299,7 @@ func (c *Client) PostDeployment(name string, cfg *common.Configuration) error {
 		return err
 	}
 
-	var out interface{}
+	var out struct{}
 
 	b := bytes.NewBuffer(data)
 	return c.CallService("/deployments", "POST", "post deployment", &out, b)
