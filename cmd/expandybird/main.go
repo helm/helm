@@ -48,7 +48,7 @@ func main() {
 	}
 
 	wrapper.Register(container)
-	log.Printf("Version: %s", version.DeploymentManagerVersion)
+	log.Printf("Version: %s", version.Version)
 	log.Printf("Listening on %s...", address)
 	log.Fatal(server.ListenAndServe())
 }

@@ -32,7 +32,7 @@ assign_version() {
 
 assign_ldflags() {
   if [[ -z "${LDFLAGS:-}" ]]; then
-    LDFLAGS="-s -X ${REPO}/pkg/version.DeploymentManagerVersion=${VERSION}"
+    LDFLAGS="-s -X ${REPO}/pkg/version.Version=${VERSION}"
   fi
 }
 
@@ -61,6 +61,9 @@ build_binaries() {
   if [[ ${#targets[@]} -eq 0 ]]; then
     targets=("${ALL_TARGETS[@]}")
   fi
+
+  assign_version
+  assign_ldflags
 
   for t in "${targets[@]}"; do
     if [[ -n "$build_cross" ]]; then

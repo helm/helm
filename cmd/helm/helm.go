@@ -21,9 +21,8 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/deployment-manager/pkg/client"
+	"github.com/kubernetes/deployment-manager/pkg/version"
 )
-
-var version = "0.0.1"
 
 var commands []cli.Command
 
@@ -34,7 +33,7 @@ func init() {
 func main() {
 	app := cli.NewApp()
 	app.Name = "helm"
-	app.Version = version
+	app.Version = version.Version
 	app.Usage = `Deploy and manage packages.`
 	app.Commands = commands
 

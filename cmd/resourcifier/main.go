@@ -73,7 +73,7 @@ func main() {
 
 	address := fmt.Sprintf(":%d", *port)
 	handler := handlers.CombinedLoggingHandler(os.Stderr, router)
-	log.Printf("Version: %s", version.DeploymentManagerVersion)
+	log.Printf("Version: %s", version.Version)
 	log.Printf("Listening on port %d...", *port)
 	log.Fatal(http.ListenAndServe(address, handler))
 }

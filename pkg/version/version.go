@@ -16,10 +16,10 @@ limitations under the License.
 
 package version
 
-// DeploymentManagerVersion is the current version of the Deployment Manager.
+// Version is the current version of the Deployment Manager.
 // Update this whenever making a new release.
 // The version is of the format Major.Minor.Patch
 // Increment major number for new feature additions and behavioral changes.
 // Increment minor number for bug fixes and performance enhancements.
 // Increment patch number for critical fixes to existing releases.
-var DeploymentManagerVersion = "0.0.1"
+var Version = "0.0.1"
