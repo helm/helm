@@ -22,12 +22,10 @@ readonly    red=$(tput bold; tput setaf 1)
 readonly  green=$(tput bold; tput setaf 2)
 readonly yellow=$(tput bold; tput setaf 3)
 
-readonly REPO=github.com/kubernetes/deployment-manager
-
 exit_code=0
 
 find_go_files() {
-  git -C "${GOPATH}/src/${REPO}" ls-files '*.go'
+  git ls-files '*.go'
 }
 
 echo "==> Running golint..."
