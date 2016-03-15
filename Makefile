@@ -15,7 +15,7 @@
 .PHONY: info
 info:
 	$(MAKE) -C $(ROOTFS) $@
-	
+
 .PHONY: gocheck
 ifndef GOPATH
 	$(error No GOPATH set)
@@ -54,15 +54,9 @@ container: all
 	$(MAKE) -C $(ROOTFS) $@
 
 .PHONY: test-unit
-test-unit: 
+test-unit:
 	@echo Running tests...
 	go test -v $(GO_PKGS)
-
-.PHONY: .test-style
-test-style: lint vet
-	@if [[ -z $(shell gofmt -e -l -s $(GO_DIRS) | wc -l) ]]; then \
-		echo "gofmt check failed:"; gofmt -e -d -s $(GO_DIRS); exit 1; \
-	fi
 
 .PHONY: test-flake8
 test-flake8:
@@ -70,21 +64,9 @@ test-flake8:
 	flake8 expansion
 	@echo ----------------
 
-.PHONY: lint
-lint:
-	@echo Running golint...
-	@for i in $(GO_PKGS); do \
-		golint $$i; \
-	done
-	@echo -----------------
-
-.PHONY: vet
-vet:
-	@echo Running go vet...
-	@for i in $(GO_DIRS); do \
-		go tool vet $$i; \
-	done
-	@echo -----------------
+.PHONY: test-style
+test-style:
+	@scripts/validate-go.sh
 
 HAS_GLIDE := $(shell command -v glide;)
 HAS_GOLINT := $(shell command -v golint;)
