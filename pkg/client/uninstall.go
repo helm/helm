@@ -17,7 +17,7 @@ limitations under the License.
 package client
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/kubectl"
+	"github.com/kubernetes/helm/pkg/kubectl"
 )
 
 // Uninstall uses kubectl to uninstall the base DM.

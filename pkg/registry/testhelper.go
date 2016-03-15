@@ -22,8 +22,8 @@ import (
 	"bytes"
 	"io/ioutil"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/util"
 
 	"fmt"
 	"net/http"

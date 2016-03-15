@@ -18,7 +18,7 @@ package registry
 
 import (
 	"github.com/google/go-github/github"
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 
 	"fmt"
 	"log"

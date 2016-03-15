@@ -26,8 +26,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/util"
 )
 
 var importFileNames = []string{

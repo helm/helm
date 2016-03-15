@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/registry"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/registry"
 )
 
 var template = common.Template{Name: "test", Content: "test"}

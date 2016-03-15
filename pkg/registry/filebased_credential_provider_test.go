@@ -19,7 +19,7 @@ package registry
 import (
 	"testing"
 
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 )
 
 var filename = "./test/test_credentials_file.yaml"

@@ -4,14 +4,14 @@ machine:
     GO15VENDOREXPERIMENT: 1
     GOPATH: /usr/local/go_workspace
     HOME: /home/ubuntu
-    IMPORT_PATH: "github.com/kubernetes/deployment-manager"
+    IMPORT_PATH: "github.com/kubernetes/helm"
 
 dependencies:
   override:
     - sudo chown -R $(whoami):staff /usr/local
     - cd $GOPATH
     - mkdir -p $GOPATH/src/$IMPORT_PATH
-    - cd $HOME/deployment-manager
+    - cd $HOME/helm
     - rsync -az --delete ./ "$GOPATH/src/$IMPORT_PATH/"
     - wget "https://github.com/Masterminds/glide/releases/download/$GLIDE_VERSION/glide-$GLIDE_VERSION-linux-amd64.tar.gz"
     - mkdir -p $HOME/bin

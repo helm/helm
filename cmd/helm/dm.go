@@ -21,9 +21,9 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/client"
-	"github.com/kubernetes/deployment-manager/pkg/format"
-	"github.com/kubernetes/deployment-manager/pkg/kubectl"
+	"github.com/kubernetes/helm/pkg/client"
+	"github.com/kubernetes/helm/pkg/format"
+	"github.com/kubernetes/helm/pkg/kubectl"
 )
 
 // ErrAlreadyInstalled indicates that DM is already installed.

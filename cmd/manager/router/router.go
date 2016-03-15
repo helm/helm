@@ -33,7 +33,7 @@ import (
 	"net/http"
 
 	"github.com/Masterminds/httputil"
-	helmhttp "github.com/kubernetes/deployment-manager/pkg/httputil"
+	helmhttp "github.com/kubernetes/helm/pkg/httputil"
 )
 
 // HandlerFunc responds to an individual HTTP request.

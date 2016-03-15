@@ -23,8 +23,8 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/util"
 )
 
 // Configurator configures a Kubernetes cluster using kubectl.

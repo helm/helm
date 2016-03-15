@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run this from deployment-manager root to build and push the dm client plus
+# Run this from helm root to build and push the dm client plus
 # kubernetes install config into the publicly readable GCS bucket gs://get-dm.
 #
 # Must have EDIT permissions on the dm-k8s-prod GCP project.

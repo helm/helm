@@ -17,7 +17,7 @@ limitations under the License.
 package repository
 
 import (
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 
 	"fmt"
 	"testing"

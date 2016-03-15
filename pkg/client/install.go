@@ -21,8 +21,8 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/kubernetes/deployment-manager/pkg/format"
-	"github.com/kubernetes/deployment-manager/pkg/kubectl"
+	"github.com/kubernetes/helm/pkg/format"
+	"github.com/kubernetes/helm/pkg/kubectl"
 )
 
 // Installer is capable of installing DM into Kubernetes.

@@ -1,4 +1,4 @@
-package: github.com/kubernetes/deployment-manager
+package: github.com/kubernetes/helm
 ignore:
 - google.golang.com/appengine
 import:

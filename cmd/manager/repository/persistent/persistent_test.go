@@ -14,7 +14,7 @@ limitations under the License.
 package persistent
 
 import (
-	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
+	"github.com/kubernetes/helm/cmd/manager/repository"
 
 	"sync"
 	"testing"

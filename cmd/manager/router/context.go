@@ -1,9 +1,9 @@
 package router
 
 import (
-	"github.com/kubernetes/deployment-manager/cmd/manager/manager"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	helmhttp "github.com/kubernetes/deployment-manager/pkg/httputil"
+	"github.com/kubernetes/helm/cmd/manager/manager"
+	"github.com/kubernetes/helm/pkg/common"
+	helmhttp "github.com/kubernetes/helm/pkg/httputil"
 )
 
 // Config holds the global configuration parameters passed into the router.
@@ -44,7 +44,7 @@ type Config struct {
 // Members of the context must be concurrency safe.
 type Context struct {
 	Config *Config
-	// Manager is a deployment-manager/manager/manager.Manager
+	// Manager is a helm/manager/manager.Manager
 	Manager            manager.Manager
 	Encoder            helmhttp.Encoder
 	CredentialProvider common.CredentialProvider

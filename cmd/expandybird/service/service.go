@@ -17,9 +17,9 @@ limitations under the License.
 package service
 
 import (
-	"github.com/kubernetes/deployment-manager/cmd/expandybird/expander"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/cmd/expandybird/expander"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/util"
 
 	"errors"
 	"fmt"

@@ -16,7 +16,7 @@ In order to build and push DM, you must:
 To build and push the service containers:
 
 ```
-$ cd ${GOPATH}/src/github.com/kubernetes/deployment-manager
+$ cd ${GOPATH}/src/github.com/kubernetes/helm
 $ export PROJECT=dm-k8s-prod
 $ make push
 ```

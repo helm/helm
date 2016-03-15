@@ -18,7 +18,7 @@ set -o pipefail
 
 [[ "$TRACE" ]] && set -x
 
-readonly REPO=github.com/kubernetes/deployment-manager
+readonly REPO=github.com/kubernetes/helm
 readonly DIR="${GOPATH}/src/${REPO}"
 
 source "${DIR}/scripts/common.sh"

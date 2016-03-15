@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 )
 
 // ParseKubernetesObject parses a Kubernetes API object in YAML format.

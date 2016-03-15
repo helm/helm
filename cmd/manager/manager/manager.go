@@ -24,10 +24,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubernetes/deployment-manager/cmd/manager/repository"
-	"github.com/kubernetes/deployment-manager/pkg/common"
-	"github.com/kubernetes/deployment-manager/pkg/registry"
-	"github.com/kubernetes/deployment-manager/pkg/util"
+	"github.com/kubernetes/helm/cmd/manager/repository"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/registry"
+	"github.com/kubernetes/helm/pkg/util"
 )
 
 // Manager manages a persistent set of Deployments.

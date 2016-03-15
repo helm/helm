@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/deployment-manager/pkg/common"
+	"github.com/kubernetes/helm/pkg/common"
 	"gopkg.in/yaml.v2"
 )
 

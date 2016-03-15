@@ -25,8 +25,8 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/kubernetes/deployment-manager/pkg/util"
-	"github.com/kubernetes/deployment-manager/pkg/version"
+	"github.com/kubernetes/helm/pkg/util"
+	"github.com/kubernetes/helm/pkg/version"
 )
 
 // Route defines a routing table entry to be registered with gorilla/mux.
