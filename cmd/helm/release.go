@@ -17,7 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"errors"
+	"os"
+
 	"github.com/codegangsta/cli"
+	"github.com/kubernetes/deployment-manager/pkg/format"
 )
 
 func init() {
@@ -35,5 +39,30 @@ func releaseCmd() cli.Command {
 				Usage: "Destination URL to which this will be POSTed.",
 			},
 		},
+		Action: func(c *cli.Context) { run(c, release) },
 	}
+}
+
+func release(c *cli.Context) error {
+	a := c.Args()
+	if len(a) == 0 {
+		return errors.New("'helm release' requires a path to a chart archive or directory.")
+	}
+
+	var arch string
+	if fi, err := os.Stat(a[0]); err != nil {
+		return err
+	} else if fi.IsDir() {
+		var err error
+		arch, err = packDir(a[0])
+		if err != nil {
+			return err
+		}
+	} else {
+		arch = a[0]
+	}
+
+	u, err := NewClient(c).PostChart(arch, arch)
+	format.Msg(u)
+	return err
 }

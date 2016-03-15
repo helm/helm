@@ -53,12 +53,19 @@ func pack(cxt *cli.Context) error {
 		return fmt.Errorf("Not a directory: %s", dir)
 	}
 
-	c, err := chart.LoadDir(dir)
+	fname, err := packDir(dir)
 	if err != nil {
-		return fmt.Errorf("Failed to load %s: %s", dir, err)
+		return err
 	}
-
-	fname, err := chart.Save(c, ".")
 	format.Msg(fname)
 	return nil
+}
+
+func packDir(dir string) (string, error) {
+	c, err := chart.LoadDir(dir)
+	if err != nil {
+		return "", fmt.Errorf("Failed to load %s: %s", dir, err)
+	}
+
+	return chart.Save(c, ".")
 }
