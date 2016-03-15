@@ -41,7 +41,7 @@ clean:
 	rm -rf bin
 
 .PHONY: test
-test: build test-style test-unit
+test: build test-style test-unit test-flake8
 
 ROOTFS := rootfs
 
@@ -63,6 +63,12 @@ test-style: lint vet
 	@if [[ -z $(shell gofmt -e -l -s $(GO_DIRS) | wc -l) ]]; then \
 		echo "gofmt check failed:"; gofmt -e -d -s $(GO_DIRS); exit 1; \
 	fi
+
+.PHONY: test-flake8
+test-flake8:
+	@echo Running flake8...
+	flake8 expansion
+	@echo ----------------
 
 .PHONY: lint
 lint:
