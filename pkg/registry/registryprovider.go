@@ -280,13 +280,13 @@ func (gcsrp gcsRegistryProvider) createGCSClient(credentialName string) (*http.C
 	return config.Client(oauth2.NoContext), nil
 }
 
-// RE for a registry type that does support versions and has collections.
+// TemplateRegistryMatcher is an RE for a registry type that does support versions and has collections.
 var TemplateRegistryMatcher = regexp.MustCompile("github.com/(.*)/(.*)/(.*)/(.*):(.*)")
 
-// RE for a registry type that does not support versions and does not have collections.
+// PackageRegistryMatcher is an RE for a registry type that does not support versions and does not have collections.
 var PackageRegistryMatcher = regexp.MustCompile("github.com/(.*)/(.*)/(.*)")
 
-// RE for GCS storage
+// GCSRegistryMatcher is an RE for GCS storage
 var GCSRegistryMatcher = regexp.MustCompile("gs://(.*)/(.*)")
 
 // IsGithubShortType returns whether a given type is a type description in a short format to a github repository type.

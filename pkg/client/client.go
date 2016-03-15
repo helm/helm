@@ -34,10 +34,10 @@ import (
 	"github.com/kubernetes/deployment-manager/pkg/common"
 )
 
-// The default HTTP timeout
+// DefaultHTTPTimeout is the default HTTP timeout.
 var DefaultHTTPTimeout = time.Second * 10
 
-// The default HTTP Protocol
+// DefaultHTTPProtocol is the default HTTP Protocol (http, https).
 var DefaultHTTPProtocol = "http"
 
 // Client is a DM client.

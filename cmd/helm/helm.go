@@ -77,6 +77,7 @@ func run(c *cli.Context, f func(c *cli.Context) error) {
 	}
 }
 
+// NewClient creates a new client instance preconfigured for CLI usage.
 func NewClient(c *cli.Context) *client.Client {
 	host := c.GlobalString("host")
 	debug := c.GlobalBool("debug")
