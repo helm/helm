@@ -102,7 +102,7 @@ func deploy(c *cli.Context) error {
 		}
 	}
 
-	return NewClient(c).PostDeployment(cfg)
+	return NewClient(c).PostDeployment(cfg.Resources[0].Name, cfg)
 }
 
 // isLocalChart returns true if the given path can be statted.

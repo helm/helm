@@ -169,7 +169,7 @@ func TestPostDeployment(t *testing.T) {
 	}
 	defer fc.teardown()
 
-	if err := fc.setup().PostDeployment(cfg); err != nil {
+	if err := fc.setup().PostDeployment("foo", cfg); err != nil {
 		t.Fatalf("failed to post deployment: %s", err)
 	}
 }
