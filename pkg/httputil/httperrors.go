@@ -29,6 +29,8 @@ const (
 	LogNotFound = "Not Found: %s %s"
 	// LogFatal is for logging 500 errors. Form: Internal Server Error r.Method r.URL message
 	LogFatal = "Internal Server Error: %s %s %s"
+	// LogBadRequest logs 400 errors.
+	LogBadRequest = "Bad Request: %s %s"
 )
 
 // NotFound writes a 404 error to the client and logs an error.
@@ -36,6 +38,12 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 	log.Printf(LogNotFound, r.Method, r.URL)
 	w.WriteHeader(http.StatusNotFound)
 	fmt.Fprintln(w, "File Not Found")
+}
+
+func BadRequest(w http.ResponseWriter, r *http.Request) {
+	log.Printf(LogNotFound, r.Method, r.URL)
+	w.WriteHeader(http.StatusBadRequest)
+	fmt.Fprintln(w, "Bad Request")
 }
 
 // Fatal writes a 500 response to the client and logs the message.
