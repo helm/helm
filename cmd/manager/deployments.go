@@ -278,6 +278,13 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// pos gets a path item by position.
+//
+// For example. the path "/foo/bar" has three positions: "" at 0, "foo" at
+// 1, and "bar" at 2.
+//
+// For verb/path combos, position 0 will be the verb: "GET /foo/bar" will have
+// "GET " at position 0.
 func pos(w http.ResponseWriter, r *http.Request, i int) (string, error) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < i-1 {
