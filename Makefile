@@ -93,4 +93,4 @@ ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
 	glide install
-	@echo Please run pip install -r expansion/requirements.txt. You might need sudo.
+	pip install --user -r expansion/requirements.txt
