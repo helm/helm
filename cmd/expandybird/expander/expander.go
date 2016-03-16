@@ -19,8 +19,8 @@ package expander
 import (
 	"bytes"
 	"fmt"
+	"encoding/json"
 	"log"
-	"os"
 	"os/exec"
 
 	"github.com/ghodss/yaml"
@@ -119,9 +119,29 @@ func (eResponse *ExpansionResponse) Unmarshal() (*ExpansionResult, error) {
 // ExpandTemplate passes the given configuration to the expander and returns the
 // expanded configuration as a string on success.
 func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
+	chartInv := template.ChartInvocation
+	chart := template.Chart
+
+	if chart.Expander.Name != "Expandybird" {
+		message := fmt.Sprintf("Expandybird cannot do this kind of expansion: ", chart.Expander)
+		return "", fmt.Errorf("error expanding template %s: %s", chartInv.Name, message)
+	}
+
 	if e.ExpansionBinary == "" {
 		message := fmt.Sprintf("expansion binary cannot be empty")
-		return "", fmt.Errorf("error expanding template %s: %s", template.Name, message)
+		return "", fmt.Errorf("error expanding chart %s: %s", chartInv.Name, message)
+	}
+
+	if len(chart.Files) != 1 {
+		message := fmt.Sprintf("Expandybird can only process a chart containing 1 file, got %d", len(chart.Files))
+		return "", fmt.Errorf("error expanding template %s: %s", chartInv.Name, message)
+	}
+
+	entrypoint_file := chart.Files[0]
+
+	if entrypoint_file.Path != chart.Expander.Entrypoint {
+		message := fmt.Sprintf("The entrypoint in the chart.yaml canont be found %s", chart.Expander.Entrypoint)
+		return "", fmt.Errorf("error expanding template %s: %s", chartInv.Name, message)
 	}
 
 	// Those are automatically increasing buffers, so writing arbitrary large
@@ -129,20 +149,36 @@ func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
+	// Now we convert the new chart representation into the form that classic Expandybird takes.
+
+	chartInvJson, err := json.Marshal(chartInv)
+	if err != nil {
+		return "", fmt.Errorf("error marshalling chart invocation %s: %s", chartInv.Name, err)
+	}
+	content := "{ \"resources\": [" + string(chartInvJson) + "] }"
+
 	cmd := &exec.Cmd{
 		Path: e.ExpansionBinary,
 		// Note, that binary name still has to be passed argv[0].
-		Args: []string{e.ExpansionBinary, template.Content},
+		Args: []string{e.ExpansionBinary, content},
 		// TODO(vagababov): figure out whether do we even need "PROJECT" and
 		// "DEPLOYMENT_NAME" variables here.
-		Env:    append(os.Environ(), "PROJECT="+template.Name, "DEPLOYMENT_NAME="+template.Name),
+		// [dcunnin]: Assuming we won't need this, at least for now.
+		// Env:    append(os.Environ(), "PROJECT="+chartInv.Name, "DEPLOYMENT_NAME="+chartInv.Name),
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
 
-	for _, imp := range template.Imports {
-		cmd.Args = append(cmd.Args, imp.Name, imp.Path, imp.Content)
+	// Add entrypoint file (currently only 1 is supported).
+	cmd.Args = append(cmd.Args, chart.Name, entrypoint_file.Path, entrypoint_file.Content)
+
+	// Add schema file
+	schema_name := chart.Name + ".schema"
+	schemaJson, err := json.Marshal(chart.Schema)
+	if err != nil {
+		return "", fmt.Errorf("error marshalling schema %s: %s", chartInv.Name, err)
 	}
+	cmd.Args = append(cmd.Args, schema_name, schema_name, string(schemaJson))
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("error starting expansion process: %s", err)
@@ -154,7 +190,7 @@ func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
 	log.Printf("Expansion process: pid: %d SysTime: %v UserTime: %v", cmd.ProcessState.Pid(),
 		cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime())
 	if stderr.String() != "" {
-		return "", fmt.Errorf("error expanding template %s: %s", template.Name, stderr.String())
+		return "", fmt.Errorf("error expanding chart %s: %s", chartInv.Name, stderr.String())
 	}
 
 	return stdout.String(), nil
