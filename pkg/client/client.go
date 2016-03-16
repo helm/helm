@@ -193,38 +193,3 @@ func (e *HTTPError) String() string {
 	return e.Error()
 }
 
-// GetDeployment retrieves the supplied deployment
-func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
-	var deployment *common.Deployment
-	if err := c.CallService(fancypath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
-		return nil, err
-	}
-	return deployment, nil
-}
-
-// DeleteDeployment deletes the supplied deployment
-func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
-	var deployment *common.Deployment
-	if err := c.CallService(filepath.Join("deployments", name), "DELETE", "delete deployment", &deployment, nil); err != nil {
-		return nil, err
-	}
-	return deployment, nil
-}
-
-// PostDeployment posts a deployment object to the manager service.
-func (c *Client) PostDeployment(res *common.Resource) error {
-	// This is a stop-gap until we get this API cleaned up.
-	t := common.Template{
-		ChartInvocation: res,
-	}
-
-	data, err := json.Marshal(t)
-	if err != nil {
-		return err
-	}
-
-	var out struct{}
-
-	b := bytes.NewBuffer(data)
-	return c.CallService("/deployments", "POST", "post deployment", &out, b)
-}
