@@ -86,7 +86,7 @@ func (c *Client) SetTransport(tr http.RoundTripper) *Client {
 
 // SetTimeout sets a timeout for http connections
 func (c *Client) SetTimeout(seconds int) *Client {
-	c.HTTPTimeout = time.Duration(time.Duration(seconds) * time.Second)
+	c.HTTPTimeout = time.Duration(seconds) * time.Second
 	return c
 }
 
