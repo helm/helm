@@ -414,7 +414,7 @@ func buildTemplateFromType(t string) *common.Template {
 func marshalTemplate(template *common.Template) io.ReadCloser {
 	j, err := json.Marshal(template)
 	if err != nil {
-		panic(fmt.Errorf("cannot deploy configuration %s: %s\n", template.Name, err))
+		panic(fmt.Errorf("cannot deploy %s: %s\n", template.ChartInvocation.Name, err))
 	}
 
 	return ioutil.NopCloser(bytes.NewReader(j))

@@ -118,7 +118,6 @@ type Chart struct {
 // Manager expands a Template into a Configuration, which
 // describes the set in a form that can be instantiated.
 type Template struct {
-	Name    string        `json:"name"`
 	ChartInvocation *Resource `json:"content"`
 	Chart Chart `json:"chart"`
 }
