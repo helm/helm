@@ -15,6 +15,9 @@ are organized. So, for example, you can ask questions like:
 * What Redis master and slave services are part of this Redis instance?
 * What pods are part of this Redis slave?
 
+The official Helm repository of charts is available in the
+[kubernetes/charts](https://github.com/kubernetes/charts) repository.
+
 Please hang out with us in [the Slack chat room](https://kubernetes.slack.com/messages/helm/).
 
 ## Installing Helm
@@ -56,6 +59,14 @@ You can uninstall Deployment Manager using the same configuration:
 
 ```
 helm dm uninstall
+```
+
+## Installing Charts
+
+To quickly deploy a chart, you can use the Helm command line tool:
+
+```
+$ helm deploy CHARTNAME
 ```
 
 ## Design of Deployment Manager
