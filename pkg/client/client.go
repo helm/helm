@@ -123,6 +123,7 @@ func (c *Client) callHTTP(path, method, action string, reader io.Reader) (string
 
 	// TODO: dynamically set version
 	request.Header.Set("User-Agent", c.agent())
+	request.Header.Set("Accept", "application/json")
 	request.Header.Add("Content-Type", "application/json")
 
 	client := &http.Client{
