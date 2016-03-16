@@ -2,16 +2,24 @@ package: github.com/kubernetes/helm
 ignore:
 - google.golang.com/appengine
 import:
-- package: github.com/Masterminds/semver
 - package: github.com/aokoli/goutils
+- package: github.com/cloudfoundry-incubator/candiedyaml
 - package: github.com/codegangsta/cli
 - package: github.com/emicklei/go-restful
 - package: github.com/ghodss/yaml
 - package: github.com/google/go-github
   subpackages:
   - github
+- package: github.com/google/go-querystring/query
+- package: github.com/Masterminds/semver
+- package: github.com/gorilla/context
 - package: github.com/gorilla/handlers
 - package: github.com/gorilla/mux
-- package: gopkg.in/yaml.v2
-- package: github.com/Masterminds/sprig
 - package: github.com/Masterminds/httputil
+- package: github.com/Masterminds/sprig
+- package: golang.org/x/net
+- package: golang.org/x/oauth2
+- package: google.golang.org/api/storage
+- package: google.golang.org/cloud/compute
+- package: gopkg.in/mgo.v2
+- package: gopkg.in/yaml.v2
