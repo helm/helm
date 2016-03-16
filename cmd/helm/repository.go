@@ -17,7 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"github.com/codegangsta/cli"
+	"github.com/kubernetes/helm/pkg/format"
+	"os"
 )
 
 func init() {
@@ -40,6 +43,12 @@ func repoCommands() cli.Command {
 						Usage: "The name of the credential.",
 					},
 				},
+				Action: func(c *cli.Context) {
+					if err := addRepo(c); err != nil {
+						format.Err("%s Error adding chart repo: ", err)
+						os.Exit(1)
+					}
+				},
 			},
 			{
 				Name:      "show",
@@ -50,13 +59,45 @@ func repoCommands() cli.Command {
 				Name:      "list",
 				Usage:     "List the repositories on the remote manager.",
 				ArgsUsage: "",
+				Action: func(c *cli.Context) {
+					if err := listRepos(c); err != nil {
+						format.Err("%s Error listing chart repositories: ", err)
+						os.Exit(1)
+					}
+				},
 			},
 			{
 				Name:      "remove",
 				Aliases:   []string{"rm"},
 				Usage:     "Remove a repository from the remote manager.",
 				ArgsUsage: "REPOSITORY",
+				Action: func(c *cli.Context) {
+					if err := removeRepo(c); err != nil {
+						format.Err("%s Error removing chart repo: ", err)
+						os.Exit(1)
+					}
+				},
 			},
 		},
 	}
+}
+
+func addRepo(c *cli.Context) error {
+	args := c.Args()
+	if len(args) < 1 {
+		return errors.New("'helm repo add' requires a repository as an argument")
+	}
+	return nil
+}
+
+func listRepos(c *cli.Context) error {
+	return nil
+}
+
+func removeRepo(c *cli.Context) error {
+	args := c.Args()
+	if len(args) < 1 {
+		return errors.New("'helm repo remove' requires a repository as an argument")
+	}
+	return nil
 }

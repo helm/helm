@@ -78,7 +78,7 @@ type Route struct {
 	Type        string
 }
 
-func registerRoutes(c *router.Context, h *router.Handler) {
+func registerDeploymentRoutes(c *router.Context, h *router.Handler) {
 	re := regexp.MustCompile("{[a-z]+}")
 
 	h.Add("GET /healthz", healthz)

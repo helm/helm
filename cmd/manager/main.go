@@ -54,7 +54,8 @@ func main() {
 
 	// Set up routes
 	handler := router.NewHandler(c)
-	registerRoutes(c, handler)
+	registerDeploymentRoutes(c, handler)
+	registerChartRepoRoutes(c, handler)
 
 	// Now create a server.
 	log.Printf("Starting Manager %s on %s", version.Version, c.Config.Address)
