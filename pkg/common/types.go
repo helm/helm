@@ -97,21 +97,39 @@ type Manifest struct {
 	Layout         *Layout        `json:"layout,omitempty"`
 }
 
+type Expander struct {
+	Name string `json:"name"`
+	Entrypoint string `json:"entry_point"`
+}
+
+type ChartFile struct {
+	Path string `json:"path"`  // Path from the root of the chart.
+	Content string `json:"content"`  // Base64 encoded file content.
+}
+
+type Chart struct {
+	Name    string `json:"name"`
+	Expander *Expander `json:"expander"`
+	Schema interface{} `json:"schema"`
+	Files []*ChartFile `json:"files"`
+}
+
 // Template describes a set of resources to be deployed.
 // Manager expands a Template into a Configuration, which
 // describes the set in a form that can be instantiated.
 type Template struct {
 	Name    string        `json:"name"`
-	Content string        `json:"content"`
-	Imports []*ImportFile `json:"imports"`
+	ChartInvocation *Resource `json:"content"`
+	Chart Chart `json:"chart"`
 }
 
+/*
 // ImportFile describes a base64 encoded file imported by a Template.
 type ImportFile struct {
 	Name    string `json:"name,omitempty"`
-	Path    string `json:"path,omitempty"` // Actual URL for the file
-	Content string `json:"content"`
+	Chart Chart `json:"chart"`
 }
+*/
 
 // Configuration describes a set of resources in a form
 // that can be instantiated.
