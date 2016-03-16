@@ -24,9 +24,6 @@ require_binary_exists() {
 
 for b in $RESOURCIFIER $EXPANDYBIRD $MANAGER; do
   require_binary_exists $b
-
-  # kill if currently running
-  pkill -f $b
 done
 
 LOGDIR=log
@@ -37,12 +34,15 @@ fi
 KUBECTL=$(which kubectl) || error_exit "Cannot find kubectl"
 
 echo "Starting resourcifier..."
+pkill -f $RESOURCIFIER
 nohup $RESOURCIFIER > $LOGDIR/resourcifier.log 2>&1 --kubectl="${KUBECTL}" --port=8082 &
 
 echo "Starting expandybird..."
+pkill -f $EXPANDYBIRD
 nohup $EXPANDYBIRD > $LOGDIR/expandybird.log 2>&1 --port=8081 --expansion_binary=expansion/expansion.py &
 
 echo "Starting deployment manager..."
+pkill -f $MANAGER
 nohup $MANAGER > $LOGDIR/manager.log 2>&1 --port="${MANAGER_PORT}"  --kubectl="${KUBECTL}" --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
 
 if [[ "$KUBE_PROXY" ]]; then
