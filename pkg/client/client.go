@@ -44,8 +44,6 @@ var DefaultHTTPProtocol = "http"
 type Client struct {
 	// Timeout on HTTP connections.
 	HTTPTimeout time.Duration
-	// The remote host
-	Host string
 	// The protocol. Currently only http and https are supported.
 	Protocol string
 	// Transport
