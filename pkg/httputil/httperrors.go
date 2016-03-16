@@ -30,27 +30,46 @@ const (
 	// LogFatal is for logging 500 errors. Form: Internal Server Error r.Method r.URL message
 	LogFatal = "Internal Server Error: %s %s %s"
 	// LogBadRequest logs 400 errors.
-	LogBadRequest = "Bad Request: %s %s"
+	LogBadRequest = "Bad Request: %s %s %s"
 )
+
+// Error represents an HTTP error that can be converted to structured types.
+//
+// For example, and error can be serialized to JSON or YAML. Likewise, the
+// string marshal can convert it to a string.
+type Error struct {
+	Msg    string `json:"message, omitempty"`
+	Status string `json:"status"`
+}
+
+// Error implements the error interface.
+func (e *Error) Error() string {
+	return fmt.Sprintf("%s: %s", e.Status, e.Msg)
+}
 
 // NotFound writes a 404 error to the client and logs an error.
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	log.Printf(LogNotFound, r.Method, r.URL)
-	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprintln(w, "File Not Found")
+	msg := fmt.Sprintf(LogNotFound, r.Method, r.URL)
+	log.Println(msg)
+	writeErr(w, r, msg, http.StatusNotFound)
 }
 
-func BadRequest(w http.ResponseWriter, r *http.Request) {
-	log.Printf(LogNotFound, r.Method, r.URL)
-	w.WriteHeader(http.StatusBadRequest)
-	fmt.Fprintln(w, "Bad Request")
+// BadRequest writes an HTTP 400.
+func BadRequest(w http.ResponseWriter, r *http.Request, err error) {
+	log.Printf(LogBadRequest, r.Method, r.URL, err)
+	writeErr(w, r, err.Error(), http.StatusBadRequest)
+}
+
+// writeErr formats and writes the error using the default encoder.
+func writeErr(w http.ResponseWriter, r *http.Request, msg string, status int) {
+	DefaultEncoder.Encode(w, r, &Error{Status: http.StatusText(status), Msg: msg}, status)
 }
 
 // Fatal writes a 500 response to the client and logs the message.
 //
 // Additional arguments are past into the the formatter as params to msg.
 func Fatal(w http.ResponseWriter, r *http.Request, msg string, v ...interface{}) {
-	log.Printf(LogFatal, r.Method, r.URL, fmt.Sprintf(msg, v...))
-	w.WriteHeader(http.StatusInternalServerError)
-	fmt.Fprintln(w, "Internal Server Error")
+	m := fmt.Sprintf(msg, v...)
+	log.Printf(LogFatal, r.Method, r.URL, m)
+	writeErr(w, r, m, http.StatusInternalServerError)
 }

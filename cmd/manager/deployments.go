@@ -43,27 +43,6 @@ import (
 	"github.com/kubernetes/helm/pkg/util"
 )
 
-var deployments = []Route{
-	{"CreateDeployment", "/deployments", "POST", createDeploymentHandlerFunc, "JSON"},
-	{"DeleteDeplyment", "/deployments/{deployment}", "DELETE", deleteDeploymentHandlerFunc, ""},
-	{"PutDeployment", "/deployments/{deployment}", "PUT", putDeploymentHandlerFunc, "JSON"},
-	{"ListManifests", "/deployments/{deployment}/manifests", "GET", listManifestsHandlerFunc, ""},
-	{"GetManifest", "/deployments/{deployment}/manifests/{manifest}", "GET", getManifestHandlerFunc, ""},
-	{"Expand", "/expand", "POST", expandHandlerFunc, ""},
-	{"ListTypes", "/types", "GET", listTypesHandlerFunc, ""},
-	{"ListTypeInstances", "/types/{type}/instances", "GET", listTypeInstancesHandlerFunc, ""},
-	{"GetRegistryForType", "/types/{type}/registry", "GET", getRegistryForTypeHandlerFunc, ""},
-	{"GetMetadataForType", "/types/{type}/metadata", "GET", getMetadataForTypeHandlerFunc, ""},
-	{"ListRegistries", "/registries", "GET", listRegistriesHandlerFunc, ""},
-	{"GetRegistry", "/registries/{registry}", "GET", getRegistryHandlerFunc, ""},
-	{"CreateRegistry", "/registries/{registry}", "POST", createRegistryHandlerFunc, "JSON"},
-	{"ListRegistryTypes", "/registries/{registry}/types", "GET", listRegistryTypesHandlerFunc, ""},
-	{"GetDownloadURLs", "/registries/{registry}/types/{type}", "GET", getDownloadURLsHandlerFunc, ""},
-	{"GetFile", "/registries/{registry}/download", "GET", getFileHandlerFunc, ""},
-	{"CreateCredential", "/credentials/{credential}", "POST", createCredentialHandlerFunc, "JSON"},
-	{"GetCredential", "/credentials/{credential}", "GET", getCredentialHandlerFunc, ""},
-}
-
 // Deprecated. Use Context.Manager instead.
 var backend manager.Manager
 
@@ -79,21 +58,27 @@ type Route struct {
 }
 
 func registerDeploymentRoutes(c *router.Context, h *router.Handler) {
-	re := regexp.MustCompile("{[a-z]+}")
-
 	h.Add("GET /healthz", healthz)
 	h.Add("GET /deployments", listDeploymentsHandlerFunc)
 	h.Add("GET /deployments/*", getDeploymentHandlerFunc)
-
-	// TODO: Replace these routes with updated ones.
-	for _, d := range deployments {
-		path := fmt.Sprintf("%s %s", d.Methods, re.ReplaceAllString(d.Path, "*"))
-		fmt.Printf("\t%s\n", path)
-		h.Add(path, func(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-			d.HandlerFunc(w, r)
-			return nil
-		})
-	}
+	h.Add("POST /deployments", createDeploymentHandlerFunc)
+	h.Add("DELETE /deployments/*", deleteDeploymentHandlerFunc)
+	h.Add("PUT /deployments/*", putDeploymentHandlerFunc)
+	h.Add("GET /deployments/*/manifests", listManifestsHandlerFunc)
+	h.Add("GET /deployments/*/manifests/*", getManifestHandlerFunc)
+	h.Add("POST /expand", expandHandlerFunc)
+	h.Add("GET /types", listTypesHandlerFunc)
+	h.Add("GET /types/*/instances", listTypeInstancesHandlerFunc)
+	h.Add("GET /types/*/registry", getRegistryForTypeHandlerFunc)
+	h.Add("GET /types/*/metadata", getMetadataForTypeHandlerFunc)
+	h.Add("GET /registries", listRegistriesHandlerFunc)
+	h.Add("GET /registries/*", getRegistryHandlerFunc)
+	h.Add("POST /registries/*", createRegistryHandlerFunc)
+	h.Add("GET /registries/*/types", listRegistryTypesHandlerFunc)
+	h.Add("GET /registries/*/types/*", getDownloadURLsHandlerFunc)
+	h.Add("GET /registries/*/download", getFileHandlerFunc)
+	h.Add("POST /credentials/*", createCredentialHandlerFunc)
+	h.Add("GET /credentials/*", getCredentialHandlerFunc)
 }
 
 func healthz(w http.ResponseWriter, r *http.Request, c *router.Context) error {
@@ -207,7 +192,7 @@ func listDeploymentsHandlerFunc(w http.ResponseWriter, r *http.Request, c *route
 func getDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get deployment"
 	util.LogHandlerEntry(handler, r)
-	name, err := getPathVariable(w, r, "deployment", handler)
+	name, err := pos(w, r, 2)
 	if err != nil {
 		return nil
 	}
@@ -222,7 +207,7 @@ func getDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 	return nil
 }
 
-func createDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func createDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: create deployment"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
@@ -230,52 +215,53 @@ func createDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	if t != nil {
 		d, err := backend.CreateDeployment(t)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-			return
+			httputil.BadRequest(w, r, err)
+			return nil
 		}
 
 		util.LogHandlerExitWithJSON(handler, w, d, http.StatusCreated)
-		return
 	}
+	return nil
 }
 
-func deleteDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func deleteDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: delete deployment"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
-	name, err := pos(w, r, 2) //getPathVariable(w, r, "deployment", handler)
+	name, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
-	d, err := backend.DeleteDeployment(name, true)
+	d, err := c.Manager.DeleteDeployment(name, true)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		return err
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, d, http.StatusOK)
+	return nil
 }
 
-func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: update deployment"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
-	name, err := pos(w, r, 2) //getPathVariable(w, r, "deployment", handler)
+	name, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	t := getTemplate(w, r, handler)
 	if t != nil {
 		d, err := backend.PutDeployment(name, t)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-			return
+			httputil.BadRequest(w, r, err)
+			return nil
 		}
 
 		util.LogHandlerExitWithJSON(handler, w, d, http.StatusCreated)
 	}
+	return nil
 }
 
 // pos gets a path item by position.
@@ -288,7 +274,6 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request) {
 func pos(w http.ResponseWriter, r *http.Request, i int) (string, error) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < i-1 {
-		httputil.BadRequest(w, r)
 		return "", fmt.Errorf("No index for %d", i)
 	}
 	return parts[i], nil
@@ -331,18 +316,17 @@ func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common
 	return t
 }
 
-func listManifestsHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func listManifestsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list manifests"
 	util.LogHandlerEntry(handler, r)
 	deploymentName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	m, err := backend.ListManifests(deploymentName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
-		return
+		return err
 	}
 
 	var manifestNames []string
@@ -351,31 +335,33 @@ func listManifestsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, manifestNames, http.StatusOK)
+	return nil
 }
 
-func getManifestHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func getManifestHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get manifest"
 	util.LogHandlerEntry(handler, r)
 	deploymentName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	manifestName, err := pos(w, r, 4)
 	if err != nil {
-		return
+		return err
 	}
 
 	m, err := backend.GetManifest(deploymentName, manifestName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, m, http.StatusOK)
+	return nil
 }
 
-func expandHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func expandHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: expand config"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
@@ -383,108 +369,114 @@ func expandHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	if t != nil {
 		c, err := backend.Expand(t)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-			return
+			httputil.BadRequest(w, r, err)
+			return nil
 		}
 
 		util.LogHandlerExitWithJSON(handler, w, c, http.StatusCreated)
-		return
 	}
+	return nil
 }
 
 // Putting Type handlers here for now because deployments.go
 // currently owns its own Manager backend and doesn't like to share.
-func listTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func listTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list types"
 	util.LogHandlerEntry(handler, r)
 	types, err := backend.ListTypes()
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, types, http.StatusOK)
+	return nil
 }
 
-func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list instances"
 	util.LogHandlerEntry(handler, r)
 	typeName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	instances, err := backend.ListInstances(typeName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, instances, http.StatusOK)
+	return nil
 }
 
-func getRegistryForTypeHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func getRegistryForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get type registry"
 	util.LogHandlerEntry(handler, r)
 	typeName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	registry, err := backend.GetRegistryForType(typeName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, registry, http.StatusOK)
+	return nil
 }
 
-func getMetadataForTypeHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func getMetadataForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get type metadata"
 	util.LogHandlerEntry(handler, r)
 	typeName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	metadata, err := backend.GetMetadataForType(typeName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, metadata, http.StatusOK)
+	return nil
 }
 
 // Putting Registry handlers here for now because deployments.go
 // currently owns its own Manager backend and doesn't like to share.
-func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list registries"
 	util.LogHandlerEntry(handler, r)
 	registries, err := backend.ListRegistries()
 	if err != nil {
-		return
+		return err
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, registries, http.StatusOK)
+	return nil
 }
 
-func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get registry"
 	util.LogHandlerEntry(handler, r)
 	registryName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	cr, err := backend.GetRegistry(registryName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
+	return nil
 }
 
 func getRegistry(w http.ResponseWriter, r *http.Request, handler string) *common.Registry {
@@ -504,44 +496,45 @@ func getRegistry(w http.ResponseWriter, r *http.Request, handler string) *common
 	return t
 }
 
-func createRegistryHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func createRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: create registry"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
 	registryName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	reg := getRegistry(w, r, handler)
 	if reg.Name != registryName {
 		e := fmt.Errorf("Registry name does not match %s != %s", reg.Name, registryName)
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
-		return
+		httputil.BadRequest(w, r, e)
+		return nil
 	}
 	if reg != nil {
 		err = backend.CreateRegistry(reg)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-			return
+			httputil.BadRequest(w, r, err)
+			return nil
 		}
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, reg, http.StatusOK)
+	return nil
 }
 
-func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list registry types"
 	util.LogHandlerEntry(handler, r)
 	registryName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	values, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	var regex *regexp.Regexp
@@ -549,72 +542,73 @@ func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	if regexString != "" {
 		regex, err = regexp.Compile(regexString)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-			return
+			httputil.BadRequest(w, r, err)
+			return nil
 		}
 	}
 
 	registryTypes, err := backend.ListRegistryTypes(registryName, regex)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
-		return
+		return err
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, registryTypes, http.StatusOK)
+	return nil
 }
 
-func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get download URLs"
 	util.LogHandlerEntry(handler, r)
 	registryName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	typeName, err := pos(w, r, 4)
 	if err != nil {
-		return
+		return err
 	}
 
 	tt, err := registry.ParseType(typeName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
-		return
+		return err
 	}
 
-	c, err := backend.GetDownloadURLs(registryName, tt)
+	cr, err := backend.GetDownloadURLs(registryName, tt)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	urls := []string{}
-	for _, u := range c {
+	for _, u := range cr {
 		urls = append(urls, u.String())
 	}
 	util.LogHandlerExitWithJSON(handler, w, urls, http.StatusOK)
+	return nil
 }
 
-func getFileHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func getFileHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get file"
 	util.LogHandlerEntry(handler, r)
 	registryName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
 	file := r.FormValue("file")
 	if file == "" {
-		return
+		return err
 	}
 
 	b, err := backend.GetFile(registryName, file)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, b, http.StatusOK)
+	return nil
 }
 
 func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {
@@ -634,42 +628,44 @@ func getCredential(w http.ResponseWriter, r *http.Request, handler string) *comm
 	return t
 }
 
-func createCredentialHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func createCredentialHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: create credential"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
 	credentialName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
-	c := getCredential(w, r, handler)
-	if c != nil {
-		err = backend.CreateCredential(credentialName, c)
+	cr := getCredential(w, r, handler)
+	if cr != nil {
+		err = backend.CreateCredential(credentialName, cr)
 		if err != nil {
-			util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-			return
+			httputil.BadRequest(w, r, err)
+			return nil
 		}
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
+	return nil
 }
 
-func getCredentialHandlerFunc(w http.ResponseWriter, r *http.Request) {
+func getCredentialHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: get credential"
 	util.LogHandlerEntry(handler, r)
 	credentialName, err := pos(w, r, 2)
 	if err != nil {
-		return
+		return err
 	}
 
-	c, err := backend.GetCredential(credentialName)
+	cr, err := backend.GetCredential(credentialName)
 	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return
+		httputil.BadRequest(w, r, err)
+		return nil
 	}
 
-	util.LogHandlerExitWithJSON(handler, w, c, http.StatusOK)
+	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
+	return nil
 }
 
 func getJSONFromRequest(w http.ResponseWriter, r *http.Request, handler string) ([]byte, error) {
