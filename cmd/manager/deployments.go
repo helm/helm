@@ -108,8 +108,6 @@ func setupDependencies(c *router.Context) error {
 	c.CredentialProvider = credentialProvider
 	c.Manager = newManager(c)
 
-	// FIXME: As soon as we can, we need to get rid of this.
-	backend = c.Manager
 	return nil
 }
 
@@ -175,7 +173,7 @@ func makeEnvVariableName(str string) string {
 func listDeploymentsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list deployments"
 	util.LogHandlerEntry(handler, r)
-	l, err := backend.ListDeployments()
+	l, err := c.Manager.ListDeployments()
 	if err != nil {
 		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
 		return nil
@@ -197,7 +195,7 @@ func getDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 		return nil
 	}
 
-	d, err := backend.GetDeployment(name)
+	d, err := c.Manager.GetDeployment(name)
 	if err != nil {
 		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
 		return nil
@@ -213,7 +211,7 @@ func createDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *rout
 	defer r.Body.Close()
 	t := getTemplate(w, r, handler)
 	if t != nil {
-		d, err := backend.CreateDeployment(t)
+		d, err := c.Manager.CreateDeployment(t)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -253,7 +251,7 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 
 	t := getTemplate(w, r, handler)
 	if t != nil {
-		d, err := backend.PutDeployment(name, t)
+		d, err := c.Manager.PutDeployment(name, t)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -324,7 +322,7 @@ func listManifestsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 		return err
 	}
 
-	m, err := backend.ListManifests(deploymentName)
+	m, err := c.Manager.ListManifests(deploymentName)
 	if err != nil {
 		return err
 	}
@@ -351,7 +349,7 @@ func getManifestHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Co
 		return err
 	}
 
-	m, err := backend.GetManifest(deploymentName, manifestName)
+	m, err := c.Manager.GetManifest(deploymentName, manifestName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -367,7 +365,7 @@ func expandHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context
 	defer r.Body.Close()
 	t := getTemplate(w, r, handler)
 	if t != nil {
-		c, err := backend.Expand(t)
+		c, err := c.Manager.Expand(t)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -383,7 +381,7 @@ func expandHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context
 func listTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list types"
 	util.LogHandlerEntry(handler, r)
-	types, err := backend.ListTypes()
+	types, err := c.Manager.ListTypes()
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -401,7 +399,7 @@ func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request, c *rou
 		return err
 	}
 
-	instances, err := backend.ListInstances(typeName)
+	instances, err := c.Manager.ListInstances(typeName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -419,7 +417,7 @@ func getRegistryForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *ro
 		return err
 	}
 
-	registry, err := backend.GetRegistryForType(typeName)
+	registry, err := c.Manager.GetRegistryForType(typeName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -437,7 +435,7 @@ func getMetadataForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *ro
 		return err
 	}
 
-	metadata, err := backend.GetMetadataForType(typeName)
+	metadata, err := c.Manager.GetMetadataForType(typeName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -452,7 +450,7 @@ func getMetadataForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *ro
 func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list registries"
 	util.LogHandlerEntry(handler, r)
-	registries, err := backend.ListRegistries()
+	registries, err := c.Manager.ListRegistries()
 	if err != nil {
 		return err
 	}
@@ -469,7 +467,7 @@ func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Co
 		return err
 	}
 
-	cr, err := backend.GetRegistry(registryName)
+	cr, err := c.Manager.GetRegistry(registryName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -512,7 +510,7 @@ func createRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router
 		return nil
 	}
 	if reg != nil {
-		err = backend.CreateRegistry(reg)
+		err = c.Manager.CreateRegistry(reg)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -547,7 +545,7 @@ func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *rou
 		}
 	}
 
-	registryTypes, err := backend.ListRegistryTypes(registryName, regex)
+	registryTypes, err := c.Manager.ListRegistryTypes(registryName, regex)
 	if err != nil {
 		return err
 	}
@@ -574,7 +572,7 @@ func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request, c *route
 		return err
 	}
 
-	cr, err := backend.GetDownloadURLs(registryName, tt)
+	cr, err := c.Manager.GetDownloadURLs(registryName, tt)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -601,7 +599,7 @@ func getFileHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Contex
 		return err
 	}
 
-	b, err := backend.GetFile(registryName, file)
+	b, err := c.Manager.GetFile(registryName, file)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -639,7 +637,7 @@ func createCredentialHandlerFunc(w http.ResponseWriter, r *http.Request, c *rout
 
 	cr := getCredential(w, r, handler)
 	if cr != nil {
-		err = backend.CreateCredential(credentialName, cr)
+		err = c.Manager.CreateCredential(credentialName, cr)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -658,7 +656,7 @@ func getCredentialHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 		return err
 	}
 
-	cr, err := backend.GetCredential(credentialName)
+	cr, err := c.Manager.GetCredential(credentialName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
