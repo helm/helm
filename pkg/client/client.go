@@ -32,6 +32,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/version"
 )
 
 // DefaultHTTPTimeout is the default HTTP timeout.
@@ -100,7 +101,7 @@ func (c *Client) url(rawurl string) (string, error) {
 }
 
 func (c *Client) agent() string {
-	return fmt.Sprintf("helm/%s", "0.0.1")
+	return fmt.Sprintf("helm/%s", version.Version)
 }
 
 // CallService is a low-level function for making an API call.
