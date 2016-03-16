@@ -28,6 +28,9 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+// DefaultEncoder is an *AcceptEncoder with the default application/json encoding.
+var DefaultEncoder = &AcceptEncoder{DefaultEncoding: "application/json"}
+
 // Encoder takes input and translate it to an expected encoded output.
 //
 // Implementations of encoders may use details of the HTTP request and response
@@ -40,7 +43,9 @@ type Encoder interface {
 	//
 	// When an encoder fails, it logs any necessary data and then responds to
 	// the client.
-	Encode(http.ResponseWriter, *http.Request, interface{})
+	//
+	// The integer must be a valid http.Status* status code.
+	Encode(http.ResponseWriter, *http.Request, interface{}, int)
 }
 
 // AcceptEncoder uses the accept headers on a request to determine the response type.
@@ -56,7 +61,7 @@ type AcceptEncoder struct {
 }
 
 // Encode encodeds the given interface to the first available type in the Accept header.
-func (e *AcceptEncoder) Encode(w http.ResponseWriter, r *http.Request, out interface{}) {
+func (e *AcceptEncoder) Encode(w http.ResponseWriter, r *http.Request, out interface{}, statusCode int) {
 	a := r.Header.Get("accept")
 	fn := encoders[e.DefaultEncoding]
 	mt := e.DefaultEncoding
@@ -70,6 +75,7 @@ func (e *AcceptEncoder) Encode(w http.ResponseWriter, r *http.Request, out inter
 		return
 	}
 	w.Header().Add("content-type", mt)
+	w.WriteHeader(statusCode)
 	w.Write(data)
 }
 

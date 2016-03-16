@@ -77,7 +77,7 @@ func TestAcceptEncoder(t *testing.T) {
 		DefaultEncoding: "application/json",
 	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		enc.Encode(w, r, []string{"hello", "world"})
+		enc.Encode(w, r, []string{"hello", "world"}, http.StatusOK)
 	}
 	s := httptest.NewServer(http.HandlerFunc(fn))
 	defer s.Close()

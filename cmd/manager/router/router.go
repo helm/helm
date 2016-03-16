@@ -31,6 +31,7 @@ package router
 import (
 	"log"
 	"net/http"
+	"reflect"
 
 	"github.com/Masterminds/httputil"
 	helmhttp "github.com/kubernetes/helm/pkg/httputil"
@@ -68,6 +69,7 @@ func NewHandler(c *Context) *Handler {
 //
 // The route name is "VERB /ENPOINT/PATH", e.g. "GET /foo".
 func (h *Handler) Add(route string, fn HandlerFunc) {
+	log.Printf("Map %q to %s", route, reflect.ValueOf(fn).Type().Name())
 	h.routes[route] = fn
 	h.paths = append(h.paths, route)
 	h.resolver = httputil.NewResolver(h.paths)
@@ -84,6 +86,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	fn, ok := h.routes[route]
 	if !ok {
+		// This is a 500 because the route was registered, but not here.
 		helmhttp.Fatal(w, r, "route %s missing", route)
 	}
 
