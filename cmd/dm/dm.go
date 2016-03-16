@@ -20,9 +20,9 @@ import (
 	"github.com/ghodss/yaml"
 
 	"github.com/kubernetes/helm/pkg/common"
-	"github.com/kubernetes/helm/pkg/util"
+	//"github.com/kubernetes/helm/pkg/util"
 
-	"archive/tar"
+	//"archive/tar"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -33,7 +33,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
+//	"strconv"
 	"strings"
 	"time"
 )
@@ -179,6 +179,7 @@ func execute() {
 
 		path := fmt.Sprintf("types/%s/metadata", url.QueryEscape(args[1]))
 		callService(path, "GET", "get metadata for type", nil)
+/*
 	case "expand":
 		template := loadTemplate(args)
 		callService("expand", "POST", "expand configuration", marshalTemplate(template))
@@ -186,6 +187,7 @@ func execute() {
 		template := loadTemplate(args)
 		action := fmt.Sprintf("deploy configuration named %s", template.Name)
 		callService("deployments", "POST", action, marshalTemplate(template))
+*/
 	case "list":
 		callService("deployments", "GET", "list deployments", nil)
 	case "getcredential":
@@ -242,11 +244,13 @@ func execute() {
 		path := fmt.Sprintf("deployments/%s", url.QueryEscape(args[1]))
 		action := fmt.Sprintf("delete deployment named %s", args[1])
 		callService(path, "DELETE", action, nil)
+/*
 	case "update":
 		template := loadTemplate(args)
 		path := fmt.Sprintf("deployments/%s", url.QueryEscape(template.Name))
 		action := fmt.Sprintf("delete deployment named %s", template.Name)
 		callService(path, "PUT", action, marshalTemplate(template))
+*/
 	case "deployed-types":
 		callService("types", "GET", "list deployed types", nil)
 	case "deployed-instances":
@@ -318,6 +322,7 @@ func callHTTP(path, method, action string, reader io.ReadCloser) string {
 	return string(body)
 }
 
+/*
 func loadTemplate(args []string) *common.Template {
 	var template *common.Template
 	var err error
@@ -404,6 +409,7 @@ func buildTemplateFromType(t string) *common.Template {
 
 	return template
 }
+*/
 
 func marshalTemplate(template *common.Template) io.ReadCloser {
 	j, err := json.Marshal(template)

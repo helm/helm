@@ -109,10 +109,12 @@ func TestExpandTemplateFromReader(t *testing.T) {
 	testExpandTemplateFromFile(t, validFileName, baseName, importFileNames, util.NewTemplateFromReader)
 }
 
+/*
 func TestExpandTemplateFromArchive(t *testing.T) {
 	baseName := path.Base(validFileName)
 	testExpandTemplateFromFile(t, archiveFileName, baseName, nil, util.NewTemplateFromArchive)
 }
+*/
 
 var ExpanderTestCases = []ExpanderTestCase{
 	{
