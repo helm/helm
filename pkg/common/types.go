@@ -110,7 +110,7 @@ type ChartFile struct {
 type Chart struct {
 	Name    string `json:"name"`
 	Expander *Expander `json:"expander"`
-	Schema interface{} `json:"schema"`
+	Schema string `json:"schema"`
 	Files []*ChartFile `json:"files"`
 }
 
@@ -119,16 +119,8 @@ type Chart struct {
 // describes the set in a form that can be instantiated.
 type Template struct {
 	ChartInvocation *Resource `json:"chart_invocation"`
-	Chart Chart `json:"chart"`
+	Chart *Chart `json:"chart"`
 }
-
-/*
-// ImportFile describes a base64 encoded file imported by a Template.
-type ImportFile struct {
-	Name    string `json:"name,omitempty"`
-	Chart Chart `json:"chart"`
-}
-*/
 
 // Configuration describes a set of resources in a form
 // that can be instantiated.
