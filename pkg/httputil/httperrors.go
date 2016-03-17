@@ -38,8 +38,8 @@ const (
 // For example, and error can be serialized to JSON or YAML. Likewise, the
 // string marshal can convert it to a string.
 type Error struct {
-	Msg    string `json:"message, omitempty"`
 	Status string `json:"status"`
+	Msg    string `json:"message, omitempty"`
 }
 
 // Error implements the error interface.
