@@ -17,6 +17,8 @@ limitations under the License.
 package chart
 
 import (
+	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -30,6 +32,7 @@ const (
 	testarchive = "testdata/frobnitz-0.0.1.tgz"
 	testill     = "testdata/ill-1.2.3.tgz"
 	testnochart = "testdata/nochart.tgz"
+	testmember  = "templates/wordpress.jinja"
 )
 
 // Type canaries. If these fail, they will fail at compile time.
@@ -159,4 +162,92 @@ func TestChart(t *testing.T) {
 	if i != filepath.Join(testdir, preIcon) {
 		t.Errorf("Unexpectedly, icon is in %s", i)
 	}
+}
+
+func TestLoadTemplates(t *testing.T) {
+	c, err := LoadDir(testdir)
+	if err != nil {
+		t.Errorf("Failed to load chart: %s", err)
+	}
+
+	members, err := c.LoadTemplates()
+	if members == nil {
+		t.Fatalf("Cannot load templates: unknown error")
+	}
+
+	if err != nil {
+		t.Fatalf("Cannot load templates: %s", err)
+	}
+
+	dir := c.TemplatesDir()
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("Cannot read template directory: %s", err)
+	}
+
+	if len(members) != len(files) {
+		t.Fatalf("Expected %s templates, got %d", len(files), len(members))
+	}
+
+	root := c.loader.dir()
+	for _, file := range files {
+		path := filepath.Join(preTemplates, file.Name())
+		if err := findMember(root, path, members); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func findMember(root, path string, members []*ChartMember) error {
+	for _, member := range members {
+		if member.Path == path {
+			filename := filepath.Join(root, path)
+			if err := compareContent(filename, string(member.Content)); err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Template not found: %s", path)
+}
+
+func TestLoadMember(t *testing.T) {
+	c, err := LoadDir(testdir)
+	if err != nil {
+		t.Errorf("Failed to load chart: %s", err)
+	}
+
+	member, err := c.LoadMember(testmember)
+	if member == nil {
+		t.Fatalf("Cannot load member %s: unknown error", testmember)
+	}
+
+	if err != nil {
+		t.Fatalf("Cannot load member %s: %s", testmember, err)
+	}
+
+	if member.Path != testmember {
+		t.Errorf("Expected member path %s, got %s", testmember, member.Path)
+	}
+
+	filename := filepath.Join(c.loader.dir(), testmember)
+	if err := compareContent(filename, string(member.Content)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func compareContent(filename, content string) error {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("Cannot read test file %s: %s", filename, err)
+	}
+
+	compare := base64.StdEncoding.EncodeToString(b)
+	if content != compare {
+		return fmt.Errorf("Expected member content\n%s\ngot\n%s", compare, content)
+	}
+
+	return nil
 }

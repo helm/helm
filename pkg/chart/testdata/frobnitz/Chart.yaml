@@ -26,3 +26,8 @@ environment:
       - extensions/v1beta1/daemonset
     apiGroups:
       - 3rdParty
+expander:
+  name: Expandybird
+  entrypoint: templates/wordpress.jinja
+schema: wordpress.jinja.schema
+  
