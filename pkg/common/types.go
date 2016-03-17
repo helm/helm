@@ -227,10 +227,10 @@ type Registry struct {
 	CredentialName string         `json:"credentialname,omitempty"` // Name of the credential to use
 }
 
-// RegistryType defines the technology that implements the registry
+// RegistryType defines the technology that implements a registry.
 type RegistryType string
 
-// Constants that identify the supported registry layouts.
+// Constants that identify the supported registry types.
 const (
 	GithubRegistryType RegistryType = "github"
 	GCSRegistryType    RegistryType = "gcs"
@@ -254,6 +254,34 @@ const (
 	CollectionRegistry RegistryFormat = "collection"
 	// OneLevelRegistry identifies a one level registry, where all types appear at the top level.
 	OneLevelRegistry RegistryFormat = "onelevel"
+)
+
+// RepoType defines the technology that implements a repository.
+type RepoType string
+
+// Constants that identify the supported repository types.
+const (
+	GCSRepoType RepoType = "gcs"
+)
+
+// RepoFormat is a semi-colon delimited string that describes the format
+// of a repository.
+type RepoFormat string
+
+const (
+	// Versioning.
+
+	// VersionedRepo identifies a versioned repository, where types appear under versions.
+	VersionedRepo RepoFormat = "versioned"
+	// UnversionedRepo identifies an unversioned repository, where types appear under their names.
+	UnversionedRepo RepoFormat = "unversioned"
+
+	// Organization.
+
+	// CollectionRepo identfies a collection repository, where types are grouped into collections.
+	CollectionRepo RepoFormat = "collection"
+	// OneLevelRepo identifies a one level repository, where all types appear at the top level.
+	OneLevelRepo RepoFormat = "onelevel"
 )
 
 // RegistryService maintains a set of registries that defines the scope of all
