@@ -58,8 +58,7 @@ endif
 
 .PHONY: container
 container: .project .docker binary extras
-	docker build -t $(FULL_IMAGE):latest -f Dockerfile .
-	docker tag -f $(FULL_IMAGE):latest $(FULL_IMAGE):$(TAG)
+	docker build -t $(FULL_IMAGE):$(TAG) -f Dockerfile .
 
 .project:
 ifeq ($(DOCKER_REGISTRY), gcr.io)
