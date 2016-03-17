@@ -115,7 +115,7 @@ type ChartFile struct {
 type Chart struct {
 	Name     string       `json:"name"`
 	Expander *Expander    `json:"expander"`
-	Schema   interface{}  `json:"schema"`
+	Schema   string       `json:"schema"`
 	Files    []*ChartFile `json:"files"`
 }
 
