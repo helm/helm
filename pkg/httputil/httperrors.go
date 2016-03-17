@@ -54,6 +54,12 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 	writeErr(w, r, msg, http.StatusNotFound)
 }
 
+// RequestEntityTooLarge writes a 413 to the client and logs an error.
+func RequestEntityTooLarge(w http.ResponseWriter, r *http.Request, msg string) {
+	log.Println(msg)
+	writeErr(w, r, msg, http.StatusRequestEntityTooLarge)
+}
+
 // BadRequest writes an HTTP 400.
 func BadRequest(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf(LogBadRequest, r.Method, r.URL, err)
