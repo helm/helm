@@ -17,11 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/client"
