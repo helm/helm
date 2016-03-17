@@ -101,13 +101,13 @@ func (c *Client) agent() string {
 // CallService is a low-level function for making an API call.
 //
 // This calls the service and then unmarshals the returned data into dest.
-func (c *Client) CallService(path, method, action string, dest interface{}, reader io.Reader) error {
+func (c *Client) CallService(path, method string, dest interface{}, reader io.Reader) error {
 	u, err := c.url(path)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.callHTTP(u, method, action, reader)
+	resp, err := c.callHTTP(u, method, reader)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (c *Client) CallService(path, method, action string, dest interface{}, read
 }
 
 // callHTTP is  a low-level primitive for executing HTTP operations.
-func (c *Client) callHTTP(path, method, action string, reader io.Reader) (string, error) {
+func (c *Client) callHTTP(path, method string, reader io.Reader) (string, error) {
 	request, err := http.NewRequest(method, path, reader)
 
 	// TODO: dynamically set version
