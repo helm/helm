@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"github.com/codegangsta/cli"
+	"github.com/kubernetes/helm/pkg/client"
 	"github.com/kubernetes/helm/pkg/format"
 	"os"
 )
@@ -26,6 +27,9 @@ import (
 func init() {
 	addCommands(repoCommands())
 }
+
+var dmURL string = "http://localhost:8080"
+var chartRepoPath string = "chart_repositories"
 
 func repoCommands() cli.Command {
 	return cli.Command{
@@ -87,10 +91,25 @@ func addRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo add' requires a repository as an argument")
 	}
+
+	client := client.NewClient(dmURL)
+	var dest string = ""
+	err := client.CallService(chartRepoPath, "POST", "add a chart repository", &dest, nil)
+	if err != nil {
+		return err
+	}
+	format.Msg(dest)
 	return nil
 }
 
 func listRepos(c *cli.Context) error {
+	client := client.NewClient(dmURL)
+	var dest string = ""
+	err := client.CallService(chartRepoPath, "GET", "list chart repos", &dest, nil)
+	if err != nil {
+		return err
+	}
+	format.Msg(dest)
 	return nil
 }
 
@@ -99,5 +118,12 @@ func removeRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo remove' requires a repository as an argument")
 	}
+	client := client.NewClient(dmURL)
+	var dest string = ""
+	err := client.CallService(chartRepoPath, "DELETE", "delete a chart repository from list", &dest, nil)
+	if err != nil {
+		return err
+	}
+	format.Msg(dest)
 	return nil
 }
