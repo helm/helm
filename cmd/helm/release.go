@@ -46,7 +46,7 @@ func releaseCmd() cli.Command {
 func release(c *cli.Context) error {
 	a := c.Args()
 	if len(a) == 0 {
-		return errors.New("'helm release' requires a path to a chart archive or directory.")
+		return errors.New("'helm release' requires a path to a chart archive or directory")
 	}
 
 	var arch string
