@@ -88,38 +88,3 @@ func NewClient(c *cli.Context) *client.Client {
 	timeout := c.GlobalInt("timeout")
 	return client.NewClient(host).SetDebug(debug).SetTimeout(timeout)
 }
-
-func callService(path, method, description string) ([]byte, error) {
-	dmURL := "http://localhost:8080"
-	//TODO: dmURL := "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager"
-	client := &http.Client{}
-	url, err := formatPath(dmURL, path)
-	req, err := http.NewRequest(method, url.Path, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
-}
-
-func formatPath(rawURL, route string) (*url.URL, error) {
-	var URL *url.URL
-	URL, err := url.Parse(rawURL)
-	if err != nil {
-		return nil, err
-	}
-	URL.Path = strings.TrimRight(URL.String(), "/") + "/" + strings.TrimLeft(route, "/")
-	return URL, nil
-}

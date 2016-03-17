@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"github.com/codegangsta/cli"
+	"github.com/kubernetes/helm/pkg/client"
 	"github.com/kubernetes/helm/pkg/format"
 	"os"
 )
@@ -87,16 +88,29 @@ func addRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo add' requires a repository as an argument")
 	}
+
+	dmURL := "http://localhost:8080"
+	path := "chart_repositories"
+	client := client.NewClient(dmURL)
+	var dest string = ""
+	err := client.CallService(path, "POST", "add a chart repository", &dest, nil)
+	if err != nil {
+		return err
+	}
+	format.Msg(dest)
 	return nil
 }
 
 func listRepos(c *cli.Context) error {
+	dmURL := "http://localhost:8080"
 	path := "chart_repositories"
-	body, err := callService(path, "GET", "list chart repos")
+	client := client.NewClient(dmURL)
+	var dest string = ""
+	err := client.CallService(path, "GET", "list chart repos", &dest, nil)
 	if err != nil {
 		return err
 	}
-	format.Msg(string(body))
+	format.Msg(dest)
 	return nil
 }
 
