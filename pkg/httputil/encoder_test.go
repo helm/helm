@@ -17,6 +17,7 @@ limitations under the License.
 package httputil
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -72,7 +73,58 @@ func TestTextMarshal(t *testing.T) {
 	}
 }
 
-func TestAcceptEncoder(t *testing.T) {
+type encDec struct {
+	Name string
+}
+
+func TestDefaultEncoder(t *testing.T) {
+	in := &encDec{Name: "Foo"}
+	var out, out2 encDec
+
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if err := Decode(w, r, &out); err != nil {
+			t.Fatalf("Failed to decode data: %s", err)
+		}
+		if out.Name != in.Name {
+			t.Fatalf("Expected %q, got %q", in.Name, out.Name)
+		}
+		Encode(w, r, out, http.StatusOK)
+	}
+	s := httptest.NewServer(http.HandlerFunc(fn))
+	defer s.Close()
+
+	data, err := json.Marshal(in)
+	if err != nil {
+		t.Fatalf("Failed to marshal JSON: %s", err)
+	}
+	req, err := http.NewRequest("GET", s.URL, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("content-type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Errorf("Failed request: %s", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200, got %d", res.StatusCode)
+	}
+
+	data, err = ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &out2); err != nil {
+		t.Fatal(err)
+	}
+	if out2.Name != in.Name {
+		t.Errorf("Expected final output to have name %q, got %q", in.Name, out2.Name)
+	}
+}
+
+func TestAcceptEncoderEncoder(t *testing.T) {
 	enc := &AcceptEncoder{
 		DefaultEncoding: "application/json",
 	}

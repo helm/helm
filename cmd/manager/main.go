@@ -17,14 +17,15 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubernetes/helm/cmd/manager/router"
-	"github.com/kubernetes/helm/pkg/version"
-
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/kubernetes/helm/cmd/manager/router"
+	"github.com/kubernetes/helm/pkg/httputil"
+	"github.com/kubernetes/helm/pkg/version"
 )
 
 var (
@@ -51,6 +52,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+
+	httputil.DefaultEncoder.MaxReadLen = c.Config.MaxTemplateLength
 
 	// Set up routes
 	handler := router.NewHandler(c)

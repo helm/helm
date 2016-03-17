@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -298,19 +297,11 @@ func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler s
 
 func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {
 	util.LogHandlerEntry(handler, r)
-	j, err := getJSONFromRequest(w, r, handler)
-
-	if err != nil {
-		return nil
-	}
-
 	t := &common.Template{}
-	if err := json.Unmarshal(j, t); err != nil {
-		e := fmt.Errorf("%v\n%v", err, string(j))
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+	if err := httputil.Decode(w, r, t); err != nil {
+		httputil.BadRequest(w, r, err)
 		return nil
 	}
-
 	return t
 }
 
@@ -479,18 +470,12 @@ func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Co
 
 func getRegistry(w http.ResponseWriter, r *http.Request, handler string) *common.Registry {
 	util.LogHandlerEntry(handler, r)
-	j, err := getJSONFromRequest(w, r, handler)
-	if err != nil {
-		return nil
-	}
 
 	t := &common.Registry{}
-	if err := json.Unmarshal(j, t); err != nil {
-		e := fmt.Errorf("%v\n%v", err, string(j))
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+	if err := httputil.Decode(w, r, t); err != nil {
+		httputil.BadRequest(w, r, err)
 		return nil
 	}
-
 	return t
 }
 
@@ -611,18 +596,11 @@ func getFileHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Contex
 
 func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {
 	util.LogHandlerEntry(handler, r)
-	j, err := getJSONFromRequest(w, r, handler)
-	if err != nil {
-		return nil
-	}
-
 	t := &common.RegistryCredential{}
-	if err := json.Unmarshal(j, t); err != nil {
-		e := fmt.Errorf("%v\n%v", err, string(j))
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
+	if err := httputil.Decode(w, r, t); err != nil {
+		httputil.BadRequest(w, r, err)
 		return nil
 	}
-
 	return t
 }
 
