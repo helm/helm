@@ -73,6 +73,7 @@ HAS_GOLINT := $(shell command -v golint;)
 HAS_GOVET := $(shell command -v go tool vet;)
 HAS_GOX := $(shell command -v gox;)
 HAS_PIP := $(shell command -v pip;)
+HAS_FLAKE8 := $(shell command -v pip;)
 
 .PHONY: bootstrap
 bootstrap:
@@ -91,6 +92,9 @@ ifndef HAS_GOVET
 endif
 ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
+endif
+ifndef HAS_FLAKE8
+	pip install flake8
 endif
 	glide install
 	pip install --user -r expansion/requirements.txt
