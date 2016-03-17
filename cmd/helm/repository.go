@@ -91,6 +91,12 @@ func addRepo(c *cli.Context) error {
 }
 
 func listRepos(c *cli.Context) error {
+	path := "chart_repositories"
+	body, err := callService(path, "GET", "list chart repos")
+	if err != nil {
+		return err
+	}
+	format.Msg(string(body))
 	return nil
 }
 

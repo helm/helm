@@ -17,7 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/client"
@@ -83,4 +87,26 @@ func NewClient(c *cli.Context) *client.Client {
 	debug := c.GlobalBool("debug")
 	timeout := c.GlobalInt("timeout")
 	return client.NewClient(host).SetDebug(debug).SetTimeout(timeout)
+}
+
+func callService(path, method, description string) ([]byte, error) {
+	dmURL := "http://localhost:8080"
+	//dmURL := "http://localhost:8001/api/v1/proxy/namespaces/dm/services/manager-service:manager"
+	var URL *url.URL
+	URL, err := url.Parse(dmURL)
+	if err != nil {
+		return nil, err
+	}
+	URL.Path = strings.TrimRight(URL.String(), "/") + "/" + strings.TrimLeft(path, "/")
+	resp, err := http.Get(URL.Path) //TODO: change later
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
 }
