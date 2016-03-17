@@ -102,5 +102,6 @@ func TestUserAgent(t *testing.T) {
 			}
 		}),
 	}
-	fc.setup().ListDeployments()
+	var nop struct{}
+	fc.setup().Get("/", &nop)
 }

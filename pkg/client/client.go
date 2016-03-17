@@ -98,6 +98,14 @@ func (c *Client) agent() string {
 	return fmt.Sprintf("helm/%s", version.Version)
 }
 
+func (c *Client) Get(endpoint string, v interface{}) error {
+	return c.CallService(endpoint, "GET", &v, nil)
+}
+
+func (c *Client) Delete(endpoint string, v interface{}) error {
+	return c.CallService(endpoint, "DELETE", &v, nil)
+}
+
 // CallService is a low-level function for making an API call.
 //
 // This calls the service and then unmarshals the returned data into dest.
