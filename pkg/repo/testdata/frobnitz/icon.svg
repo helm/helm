@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<svg xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    version="1.0" width="256" height="256" id="test">
+  <desc>Example icon</desc>
+  <rect id="first" x="2" y="2" width="40" height="60" fill="navy"/>
+  <rect id="second" x="15" y="4" width="40" height="60" fill="red"/>
+</svg>

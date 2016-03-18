@@ -246,7 +246,7 @@ func compareContent(filename, content string) error {
 
 	compare := base64.StdEncoding.EncodeToString(b)
 	if content != compare {
-		return fmt.Errorf("Expected member content\n%s\ngot\n%s", compare, content)
+		return fmt.Errorf("Expected member content\n%v\ngot\n%v", []byte(compare), []byte(content))
 	}
 
 	return nil

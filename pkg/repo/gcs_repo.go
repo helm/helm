@@ -25,6 +25,7 @@ import (
 
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 )
 
@@ -43,7 +44,7 @@ type GCSRepo struct {
 // URLFormatMatcher matches the GCS URL format (gs:).
 var URLFormatMatcher = regexp.MustCompile("gs://(.*)")
 
-var GCSRepoFormat = common.RepoFormat(fmt.Sprintf("%s;%s", common.VersionedRepo, common.OneLevelRepo))
+var GCSRepoFormat = common.RepoFormat(fmt.Sprintf("%s;%s", common.UnversionedRepo, common.OneLevelRepo))
 
 // NewGCSRepo creates a GCS repository.
 func NewGCSRepo(name, URL string, httpClient *http.Client) (*GCSRepo, error) {
@@ -106,7 +107,9 @@ func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 				continue
 			}
 
-			charts = append(charts, object.Name)
+			if regex == nil || regex.MatchString(object.Name) {
+				charts = append(charts, object.Name)
+			}
 		}
 
 		if pageToken = res.NextPageToken; pageToken == "" {
@@ -117,11 +120,38 @@ func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 	return charts, nil
 }
 
-// TODO: Implement GetChart.
-
 // GetChart retrieves, unpacks and returns a chart by name.
 func (g *GCSRepo) GetChart(name string) (*chart.Chart, error) {
-	return nil, fmt.Errorf("not implemented: GCSRepo.GetChart")
+	// Charts should be named bucket/chart-X.Y.Z.tgz, so tease apart the version here
+	if !ChartNameMatcher.MatchString(name) {
+		return nil, fmt.Errorf("name must be of the form <name>-<version>.tgz, was %s", name)
+	}
+
+	call := g.service.Objects.Get(g.bucket, name)
+	object, err := call.Do()
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := url.Parse(object.MediaLink)
+	if err != nil {
+		return nil, fmt.Errorf("Cannot parse URL %s for chart %s/%s: %s",
+			object.MediaLink, object.Bucket, object.Name, err)
+	}
+
+	getter := util.NewHTTPClient(3, g.httpClient, util.NewSleeper())
+	body, code, err := getter.Get(u.String())
+	if err != nil {
+		return nil, fmt.Errorf("Cannot fetch URL %s for chart %s/%s: %d %s",
+			object.MediaLink, object.Bucket, object.Name, code, err)
+	}
+
+	return chart.Load(body)
+}
+
+// Do performs an HTTP operation on the receiver's httpClient.
+func (g *GCSRepo) Do(req *http.Request) (resp *http.Response, err error) {
+	return g.httpClient.Do(req)
 }
 
 // TODO: Remove GetShortURL when no longer needed.
