@@ -44,7 +44,6 @@ type Client struct {
 	Transport http.RoundTripper
 	// Debug enables http logging
 	Debug bool
-
 	// Base URL for remote service
 	baseURL *url.URL
 }
@@ -99,12 +98,59 @@ func (c *Client) agent() string {
 	return fmt.Sprintf("helm/%s", version.Version)
 }
 
-func (c *Client) Get(endpoint string, v interface{}) error {
-	return c.CallService(endpoint, "GET", &v, nil)
+// Get calls GET on an endpoint and decodes the response
+func (c *Client) Get(endpoint string, v interface{}) (*Response, error) {
+	return c.Exec(c.NewRequest("GET", endpoint, nil), &v)
 }
 
-func (c *Client) Delete(endpoint string, v interface{}) error {
-	return c.CallService(endpoint, "DELETE", &v, nil)
+// Delete calls DELETE on an endpoint and decodes the response
+func (c *Client) Delete(endpoint string, v interface{}) (*Response, error) {
+	return c.Exec(c.NewRequest("DELETE", endpoint, nil), &v)
+}
+
+// NewRequest creates a new client request
+func (c *Client) NewRequest(method, endpoint string, body io.Reader) *Request {
+	u, err := c.url(endpoint)
+	if err != nil {
+		return &Request{err: err}
+	}
+	req, err := http.NewRequest(method, u, body)
+
+	req.Header.Set("User-Agent", c.agent())
+	req.Header.Set("Accept", "application/json")
+
+	return &Request{req, err}
+}
+
+// Exec sends a request and decodes the response
+func (c *Client) Exec(req *Request, v interface{}) (*Response, error) {
+	return c.Result(c.Do(req), &v)
+}
+
+// Result checks status code and decodes a response body
+func (c *Client) Result(resp *Response, v interface{}) (*Response, error) {
+	switch {
+	case resp.err != nil:
+		return resp, resp
+	case resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices:
+		return resp, resp.HTTPError()
+	}
+
+	return resp, decodeResponse(resp, v)
+}
+
+// Do send a request and returns a response
+func (c *Client) Do(req *Request) *Response {
+	if req.err != nil {
+		return &Response{err: req}
+	}
+
+	client := &http.Client{
+		Timeout:   c.HTTPTimeout,
+		Transport: c.transport(),
+	}
+	resp, err := client.Do(req.Request)
+	return &Response{resp, err}
 }
 
 // CallService is a low-level function for making an API call.
@@ -130,7 +176,6 @@ func (c *Client) CallService(path, method string, dest interface{}, reader io.Re
 func (c *Client) callHTTP(path, method string, reader io.Reader) (string, error) {
 	request, err := http.NewRequest(method, path, reader)
 
-	// TODO: dynamically set version
 	request.Header.Set("User-Agent", c.agent())
 	request.Header.Set("Accept", "application/json")
 	request.Header.Add("Content-Type", "application/json")
@@ -183,6 +228,42 @@ func DefaultServerURL(host string) (*url.URL, error) {
 	return hostURL, nil
 }
 
+// Request wraps http.Request to include error
+type Request struct {
+	*http.Request
+	err error
+}
+
+// Error implements the error interface.
+func (r *Request) Error() string {
+	return fmt.Sprint("%s", r.err)
+}
+
+// Response wraps http.Response to include error
+type Response struct {
+	*http.Response
+	err error
+}
+
+// Error implements the error interface.
+func (r *Response) Error() string {
+	return fmt.Sprint("%s", r.err)
+}
+
+// HTTPError creates a new HTTPError from response
+func (r *Response) HTTPError() error {
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	return &HTTPError{
+		StatusCode: r.StatusCode,
+		Message:    string(body),
+		URL:        r.Request.URL,
+	}
+}
+
 // HTTPError is an error caused by an unexpected HTTP status code.
 //
 // The StatusCode will not necessarily be a 4xx or 5xx. Any unexpected code
@@ -201,4 +282,15 @@ func (e *HTTPError) Error() string {
 // String implmenets the io.Stringer interface.
 func (e *HTTPError) String() string {
 	return e.Error()
+}
+
+func decodeResponse(resp *Response, v interface{}) error {
+	defer resp.Body.Close()
+	if resp.Body == nil {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
+		return fmt.Errorf("Failed to parse JSON response from service")
+	}
+	return nil
 }

@@ -32,7 +32,7 @@ import (
 // ListDeployments lists the deployments in DM.
 func (c *Client) ListDeployments() ([]string, error) {
 	var l []string
-	err := c.Get("deployments", &l)
+	_, err := c.Get("deployments", &l)
 	return l, err
 }
 
@@ -91,14 +91,14 @@ func (c *Client) PostChart(filename, deployname string) (string, error) {
 // GetDeployment retrieves the supplied deployment
 func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
-	err := c.Get(fancypath.Join("deployments", name), &deployment)
+	_, err := c.Get(fancypath.Join("deployments", name), &deployment)
 	return deployment, err
 }
 
 // DeleteDeployment deletes the supplied deployment
 func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
-	err := c.Delete(filepath.Join("deployments", name), &deployment)
+	_, err := c.Delete(filepath.Join("deployments", name), &deployment)
 	return deployment, err
 }
 
