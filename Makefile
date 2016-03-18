@@ -82,7 +82,7 @@ ifndef HAS_PIP
 	$(error Please install the latest version of Python pip)
 endif
 ifndef HAS_GLIDE
-	go get github.com/Masterminds/glide
+	go get -u github.com/Masterminds/glide
 endif
 ifndef HAS_GOLINT
 	go get -u github.com/golang/lint/golint
