@@ -377,12 +377,21 @@ func (c *Chart) loadDirectory(dir string) ([]*ChartMember, error) {
 	members := []*ChartMember{}
 	for _, file := range files {
 		filename := filepath.Join(dir, file.Name())
-		member, err := c.loadMember(filename)
-		if err != nil {
-			return nil, err
-		}
+		if !file.IsDir() {
+			addition, err := c.loadMember(filename)
+			if err != nil {
+				return nil, err
+			}
 
-		members = append(members, member)
+			members = append(members, addition)
+		} else {
+			additions, err := c.loadDirectory(filename)
+			if err != nil {
+				return nil, err
+			}
+
+			members = append(members, additions...)
+		}
 	}
 
 	return members, nil
@@ -415,4 +424,23 @@ func (c *Chart) loadMember(filename string) (*ChartMember, error) {
 	}
 
 	return result, nil
+}
+
+type ChartContent struct {
+	Chartfile *Chartfile     `json:"chartfile"`
+	Members   []*ChartMember `json:"templates"`
+}
+
+func (c *Chart) LoadContent() (*ChartContent, error) {
+	ms, err := c.loadDirectory(c.Dir())
+	if err != nil {
+		return nil, err
+	}
+
+	cc := &ChartContent{
+		Chartfile: c.Chartfile(),
+		Members:   ms,
+	}
+
+	return cc, nil
 }
