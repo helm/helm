@@ -34,6 +34,8 @@ type Chartfile struct {
 	Home         string           `yaml:"home"`
 	Dependencies []*Dependency    `yaml:"dependencies,omitempty"`
 	Environment  []*EnvConstraint `yaml:"environment,omitempty"`
+	Expander     *Expander        `yaml:"expander,omitempty"`
+	Schema       string           `yaml:"schema,omitempty"`
 }
 
 // Maintainer describes a chart maintainer.
@@ -55,6 +57,14 @@ type EnvConstraint struct {
 	Version    string   `yaml:"version"`
 	Extensions []string `yaml:"extensions,omitempty"`
 	APIGroups  []string `yaml:"apiGroups,omitempty"`
+}
+
+// Expander controls how template/ is evaluated.
+type Expander struct {
+	// Currently just Expandybird or GoTemplate
+	Name string `json:"name"`
+	// During evaluation, which file to start from.
+	Entrypoint string `json:"entrypoint"`
 }
 
 // LoadChartfile loads a Chart.yaml file into a *Chart.

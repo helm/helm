@@ -50,6 +50,23 @@ func TestLoadChartfile(t *testing.T) {
 	if f.Source[0] != "https://example.com/foo/bar" {
 		t.Errorf("Expected https://example.com/foo/bar, got %s", f.Source)
 	}
+
+	expander := f.Expander
+	if expander == nil {
+		t.Errorf("No expander found in %s", testfile)
+	} else {
+		if expander.Name != "Expandybird" {
+			t.Errorf("Expected expander name Expandybird, got %s", expander.Name)
+		}
+
+		if expander.Entrypoint != "templates/wordpress.jinja" {
+			t.Errorf("Expected expander entrypoint templates/wordpress.jinja, got %s", expander.Entrypoint)
+		}
+	}
+
+	if f.Schema != "wordpress.jinja.schema" {
+		t.Errorf("Expected schema wordpress.jinja.schema, got %s", f.Schema)
+	}
 }
 
 func TestVersionOK(t *testing.T) {

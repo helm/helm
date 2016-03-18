@@ -97,28 +97,6 @@ type Manifest struct {
 	Layout         *Layout        `json:"layout,omitempty"`
 }
 
-// Expander controls how template/ is evaluated.
-type Expander struct {
-	// Currently just Expandybird or GoTemplate
-	Name string `json:"name"`
-	// During evaluation, which file to start from.
-	Entrypoint string `json:"entry_point"`
-}
-
-// ChartFile is a file in a chart that is not chart.yaml.
-type ChartFile struct {
-	Path    string `json:"path"`    // Path from the root of the chart.
-	Content string `json:"content"` // Base64 encoded file content.
-}
-
-// Chart is our internal representation of the chart.yaml (in structured form) + all supporting files.
-type Chart struct {
-	Name     string       `json:"name"`
-	Expander *Expander    `json:"expander"`
-	Schema   interface{}  `json:"schema"`
-	Files    []*ChartFile `json:"files"`
-}
-
 // Template describes a set of resources to be deployed.
 // Manager expands a Template into a Configuration, which
 // describes the set in a form that can be instantiated.
@@ -227,10 +205,10 @@ type Registry struct {
 	CredentialName string         `json:"credentialname,omitempty"` // Name of the credential to use
 }
 
-// RegistryType defines the technology that implements the registry
+// RegistryType defines the technology that implements a registry.
 type RegistryType string
 
-// Constants that identify the supported registry layouts.
+// Constants that identify the supported registry types.
 const (
 	GithubRegistryType RegistryType = "github"
 	GCSRegistryType    RegistryType = "gcs"
@@ -254,6 +232,34 @@ const (
 	CollectionRegistry RegistryFormat = "collection"
 	// OneLevelRegistry identifies a one level registry, where all types appear at the top level.
 	OneLevelRegistry RegistryFormat = "onelevel"
+)
+
+// RepoType defines the technology that implements a repository.
+type RepoType string
+
+// Constants that identify the supported repository types.
+const (
+	GCSRepoType RepoType = "gcs"
+)
+
+// RepoFormat is a semi-colon delimited string that describes the format
+// of a repository.
+type RepoFormat string
+
+const (
+	// Versioning.
+
+	// VersionedRepo identifies a versioned repository, where types appear under versions.
+	VersionedRepo RepoFormat = "versioned"
+	// UnversionedRepo identifies an unversioned repository, where types appear under their names.
+	UnversionedRepo RepoFormat = "unversioned"
+
+	// Organization.
+
+	// CollectionRepo identfies a collection repository, where types are grouped into collections.
+	CollectionRepo RepoFormat = "collection"
+	// OneLevelRepo identifies a one level repository, where all types appear at the top level.
+	OneLevelRepo RepoFormat = "onelevel"
 )
 
 // RegistryService maintains a set of registries that defines the scope of all

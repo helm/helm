@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -243,25 +244,7 @@ func LoadDir(chart string) (*Chart, error) {
 
 // LoadData loads a chart from data, where data is a []byte containing a gzipped tar file.
 func LoadData(data []byte) (*Chart, error) {
-	b := bytes.NewBuffer(data)
-	unzipped, err := gzip.NewReader(b)
-	if err != nil {
-		return nil, err
-	}
-	defer unzipped.Close()
-
-	untarred := tar.NewReader(unzipped)
-	c, err := loadTar(untarred)
-	if err != nil {
-		return nil, err
-	}
-
-	cf, err := LoadChartfile(filepath.Join(c.tmpDir, ChartfileName))
-	if err != nil {
-		return nil, err
-	}
-	c.chartyaml = cf
-	return &Chart{loader: c}, nil
+	return LoadDataFromReader(bytes.NewBuffer(data))
 }
 
 // Load loads a chart from a chart archive.
@@ -281,7 +264,11 @@ func Load(archive string) (*Chart, error) {
 	}
 	defer raw.Close()
 
-	unzipped, err := gzip.NewReader(raw)
+	return LoadDataFromReader(raw)
+}
+
+func LoadDataFromReader(r io.Reader) (*Chart, error) {
+	unzipped, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
@@ -366,4 +353,66 @@ func loadTar(r *tar.Reader) (*tarChart, error) {
 	log.Info("Reached end of Tar file")
 
 	return c, nil
+}
+
+// ChartMember is a file in a chart.
+type ChartMember struct {
+	Path    string `json:"path"`    // Path from the root of the chart.
+	Content []byte `json:"content"` // Base64 encoded content.
+}
+
+// LoadTemplates loads the members of TemplatesDir().
+func (c *Chart) LoadTemplates() ([]*ChartMember, error) {
+	dir := c.TemplatesDir()
+	return c.loadDirectory(dir)
+}
+
+// loadDirectory loads the members of a directory.
+func (c *Chart) loadDirectory(dir string) ([]*ChartMember, error) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	members := []*ChartMember{}
+	for _, file := range files {
+		filename := filepath.Join(dir, file.Name())
+		member, err := c.loadMember(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		members = append(members, member)
+	}
+
+	return members, nil
+}
+
+// path is from the root of the chart.
+func (c *Chart) LoadMember(path string) (*ChartMember, error) {
+	filename := filepath.Join(c.loader.dir(), path)
+	return c.loadMember(filename)
+}
+
+// loadMember loads and base 64 encodes a file.
+func (c *Chart) loadMember(filename string) (*ChartMember, error) {
+	dir := c.Dir()
+	if !strings.HasPrefix(filename, dir) {
+		err := fmt.Errorf("File %s is outside chart directory %s", filename, dir)
+		return nil, err
+	}
+
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	path := strings.TrimPrefix(filename, dir)
+	content := base64.StdEncoding.EncodeToString(b)
+	result := &ChartMember{
+		Path:    path,
+		Content: []byte(content),
+	}
+
+	return result, nil
 }
