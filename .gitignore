@@ -1,3 +1,5 @@
+*~
+.*.swp
 *.pyc
 .project
 coverage.out
