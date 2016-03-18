@@ -29,11 +29,12 @@ import (
 	"github.com/kubernetes/helm/pkg/version"
 )
 
-// DefaultHTTPTimeout is the default HTTP timeout.
-var DefaultHTTPTimeout = time.Second * 10
-
-// DefaultHTTPProtocol is the default HTTP Protocol (http, https).
-var DefaultHTTPProtocol = "http"
+const (
+	// DefaultHTTPTimeout is the default HTTP timeout.
+	DefaultHTTPTimeout = time.Second * 10
+	// DefaultHTTPProtocol is the default HTTP Protocol (http, https).
+	DefaultHTTPProtocol = "http"
+)
 
 // Client is a DM client.
 type Client struct {
