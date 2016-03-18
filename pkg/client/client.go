@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -103,23 +104,45 @@ func (c *Client) Get(endpoint string, v interface{}) (*Response, error) {
 	return c.Exec(c.NewRequest("GET", endpoint, nil), &v)
 }
 
+// Post calls POST on an endpoint and decodes the response
+func (c *Client) Post(endpoint string, payload, v interface{}) (*Response, error) {
+	return c.Exec(c.NewRequest("POST", endpoint, payload), &v)
+}
+
 // Delete calls DELETE on an endpoint and decodes the response
 func (c *Client) Delete(endpoint string, v interface{}) (*Response, error) {
 	return c.Exec(c.NewRequest("DELETE", endpoint, nil), &v)
 }
 
 // NewRequest creates a new client request
-func (c *Client) NewRequest(method, endpoint string, body io.Reader) *Request {
+func (c *Client) NewRequest(method, endpoint string, payload interface{}) *Request {
 	u, err := c.url(endpoint)
 	if err != nil {
 		return &Request{err: err}
 	}
+
+	body := prepareBody(payload)
 	req, err := http.NewRequest(method, u, body)
 
 	req.Header.Set("User-Agent", c.agent())
 	req.Header.Set("Accept", "application/json")
 
 	return &Request{req, err}
+}
+
+func prepareBody(payload interface{}) io.Reader {
+	var body io.Reader
+	switch t := payload.(type) {
+	default:
+		//FIXME: panic is only for development
+		panic(fmt.Sprintf("unexpected type %T\n", t))
+	case io.Reader:
+		body = t
+	case []byte:
+		body = bytes.NewBuffer(t)
+	case nil:
+	}
+	return body
 }
 
 // Exec sends a request and decodes the response

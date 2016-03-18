@@ -17,7 +17,6 @@ limitations under the License.
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -120,7 +119,6 @@ func (c *Client) PostDeployment(name string, cfg *common.Configuration) error {
 	}
 
 	var out struct{}
-
-	b := bytes.NewBuffer(data)
-	return c.CallService("/deployments", "POST", &out, b)
+	_, err = c.Post("/deployments", data, &out)
+	return err
 }
