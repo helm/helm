@@ -73,7 +73,7 @@ HAS_GOLINT := $(shell command -v golint;)
 HAS_GOVET := $(shell command -v go tool vet;)
 HAS_GOX := $(shell command -v gox;)
 HAS_PIP := $(shell command -v pip;)
-HAS_FLAKE8 := $(shell command -v pip;)
+HAS_FLAKE8 := $(shell command -v flake8;)
 
 .PHONY: bootstrap
 bootstrap:
