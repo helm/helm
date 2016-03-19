@@ -118,7 +118,7 @@ func (c *Client) Delete(endpoint string, v interface{}) (*Response, error) {
 func (c *Client) NewRequest(method, endpoint string, payload interface{}) *Request {
 	u, err := c.url(endpoint)
 	if err != nil {
-		return &Request{err: err}
+		return &Request{error: err}
 	}
 
 	body := prepareBody(payload)
@@ -153,7 +153,7 @@ func (c *Client) Exec(req *Request, v interface{}) (*Response, error) {
 // Result checks status code and decodes a response body
 func (c *Client) Result(resp *Response, v interface{}) (*Response, error) {
 	switch {
-	case resp.err != nil:
+	case resp.error != nil:
 		return resp, resp
 	case resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices:
 		return resp, resp.HTTPError()
@@ -164,8 +164,8 @@ func (c *Client) Result(resp *Response, v interface{}) (*Response, error) {
 
 // Do send a request and returns a response
 func (c *Client) Do(req *Request) *Response {
-	if req.err != nil {
-		return &Response{err: req}
+	if req.error != nil {
+		return &Response{error: req}
 	}
 
 	client := &http.Client{
@@ -254,23 +254,13 @@ func DefaultServerURL(host string) (*url.URL, error) {
 // Request wraps http.Request to include error
 type Request struct {
 	*http.Request
-	err error
-}
-
-// Error implements the error interface.
-func (r *Request) Error() string {
-	return fmt.Sprint("%s", r.err)
+	error
 }
 
 // Response wraps http.Response to include error
 type Response struct {
 	*http.Response
-	err error
-}
-
-// Error implements the error interface.
-func (r *Response) Error() string {
-	return fmt.Sprint("%s", r.err)
+	error
 }
 
 // HTTPError creates a new HTTPError from response
