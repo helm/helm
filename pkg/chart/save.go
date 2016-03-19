@@ -45,11 +45,7 @@ func Save(c *Chart, outDir string) (string, error) {
 
 	cfile := c.Chartfile()
 	dir := c.Dir()
-	basename := filepath.Base(dir)
 	pdir := filepath.Dir(dir)
-	if basename == "." {
-		basename = fname(cfile.Name)
-	}
 	filename := fmt.Sprintf("%s-%s.tgz", fname(cfile.Name), cfile.Version)
 	filename = filepath.Join(outDir, filename)
 
