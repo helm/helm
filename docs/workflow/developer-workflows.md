@@ -56,7 +56,7 @@ Created wonky-panda
 - The client sends the server a request to deploy `helm:example.com/foo/bar`.
 - The server assigns a random name `wonky-panda`, fetches the chart from
   object storage, and goes about the deployment process.
-  
+
 General patterns:
 ```
 helm deploy [-f CONFIG] [-n NAME] [CHART]
@@ -176,7 +176,7 @@ helm redeploy [-f CONFIG] NAME
 #### Delete:
 
 ```
-$ helm delete taco-tuesday
+$ helm deployment delete taco-tuesday
 Destroyed taco-tuesday
 ```
 
@@ -185,9 +185,8 @@ Destroyed taco-tuesday
 
 General pattern:
 ```
-helm uninstall NAME [NAME...]
+helm deployment delete NAME [NAME...]
 ```
-
 
 ### Power User Features
 
