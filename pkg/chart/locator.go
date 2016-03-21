@@ -34,6 +34,8 @@ var ErrRemote = errors.New("cannot use remote Locator as local")
 const (
 	SchemeHTTP  = "http"
 	SchemeHTTPS = "https"
+	SchemeGS    = "gs"
+	SchemeS3    = "s3"
 	SchemeHelm  = "helm"
 	SchemeFile  = "file"
 )
@@ -85,6 +87,7 @@ func Parse(path string) (*Locator, error) {
 		if len(parts) < 3 {
 			return nil, fmt.Errorf("both bucket and chart name are required in %s: %s", path, u.Path)
 		}
+
 		// Need to parse opaque data into bucket and chart.
 		return &Locator{
 			Scheme:   u.Scheme,
@@ -111,6 +114,26 @@ func Parse(path string) (*Locator, error) {
 			Scheme:   u.Scheme,
 			Host:     u.Host,
 			Bucket:   parts[1],
+			Name:     name,
+			Version:  version,
+			original: path,
+		}, nil
+	case SchemeGS, SchemeS3:
+		// Long name
+		parts := strings.SplitN(u.Path, "/", 2)
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("chart name is required in %s", path)
+		}
+
+		name, version, err := parseTarName(parts[1])
+		if err != nil {
+			return nil, err
+		}
+
+		return &Locator{
+			Scheme:   u.Scheme,
+			Host:     u.Scheme,
+			Bucket:   u.Host,
 			Name:     name,
 			Version:  version,
 			original: path,
@@ -153,6 +176,7 @@ func (u *Locator) Short() (string, error) {
 	if u.IsLocal() {
 		return "", ErrLocal
 	}
+
 	fname := fmt.Sprintf("%s/%s/%s", u.Host, u.Bucket, u.Name)
 	return (&url.URL{
 		Scheme:   SchemeHelm,
@@ -171,18 +195,30 @@ func (u *Locator) Long(secure bool) (string, error) {
 		return "", ErrLocal
 	}
 
-	scheme := SchemeHTTPS
-	if !secure {
-		scheme = SchemeHTTP
+	scheme := u.Scheme
+	host := u.Host
+	switch scheme {
+	case SchemeGS, SchemeS3:
+		host = ""
+	case SchemeHTTP, SchemeHTTPS, SchemeHelm:
+		switch host {
+		case SchemeGS, SchemeS3:
+			scheme = host
+			host = ""
+		default:
+			scheme = SchemeHTTPS
+			if !secure {
+				scheme = SchemeHTTP
+			}
+		}
 	}
-	fname := fmt.Sprintf("%s/%s-%s.tgz", u.Bucket, u.Name, u.Version)
 
+	fname := fmt.Sprintf("%s/%s-%s.tgz", u.Bucket, u.Name, u.Version)
 	return (&url.URL{
 		Scheme: scheme,
-		Host:   u.Host,
+		Host:   host,
 		Path:   fname,
 	}).String(), nil
-
 }
 
 // parseTarName parses a long-form tarfile name.

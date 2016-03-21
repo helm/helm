@@ -17,83 +17,116 @@ limitations under the License.
 package repo
 
 import (
-	"github.com/kubernetes/helm/pkg/chart"
-	"github.com/kubernetes/helm/pkg/common"
-
 	"fmt"
 	"net/url"
-	"regexp"
 )
 
-// ChartRepo abstracts a place that holds charts, which can be
-// used in a Deployment Manager configuration. There can be multiple
-// ChartRepo implementations.
-type ChartRepo interface {
-	// GetRepoName returns the name of this ChartRepo.
-	GetRepoName() string
-	// GetRepoType returns the type of this repo.
-	GetRepoType() common.RepoType
-	// GetRepoURL returns the URL to the root of this ChartRepo.
-	GetRepoURL() string
-	// GetRepoFormat returns the format of this ChartRepo.
-	GetRepoFormat() common.RepoFormat
-
-	// ListCharts lists charts in this repository whose string values
-	// conform to the supplied regular expression or all charts if regex is nil
-	ListCharts(regex *regexp.Regexp) ([]string, error)
-	// GetChart retrieves, unpacks and returns a chart by name.
-	GetChart(name string) (*chart.Chart, error)
+// repo describes a repository
+type repo struct {
+	Name           string     `json:"name"`           // Friendly name for this repository
+	URL            string     `json:"url"`            // URL to the root of this repository
+	CredentialName string     `json:"credentialname"` // Credential name used to access this repository
+	Format         RepoFormat `json:"format"`         // Format of this repository
+	Type           RepoType   `json:"type"`           // Technology implementing this repository
 }
 
-// ObjectStorageRepo abstracts a repository that resides in an Object Storage, for
-// example Google Cloud Storage or AWS S3, etc.
-type ObjectStorageRepo interface {
-	ChartRepo // An ObjectStorageRepo is a ChartRepo
-	GetBucket() string
+func NewRepo(name, URL, credentialName, repoFormat, repoType string) (Repo, error) {
+	return newRepo(name, URL, credentialName, RepoFormat(repoFormat), RepoType(repoType))
 }
 
-type chartRepo struct {
-	Name   string            `json:"name,omitempty"`   // The name of this ChartRepo
-	URL    string            `json:"url,omitempty"`    // The URL to the root of this ChartRepo
-	Format common.RepoFormat `json:"format,omitempty"` // The format of this ChartRepo
-	Type   common.RepoType   `json:"type,omitempty"`   // The type of this ChartRepo
-}
+func newRepo(name, URL, credentialName string, repoFormat RepoFormat, repoType RepoType) (*repo, error) {
+	if name == "" {
+		return nil, fmt.Errorf("name must not be empty")
+	}
 
-// ChartNameMatcher matches the chart name format
-var ChartNameMatcher = regexp.MustCompile("(.*)-(.*).tgz")
-
-func newRepo(name, URL, format, t string) (*chartRepo, error) {
 	_, err := url.Parse(URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL (%s): %s", URL, err)
 	}
 
-	result := &chartRepo{
-		Name:   name,
-		URL:    URL,
-		Format: common.RepoFormat(format),
-		Type:   common.RepoType(t),
+	if credentialName == "" {
+		credentialName = "default"
 	}
 
-	return result, nil
+	if err := validateRepoFormat(repoFormat); err != nil {
+		return nil, err
+	}
+
+	r := &repo{
+		Name:           name,
+		Type:           repoType,
+		URL:            URL,
+		Format:         repoFormat,
+		CredentialName: credentialName,
+	}
+
+	return r, nil
 }
 
-// GetRepoName returns the name of this ChartRepo.
-func (cr *chartRepo) GetRepoName() string {
-	return cr.Name
+// Currently, only flat repositories are supported.
+func validateRepoFormat(repoFormat RepoFormat) error {
+	switch repoFormat {
+	case FlatRepoFormat:
+		return nil
+	}
+
+	return fmt.Errorf("unknown repository format: %s", repoFormat)
 }
 
-// GetRepoType returns the type of this repo.
-func (cr *chartRepo) GetRepoType() common.RepoType {
-	return cr.Type
+// GetName returns the friendly name of this repository.
+func (r *repo) GetName() string {
+	return r.Name
 }
 
-// GetRepoURL returns the URL to the root of this ChartRepo.
-func (cr *chartRepo) GetRepoURL() string {
-	return cr.URL
+// GetType returns the technology implementing this repository.
+func (r *repo) GetType() RepoType {
+	return r.Type
 }
 
-// GetRepoFormat returns the format of this ChartRepo.
-func (cr *chartRepo) GetRepoFormat() common.RepoFormat {
-	return cr.Format
+// GetURL returns the URL to the root of this repository.
+func (r *repo) GetURL() string {
+	return r.URL
+}
+
+// GetFormat returns the format of this repository.
+func (r *repo) GetFormat() RepoFormat {
+	return r.Format
+}
+
+// GetCredentialName returns the credential name used to access this repository.
+func (r *repo) GetCredentialName() string {
+	return r.CredentialName
+}
+
+func validateRepo(tr Repo, wantName, wantURL, wantCredentialName string, wantFormat RepoFormat, wantType RepoType) error {
+	haveName := tr.GetName()
+	if haveName != wantName {
+		return fmt.Errorf("unexpected repo name; want: %s, have %s.", wantName, haveName)
+	}
+
+	haveURL := tr.GetURL()
+	if haveURL != wantURL {
+		return fmt.Errorf("unexpected repo url; want: %s, have %s.", wantURL, haveURL)
+	}
+
+	haveCredentialName := tr.GetCredentialName()
+	if wantCredentialName == "" {
+		wantCredentialName = "default"
+	}
+
+	if haveCredentialName != wantCredentialName {
+		return fmt.Errorf("unexpected repo credential name; want: %s, have %s.", wantCredentialName, haveCredentialName)
+	}
+
+	haveFormat := tr.GetFormat()
+	if haveFormat != wantFormat {
+		return fmt.Errorf("unexpected repo format; want: %s, have %s.", wantFormat, haveFormat)
+	}
+
+	haveType := tr.GetType()
+	if haveType != wantType {
+		return fmt.Errorf("unexpected repo type; want: %s, have %s.", wantType, haveType)
+	}
+
+	return nil
 }
