@@ -18,7 +18,6 @@ package repo
 
 import (
 	"github.com/kubernetes/helm/pkg/chart"
-	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/util"
 
 	storage "google.golang.org/api/storage/v1"
@@ -27,34 +26,64 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 )
 
-// GCSRepo implements the ObjectStorageRepo interface
-// for Google Cloud Storage.
-//
-// A GCSRepo root must be a directory that contains all the available charts.
-type GCSRepo struct {
-	chartRepo      // A GCSRepo is a chartRepo
-	bucket         string
-	credentialName string
-	httpClient     *http.Client
-	service        *storage.Service
+// GCSRepoURLMatcher matches the GCS repository URL format (gs://<bucket>).
+var GCSRepoURLMatcher = regexp.MustCompile("gs://(.*)")
+
+// GCSChartURLMatcher matches the GCS chart URL format (gs://<bucket>/<name>-<version>.tgz).
+var GCSChartURLMatcher = regexp.MustCompile("gs://(.*)/(.*)-(.*).tgz")
+
+const (
+	// GCSRepoType identifies the GCS repository type.
+	GCSRepoType = RepoType("gcs")
+
+	// GCSRepoFormat identifies the GCS repository format.
+	// In a GCS repository all charts appear at the top level.
+	GCSRepoFormat = FlatRepoFormat
+
+	// GCSPublicRepoName is the name of the public GCS repository.
+	GCSPublicRepoName = "kubernetes-charts"
+
+	// GCSPublicRepoName is the URL for the public GCS repository.
+	GCSPublicRepoURL = "gs://" + GCSPublicRepoName
+
+	// GCSPublicRepoBucket is the name of the public GCS repository bucket.
+	GCSPublicRepoBucket = GCSPublicRepoName
+)
+
+// gcsRepo implements the ObjectStorageRepo interface for Google Cloud Storage.
+type gcsRepo struct {
+	repo
+	bucket     string
+	httpClient *http.Client
+	service    *storage.Service
 }
 
-// URLFormatMatcher matches the GCS URL format (gs:).
-var URLFormatMatcher = regexp.MustCompile("gs://(.*)")
+// NewPublicGCSRepo creates a new an ObjectStorageRepo for the public GCS repository.
+func NewPublicGCSRepo(httpClient *http.Client) (ObjectStorageRepo, error) {
+	return NewGCSRepo(GCSPublicRepoName, GCSPublicRepoURL, "", nil)
+}
 
-var GCSRepoFormat = common.RepoFormat(fmt.Sprintf("%s;%s", common.UnversionedRepo, common.OneLevelRepo))
+// NewGCSRepo creates a new ObjectStorageRepo for a given GCS repository.
+func NewGCSRepo(name, URL, credentialName string, httpClient *http.Client) (ObjectStorageRepo, error) {
+	r, err := newRepo(name, URL, credentialName, GCSRepoFormat, GCSRepoType)
+	if err != nil {
+		return nil, err
+	}
 
-// NewGCSRepo creates a GCS repository.
-func NewGCSRepo(name, URL string, httpClient *http.Client) (*GCSRepo, error) {
-	m := URLFormatMatcher.FindStringSubmatch(URL)
+	return newGCSRepo(r, httpClient)
+}
+
+func newGCSRepo(r *repo, httpClient *http.Client) (*gcsRepo, error) {
+	URL := r.GetURL()
+	m := GCSRepoURLMatcher.FindStringSubmatch(URL)
 	if len(m) != 2 {
 		return nil, fmt.Errorf("URL must be of the form gs://<bucket>, was %s", URL)
 	}
 
-	cr, err := newRepo(name, URL, string(GCSRepoFormat), string(common.GCSRepoType))
-	if err != nil {
+	if err := validateRepoType(r.GetType()); err != nil {
 		return nil, err
 	}
 
@@ -62,30 +91,33 @@ func NewGCSRepo(name, URL string, httpClient *http.Client) (*GCSRepo, error) {
 		httpClient = http.DefaultClient
 	}
 
-	gs, err := storage.New(httpClient)
+	gcs, err := storage.New(httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create storage service for %s: %s", URL, err)
 	}
 
-	result := &GCSRepo{
-		chartRepo:  *cr,
+	gcsr := &gcsRepo{
+		repo:       *r,
 		httpClient: httpClient,
-		service:    gs,
+		service:    gcs,
 		bucket:     m[1],
 	}
 
-	return result, nil
+	return gcsr, nil
 }
 
-// GetBucket returns the repository bucket.
-func (g *GCSRepo) GetBucket() string {
-	return g.bucket
+func validateRepoType(repoType RepoType) error {
+	switch repoType {
+	case GCSRepoType:
+		return nil
+	}
+
+	return fmt.Errorf("unknown repository type: %s", repoType)
 }
 
 // ListCharts lists charts in this chart repository whose string values conform to the
 // supplied regular expression, or all charts, if the regular expression is nil.
-func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
-	// List all files in the bucket/prefix that contain the
+func (g *gcsRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 	charts := []string{}
 
 	// List all objects in a bucket using pagination
@@ -96,12 +128,14 @@ func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 		if pageToken != "" {
 			call = call.PageToken(pageToken)
 		}
+
 		res, err := call.Do()
 		if err != nil {
 			return nil, err
 		}
+
 		for _, object := range res.Items {
-			// Charts should be named bucket/chart-X.Y.Z.tgz, so tease apart the version here
+			// Charts should be named bucket/chart-X.Y.Z.tgz, so tease apart the name
 			m := ChartNameMatcher.FindStringSubmatch(object.Name)
 			if len(m) != 3 {
 				continue
@@ -121,8 +155,8 @@ func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 }
 
 // GetChart retrieves, unpacks and returns a chart by name.
-func (g *GCSRepo) GetChart(name string) (*chart.Chart, error) {
-	// Charts should be named bucket/chart-X.Y.Z.tgz, so tease apart the version here
+func (g *gcsRepo) GetChart(name string) (*chart.Chart, error) {
+	// Charts should be named bucket/chart-X.Y.Z.tgz, so check that the name matches
 	if !ChartNameMatcher.MatchString(name) {
 		return nil, fmt.Errorf("name must be of the form <name>-<version>.tgz, was %s", name)
 	}
@@ -130,33 +164,31 @@ func (g *GCSRepo) GetChart(name string) (*chart.Chart, error) {
 	call := g.service.Objects.Get(g.bucket, name)
 	object, err := call.Do()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot get storage object named %s/%s: %s", g.bucket, name, err)
 	}
 
 	u, err := url.Parse(object.MediaLink)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot parse URL %s for chart %s/%s: %s",
+		return nil, fmt.Errorf("cannot parse URL %s for chart %s/%s: %s",
 			object.MediaLink, object.Bucket, object.Name, err)
 	}
 
 	getter := util.NewHTTPClient(3, g.httpClient, util.NewSleeper())
 	body, code, err := getter.Get(u.String())
 	if err != nil {
-		return nil, fmt.Errorf("Cannot fetch URL %s for chart %s/%s: %d %s",
+		return nil, fmt.Errorf("cannot fetch URL %s for chart %s/%s: %d %s",
 			object.MediaLink, object.Bucket, object.Name, code, err)
 	}
 
-	return chart.Load(body)
+	return chart.LoadDataFromReader(strings.NewReader(body))
+}
+
+// GetBucket returns the repository bucket.
+func (g *gcsRepo) GetBucket() string {
+	return g.bucket
 }
 
 // Do performs an HTTP operation on the receiver's httpClient.
-func (g *GCSRepo) Do(req *http.Request) (resp *http.Response, err error) {
+func (g *gcsRepo) Do(req *http.Request) (resp *http.Response, err error) {
 	return g.httpClient.Do(req)
-}
-
-// TODO: Remove GetShortURL when no longer needed.
-
-// GetShortURL returns the URL without the scheme.
-func (g GCSRepo) GetShortURL() string {
-	return util.TrimURLScheme(g.URL)
 }
