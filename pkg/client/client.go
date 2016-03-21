@@ -127,6 +127,9 @@ func (c *Client) NewRequest(method, endpoint string, payload interface{}) *Reque
 	req.Header.Set("User-Agent", c.agent())
 	req.Header.Set("Accept", "application/json")
 
+	// TODO: set Content-Type based on body
+	req.Header.Add("Content-Type", "application/json")
+
 	return &Request{req, err}
 }
 
@@ -158,7 +161,6 @@ func (c *Client) Result(resp *Response, v interface{}) (*Response, error) {
 	case !resp.Success():
 		return resp, resp.HTTPError()
 	}
-
 	return resp, decodeResponse(resp, v)
 }
 
