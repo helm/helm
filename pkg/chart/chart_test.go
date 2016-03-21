@@ -198,7 +198,7 @@ func TestLoadTemplates(t *testing.T) {
 	}
 }
 
-func findMember(root, path string, members []*ChartMember) error {
+func findMember(root, path string, members []*Member) error {
 	for _, member := range members {
 		if member.Path == path {
 			filename := filepath.Join(root, path)
