@@ -267,7 +267,7 @@ func Load(archive string) (*Chart, error) {
 	return LoadDataFromReader(raw)
 }
 
-// LoadDataFromReader loads a chart a reader
+// LoadDataFromReader loads a chart from a reader
 func LoadDataFromReader(r io.Reader) (*Chart, error) {
 	unzipped, err := gzip.NewReader(r)
 	if err != nil {
