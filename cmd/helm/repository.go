@@ -28,8 +28,8 @@ func init() {
 	addCommands(repoCommands())
 }
 
-var dmURL string = "http://localhost:8080"
-var chartRepoPath string = "chart_repositories"
+var dmURL = "http://localhost:8080"
+var chartRepoPath = "chart_repositories"
 
 func repoCommands() cli.Command {
 	return cli.Command{
@@ -93,7 +93,7 @@ func addRepo(c *cli.Context) error {
 	}
 
 	client := client.NewClient(dmURL)
-	var dest string = ""
+	dest := ""
 	_, err := client.Post(chartRepoPath, nil, &dest)
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func addRepo(c *cli.Context) error {
 
 func listRepos(c *cli.Context) error {
 	client := client.NewClient(dmURL)
-	var dest string = ""
+	dest := ""
 	_, err := client.Get(chartRepoPath, &dest)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func removeRepo(c *cli.Context) error {
 		return errors.New("'helm repo remove' requires a repository as an argument")
 	}
 	client := client.NewClient(dmURL)
-	var dest string = ""
+	dest := ""
 	_, err := client.Delete(chartRepoPath, &dest)
 	if err != nil {
 		return err
