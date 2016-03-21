@@ -60,7 +60,7 @@ var commands = []string{
 	"deploy \t\t\t Deploys the named template or the supplied configuration(s)",
 	"list \t\t\t Lists the deployments in the cluster",
 	"get \t\t\t Retrieves the supplied deployment",
-	"manifest \t\t\t Lists manifests for deployment or retrieves the supplied manifest in the form (deployment[/manifest])",
+	"manifest \t\t Lists manifests for deployment or retrieves the supplied manifest in the form (deployment[/manifest])",
 	"delete \t\t\t Deletes the supplied deployment",
 	"update \t\t\t Updates a deployment using the supplied configuration(s)",
 	"deployed-types \t\t Lists the types deployed in the cluster",
