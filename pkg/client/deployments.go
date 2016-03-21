@@ -17,7 +17,6 @@ limitations under the License.
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -32,11 +31,8 @@ import (
 // ListDeployments lists the deployments in DM.
 func (c *Client) ListDeployments() ([]string, error) {
 	var l []string
-	if err := c.CallService("deployments", "GET", "list deployments", &l, nil); err != nil {
-		return nil, err
-	}
-
-	return l, nil
+	_, err := c.Get("deployments", &l)
+	return l, err
 }
 
 // PostChart sends a chart to DM for deploying.
@@ -94,19 +90,15 @@ func (c *Client) PostChart(filename, deployname string) (string, error) {
 // GetDeployment retrieves the supplied deployment
 func (c *Client) GetDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
-	if err := c.CallService(fancypath.Join("deployments", name), "GET", "get deployment", &deployment, nil); err != nil {
-		return nil, err
-	}
-	return deployment, nil
+	_, err := c.Get(fancypath.Join("deployments", name), &deployment)
+	return deployment, err
 }
 
 // DeleteDeployment deletes the supplied deployment
 func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
-	if err := c.CallService(filepath.Join("deployments", name), "DELETE", "delete deployment", &deployment, nil); err != nil {
-		return nil, err
-	}
-	return deployment, nil
+	_, err := c.Delete(filepath.Join("deployments", name), &deployment)
+	return deployment, err
 }
 
 // PostDeployment posts a deployment object to the manager service.
@@ -127,7 +119,6 @@ func (c *Client) PostDeployment(name string, cfg *common.Configuration) error {
 	}
 
 	var out struct{}
-
-	b := bytes.NewBuffer(data)
-	return c.CallService("/deployments", "POST", "post deployment", &out, b)
+	_, err = c.Post("/deployments", data, &out)
+	return err
 }

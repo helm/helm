@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,11 +30,12 @@ import (
 	"github.com/kubernetes/helm/pkg/version"
 )
 
-// DefaultHTTPTimeout is the default HTTP timeout.
-var DefaultHTTPTimeout = time.Second * 10
-
-// DefaultHTTPProtocol is the default HTTP Protocol (http, https).
-var DefaultHTTPProtocol = "http"
+const (
+	// DefaultHTTPTimeout is the default HTTP timeout.
+	DefaultHTTPTimeout = time.Second * 10
+	// DefaultHTTPProtocol is the default HTTP Protocol (http, https).
+	DefaultHTTPProtocol = "http"
+)
 
 // Client is a DM client.
 type Client struct {
@@ -43,7 +45,6 @@ type Client struct {
 	Transport http.RoundTripper
 	// Debug enables http logging
 	Debug bool
-
 	// Base URL for remote service
 	baseURL *url.URL
 }
@@ -98,55 +99,83 @@ func (c *Client) agent() string {
 	return fmt.Sprintf("helm/%s", version.Version)
 }
 
-// CallService is a low-level function for making an API call.
-//
-// This calls the service and then unmarshals the returned data into dest.
-func (c *Client) CallService(path, method, action string, dest interface{}, reader io.Reader) error {
-	u, err := c.url(path)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.callHTTP(u, method, action, reader)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal([]byte(resp), dest); err != nil {
-		return fmt.Errorf("Failed to parse JSON response from service: %s", resp)
-	}
-	return nil
+// Get calls GET on an endpoint and decodes the response
+func (c *Client) Get(endpoint string, v interface{}) (*Response, error) {
+	return c.Exec(c.NewRequest("GET", endpoint, nil), &v)
 }
 
-// callHTTP is  a low-level primitive for executing HTTP operations.
-func (c *Client) callHTTP(path, method, action string, reader io.Reader) (string, error) {
-	request, err := http.NewRequest(method, path, reader)
+// Post calls POST on an endpoint and decodes the response
+func (c *Client) Post(endpoint string, payload, v interface{}) (*Response, error) {
+	return c.Exec(c.NewRequest("POST", endpoint, payload), &v)
+}
 
-	// TODO: dynamically set version
-	request.Header.Set("User-Agent", c.agent())
-	request.Header.Add("Content-Type", "application/json")
+// Delete calls DELETE on an endpoint and decodes the response
+func (c *Client) Delete(endpoint string, v interface{}) (*Response, error) {
+	return c.Exec(c.NewRequest("DELETE", endpoint, nil), &v)
+}
+
+// NewRequest creates a new client request
+func (c *Client) NewRequest(method, endpoint string, payload interface{}) *Request {
+	u, err := c.url(endpoint)
+	if err != nil {
+		return &Request{error: err}
+	}
+
+	body := prepareBody(payload)
+	req, err := http.NewRequest(method, u, body)
+
+	req.Header.Set("User-Agent", c.agent())
+	req.Header.Set("Accept", "application/json")
+
+	// TODO: set Content-Type based on body
+	req.Header.Add("Content-Type", "application/json")
+
+	return &Request{req, err}
+}
+
+func prepareBody(payload interface{}) io.Reader {
+	var body io.Reader
+	switch t := payload.(type) {
+	default:
+		//FIXME: panic is only for development
+		panic(fmt.Sprintf("unexpected type %T\n", t))
+	case io.Reader:
+		body = t
+	case []byte:
+		body = bytes.NewBuffer(t)
+	case nil:
+	}
+	return body
+}
+
+// Exec sends a request and decodes the response
+func (c *Client) Exec(req *Request, v interface{}) (*Response, error) {
+	return c.Result(c.Do(req), &v)
+}
+
+// Result checks status code and decodes a response body
+func (c *Client) Result(resp *Response, v interface{}) (*Response, error) {
+	switch {
+	case resp.error != nil:
+		return resp, resp
+	case !resp.Success():
+		return resp, resp.HTTPError()
+	}
+	return resp, decodeResponse(resp, v)
+}
+
+// Do send a request and returns a response
+func (c *Client) Do(req *Request) *Response {
+	if req.error != nil {
+		return &Response{error: req}
+	}
 
 	client := &http.Client{
 		Timeout:   c.HTTPTimeout,
 		Transport: c.transport(),
 	}
-
-	response, err := client.Do(request)
-	if err != nil {
-		return "", err
-	}
-
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-
-	s := response.StatusCode
-	if s < http.StatusOK || s >= http.StatusMultipleChoices {
-		return "", &HTTPError{StatusCode: s, Message: string(body), URL: request.URL}
-	}
-
-	return string(body), nil
+	resp, err := client.Do(req.Request)
+	return &Response{resp, err}
 }
 
 // DefaultServerURL converts a host, host:port, or URL string to the default base server API path
@@ -173,6 +202,37 @@ func DefaultServerURL(host string) (*url.URL, error) {
 	return hostURL, nil
 }
 
+// Request wraps http.Request to include error
+type Request struct {
+	*http.Request
+	error
+}
+
+// Response wraps http.Response to include error
+type Response struct {
+	*http.Response
+	error
+}
+
+// Success returns true if the status code is 2xx
+func (r *Response) Success() bool {
+	return r.StatusCode >= 200 && r.StatusCode < 300
+}
+
+// HTTPError creates a new HTTPError from response
+func (r *Response) HTTPError() error {
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	return &HTTPError{
+		StatusCode: r.StatusCode,
+		Message:    string(body),
+		URL:        r.Request.URL,
+	}
+}
+
 // HTTPError is an error caused by an unexpected HTTP status code.
 //
 // The StatusCode will not necessarily be a 4xx or 5xx. Any unexpected code
@@ -191,4 +251,15 @@ func (e *HTTPError) Error() string {
 // String implmenets the io.Stringer interface.
 func (e *HTTPError) String() string {
 	return e.Error()
+}
+
+func decodeResponse(resp *Response, v interface{}) error {
+	defer resp.Body.Close()
+	if resp.Body == nil {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
+		return fmt.Errorf("Failed to parse JSON response from service")
+	}
+	return nil
 }
