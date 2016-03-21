@@ -31,11 +31,11 @@ func init() {
 	addCommands(cmds()...)
 }
 
-// Debug indicates whether the process is in debug mode.
+// debug indicates whether the process is in debug mode.
 //
 // This is set at app start-up time, based on the presence of the --debug
 // flag.
-var Debug bool
+var debug bool
 
 func main() {
 	app := cli.NewApp()
@@ -63,7 +63,7 @@ func main() {
 		},
 	}
 	app.Before = func(c *cli.Context) error {
-		Debug = c.GlobalBool("debug")
+		debug = c.GlobalBool("debug")
 		return nil
 	}
 	app.Run(os.Args)
@@ -92,5 +92,5 @@ func run(c *cli.Context, f func(c *cli.Context) error) {
 func NewClient(c *cli.Context) *client.Client {
 	host := c.GlobalString("host")
 	timeout := c.GlobalInt("timeout")
-	return client.NewClient(host).SetDebug(Debug).SetTimeout(timeout)
+	return client.NewClient(host).SetDebug(debug).SetTimeout(timeout)
 }

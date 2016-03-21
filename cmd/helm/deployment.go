@@ -25,7 +25,6 @@ import (
 )
 
 func init() {
-	//addCommands(listCmd())
 	addCommands(deploymentCommands())
 }
 
@@ -59,14 +58,6 @@ func deploymentCommands() cli.Command {
 				Action:    func(c *cli.Context) { run(c, list) },
 			},
 		},
-	}
-}
-
-func listCmd() cli.Command {
-	return cli.Command{
-		Name:   "list",
-		Usage:  "Lists the deployments in the cluster",
-		Action: func(c *cli.Context) { run(c, list) },
 	}
 }
 
