@@ -18,10 +18,12 @@ package repo
 
 import (
 	"fmt"
+	"sync"
 )
 
 // InmemCredentialProvider is a memory based credential provider.
 type InmemCredentialProvider struct {
+	sync.RWMutex
 	credentials map[string]*RepoCredential
 }
 
@@ -32,14 +34,21 @@ func NewInmemCredentialProvider() CredentialProvider {
 
 // GetCredential returns a credential by name.
 func (fcp *InmemCredentialProvider) GetCredential(name string) (*RepoCredential, error) {
+	fcp.RLock()
+	defer fcp.RUnlock()
+
 	if val, ok := fcp.credentials[name]; ok {
 		return val, nil
 	}
+
 	return nil, fmt.Errorf("no such credential: %s", name)
 }
 
 // SetCredential sets a credential by name.
 func (fcp *InmemCredentialProvider) SetCredential(name string, credential *RepoCredential) error {
+	fcp.Lock()
+	defer fcp.Unlock()
+
 	fcp.credentials[name] = &RepoCredential{APIToken: credential.APIToken, BasicAuth: credential.BasicAuth, ServiceAccount: credential.ServiceAccount}
 	return nil
 }
