@@ -21,6 +21,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/client"
+	"github.com/kubernetes/helm/pkg/format"
 	"github.com/kubernetes/helm/pkg/version"
 )
 
@@ -29,6 +30,12 @@ var commands []cli.Command
 func init() {
 	addCommands(cmds()...)
 }
+
+// debug indicates whether the process is in debug mode.
+//
+// This is set at app start-up time, based on the presence of the --debug
+// flag.
+var debug bool
 
 func main() {
 	app := cli.NewApp()
@@ -55,6 +62,10 @@ func main() {
 			Usage: "Enable verbose debugging output",
 		},
 	}
+	app.Before = func(c *cli.Context) error {
+		debug = c.GlobalBool("debug")
+		return nil
+	}
 	app.Run(os.Args)
 }
 
@@ -72,7 +83,7 @@ func addCommands(cmds ...cli.Command) {
 
 func run(c *cli.Context, f func(c *cli.Context) error) {
 	if err := f(c); err != nil {
-		os.Stderr.Write([]byte(err.Error()))
+		format.Err(err)
 		os.Exit(1)
 	}
 }
@@ -80,7 +91,6 @@ func run(c *cli.Context, f func(c *cli.Context) error) {
 // NewClient creates a new client instance preconfigured for CLI usage.
 func NewClient(c *cli.Context) *client.Client {
 	host := c.GlobalString("host")
-	debug := c.GlobalBool("debug")
 	timeout := c.GlobalInt("timeout")
 	return client.NewClient(host).SetDebug(debug).SetTimeout(timeout)
 }
