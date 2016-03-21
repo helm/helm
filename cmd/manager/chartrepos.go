@@ -14,18 +14,38 @@ func registerChartRepoRoutes(c *router.Context, h *router.Handler) {
 
 func listChartRepositoriesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list chart repositories"
-	util.LogHandlerExitWithJSON(handler, w, "a repo here", http.StatusOK)
+	repos, err := c.Manager.ListChartRepos()
+	if err != nil {
+		return err
+	}
+	util.LogHandlerExitWithJSON(handler, w, repos, http.StatusOK)
 	return nil
 }
 
 func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: add chart repository"
-	util.LogHandlerExitWithJSON(handler, w, "add a repo", http.StatusOK)
+	name, err := pos(w, r, 2)
+	if err != nil {
+		return err
+	}
+	err = c.Manager.AddChartRepo(name)
+	if err != nil {
+		return err
+	}
+	util.LogHandlerExitWithJSON(handler, w, "added", http.StatusOK)
 	return nil
 }
 
 func removeChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: remove chart repository"
-	util.LogHandlerExitWithJSON(handler, w, "remove a repo", http.StatusOK)
+	name, err := pos(w, r, 2)
+	if err != nil {
+		return err
+	}
+	err = c.Manager.RemoveChartRepo(name)
+	if err != nil {
+		return err
+	}
+	util.LogHandlerExitWithJSON(handler, w, "removed", http.StatusOK)
 	return nil
 }
