@@ -64,14 +64,20 @@ type Manager interface {
 	// Credentials
 	CreateCredential(name string, c *common.RegistryCredential) error
 	GetCredential(name string) (*common.RegistryCredential, error)
+
+	// Chart Repositories
+	ListChartRepos() ([]string, error)
+	AddChartRepo(name string) error
+	RemoveChartRepo(name string) error
 }
 
 type manager struct {
-	expander           Expander
-	deployer           Deployer
-	repository         repository.Repository
-	registryProvider   registry.RegistryProvider
-	service            common.RegistryService
+	expander         Expander
+	deployer         Deployer
+	repository       repository.Repository
+	registryProvider registry.RegistryProvider
+	service          common.RegistryService
+	//TODO: add chart repo service
 	credentialProvider common.CredentialProvider
 }
 
@@ -81,6 +87,7 @@ func NewManager(expander Expander,
 	repository repository.Repository,
 	registryProvider registry.RegistryProvider,
 	service common.RegistryService,
+	//TODO: add chart repo service
 	credentialProvider common.CredentialProvider) Manager {
 	return &manager{expander, deployer, repository, registryProvider, service, credentialProvider}
 }
@@ -376,6 +383,24 @@ func (m *manager) GetMetadataForType(typeName string) (string, error) {
 // ListRegistries returns the list of registries
 func (m *manager) ListRegistries() ([]*common.Registry, error) {
 	return m.service.List()
+}
+
+// ListChartRepos returns the list of chart repositories
+func (m *manager) ListChartRepos() ([]string, error) {
+	//TODO: implement
+	return nil, nil
+}
+
+// AddChartRepo adds a chart repository to list of available chart repositories
+func (m *manager) AddChartRepo(name string) error {
+	//TODO: implement
+	return nil
+}
+
+// RemoveChartRepo removes a chart repository to list of available chart repositories
+func (m *manager) RemoveChartRepo(name string) error {
+	//TODO: implement
+	return nil
 }
 
 func (m *manager) CreateRegistry(pr *common.Registry) error {
