@@ -20,41 +20,56 @@ import (
 	"testing"
 )
 
-func TestValidURL(t *testing.T) {
-	var wantName = "wantName"
-	var wantType = "wantType"
-	var validURL = "http://valid/url"
-	var wantFormat = "wantFormat"
+var (
+	TestRepoName           = "kubernetes-charts-testing"
+	TestRepoBucket         = TestRepoName
+	TestRepoURL            = "gs://" + TestRepoBucket
+	TestRepoType           = GCSRepoType
+	TestRepoFormat         = GCSRepoFormat
+	TestRepoCredentialName = "default"
+)
 
-	tr, err := newRepo(wantName, validURL, wantFormat, wantType)
+func TestValidRepoURL(t *testing.T) {
+	tr, err := NewRepo(TestRepoName, TestRepoURL, TestRepoCredentialName, string(TestRepoFormat), string(TestRepoType))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	haveName := tr.GetRepoName()
-	if haveName != wantName {
-		t.Fatalf("unexpected repo name; want: %s, have %s.", wantName, haveName)
-	}
-
-	haveType := string(tr.GetRepoType())
-	if haveType != wantType {
-		t.Fatalf("unexpected repo type; want: %s, have %s.", wantType, haveType)
-	}
-
-	haveURL := tr.GetRepoURL()
-	if haveURL != validURL {
-		t.Fatalf("unexpected repo url; want: %s, have %s.", validURL, haveURL)
-	}
-
-	haveFormat := string(tr.GetRepoFormat())
-	if haveFormat != wantFormat {
-		t.Fatalf("unexpected repo format; want: %s, have %s.", wantFormat, haveFormat)
+	if err := validateRepo(tr, TestRepoName, TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestInvalidURL(t *testing.T) {
-	_, err := newRepo("testName", "%:invalid&url:%", "testFormat", "testType")
+func TestInvalidRepoName(t *testing.T) {
+	_, err := newRepo("", TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)
+	if err == nil {
+		t.Fatalf("expected error did not occur for invalid name")
+	}
+}
+
+func TestInvalidRepoURL(t *testing.T) {
+	_, err := newRepo(TestRepoName, "%:invalid&url:%", TestRepoCredentialName, TestRepoFormat, TestRepoType)
 	if err == nil {
 		t.Fatalf("expected error did not occur for invalid URL")
+	}
+}
+
+func TestDefaultCredentialName(t *testing.T) {
+	tr, err := newRepo(TestRepoName, TestRepoURL, "", TestRepoFormat, TestRepoType)
+	if err != nil {
+		t.Fatalf("cannot create repo using default credential name")
+	}
+
+	TestRepoCredentialName := "default"
+	haveCredentialName := tr.GetCredentialName()
+	if haveCredentialName != TestRepoCredentialName {
+		t.Fatalf("unexpected credential name; want: %s, have %s.", TestRepoCredentialName, haveCredentialName)
+	}
+}
+
+func TestInvalidRepoFormat(t *testing.T) {
+	_, err := newRepo(TestRepoName, TestRepoURL, TestRepoCredentialName, "", TestRepoType)
+	if err == nil {
+		t.Fatalf("expected error did not occur for invalid format")
 	}
 }
