@@ -94,7 +94,7 @@ func addRepo(c *cli.Context) error {
 
 	client := client.NewClient(dmURL)
 	var dest string = ""
-	err := client.CallService(chartRepoPath, "POST", "add a chart repository", &dest, nil)
+	_, err := client.Post(chartRepoPath, nil, &dest)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func addRepo(c *cli.Context) error {
 func listRepos(c *cli.Context) error {
 	client := client.NewClient(dmURL)
 	var dest string = ""
-	err := client.CallService(chartRepoPath, "GET", "list chart repos", &dest, nil)
+	_, err := client.Get(chartRepoPath, &dest)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func removeRepo(c *cli.Context) error {
 	}
 	client := client.NewClient(dmURL)
 	var dest string = ""
-	err := client.CallService(chartRepoPath, "DELETE", "delete a chart repository from list", &dest, nil)
+	_, err := client.Delete(chartRepoPath, &dest)
 	if err != nil {
 		return err
 	}
