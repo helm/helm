@@ -30,6 +30,7 @@ type repo struct {
 	Type           RepoType   `json:"type"`           // Technology implementing this repository
 }
 
+// NewRepo takes params and returns a Repo
 func NewRepo(name, URL, credentialName, repoFormat, repoType string) (Repo, error) {
 	return newRepo(name, URL, credentialName, RepoFormat(repoFormat), RepoType(repoType))
 }
