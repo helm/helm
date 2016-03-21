@@ -16,12 +16,12 @@ is the most interesting or fun.
 
 ## Types of Maintainers
 
-The Helm project includes two types of official maintainers: collaborators and core maintainers.
+The Helm project includes two types of official maintainers: maintainers and core maintainers.
 
-### Helm Collaborators
+### Helm Maintainers
 
-Helm collaborators are developers who have commit access to the Helm repository.
-The duties of a collaborator include:
+Helm maintainers are developers who have commit access to the Helm repository.
+The duties of a maintainer include:
 
 * Classify and respond to GitHub issues and review pull requests
 * Perform code reviews
@@ -32,7 +32,7 @@ The duties of a collaborator include:
 
 ### Helm Core Maintainers
 
-In addition to the duties of a Collaborator, Helm Core Maintainers also:
+In addition to the duties of a Maintainer, Helm Core Maintainers also:
 
 * Coordinate planning meetings
 * Triage GitHub issues for milestone planning
