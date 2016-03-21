@@ -19,9 +19,11 @@ package repo
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type inmemRepoService struct {
+	sync.RWMutex
 	repositories map[string]Repo
 }
 
@@ -41,6 +43,9 @@ func NewInmemRepoService() Service {
 
 // List returns the list of all known chart repositories
 func (rs *inmemRepoService) List() ([]Repo, error) {
+	rs.RLock()
+	defer rs.RUnlock()
+
 	ret := []Repo{}
 	for _, r := range rs.repositories {
 		ret = append(ret, r)
@@ -51,12 +56,24 @@ func (rs *inmemRepoService) List() ([]Repo, error) {
 
 // Create adds a known repository to the list
 func (rs *inmemRepoService) Create(repository Repo) error {
-	rs.repositories[repository.GetName()] = repository
+	rs.Lock()
+	defer rs.Unlock()
+
+	name := repository.GetName()
+	_, ok := rs.repositories[name]
+	if ok {
+		return fmt.Errorf("Repository named %s already exists", name)
+	}
+
+	rs.repositories[name] = repository
 	return nil
 }
 
 // Get returns the repository with the given name
 func (rs *inmemRepoService) Get(name string) (Repo, error) {
+	rs.RLock()
+	defer rs.RUnlock()
+
 	r, ok := rs.repositories[name]
 	if !ok {
 		return nil, fmt.Errorf("Failed to find repository named %s", name)
@@ -67,6 +84,9 @@ func (rs *inmemRepoService) Get(name string) (Repo, error) {
 
 // GetByURL returns the repository that backs the given URL
 func (rs *inmemRepoService) GetByURL(URL string) (Repo, error) {
+	rs.RLock()
+	defer rs.RUnlock()
+
 	var found Repo
 	for _, r := range rs.repositories {
 		rURL := r.GetURL()
@@ -86,6 +106,9 @@ func (rs *inmemRepoService) GetByURL(URL string) (Repo, error) {
 
 // Delete removes a known repository from the list
 func (rs *inmemRepoService) Delete(name string) error {
+	rs.Lock()
+	defer rs.Unlock()
+
 	_, ok := rs.repositories[name]
 	if !ok {
 		return fmt.Errorf("Failed to find repository named %s", name)

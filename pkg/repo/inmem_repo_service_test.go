@@ -64,6 +64,18 @@ func TestService(t *testing.T) {
 	}
 }
 
+func TestCreateRepoWithDuplicateName(t *testing.T) {
+	rs := NewInmemRepoService()
+	r, err := newRepo(GCSPublicRepoName, GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType)
+	if err != nil {
+		t.Fatalf("cannot create test repo: %s", err)
+	}
+
+	if err := rs.Create(r); err == nil {
+		t.Fatalf("created repo with duplicate name: %s", GCSPublicRepoName)
+	}
+}
+
 func TestGetRepoWithInvalidName(t *testing.T) {
 	invalidName := "InvalidRepoName"
 	rs := NewInmemRepoService()
