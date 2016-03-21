@@ -174,7 +174,7 @@ type KubernetesSecret struct {
 	Data       map[string]string `json:"data,omitempty"`
 }
 
-// Repository related types
+// TODO: Remove the remainder of this file when the refactoring of pkg/registry is complete.
 
 // BasicAuthCredential holds a username and password.
 type BasicAuthCredential struct {
@@ -196,7 +196,6 @@ type RegistryCredential struct {
 }
 
 // Registry describes a template registry
-// TODO(jackr): Fix ambiguity re: whether or not URL has a scheme.
 type Registry struct {
 	Name           string         `json:"name,omitempty"`           // Friendly name for the registry
 	Type           RegistryType   `json:"type,omitempty"`           // Technology implementing the registry
@@ -232,34 +231,6 @@ const (
 	CollectionRegistry RegistryFormat = "collection"
 	// OneLevelRegistry identifies a one level registry, where all types appear at the top level.
 	OneLevelRegistry RegistryFormat = "onelevel"
-)
-
-// RepoType defines the technology that implements a repository.
-type RepoType string
-
-// Constants that identify the supported repository types.
-const (
-	GCSRepoType RepoType = "gcs"
-)
-
-// RepoFormat is a semi-colon delimited string that describes the format
-// of a repository.
-type RepoFormat string
-
-const (
-	// Versioning.
-
-	// VersionedRepo identifies a versioned repository, where types appear under versions.
-	VersionedRepo RepoFormat = "versioned"
-	// UnversionedRepo identifies an unversioned repository, where types appear under their names.
-	UnversionedRepo RepoFormat = "unversioned"
-
-	// Organization.
-
-	// CollectionRepo identfies a collection repository, where types are grouped into collections.
-	CollectionRepo RepoFormat = "collection"
-	// OneLevelRepo identifies a one level repository, where all types appear at the top level.
-	OneLevelRepo RepoFormat = "onelevel"
 )
 
 // RegistryService maintains a set of registries that defines the scope of all
