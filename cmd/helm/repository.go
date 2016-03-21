@@ -19,7 +19,6 @@ package main
 import (
 	"errors"
 	"github.com/codegangsta/cli"
-	"github.com/kubernetes/helm/pkg/client"
 	"github.com/kubernetes/helm/pkg/format"
 	"os"
 )
@@ -28,8 +27,7 @@ func init() {
 	addCommands(repoCommands())
 }
 
-var dmURL = "http://localhost:8080"
-var chartRepoPath = "chart_repositories"
+const chartRepoPath = "chart_repositories"
 
 func repoCommands() cli.Command {
 	return cli.Command{
@@ -91,11 +89,8 @@ func addRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo add' requires a repository as an argument")
 	}
-
-	client := client.NewClient(dmURL)
 	dest := ""
-	_, err := client.Post(chartRepoPath, nil, &dest)
-	if err != nil {
+	if _, err := NewClient(c).Post(chartRepoPath, nil, &dest); err != nil {
 		return err
 	}
 	format.Msg(dest)
@@ -103,10 +98,8 @@ func addRepo(c *cli.Context) error {
 }
 
 func listRepos(c *cli.Context) error {
-	client := client.NewClient(dmURL)
 	dest := ""
-	_, err := client.Get(chartRepoPath, &dest)
-	if err != nil {
+	if _, err := NewClient(c).Get(chartRepoPath, &dest); err != nil {
 		return err
 	}
 	format.Msg(dest)
@@ -118,10 +111,8 @@ func removeRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo remove' requires a repository as an argument")
 	}
-	client := client.NewClient(dmURL)
 	dest := ""
-	_, err := client.Delete(chartRepoPath, &dest)
-	if err != nil {
+	if _, err := NewClient(c).Delete(chartRepoPath, &dest); err != nil {
 		return err
 	}
 	format.Msg(dest)
