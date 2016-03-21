@@ -15,3 +15,4 @@ nohup.out
 /rootfs/expandybird/bin/expandybird
 /rootfs/expandybird/opt/expansion
 .DS_Store
+/log/
