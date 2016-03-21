@@ -38,19 +38,19 @@ type RepoProvider interface {
 
 type repoProvider struct {
 	sync.RWMutex
-	rs    RepoService
+	rs    Service
 	cp    CredentialProvider
 	gcsrp GCSRepoProvider
 	repos map[string]ChartRepo
 }
 
 // NewRepoProvider creates a new repository provider.
-func NewRepoProvider(rs RepoService, gcsrp GCSRepoProvider, cp CredentialProvider) RepoProvider {
+func NewRepoProvider(rs Service, gcsrp GCSRepoProvider, cp CredentialProvider) RepoProvider {
 	return newRepoProvider(rs, gcsrp, cp)
 }
 
 // newRepoProvider creates a new repository provider.
-func newRepoProvider(rs RepoService, gcsrp GCSRepoProvider, cp CredentialProvider) *repoProvider {
+func newRepoProvider(rs Service, gcsrp GCSRepoProvider, cp CredentialProvider) *repoProvider {
 	if rs == nil {
 		rs = NewInmemRepoService()
 	}
@@ -69,7 +69,7 @@ func newRepoProvider(rs RepoService, gcsrp GCSRepoProvider, cp CredentialProvide
 }
 
 // GetRepoService returns the repository service used by this repository provider.
-func (rp *repoProvider) GetRepoService() RepoService {
+func (rp *repoProvider) GetRepoService() Service {
 	return rp.rs
 }
 

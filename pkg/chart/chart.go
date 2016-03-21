@@ -267,6 +267,7 @@ func Load(archive string) (*Chart, error) {
 	return LoadDataFromReader(raw)
 }
 
+// LoadDataFromReader loads a chart a reader
 func LoadDataFromReader(r io.Reader) (*Chart, error) {
 	unzipped, err := gzip.NewReader(r)
 	if err != nil {
@@ -355,26 +356,26 @@ func loadTar(r *tar.Reader) (*tarChart, error) {
 	return c, nil
 }
 
-// ChartMember is a file in a chart.
-type ChartMember struct {
+// Member is a file in a chart.
+type Member struct {
 	Path    string `json:"path"`    // Path from the root of the chart.
 	Content []byte `json:"content"` // Base64 encoded content.
 }
 
 // LoadTemplates loads the members of TemplatesDir().
-func (c *Chart) LoadTemplates() ([]*ChartMember, error) {
+func (c *Chart) LoadTemplates() ([]*Member, error) {
 	dir := c.TemplatesDir()
 	return c.loadDirectory(dir)
 }
 
 // loadDirectory loads the members of a directory.
-func (c *Chart) loadDirectory(dir string) ([]*ChartMember, error) {
+func (c *Chart) loadDirectory(dir string) ([]*Member, error) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	members := []*ChartMember{}
+	members := []*Member{}
 	for _, file := range files {
 		filename := filepath.Join(dir, file.Name())
 		if !file.IsDir() {
@@ -397,14 +398,14 @@ func (c *Chart) loadDirectory(dir string) ([]*ChartMember, error) {
 	return members, nil
 }
 
-// path is from the root of the chart.
-func (c *Chart) LoadMember(path string) (*ChartMember, error) {
+// LoadMember loads a chart member from a given path where path is the root of the chart.
+func (c *Chart) LoadMember(path string) (*Member, error) {
 	filename := filepath.Join(c.loader.dir(), path)
 	return c.loadMember(filename)
 }
 
 // loadMember loads and base 64 encodes a file.
-func (c *Chart) loadMember(filename string) (*ChartMember, error) {
+func (c *Chart) loadMember(filename string) (*Member, error) {
 	dir := c.Dir()
 	if !strings.HasPrefix(filename, dir) {
 		err := fmt.Errorf("File %s is outside chart directory %s", filename, dir)
@@ -418,7 +419,7 @@ func (c *Chart) loadMember(filename string) (*ChartMember, error) {
 
 	path := strings.TrimPrefix(filename, dir)
 	content := base64.StdEncoding.EncodeToString(b)
-	result := &ChartMember{
+	result := &Member{
 		Path:    path,
 		Content: []byte(content),
 	}
@@ -426,18 +427,20 @@ func (c *Chart) loadMember(filename string) (*ChartMember, error) {
 	return result, nil
 }
 
-type ChartContent struct {
-	Chartfile *Chartfile     `json:"chartfile"`
-	Members   []*ChartMember `json:"members"`
+//chartContent is abstraction for the contents of a chart
+type chartContent struct {
+	Chartfile *Chartfile `json:"chartfile"`
+	Members   []*Member  `json:"members"`
 }
 
-func (c *Chart) LoadContent() (*ChartContent, error) {
+// loadContent loads contents of a chart directory into chartContent
+func (c *Chart) loadContent() (*chartContent, error) {
 	ms, err := c.loadDirectory(c.Dir())
 	if err != nil {
 		return nil, err
 	}
 
-	cc := &ChartContent{
+	cc := &chartContent{
 		Chartfile: c.Chartfile(),
 		Members:   ms,
 	}

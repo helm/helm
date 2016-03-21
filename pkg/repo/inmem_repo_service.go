@@ -26,7 +26,7 @@ type inmemRepoService struct {
 }
 
 // NewInmemRepoService returns a new memory based repository service.
-func NewInmemRepoService() RepoService {
+func NewInmemRepoService() Service {
 	rs := &inmemRepoService{
 		repositories: make(map[string]Repo),
 	}

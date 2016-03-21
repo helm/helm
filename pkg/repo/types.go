@@ -62,9 +62,9 @@ type RepoType string
 type RepoFormat string
 
 const (
-	// PathRepo identfies a repository where charts are organized hierarchically.
+	// PathRepoFormat identfies a repository where charts are organized hierarchically.
 	PathRepoFormat = RepoFormat("path")
-	// FlatRepo identifies a repository where all charts appear at the top level.
+	// FlatRepoFormat identifies a repository where all charts appear at the top level.
 	FlatRepoFormat = RepoFormat("flat")
 )
 
@@ -105,9 +105,9 @@ type ObjectStorageRepo interface {
 	GetBucket() string
 }
 
-// RepoService maintains a list of chart repositories that defines the scope of all
+// Service maintains a list of chart repositories that defines the scope of all
 // repository based operations, such as search and chart reference resolution.
-type RepoService interface {
+type Service interface {
 	// List returns the list of all known chart repositories
 	List() ([]Repo, error)
 	// Create adds a known repository to the list

@@ -30,6 +30,7 @@ type repo struct {
 	Type           RepoType   `json:"type"`           // Technology implementing this repository
 }
 
+// NewRepo takes params and returns a Repo
 func NewRepo(name, URL, credentialName, repoFormat, repoType string) (Repo, error) {
 	return newRepo(name, URL, credentialName, RepoFormat(repoFormat), RepoType(repoType))
 }
@@ -101,12 +102,12 @@ func (r *repo) GetCredentialName() string {
 func validateRepo(tr Repo, wantName, wantURL, wantCredentialName string, wantFormat RepoFormat, wantType RepoType) error {
 	haveName := tr.GetName()
 	if haveName != wantName {
-		return fmt.Errorf("unexpected repo name; want: %s, have %s.", wantName, haveName)
+		return fmt.Errorf("unexpected repo name; want: %s, have %s", wantName, haveName)
 	}
 
 	haveURL := tr.GetURL()
 	if haveURL != wantURL {
-		return fmt.Errorf("unexpected repo url; want: %s, have %s.", wantURL, haveURL)
+		return fmt.Errorf("unexpected repo url; want: %s, have %s", wantURL, haveURL)
 	}
 
 	haveCredentialName := tr.GetCredentialName()
@@ -115,17 +116,17 @@ func validateRepo(tr Repo, wantName, wantURL, wantCredentialName string, wantFor
 	}
 
 	if haveCredentialName != wantCredentialName {
-		return fmt.Errorf("unexpected repo credential name; want: %s, have %s.", wantCredentialName, haveCredentialName)
+		return fmt.Errorf("unexpected repo credential name; want: %s, have %s", wantCredentialName, haveCredentialName)
 	}
 
 	haveFormat := tr.GetFormat()
 	if haveFormat != wantFormat {
-		return fmt.Errorf("unexpected repo format; want: %s, have %s.", wantFormat, haveFormat)
+		return fmt.Errorf("unexpected repo format; want: %s, have %s", wantFormat, haveFormat)
 	}
 
 	haveType := tr.GetType()
 	if haveType != wantType {
-		return fmt.Errorf("unexpected repo type; want: %s, have %s.", wantType, haveType)
+		return fmt.Errorf("unexpected repo type; want: %s, have %s", wantType, haveType)
 	}
 
 	return nil
