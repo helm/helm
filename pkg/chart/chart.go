@@ -428,7 +428,7 @@ func (c *Chart) loadMember(filename string) (*ChartMember, error) {
 
 type ChartContent struct {
 	Chartfile *Chartfile     `json:"chartfile"`
-	Members   []*ChartMember `json:"templates"`
+	Members   []*ChartMember `json:"members"`
 }
 
 func (c *Chart) LoadContent() (*ChartContent, error) {
