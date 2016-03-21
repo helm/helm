@@ -57,6 +57,7 @@ func deploymentCommands() cli.Command {
 				Aliases:   []string{"info"},
 				Usage:     "Provide details about this deployment.",
 				ArgsUsage: "",
+				Action:    func(c *cli.Context) { run(c, showDeployment) },
 			},
 			{
 				Name:      "list",
@@ -112,4 +113,17 @@ func deleteDeployment(c *cli.Context) error {
 		format.Info("Deleted %q at %s", name, deployment.DeletedAt)
 	}
 	return nil
+}
+
+func showDeployment(c *cli.Context) error {
+	args := c.Args()
+	if len(args) < 1 {
+		return errors.New("First argument, deployment name, is required. Try 'helm get --help'")
+	}
+	name := args[0]
+	deployment, err := NewClient(c).GetDeployment(name)
+	if err != nil {
+		return err
+	}
+	return format.YAML(deployment)
 }
