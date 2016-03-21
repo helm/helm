@@ -14,29 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package format
 
 import (
-	"github.com/codegangsta/cli"
-	"github.com/kubernetes/helm/pkg/format"
+	"bytes"
+	"os"
+	"testing"
 )
 
-func init() {
-	addCommands(listCmd())
-}
+func TestList(t *testing.T) {
+	var b bytes.Buffer
+	in := []string{"ddd", "ccc", "aaa", "bbb"}
+	expect := "aaa\nbbb\nccc\nddd\n"
+	Stdout = &b
+	defer func() { Stdout = os.Stdout }()
 
-func listCmd() cli.Command {
-	return cli.Command{
-		Name:   "list",
-		Usage:  "Lists the deployments in the cluster",
-		Action: func(c *cli.Context) { run(c, list) },
+	List(in)
+	if b.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, b.String())
 	}
-}
-
-func list(c *cli.Context) error {
-	list, err := NewClient(c).ListDeployments()
-	if err != nil {
-		return err
-	}
-	return format.YAML(list)
 }

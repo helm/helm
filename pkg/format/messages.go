@@ -17,41 +17,77 @@ limitations under the License.
 package format
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"reflect"
+	"sort"
 
 	"github.com/ghodss/yaml"
 )
 
+// Stdout is the output this library will write to.
+var Stdout io.Writer = os.Stdout
+
+// Stderr is the error output this library will write to.
+var Stderr io.Writer = os.Stderr
+
 // This is all just placeholder.
 
 // Err prints an error message to Stderr.
-func Err(msg string, v ...interface{}) {
+func Err(message interface{}, v ...interface{}) {
+	var msg string
+	val := reflect.Indirect(reflect.ValueOf(message))
+	if val.Kind() == reflect.String {
+		msg = message.(string)
+	} else if z, ok := message.(fmt.Stringer); ok {
+		msg = z.String()
+	} else if z, ok := message.(error); ok {
+		msg = z.Error()
+	}
+
 	msg = "[ERROR] " + msg + "\n"
-	fmt.Fprintf(os.Stderr, msg, v...)
+	fmt.Fprintf(Stderr, msg, v...)
 }
 
 // Info prints an informational message to Stdout.
 func Info(msg string, v ...interface{}) {
 	msg = "[INFO] " + msg + "\n"
-	fmt.Fprintf(os.Stdout, msg, v...)
+	fmt.Fprintf(Stdout, msg, v...)
 }
 
 // Msg prints a raw message to Stdout.
 func Msg(msg string, v ...interface{}) {
-	fmt.Fprintf(os.Stdout, msg, v...)
+	fmt.Fprintf(Stdout, msg, v...)
 }
 
 // Success is an achievement marked by pretty output.
 func Success(msg string, v ...interface{}) {
 	msg = "[Success] " + msg + "\n"
-	fmt.Fprintf(os.Stdout, msg, v...)
+	fmt.Fprintf(Stdout, msg, v...)
 }
 
 // Warning emits a warning message.
 func Warning(msg string, v ...interface{}) {
 	msg = "[Warning] " + msg + "\n"
-	fmt.Fprintf(os.Stdout, msg, v...)
+	fmt.Fprintf(Stdout, msg, v...)
+}
+
+// List prints a list of strings to Stdout.
+//
+// This sorts lexicographically.
+func List(list []string) {
+	sort.Strings(list)
+	// Buffer and then flush all at once to avoid concurrency-based interleaving.
+	var b bytes.Buffer
+	for _, v := range list {
+		if v == "" {
+			v = "[empty]"
+		}
+		fmt.Fprintf(&b, "%s\n", v)
+	}
+	Stdout.Write(b.Bytes())
 }
 
 // YAML prints an object in YAML format.

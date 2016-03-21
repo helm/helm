@@ -17,18 +17,24 @@ limitations under the License.
 package main
 
 import (
+	"errors"
+	"regexp"
+
 	"github.com/codegangsta/cli"
+	"github.com/kubernetes/helm/pkg/format"
 )
 
 func init() {
+	//addCommands(listCmd())
 	addCommands(deploymentCommands())
 }
 
 func deploymentCommands() cli.Command {
 	return cli.Command{
 		// Names following form prescribed here: http://is.gd/QUSEOF
-		Name:  "deployment",
-		Usage: "Perform deployment-centered operations.",
+		Name:    "deployment",
+		Aliases: []string{"dep"},
+		Usage:   "Perform deployment-centered operations.",
 		Subcommands: []cli.Command{
 			{
 				Name:      "config",
@@ -50,7 +56,46 @@ func deploymentCommands() cli.Command {
 				Name:      "list",
 				Usage:     "list all deployments, or filter by an optional pattern",
 				ArgsUsage: "PATTERN",
+				Action:    func(c *cli.Context) { run(c, list) },
 			},
 		},
 	}
+}
+
+func listCmd() cli.Command {
+	return cli.Command{
+		Name:   "list",
+		Usage:  "Lists the deployments in the cluster",
+		Action: func(c *cli.Context) { run(c, list) },
+	}
+}
+
+func list(c *cli.Context) error {
+	list, err := NewClient(c).ListDeployments()
+	if err != nil {
+		return err
+	}
+	args := c.Args()
+	if len(args) >= 1 {
+		pattern := args[0]
+		r, err := regexp.Compile(pattern)
+		if err != nil {
+			return err
+		}
+
+		newlist := []string{}
+		for _, i := range list {
+			if r.MatchString(i) {
+				newlist = append(newlist, i)
+			}
+		}
+		list = newlist
+	}
+
+	if len(list) == 0 {
+		return errors.New("no deployments found")
+	}
+
+	format.List(list)
+	return nil
 }
