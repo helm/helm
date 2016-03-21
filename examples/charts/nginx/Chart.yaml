@@ -1,0 +1,13 @@
+name: nginx
+home: https://www.nginx.com
+version: 0.0.1
+description: nginx http service
+maintainers:
+  - Michelle Noorali <michelle@deis.com>
+details:
+  This is a basic nginx http service.
+keywords:
+  - web server
+  - http
+  - https
+  - proxy
