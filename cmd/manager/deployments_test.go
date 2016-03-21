@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kubernetes/helm/pkg/common"
@@ -16,12 +18,28 @@ func TestHealthz(t *testing.T) {
 
 	res, err := http.Get(s.URL)
 	if err != nil {
+		t.Fatalf("err on http get: %v", err)
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+
+	if err != nil {
 		t.Fatalf("Failed to GET healthz: %s", err)
 	} else if res.StatusCode != 200 {
 		t.Fatalf("Unexpected status: %d", res.StatusCode)
 	}
 
-	// TODO: Get the body and check on the content type and the body.
+	expectedBody := "OK"
+	if bytes.Equal(body, []byte(expectedBody)) {
+		t.Fatalf("Expected response body: %s, Actual response body: %s",
+			expectedBody, string(body))
+	}
+
+	expectedContentType := "text/plain"
+	contentType := res.Header["Content-Type"][0]
+	if !strings.Contains(contentType, expectedContentType) {
+		t.Fatalf("Expected Content-Type to include %s", expectedContentType)
+	}
 }
 
 func TestCreateDeployments(t *testing.T) {
