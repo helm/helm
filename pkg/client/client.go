@@ -178,57 +178,6 @@ func (c *Client) Do(req *Request) *Response {
 	return &Response{resp, err}
 }
 
-// CallService is a low-level function for making an API call.
-//
-// This calls the service and then unmarshals the returned data into dest.
-func (c *Client) CallService(path, method string, dest interface{}, reader io.Reader) error {
-	u, err := c.url(path)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.callHTTP(u, method, reader)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal([]byte(resp), dest); err != nil {
-		return fmt.Errorf("Failed to parse JSON response from service: %s", resp)
-	}
-	return nil
-}
-
-// callHTTP is  a low-level primitive for executing HTTP operations.
-func (c *Client) callHTTP(path, method string, reader io.Reader) (string, error) {
-	request, err := http.NewRequest(method, path, reader)
-
-	request.Header.Set("User-Agent", c.agent())
-	request.Header.Set("Accept", "application/json")
-	request.Header.Add("Content-Type", "application/json")
-
-	client := &http.Client{
-		Timeout:   c.HTTPTimeout,
-		Transport: c.transport(),
-	}
-
-	response, err := client.Do(request)
-	if err != nil {
-		return "", err
-	}
-
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-
-	s := response.StatusCode
-	if s < http.StatusOK || s >= http.StatusMultipleChoices {
-		return "", &HTTPError{StatusCode: s, Message: string(body), URL: request.URL}
-	}
-
-	return string(body), nil
-}
-
 // DefaultServerURL converts a host, host:port, or URL string to the default base server API path
 // to use with a Client
 func DefaultServerURL(host string) (*url.URL, error) {
