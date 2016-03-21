@@ -64,8 +64,12 @@ func TestShort(t *testing.T) {
 	tests := map[string]string{
 		"https://example.com/foo/bar-1.2.3.tgz": "helm:example.com/foo/bar#1.2.3",
 		"http://example.com/foo/bar-1.2.3.tgz":  "helm:example.com/foo/bar#1.2.3",
+		"gs://foo/bar-1.2.3.tgz":                "helm:gs/foo/bar#1.2.3",
+		"s3://foo/bar-1.2.3.tgz":                "helm:s3/foo/bar#1.2.3",
 		"helm:example.com/foo/bar#1.2.3":        "helm:example.com/foo/bar#1.2.3",
 		"helm:example.com/foo/bar#>1.2.3":       "helm:example.com/foo/bar#%3E1.2.3",
+		"helm:gs/foo/bar#1.2.3":                 "helm:gs/foo/bar#1.2.3",
+		"helm:s3/foo/bar#>1.2.3":                "helm:s3/foo/bar#%3E1.2.3",
 	}
 
 	for start, expect := range tests {
@@ -74,6 +78,9 @@ func TestShort(t *testing.T) {
 			t.Errorf("Failed to parse: %s", err)
 			continue
 		}
+
+		t.Logf("Parsed reference %s into locator %#v", start, u)
+
 		short, err := u.Short()
 		if err != nil {
 			t.Errorf("Failed to generate short: %s", err)
@@ -103,8 +110,12 @@ func TestLong(t *testing.T) {
 	tests := map[string]string{
 		"https://example.com/foo/bar-1.2.3.tgz": "https://example.com/foo/bar-1.2.3.tgz",
 		"http://example.com/foo/bar-1.2.3.tgz":  "https://example.com/foo/bar-1.2.3.tgz",
+		"gs://foo/bar-1.2.3.tgz":                "gs://foo/bar-1.2.3.tgz",
+		"s3://foo/bar-1.2.3.tgz":                "s3://foo/bar-1.2.3.tgz",
 		"helm:example.com/foo/bar#1.2.3":        "https://example.com/foo/bar-1.2.3.tgz",
 		"helm:example.com/foo/bar#>1.2.3":       "https://example.com/foo/bar-%3E1.2.3.tgz",
+		"helm:gs/foo/bar#1.2.3":                 "gs://foo/bar-1.2.3.tgz",
+		"helm:s3/foo/bar#>1.2.3":                "s3://foo/bar-%3E1.2.3.tgz",
 	}
 
 	for start, expect := range tests {
@@ -114,6 +125,9 @@ func TestLong(t *testing.T) {
 			t.Errorf("Failed to parse: %s", err)
 			continue
 		}
+
+		t.Logf("Parsed reference %s into locator %#v", start, u)
+
 		long, err := u.Long(true)
 		if err != nil {
 			t.Errorf("Failed to generate long: %s", err)
