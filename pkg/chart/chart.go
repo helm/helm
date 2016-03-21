@@ -267,6 +267,7 @@ func Load(archive string) (*Chart, error) {
 	return LoadDataFromReader(raw)
 }
 
+// LoadDataFromReader loads a chart a reader
 func LoadDataFromReader(r io.Reader) (*Chart, error) {
 	unzipped, err := gzip.NewReader(r)
 	if err != nil {
@@ -397,7 +398,7 @@ func (c *Chart) loadDirectory(dir string) ([]*ChartMember, error) {
 	return members, nil
 }
 
-// path is from the root of the chart.
+// LoadMember loads a chart member from a given path where path is the root of the chart.
 func (c *Chart) LoadMember(path string) (*ChartMember, error) {
 	filename := filepath.Join(c.loader.dir(), path)
 	return c.loadMember(filename)

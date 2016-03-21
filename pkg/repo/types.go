@@ -62,9 +62,9 @@ type RepoType string
 type RepoFormat string
 
 const (
-	// PathRepo identfies a repository where charts are organized hierarchically.
+	// PathRepoFormat identfies a repository where charts are organized hierarchically.
 	PathRepoFormat = RepoFormat("path")
-	// FlatRepo identifies a repository where all charts appear at the top level.
+	// FlatRepoFormat identifies a repository where all charts appear at the top level.
 	FlatRepoFormat = RepoFormat("flat")
 )
 
