@@ -46,7 +46,7 @@ const (
 	// GCSPublicRepoName is the name of the public GCS repository.
 	GCSPublicRepoName = "kubernetes-charts"
 
-	// GCSPublicRepoName is the URL for the public GCS repository.
+	// GCSPublicRepoURL is the URL for the public GCS repository.
 	GCSPublicRepoURL = "gs://" + GCSPublicRepoName
 
 	// GCSPublicRepoBucket is the name of the public GCS repository bucket.

@@ -427,11 +427,13 @@ func (c *Chart) loadMember(filename string) (*Member, error) {
 	return result, nil
 }
 
+//ChartContent is abstraction for the contents of a chart
 type ChartContent struct {
 	Chartfile *Chartfile `json:"chartfile"`
 	Members   []*Member  `json:"members"`
 }
 
+// LoadContent loads contents of a chart directory into ChartContent
 func (c *Chart) LoadContent() (*ChartContent, error) {
 	ms, err := c.loadDirectory(c.Dir())
 	if err != nil {
