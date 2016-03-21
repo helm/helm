@@ -41,6 +41,13 @@ func deploymentCommands() cli.Command {
 				ArgsUsage: "DEPLOYMENT",
 			},
 			{
+				Name:      "delete",
+				Aliases:   []string{"del"},
+				Usage:     "Deletes the named deployment(s).",
+				ArgsUsage: "DEPLOYMENT [DEPLOYMENT [...]]",
+				Action:    func(c *cli.Context) { run(c, deleteDeployment) },
+			},
+			{
 				Name:      "manifest",
 				Usage:     "Dump the Kubernetes manifest file for this deployment.",
 				ArgsUsage: "DEPLOYMENT",
@@ -53,15 +60,16 @@ func deploymentCommands() cli.Command {
 			},
 			{
 				Name:      "list",
-				Usage:     "list all deployments, or filter by an optional pattern",
-				ArgsUsage: "PATTERN",
-				Action:    func(c *cli.Context) { run(c, list) },
+				Aliases:   []string{"ls"},
+				Usage:     "list all deployments, or filter by an optional regular expression.",
+				ArgsUsage: "REGEXP",
+				Action:    func(c *cli.Context) { run(c, listDeployments) },
 			},
 		},
 	}
 }
 
-func list(c *cli.Context) error {
+func listDeployments(c *cli.Context) error {
 	list, err := NewClient(c).ListDeployments()
 	if err != nil {
 		return err
@@ -88,5 +96,20 @@ func list(c *cli.Context) error {
 	}
 
 	format.List(list)
+	return nil
+}
+
+func deleteDeployment(c *cli.Context) error {
+	args := c.Args()
+	if len(args) < 1 {
+		return errors.New("First argument, deployment name, is required. Try 'helm get --help'")
+	}
+	for _, name := range args {
+		deployment, err := NewClient(c).DeleteDeployment(name)
+		if err != nil {
+			return err
+		}
+		format.Info("Deleted %q at %s", name, deployment.DeletedAt)
+	}
 	return nil
 }
