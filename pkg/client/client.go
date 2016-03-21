@@ -155,7 +155,7 @@ func (c *Client) Result(resp *Response, v interface{}) (*Response, error) {
 	switch {
 	case resp.error != nil:
 		return resp, resp
-	case resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices:
+	case !resp.Success():
 		return resp, resp.HTTPError()
 	}
 
@@ -261,6 +261,11 @@ type Request struct {
 type Response struct {
 	*http.Response
 	error
+}
+
+// Success returns true if the status code is 2xx
+func (r *Response) Success() bool {
+	return r.StatusCode >= 200 && r.StatusCode < 300
 }
 
 // HTTPError creates a new HTTPError from response
