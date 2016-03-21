@@ -14,3 +14,4 @@ nohup.out
 /rootfs/resourcifier/bin/v1.*
 /rootfs/expandybird/bin/expandybird
 /rootfs/expandybird/opt/expansion
+.DS_Store
