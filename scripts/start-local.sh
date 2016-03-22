@@ -2,6 +2,11 @@
 
 set -eo pipefail
 
+[[ "$TRACE" ]] && set -x
+
+HELM_ROOT="${BASH_SOURCE[0]%/*}/.."
+source "$HELM_ROOT/scripts/common.sh"
+
 KUBE_PROXY=${KUBE_PROXY:-}
 KUBE_PROXY_PORT=${KUBE_PROXY_PORT:-8001}
 MANAGER_PORT=${MANAGER_PORT:-8080}
@@ -10,20 +15,19 @@ RESOURCIFIER=bin/resourcifier
 EXPANDYBIRD=bin/expandybird
 MANAGER=bin/manager
 
-error_exit() {
-  # Display error message and exit
-  echo "error: ${1:-"unknown error"}" 1>&2
-  exit 1
-}
-
 require_binary_exists() {
   if ! command -v "$1" >/dev/null 2>&1; then
     error_exit "Cannot find binary for $1. Build binaries by running 'make build'"
   fi
 }
 
+kill_service() {
+  pkill -f "$1" || true
+}
+
 for b in $RESOURCIFIER $EXPANDYBIRD $MANAGER; do
   require_binary_exists $b
+  kill_service $b
 done
 
 LOGDIR=log
@@ -34,15 +38,12 @@ fi
 KUBECTL=$(which kubectl) || error_exit "Cannot find kubectl"
 
 echo "Starting resourcifier..."
-pkill -f $RESOURCIFIER
 nohup $RESOURCIFIER > $LOGDIR/resourcifier.log 2>&1 --kubectl="${KUBECTL}" --port=8082 &
 
 echo "Starting expandybird..."
-pkill -f $EXPANDYBIRD
 nohup $EXPANDYBIRD > $LOGDIR/expandybird.log 2>&1 --port=8081 --expansion_binary=expansion/expansion.py &
 
 echo "Starting deployment manager..."
-pkill -f $MANAGER
 nohup $MANAGER > $LOGDIR/manager.log 2>&1 --port="${MANAGER_PORT}"  --kubectl="${KUBECTL}" --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
 
 if [[ "$KUBE_PROXY" ]]; then

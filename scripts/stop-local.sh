@@ -2,23 +2,12 @@
 
 echo "Stopping resourcifier..."
 RESOURCIFIER=bin/resourcifier
-if [[ ! -z $RESOURCIFIER ]] ; then
-	pkill -f $RESOURCIFIER
-fi
-echo
+pkill -f $RESOURCIFIER || echo "Resourcifier is not running"
 
 echo "Stopping expandybird..."
 EXPANDYBIRD=bin/expandybird
-if [[ ! -z $EXPANDYBIRD ]] ; then
-	pkill -f $EXPANDYBIRD
-fi
-echo
+pkill -f $EXPANDYBIRD || echo "Expandybird is not running"
 
 echo "Stopping deployment manager..."
 MANAGER=bin/manager
-if [[ ! -z $MANAGER ]] ; then
-	pkill -f $MANAGER
-fi
-echo
-
-echo "Done."
+pkill -f $MANAGER || echo "Manager is not running"
