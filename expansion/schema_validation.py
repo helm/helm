@@ -128,7 +128,7 @@ def Validate(properties, schema_name, template_name, imports):
     if properties is None:
         properties = {}
 
-    schema = yaml.safe_load(raw_schema)
+    schema = yaml.safe_load(raw_schema['content'])
 
     # If the schema is empty, do nothing.
     if not schema:
