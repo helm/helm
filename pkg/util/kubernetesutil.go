@@ -26,7 +26,7 @@ import (
 
 // ParseKubernetesObject parses a Kubernetes API object in YAML format.
 func ParseKubernetesObject(object []byte) (*common.Resource, error) {
-	o := &common.KubernetesObject{}
+	o := &KubernetesObject{}
 	if err := yaml.Unmarshal(object, &o); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal native kubernetes object (%#v)", err)
 	}

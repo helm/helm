@@ -40,3 +40,19 @@ type Kubernetes interface {
 	Delete(resource string) (string, error)
 	Replace(resource string) (string, error)
 }
+
+// KubernetesObject represents a native 'bare' Kubernetes object.
+type KubernetesObject struct {
+	Kind       string                 `json:"kind"`
+	APIVersion string                 `json:"apiVersion"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	Spec       map[string]interface{} `json:"spec"`
+}
+
+// KubernetesSecret represents a Kubernetes secret
+type KubernetesSecret struct {
+	Kind       string            `json:"kind"`
+	APIVersion string            `json:"apiVersion"`
+	Metadata   map[string]string `json:"metadata"`
+	Data       map[string]string `json:"data,omitempty"`
+}

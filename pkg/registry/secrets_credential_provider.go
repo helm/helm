@@ -71,7 +71,7 @@ func NewSecretsCredentialProvider() common.CredentialProvider {
 }
 
 func parseCredential(credential string) (*common.RegistryCredential, error) {
-	var c common.KubernetesSecret
+	var c util.KubernetesSecret
 	if err := json.Unmarshal([]byte(credential), &c); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal credential '%s' (%#v)", credential, err)
 	}
@@ -112,7 +112,7 @@ func (scp *SecretsCredentialProvider) SetCredential(name string, credential *com
 	metadata["name"] = name
 	data := make(map[string]string)
 	data["credential"] = enc
-	obj := &common.KubernetesSecret{
+	obj := &util.KubernetesSecret{
 		Kind:       secretType,
 		APIVersion: "v1",
 		Metadata:   metadata,
