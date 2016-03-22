@@ -65,15 +65,11 @@ func TestGetDeployment(t *testing.T) {
 }
 
 func TestPostDeployment(t *testing.T) {
-	cfg := &common.Configuration{
-		Resources: []*common.Resource{
-			{
-				Name: "foo",
-				Type: "helm:example.com/foo/bar",
-				Properties: map[string]interface{}{
-					"port": ":8080",
-				},
-			},
+	chartInvocation := &common.Resource{
+		Name: "foo",
+		Type: "helm:example.com/foo/bar",
+		Properties: map[string]interface{}{
+			"port": ":8080",
 		},
 	}
 
@@ -85,7 +81,7 @@ func TestPostDeployment(t *testing.T) {
 	}
 	defer fc.teardown()
 
-	if err := fc.setup().PostDeployment("foo", cfg); err != nil {
+	if err := fc.setup().PostDeployment(chartInvocation); err != nil {
 		t.Fatalf("failed to post deployment: %s", err)
 	}
 }

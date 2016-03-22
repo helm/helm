@@ -380,8 +380,8 @@ def main():
         idx += 3
 
     env = {}
-    env['deployment'] = os.environ['DEPLOYMENT_NAME']
-    env['project'] = os.environ['PROJECT']
+    # env['deployment'] = os.environ['DEPLOYMENT_NAME']
+    # env['project'] = os.environ['PROJECT']
 
     validate_schema = 'VALIDATE_SCHEMA' in os.environ
 

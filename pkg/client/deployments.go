@@ -24,7 +24,6 @@ import (
 	fancypath "path"
 	"path/filepath"
 
-	"github.com/ghodss/yaml"
 	"github.com/kubernetes/helm/pkg/common"
 )
 
@@ -102,15 +101,10 @@ func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 }
 
 // PostDeployment posts a deployment object to the manager service.
-func (c *Client) PostDeployment(name string, cfg *common.Configuration) error {
-	d, err := yaml.Marshal(cfg)
-	if err != nil {
-		return err
-	}
+func (c *Client) PostDeployment(res *common.Resource) error {
 	// This is a stop-gap until we get this API cleaned up.
-	t := common.Template{
-		Name:    name,
-		Content: string(d),
+	t := common.CreateDeploymentRequest{
+		ChartInvocation: res,
 	}
 
 	data, err := json.Marshal(t)

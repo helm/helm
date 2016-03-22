@@ -16,6 +16,7 @@ limitations under the License.
 
 package service
 
+/*
 import (
 	"bytes"
 	"encoding/json"
@@ -223,3 +224,4 @@ func expandOutputOrDie(t *testing.T, output, description string) *expander.Expan
 
 	return result
 }
+*/
