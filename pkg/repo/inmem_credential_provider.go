@@ -24,16 +24,16 @@ import (
 // InmemCredentialProvider is a memory based credential provider.
 type InmemCredentialProvider struct {
 	sync.RWMutex
-	credentials map[string]*RepoCredential
+	credentials map[string]*Credential
 }
 
 // NewInmemCredentialProvider creates a new memory based credential provider.
-func NewInmemCredentialProvider() CredentialProvider {
-	return &InmemCredentialProvider{credentials: make(map[string]*RepoCredential)}
+func NewInmemCredentialProvider() ICredentialProvider {
+	return &InmemCredentialProvider{credentials: make(map[string]*Credential)}
 }
 
 // GetCredential returns a credential by name.
-func (fcp *InmemCredentialProvider) GetCredential(name string) (*RepoCredential, error) {
+func (fcp *InmemCredentialProvider) GetCredential(name string) (*Credential, error) {
 	fcp.RLock()
 	defer fcp.RUnlock()
 
@@ -45,10 +45,10 @@ func (fcp *InmemCredentialProvider) GetCredential(name string) (*RepoCredential,
 }
 
 // SetCredential sets a credential by name.
-func (fcp *InmemCredentialProvider) SetCredential(name string, credential *RepoCredential) error {
+func (fcp *InmemCredentialProvider) SetCredential(name string, credential *Credential) error {
 	fcp.Lock()
 	defer fcp.Unlock()
 
-	fcp.credentials[name] = &RepoCredential{APIToken: credential.APIToken, BasicAuth: credential.BasicAuth, ServiceAccount: credential.ServiceAccount}
+	fcp.credentials[name] = &Credential{APIToken: credential.APIToken, BasicAuth: credential.BasicAuth, ServiceAccount: credential.ServiceAccount}
 	return nil
 }

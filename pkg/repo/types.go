@@ -37,39 +37,48 @@ type APITokenCredential string
 // JWTTokenCredential defines a JWT token.
 type JWTTokenCredential string
 
-// RepoCredential holds a credential used to access a repository.
-type RepoCredential struct {
+// Credential holds a credential used to access a repository.
+type Credential struct {
 	APIToken       APITokenCredential  `json:"apitoken,omitempty"`
 	BasicAuth      BasicAuthCredential `json:"basicauth,omitempty"`
 	ServiceAccount JWTTokenCredential  `json:"serviceaccount,omitempty"`
 }
 
-// CredentialProvider provides credentials for chart repositories.
-type CredentialProvider interface {
+// ICredentialProvider provides credentials for chart repositories.
+type ICredentialProvider interface {
 	// SetCredential sets the credential for a repository.
 	// May not be supported by some repository services.
-	SetCredential(name string, credential *RepoCredential) error
+	SetCredential(name string, credential *Credential) error
 
 	// GetCredential returns the specified credential or nil if there's no credential.
 	// Error is non-nil if fetching the credential failed.
-	GetCredential(name string) (*RepoCredential, error)
+	GetCredential(name string) (*Credential, error)
 }
 
-// RepoType defines the technology that implements a repository.
-type RepoType string
+// ERepoType defines the technology that implements a repository.
+type ERepoType string
 
-// RepoFormat is a semi-colon delimited string that describes the format of a repository.
-type RepoFormat string
+// ERepoFormat is a semi-colon delimited string that describes the format of a repository.
+type ERepoFormat string
 
 const (
 	// PathRepoFormat identfies a repository where charts are organized hierarchically.
-	PathRepoFormat = RepoFormat("path")
+	PathRepoFormat = ERepoFormat("path")
 	// FlatRepoFormat identifies a repository where all charts appear at the top level.
-	FlatRepoFormat = RepoFormat("flat")
+	FlatRepoFormat = ERepoFormat("flat")
 )
 
-// Repo abstracts a repository.
-type Repo interface {
+// Repo describes a repository
+type Repo struct {
+	Name           string      `json:"name"`           // Friendly name for this repository
+	URL            string      `json:"url"`            // URL to the root of this repository
+	CredentialName string      `json:"credentialname"` // Credential name used to access this repository
+	Format         ERepoFormat `json:"format"`         // Format of this repository
+	Type           ERepoType   `json:"type"`           // Technology implementing this repository
+}
+
+// IRepo abstracts a repository.
+type IRepo interface {
 	// GetName returns the friendly name of this repository.
 	GetName() string
 	// GetURL returns the URL to the root of this repository.
@@ -77,15 +86,15 @@ type Repo interface {
 	// GetCredentialName returns the credential name used to access this repository.
 	GetCredentialName() string
 	// GetFormat returns the format of this repository.
-	GetFormat() RepoFormat
+	GetFormat() ERepoFormat
 	// GetType returns the technology implementing this repository.
-	GetType() RepoType
+	GetType() ERepoType
 }
 
-// ChartRepo abstracts a place that holds charts.
-type ChartRepo interface {
-	// A ChartRepo is a Repo
-	Repo
+// IChartRepo abstracts a place that holds charts.
+type IChartRepo interface {
+	// A IChartRepo is a IRepo
+	IRepo
 
 	// ListCharts lists charts in this repository whose string values
 	// conform to the supplied regular expression, or all charts if regex is nil
@@ -95,27 +104,27 @@ type ChartRepo interface {
 	GetChart(name string) (*chart.Chart, error)
 }
 
-// ObjectStorageRepo abstracts a repository that resides in Object Storage,
+// IStorageRepo abstracts a repository that resides in Object Storage,
 // such as Google Cloud Storage, AWS S3, etc.
-type ObjectStorageRepo interface {
-	// An ObjectStorageRepo is a ChartRepo
-	ChartRepo
+type IStorageRepo interface {
+	// An IStorageRepo is a IChartRepo
+	IChartRepo
 
 	// GetBucket returns the name of the bucket that contains this repository.
 	GetBucket() string
 }
 
-// Service maintains a list of chart repositories that defines the scope of all
+// IRepoService maintains a list of chart repositories that defines the scope of all
 // repository based operations, such as search and chart reference resolution.
-type Service interface {
+type IRepoService interface {
 	// List returns the list of all known chart repositories
-	List() ([]Repo, error)
+	List() ([]IRepo, error)
 	// Create adds a known repository to the list
-	Create(repository Repo) error
+	Create(repository IRepo) error
 	// Get returns the repository with the given name
-	Get(name string) (Repo, error)
+	Get(name string) (IRepo, error)
 	// GetByURL returns the repository that backs the given URL
-	GetByURL(URL string) (Repo, error)
+	GetByURL(URL string) (IRepo, error)
 	// Delete removes a known repository from the list
 	Delete(name string) error
 }

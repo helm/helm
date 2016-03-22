@@ -50,9 +50,9 @@ func TestRepoProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	castRepo, ok := haveRepo.(ObjectStorageRepo)
+	castRepo, ok := haveRepo.(IStorageRepo)
 	if !ok {
-		t.Fatalf("invalid repo type, want: ObjectStorageRepo, have: %T.", haveRepo)
+		t.Fatalf("invalid repo type, want: IStorageRepo, have: %T.", haveRepo)
 	}
 
 	wantBucket := GCSPublicRepoBucket
@@ -112,7 +112,7 @@ func TestGetChartByReferenceWithValidReferences(t *testing.T) {
 	}
 }
 
-func getTestRepoProvider(t *testing.T) RepoProvider {
+func getTestRepoProvider(t *testing.T) IRepoProvider {
 	rp := newRepoProvider(nil, nil, nil)
 	rs := rp.GetRepoService()
 	tr, err := newRepo(TestRepoName, TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)

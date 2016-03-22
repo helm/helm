@@ -24,7 +24,7 @@ import (
 
 type testCase struct {
 	name   string
-	exp    *RepoCredential
+	exp    *Credential
 	expErr error
 }
 
@@ -32,7 +32,7 @@ func createMissingError(name string) error {
 	return fmt.Errorf("no such credential: %s", name)
 }
 
-func testGetCredential(t *testing.T, cp CredentialProvider, tc *testCase) {
+func testGetCredential(t *testing.T, cp ICredentialProvider, tc *testCase) {
 	actual, actualErr := cp.GetCredential(tc.name)
 	if !reflect.DeepEqual(actual, tc.exp) {
 		t.Fatalf("test case %s failed: want: %#v, have: %#v", tc.name, tc.exp, actual)
@@ -43,7 +43,7 @@ func testGetCredential(t *testing.T, cp CredentialProvider, tc *testCase) {
 	}
 }
 
-func verifySetAndGetCredential(t *testing.T, cp CredentialProvider, tc *testCase) {
+func verifySetAndGetCredential(t *testing.T, cp ICredentialProvider, tc *testCase) {
 	err := cp.SetCredential(tc.name, tc.exp)
 	if err != nil {
 		t.Fatalf("test case %s failed: cannot set credential: %v", tc.name, err)
@@ -60,13 +60,13 @@ func TestNotExist(t *testing.T) {
 
 func TestSetAndGetApiToken(t *testing.T) {
 	cp := NewInmemCredentialProvider()
-	tc := &testCase{"testcredential", &RepoCredential{APIToken: "some token here"}, nil}
+	tc := &testCase{"testcredential", &Credential{APIToken: "some token here"}, nil}
 	verifySetAndGetCredential(t, cp, tc)
 }
 
 func TestSetAndGetBasicAuth(t *testing.T) {
 	cp := NewInmemCredentialProvider()
 	ba := BasicAuthCredential{Username: "user", Password: "pass"}
-	tc := &testCase{"testcredential", &RepoCredential{BasicAuth: ba}, nil}
+	tc := &testCase{"testcredential", &Credential{BasicAuth: ba}, nil}
 	verifySetAndGetCredential(t, cp, tc)
 }

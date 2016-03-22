@@ -53,7 +53,7 @@ type SecretsCredentialProvider struct {
 }
 
 // NewSecretsCredentialProvider creates a new secrets credential provider.
-func NewSecretsCredentialProvider() CredentialProvider {
+func NewSecretsCredentialProvider() ICredentialProvider {
 	kubernetesConfig := &util.KubernetesConfig{
 		KubePath:       *kubePath,
 		KubeService:    *kubeService,
@@ -70,7 +70,7 @@ func NewSecretsCredentialProvider() CredentialProvider {
 	return &SecretsCredentialProvider{util.NewKubernetesKubectl(kubernetesConfig)}
 }
 
-func parseCredential(credential string) (*RepoCredential, error) {
+func parseCredential(credential string) (*Credential, error) {
 	var c common.KubernetesSecret
 	if err := json.Unmarshal([]byte(credential), &c); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal credential (%s): %s", credential, err)
@@ -81,8 +81,8 @@ func parseCredential(credential string) (*RepoCredential, error) {
 		return nil, fmt.Errorf("cannot unmarshal credential (%s): %s", c, err)
 	}
 
-	// And then finally unmarshal it from yaml to RepoCredential
-	r := &RepoCredential{}
+	// And then finally unmarshal it from yaml to Credential
+	r := &Credential{}
 	if err := yaml.Unmarshal(d, &r); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal credential %s (%#v)", c, err)
 	}
@@ -91,7 +91,7 @@ func parseCredential(credential string) (*RepoCredential, error) {
 }
 
 // GetCredential returns a credential by name.
-func (scp *SecretsCredentialProvider) GetCredential(name string) (*RepoCredential, error) {
+func (scp *SecretsCredentialProvider) GetCredential(name string) (*Credential, error) {
 	o, err := scp.k.Get(name, secretType)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (scp *SecretsCredentialProvider) GetCredential(name string) (*RepoCredentia
 }
 
 // SetCredential sets a credential by name.
-func (scp *SecretsCredentialProvider) SetCredential(name string, credential *RepoCredential) error {
+func (scp *SecretsCredentialProvider) SetCredential(name string, credential *Credential) error {
 	// Marshal the credential & base64 encode it.
 	b, err := yaml.Marshal(credential)
 	if err != nil {

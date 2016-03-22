@@ -29,28 +29,28 @@ import (
 	"sync"
 )
 
-// RepoProvider is a factory for ChartRepo instances.
-type RepoProvider interface {
-	GetRepoByURL(URL string) (ChartRepo, error)
-	GetRepoByName(repoName string) (ChartRepo, error)
+// IRepoProvider is a factory for IChartRepo instances.
+type IRepoProvider interface {
+	GetRepoByURL(URL string) (IChartRepo, error)
+	GetRepoByName(repoName string) (IChartRepo, error)
 	GetChartByReference(reference string) (*chart.Chart, error)
 }
 
 type repoProvider struct {
 	sync.RWMutex
-	rs    Service
-	cp    CredentialProvider
+	rs    IRepoService
+	cp    ICredentialProvider
 	gcsrp GCSRepoProvider
-	repos map[string]ChartRepo
+	repos map[string]IChartRepo
 }
 
 // NewRepoProvider creates a new repository provider.
-func NewRepoProvider(rs Service, gcsrp GCSRepoProvider, cp CredentialProvider) RepoProvider {
+func NewRepoProvider(rs IRepoService, gcsrp GCSRepoProvider, cp ICredentialProvider) IRepoProvider {
 	return newRepoProvider(rs, gcsrp, cp)
 }
 
 // newRepoProvider creates a new repository provider.
-func newRepoProvider(rs Service, gcsrp GCSRepoProvider, cp CredentialProvider) *repoProvider {
+func newRepoProvider(rs IRepoService, gcsrp GCSRepoProvider, cp ICredentialProvider) *repoProvider {
 	if rs == nil {
 		rs = NewInmemRepoService()
 	}
@@ -63,18 +63,18 @@ func newRepoProvider(rs Service, gcsrp GCSRepoProvider, cp CredentialProvider) *
 		gcsrp = NewGCSRepoProvider(cp)
 	}
 
-	repos := make(map[string]ChartRepo)
+	repos := make(map[string]IChartRepo)
 	rp := &repoProvider{rs: rs, gcsrp: gcsrp, cp: cp, repos: repos}
 	return rp
 }
 
 // GetRepoService returns the repository service used by this repository provider.
-func (rp *repoProvider) GetRepoService() Service {
+func (rp *repoProvider) GetRepoService() IRepoService {
 	return rp.rs
 }
 
 // GetCredentialProvider returns the credential provider used by this repository provider.
-func (rp *repoProvider) GetCredentialProvider() CredentialProvider {
+func (rp *repoProvider) GetCredentialProvider() ICredentialProvider {
 	return rp.cp
 }
 
@@ -84,7 +84,7 @@ func (rp *repoProvider) GetGCSRepoProvider() GCSRepoProvider {
 }
 
 // GetRepoByName returns the repository with the given name.
-func (rp *repoProvider) GetRepoByName(repoName string) (ChartRepo, error) {
+func (rp *repoProvider) GetRepoByName(repoName string) (IChartRepo, error) {
 	rp.Lock()
 	defer rp.Unlock()
 
@@ -100,7 +100,7 @@ func (rp *repoProvider) GetRepoByName(repoName string) (ChartRepo, error) {
 	return rp.createRepoByType(cr)
 }
 
-func (rp *repoProvider) createRepoByType(r Repo) (ChartRepo, error) {
+func (rp *repoProvider) createRepoByType(r IRepo) (IChartRepo, error) {
 	switch r.GetType() {
 	case GCSRepoType:
 		cr, err := rp.gcsrp.GetGCSRepo(r)
@@ -114,7 +114,7 @@ func (rp *repoProvider) createRepoByType(r Repo) (ChartRepo, error) {
 	return nil, fmt.Errorf("unknown repository type: %s", r.GetType())
 }
 
-func (rp *repoProvider) createRepo(cr ChartRepo) (ChartRepo, error) {
+func (rp *repoProvider) createRepo(cr IChartRepo) (IChartRepo, error) {
 	name := cr.GetName()
 	if _, ok := rp.repos[name]; ok {
 		return nil, fmt.Errorf("respository named %s already exists", name)
@@ -125,7 +125,7 @@ func (rp *repoProvider) createRepo(cr ChartRepo) (ChartRepo, error) {
 }
 
 // GetRepoByURL returns the repository whose URL is a prefix of the given URL.
-func (rp *repoProvider) GetRepoByURL(URL string) (ChartRepo, error) {
+func (rp *repoProvider) GetRepoByURL(URL string) (IChartRepo, error) {
 	rp.Lock()
 	defer rp.Unlock()
 
@@ -141,8 +141,8 @@ func (rp *repoProvider) GetRepoByURL(URL string) (ChartRepo, error) {
 	return rp.createRepoByType(cr)
 }
 
-func (rp *repoProvider) findRepoByURL(URL string) ChartRepo {
-	var found ChartRepo
+func (rp *repoProvider) findRepoByURL(URL string) IChartRepo {
+	var found IChartRepo
 	for _, r := range rp.repos {
 		rURL := r.GetURL()
 		if strings.HasPrefix(URL, rURL) {
@@ -178,17 +178,17 @@ func (rp *repoProvider) GetChartByReference(reference string) (*chart.Chart, err
 	return r.GetChart(name)
 }
 
-// GCSRepoProvider is a factory for GCS Repo instances.
+// GCSRepoProvider is a factory for GCS IRepo instances.
 type GCSRepoProvider interface {
-	GetGCSRepo(r Repo) (ObjectStorageRepo, error)
+	GetGCSRepo(r IRepo) (IStorageRepo, error)
 }
 
 type gcsRepoProvider struct {
-	cp CredentialProvider
+	cp ICredentialProvider
 }
 
 // NewGCSRepoProvider creates a GCSRepoProvider.
-func NewGCSRepoProvider(cp CredentialProvider) GCSRepoProvider {
+func NewGCSRepoProvider(cp ICredentialProvider) GCSRepoProvider {
 	if cp == nil {
 		cp = NewInmemCredentialProvider()
 	}
@@ -198,7 +198,7 @@ func NewGCSRepoProvider(cp CredentialProvider) GCSRepoProvider {
 
 // GetGCSRepo returns a new Google Cloud Storage repository. If a credential is specified, it will try to
 // fetch it and use it, and if the credential isn't found, it will fall back to an unauthenticated client.
-func (gcsrp gcsRepoProvider) GetGCSRepo(r Repo) (ObjectStorageRepo, error) {
+func (gcsrp gcsRepoProvider) GetGCSRepo(r IRepo) (IStorageRepo, error) {
 	client, err := gcsrp.createGCSClient(r.GetCredentialName())
 	if err != nil {
 		return nil, err
