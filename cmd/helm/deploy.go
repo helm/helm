@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -55,40 +56,29 @@ func deployCmd() cli.Command {
 
 func deploy(c *cli.Context) error {
 
-	// If there is a configuration file, use it.
-	cfg := &common.Configuration{}
+	res := &common.Resource{
+		// By default
+		Properties: map[string]interface{}{},
+	}
+
 	if c.String("config") != "" {
-		if err := loadConfig(cfg, c.String("config")); err != nil {
+		// If there is a configuration file, use it.
+		err := loadConfig(c.String("config"), &res.Properties)
+		if err != nil {
 			return err
 		}
-	} else {
-		cfg.Resources = []*common.Resource{
-			{
-				Properties: map[string]interface{}{},
-			},
-		}
 	}
 
-	// If there is a chart specified on the commandline, override the config
-	// file with it.
 	args := c.Args()
-	if len(args) > 0 {
-		cname := args[0]
-		if isLocalChart(cname) {
-			// If we get here, we need to first package then upload the chart.
-			loc, err := doUpload(cname, "", c)
-			if err != nil {
-				return err
-			}
-			cfg.Resources[0].Name = loc
-		} else {
-			cfg.Resources[0].Type = cname
-		}
+	if len(args) == 0 {
+		return fmt.Errorf("Need chart name on commandline")
 	}
+	res.Type = args[0]
 
-	// Override the name if one is passed in.
 	if name := c.String("name"); len(name) > 0 {
-		cfg.Resources[0].Name = name
+		res.Name = name
+	} else {
+		return fmt.Errorf("Need deployed name on commandline")
 	}
 
 	if props, err := parseProperties(c.String("properties")); err != nil {
@@ -98,11 +88,11 @@ func deploy(c *cli.Context) error {
 		// knowing which resource the properties are supposed to be part
 		// of.
 		for n, v := range props {
-			cfg.Resources[0].Properties[n] = v
+			res.Properties[n] = v
 		}
 	}
 
-	return NewClient(c).PostDeployment(cfg.Resources[0].Name, cfg)
+	return NewClient(c).PostDeployment(res)
 }
 
 // isLocalChart returns true if the given path can be statted.
@@ -111,11 +101,11 @@ func isLocalChart(path string) bool {
 	return err == nil
 }
 
-// loadConfig loads a file into a common.Configuration.
-func loadConfig(c *common.Configuration, filename string) error {
+// loadConfig loads chart arguments into c
+func loadConfig(filename string, dest *map[string]interface{}) error {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
 	}
-	return yaml.Unmarshal(data, c)
+	return yaml.Unmarshal(data, dest)
 }

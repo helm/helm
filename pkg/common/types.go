@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"github.com/kubernetes/helm/pkg/chart"
 	"time"
 )
 
@@ -95,6 +96,27 @@ type Manifest struct {
 	InputConfig    *Template      `json:"inputConfig,omitempty"`
 	ExpandedConfig *Configuration `json:"expandedConfig,omitempty"`
 	Layout         *Layout        `json:"layout,omitempty"`
+}
+
+// CreateDeploymentRequest defines the manager API to create deployments.
+type CreateDeploymentRequest struct {
+	ChartInvocation *Resource `json:"chart_invocation"`
+}
+
+// ExpansionRequest defines the API to expander.
+type ExpansionRequest struct {
+	ChartInvocation *Resource           `json:"chart_invocation"`
+	Chart           *chart.ChartContent `json:"chart"`
+}
+
+// ExpansionResponse defines the API to expander.
+type ExpansionResponse struct {
+	Resources []interface{} `json:"resources"`
+}
+
+// Expander abstracts interactions with the expander and deployer services.
+type Expander interface {
+	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
 }
 
 // Template describes a set of resources to be deployed.

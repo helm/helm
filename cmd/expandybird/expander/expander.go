@@ -18,110 +18,80 @@ package expander
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/ghodss/yaml"
 	"log"
-	"os"
 	"os/exec"
 
-	"github.com/ghodss/yaml"
 	"github.com/kubernetes/helm/pkg/common"
 )
-
-// Expander abstracts interactions with the expander and deployer services.
-type Expander interface {
-	ExpandTemplate(template *common.Template) (string, error)
-}
 
 type expander struct {
 	ExpansionBinary string
 }
 
-// NewExpander returns a new initialized Expander.
-func NewExpander(binary string) Expander {
+// NewExpander returns an ExpandyBird expander.
+func NewExpander(binary string) common.Expander {
 	return &expander{binary}
 }
 
-// ExpansionResult describes the unmarshalled output of ExpandTemplate.
-type ExpansionResult struct {
-	Config map[string]interface{}
-	Layout map[string]interface{}
+type expandyBirdConfigOutput struct {
+	Resources []interface{} `yaml:"resources,omitempty"`
 }
 
-// NewExpansionResult creates and returns a new expansion result from
-// the raw output of ExpandTemplate.
-func NewExpansionResult(output string) (*ExpansionResult, error) {
-	eResponse := &ExpansionResult{}
-	if err := yaml.Unmarshal([]byte(output), eResponse); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal expansion result (%s):\n%s", err, output)
-	}
-
-	return eResponse, nil
+type expandyBirdOutput struct {
+	Config *expandyBirdConfigOutput `yaml:"config,omitempty"`
+	Layout interface{}              `yaml:"layout,omitempty"`
 }
 
-// Marshal creates and returns an ExpansionResponse from an ExpansionResult.
-func (eResult *ExpansionResult) Marshal() (*ExpansionResponse, error) {
-	configYaml, err := yaml.Marshal(eResult.Config)
-	if err != nil {
-		return nil, fmt.Errorf("cannot marshal manifest template (%s):\n%s", err, eResult.Config)
-	}
-
-	layoutYaml, err := yaml.Marshal(eResult.Layout)
-	if err != nil {
-		return nil, fmt.Errorf("cannot marshal manifest layout (%s):\n%s", err, eResult.Layout)
-	}
-
-	return &ExpansionResponse{
-		Config: string(configYaml),
-		Layout: string(layoutYaml),
-	}, nil
-}
-
-// ExpansionResponse describes the results of marshaling an ExpansionResult.
-type ExpansionResponse struct {
-	Config string `json:"config"`
-	Layout string `json:"layout"`
-}
-
-// NewExpansionResponse creates and returns a new expansion response from
-// the raw output of ExpandTemplate.
-func NewExpansionResponse(output string) (*ExpansionResponse, error) {
-	eResult, err := NewExpansionResult(output)
-	if err != nil {
-		return nil, err
-	}
-
-	eResponse, err := eResult.Marshal()
-	if err != nil {
-		return nil, err
-	}
-
-	return eResponse, nil
-}
-
-// Unmarshal creates and returns an ExpansionResult from an ExpansionResponse.
-func (eResponse *ExpansionResponse) Unmarshal() (*ExpansionResult, error) {
-	var config map[string]interface{}
-	if err := yaml.Unmarshal([]byte(eResponse.Config), &config); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal config (%s):\n%s", err, eResponse.Config)
-	}
-
-	var layout map[string]interface{}
-	if err := yaml.Unmarshal([]byte(eResponse.Layout), &layout); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal layout (%s):\n%s", err, eResponse.Layout)
-	}
-
-	return &ExpansionResult{
-		Config: config,
-		Layout: layout,
-	}, nil
-}
-
-// ExpandTemplate passes the given configuration to the expander and returns the
+// ExpandChart passes the given configuration to the expander and returns the
 // expanded configuration as a string on success.
-func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
+func (e *expander) ExpandChart(request *common.ExpansionRequest) (*common.ExpansionResponse, error) {
+	if request.ChartInvocation == nil {
+		return nil, fmt.Errorf("Request does not have invocation field")
+	}
+	if request.Chart == nil {
+		return nil, fmt.Errorf("Request does not have chart field")
+	}
+
+	chartInv := request.ChartInvocation
+	chartFile := request.Chart.Chartfile
+	chartMembers := request.Chart.Members
+	schemaName := chartInv.Type + ".schema"
+
+	if chartFile.Expander == nil {
+		message := fmt.Sprintf("Chart JSON does not have expander field")
+		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
+	}
+
+	if chartFile.Expander.Name != "ExpandyBird" {
+		message := fmt.Sprintf("ExpandyBird cannot do this kind of expansion: ", chartFile.Expander.Name)
+		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
+	}
+
 	if e.ExpansionBinary == "" {
 		message := fmt.Sprintf("expansion binary cannot be empty")
-		return "", fmt.Errorf("error expanding template %s: %s", template.Name, message)
+		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
+	}
+
+	entrypointIndex := -1
+	schemaIndex := -1
+	for i, f := range chartMembers {
+		if f.Path == chartFile.Expander.Entrypoint {
+			entrypointIndex = i
+		}
+		if f.Path == chartFile.Schema {
+			schemaIndex = i
+		}
+	}
+	if entrypointIndex == -1 {
+		message := fmt.Sprintf("The entrypoint in the chart.yaml cannot be found: %s", chartFile.Expander.Entrypoint)
+		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
+	}
+	if schemaIndex == -1 {
+		message := fmt.Sprintf("The schema in the chart.yaml cannot be found: %s", chartFile.Schema)
+		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
 	}
 
 	// Those are automatically increasing buffers, so writing arbitrary large
@@ -129,24 +99,42 @@ func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
+	// Now we convert the new chart representation into the form that classic ExpandyBird takes.
+
+	chartInvJSON, err := json.Marshal(chartInv)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling chart invocation %s: %s", chartInv.Name, err)
+	}
+	content := "{ \"resources\": [" + string(chartInvJSON) + "] }"
+
 	cmd := &exec.Cmd{
 		Path: e.ExpansionBinary,
 		// Note, that binary name still has to be passed argv[0].
-		Args: []string{e.ExpansionBinary, template.Content},
-		// TODO(vagababov): figure out whether do we even need "PROJECT" and
-		// "DEPLOYMENT_NAME" variables here.
-		Env:    append(os.Environ(), "PROJECT="+template.Name, "DEPLOYMENT_NAME="+template.Name),
+		Args:   []string{e.ExpansionBinary, content},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
 
-	for _, imp := range template.Imports {
-		cmd.Args = append(cmd.Args, imp.Name, imp.Path, imp.Content)
+	if chartFile.Schema != "" {
+		cmd.Env = []string{"VALIDATE_SCHEMA=1"}
+	}
+
+	for i, f := range chartMembers {
+		name := f.Path
+		path := f.Path
+		if i == entrypointIndex {
+			// This is how expandyBird identifies the entrypoint.
+			name = chartInv.Type
+		} else if i == schemaIndex {
+			// Doesn't matter what it was originally called, expandyBird expects to find it here.
+			name = schemaName
+		}
+		cmd.Args = append(cmd.Args, name, path, string(f.Content))
 	}
 
 	if err := cmd.Start(); err != nil {
 		log.Printf("error starting expansion process: %s", err)
-		return "", err
+		return nil, err
 	}
 
 	cmd.Wait()
@@ -154,8 +142,13 @@ func (e *expander) ExpandTemplate(template *common.Template) (string, error) {
 	log.Printf("Expansion process: pid: %d SysTime: %v UserTime: %v", cmd.ProcessState.Pid(),
 		cmd.ProcessState.SystemTime(), cmd.ProcessState.UserTime())
 	if stderr.String() != "" {
-		return "", fmt.Errorf("error expanding template %s: %s", template.Name, stderr.String())
+		return nil, fmt.Errorf("%s: %s", chartInv.Name, stderr.String())
 	}
 
-	return stdout.String(), nil
+	output := &expandyBirdOutput{}
+	if err := yaml.Unmarshal(stdout.Bytes(), output); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal expansion result (%s):\n%s", err, output)
+	}
+
+	return &common.ExpansionResponse{Resources: output.Config.Resources}, nil
 }

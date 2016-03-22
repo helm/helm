@@ -17,7 +17,6 @@ limitations under the License.
 package service
 
 import (
-	"github.com/kubernetes/helm/cmd/expandybird/expander"
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/util"
 
@@ -44,8 +43,8 @@ func NewService(handler restful.RouteFunction) *Service {
 	webService.Produces(restful.MIME_JSON, restful.MIME_XML)
 	webService.Route(webService.POST("/expand").To(handler).
 		Doc("Expand a template.").
-		Reads(&common.Template{}).
-		Writes(&expander.ExpansionResponse{}))
+		Reads(&common.ExpansionRequest{}).
+		Writes(&common.ExpansionResponse{}))
 	return &Service{webService}
 }
 
@@ -62,31 +61,24 @@ func (s *Service) Register(container *restful.Container) {
 
 // NewExpansionHandler returns a route function that handles an incoming
 // template expansion request, bound to the supplied expander.
-func NewExpansionHandler(backend expander.Expander) restful.RouteFunction {
+func NewExpansionHandler(backend common.Expander) restful.RouteFunction {
 	return func(req *restful.Request, resp *restful.Response) {
 		util.LogHandlerEntry("expandybird: expand", req.Request)
-		template := &common.Template{}
-		if err := req.ReadEntity(&template); err != nil {
+		request := &common.ExpansionRequest{}
+		if err := req.ReadEntity(&request); err != nil {
 			logAndReturnErrorFromHandler(http.StatusBadRequest, err.Error(), resp)
 			return
 		}
 
-		output, err := backend.ExpandTemplate(template)
+		response, err := backend.ExpandChart(request)
 		if err != nil {
-			message := fmt.Sprintf("error expanding template: %s", err)
-			logAndReturnErrorFromHandler(http.StatusBadRequest, message, resp)
-			return
-		}
-
-		response, err := expander.NewExpansionResponse(output)
-		if err != nil {
-			message := fmt.Sprintf("error marshaling output: %s", err)
+			message := fmt.Sprintf("error expanding chart: %s", err)
 			logAndReturnErrorFromHandler(http.StatusBadRequest, message, resp)
 			return
 		}
 
 		util.LogHandlerExit("expandybird", http.StatusOK, "OK", resp.ResponseWriter)
-		message := fmt.Sprintf("\nConfig:\n%s\nLayout:\n%s\n", response.Config, response.Layout)
+		message := fmt.Sprintf("\nResources:\n%s\n", response.Resources)
 		util.LogHandlerText("expandybird", message)
 		resp.WriteEntity(response)
 	}
