@@ -17,7 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"errors"
+	"path/filepath"
+
 	"github.com/codegangsta/cli"
+	"github.com/kubernetes/helm/pkg/chart"
 )
 
 func init() {
@@ -42,7 +46,10 @@ func chartCommands() cli.Command {
 				ArgsUsage: "CHART",
 			},
 			{
-				Name: "scaffold",
+				Name:      "create",
+				Usage:     "Create a new chart directory and set up base files and directories.",
+				ArgsUsage: "CHARTNAME",
+				Action:    func(c *cli.Context) { run(c, createChart) },
 			},
 			{
 				Name:      "list",
@@ -56,4 +63,22 @@ func chartCommands() cli.Command {
 			},
 		},
 	}
+}
+
+func createChart(c *cli.Context) error {
+	args := c.Args()
+	if len(args) < 1 {
+		return errors.New("'helm create' requires a chart name as an argument")
+	}
+
+	dir, name := filepath.Split(args[0])
+
+	cf := &chart.Chartfile{
+		Name:        name,
+		Description: "Created by Helm",
+		Version:     "0.1.0",
+	}
+
+	_, err := chart.Create(cf, dir)
+	return err
 }
