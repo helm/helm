@@ -33,24 +33,24 @@ func repoCommands() cli.Command {
 	return cli.Command{
 		Name:    "repository",
 		Aliases: []string{"repo"},
-		Usage:   "Perform repository operations.",
+		Usage:   "Perform chart repository operations.",
 		Subcommands: []cli.Command{
 			{
 				Name:      "add",
-				Usage:     "Add a repository to the remote manager.",
+				Usage:     "Add a chart repository to the remote manager.",
 				ArgsUsage: "REPOSITORY_URL",
 				Action:    func(c *cli.Context) { run(c, addRepo) },
 			},
 			{
 				Name:      "list",
-				Usage:     "List the repositories on the remote manager.",
+				Usage:     "List the chart repositories on the remote manager.",
 				ArgsUsage: "",
 				Action:    func(c *cli.Context) { run(c, listRepos) },
 			},
 			{
 				Name:      "remove",
 				Aliases:   []string{"rm"},
-				Usage:     "Remove a repository from the remote manager.",
+				Usage:     "Remove a chart repository from the remote manager.",
 				ArgsUsage: "REPOSITORY_URL",
 				Action:    func(c *cli.Context) { run(c, removeRepo) },
 			},
