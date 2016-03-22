@@ -18,11 +18,10 @@ package main
 
 import (
 	"errors"
-	"path/filepath"
 	"fmt"
 	"os"
+	"path/filepath"
 
-	"github.com/codegangsta/cli"
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/format"
@@ -92,6 +91,8 @@ func createChart(c *cli.Context) error {
 
 	_, err := chart.Create(cf, dir)
 	return err
+
+}
 
 func pack(cxt *cli.Context) error {
 	args := cxt.Args()
