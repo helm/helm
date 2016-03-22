@@ -320,7 +320,7 @@ chart, it bundles the chart, and sends the entire chart, not just the
 values.
 
 ```
-$ helm create mychart
+$ helm chart create mychart
 Created mychart/Chart.yaml
 $ helm lint mychart
 OK
@@ -334,12 +334,12 @@ $ helm redeploy skinny-pigeon
 Redeployed skinny-pigeon
 ```
 
-- `helm create` and `helm lint` are client side operations
+- `helm chart create` and `helm lint` are client side operations
 - `helm deploy`, `helm status`, and `helm redeploy` are explained above.
 
 General pattern for create:
 ```
-helm create [--from NAME] CHARTNAME
+helm chart create [--from NAME] CHARTNAME
 ```
 
 Where `NAME` will result in fetching the generated values from the cluster.
