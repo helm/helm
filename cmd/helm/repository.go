@@ -20,6 +20,7 @@ import (
 	"errors"
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
+	"github.com/kubernetes/helm/pkg/repo"
 )
 
 func init() {
@@ -73,20 +74,24 @@ func addRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo add' requires a repository as an argument")
 	}
-	dest := ""
-	if _, err := NewClient(c).Post(chartRepoPath, nil, &dest); err != nil {
+	repoURL := args[0]
+	dest := repo.Repo{}
+	if _, err := NewClient(c).Post(chartRepoPath, repoURL, &dest); err != nil {
 		return err
 	}
-	format.Msg(dest)
+	format.Msg(dest.URL + "has been added to your list of chart repositories")
 	return nil
 }
 
 func listRepos(c *cli.Context) error {
-	dest := ""
+	dest := []repo.Repo{}
 	if _, err := NewClient(c).Get(chartRepoPath, &dest); err != nil {
 		return err
 	}
-	format.Msg(dest)
+	format.Msg("Chart Repositories:")
+	for _, r := range dest {
+		format.Msg(r.URL + "\n")
+	}
 	return nil
 }
 
@@ -95,10 +100,11 @@ func removeRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo remove' requires a repository as an argument")
 	}
-	dest := ""
+	repoURL := args[0]
+	dest := repo.Repo{URL: repoURL}
 	if _, err := NewClient(c).Delete(chartRepoPath, &dest); err != nil {
 		return err
 	}
-	format.Msg(dest)
+	format.Msg(dest.URL + "has been removed.\n")
 	return nil
 }
