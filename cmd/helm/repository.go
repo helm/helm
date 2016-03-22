@@ -20,7 +20,6 @@ import (
 	"errors"
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
-	"os"
 )
 
 func init() {
@@ -45,12 +44,7 @@ func repoCommands() cli.Command {
 						Usage: "The name of the credential.",
 					},
 				},
-				Action: func(c *cli.Context) {
-					if err := addRepo(c); err != nil {
-						format.Err("%s Error adding chart repo: ", err)
-						os.Exit(1)
-					}
-				},
+				Action: func(c *cli.Context) { run(c, addRepo) },
 			},
 			{
 				Name:      "show",
@@ -61,24 +55,14 @@ func repoCommands() cli.Command {
 				Name:      "list",
 				Usage:     "List the repositories on the remote manager.",
 				ArgsUsage: "",
-				Action: func(c *cli.Context) {
-					if err := listRepos(c); err != nil {
-						format.Err("%s Error listing chart repositories: ", err)
-						os.Exit(1)
-					}
-				},
+				Action:    func(c *cli.Context) { run(c, listRepos) },
 			},
 			{
 				Name:      "remove",
 				Aliases:   []string{"rm"},
 				Usage:     "Remove a repository from the remote manager.",
 				ArgsUsage: "REPOSITORY",
-				Action: func(c *cli.Context) {
-					if err := removeRepo(c); err != nil {
-						format.Err("%s Error removing chart repo: ", err)
-						os.Exit(1)
-					}
-				},
+				Action:    func(c *cli.Context) { run(c, removeRepo) },
 			},
 		},
 	}
