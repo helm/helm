@@ -18,11 +18,25 @@ package main
 
 import (
 	"errors"
+	"os"
 	"regexp"
+	"text/template"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
 )
+
+var errMissingDeploymentArg = errors.New("First argument, deployment name, is required. Try 'helm get --help'")
+
+const defaultShowFormat = `Name: {{.Name}}
+Status: {{.State.Status}}
+{{- with .State.Errors}}
+Errors:
+{{- range .}}
+  {{.}}
+{{- end}}
+{{- end}}
+`
 
 func init() {
 	addCommands(deploymentCommands())
@@ -103,7 +117,7 @@ func listDeployments(c *cli.Context) error {
 func deleteDeployment(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		return errors.New("First argument, deployment name, is required. Try 'helm get --help'")
+		return errMissingDeploymentArg
 	}
 	for _, name := range args {
 		deployment, err := NewClient(c).DeleteDeployment(name)
@@ -118,12 +132,13 @@ func deleteDeployment(c *cli.Context) error {
 func showDeployment(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		return errors.New("First argument, deployment name, is required. Try 'helm get --help'")
+		return errMissingDeploymentArg
 	}
 	name := args[0]
 	deployment, err := NewClient(c).GetDeployment(name)
 	if err != nil {
 		return err
 	}
-	return format.YAML(deployment)
+	tmpl := template.Must(template.New("show").Parse(defaultShowFormat))
+	return tmpl.Execute(os.Stdout, deployment)
 }
