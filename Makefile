@@ -43,6 +43,10 @@ clean:
 .PHONY: test
 test: build test-style test-unit test-flake8
 
+.PHONY: quicktest
+quicktest: test-style
+	go test $(GO_PKGS)
+
 ROOTFS := rootfs
 
 .PHONY: push
