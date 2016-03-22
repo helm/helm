@@ -37,8 +37,8 @@ type APITokenCredential string
 // JWTTokenCredential defines a JWT token.
 type JWTTokenCredential string
 
-// RepoCredential holds a credential used to access a repository.
-type RepoCredential struct {
+// Credential holds a credential used to access a repository.
+type Credential struct {
 	APIToken       APITokenCredential  `json:"apitoken,omitempty"`
 	BasicAuth      BasicAuthCredential `json:"basicauth,omitempty"`
 	ServiceAccount JWTTokenCredential  `json:"serviceaccount,omitempty"`
@@ -48,33 +48,33 @@ type RepoCredential struct {
 type ICredentialProvider interface {
 	// SetCredential sets the credential for a repository.
 	// May not be supported by some repository services.
-	SetCredential(name string, credential *RepoCredential) error
+	SetCredential(name string, credential *Credential) error
 
 	// GetCredential returns the specified credential or nil if there's no credential.
 	// Error is non-nil if fetching the credential failed.
-	GetCredential(name string) (*RepoCredential, error)
+	GetCredential(name string) (*Credential, error)
 }
 
-// RepoType defines the technology that implements a repository.
-type RepoType string
+// ERepoType defines the technology that implements a repository.
+type ERepoType string
 
-// RepoFormat is a semi-colon delimited string that describes the format of a repository.
-type RepoFormat string
+// ERepoFormat is a semi-colon delimited string that describes the format of a repository.
+type ERepoFormat string
 
 const (
 	// PathRepoFormat identfies a repository where charts are organized hierarchically.
-	PathRepoFormat = RepoFormat("path")
+	PathRepoFormat = ERepoFormat("path")
 	// FlatRepoFormat identifies a repository where all charts appear at the top level.
-	FlatRepoFormat = RepoFormat("flat")
+	FlatRepoFormat = ERepoFormat("flat")
 )
 
 // Repo describes a repository
 type Repo struct {
-	Name           string     `json:"name"`           // Friendly name for this repository
-	URL            string     `json:"url"`            // URL to the root of this repository
-	CredentialName string     `json:"credentialname"` // Credential name used to access this repository
-	Format         RepoFormat `json:"format"`         // Format of this repository
-	Type           RepoType   `json:"type"`           // Technology implementing this repository
+	Name           string      `json:"name"`           // Friendly name for this repository
+	URL            string      `json:"url"`            // URL to the root of this repository
+	CredentialName string      `json:"credentialname"` // Credential name used to access this repository
+	Format         ERepoFormat `json:"format"`         // Format of this repository
+	Type           ERepoType   `json:"type"`           // Technology implementing this repository
 }
 
 // IRepo abstracts a repository.
@@ -86,9 +86,9 @@ type IRepo interface {
 	// GetCredentialName returns the credential name used to access this repository.
 	GetCredentialName() string
 	// GetFormat returns the format of this repository.
-	GetFormat() RepoFormat
+	GetFormat() ERepoFormat
 	// GetType returns the technology implementing this repository.
-	GetType() RepoType
+	GetType() ERepoType
 }
 
 // IChartRepo abstracts a place that holds charts.

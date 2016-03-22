@@ -112,7 +112,7 @@ func TestGetChartByReferenceWithValidReferences(t *testing.T) {
 	}
 }
 
-func getTestRepoProvider(t *testing.T) RepoProvider {
+func getTestRepoProvider(t *testing.T) IRepoProvider {
 	rp := newRepoProvider(nil, nil, nil)
 	rs := rp.GetRepoService()
 	tr, err := newRepo(TestRepoName, TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)

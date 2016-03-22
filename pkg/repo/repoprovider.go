@@ -29,8 +29,8 @@ import (
 	"sync"
 )
 
-// RepoProvider is a factory for IChartRepo instances.
-type RepoProvider interface {
+// IRepoProvider is a factory for IChartRepo instances.
+type IRepoProvider interface {
 	GetRepoByURL(URL string) (IChartRepo, error)
 	GetRepoByName(repoName string) (IChartRepo, error)
 	GetChartByReference(reference string) (*chart.Chart, error)
@@ -45,7 +45,7 @@ type repoProvider struct {
 }
 
 // NewRepoProvider creates a new repository provider.
-func NewRepoProvider(rs IRepoService, gcsrp GCSRepoProvider, cp ICredentialProvider) RepoProvider {
+func NewRepoProvider(rs IRepoService, gcsrp GCSRepoProvider, cp ICredentialProvider) IRepoProvider {
 	return newRepoProvider(rs, gcsrp, cp)
 }
 

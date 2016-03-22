@@ -30,10 +30,10 @@ type FilebasedCredentialProvider struct {
 	backingCredentialProvider ICredentialProvider
 }
 
-// NamedRepoCredential associates a name with a RepoCredential.
+// NamedRepoCredential associates a name with a Credential.
 type NamedRepoCredential struct {
 	Name string `json:"name,omitempty"`
-	RepoCredential
+	Credential
 }
 
 // NewFilebasedCredentialProvider creates a file based credential provider.
@@ -47,7 +47,7 @@ func NewFilebasedCredentialProvider(filename string) (ICredentialProvider, error
 
 	for _, nc := range c {
 		log.Printf("Loading credential named %s", nc.Name)
-		icp.SetCredential(nc.Name, &nc.RepoCredential)
+		icp.SetCredential(nc.Name, &nc.Credential)
 	}
 
 	return &FilebasedCredentialProvider{icp}, nil
@@ -72,11 +72,11 @@ func parseCredentials(bytes []byte) ([]NamedRepoCredential, error) {
 }
 
 // GetCredential returns a credential by name.
-func (fcp *FilebasedCredentialProvider) GetCredential(name string) (*RepoCredential, error) {
+func (fcp *FilebasedCredentialProvider) GetCredential(name string) (*Credential, error) {
 	return fcp.backingCredentialProvider.GetCredential(name)
 }
 
 // SetCredential sets a credential by name.
-func (fcp *FilebasedCredentialProvider) SetCredential(name string, credential *RepoCredential) error {
+func (fcp *FilebasedCredentialProvider) SetCredential(name string, credential *Credential) error {
 	return fmt.Errorf("SetCredential operation not supported with FilebasedCredentialProvider")
 }

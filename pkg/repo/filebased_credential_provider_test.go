@@ -24,7 +24,7 @@ var filename = "./testdata/test_credentials_file.yaml"
 
 type filebasedTestCase struct {
 	name   string
-	exp    *RepoCredential
+	exp    *Credential
 	expErr error
 }
 
@@ -36,14 +36,14 @@ func TestNotExistFilebased(t *testing.T) {
 
 func TestGetApiTokenFilebased(t *testing.T) {
 	cp := getProvider(t)
-	tc := &testCase{"test1", &RepoCredential{APIToken: "token"}, nil}
+	tc := &testCase{"test1", &Credential{APIToken: "token"}, nil}
 	testGetCredential(t, cp, tc)
 }
 
 func TestSetAndGetBasicAuthFilebased(t *testing.T) {
 	cp := getProvider(t)
 	ba := BasicAuthCredential{Username: "user", Password: "password"}
-	tc := &testCase{"test2", &RepoCredential{BasicAuth: ba}, nil}
+	tc := &testCase{"test2", &Credential{BasicAuth: ba}, nil}
 	testGetCredential(t, cp, tc)
 }
 

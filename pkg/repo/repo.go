@@ -23,10 +23,10 @@ import (
 
 // NewRepo takes params and returns a IRepo
 func NewRepo(name, URL, credentialName, repoFormat, repoType string) (IRepo, error) {
-	return newRepo(name, URL, credentialName, RepoFormat(repoFormat), RepoType(repoType))
+	return newRepo(name, URL, credentialName, ERepoFormat(repoFormat), ERepoType(repoType))
 }
 
-func newRepo(name, URL, credentialName string, repoFormat RepoFormat, repoType RepoType) (*Repo, error) {
+func newRepo(name, URL, credentialName string, repoFormat ERepoFormat, repoType ERepoType) (*Repo, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name must not be empty")
 	}
@@ -56,7 +56,7 @@ func newRepo(name, URL, credentialName string, repoFormat RepoFormat, repoType R
 }
 
 // Currently, only flat repositories are supported.
-func validateRepoFormat(repoFormat RepoFormat) error {
+func validateRepoFormat(repoFormat ERepoFormat) error {
 	switch repoFormat {
 	case FlatRepoFormat:
 		return nil
@@ -71,7 +71,7 @@ func (r *Repo) GetName() string {
 }
 
 // GetType returns the technology implementing this repository.
-func (r *Repo) GetType() RepoType {
+func (r *Repo) GetType() ERepoType {
 	return r.Type
 }
 
@@ -81,7 +81,7 @@ func (r *Repo) GetURL() string {
 }
 
 // GetFormat returns the format of this repository.
-func (r *Repo) GetFormat() RepoFormat {
+func (r *Repo) GetFormat() ERepoFormat {
 	return r.Format
 }
 
@@ -90,7 +90,7 @@ func (r *Repo) GetCredentialName() string {
 	return r.CredentialName
 }
 
-func validateRepo(tr IRepo, wantName, wantURL, wantCredentialName string, wantFormat RepoFormat, wantType RepoType) error {
+func validateRepo(tr IRepo, wantName, wantURL, wantCredentialName string, wantFormat ERepoFormat, wantType ERepoType) error {
 	haveName := tr.GetName()
 	if haveName != wantName {
 		return fmt.Errorf("unexpected repository name; want: %s, have %s", wantName, haveName)

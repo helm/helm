@@ -37,7 +37,7 @@ var GCSChartURLMatcher = regexp.MustCompile("gs://(.*)/(.*)-(.*).tgz")
 
 const (
 	// GCSRepoType identifies the GCS repository type.
-	GCSRepoType = RepoType("gcs")
+	GCSRepoType = ERepoType("gcs")
 
 	// GCSRepoFormat identifies the GCS repository format.
 	// In a GCS repository all charts appear at the top level.
@@ -106,7 +106,7 @@ func newGCSRepo(r *Repo, httpClient *http.Client) (*GCSRepo, error) {
 	return gcsr, nil
 }
 
-func validateRepoType(repoType RepoType) error {
+func validateRepoType(repoType ERepoType) error {
 	switch repoType {
 	case GCSRepoType:
 		return nil

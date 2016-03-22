@@ -24,7 +24,7 @@ import (
 
 type testCase struct {
 	name   string
-	exp    *RepoCredential
+	exp    *Credential
 	expErr error
 }
 
@@ -60,13 +60,13 @@ func TestNotExist(t *testing.T) {
 
 func TestSetAndGetApiToken(t *testing.T) {
 	cp := NewInmemCredentialProvider()
-	tc := &testCase{"testcredential", &RepoCredential{APIToken: "some token here"}, nil}
+	tc := &testCase{"testcredential", &Credential{APIToken: "some token here"}, nil}
 	verifySetAndGetCredential(t, cp, tc)
 }
 
 func TestSetAndGetBasicAuth(t *testing.T) {
 	cp := NewInmemCredentialProvider()
 	ba := BasicAuthCredential{Username: "user", Password: "pass"}
-	tc := &testCase{"testcredential", &RepoCredential{BasicAuth: ba}, nil}
+	tc := &testCase{"testcredential", &Credential{BasicAuth: ba}, nil}
 	verifySetAndGetCredential(t, cp, tc)
 }
