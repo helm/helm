@@ -180,22 +180,6 @@ type TypeInstance struct {
 	Path       string `json:"path"`       // JSON path within manifest
 }
 
-// KubernetesObject represents a native 'bare' Kubernetes object.
-type KubernetesObject struct {
-	Kind       string                 `json:"kind"`
-	APIVersion string                 `json:"apiVersion"`
-	Metadata   map[string]interface{} `json:"metadata"`
-	Spec       map[string]interface{} `json:"spec"`
-}
-
-// KubernetesSecret represents a Kubernetes secret
-type KubernetesSecret struct {
-	Kind       string            `json:"kind"`
-	APIVersion string            `json:"apiVersion"`
-	Metadata   map[string]string `json:"metadata"`
-	Data       map[string]string `json:"data,omitempty"`
-}
-
 // TODO: Remove the remainder of this file when the refactoring of pkg/registry is complete.
 
 // BasicAuthCredential holds a username and password.

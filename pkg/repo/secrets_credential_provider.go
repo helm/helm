@@ -24,7 +24,6 @@ import (
 	"log"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/util"
 )
 
@@ -71,7 +70,7 @@ func NewSecretsCredentialProvider() ICredentialProvider {
 }
 
 func parseCredential(credential string) (*Credential, error) {
-	var c common.KubernetesSecret
+	var c util.KubernetesSecret
 	if err := json.Unmarshal([]byte(credential), &c); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal credential (%s): %s", credential, err)
 	}
@@ -116,7 +115,7 @@ func (scp *SecretsCredentialProvider) SetCredential(name string, credential *Cre
 	metadata["name"] = name
 	data := make(map[string]string)
 	data["credential"] = enc
-	obj := &common.KubernetesSecret{
+	obj := &util.KubernetesSecret{
 		Kind:       secretType,
 		APIVersion: "v1",
 		Metadata:   metadata,
