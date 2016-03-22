@@ -21,21 +21,12 @@ import (
 	"net/url"
 )
 
-// repo describes a repository
-type repo struct {
-	Name           string     `json:"name"`           // Friendly name for this repository
-	URL            string     `json:"url"`            // URL to the root of this repository
-	CredentialName string     `json:"credentialname"` // Credential name used to access this repository
-	Format         RepoFormat `json:"format"`         // Format of this repository
-	Type           RepoType   `json:"type"`           // Technology implementing this repository
-}
-
-// NewRepo takes params and returns a Repo
-func NewRepo(name, URL, credentialName, repoFormat, repoType string) (Repo, error) {
+// NewRepo takes params and returns a IRepo
+func NewRepo(name, URL, credentialName, repoFormat, repoType string) (IRepo, error) {
 	return newRepo(name, URL, credentialName, RepoFormat(repoFormat), RepoType(repoType))
 }
 
-func newRepo(name, URL, credentialName string, repoFormat RepoFormat, repoType RepoType) (*repo, error) {
+func newRepo(name, URL, credentialName string, repoFormat RepoFormat, repoType RepoType) (*Repo, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name must not be empty")
 	}
@@ -53,7 +44,7 @@ func newRepo(name, URL, credentialName string, repoFormat RepoFormat, repoType R
 		return nil, err
 	}
 
-	r := &repo{
+	r := &Repo{
 		Name:           name,
 		Type:           repoType,
 		URL:            URL,
@@ -75,39 +66,39 @@ func validateRepoFormat(repoFormat RepoFormat) error {
 }
 
 // GetName returns the friendly name of this repository.
-func (r *repo) GetName() string {
+func (r *Repo) GetName() string {
 	return r.Name
 }
 
 // GetType returns the technology implementing this repository.
-func (r *repo) GetType() RepoType {
+func (r *Repo) GetType() RepoType {
 	return r.Type
 }
 
 // GetURL returns the URL to the root of this repository.
-func (r *repo) GetURL() string {
+func (r *Repo) GetURL() string {
 	return r.URL
 }
 
 // GetFormat returns the format of this repository.
-func (r *repo) GetFormat() RepoFormat {
+func (r *Repo) GetFormat() RepoFormat {
 	return r.Format
 }
 
 // GetCredentialName returns the credential name used to access this repository.
-func (r *repo) GetCredentialName() string {
+func (r *Repo) GetCredentialName() string {
 	return r.CredentialName
 }
 
-func validateRepo(tr Repo, wantName, wantURL, wantCredentialName string, wantFormat RepoFormat, wantType RepoType) error {
+func validateRepo(tr IRepo, wantName, wantURL, wantCredentialName string, wantFormat RepoFormat, wantType RepoType) error {
 	haveName := tr.GetName()
 	if haveName != wantName {
-		return fmt.Errorf("unexpected repo name; want: %s, have %s", wantName, haveName)
+		return fmt.Errorf("unexpected repository name; want: %s, have %s", wantName, haveName)
 	}
 
 	haveURL := tr.GetURL()
 	if haveURL != wantURL {
-		return fmt.Errorf("unexpected repo url; want: %s, have %s", wantURL, haveURL)
+		return fmt.Errorf("unexpected repository url; want: %s, have %s", wantURL, haveURL)
 	}
 
 	haveCredentialName := tr.GetCredentialName()
@@ -116,17 +107,17 @@ func validateRepo(tr Repo, wantName, wantURL, wantCredentialName string, wantFor
 	}
 
 	if haveCredentialName != wantCredentialName {
-		return fmt.Errorf("unexpected repo credential name; want: %s, have %s", wantCredentialName, haveCredentialName)
+		return fmt.Errorf("unexpected repository credential name; want: %s, have %s", wantCredentialName, haveCredentialName)
 	}
 
 	haveFormat := tr.GetFormat()
 	if haveFormat != wantFormat {
-		return fmt.Errorf("unexpected repo format; want: %s, have %s", wantFormat, haveFormat)
+		return fmt.Errorf("unexpected repository format; want: %s, have %s", wantFormat, haveFormat)
 	}
 
 	haveType := tr.GetType()
 	if haveType != wantType {
-		return fmt.Errorf("unexpected repo type; want: %s, have %s", wantType, haveType)
+		return fmt.Errorf("unexpected repository type; want: %s, have %s", wantType, haveType)
 	}
 
 	return nil

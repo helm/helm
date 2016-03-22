@@ -50,9 +50,9 @@ func TestRepoProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	castRepo, ok := haveRepo.(ObjectStorageRepo)
+	castRepo, ok := haveRepo.(IStorageRepo)
 	if !ok {
-		t.Fatalf("invalid repo type, want: ObjectStorageRepo, have: %T.", haveRepo)
+		t.Fatalf("invalid repo type, want: IStorageRepo, have: %T.", haveRepo)
 	}
 
 	wantBucket := GCSPublicRepoBucket

@@ -24,13 +24,13 @@ import (
 
 type inmemRepoService struct {
 	sync.RWMutex
-	repositories map[string]Repo
+	repositories map[string]IRepo
 }
 
 // NewInmemRepoService returns a new memory based repository service.
-func NewInmemRepoService() Service {
+func NewInmemRepoService() IRepoService {
 	rs := &inmemRepoService{
-		repositories: make(map[string]Repo),
+		repositories: make(map[string]IRepo),
 	}
 
 	r, err := NewPublicGCSRepo(nil)
@@ -42,11 +42,11 @@ func NewInmemRepoService() Service {
 }
 
 // List returns the list of all known chart repositories
-func (rs *inmemRepoService) List() ([]Repo, error) {
+func (rs *inmemRepoService) List() ([]IRepo, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
-	ret := []Repo{}
+	ret := []IRepo{}
 	for _, r := range rs.repositories {
 		ret = append(ret, r)
 	}
@@ -55,7 +55,7 @@ func (rs *inmemRepoService) List() ([]Repo, error) {
 }
 
 // Create adds a known repository to the list
-func (rs *inmemRepoService) Create(repository Repo) error {
+func (rs *inmemRepoService) Create(repository IRepo) error {
 	rs.Lock()
 	defer rs.Unlock()
 
@@ -70,7 +70,7 @@ func (rs *inmemRepoService) Create(repository Repo) error {
 }
 
 // Get returns the repository with the given name
-func (rs *inmemRepoService) Get(name string) (Repo, error) {
+func (rs *inmemRepoService) Get(name string) (IRepo, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
@@ -83,11 +83,11 @@ func (rs *inmemRepoService) Get(name string) (Repo, error) {
 }
 
 // GetByURL returns the repository that backs the given URL
-func (rs *inmemRepoService) GetByURL(URL string) (Repo, error) {
+func (rs *inmemRepoService) GetByURL(URL string) (IRepo, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
-	var found Repo
+	var found IRepo
 	for _, r := range rs.repositories {
 		rURL := r.GetURL()
 		if strings.HasPrefix(URL, rURL) {

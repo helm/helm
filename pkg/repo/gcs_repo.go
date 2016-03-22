@@ -53,21 +53,21 @@ const (
 	GCSPublicRepoBucket = GCSPublicRepoName
 )
 
-// gcsRepo implements the ObjectStorageRepo interface for Google Cloud Storage.
-type gcsRepo struct {
-	repo
+// GCSRepo implements the IStorageRepo interface for Google Cloud Storage.
+type GCSRepo struct {
+	Repo
 	bucket     string
 	httpClient *http.Client
 	service    *storage.Service
 }
 
-// NewPublicGCSRepo creates a new an ObjectStorageRepo for the public GCS repository.
-func NewPublicGCSRepo(httpClient *http.Client) (ObjectStorageRepo, error) {
+// NewPublicGCSRepo creates a new an IStorageRepo for the public GCS repository.
+func NewPublicGCSRepo(httpClient *http.Client) (IStorageRepo, error) {
 	return NewGCSRepo(GCSPublicRepoName, GCSPublicRepoURL, "", nil)
 }
 
-// NewGCSRepo creates a new ObjectStorageRepo for a given GCS repository.
-func NewGCSRepo(name, URL, credentialName string, httpClient *http.Client) (ObjectStorageRepo, error) {
+// NewGCSRepo creates a new IStorageRepo for a given GCS repository.
+func NewGCSRepo(name, URL, credentialName string, httpClient *http.Client) (IStorageRepo, error) {
 	r, err := newRepo(name, URL, credentialName, GCSRepoFormat, GCSRepoType)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func NewGCSRepo(name, URL, credentialName string, httpClient *http.Client) (Obje
 	return newGCSRepo(r, httpClient)
 }
 
-func newGCSRepo(r *repo, httpClient *http.Client) (*gcsRepo, error) {
+func newGCSRepo(r *Repo, httpClient *http.Client) (*GCSRepo, error) {
 	URL := r.GetURL()
 	m := GCSRepoURLMatcher.FindStringSubmatch(URL)
 	if len(m) != 2 {
@@ -96,8 +96,8 @@ func newGCSRepo(r *repo, httpClient *http.Client) (*gcsRepo, error) {
 		return nil, fmt.Errorf("cannot create storage service for %s: %s", URL, err)
 	}
 
-	gcsr := &gcsRepo{
-		repo:       *r,
+	gcsr := &GCSRepo{
+		Repo:       *r,
 		httpClient: httpClient,
 		service:    gcs,
 		bucket:     m[1],
@@ -117,7 +117,7 @@ func validateRepoType(repoType RepoType) error {
 
 // ListCharts lists charts in this chart repository whose string values conform to the
 // supplied regular expression, or all charts, if the regular expression is nil.
-func (g *gcsRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
+func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 	charts := []string{}
 
 	// List all objects in a bucket using pagination
@@ -155,7 +155,7 @@ func (g *gcsRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 }
 
 // GetChart retrieves, unpacks and returns a chart by name.
-func (g *gcsRepo) GetChart(name string) (*chart.Chart, error) {
+func (g *GCSRepo) GetChart(name string) (*chart.Chart, error) {
 	// Charts should be named bucket/chart-X.Y.Z.tgz, so check that the name matches
 	if !ChartNameMatcher.MatchString(name) {
 		return nil, fmt.Errorf("name must be of the form <name>-<version>.tgz, was %s", name)
@@ -184,11 +184,11 @@ func (g *gcsRepo) GetChart(name string) (*chart.Chart, error) {
 }
 
 // GetBucket returns the repository bucket.
-func (g *gcsRepo) GetBucket() string {
+func (g *GCSRepo) GetBucket() string {
 	return g.bucket
 }
 
 // Do performs an HTTP operation on the receiver's httpClient.
-func (g *gcsRepo) Do(req *http.Request) (resp *http.Response, err error) {
+func (g *GCSRepo) Do(req *http.Request) (resp *http.Response, err error) {
 	return g.httpClient.Do(req)
 }

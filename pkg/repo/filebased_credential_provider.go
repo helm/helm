@@ -27,7 +27,7 @@ import (
 // FilebasedCredentialProvider provides credentials for registries.
 type FilebasedCredentialProvider struct {
 	// Actual backing store
-	backingCredentialProvider CredentialProvider
+	backingCredentialProvider ICredentialProvider
 }
 
 // NamedRepoCredential associates a name with a RepoCredential.
@@ -37,7 +37,7 @@ type NamedRepoCredential struct {
 }
 
 // NewFilebasedCredentialProvider creates a file based credential provider.
-func NewFilebasedCredentialProvider(filename string) (CredentialProvider, error) {
+func NewFilebasedCredentialProvider(filename string) (ICredentialProvider, error) {
 	icp := NewInmemCredentialProvider()
 	log.Printf("Using credentials file %s", filename)
 	c, err := readCredentialsFile(filename)

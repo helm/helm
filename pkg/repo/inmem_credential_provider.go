@@ -28,7 +28,7 @@ type InmemCredentialProvider struct {
 }
 
 // NewInmemCredentialProvider creates a new memory based credential provider.
-func NewInmemCredentialProvider() CredentialProvider {
+func NewInmemCredentialProvider() ICredentialProvider {
 	return &InmemCredentialProvider{credentials: make(map[string]*RepoCredential)}
 }
 

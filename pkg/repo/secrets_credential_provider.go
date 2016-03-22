@@ -53,7 +53,7 @@ type SecretsCredentialProvider struct {
 }
 
 // NewSecretsCredentialProvider creates a new secrets credential provider.
-func NewSecretsCredentialProvider() CredentialProvider {
+func NewSecretsCredentialProvider() ICredentialProvider {
 	kubernetesConfig := &util.KubernetesConfig{
 		KubePath:       *kubePath,
 		KubeService:    *kubeService,

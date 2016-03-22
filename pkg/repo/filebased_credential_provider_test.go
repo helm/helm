@@ -47,7 +47,7 @@ func TestSetAndGetBasicAuthFilebased(t *testing.T) {
 	testGetCredential(t, cp, tc)
 }
 
-func getProvider(t *testing.T) CredentialProvider {
+func getProvider(t *testing.T) ICredentialProvider {
 	cp, err := NewFilebasedCredentialProvider(filename)
 	if err != nil {
 		t.Fatalf("cannot create a new provider from file %s: %s", filename, err)

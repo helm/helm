@@ -125,7 +125,7 @@ func TestGetChartWithInvalidName(t *testing.T) {
 	}
 }
 
-func getTestRepo(t *testing.T) ObjectStorageRepo {
+func getTestRepo(t *testing.T) IStorageRepo {
 	tr, err := NewGCSRepo(TestRepoName, TestRepoURL, TestRepoCredentialName, nil)
 	if err != nil {
 		t.Fatal(err)
