@@ -38,19 +38,8 @@ func repoCommands() cli.Command {
 			{
 				Name:      "add",
 				Usage:     "Add a repository to the remote manager.",
-				ArgsUsage: "REPOSITORY",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:  "cred",
-						Usage: "The name of the credential.",
-					},
-				},
-				Action: func(c *cli.Context) { run(c, addRepo) },
-			},
-			{
-				Name:      "show",
-				Usage:     "Show the repository details for a given repository.",
-				ArgsUsage: "REPOSITORY",
+				ArgsUsage: "REPOSITORY_URL",
+				Action:    func(c *cli.Context) { run(c, addRepo) },
 			},
 			{
 				Name:      "list",
@@ -62,7 +51,7 @@ func repoCommands() cli.Command {
 				Name:      "remove",
 				Aliases:   []string{"rm"},
 				Usage:     "Remove a repository from the remote manager.",
-				ArgsUsage: "REPOSITORY",
+				ArgsUsage: "REPOSITORY_URL",
 				Action:    func(c *cli.Context) { run(c, removeRepo) },
 			},
 		},
@@ -88,9 +77,14 @@ func listRepos(c *cli.Context) error {
 	if _, err := NewClient(c).Get(chartRepoPath, &dest); err != nil {
 		return err
 	}
-	format.Msg("Chart Repositories:")
-	for _, r := range dest {
-		format.Msg(r.URL + "\n")
+	if len(dest) < 1 {
+		format.Info("Looks like you don't have any chart repositories.")
+		format.Info("Add a chart repository using the `helm repo add [REPOSITORY_URL]` command.")
+	} else {
+		format.Msg("Chart Repositories:\n")
+		for _, r := range dest {
+			format.Msg(r.URL + "\n")
+		}
 	}
 	return nil
 }
