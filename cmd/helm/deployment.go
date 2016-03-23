@@ -30,13 +30,9 @@ var errMissingDeploymentArg = errors.New("First argument, deployment name, is re
 
 const defaultShowFormat = `Name: {{.Name}}
 Status: {{.State.Status}}
-{{- with .State.Errors}}
-Errors:
-{{- range .}}
-  {{.}}
-{{- end}}
-{{- end}}
-`
+{{with .State.Errors}}Errors:
+{{range .}}  {{.}}{{end}}
+{{end}}`
 
 func init() {
 	addCommands(deploymentCommands())
