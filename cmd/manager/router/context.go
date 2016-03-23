@@ -2,8 +2,8 @@ package router
 
 import (
 	"github.com/kubernetes/helm/cmd/manager/manager"
-	"github.com/kubernetes/helm/pkg/common"
 	helmhttp "github.com/kubernetes/helm/pkg/httputil"
+	"github.com/kubernetes/helm/pkg/repo"
 )
 
 // Config holds the global configuration parameters passed into the router.
@@ -47,5 +47,5 @@ type Context struct {
 	// Manager is a helm/manager/manager.Manager
 	Manager            manager.Manager
 	Encoder            helmhttp.Encoder
-	CredentialProvider common.CredentialProvider
+	CredentialProvider repo.ICredentialProvider
 }
