@@ -282,7 +282,9 @@ def ExpandJinja(file_name, source_template, resource, imports):
     """
 
     try:
-        env = jinja2.Environment(loader=jinja2.DictLoader(imports))
+        jinja_imports = (
+            {i['path']: i['content'] for _, i in imports.iteritems()})
+        env = jinja2.Environment(loader=jinja2.DictLoader(jinja_imports))
 
         template = env.from_string(source_template)
 
