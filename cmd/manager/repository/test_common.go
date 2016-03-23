@@ -210,9 +210,9 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T, r Repository) {
 	}
 }
 
-// TestRepositoryTypeInstances checks that type instances can be listed and retrieved successfully.
-func TestRepositoryTypeInstances(t *testing.T, r Repository) {
-	d1Map := map[string][]*common.TypeInstance{
+// TestRepositoryChartInstances checks that type instances can be listed and retrieved successfully.
+func TestRepositoryChartInstances(t *testing.T, r Repository) {
+	d1Map := map[string][]*common.ChartInstance{
 		"t1": {
 			{
 				Name:       "i1",
@@ -224,7 +224,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		},
 	}
 
-	d2Map := map[string][]*common.TypeInstance{
+	d2Map := map[string][]*common.ChartInstance{
 		"t2": {
 			{
 				Name:       "i2",
@@ -236,7 +236,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		},
 	}
 
-	d3Map := map[string][]*common.TypeInstance{
+	d3Map := map[string][]*common.ChartInstance{
 		"t2": {
 			{
 				Name:       "i3",
@@ -248,7 +248,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		},
 	}
 
-	instances, err := r.GetTypeInstances("noinstances")
+	instances, err := r.GetChartInstances("noinstances")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected no instances: %v", instances)
 	}
 
-	types, err := r.ListTypes()
+	types, err := r.ListCharts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,11 +266,11 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected no types: %v", types)
 	}
 
-	r.AddTypeInstances(d1Map)
-	r.AddTypeInstances(d2Map)
-	r.AddTypeInstances(d3Map)
+	r.AddChartInstances(d1Map)
+	r.AddChartInstances(d2Map)
+	r.AddChartInstances(d3Map)
 
-	instances, err = r.GetTypeInstances("unknowntype")
+	instances, err = r.GetChartInstances("unknowntype")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected no instances: %v", instances)
 	}
 
-	instances, err = r.GetTypeInstances("t1")
+	instances, err = r.GetChartInstances("t1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected one instance: %v", instances)
 	}
 
-	instances, err = r.GetTypeInstances("t2")
+	instances, err = r.GetChartInstances("t2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected two instances: %v", instances)
 	}
 
-	instances, err = r.GetTypeInstances("all")
+	instances, err = r.GetChartInstances("all")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +306,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected three total instances: %v", instances)
 	}
 
-	types, err = r.ListTypes()
+	types, err = r.ListCharts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,12 +315,12 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected two total types: %v", types)
 	}
 
-	err = r.ClearTypeInstancesForDeployment("d1")
+	err = r.ClearChartInstancesForDeployment("d1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	instances, err = r.GetTypeInstances("t1")
+	instances, err = r.GetChartInstances("t1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +329,7 @@ func TestRepositoryTypeInstances(t *testing.T, r Repository) {
 		t.Fatalf("expected no instances after clear: %v", instances)
 	}
 
-	types, err = r.ListTypes()
+	types, err = r.ListCharts()
 	if err != nil {
 		t.Fatal(err)
 	}

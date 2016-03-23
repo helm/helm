@@ -102,9 +102,9 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T) {
 	}
 }
 
-func TestRepositoryTypeInstances(t *testing.T) {
+func TestRepositoryChartInstances(t *testing.T) {
 	if r := createRepository(); r != nil {
 		defer resetRepository(t, r)
-		repository.TestRepositoryTypeInstances(t, r)
+		repository.TestRepositoryChartInstances(t, r)
 	}
 }
