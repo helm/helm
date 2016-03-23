@@ -170,9 +170,9 @@ type Resource struct {
 	State      *ResourceState         `json:"state,omitempty"`
 }
 
-// TypeInstance defines the metadata for an instantiation of a template type
+// ChartInstance defines the metadata for an instantiation of a template type
 // in a deployment.
-type TypeInstance struct {
+type ChartInstance struct {
 	Name       string `json:"name"`       // instance name
 	Type       string `json:"type"`       // instance type
 	Deployment string `json:"deployment"` // deployment name

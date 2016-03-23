@@ -17,13 +17,13 @@ limitations under the License.
 package manager
 
 import (
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/repo"
+
 	"errors"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/kubernetes/helm/pkg/common"
-	"github.com/kubernetes/helm/pkg/registry"
 )
 
 var template = common.Template{Name: "test", Content: "test"}
@@ -128,17 +128,17 @@ func (deployer *deployerStub) PutConfiguration(configuration *common.Configurati
 }
 
 type repositoryStub struct {
-	FailListDeployments    bool
-	Created                []string
-	ManifestAdd            map[string]*common.Manifest
-	ManifestSet            map[string]*common.Manifest
-	Deleted                []string
-	GetValid               []string
-	TypeInstances          map[string][]string
-	TypeInstancesCleared   bool
-	GetTypeInstancesCalled bool
-	ListTypesCalled        bool
-	DeploymentStates       []*common.DeploymentState
+	FailListDeployments     bool
+	Created                 []string
+	ManifestAdd             map[string]*common.Manifest
+	ManifestSet             map[string]*common.Manifest
+	Deleted                 []string
+	GetValid                []string
+	ChartInstances          map[string][]string
+	ChartInstancesCleared   bool
+	GetChartInstancesCalled bool
+	ListTypesCalled         bool
+	DeploymentStates        []*common.DeploymentState
 }
 
 func (repository *repositoryStub) reset() {
@@ -148,9 +148,9 @@ func (repository *repositoryStub) reset() {
 	repository.ManifestSet = make(map[string]*common.Manifest)
 	repository.Deleted = make([]string, 0)
 	repository.GetValid = make([]string, 0)
-	repository.TypeInstances = make(map[string][]string)
-	repository.TypeInstancesCleared = false
-	repository.GetTypeInstancesCalled = false
+	repository.ChartInstances = make(map[string][]string)
+	repository.ChartInstancesCleared = false
+	repository.GetChartInstancesCalled = false
 	repository.ListTypesCalled = false
 	repository.DeploymentStates = []*common.DeploymentState{}
 }
@@ -233,26 +233,26 @@ func (repository *repositoryStub) GetLatestManifest(d string) (*common.Manifest,
 }
 
 // Types.
-func (repository *repositoryStub) ListTypes() ([]string, error) {
+func (repository *repositoryStub) ListCharts() ([]string, error) {
 	repository.ListTypesCalled = true
 	return []string{}, nil
 }
 
-func (repository *repositoryStub) GetTypeInstances(t string) ([]*common.TypeInstance, error) {
-	repository.GetTypeInstancesCalled = true
-	return []*common.TypeInstance{}, nil
+func (repository *repositoryStub) GetChartInstances(t string) ([]*common.ChartInstance, error) {
+	repository.GetChartInstancesCalled = true
+	return []*common.ChartInstance{}, nil
 }
 
-func (repository *repositoryStub) ClearTypeInstancesForDeployment(d string) error {
-	repository.TypeInstancesCleared = true
+func (repository *repositoryStub) ClearChartInstancesForDeployment(d string) error {
+	repository.ChartInstancesCleared = true
 	return nil
 }
 
-func (repository *repositoryStub) AddTypeInstances(is map[string][]*common.TypeInstance) error {
+func (repository *repositoryStub) AddChartInstances(is map[string][]*common.ChartInstance) error {
 	for t, instances := range is {
 		for _, instance := range instances {
 			d := instance.Deployment
-			repository.TypeInstances[d] = append(repository.TypeInstances[d], t)
+			repository.ChartInstances[d] = append(repository.ChartInstances[d], t)
 		}
 	}
 
@@ -264,10 +264,10 @@ func (repository *repositoryStub) Close() {}
 var testExpander = &expanderStub{}
 var testRepository = newRepositoryStub()
 var testDeployer = newDeployerStub()
-var testRegistryService = registry.NewInmemRegistryService()
-var testCredentialProvider = registry.NewInmemCredentialProvider()
-var testProvider = registry.NewRegistryProvider(nil, registry.NewTestGithubRegistryProvider("", nil), registry.NewTestGCSRegistryProvider("", nil), testCredentialProvider)
-var testManager = NewManager(testExpander, testDeployer, testRepository, testProvider, testRegistryService, testCredentialProvider)
+var testRepoService = repo.NewInmemRepoService()
+var testCredentialProvider = repo.NewInmemCredentialProvider()
+var testProvider = repo.NewRepoProvider(nil, repo.NewGCSRepoProvider(testCredentialProvider), testCredentialProvider)
+var testManager = NewManager(testExpander, testDeployer, testRepository, testProvider, testRepoService, testCredentialProvider)
 
 func TestListDeployments(t *testing.T) {
 	testRepository.reset()
@@ -363,12 +363,12 @@ func TestCreateDeployment(t *testing.T) {
 		t.Fatal("CreateDeployment success did not mark deployment as deployed")
 	}
 
-	if !testRepository.TypeInstancesCleared {
+	if !testRepository.ChartInstancesCleared {
 		t.Fatal("Repository did not clear type instances during creation")
 	}
 
-	if !reflect.DeepEqual(testRepository.TypeInstances, typeInstMap) {
-		t.Fatalf("Unexpected type instances after CreateDeployment: %s", testRepository.TypeInstances)
+	if !reflect.DeepEqual(testRepository.ChartInstances, typeInstMap) {
+		t.Fatalf("Unexpected type instances after CreateDeployment: %s", testRepository.ChartInstances)
 	}
 }
 
@@ -397,7 +397,7 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 			"Received: %v, %s. Expected: %s, %s.", d, err, "nil", errTest)
 	}
 
-	if testRepository.TypeInstancesCleared {
+	if testRepository.ChartInstancesCleared {
 		t.Fatal("Unexpected change to type instances during CreateDeployment failure.")
 	}
 }
@@ -437,7 +437,7 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 			"Received: %v, %v. Expected: %v, %v.", d, err, &deployment, "nil")
 	}
 
-	if !testRepository.TypeInstancesCleared {
+	if !testRepository.ChartInstancesCleared {
 		t.Fatal("Repository did not clear type instances during creation")
 	}
 }
@@ -486,7 +486,7 @@ func TestDeleteDeploymentForget(t *testing.T) {
 		}
 	}
 
-	if !testRepository.TypeInstancesCleared {
+	if !testRepository.ChartInstancesCleared {
 		t.Fatal("Expected type instances to be cleared during DeleteDeployment.")
 	}
 }
@@ -521,29 +521,29 @@ func TestExpand(t *testing.T) {
 func TestListTypes(t *testing.T) {
 	testRepository.reset()
 
-	testManager.ListTypes()
+	testManager.ListCharts()
 
 	if !testRepository.ListTypesCalled {
-		t.Fatal("expected repository ListTypes() call.")
+		t.Fatal("expected repository ListCharts() call.")
 	}
 }
 
 func TestListInstances(t *testing.T) {
 	testRepository.reset()
 
-	testManager.ListInstances("all")
+	testManager.ListChartInstances("all")
 
-	if !testRepository.GetTypeInstancesCalled {
-		t.Fatal("expected repository GetTypeInstances() call.")
+	if !testRepository.GetChartInstancesCalled {
+		t.Fatal("expected repository GetChartInstances() call.")
 	}
 }
 
-// TODO(jackgr): Implement TestListRegistryTypes
-func TestListRegistryTypes(t *testing.T) {
+// TODO(jackgr): Implement TestListRepoCharts
+func TestListRepoCharts(t *testing.T) {
 	/*
-		types, err := testManager.ListRegistryTypes("", nil)
+		types, err := testManager.ListRepoCharts("", nil)
 		if err != nil {
-		    t.Fatalf("cannot list registry types: %s", err)
+		    t.Fatalf("cannot list repository types: %s", err)
 		}
 	*/
 }
@@ -551,7 +551,7 @@ func TestListRegistryTypes(t *testing.T) {
 // TODO(jackgr): Implement TestGetDownloadURLs
 func TestGetDownloadURLs(t *testing.T) {
 	/*
-		    urls, err := testManager.GetDownloadURLs("", registry.Type{})
+		    urls, err := testManager.GetDownloadURLs("", repo.Type{})
 			if err != nil {
 			    t.Fatalf("cannot list get download urls: %s", err)
 			}

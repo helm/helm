@@ -19,15 +19,13 @@ package manager
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/kubernetes/helm/cmd/manager/repository"
+	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/common"
-	"github.com/kubernetes/helm/pkg/registry"
-	"github.com/kubernetes/helm/pkg/util"
+	"github.com/kubernetes/helm/pkg/repo"
 )
 
 // Manager manages a persistent set of Deployments.
@@ -44,26 +42,20 @@ type Manager interface {
 	GetManifest(deploymentName string, manifest string) (*common.Manifest, error)
 	Expand(t *common.Template) (*common.Manifest, error)
 
-	// Types
-	ListTypes() ([]string, error)
-	ListInstances(typeName string) ([]*common.TypeInstance, error)
-	GetRegistryForType(typeName string) (string, error)
-	GetMetadataForType(typeName string) (string, error)
+	// Charts
+	ListCharts() ([]string, error)
+	ListChartInstances(chartName string) ([]*common.ChartInstance, error)
+	GetRepoForChart(chartName string) (string, error)
+	GetMetadataForChart(chartName string) (*chart.Chartfile, error)
+	GetChart(chartName string) (*chart.Chart, error)
 
-	// Registries
-	ListRegistries() ([]*common.Registry, error)
-	CreateRegistry(pr *common.Registry) error
-	GetRegistry(name string) (*common.Registry, error)
-	DeleteRegistry(name string) error
-
-	// Registry Types
-	ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error)
-	GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error)
-	GetFile(registryName string, url string) (string, error)
+	// Repo Charts
+	ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error)
+	GetChartForRepo(repoName, chartName string) (*chart.Chart, error)
 
 	// Credentials
-	CreateCredential(name string, c *common.RegistryCredential) error
-	GetCredential(name string) (*common.RegistryCredential, error)
+	CreateCredential(name string, c *repo.Credential) error
+	GetCredential(name string) (*repo.Credential, error)
 
 	// Chart Repositories
 	ListChartRepos() ([]string, error)
@@ -72,24 +64,23 @@ type Manager interface {
 }
 
 type manager struct {
-	expander         Expander
-	deployer         Deployer
-	repository       repository.Repository
-	registryProvider registry.RegistryProvider
-	service          common.RegistryService
+	expander     Expander
+	deployer     Deployer
+	repository   repository.Repository
+	repoProvider repo.IRepoProvider
+	service      repo.IRepoService
 	//TODO: add chart repo service
-	credentialProvider common.CredentialProvider
+	credentialProvider repo.ICredentialProvider
 }
 
 // NewManager returns a new initialized Manager.
 func NewManager(expander Expander,
 	deployer Deployer,
 	repository repository.Repository,
-	registryProvider registry.RegistryProvider,
-	service common.RegistryService,
-	//TODO: add chart repo service
-	credentialProvider common.CredentialProvider) Manager {
-	return &manager{expander, deployer, repository, registryProvider, service, credentialProvider}
+	repoProvider repo.IRepoProvider,
+	service repo.IRepoService,
+	credentialProvider repo.ICredentialProvider) Manager {
+	return &manager{expander, deployer, repository, repoProvider, service, credentialProvider}
 }
 
 // ListDeployments returns the list of deployments
@@ -190,7 +181,7 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 	}
 
 	// Finally update the type instances for this deployment.
-	m.setTypeInstances(t.Name, manifest.Name, manifest.Layout)
+	m.setChartInstances(t.Name, manifest.Name, manifest.Layout)
 	return m.repository.GetValidDeployment(t.Name)
 }
 
@@ -210,20 +201,20 @@ func (m *manager) createManifest(t *common.Template) (*common.Manifest, error) {
 	}, nil
 }
 
-func (m *manager) setTypeInstances(deploymentName string, manifestName string, layout *common.Layout) {
-	m.repository.ClearTypeInstancesForDeployment(deploymentName)
+func (m *manager) setChartInstances(deploymentName string, manifestName string, layout *common.Layout) {
+	m.repository.ClearChartInstancesForDeployment(deploymentName)
 
-	instances := make(map[string][]*common.TypeInstance)
+	instances := make(map[string][]*common.ChartInstance)
 	for i, r := range layout.Resources {
-		addTypeInstances(&instances, r, deploymentName, manifestName, fmt.Sprintf("$.resources[%d]", i))
+		addChartInstances(&instances, r, deploymentName, manifestName, fmt.Sprintf("$.resources[%d]", i))
 	}
 
-	m.repository.AddTypeInstances(instances)
+	m.repository.AddChartInstances(instances)
 }
 
-func addTypeInstances(instances *map[string][]*common.TypeInstance, r *common.LayoutResource, deploymentName string, manifestName string, jsonPath string) {
+func addChartInstances(instances *map[string][]*common.ChartInstance, r *common.LayoutResource, deploymentName string, manifestName string, jsonPath string) {
 	// Add this resource.
-	inst := &common.TypeInstance{
+	inst := &common.ChartInstance{
 		Name:       r.Name,
 		Type:       r.Type,
 		Deployment: deploymentName,
@@ -235,7 +226,7 @@ func addTypeInstances(instances *map[string][]*common.TypeInstance, r *common.La
 
 	// Add all sub resources if they exist.
 	for i, sr := range r.Resources {
-		addTypeInstances(instances, sr, deploymentName, manifestName, fmt.Sprintf("%s.resources[%d]", jsonPath, i))
+		addChartInstances(instances, sr, deploymentName, manifestName, fmt.Sprintf("%s.resources[%d]", jsonPath, i))
 	}
 }
 
@@ -286,7 +277,7 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 	}
 
 	// Finally remove the type instances for this deployment.
-	m.repository.ClearTypeInstancesForDeployment(name)
+	m.repository.ClearChartInstancesForDeployment(name)
 	return d, nil
 }
 
@@ -319,7 +310,7 @@ func (m *manager) PutDeployment(name string, t *common.Template) (*common.Deploy
 	}
 
 	// Finally update the type instances for this deployment.
-	m.setTypeInstances(t.Name, manifest.Name, manifest.Layout)
+	m.setChartInstances(t.Name, manifest.Name, manifest.Layout)
 	return m.repository.GetValidDeployment(t.Name)
 }
 
@@ -336,59 +327,47 @@ func (m *manager) Expand(t *common.Template) (*common.Manifest, error) {
 	}, nil
 }
 
-func (m *manager) ListTypes() ([]string, error) {
-	return m.repository.ListTypes()
+func (m *manager) ListCharts() ([]string, error) {
+	return m.repository.ListCharts()
 }
 
-func (m *manager) ListInstances(typeName string) ([]*common.TypeInstance, error) {
-	return m.repository.GetTypeInstances(typeName)
+func (m *manager) ListChartInstances(chartName string) ([]*common.ChartInstance, error) {
+	return m.repository.GetChartInstances(chartName)
 }
 
-// GetRegistryForType returns the registry where a type resides.
-func (m *manager) GetRegistryForType(typeName string) (string, error) {
-	_, r, err := registry.GetDownloadURLs(m.registryProvider, typeName)
+// GetRepoForChart returns the repository where a chart resides.
+func (m *manager) GetRepoForChart(chartName string) (string, error) {
+	_, r, err := m.repoProvider.GetChartByReference(chartName)
 	if err != nil {
 		return "", err
 	}
 
-	return r.GetRegistryName(), nil
+	return r.GetName(), nil
 }
 
-// GetMetadataForType returns the metadata for type.
-func (m *manager) GetMetadataForType(typeName string) (string, error) {
-	URLs, r, err := registry.GetDownloadURLs(m.registryProvider, typeName)
+// GetMetadataForChart returns the metadata for a chart.
+func (m *manager) GetMetadataForChart(chartName string) (*chart.Chartfile, error) {
+	c, _, err := m.repoProvider.GetChartByReference(chartName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if len(URLs) < 1 {
-		return "", nil
-	}
-
-	// If it's a chart, we want the provenance file
-	fPath := URLs[0]
-	if !strings.Contains(fPath, ".prov") {
-		// It's not a chart, so we want the schema
-		fPath += ".schema"
-	}
-
-	metadata, err := getFileFromRegistry(fPath, r)
-	if err != nil {
-		return "", fmt.Errorf("cannot get metadata for type (%s): %s", typeName, err)
-	}
-
-	return metadata, nil
+	return c.Chartfile(), nil
 }
 
-// ListRegistries returns the list of registries
-func (m *manager) ListRegistries() ([]*common.Registry, error) {
-	return m.service.List()
+// GetChart returns a chart.
+func (m *manager) GetChart(chartName string) (*chart.Chart, error) {
+	c, _, err := m.repoProvider.GetChartByReference(chartName)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 // ListChartRepos returns the list of chart repositories
 func (m *manager) ListChartRepos() ([]string, error) {
-	//TODO: implement
-	return nil, nil
+	return m.service.List()
 }
 
 // AddChartRepo adds a chart repository to list of available chart repositories
@@ -399,20 +378,15 @@ func (m *manager) AddChartRepo(name string) error {
 
 // RemoveChartRepo removes a chart repository to list of available chart repositories
 func (m *manager) RemoveChartRepo(name string) error {
-	//TODO: implement
-	return nil
+	return m.service.Delete(name)
 }
 
-func (m *manager) CreateRegistry(pr *common.Registry) error {
+func (m *manager) CreateRepo(pr repo.IRepo) error {
 	return m.service.Create(pr)
 }
 
-func (m *manager) GetRegistry(name string) (*common.Registry, error) {
+func (m *manager) GetRepo(name string) (repo.IRepo, error) {
 	return m.service.Get(name)
-}
-
-func (m *manager) DeleteRegistry(name string) error {
-	return m.service.Delete(name)
 }
 
 func generateManifestName() string {
@@ -437,54 +411,33 @@ func getResourceErrors(c *common.Configuration) []string {
 	return errs
 }
 
-// ListRegistryTypes lists types in a given registry whose string values
-// conform to the supplied regular expression, or all types, if the regular
+// ListRepoCharts lists charts in a given repository whose names
+// conform to the supplied regular expression, or all charts, if the regular
 // expression is nil.
-func (m *manager) ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error) {
-	r, err := m.registryProvider.GetRegistryByName(registryName)
+func (m *manager) ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error) {
+	r, err := m.repoProvider.GetRepoByName(repoName)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.ListTypes(regex)
+	return r.ListCharts(regex)
 }
 
-// GetDownloadURLs returns the URLs required to download the contents
-// of a given type in a given registry.
-func (m *manager) GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error) {
-	r, err := m.registryProvider.GetRegistryByName(registryName)
+// GetChartForRepo returns a chart from a given repository.
+func (m *manager) GetChartForRepo(repoName, chartName string) (*chart.Chart, error) {
+	r, err := m.repoProvider.GetRepoByName(repoName)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.GetDownloadURLs(t)
+	return r.GetChart(chartName)
 }
 
-// GetFile returns a file from the backing registry
-func (m *manager) GetFile(registryName string, url string) (string, error) {
-	r, err := m.registryProvider.GetRegistryByName(registryName)
-	if err != nil {
-		return "", err
-	}
-
-	return getFileFromRegistry(url, r)
-}
-
-func getFileFromRegistry(url string, r registry.Registry) (string, error) {
-	getter := util.NewHTTPClient(3, r, util.NewSleeper())
-	body, _, err := getter.Get(url)
-	if err != nil {
-		return "", err
-	}
-
-	return body, nil
-}
-
-// CreateCredential creates a credential that can be used to authenticate to registry
-func (m *manager) CreateCredential(name string, c *common.RegistryCredential) error {
+// CreateCredential creates a credential that can be used to authenticate to repository
+func (m *manager) CreateCredential(name string, c *repo.Credential) error {
 	return m.credentialProvider.SetCredential(name, c)
 }
 
-func (m *manager) GetCredential(name string) (*common.RegistryCredential, error) {
+func (m *manager) GetCredential(name string) (*repo.Credential, error) {
 	return m.credentialProvider.GetCredential(name)
 }
