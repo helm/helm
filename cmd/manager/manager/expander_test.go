@@ -32,21 +32,6 @@ import (
 	"github.com/ghodss/yaml"
 )
 
-type mockResolver struct {
-	responses [][]*common.ImportFile
-	t         *testing.T
-}
-
-func (r *mockResolver) ResolveTypes(c *common.Configuration, i []*common.ImportFile) ([]*common.ImportFile, error) {
-	if len(r.responses) < 1 {
-		return nil, nil
-	}
-
-	ret := r.responses[0]
-	r.responses = r.responses[1:]
-	return ret, nil
-}
-
 var validTemplateTestCaseData = common.Template{
 	Name:    "TestTemplate",
 	Content: string(validContentTestCaseData),
@@ -232,7 +217,6 @@ type ExpanderTestCase struct {
 	Description   string
 	Error         string
 	Handler       func(w http.ResponseWriter, r *http.Request)
-	Resolver      TypeResolver
 	ValidResponse *ExpandedTemplate
 }
 
@@ -247,25 +231,13 @@ func TestExpandTemplate(t *testing.T) {
 			"expect success for ExpandTemplate",
 			"",
 			expanderSuccessHandler,
-			&mockResolver{},
 			getValidResponse(t, "expect success for ExpandTemplate"),
 		},
 		{
 			"expect error for ExpandTemplate",
 			"cannot expand template",
 			expanderErrorHandler,
-			&mockResolver{},
 			nil,
-		},
-		{
-			"expect success for ExpandTemplate with two expansions",
-			"",
-			roundTripHandler,
-			&mockResolver{[][]*common.ImportFile{
-				{},
-				{&common.ImportFile{Name: "test.py"}},
-			}, t},
-			roundTripResponse,
 		},
 	}
 
@@ -273,7 +245,7 @@ func TestExpandTemplate(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(etc.Handler))
 		defer ts.Close()
 
-		expander := NewExpander(ts.URL, etc.Resolver)
+		expander := NewExpander(ts.URL)
 		actualResponse, err := expander.ExpandTemplate(&validTemplateTestCaseData)
 		if err != nil {
 			message := err.Error()
