@@ -105,22 +105,3 @@ func CaptureOutput(fn func()) string {
 	b, _ := ioutil.ReadAll(r)
 	return string(b)
 }
-
-func TestHelm(t *testing.T) {
-	th := setup()
-	defer th.teardown()
-
-	th.mux.HandleFunc("/deployments", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`["guestbook.yaml"]`))
-	})
-
-	expected := "guestbook.yaml\n"
-
-	actual := CaptureOutput(func() {
-		th.Run("deployment", "list")
-	})
-
-	if expected != actual {
-		t.Errorf("Expected %v got %v", expected, actual)
-	}
-}
