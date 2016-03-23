@@ -112,7 +112,7 @@ func TestGetChart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reflect.DeepEqual(wantFile, haveFile) {
+	if !reflect.DeepEqual(wantFile, haveFile) {
 		t.Fatalf("retrieved invalid chart\nwant:%#v\nhave:\n%#v\n", wantFile, haveFile)
 	}
 }

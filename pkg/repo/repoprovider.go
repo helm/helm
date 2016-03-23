@@ -33,7 +33,7 @@ import (
 type IRepoProvider interface {
 	GetRepoByURL(URL string) (IChartRepo, error)
 	GetRepoByName(repoName string) (IChartRepo, error)
-	GetChartByReference(reference string) (*chart.Chart, error)
+	GetChartByReference(reference string) (*chart.Chart, IChartRepo, error)
 }
 
 type repoProvider struct {
@@ -157,25 +157,30 @@ func (rp *repoProvider) findRepoByURL(URL string) IChartRepo {
 
 // GetChartByReference maps the supplied chart reference into a fully qualified
 // URL, uses the URL to find the repository it references, queries the repository
-// for the chart by URL, and returns the result.
-func (rp *repoProvider) GetChartByReference(reference string) (*chart.Chart, error) {
+// for the chart by URL, and returns the chart and the repository that backs it.
+func (rp *repoProvider) GetChartByReference(reference string) (*chart.Chart, IChartRepo, error) {
 	l, err := ParseGCSChartReference(reference)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	URL, err := l.Long(true)
 	if err != nil {
-		return nil, fmt.Errorf("invalid reference %s: %s", reference, err)
+		return nil, nil, fmt.Errorf("invalid reference %s: %s", reference, err)
 	}
 
 	r, err := rp.GetRepoByURL(URL)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	name := fmt.Sprintf("%s-%s.tgz", l.Name, l.Version)
-	return r.GetChart(name)
+	c, err := r.GetChart(name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return c, r, nil
 }
 
 // GCSRepoProvider is a factory for GCS IRepo instances.

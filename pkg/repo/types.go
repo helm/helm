@@ -118,7 +118,7 @@ type IStorageRepo interface {
 // repository based operations, such as search and chart reference resolution.
 type IRepoService interface {
 	// List returns the list of all known chart repositories
-	List() ([]IRepo, error)
+	List() ([]string, error)
 	// Create adds a known repository to the list
 	Create(repository IRepo) error
 	// Get returns the repository with the given name
