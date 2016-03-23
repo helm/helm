@@ -18,10 +18,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/chart"
+	"github.com/kubernetes/helm/pkg/format"
 )
 
 func init() {
@@ -61,6 +64,13 @@ func chartCommands() cli.Command {
 				Usage:     "given a chart, show all the deployments that reference it.",
 				ArgsUsage: "CHART",
 			},
+			{
+				Name:      "package",
+				Aliases:   []string{"pack"},
+				Usage:     "Given a chart directory, package it into a release.",
+				ArgsUsage: "PATH",
+				Action:    func(c *cli.Context) { run(c, pack) },
+			},
 		},
 	}
 }
@@ -81,4 +91,35 @@ func createChart(c *cli.Context) error {
 
 	_, err := chart.Create(cf, dir)
 	return err
+
+}
+
+func pack(cxt *cli.Context) error {
+	args := cxt.Args()
+	if len(args) < 1 {
+		return errors.New("'helm package' requires a path to a chart directory as an argument")
+	}
+
+	dir := args[0]
+	if fi, err := os.Stat(dir); err != nil {
+		return fmt.Errorf("Could not find directory %s: %s", dir, err)
+	} else if !fi.IsDir() {
+		return fmt.Errorf("Not a directory: %s", dir)
+	}
+
+	fname, err := packDir(dir)
+	if err != nil {
+		return err
+	}
+	format.Msg(fname)
+	return nil
+}
+
+func packDir(dir string) (string, error) {
+	c, err := chart.LoadDir(dir)
+	if err != nil {
+		return "", fmt.Errorf("Failed to load %s: %s", dir, err)
+	}
+
+	return chart.Save(c, ".")
 }

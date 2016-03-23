@@ -354,7 +354,7 @@ helm lint PATH
 Package a chart:
 
 ```
-$ helm package .
+$ helm chart package PATH/TO/FOO
 Created foo-1.1.2.tgz
 ```
 
@@ -367,7 +367,7 @@ Uploaded to https://example.com/bucket/foo-1.1.2.tgz
 
 General pattern:
 ```
-helm package PATH
+helm chart package PATH
 helm release [-u destination] PATH|FILE
 ```
 
