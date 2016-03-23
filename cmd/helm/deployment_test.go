@@ -24,10 +24,10 @@ import (
 	"github.com/kubernetes/helm/pkg/common"
 )
 
-func TestShowDeployment(t *testing.T) {
+func TestDeployment(t *testing.T) {
 	var deploymentTestCases = []struct {
 		args     []string
-		resp     *common.Deployment
+		resp     interface{}
 		expected string
 	}{
 		{
@@ -48,43 +48,26 @@ func TestShowDeployment(t *testing.T) {
 			},
 			"Name: guestbook.yaml\nStatus: Failed\nErrors:\n  error message\n",
 		},
+		{
+			[]string{"deployment", "list"},
+			[]string{"guestbook.yaml"},
+			"guestbook.yaml\n",
+		},
 	}
 
 	for _, tc := range deploymentTestCases {
-		th := setup()
+		th := testHelm(t)
 		th.mux.HandleFunc("/deployments/", func(w http.ResponseWriter, r *http.Request) {
 			data, err := json.Marshal(tc.resp)
-			if err != nil {
-				t.Fatal(err)
-			}
+			th.must(err)
 			w.Write(data)
 		})
 
-		actual := CaptureOutput(func() {
-			th.Run(tc.args...)
-		})
-		if tc.expected != actual {
-			t.Errorf("Expected %v got %v", tc.expected, actual)
+		th.run(tc.args...)
+
+		if tc.expected != th.output {
+			t.Errorf("Expected %v got %v", tc.expected, th.output)
 		}
-		th.teardown()
-	}
-}
-
-func TestListDeployment(t *testing.T) {
-	th := setup()
-	defer th.teardown()
-
-	th.mux.HandleFunc("/deployments", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`["guestbook.yaml"]`))
-	})
-
-	expected := "guestbook.yaml\n"
-
-	actual := CaptureOutput(func() {
-		th.Run("deployment", "list")
-	})
-
-	if expected != actual {
-		t.Errorf("Expected %v got %v", expected, actual)
+		th.cleanup()
 	}
 }

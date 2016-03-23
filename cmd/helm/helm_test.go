@@ -27,15 +27,16 @@ import (
 	"github.com/kubernetes/helm/pkg/format"
 )
 
-type testHelm struct {
+type testHelmData struct {
 	t      *testing.T
 	mux    *http.ServeMux
 	server *httptest.Server
 	app    *cli.App
+	output string
 }
 
-func setup() *testHelm {
-	th := &testHelm{}
+func testHelm(t *testing.T) *testHelmData {
+	th := &testHelmData{t: t}
 
 	th.app = cli.NewApp()
 	th.app.Commands = commands
@@ -64,39 +65,49 @@ func setup() *testHelm {
 	return th
 }
 
-func (th *testHelm) teardown() {
+func (th *testHelmData) cleanup() {
 	th.server.Close()
 }
 
-func (th *testHelm) URL() string {
+func (th *testHelmData) URL() string {
 	return th.server.URL
 }
 
-func (th *testHelm) Run(args ...string) {
-	args = append([]string{"helm", "--host", th.URL()}, args...)
-	th.app.Run(args)
+// must gives a fatal error if err is not nil.
+func (th *testHelmData) must(err error) {
+	if err != nil {
+		th.t.Fatal(err)
+	}
 }
 
-// CaptureOutput redirect all log/std streams, capture and replace
-func CaptureOutput(fn func()) string {
-	logStderr := format.Stderr
-	logStdout := format.Stdout
-	osStdout := os.Stdout
-	osStderr := os.Stderr
+// check gives a test non-fatal error if err is not nil.
+func (th *testHelmData) check(err error) {
+	if err != nil {
+		th.t.Error(err)
+	}
+}
 
+func (th *testHelmData) run(args ...string) {
+	th.output = ""
+	args = append([]string{"helm", "--host", th.URL()}, args...)
+	th.output = captureOutput(func() {
+		th.app.Run(args)
+	})
+}
+
+// captureOutput redirect all log/std streams, capture and replace
+func captureOutput(fn func()) string {
+	osStdout, osStderr := os.Stdout, os.Stderr
+	logStdout, logStderr := format.Stdout, format.Stderr
 	defer func() {
-		format.Stderr = logStderr
-		format.Stdout = logStdout
-		os.Stdout = osStdout
-		os.Stderr = osStderr
+		os.Stdout, os.Stderr = osStdout, osStderr
+		format.Stdout, format.Stderr = logStdout, logStderr
 	}()
 
 	r, w, _ := os.Pipe()
 
-	format.Stderr = w
-	format.Stdout = w
-	os.Stdout = w
-	os.Stderr = w
+	os.Stdout, os.Stderr = w, w
+	format.Stdout, format.Stderr = w, w
 
 	fn()
 
