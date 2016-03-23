@@ -20,6 +20,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/kubernetes/helm/pkg/util"
 
 	"archive/tar"
@@ -90,15 +91,15 @@ var usage = func() {
 	os.Exit(0)
 }
 
-func getCredential() *common.RegistryCredential {
+func getCredential() *repo.Credential {
 	*apitoken = strings.TrimSpace(*apitoken)
 	if *apitoken == "" {
 		*apitoken = strings.TrimSpace(os.Getenv("GITHUB_API_TOKEN"))
 	}
 
 	if *apitoken != "" {
-		return &common.RegistryCredential{
-			APIToken: common.APITokenCredential(*apitoken),
+		return &repo.Credential{
+			APIToken: repo.APITokenCredential(*apitoken),
 		}
 	}
 
@@ -113,8 +114,8 @@ func getCredential() *common.RegistryCredential {
 			*password = strings.TrimSpace(os.Getenv("GITHUB_PASSWORD"))
 		}
 
-		return &common.RegistryCredential{
-			BasicAuth: common.BasicAuthCredential{
+		return &repo.Credential{
+			BasicAuth: repo.BasicAuthCredential{
 				Username: *username,
 				Password: *password,
 			},
@@ -126,8 +127,8 @@ func getCredential() *common.RegistryCredential {
 		if err != nil {
 			log.Fatalf("Unable to read service account file: %v", err)
 		}
-		return &common.RegistryCredential{
-			ServiceAccount: common.JWTTokenCredential(string(b)),
+		return &repo.Credential{
+			ServiceAccount: repo.JWTTokenCredential(string(b)),
 		}
 	}
 	return nil
