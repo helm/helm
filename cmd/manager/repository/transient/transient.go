@@ -27,16 +27,16 @@ import (
 	"github.com/kubernetes/helm/pkg/common"
 )
 
-// deploymentTypeInstanceMap stores type instances mapped by deployment name.
+// deploymentChartInstanceMap stores type instances mapped by deployment name.
 // This allows for simple updating and deleting of per-deployment instances
 // when deployments are created/updated/deleted.
-type deploymentTypeInstanceMap map[string][]*common.TypeInstance
+type deploymentChartInstanceMap map[string][]*common.ChartInstance
 
 type tRepository struct {
 	sync.RWMutex
 	deployments map[string]common.Deployment
 	manifests   map[string]map[string]*common.Manifest
-	instances   map[string]deploymentTypeInstanceMap
+	instances   map[string]deploymentChartInstanceMap
 }
 
 // NewRepository returns a new transient repository. Its lifetime is coupled
@@ -46,14 +46,14 @@ func NewRepository() repository.Repository {
 	return &tRepository{
 		deployments: make(map[string]common.Deployment, 0),
 		manifests:   make(map[string]map[string]*common.Manifest, 0),
-		instances:   make(map[string]deploymentTypeInstanceMap, 0),
+		instances:   make(map[string]deploymentChartInstanceMap, 0),
 	}
 }
 
 func (r *tRepository) Close() {
 	r.deployments = make(map[string]common.Deployment, 0)
 	r.manifests = make(map[string]map[string]*common.Manifest, 0)
-	r.instances = make(map[string]deploymentTypeInstanceMap, 0)
+	r.instances = make(map[string]deploymentChartInstanceMap, 0)
 }
 
 // ListDeployments returns of all of the deployments in the repository.
@@ -258,8 +258,8 @@ func (r *tRepository) GetLatestManifest(deploymentName string) (*common.Manifest
 	return r.getManifestForDeployment(deploymentName, d.LatestManifest)
 }
 
-// ListTypes returns all types known from existing instances.
-func (r *tRepository) ListTypes() ([]string, error) {
+// ListCharts returns all types known from existing instances.
+func (r *tRepository) ListCharts() ([]string, error) {
 	var keys []string
 	for k := range r.instances {
 		keys = append(keys, k)
@@ -268,10 +268,10 @@ func (r *tRepository) ListTypes() ([]string, error) {
 	return keys, nil
 }
 
-// GetTypeInstances returns all instances of a given type. If type is empty,
+// GetChartInstances returns all instances of a given type. If type is empty,
 // returns all instances for all types.
-func (r *tRepository) GetTypeInstances(typeName string) ([]*common.TypeInstance, error) {
-	var instances []*common.TypeInstance
+func (r *tRepository) GetChartInstances(typeName string) ([]*common.ChartInstance, error) {
+	var instances []*common.ChartInstance
 	for t, dInstMap := range r.instances {
 		if t == typeName || typeName == "" || typeName == "all" {
 			for _, i := range dInstMap {
@@ -283,9 +283,9 @@ func (r *tRepository) GetTypeInstances(typeName string) ([]*common.TypeInstance,
 	return instances, nil
 }
 
-// ClearTypeInstancesForDeployment deletes all type instances associated with the given
+// ClearChartInstancesForDeployment deletes all type instances associated with the given
 // deployment from the repository.
-func (r *tRepository) ClearTypeInstancesForDeployment(deploymentName string) error {
+func (r *tRepository) ClearChartInstancesForDeployment(deploymentName string) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -299,22 +299,22 @@ func (r *tRepository) ClearTypeInstancesForDeployment(deploymentName string) err
 	return nil
 }
 
-// AddTypeInstances adds the supplied type instances to the repository.
-func (r *tRepository) AddTypeInstances(instances map[string][]*common.TypeInstance) error {
+// AddChartInstances adds the supplied type instances to the repository.
+func (r *tRepository) AddChartInstances(instances map[string][]*common.ChartInstance) error {
 	r.Lock()
 	defer r.Unlock()
 
 	// Add instances to the appropriate type and deployment maps.
 	for t, is := range instances {
 		if r.instances[t] == nil {
-			r.instances[t] = make(deploymentTypeInstanceMap)
+			r.instances[t] = make(deploymentChartInstanceMap)
 		}
 
 		tmap := r.instances[t]
 		for _, instance := range is {
 			deployment := instance.Deployment
 			if tmap[deployment] == nil {
-				tmap[deployment] = make([]*common.TypeInstance, 0)
+				tmap[deployment] = make([]*common.ChartInstance, 0)
 			}
 
 			tmap[deployment] = append(tmap[deployment], instance)

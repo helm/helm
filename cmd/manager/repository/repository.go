@@ -40,10 +40,10 @@ type Repository interface {
 	GetLatestManifest(deploymentName string) (*common.Manifest, error)
 
 	// Types.
-	ListTypes() ([]string, error)
-	GetTypeInstances(typeName string) ([]*common.TypeInstance, error)
-	ClearTypeInstancesForDeployment(deploymentName string) error
-	AddTypeInstances(instances map[string][]*common.TypeInstance) error
+	ListCharts() ([]string, error)
+	GetChartInstances(chartName string) ([]*common.ChartInstance, error)
+	ClearChartInstancesForDeployment(deploymentName string) error
+	AddChartInstances(instances map[string][]*common.ChartInstance) error
 
 	Close()
 }

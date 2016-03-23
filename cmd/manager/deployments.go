@@ -38,7 +38,7 @@ import (
 	"github.com/kubernetes/helm/cmd/manager/router"
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/httputil"
-	"github.com/kubernetes/helm/pkg/registry"
+	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/kubernetes/helm/pkg/util"
 )
 
@@ -66,16 +66,18 @@ func registerDeploymentRoutes(c *router.Context, h *router.Handler) {
 	h.Add("GET /deployments/*/manifests", listManifestsHandlerFunc)
 	h.Add("GET /deployments/*/manifests/*", getManifestHandlerFunc)
 	h.Add("POST /expand", expandHandlerFunc)
-	h.Add("GET /types", listTypesHandlerFunc)
-	h.Add("GET /types/*/instances", listTypeInstancesHandlerFunc)
-	h.Add("GET /types/*/registry", getRegistryForTypeHandlerFunc)
-	h.Add("GET /types/*/metadata", getMetadataForTypeHandlerFunc)
-	h.Add("GET /registries", listRegistriesHandlerFunc)
-	h.Add("GET /registries/*", getRegistryHandlerFunc)
-	h.Add("POST /registries/*", createRegistryHandlerFunc)
-	h.Add("GET /registries/*/types", listRegistryTypesHandlerFunc)
-	h.Add("GET /registries/*/types/*", getDownloadURLsHandlerFunc)
-	h.Add("GET /registries/*/download", getFileHandlerFunc)
+	h.Add("GET /charts", listChartsHandlerFunc)
+	h.Add("GET /charts/*/instances", listChartInstancesHandlerFunc)
+	h.Add("GET /charts/*/repository", getRepoForChartHandlerFunc)
+	h.Add("GET /charts/*/metadata", getMetadataForChartHandlerFunc)
+	h.Add("GET /charts/*", getChartHandlerFunc)
+
+	// TODO: Refactor these commented out routes
+	//	h.Add("GET /repositories/*", getRepoHandlerFunc)
+	//	h.Add("POST /repositories/*", createRepoHandlerFunc)
+
+	h.Add("GET /repositories/*/charts", listRepositoryChartsHandlerFunc)
+	h.Add("GET /repositories/*/charts/*", getRepositoryChartHandlerFunc)
 	h.Add("POST /credentials/*", createCredentialHandlerFunc)
 	h.Add("GET /credentials/*", getCredentialHandlerFunc)
 }
@@ -89,20 +91,20 @@ func healthz(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 }
 
 func setupDependencies(c *router.Context) error {
-	var credentialProvider common.CredentialProvider
+	var credentialProvider repo.ICredentialProvider
 	if c.Config.CredentialFile != "" {
 		if c.Config.CredentialSecrets {
 			return errors.New("Both credentialFile and credentialSecrets are set")
 		}
 		var err error
-		credentialProvider, err = registry.NewFilebasedCredentialProvider(c.Config.CredentialFile)
+		credentialProvider, err = repo.NewFilebasedCredentialProvider(c.Config.CredentialFile)
 		if err != nil {
 			return fmt.Errorf("cannot create credential provider %s: %s", c.Config.CredentialFile, err)
 		}
 	} else if *credentialSecrets {
-		credentialProvider = registry.NewSecretsCredentialProvider()
+		credentialProvider = repo.NewSecretsCredentialProvider()
 	} else {
-		credentialProvider = registry.NewInmemCredentialProvider()
+		credentialProvider = repo.NewInmemCredentialProvider()
 	}
 	c.CredentialProvider = credentialProvider
 	c.Manager = newManager(c)
@@ -115,14 +117,14 @@ const deployerPort = "8080"
 
 func newManager(c *router.Context) manager.Manager {
 	cfg := c.Config
-	service := registry.NewInmemRegistryService()
-	registryProvider := registry.NewDefaultRegistryProvider(c.CredentialProvider, service)
-	resolver := manager.NewTypeResolver(registryProvider, util.DefaultHTTPClient())
-	expander := manager.NewExpander(getServiceURL(cfg.ExpanderURL, cfg.ExpanderName, expanderPort), resolver)
+	service := repo.NewInmemRepoService()
+	cp := c.CredentialProvider
+	repoProvider := repo.NewRepoProvider(service, repo.NewGCSRepoProvider(cp), cp)
+	expander := manager.NewExpander(getServiceURL(cfg.ExpanderURL, cfg.ExpanderName, expanderPort))
 	deployer := manager.NewDeployer(getServiceURL(cfg.DeployerURL, cfg.DeployerName, deployerPort))
 	address := strings.TrimPrefix(getServiceURL(cfg.MongoAddress, cfg.MongoName, cfg.MongoPort), "http://")
 	repository := createRepository(address)
-	return manager.NewManager(expander, deployer, repository, registryProvider, service, c.CredentialProvider)
+	return manager.NewManager(expander, deployer, repository, repoProvider, service, c.CredentialProvider)
 }
 
 func createRepository(address string) repository.Repository {
@@ -369,10 +371,10 @@ func expandHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context
 
 // Putting Type handlers here for now because deployments.go
 // currently owns its own Manager backend and doesn't like to share.
-func listTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: list types"
+func listChartsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: list charts"
 	util.LogHandlerEntry(handler, r)
-	types, err := c.Manager.ListTypes()
+	types, err := c.Manager.ListCharts()
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -382,15 +384,15 @@ func listTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Cont
 	return nil
 }
 
-func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: list instances"
+func listChartInstancesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: list chart instances"
 	util.LogHandlerEntry(handler, r)
-	typeName, err := pos(w, r, 2)
+	chartName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	instances, err := c.Manager.ListInstances(typeName)
+	instances, err := c.Manager.ListChartInstances(chartName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -400,33 +402,33 @@ func listTypeInstancesHandlerFunc(w http.ResponseWriter, r *http.Request, c *rou
 	return nil
 }
 
-func getRegistryForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: get type registry"
+func getRepoForChartHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: get repository for chart"
 	util.LogHandlerEntry(handler, r)
-	typeName, err := pos(w, r, 2)
+	chartName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	registry, err := c.Manager.GetRegistryForType(typeName)
+	repository, err := c.Manager.GetRepoForChart(chartName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
 	}
 
-	util.LogHandlerExitWithJSON(handler, w, registry, http.StatusOK)
+	util.LogHandlerExitWithJSON(handler, w, repository, http.StatusOK)
 	return nil
 }
 
-func getMetadataForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: get type metadata"
+func getMetadataForChartHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: get chart metadata"
 	util.LogHandlerEntry(handler, r)
-	typeName, err := pos(w, r, 2)
+	chartName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	metadata, err := c.Manager.GetMetadataForType(typeName)
+	metadata, err := c.Manager.GetMetadataForChart(chartName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -436,29 +438,37 @@ func getMetadataForTypeHandlerFunc(w http.ResponseWriter, r *http.Request, c *ro
 	return nil
 }
 
-// Putting Registry handlers here for now because deployments.go
-// currently owns its own Manager backend and doesn't like to share.
-func listRegistriesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: list registries"
+func getChartHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: get chart"
 	util.LogHandlerEntry(handler, r)
-	registries, err := c.Manager.ListRegistries()
+	chartName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	util.LogHandlerExitWithJSON(handler, w, registries, http.StatusOK)
+	ch, err := c.Manager.GetChart(chartName)
+	if err != nil {
+		httputil.BadRequest(w, r, err)
+		return nil
+	}
+
+	util.LogHandlerExitWithJSON(handler, w, ch, http.StatusOK)
 	return nil
 }
 
-func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: get registry"
+// TODO: Refactor this commented out code.
+
+/*
+
+func getRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: get repository"
 	util.LogHandlerEntry(handler, r)
-	registryName, err := pos(w, r, 2)
+	repoName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	cr, err := c.Manager.GetRegistry(registryName)
+	cr, err := c.Manager.GetRepo(repoName)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -468,10 +478,10 @@ func getRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Co
 	return nil
 }
 
-func getRegistry(w http.ResponseWriter, r *http.Request, handler string) *common.Registry {
+func getRepo(w http.ResponseWriter, r *http.Request, handler string) *repo.Repo {
 	util.LogHandlerEntry(handler, r)
 
-	t := &common.Registry{}
+	t := &repo.Repo{}
 	if err := httputil.Decode(w, r, t); err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
@@ -479,23 +489,23 @@ func getRegistry(w http.ResponseWriter, r *http.Request, handler string) *common
 	return t
 }
 
-func createRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: create registry"
+func createRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: create repository"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
-	registryName, err := pos(w, r, 2)
+	repoName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	reg := getRegistry(w, r, handler)
-	if reg.Name != registryName {
-		e := fmt.Errorf("Registry name does not match %s != %s", reg.Name, registryName)
+	reg := getRepo(w, r, handler)
+	if reg.Name != repoName {
+		e := fmt.Errorf("Repo name does not match %s != %s", reg.Name, repoName)
 		httputil.BadRequest(w, r, e)
 		return nil
 	}
 	if reg != nil {
-		err = c.Manager.CreateRegistry(reg)
+		err = c.Manager.CreateRepo(reg)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -505,11 +515,12 @@ func createRegistryHandlerFunc(w http.ResponseWriter, r *http.Request, c *router
 	util.LogHandlerExitWithJSON(handler, w, reg, http.StatusOK)
 	return nil
 }
+*/
 
-func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: list registry types"
+func listRepositoryChartsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: list repository charts"
 	util.LogHandlerEntry(handler, r)
-	registryName, err := pos(w, r, 2)
+	repoName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
@@ -530,73 +541,40 @@ func listRegistryTypesHandlerFunc(w http.ResponseWriter, r *http.Request, c *rou
 		}
 	}
 
-	registryTypes, err := c.Manager.ListRegistryTypes(registryName, regex)
+	repoCharts, err := c.Manager.ListRepoCharts(repoName, regex)
 	if err != nil {
 		return err
 	}
 
-	util.LogHandlerExitWithJSON(handler, w, registryTypes, http.StatusOK)
+	util.LogHandlerExitWithJSON(handler, w, repoCharts, http.StatusOK)
 	return nil
 }
 
-func getDownloadURLsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: get download URLs"
+func getRepositoryChartHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: get repository charts"
 	util.LogHandlerEntry(handler, r)
-	registryName, err := pos(w, r, 2)
+	repoName, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	typeName, err := pos(w, r, 4)
+	chartName, err := pos(w, r, 4)
 	if err != nil {
 		return err
 	}
 
-	tt, err := registry.ParseType(typeName)
+	repoChart, err := c.Manager.GetChartForRepo(repoName, chartName)
 	if err != nil {
 		return err
 	}
 
-	cr, err := c.Manager.GetDownloadURLs(registryName, tt)
-	if err != nil {
-		httputil.BadRequest(w, r, err)
-		return nil
-	}
-
-	urls := []string{}
-	for _, u := range cr {
-		urls = append(urls, u.String())
-	}
-	util.LogHandlerExitWithJSON(handler, w, urls, http.StatusOK)
+	util.LogHandlerExitWithJSON(handler, w, repoChart, http.StatusOK)
 	return nil
 }
 
-func getFileHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: get file"
+func getCredential(w http.ResponseWriter, r *http.Request, handler string) *repo.Credential {
 	util.LogHandlerEntry(handler, r)
-	registryName, err := pos(w, r, 2)
-	if err != nil {
-		return err
-	}
-
-	file := r.FormValue("file")
-	if file == "" {
-		return err
-	}
-
-	b, err := c.Manager.GetFile(registryName, file)
-	if err != nil {
-		httputil.BadRequest(w, r, err)
-		return nil
-	}
-
-	util.LogHandlerExitWithJSON(handler, w, b, http.StatusOK)
-	return nil
-}
-
-func getCredential(w http.ResponseWriter, r *http.Request, handler string) *common.RegistryCredential {
-	util.LogHandlerEntry(handler, r)
-	t := &common.RegistryCredential{}
+	t := &repo.Credential{}
 	if err := httputil.Decode(w, r, t); err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil

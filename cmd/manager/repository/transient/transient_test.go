@@ -50,6 +50,6 @@ func TestRepositoryDeleteDeploymentWorksForget(t *testing.T) {
 	repository.TestRepositoryDeleteDeploymentWorksForget(t, NewRepository())
 }
 
-func TestRepositoryTypeInstances(t *testing.T) {
-	repository.TestRepositoryTypeInstances(t, NewRepository())
+func TestRepositoryChartInstances(t *testing.T) {
+	repository.TestRepositoryChartInstances(t, NewRepository())
 }

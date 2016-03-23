@@ -44,7 +44,7 @@ type pManifest struct {
 
 type pInstance struct {
 	ID string `bson:"_id"`
-	common.TypeInstance
+	common.ChartInstance
 }
 
 type pRepository struct {
@@ -428,8 +428,8 @@ func (r *pRepository) removeManifestsForDeployment(d *common.Deployment) error {
 	return nil
 }
 
-// ListTypes returns all types known from existing instances.
-func (r *pRepository) ListTypes() ([]string, error) {
+// ListCharts returns all types known from existing instances.
+func (r *pRepository) ListCharts() ([]string, error) {
 	var result []string
 	if err := r.Instances.Find(nil).Distinct("typeinstance.type", &result); err != nil {
 		return nil, fmt.Errorf("cannot list type instances: %s", err)
@@ -438,9 +438,9 @@ func (r *pRepository) ListTypes() ([]string, error) {
 	return result, nil
 }
 
-// GetTypeInstances returns all instances of a given type. If typeName is empty
+// GetChartInstances returns all instances of a given type. If typeName is empty
 // or equal to "all", returns all instances of all types.
-func (r *pRepository) GetTypeInstances(typeName string) ([]*common.TypeInstance, error) {
+func (r *pRepository) GetChartInstances(typeName string) ([]*common.ChartInstance, error) {
 	query := bson.M{"typeinstance.type": typeName}
 	if typeName == "" || typeName == "all" {
 		query = nil
@@ -451,17 +451,17 @@ func (r *pRepository) GetTypeInstances(typeName string) ([]*common.TypeInstance,
 		return nil, fmt.Errorf("cannot get instances of type %s: %s", typeName, err)
 	}
 
-	instances := []*common.TypeInstance{}
+	instances := []*common.ChartInstance{}
 	for _, pi := range result {
-		instances = append(instances, &pi.TypeInstance)
+		instances = append(instances, &pi.ChartInstance)
 	}
 
 	return instances, nil
 }
 
-// ClearTypeInstancesForDeployment deletes all type instances associated with the given
+// ClearChartInstancesForDeployment deletes all type instances associated with the given
 // deployment from the repository.
-func (r *pRepository) ClearTypeInstancesForDeployment(deploymentName string) error {
+func (r *pRepository) ClearChartInstancesForDeployment(deploymentName string) error {
 	if deploymentName != "" {
 		query := bson.M{"typeinstance.deployment": deploymentName}
 		if _, err := r.Instances.RemoveAll(query); err != nil {
@@ -472,12 +472,12 @@ func (r *pRepository) ClearTypeInstancesForDeployment(deploymentName string) err
 	return nil
 }
 
-// AddTypeInstances adds the supplied type instances to the repository.
-func (r *pRepository) AddTypeInstances(instances map[string][]*common.TypeInstance) error {
+// AddChartInstances adds the supplied type instances to the repository.
+func (r *pRepository) AddChartInstances(instances map[string][]*common.ChartInstance) error {
 	for _, is := range instances {
 		for _, i := range is {
 			key := fmt.Sprintf("%s.%s.%s", i.Deployment, i.Type, i.Name)
-			wrapper := pInstance{ID: key, TypeInstance: *i}
+			wrapper := pInstance{ID: key, ChartInstance: *i}
 			if err := r.Instances.Insert(&wrapper); err != nil {
 				return fmt.Errorf("cannot insert type instance %v: %s", wrapper, err)
 			}

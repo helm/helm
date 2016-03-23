@@ -2,13 +2,13 @@ package main
 
 import (
 	"net/http/httptest"
-	"net/url"
 	"regexp"
 
 	"github.com/kubernetes/helm/cmd/manager/router"
+	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/httputil"
-	"github.com/kubernetes/helm/pkg/registry"
+	"github.com/kubernetes/helm/pkg/repo"
 )
 
 // httpHarness is a simple test server fixture.
@@ -26,13 +26,13 @@ func httpHarness(c *router.Context, route string, fn router.HandlerFunc) *httpte
 // This creates a stub context with the following properties:
 // - Config is initialized to empty values
 // - Encoder is initialized to httputil.DefaultEncoder
-// - CredentialProvider is initialized to registry.InmemCredentialProvider
+// - CredentialProvider is initialized to repo.InmemCredentialProvider
 // - Manager is initialized to mockManager.
 func stubContext() *router.Context {
 	return &router.Context{
 		Config:             &router.Config{},
 		Manager:            &mockManager{},
-		CredentialProvider: registry.NewInmemCredentialProvider(),
+		CredentialProvider: repo.NewInmemCredentialProvider(),
 		Encoder:            httputil.DefaultEncoder,
 	}
 }
@@ -71,20 +71,24 @@ func (m *mockManager) Expand(t *common.Template) (*common.Manifest, error) {
 	return &common.Manifest{}, nil
 }
 
-func (m *mockManager) ListTypes() ([]string, error) {
+func (m *mockManager) ListCharts() ([]string, error) {
 	return []string{}, nil
 }
 
-func (m *mockManager) ListInstances(typeName string) ([]*common.TypeInstance, error) {
-	return []*common.TypeInstance{}, nil
+func (m *mockManager) ListChartInstances(chartName string) ([]*common.ChartInstance, error) {
+	return []*common.ChartInstance{}, nil
 }
 
-func (m *mockManager) GetRegistryForType(typeName string) (string, error) {
+func (m *mockManager) GetRepoForChart(chartName string) (string, error) {
 	return "", nil
 }
 
-func (m *mockManager) GetMetadataForType(typeName string) (string, error) {
-	return "", nil
+func (m *mockManager) GetMetadataForChart(chartName string) (*chart.Chartfile, error) {
+	return nil, nil
+}
+
+func (m *mockManager) GetChart(chartName string) (*chart.Chart, error) {
+	return nil, nil
 }
 
 func (m *mockManager) AddChartRepo(name string) error {
@@ -99,32 +103,31 @@ func (m *mockManager) RemoveChartRepo(name string) error {
 	return nil
 }
 
-func (m *mockManager) ListRegistries() ([]*common.Registry, error) {
-	return []*common.Registry{}, nil
+func (m *mockManager) ListRepos() ([]*repo.Repo, error) {
+	return []*repo.Repo{}, nil
 }
 
-func (m *mockManager) CreateRegistry(pr *common.Registry) error {
+func (m *mockManager) CreateRepo(pr *repo.Repo) error {
 	return nil
 }
-func (m *mockManager) GetRegistry(name string) (*common.Registry, error) {
-	return &common.Registry{}, nil
+func (m *mockManager) GetRepo(name string) (*repo.Repo, error) {
+	return &repo.Repo{}, nil
 }
-func (m *mockManager) DeleteRegistry(name string) error {
+func (m *mockManager) DeleteRepo(name string) error {
 	return nil
 }
 
-func (m *mockManager) ListRegistryTypes(registryName string, regex *regexp.Regexp) ([]registry.Type, error) {
-	return []registry.Type{}, nil
+func (m *mockManager) ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error) {
+	return []string{}, nil
 }
-func (m *mockManager) GetDownloadURLs(registryName string, t registry.Type) ([]*url.URL, error) {
-	return []*url.URL{}, nil
+
+func (m *mockManager) GetChartForRepo(repoName, chartName string) (*chart.Chart, error) {
+	return nil, nil
 }
-func (m *mockManager) GetFile(registryName string, url string) (string, error) {
-	return "", nil
-}
-func (m *mockManager) CreateCredential(name string, c *common.RegistryCredential) error {
+
+func (m *mockManager) CreateCredential(name string, c *repo.Credential) error {
 	return nil
 }
-func (m *mockManager) GetCredential(name string) (*common.RegistryCredential, error) {
-	return &common.RegistryCredential{}, nil
+func (m *mockManager) GetCredential(name string) (*repo.Credential, error) {
+	return &repo.Credential{}, nil
 }

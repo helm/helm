@@ -43,14 +43,29 @@ type Expander interface {
 	ExpandTemplate(t *common.Template) (*ExpandedTemplate, error)
 }
 
+// TODO: Remove mockResolver when type resolver is completely excised
+type mockResolver struct {
+}
+
+func (r *mockResolver) ResolveTypes(c *common.Configuration, i []*common.ImportFile) ([]*common.ImportFile, error) {
+	return nil, nil
+}
+
 // NewExpander returns a new initialized Expander.
-func NewExpander(url string, tr TypeResolver) Expander {
+func NewExpander(url string) Expander {
+	tr := &mockResolver{}
 	return &expander{url, tr}
 }
 
 type expander struct {
 	expanderURL  string
 	typeResolver TypeResolver
+}
+
+// TypeResolver finds Types in a Configuration which aren't yet reduceable to an import file
+// or primitive, and attempts to replace them with a template from a URL.
+type TypeResolver interface {
+	ResolveTypes(config *common.Configuration, imports []*common.ImportFile) ([]*common.ImportFile, error)
 }
 
 func (e *expander) getBaseURL() string {
