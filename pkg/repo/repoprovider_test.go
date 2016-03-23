@@ -99,14 +99,14 @@ func TestGetChartByReferenceWithValidReferences(t *testing.T) {
 
 	for _, vcr := range ValidChartReferences {
 		t.Logf("getting chart by reference: %s", vcr)
-		tc, err := rp.GetChartByReference(vcr)
+		tc, _, err := rp.GetChartByReference(vcr)
 		if err != nil {
 			t.Error(err)
 			continue
 		}
 
 		haveFile := tc.Chartfile()
-		if reflect.DeepEqual(wantFile, haveFile) {
+		if !reflect.DeepEqual(wantFile, haveFile) {
 			t.Fatalf("retrieved invalid chart\nwant:%#v\nhave:\n%#v\n", wantFile, haveFile)
 		}
 	}
@@ -130,7 +130,7 @@ func getTestRepoProvider(t *testing.T) IRepoProvider {
 func TestGetChartByReferenceWithInvalidReferences(t *testing.T) {
 	rp := NewRepoProvider(nil, nil, nil)
 	for _, icr := range InvalidChartReferences {
-		_, err := rp.GetChartByReference(icr)
+		_, _, err := rp.GetChartByReference(icr)
 		if err == nil {
 			t.Fatalf("found chart using invalid reference: %s", icr)
 		}
