@@ -21,17 +21,6 @@ import (
 	"time"
 )
 
-// SchemaImport represents an import as declared in a schema file.
-type SchemaImport struct {
-	Path string `json:"path"`
-	Name string `json:"name"`
-}
-
-// Schema is a partial DM schema. We only need access to the imports object at this level.
-type Schema struct {
-	Imports []SchemaImport `json:"imports"`
-}
-
 // Deployment defines a deployment that describes
 // the creation, modification and/or deletion of a set of resources.
 type Deployment struct {
@@ -76,17 +65,6 @@ func (s DeploymentStatus) String() string {
 	return string(s)
 }
 
-// LayoutResource defines the structure of resources in the manifest layout.
-type LayoutResource struct {
-	Resource
-	Layout
-}
-
-// Layout defines the structure of a layout as returned from expansion.
-type Layout struct {
-	Resources []*LayoutResource `json:"resources,omitempty"`
-}
-
 // Manifest contains the input configuration for a deployment, the fully
 // expanded configuration, and the layout structure of the manifest.
 //
@@ -103,21 +81,16 @@ type CreateDeploymentRequest struct {
 	ChartInvocation *Resource `json:"chart_invocation"`
 }
 
-// ExpansionRequest defines the API to expander.
-type ExpansionRequest struct {
-	ChartInvocation *Resource           `json:"chart_invocation"`
-	Chart           *chart.ChartContent `json:"chart"`
+// ChartInstance defines the metadata for an instantiation of a chart.
+type ChartInstance struct {
+	Name       string `json:"name"`       // instance name
+	Type       string `json:"type"`       // instance type
+	Deployment string `json:"deployment"` // deployment name
+	Manifest   string `json:"manifest"`   // manifest name
+	Path       string `json:"path"`       // JSON path within manifest
 }
 
-// ExpansionResponse defines the API to expander.
-type ExpansionResponse struct {
-	Resources []interface{} `json:"resources"`
-}
-
-// Expander abstracts interactions with the expander and deployer services.
-type Expander interface {
-	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
-}
+// TODO: Remove the following section when the refactoring of templates is complete.
 
 // Template describes a set of resources to be deployed.
 // Manager expands a Template into a Configuration, which
@@ -133,6 +106,44 @@ type ImportFile struct {
 	Name    string `json:"name,omitempty"`
 	Path    string `json:"path,omitempty"` // Actual URL for the file
 	Content string `json:"content"`
+}
+
+// SchemaImport represents an import as declared in a schema file.
+type SchemaImport struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+}
+
+// Schema is a partial DM schema. We only need access to the imports object at this level.
+type Schema struct {
+	Imports []SchemaImport `json:"imports"`
+}
+
+// LayoutResource defines the structure of resources in the manifest layout.
+type LayoutResource struct {
+	Resource
+	Layout
+}
+
+// Layout defines the structure of a layout as returned from expansion.
+type Layout struct {
+	Resources []*LayoutResource `json:"resources,omitempty"`
+}
+
+// ExpansionRequest defines the API to expander.
+type ExpansionRequest struct {
+	ChartInvocation *Resource      `json:"chart_invocation"`
+	Chart           *chart.Content `json:"chart"`
+}
+
+// ExpansionResponse defines the API to expander.
+type ExpansionResponse struct {
+	Resources []interface{} `json:"resources"`
+}
+
+// Expander abstracts interactions with the expander and deployer services.
+type Expander interface {
+	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
 }
 
 // Configuration describes a set of resources in a form
@@ -168,103 +179,4 @@ type Resource struct {
 	Type       string                 `json:"type"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
 	State      *ResourceState         `json:"state,omitempty"`
-}
-
-// ChartInstance defines the metadata for an instantiation of a template type
-// in a deployment.
-type ChartInstance struct {
-	Name       string `json:"name"`       // instance name
-	Type       string `json:"type"`       // instance type
-	Deployment string `json:"deployment"` // deployment name
-	Manifest   string `json:"manifest"`   // manifest name
-	Path       string `json:"path"`       // JSON path within manifest
-}
-
-// TODO: Remove the remainder of this file when the refactoring of pkg/registry is complete.
-
-// BasicAuthCredential holds a username and password.
-type BasicAuthCredential struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// APITokenCredential defines an API token.
-type APITokenCredential string
-
-// JWTTokenCredential defines a JWT token.
-type JWTTokenCredential string
-
-// RegistryCredential holds a credential used to access a registry.
-type RegistryCredential struct {
-	APIToken       APITokenCredential  `json:"apitoken,omitempty"`
-	BasicAuth      BasicAuthCredential `json:"basicauth,omitempty"`
-	ServiceAccount JWTTokenCredential  `json:"serviceaccount,omitempty"`
-}
-
-// Registry describes a template registry
-type Registry struct {
-	Name           string         `json:"name,omitempty"`           // Friendly name for the registry
-	Type           RegistryType   `json:"type,omitempty"`           // Technology implementing the registry
-	URL            string         `json:"url,omitempty"`            // URL to the root of the registry
-	Format         RegistryFormat `json:"format,omitempty"`         // Format of the registry
-	CredentialName string         `json:"credentialname,omitempty"` // Name of the credential to use
-}
-
-// RegistryType defines the technology that implements a registry.
-type RegistryType string
-
-// Constants that identify the supported registry types.
-const (
-	GithubRegistryType RegistryType = "github"
-	GCSRegistryType    RegistryType = "gcs"
-)
-
-// RegistryFormat is a semi-colon delimited string that describes the format
-// of a registry.
-type RegistryFormat string
-
-const (
-	// Versioning.
-
-	// VersionedRegistry identifies a versioned registry, where types appear under versions.
-	VersionedRegistry RegistryFormat = "versioned"
-	// UnversionedRegistry identifies an unversioned registry, where types appear under their names.
-	UnversionedRegistry RegistryFormat = "unversioned"
-
-	// Organization.
-
-	// CollectionRegistry identfies a collection registry, where types are grouped into collections.
-	CollectionRegistry RegistryFormat = "collection"
-	// OneLevelRegistry identifies a one level registry, where all types appear at the top level.
-	OneLevelRegistry RegistryFormat = "onelevel"
-)
-
-// RegistryService maintains a set of registries that defines the scope of all
-// registry based operations, such as search and type resolution.
-type RegistryService interface {
-	// List all the registries
-	List() ([]*Registry, error)
-	// Create a new registry
-	Create(registry *Registry) error
-	// Get a registry
-	Get(name string) (*Registry, error)
-	// Get a registry with credential.
-	GetRegistry(name string) (*Registry, error)
-	// Delete a registry
-	Delete(name string) error
-	// Find a registry that backs the given URL
-	GetByURL(URL string) (*Registry, error)
-	// GetRegistryByURL returns a registry that handles the types for a given URL.
-	GetRegistryByURL(URL string) (*Registry, error)
-}
-
-// CredentialProvider provides credentials for registries.
-type CredentialProvider interface {
-	// Set the credential for a registry.
-	// May not be supported by some registry services.
-	SetCredential(name string, credential *RegistryCredential) error
-
-	// GetCredential returns the specified credential or nil if there's no credential.
-	// Error is non-nil if fetching the credential failed.
-	GetCredential(name string) (*RegistryCredential, error)
 }

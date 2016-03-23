@@ -427,20 +427,20 @@ func (c *Chart) loadMember(filename string) (*Member, error) {
 	return result, nil
 }
 
-// ChartContent is abstraction for the contents of a chart.
-type ChartContent struct {
+// Content is abstraction for the contents of a chart.
+type Content struct {
 	Chartfile *Chartfile `json:"chartfile"`
 	Members   []*Member  `json:"members"`
 }
 
-// loadContent loads contents of a chart directory into ChartContent
-func (c *Chart) loadContent() (*ChartContent, error) {
+// LoadContent loads contents of a chart directory into Content
+func (c *Chart) LoadContent() (*Content, error) {
 	ms, err := c.loadDirectory(c.Dir())
 	if err != nil {
 		return nil, err
 	}
 
-	cc := &ChartContent{
+	cc := &Content{
 		Chartfile: c.Chartfile(),
 		Members:   ms,
 	}
