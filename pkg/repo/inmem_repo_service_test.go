@@ -32,7 +32,11 @@ func TestService(t *testing.T) {
 		t.Fatalf("unexpected repo count; want: %d, have %d.", 1, len(repos))
 	}
 
-	tr := repos[0]
+	tr, err := rs.Get(repos[0])
+	if err != nil {
+		t.Fatalf("cannot get repo named %s: %s", repos[0], err)
+	}
+
 	if err := validateRepo(tr, GCSPublicRepoName, GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType); err != nil {
 		t.Fatal(err)
 	}
