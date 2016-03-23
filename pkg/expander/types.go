@@ -44,8 +44,8 @@ type Layout struct {
 
 // ExpansionRequest defines the API to expander.
 type ExpansionRequest struct {
-	ChartInvocation *Resource           `json:"chart_invocation"`
-	Chart           *chart.ChartContent `json:"chart"`
+	ChartInvocation *Resource      `json:"chart_invocation"`
+	Chart           *chart.Content `json:"chart"`
 }
 
 // ExpansionResponse defines the API to expander.

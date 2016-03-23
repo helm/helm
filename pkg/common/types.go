@@ -81,16 +81,6 @@ type CreateDeploymentRequest struct {
 	ChartInvocation *Resource `json:"chart_invocation"`
 }
 
-// TypeInstance defines the metadata for an instantiation of a template type
-// in a deployment.
-type TypeInstance struct {
-	Name       string `json:"name"`       // instance name
-	Type       string `json:"type"`       // instance type
-	Deployment string `json:"deployment"` // deployment name
-	Manifest   string `json:"manifest"`   // manifest name
-	Path       string `json:"path"`       // JSON path within manifest
-}
-
 // ChartInstance defines the metadata for an instantiation of a chart.
 type ChartInstance struct {
 	Name       string `json:"name"`       // instance name
@@ -98,22 +88,6 @@ type ChartInstance struct {
 	Deployment string `json:"deployment"` // deployment name
 	Manifest   string `json:"manifest"`   // manifest name
 	Path       string `json:"path"`       // JSON path within manifest
-}
-
-// KubernetesObject represents a native 'bare' Kubernetes object.
-type KubernetesObject struct {
-	Kind       string                 `json:"kind"`
-	APIVersion string                 `json:"apiVersion"`
-	Metadata   map[string]interface{} `json:"metadata"`
-	Spec       map[string]interface{} `json:"spec"`
-}
-
-// KubernetesSecret represents a Kubernetes secret
-type KubernetesSecret struct {
-	Kind       string            `json:"kind"`
-	APIVersion string            `json:"apiVersion"`
-	Metadata   map[string]string `json:"metadata"`
-	Data       map[string]string `json:"data,omitempty"`
 }
 
 // TODO: Remove the following section when the refactoring of templates is complete.
@@ -158,8 +132,8 @@ type Layout struct {
 
 // ExpansionRequest defines the API to expander.
 type ExpansionRequest struct {
-	ChartInvocation *Resource           `json:"chart_invocation"`
-	Chart           *chart.ChartContent `json:"chart"`
+	ChartInvocation *Resource      `json:"chart_invocation"`
+	Chart           *chart.Content `json:"chart"`
 }
 
 // ExpansionResponse defines the API to expander.
