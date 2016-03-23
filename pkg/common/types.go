@@ -21,17 +21,6 @@ import (
 	"time"
 )
 
-// SchemaImport represents an import as declared in a schema file.
-type SchemaImport struct {
-	Path string `json:"path"`
-	Name string `json:"name"`
-}
-
-// Schema is a partial DM schema. We only need access to the imports object at this level.
-type Schema struct {
-	Imports []SchemaImport `json:"imports"`
-}
-
 // Deployment defines a deployment that describes
 // the creation, modification and/or deletion of a set of resources.
 type Deployment struct {
@@ -76,17 +65,6 @@ func (s DeploymentStatus) String() string {
 	return string(s)
 }
 
-// LayoutResource defines the structure of resources in the manifest layout.
-type LayoutResource struct {
-	Resource
-	Layout
-}
-
-// Layout defines the structure of a layout as returned from expansion.
-type Layout struct {
-	Resources []*LayoutResource `json:"resources,omitempty"`
-}
-
 // Manifest contains the input configuration for a deployment, the fully
 // expanded configuration, and the layout structure of the manifest.
 //
@@ -103,21 +81,42 @@ type CreateDeploymentRequest struct {
 	ChartInvocation *Resource `json:"chart_invocation"`
 }
 
-// ExpansionRequest defines the API to expander.
-type ExpansionRequest struct {
-	ChartInvocation *Resource           `json:"chart_invocation"`
-	Chart           *chart.ChartContent `json:"chart"`
+// TypeInstance defines the metadata for an instantiation of a template type
+// in a deployment.
+type TypeInstance struct {
+	Name       string `json:"name"`       // instance name
+	Type       string `json:"type"`       // instance type
+	Deployment string `json:"deployment"` // deployment name
+	Manifest   string `json:"manifest"`   // manifest name
+	Path       string `json:"path"`       // JSON path within manifest
 }
 
-// ExpansionResponse defines the API to expander.
-type ExpansionResponse struct {
-	Resources []interface{} `json:"resources"`
+// ChartInstance defines the metadata for an instantiation of a chart.
+type ChartInstance struct {
+	Name       string `json:"name"`       // instance name
+	Type       string `json:"type"`       // instance type
+	Deployment string `json:"deployment"` // deployment name
+	Manifest   string `json:"manifest"`   // manifest name
+	Path       string `json:"path"`       // JSON path within manifest
 }
 
-// Expander abstracts interactions with the expander and deployer services.
-type Expander interface {
-	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
+// KubernetesObject represents a native 'bare' Kubernetes object.
+type KubernetesObject struct {
+	Kind       string                 `json:"kind"`
+	APIVersion string                 `json:"apiVersion"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	Spec       map[string]interface{} `json:"spec"`
 }
+
+// KubernetesSecret represents a Kubernetes secret
+type KubernetesSecret struct {
+	Kind       string            `json:"kind"`
+	APIVersion string            `json:"apiVersion"`
+	Metadata   map[string]string `json:"metadata"`
+	Data       map[string]string `json:"data,omitempty"`
+}
+
+// TODO: Remove the following section when the refactoring of templates is complete.
 
 // Template describes a set of resources to be deployed.
 // Manager expands a Template into a Configuration, which
@@ -133,6 +132,44 @@ type ImportFile struct {
 	Name    string `json:"name,omitempty"`
 	Path    string `json:"path,omitempty"` // Actual URL for the file
 	Content string `json:"content"`
+}
+
+// SchemaImport represents an import as declared in a schema file.
+type SchemaImport struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+}
+
+// Schema is a partial DM schema. We only need access to the imports object at this level.
+type Schema struct {
+	Imports []SchemaImport `json:"imports"`
+}
+
+// LayoutResource defines the structure of resources in the manifest layout.
+type LayoutResource struct {
+	Resource
+	Layout
+}
+
+// Layout defines the structure of a layout as returned from expansion.
+type Layout struct {
+	Resources []*LayoutResource `json:"resources,omitempty"`
+}
+
+// ExpansionRequest defines the API to expander.
+type ExpansionRequest struct {
+	ChartInvocation *Resource           `json:"chart_invocation"`
+	Chart           *chart.ChartContent `json:"chart"`
+}
+
+// ExpansionResponse defines the API to expander.
+type ExpansionResponse struct {
+	Resources []interface{} `json:"resources"`
+}
+
+// Expander abstracts interactions with the expander and deployer services.
+type Expander interface {
+	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
 }
 
 // Configuration describes a set of resources in a form
@@ -170,17 +207,7 @@ type Resource struct {
 	State      *ResourceState         `json:"state,omitempty"`
 }
 
-// ChartInstance defines the metadata for an instantiation of a template type
-// in a deployment.
-type ChartInstance struct {
-	Name       string `json:"name"`       // instance name
-	Type       string `json:"type"`       // instance type
-	Deployment string `json:"deployment"` // deployment name
-	Manifest   string `json:"manifest"`   // manifest name
-	Path       string `json:"path"`       // JSON path within manifest
-}
-
-// TODO: Remove the remainder of this file when the refactoring of pkg/registry is complete.
+// TODO: Remove the following section when the refactoring of pkg/registry is complete.
 
 // BasicAuthCredential holds a username and password.
 type BasicAuthCredential struct {
