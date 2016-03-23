@@ -58,6 +58,11 @@ func (e *expander) ExpandChart(request *common.ExpansionRequest) (*common.Expans
 	chartInv := request.ChartInvocation
 	chartFile := request.Chart.Chartfile
 	chartMembers := request.Chart.Members
+
+	if chartInv.Type != chartFile.Name {
+		return nil, fmt.Errorf("Request chart invocation does not match provided chart")
+	}
+
 	schemaName := chartInv.Type + ".schema"
 
 	if chartFile.Expander == nil {
@@ -89,7 +94,7 @@ func (e *expander) ExpandChart(request *common.ExpansionRequest) (*common.Expans
 		message := fmt.Sprintf("The entrypoint in the chart.yaml cannot be found: %s", chartFile.Expander.Entrypoint)
 		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
 	}
-	if schemaIndex == -1 {
+	if chartFile.Schema != "" && schemaIndex == -1 {
 		message := fmt.Sprintf("The schema in the chart.yaml cannot be found: %s", chartFile.Schema)
 		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
 	}
