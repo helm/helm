@@ -17,7 +17,7 @@ limitations under the License.
 package service
 
 import (
-	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/expansion"
 	"github.com/kubernetes/helm/pkg/util"
 
 	"errors"
@@ -43,8 +43,8 @@ func NewService(handler restful.RouteFunction) *Service {
 	webService.Produces(restful.MIME_JSON, restful.MIME_XML)
 	webService.Route(webService.POST("/expand").To(handler).
 		Doc("Expand a template.").
-		Reads(&common.ExpansionRequest{}).
-		Writes(&common.ExpansionResponse{}))
+		Reads(&expansion.ExpansionRequest{}).
+		Writes(&expansion.ExpansionResponse{}))
 	return &Service{webService}
 }
 
@@ -61,10 +61,10 @@ func (s *Service) Register(container *restful.Container) {
 
 // NewExpansionHandler returns a route function that handles an incoming
 // template expansion request, bound to the supplied expander.
-func NewExpansionHandler(backend common.Expander) restful.RouteFunction {
+func NewExpansionHandler(backend expansion.Expander) restful.RouteFunction {
 	return func(req *restful.Request, resp *restful.Response) {
 		util.LogHandlerEntry("expandybird: expand", req.Request)
-		request := &common.ExpansionRequest{}
+		request := &expansion.ExpansionRequest{}
 		if err := req.ReadEntity(&request); err != nil {
 			logAndReturnErrorFromHandler(http.StatusBadRequest, err.Error(), resp)
 			return
