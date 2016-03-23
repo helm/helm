@@ -25,27 +25,48 @@ import (
 )
 
 func TestShowDeployment(t *testing.T) {
-	th := setup()
-	defer th.teardown()
+	var deploymentTestCases = []struct {
+		args     []string
+		resp     *common.Deployment
+		expected string
+	}{
+		{
+			[]string{"deployment", "show", "guestbook.yaml"},
+			&common.Deployment{
+				Name:  "guestbook.yaml",
+				State: &common.DeploymentState{Status: common.CreatedStatus},
+			},
+			"Name: guestbook.yaml\nStatus: Created\n",
+		},
+		{
+			[]string{"deployment", "show", "guestbook.yaml"},
+			&common.Deployment{
+				Name: "guestbook.yaml",
+				State: &common.DeploymentState{
+					common.FailedStatus, []string{"error message"},
+				},
+			},
+			"Name: guestbook.yaml\nStatus: Failed\nErrors:\n  error message\n",
+		},
+	}
 
-	deployment := common.NewDeployment("guestbook.yaml")
+	for _, tc := range deploymentTestCases {
+		th := setup()
+		th.mux.HandleFunc("/deployments/", func(w http.ResponseWriter, r *http.Request) {
+			data, err := json.Marshal(tc.resp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.Write(data)
+		})
 
-	th.mux.HandleFunc("/deployments/", func(w http.ResponseWriter, r *http.Request) {
-		data, err := json.Marshal(deployment)
-		if err != nil {
-			t.Fatal(err)
+		actual := CaptureOutput(func() {
+			th.Run(tc.args...)
+		})
+		if tc.expected != actual {
+			t.Errorf("Expected %v got %v", tc.expected, actual)
 		}
-		w.Write(data)
-	})
-
-	expected := "Name: guestbook.yaml\nStatus: Created\n"
-
-	actual := CaptureOutput(func() {
-		th.Run("deployment", "show", "guestbook.yaml")
-	})
-
-	if expected != actual {
-		t.Errorf("Expected %v got %v", expected, actual)
+		th.teardown()
 	}
 }
 
