@@ -60,9 +60,14 @@ func (rs *inmemRepoService) CreateRepo(repository IRepo) error {
 	defer rs.Unlock()
 
 	URL := repository.GetURL()
-	_, ok := rs.repositories[URL]
-	if ok {
-		return fmt.Errorf("Repository with URL %s already exists", URL)
+	name := repository.GetName()
+
+	for u, r := range rs.repositories {
+		if u == URL {
+			return fmt.Errorf("Repository with URL %s already exists", URL)
+		} else if r.GetName() == name {
+			return fmt.Errorf("Repository with Name %s already exists", name)
+		}
 	}
 
 	rs.repositories[URL] = repository
