@@ -51,8 +51,8 @@ func deploymentCommands() cli.Command {
 				ArgsUsage: "DEPLOYMENT",
 			},
 			{
-				Name:      "delete",
-				Aliases:   []string{"del"},
+				Name:      "remove",
+				Aliases:   []string{"rm"},
 				Usage:     "Deletes the named deployment(s).",
 				ArgsUsage: "DEPLOYMENT [DEPLOYMENT [...]]",
 				Action:    func(c *cli.Context) { run(c, deleteDeployment) },
