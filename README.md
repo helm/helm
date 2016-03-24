@@ -23,7 +23,7 @@ Please hang out with us in [the Slack chat room](https://kubernetes.slack.com/me
 ## Installing Helm
 
 Note: if you're exploring or using the project, you'll probably want to pull
-(the latest release)[https://github.com/kubernetes/helm/releases/latest],
+[the latest release](https://github.com/kubernetes/helm/releases/latest),
 since there may be undiscovered or unresolved issues at HEAD.
 
 From a Linux or Mac OS X client:
