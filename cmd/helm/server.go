@@ -18,6 +18,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
@@ -26,7 +27,7 @@ import (
 	"github.com/kubernetes/helm/pkg/kubectl"
 )
 
-// ErrAlreadyInstalled indicates that DM is already installed.
+// ErrAlreadyInstalled indicates that Helm Server is already installed.
 var ErrAlreadyInstalled = errors.New("Already Installed")
 
 func init() {
@@ -35,14 +36,17 @@ func init() {
 
 func dmCmd() cli.Command {
 	return cli.Command{
-		Name:  "dm",
-		Usage: "Manage DM on Kubernetes",
+		Name:  "server",
+		Usage: "Manage Helm server-side components",
 		Subcommands: []cli.Command{
 			{
-				Name:        "install",
-				Usage:       "Install DM on Kubernetes.",
-				ArgsUsage:   "",
-				Description: ``,
+				Name:      "install",
+				Usage:     "Install Helm server components on Kubernetes.",
+				ArgsUsage: "",
+				Description: `Use kubectl to install Helm components in their own namespace on Kubernetes.
+
+	Make sure your Kubernetes environment is pointed to the cluster on which you
+	wish to install.`,
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "dry-run",
@@ -77,13 +81,13 @@ func dmCmd() cli.Command {
 			},
 			{
 				Name:        "uninstall",
-				Usage:       "Uninstall the DM from Kubernetes.",
+				Usage:       "Uninstall the Helm server-side from Kubernetes.",
 				ArgsUsage:   "",
 				Description: ``,
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "dry-run",
-						Usage: "Show what would be installed, but don't install anything.",
+						Usage: "Show what would be uninstalled, but don't remove anything.",
 					},
 				},
 				Action: func(c *cli.Context) {
@@ -95,7 +99,7 @@ func dmCmd() cli.Command {
 			},
 			{
 				Name:      "status",
-				Usage:     "Show status of DM.",
+				Usage:     "Show status of Helm server-side components.",
 				ArgsUsage: "",
 				Flags: []cli.Flag{
 					cli.BoolFlag{
@@ -111,7 +115,7 @@ func dmCmd() cli.Command {
 			},
 			{
 				Name:      "target",
-				Usage:     "Displays information about cluster.",
+				Usage:     "Displays information about the Kubernetes cluster.",
 				ArgsUsage: "",
 				Action: func(c *cli.Context) {
 					if err := target(c.Bool("dry-run")); err != nil {
@@ -176,4 +180,17 @@ func getKubectlRunner(dryRun bool) kubectl.Runner {
 		return &kubectl.PrintRunner{}
 	}
 	return &kubectl.RealRunner{}
+}
+
+func target(dryRun bool) error {
+	client := kubectl.Client
+	if dryRun {
+		client = kubectl.PrintRunner{}
+	}
+	out, err := client.ClusterInfo()
+	if err != nil {
+		return fmt.Errorf("%s (%s)", out, err)
+	}
+	format.Msg(string(out))
+	return nil
 }
