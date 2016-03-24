@@ -17,7 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"github.com/kubernetes/helm/pkg/chart"
 	"time"
 )
 
@@ -128,22 +127,6 @@ type LayoutResource struct {
 // Layout defines the structure of a layout as returned from expansion.
 type Layout struct {
 	Resources []*LayoutResource `json:"resources,omitempty"`
-}
-
-// ExpansionRequest defines the API to expander.
-type ExpansionRequest struct {
-	ChartInvocation *Resource      `json:"chart_invocation"`
-	Chart           *chart.Content `json:"chart"`
-}
-
-// ExpansionResponse defines the API to expander.
-type ExpansionResponse struct {
-	Resources []interface{} `json:"resources"`
-}
-
-// Expander abstracts interactions with the expander and deployer services.
-type Expander interface {
-	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
 }
 
 // Configuration describes a set of resources in a form

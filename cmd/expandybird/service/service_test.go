@@ -28,7 +28,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes/helm/cmd/expandybird/expander"
-	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/expander"
 	"github.com/kubernetes/helm/pkg/util"
 
 	restful "github.com/emicklei/go-restful"
@@ -185,7 +185,7 @@ type mockExpander struct {
 
 // ExpandTemplate passes the given configuration to the expander and returns the
 // expanded configuration as a string on success.
-func (e *mockExpander) ExpandTemplate(template *common.Template) (string, error) {
+func (e *mockExpander) ExpandTemplate(template *expander.Template) (string, error) {
 	switch template.Name {
 	case "InvalidFileName.yaml":
 		return "", fmt.Errorf("expansion error")
