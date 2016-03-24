@@ -21,18 +21,18 @@ import (
 	"github.com/kubernetes/helm/pkg/common"
 )
 
-// ExpansionRequest defines the API to expander.
-type ExpansionRequest struct {
+// ServiceRequest defines the API to expander.
+type ServiceRequest struct {
 	ChartInvocation *common.Resource `json:"chart_invocation"`
 	Chart           *chart.Content   `json:"chart"`
 }
 
-// ExpansionResponse defines the API to expander.
-type ExpansionResponse struct {
+// ServiceResponse defines the API to expander.
+type ServiceResponse struct {
 	Resources []interface{} `json:"resources"`
 }
 
 // Expander abstracts interactions with the expander and deployer services.
 type Expander interface {
-	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
+	ExpandChart(request *ServiceRequest) (*ServiceResponse, error)
 }

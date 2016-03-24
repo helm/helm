@@ -43,8 +43,8 @@ func NewService(handler restful.RouteFunction) *Service {
 	webService.Produces(restful.MIME_JSON, restful.MIME_XML)
 	webService.Route(webService.POST("/expand").To(handler).
 		Doc("Expand a template.").
-		Reads(&expansion.ExpansionRequest{}).
-		Writes(&expansion.ExpansionResponse{}))
+		Reads(&expansion.ServiceRequest{}).
+		Writes(&expansion.ServiceResponse{}))
 	return &Service{webService}
 }
 
@@ -64,7 +64,7 @@ func (s *Service) Register(container *restful.Container) {
 func NewExpansionHandler(backend expansion.Expander) restful.RouteFunction {
 	return func(req *restful.Request, resp *restful.Response) {
 		util.LogHandlerEntry("expandybird: expand", req.Request)
-		request := &expansion.ExpansionRequest{}
+		request := &expansion.ServiceRequest{}
 		if err := req.ReadEntity(&request); err != nil {
 			logAndReturnErrorFromHandler(http.StatusBadRequest, err.Error(), resp)
 			return

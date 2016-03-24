@@ -47,7 +47,7 @@ type expandyBirdOutput struct {
 
 // ExpandChart passes the given configuration to the expander and returns the
 // expanded configuration as a string on success.
-func (e *expander) ExpandChart(request *expansion.ExpansionRequest) (*expansion.ExpansionResponse, error) {
+func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.ServiceResponse, error) {
 	if request.ChartInvocation == nil {
 		return nil, fmt.Errorf("Request does not have invocation field")
 	}
@@ -155,5 +155,5 @@ func (e *expander) ExpandChart(request *expansion.ExpansionRequest) (*expansion.
 		return nil, fmt.Errorf("cannot unmarshal expansion result (%s):\n%s", err, output)
 	}
 
-	return &expansion.ExpansionResponse{Resources: output.Config.Resources}, nil
+	return &expansion.ServiceResponse{Resources: output.Config.Resources}, nil
 }
