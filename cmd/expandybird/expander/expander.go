@@ -48,27 +48,15 @@ type expandyBirdOutput struct {
 // ExpandChart passes the given configuration to the expander and returns the
 // expanded configuration as a string on success.
 func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.ServiceResponse, error) {
-	if request.ChartInvocation == nil {
-		return nil, fmt.Errorf("Request does not have invocation field")
-	}
-	if request.Chart == nil {
-		return nil, fmt.Errorf("Request does not have chart field")
+
+	err := expansion.ValidateRequest(request)
+	if err != nil {
+		return nil, err
 	}
 
 	chartInv := request.ChartInvocation
 	chartFile := request.Chart.Chartfile
 	chartMembers := request.Chart.Members
-
-	if chartInv.Type != chartFile.Name {
-		return nil, fmt.Errorf("Request chart invocation does not match provided chart")
-	}
-
-	schemaName := chartInv.Type + ".schema"
-
-	if chartFile.Expander == nil {
-		message := fmt.Sprintf("Chart JSON does not have expander field")
-		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
-	}
 
 	if chartFile.Expander.Name != "ExpandyBird" {
 		message := fmt.Sprintf("ExpandyBird cannot do this kind of expansion: ", chartFile.Expander.Name)
@@ -132,7 +120,7 @@ func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.Se
 			name = chartInv.Type
 		} else if i == schemaIndex {
 			// Doesn't matter what it was originally called, expandyBird expects to find it here.
-			name = schemaName
+			name = chartInv.Type + ".schema"
 		}
 		cmd.Args = append(cmd.Args, name, path, string(f.Content))
 	}

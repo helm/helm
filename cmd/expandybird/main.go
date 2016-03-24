@@ -18,16 +18,15 @@ package main
 
 import (
 	"github.com/kubernetes/helm/cmd/expandybird/expander"
-	"github.com/kubernetes/helm/cmd/expandybird/service"
+	"github.com/kubernetes/helm/pkg/expansion"
 	"github.com/kubernetes/helm/pkg/version"
 
 	"flag"
-	"fmt"
 	"log"
-	"net/http"
-
-	restful "github.com/emicklei/go-restful"
 )
+
+// interface that we are going to listen on
+var address = flag.String("address", "", "Interface to listen on")
 
 // port that we are going to listen on
 var port = flag.Int("port", 8080, "Port to listen on")
@@ -39,16 +38,8 @@ var expansionBinary = flag.String("expansion_binary", "../../../expansion/expans
 func main() {
 	flag.Parse()
 	backend := expander.NewExpander(*expansionBinary)
-	wrapper := service.NewService(service.NewExpansionHandler(backend))
-	address := fmt.Sprintf(":%d", *port)
-	container := restful.DefaultContainer
-	server := &http.Server{
-		Addr:    address,
-		Handler: container,
-	}
-
-	wrapper.Register(container)
+	service := expansion.NewService(*address, *port, backend)
 	log.Printf("Version: %s", version.Version)
-	log.Printf("Listening on %s...", address)
-	log.Fatal(server.ListenAndServe())
+	log.Printf("Listening on http://%s:%s/expand", *address, port)
+	log.Fatal(service.ListenAndServe())
 }
