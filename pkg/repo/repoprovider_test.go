@@ -116,7 +116,7 @@ func TestGetChartByReferenceWithValidReferences(t *testing.T) {
 func getTestRepoProvider(t *testing.T) IRepoProvider {
 	rp := newRepoProvider(nil, nil, nil)
 	rs := rp.GetRepoService()
-	tr, err := newRepo(TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)
+	tr, err := newRepo(TestRepoURL, TestRepoCredentialName, TestName, TestRepoFormat, TestRepoType)
 	if err != nil {
 		t.Fatalf("cannot create test repository: %s", err)
 	}
