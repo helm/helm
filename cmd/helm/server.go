@@ -124,11 +124,9 @@ func installServer(c *cli.Context) error {
 
 	out, err := i.Install(runner)
 	if err != nil {
-		return err
+		return fmt.Errorf("error installing %s %s", string(out), err)
 	}
-	if debug {
-		format.Msg(out)
-	}
+	format.Msg(out)
 	return nil
 }
 
@@ -138,7 +136,7 @@ func uninstallServer(c *cli.Context) error {
 
 	out, err := client.Uninstall(runner)
 	if err != nil {
-		format.Err("Error uninstalling: %s %s", out, err)
+		return fmt.Errorf("error uninstalling: %s %s", out, err)
 	}
 	format.Msg(out)
 	return nil
