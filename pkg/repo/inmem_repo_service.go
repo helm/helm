@@ -117,3 +117,13 @@ func (rs *inmemRepoService) DeleteRepo(URL string) error {
 	delete(rs.repositories, URL)
 	return nil
 }
+
+func (rs *inmemRepoService) GetRepoURLByName(name string) (string, error) {
+	for url, r := range rs.repositories {
+		if r.GetName() == name {
+			return url, nil
+		}
+	}
+	err := fmt.Errorf("No repository url found with name %s", name)
+	return "", err
+}

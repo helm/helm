@@ -377,8 +377,12 @@ func (m *manager) AddChartRepo(addition repo.IRepo) error {
 }
 
 // RemoveChartRepo removes a chart repository from the list by URL
-func (m *manager) RemoveChartRepo(URL string) error {
-	return m.service.DeleteRepo(URL)
+func (m *manager) RemoveChartRepo(name string) error {
+	url, err := m.service.GetRepoURLByName(name)
+	if err != nil {
+		return err
+	}
+	return m.service.DeleteRepo(url)
 }
 
 // GetChartRepo returns the chart repository with the given URL

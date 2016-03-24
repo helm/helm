@@ -7,7 +7,6 @@ import (
 	"github.com/kubernetes/helm/pkg/util"
 
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -57,18 +56,17 @@ func removeChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *route
 	handler := "manager: remove chart repository"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
-	URL, err := pos(w, r, 2)
+	name, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("URL: %#v \n", URL)
-	err = c.Manager.RemoveChartRepo(URL)
+	err = c.Manager.RemoveChartRepo(name)
 	if err != nil {
 		return err
 	}
 
-	msg, _ := json.Marshal(URL + " has been removed from the list of chart repositories.")
+	msg, _ := json.Marshal(name + " has been removed from the list of chart repositories.")
 	util.LogHandlerExitWithJSON(handler, w, msg, http.StatusOK)
 	return nil
 }

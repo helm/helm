@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"path/filepath"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
@@ -98,18 +99,12 @@ func listRepos(c *cli.Context) error {
 func removeRepo(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		return errors.New("'helm repo remove' requires a repository url as an argument")
+		return errors.New("'helm repo remove' requires a repository name as an argument")
 	}
-	//arg := args[0]
-	//u, err := url.Parse(arg)
-	//if err != nil {
-	//return err
-	//}
-	//p := filepath.Join(chartRepoPath, u.String())
-	//if _, err := NewClient(c).Delete(p, nil); err != nil {
-	//return err
-	//}
-	//format.Msg(arg + " has been removed.\n")
-	format.Info("TO BE IMPLEMENTED")
+	name := args[0]
+	if _, err := NewClient(c).Delete(filepath.Join(chartRepoPath, name), nil); err != nil {
+		return err
+	}
+	format.Msg(name + " has been removed.\n")
 	return nil
 }

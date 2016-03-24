@@ -123,6 +123,8 @@ type IRepoService interface {
 	CreateRepo(repository IRepo) error
 	// GetRepoByURL returns the repository with the given name
 	GetRepoByURL(name string) (IRepo, error)
+	// GetRepoURLByName return url for a repository with the given name
+	GetRepoURLByName(name string) (string, error)
 	// GetRepoByChartURL returns the repository that backs the given URL
 	GetRepoByChartURL(URL string) (IRepo, error)
 	// DeleteRepo removes a known repository from the list
