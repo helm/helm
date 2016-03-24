@@ -18,7 +18,7 @@ package main
 
 import (
 	"errors"
-	"os"
+	"fmt"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/client"
@@ -26,7 +26,7 @@ import (
 	"github.com/kubernetes/helm/pkg/kubectl"
 )
 
-// ErrAlreadyInstalled indicates that DM is already installed.
+// ErrAlreadyInstalled indicates that Helm Server is already installed.
 var ErrAlreadyInstalled = errors.New("Already Installed")
 
 func init() {
@@ -35,14 +35,17 @@ func init() {
 
 func dmCmd() cli.Command {
 	return cli.Command{
-		Name:  "dm",
-		Usage: "Manage DM on Kubernetes",
+		Name:  "server",
+		Usage: "Manage Helm server-side components",
 		Subcommands: []cli.Command{
 			{
-				Name:        "install",
-				Usage:       "Install DM on Kubernetes.",
-				ArgsUsage:   "",
-				Description: ``,
+				Name:      "install",
+				Usage:     "Install Helm server components on Kubernetes.",
+				ArgsUsage: "",
+				Description: `Use kubectl to install Helm components in their own namespace on Kubernetes.
+
+	Make sure your Kubernetes environment is pointed to the cluster on which you
+	wish to install.`,
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "dry-run",
@@ -64,38 +67,24 @@ func dmCmd() cli.Command {
 						EnvVar: "HELM_MANAGER_IMAGE",
 					},
 				},
-				Action: func(c *cli.Context) {
-					dry := c.Bool("dry-run")
-					ri := c.String("resourcifier-image")
-					ei := c.String("expandybird-image")
-					mi := c.String("manager-image")
-					if err := install(dry, ei, mi, ri); err != nil {
-						format.Err("%s (Run 'helm doctor' for more information)", err)
-						os.Exit(1)
-					}
-				},
+				Action: func(c *cli.Context) { run(c, installServer) },
 			},
 			{
 				Name:        "uninstall",
-				Usage:       "Uninstall the DM from Kubernetes.",
+				Usage:       "Uninstall the Helm server-side from Kubernetes.",
 				ArgsUsage:   "",
 				Description: ``,
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "dry-run",
-						Usage: "Show what would be installed, but don't install anything.",
+						Usage: "Show what would be uninstalled, but don't remove anything.",
 					},
 				},
-				Action: func(c *cli.Context) {
-					if err := uninstall(c.Bool("dry-run")); err != nil {
-						format.Err("%s (Run 'helm doctor' for more information)", err)
-						os.Exit(1)
-					}
-				},
+				Action: func(c *cli.Context) { run(c, uninstallServer) },
 			},
 			{
 				Name:      "status",
-				Usage:     "Show status of DM.",
+				Usage:     "Show status of Helm server-side components.",
 				ArgsUsage: "",
 				Flags: []cli.Flag{
 					cli.BoolFlag{
@@ -103,22 +92,13 @@ func dmCmd() cli.Command {
 						Usage: "Only display the underlying kubectl commands.",
 					},
 				},
-				Action: func(c *cli.Context) {
-					if err := status(c.Bool("dry-run")); err != nil {
-						os.Exit(1)
-					}
-				},
+				Action: func(c *cli.Context) { run(c, statusServer) },
 			},
 			{
 				Name:      "target",
-				Usage:     "Displays information about cluster.",
+				Usage:     "Displays information about the Kubernetes cluster.",
 				ArgsUsage: "",
-				Action: func(c *cli.Context) {
-					if err := target(c.Bool("dry-run")); err != nil {
-						format.Err("%s (Is the cluster running?)", err)
-						os.Exit(1)
-					}
-				},
+				Action:    func(c *cli.Context) { run(c, targetServer) },
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "dry-run",
@@ -130,7 +110,11 @@ func dmCmd() cli.Command {
 	}
 }
 
-func install(dryRun bool, ebImg, manImg, resImg string) error {
+func installServer(c *cli.Context) error {
+	dryRun := c.Bool("dry-run")
+	resImg := c.String("resourcifier-image")
+	ebImg := c.String("expandybird-image")
+	manImg := c.String("manager-image")
 	runner := getKubectlRunner(dryRun)
 
 	i := client.NewInstaller()
@@ -140,24 +124,26 @@ func install(dryRun bool, ebImg, manImg, resImg string) error {
 
 	out, err := i.Install(runner)
 	if err != nil {
-		return err
+		return fmt.Errorf("error installing %s %s", string(out), err)
 	}
 	format.Msg(out)
 	return nil
 }
 
-func uninstall(dryRun bool) error {
+func uninstallServer(c *cli.Context) error {
+	dryRun := c.Bool("dry-run")
 	runner := getKubectlRunner(dryRun)
 
 	out, err := client.Uninstall(runner)
 	if err != nil {
-		format.Err("Error uninstalling: %s %s", out, err)
+		return fmt.Errorf("error uninstalling: %s %s", out, err)
 	}
 	format.Msg(out)
 	return nil
 }
 
-func status(dryRun bool) error {
+func statusServer(c *cli.Context) error {
+	dryRun := c.Bool("dry-run")
 	client := kubectl.Client
 	if dryRun {
 		client = kubectl.PrintRunner{}
@@ -176,4 +162,18 @@ func getKubectlRunner(dryRun bool) kubectl.Runner {
 		return &kubectl.PrintRunner{}
 	}
 	return &kubectl.RealRunner{}
+}
+
+func targetServer(c *cli.Context) error {
+	dryRun := c.Bool("dry-run")
+	client := kubectl.Client
+	if dryRun {
+		client = kubectl.PrintRunner{}
+	}
+	out, err := client.ClusterInfo()
+	if err != nil {
+		return fmt.Errorf("%s (%s)", out, err)
+	}
+	format.Msg(string(out))
+	return nil
 }
