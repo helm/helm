@@ -28,7 +28,7 @@ func init() {
 	addCommands(repoCommands())
 }
 
-const chartRepoPath = "chart_repositories"
+const chartRepoPath = "repositories"
 
 func repoCommands() cli.Command {
 	return cli.Command{
