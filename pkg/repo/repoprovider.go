@@ -225,7 +225,7 @@ func (gcsrp gcsRepoProvider) GetGCSRepo(r IRepo) (IStorageRepo, error) {
 		return nil, err
 	}
 
-	return NewGCSRepo(r.GetURL(), r.GetCredentialName(), client)
+	return NewGCSRepo(r.GetURL(), r.GetCredentialName(), r.GetName(), client)
 }
 
 func (gcsrp gcsRepoProvider) createGCSClient(credentialName string) (*http.Client, error) {

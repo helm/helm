@@ -70,6 +70,7 @@ const (
 
 // Repo describes a repository
 type Repo struct {
+	Name           string      `json:"name"`                     // Name of repository
 	URL            string      `json:"url"`                      // URL to the root of this repository
 	CredentialName string      `json:"credentialname,omitempty"` // Credential name used to access this repository
 	Format         ERepoFormat `json:"format,omitempty"`         // Format of this repository
@@ -78,6 +79,8 @@ type Repo struct {
 
 // IRepo abstracts a repository.
 type IRepo interface {
+	// GetName returns the name of the repository
+	GetName() string
 	// GetURL returns the URL to the root of this repository.
 	GetURL() string
 	// GetCredentialName returns the credential name used to access this repository.

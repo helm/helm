@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
 	"github.com/kubernetes/helm/pkg/repo"
@@ -39,7 +40,7 @@ func repoCommands() cli.Command {
 			{
 				Name:      "add",
 				Usage:     "Add a chart repository to the remote manager.",
-				ArgsUsage: "REPOSITORY_URL",
+				ArgsUsage: "[NAME] [REPOSITORY_URL]",
 				Action:    func(c *cli.Context) { run(c, addRepo) },
 			},
 			{
@@ -61,11 +62,12 @@ func repoCommands() cli.Command {
 
 func addRepo(c *cli.Context) error {
 	args := c.Args()
-	if len(args) < 1 {
-		return errors.New("'helm repo add' requires a repository url as an argument")
+	if len(args) < 2 {
+		return errors.New("'helm repo add' requires a name and repository url as arguments")
 	}
+	name := args[0]
 	repoURL := args[0]
-	payload, _ := json.Marshal(repo.Repo{URL: repoURL})
+	payload, _ := json.Marshal(repo.Repo{URL: repoURL, Name: name})
 	msg := ""
 	if _, err := NewClient(c).Post(chartRepoPath, payload, &msg); err != nil {
 		//TODO: Return more specific errors to the user
@@ -95,10 +97,16 @@ func removeRepo(c *cli.Context) error {
 	if len(args) < 1 {
 		return errors.New("'helm repo remove' requires a repository url as an argument")
 	}
-	repoURL := args[0]
-	if _, err := NewClient(c).Delete(chartRepoPath, repoURL); err != nil {
-		return err
-	}
-	format.Msg(repoURL + "has been removed.\n")
+	//arg := args[0]
+	//u, err := url.Parse(arg)
+	//if err != nil {
+	//return err
+	//}
+	//p := filepath.Join(chartRepoPath, u.String())
+	//if _, err := NewClient(c).Delete(p, nil); err != nil {
+	//return err
+	//}
+	//format.Msg(arg + " has been removed.\n")
+	format.Info("TO BE IMPLEMENTED")
 	return nil
 }

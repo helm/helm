@@ -7,6 +7,7 @@ import (
 	"github.com/kubernetes/helm/pkg/util"
 
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -18,7 +19,7 @@ func registerChartRepoRoutes(c *router.Context, h *router.Handler) {
 	h.Add("GET /repositories/*/charts", listRepoChartsHandlerFunc)
 	h.Add("GET /repositories/*/charts/*", getRepoChartHandlerFunc)
 	h.Add("POST /repositories", addChartRepoHandlerFunc)
-	h.Add("DELETE /repositories", removeChartRepoHandlerFunc)
+	h.Add("DELETE /repositories/*", removeChartRepoHandlerFunc)
 }
 
 func listChartReposHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
@@ -47,7 +48,7 @@ func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 		return nil
 	}
 
-	msg, _ := json.Marshal(cr.URL + " has been added to the list of chart repositories.")
+	msg, _ := json.Marshal(cr.Name + " has been added to the list of chart repositories.")
 	util.LogHandlerExitWithJSON(handler, w, msg, http.StatusCreated)
 	return nil
 }
@@ -55,17 +56,20 @@ func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 func removeChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: remove chart repository"
 	util.LogHandlerEntry(handler, r)
+	defer r.Body.Close()
 	URL, err := pos(w, r, 2)
 	if err != nil {
 		return err
 	}
 
+	fmt.Printf("URL: %#v \n", URL)
 	err = c.Manager.RemoveChartRepo(URL)
 	if err != nil {
 		return err
 	}
 
-	util.LogHandlerExitWithText(handler, w, "removed", http.StatusOK)
+	msg, _ := json.Marshal(URL + " has been removed from the list of chart repositories.")
+	util.LogHandlerExitWithJSON(handler, w, msg, http.StatusOK)
 	return nil
 }
 
