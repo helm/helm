@@ -35,55 +35,55 @@ func NewInmemRepoService() IRepoService {
 
 	r, err := NewPublicGCSRepo(nil)
 	if err == nil {
-		rs.Create(r)
+		rs.CreateRepo(r)
 	}
 
 	return rs
 }
 
-// List returns the list of all known chart repositories
-func (rs *inmemRepoService) List() ([]string, error) {
+// ListRepos returns the list of all known chart repositories
+func (rs *inmemRepoService) ListRepos() ([]string, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
 	ret := []string{}
 	for _, r := range rs.repositories {
-		ret = append(ret, r.GetName())
+		ret = append(ret, r.GetURL())
 	}
 
 	return ret, nil
 }
 
-// Create adds a known repository to the list
-func (rs *inmemRepoService) Create(repository IRepo) error {
+// CreateRepo adds a known repository to the list
+func (rs *inmemRepoService) CreateRepo(repository IRepo) error {
 	rs.Lock()
 	defer rs.Unlock()
 
-	name := repository.GetName()
-	_, ok := rs.repositories[name]
+	URL := repository.GetURL()
+	_, ok := rs.repositories[URL]
 	if ok {
-		return fmt.Errorf("Repository named %s already exists", name)
+		return fmt.Errorf("Repository with URL %s already exists", URL)
 	}
 
-	rs.repositories[name] = repository
+	rs.repositories[URL] = repository
 	return nil
 }
 
-// Get returns the repository with the given name
-func (rs *inmemRepoService) Get(name string) (IRepo, error) {
+// GetRepoByURL returns the repository with the given URL
+func (rs *inmemRepoService) GetRepoByURL(URL string) (IRepo, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
-	r, ok := rs.repositories[name]
+	r, ok := rs.repositories[URL]
 	if !ok {
-		return nil, fmt.Errorf("Failed to find repository named %s", name)
+		return nil, fmt.Errorf("No repository with URL %s", URL)
 	}
 
 	return r, nil
 }
 
-// GetByURL returns the repository that backs the given URL
-func (rs *inmemRepoService) GetByURL(URL string) (IRepo, error) {
+// GetRepoByChartURL returns the repository that backs the given chart URL
+func (rs *inmemRepoService) GetRepoByChartURL(URL string) (IRepo, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
@@ -98,22 +98,22 @@ func (rs *inmemRepoService) GetByURL(URL string) (IRepo, error) {
 	}
 
 	if found == nil {
-		return nil, fmt.Errorf("Failed to find repository for url: %s", URL)
+		return nil, fmt.Errorf("No repository for url %s", URL)
 	}
 
 	return found, nil
 }
 
-// Delete removes a known repository from the list
-func (rs *inmemRepoService) Delete(name string) error {
+// DeleteRepo removes a known repository from the list
+func (rs *inmemRepoService) DeleteRepo(URL string) error {
 	rs.Lock()
 	defer rs.Unlock()
 
-	_, ok := rs.repositories[name]
+	_, ok := rs.repositories[URL]
 	if !ok {
-		return fmt.Errorf("Failed to find repository named %s", name)
+		return fmt.Errorf("No repository with URL %s", URL)
 	}
 
-	delete(rs.repositories, name)
+	delete(rs.repositories, URL)
 	return nil
 }

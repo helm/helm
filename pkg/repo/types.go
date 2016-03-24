@@ -70,17 +70,14 @@ const (
 
 // Repo describes a repository
 type Repo struct {
-	Name           string      `json:"name"`           // Friendly name for this repository
-	URL            string      `json:"url"`            // URL to the root of this repository
-	CredentialName string      `json:"credentialname"` // Credential name used to access this repository
-	Format         ERepoFormat `json:"format"`         // Format of this repository
-	Type           ERepoType   `json:"type"`           // Technology implementing this repository
+	URL            string      `json:"url"`                      // URL to the root of this repository
+	CredentialName string      `json:"credentialname,omitempty"` // Credential name used to access this repository
+	Format         ERepoFormat `json:"format,omitempty"`         // Format of this repository
+	Type           ERepoType   `json:"type,omitempty"`           // Technology implementing this repository
 }
 
 // IRepo abstracts a repository.
 type IRepo interface {
-	// GetName returns the friendly name of this repository.
-	GetName() string
 	// GetURL returns the URL to the root of this repository.
 	GetURL() string
 	// GetCredentialName returns the credential name used to access this repository.
@@ -96,7 +93,7 @@ type IChartRepo interface {
 	// A IChartRepo is a IRepo
 	IRepo
 
-	// ListCharts lists charts in this repository whose string values
+	// ListCharts lists the URLs for charts in this repository that
 	// conform to the supplied regular expression, or all charts if regex is nil
 	ListCharts(regex *regexp.Regexp) ([]string, error)
 
@@ -117,14 +114,26 @@ type IStorageRepo interface {
 // IRepoService maintains a list of chart repositories that defines the scope of all
 // repository based operations, such as search and chart reference resolution.
 type IRepoService interface {
-	// List returns the list of all known chart repositories
-	List() ([]string, error)
-	// Create adds a known repository to the list
-	Create(repository IRepo) error
-	// Get returns the repository with the given name
-	Get(name string) (IRepo, error)
-	// GetByURL returns the repository that backs the given URL
-	GetByURL(URL string) (IRepo, error)
-	// Delete removes a known repository from the list
-	Delete(name string) error
+	// ListRepos returns the list of all known chart repositories
+	ListRepos() ([]string, error)
+	// CreateRepo adds a known repository to the list
+	CreateRepo(repository IRepo) error
+	// GetRepoByURL returns the repository with the given name
+	GetRepoByURL(name string) (IRepo, error)
+	// GetRepoByChartURL returns the repository that backs the given URL
+	GetRepoByChartURL(URL string) (IRepo, error)
+	// DeleteRepo removes a known repository from the list
+	DeleteRepo(name string) error
+}
+
+// IRepoProvider is a factory for IChartRepo instances.
+type IRepoProvider interface {
+	GetChartByReference(reference string) (*chart.Chart, IChartRepo, error)
+	GetRepoByChartURL(URL string) (IChartRepo, error)
+	GetRepoByURL(URL string) (IChartRepo, error)
+}
+
+// IGCSRepoProvider is a factory for GCS IRepo instances.
+type IGCSRepoProvider interface {
+	GetGCSRepo(r IRepo) (IStorageRepo, error)
 }

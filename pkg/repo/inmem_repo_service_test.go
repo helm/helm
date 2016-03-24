@@ -23,7 +23,7 @@ import (
 
 func TestService(t *testing.T) {
 	rs := NewInmemRepoService()
-	repos, err := rs.List()
+	repos, err := rs.ListRepos()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,16 +32,16 @@ func TestService(t *testing.T) {
 		t.Fatalf("unexpected repo count; want: %d, have %d.", 1, len(repos))
 	}
 
-	tr, err := rs.Get(repos[0])
+	tr, err := rs.GetRepoByURL(repos[0])
 	if err != nil {
-		t.Fatalf("cannot get repo named %s: %s", repos[0], err)
-	}
-
-	if err := validateRepo(tr, GCSPublicRepoName, GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType); err != nil {
 		t.Fatal(err)
 	}
 
-	r1, err := rs.Get(GCSPublicRepoName)
+	if err := validateRepo(tr, GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType); err != nil {
+		t.Fatal(err)
+	}
+
+	r1, err := rs.GetRepoByURL(GCSPublicRepoURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,8 @@ func TestService(t *testing.T) {
 		t.Fatalf("invalid repo returned; want: %#v, have %#v.", tr, r1)
 	}
 
-	r2, err := rs.GetByURL(GCSPublicRepoURL)
+	URL := GCSPublicRepoURL + TestArchiveName
+	r2, err := rs.GetRepoByChartURL(URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,50 +60,50 @@ func TestService(t *testing.T) {
 		t.Fatalf("invalid repo returned; want: %#v, have %#v.", tr, r2)
 	}
 
-	if err := rs.Delete(GCSPublicRepoName); err != nil {
+	if err := rs.DeleteRepo(GCSPublicRepoURL); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := rs.Get(GCSPublicRepoName); err == nil {
-		t.Fatalf("deleted repo named %s returned", GCSPublicRepoName)
+	if _, err := rs.GetRepoByURL(GCSPublicRepoURL); err == nil {
+		t.Fatalf("deleted repo with URL %s returned", GCSPublicRepoURL)
 	}
 }
 
-func TestCreateRepoWithDuplicateName(t *testing.T) {
+func TestCreateRepoWithDuplicateURL(t *testing.T) {
 	rs := NewInmemRepoService()
-	r, err := newRepo(GCSPublicRepoName, GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType)
+	r, err := newRepo(GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType)
 	if err != nil {
 		t.Fatalf("cannot create test repo: %s", err)
 	}
 
-	if err := rs.Create(r); err == nil {
-		t.Fatalf("created repo with duplicate name: %s", GCSPublicRepoName)
-	}
-}
-
-func TestGetRepoWithInvalidName(t *testing.T) {
-	invalidName := "InvalidRepoName"
-	rs := NewInmemRepoService()
-	_, err := rs.Get(invalidName)
-	if err == nil {
-		t.Fatalf("found repo with invalid name: %s", invalidName)
+	if err := rs.CreateRepo(r); err == nil {
+		t.Fatalf("created repo with duplicate URL: %s", GCSPublicRepoURL)
 	}
 }
 
 func TestGetRepoWithInvalidURL(t *testing.T) {
 	invalidURL := "https://not.a.valid/url"
 	rs := NewInmemRepoService()
-	_, err := rs.GetByURL(invalidURL)
+	_, err := rs.GetRepoByURL(invalidURL)
 	if err == nil {
 		t.Fatalf("found repo with invalid URL: %s", invalidURL)
 	}
 }
 
-func TestDeleteRepoWithInvalidName(t *testing.T) {
-	invalidName := "InvalidRepoName"
+func TestGetRepoWithInvalidChartURL(t *testing.T) {
+	invalidURL := "https://not.a.valid/url"
 	rs := NewInmemRepoService()
-	err := rs.Delete(invalidName)
+	_, err := rs.GetRepoByChartURL(invalidURL)
 	if err == nil {
-		t.Fatalf("deleted repo with invalid name: %s", invalidName)
+		t.Fatalf("found repo with invalid chart URL: %s", invalidURL)
+	}
+}
+
+func TestDeleteRepoWithInvalidURL(t *testing.T) {
+	invalidURL := "https://not.a.valid/url"
+	rs := NewInmemRepoService()
+	err := rs.DeleteRepo(invalidURL)
+	if err == nil {
+		t.Fatalf("deleted repo with invalid name: %s", invalidURL)
 	}
 }

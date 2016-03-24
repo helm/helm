@@ -22,15 +22,11 @@ import (
 )
 
 // NewRepo takes params and returns a IRepo
-func NewRepo(name, URL, credentialName, repoFormat, repoType string) (IRepo, error) {
-	return newRepo(name, URL, credentialName, ERepoFormat(repoFormat), ERepoType(repoType))
+func NewRepo(URL, credentialName, repoFormat, repoType string) (IRepo, error) {
+	return newRepo(URL, credentialName, ERepoFormat(repoFormat), ERepoType(repoType))
 }
 
-func newRepo(name, URL, credentialName string, repoFormat ERepoFormat, repoType ERepoType) (*Repo, error) {
-	if name == "" {
-		return nil, fmt.Errorf("name must not be empty")
-	}
-
+func newRepo(URL, credentialName string, repoFormat ERepoFormat, repoType ERepoType) (*Repo, error) {
 	_, err := url.Parse(URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL (%s): %s", URL, err)
@@ -45,11 +41,10 @@ func newRepo(name, URL, credentialName string, repoFormat ERepoFormat, repoType 
 	}
 
 	r := &Repo{
-		Name:           name,
-		Type:           repoType,
 		URL:            URL,
-		Format:         repoFormat,
 		CredentialName: credentialName,
+		Type:           repoType,
+		Format:         repoFormat,
 	}
 
 	return r, nil
@@ -63,11 +58,6 @@ func validateRepoFormat(repoFormat ERepoFormat) error {
 	}
 
 	return fmt.Errorf("unknown repository format: %s", repoFormat)
-}
-
-// GetName returns the friendly name of this repository.
-func (r *Repo) GetName() string {
-	return r.Name
 }
 
 // GetType returns the technology implementing this repository.
@@ -90,12 +80,7 @@ func (r *Repo) GetCredentialName() string {
 	return r.CredentialName
 }
 
-func validateRepo(tr IRepo, wantName, wantURL, wantCredentialName string, wantFormat ERepoFormat, wantType ERepoType) error {
-	haveName := tr.GetName()
-	if haveName != wantName {
-		return fmt.Errorf("unexpected repository name; want: %s, have %s", wantName, haveName)
-	}
-
+func validateRepo(tr IRepo, wantURL, wantCredentialName string, wantFormat ERepoFormat, wantType ERepoType) error {
 	haveURL := tr.GetURL()
 	if haveURL != wantURL {
 		return fmt.Errorf("unexpected repository url; want: %s, have %s", wantURL, haveURL)
