@@ -42,13 +42,13 @@ func NewInmemRepoService() IRepoService {
 }
 
 // ListRepos returns the list of all known chart repositories
-func (rs *inmemRepoService) ListRepos() ([]string, error) {
+func (rs *inmemRepoService) ListRepos() (map[string]string, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
-	ret := []string{}
+	ret := make(map[string]string)
 	for _, r := range rs.repositories {
-		ret = append(ret, r.GetURL())
+		ret[r.GetName()] = r.GetURL()
 	}
 
 	return ret, nil

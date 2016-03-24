@@ -66,19 +66,19 @@ func addRepo(c *cli.Context) error {
 		return errors.New("'helm repo add' requires a name and repository url as arguments")
 	}
 	name := args[0]
-	repoURL := args[0]
+	repoURL := args[1]
 	payload, _ := json.Marshal(repo.Repo{URL: repoURL, Name: name})
 	msg := ""
 	if _, err := NewClient(c).Post(chartRepoPath, payload, &msg); err != nil {
 		//TODO: Return more specific errors to the user
 		return err
 	}
-	format.Info(repoURL + " has been added to your chart repositories!")
+	format.Info(name + " has been added to your chart repositories!")
 	return nil
 }
 
 func listRepos(c *cli.Context) error {
-	dest := []string{}
+	dest := map[string]string{}
 	if _, err := NewClient(c).Get(chartRepoPath, &dest); err != nil {
 		return err
 	}
@@ -87,7 +87,10 @@ func listRepos(c *cli.Context) error {
 		format.Info("Add a chart repository using the `helm repo add [REPOSITORY_URL]` command.")
 	} else {
 		format.Msg("Chart Repositories:\n")
-		format.List(dest)
+		for k, v := range dest {
+			//TODO: make formatting pretty
+			format.Msg(k + "\t" + v + "\n")
+		}
 	}
 	return nil
 }
