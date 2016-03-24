@@ -37,7 +37,7 @@ var (
 
 func TestValidGSURL(t *testing.T) {
 	tr := getTestRepo(t)
-	err := validateRepo(tr, TestRepoName, TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)
+	err := validateRepo(tr, TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestValidGSURL(t *testing.T) {
 
 func TestInvalidGSURL(t *testing.T) {
 	var invalidGSURL = "https://valid.url/wrong/scheme"
-	_, err := NewGCSRepo(TestRepoName, invalidGSURL, TestRepoCredentialName, nil)
+	_, err := NewGCSRepo(invalidGSURL, TestRepoCredentialName, nil)
 	if err == nil {
 		t.Fatalf("expected error did not occur for invalid GS URL")
 	}
@@ -126,7 +126,7 @@ func TestGetChartWithInvalidName(t *testing.T) {
 }
 
 func getTestRepo(t *testing.T) IStorageRepo {
-	tr, err := NewGCSRepo(TestRepoName, TestRepoURL, TestRepoCredentialName, nil)
+	tr, err := NewGCSRepo(TestRepoURL, TestRepoCredentialName, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

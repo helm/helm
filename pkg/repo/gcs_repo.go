@@ -43,14 +43,11 @@ const (
 	// In a GCS repository all charts appear at the top level.
 	GCSRepoFormat = FlatRepoFormat
 
-	// GCSPublicRepoName is the name of the public GCS repository.
-	GCSPublicRepoName = "kubernetes-charts"
+	// GCSPublicRepoBucket is the name of the public GCS repository bucket.
+	GCSPublicRepoBucket = "kubernetes-charts"
 
 	// GCSPublicRepoURL is the URL for the public GCS repository.
-	GCSPublicRepoURL = "gs://" + GCSPublicRepoName
-
-	// GCSPublicRepoBucket is the name of the public GCS repository bucket.
-	GCSPublicRepoBucket = GCSPublicRepoName
+	GCSPublicRepoURL = "gs://" + GCSPublicRepoBucket
 )
 
 // GCSRepo implements the IStorageRepo interface for Google Cloud Storage.
@@ -63,12 +60,12 @@ type GCSRepo struct {
 
 // NewPublicGCSRepo creates a new an IStorageRepo for the public GCS repository.
 func NewPublicGCSRepo(httpClient *http.Client) (IStorageRepo, error) {
-	return NewGCSRepo(GCSPublicRepoName, GCSPublicRepoURL, "", nil)
+	return NewGCSRepo(GCSPublicRepoURL, "", nil)
 }
 
 // NewGCSRepo creates a new IStorageRepo for a given GCS repository.
-func NewGCSRepo(name, URL, credentialName string, httpClient *http.Client) (IStorageRepo, error) {
-	r, err := newRepo(name, URL, credentialName, GCSRepoFormat, GCSRepoType)
+func NewGCSRepo(URL, credentialName string, httpClient *http.Client) (IStorageRepo, error) {
+	r, err := newRepo(URL, credentialName, GCSRepoFormat, GCSRepoType)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +117,7 @@ func validateRepoType(repoType ERepoType) error {
 func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 	charts := []string{}
 
-	// List all objects in a bucket using pagination
+	// ListRepos all objects in a bucket using pagination
 	pageToken := ""
 	for {
 		call := g.service.Objects.List(g.bucket)
@@ -135,7 +132,7 @@ func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 		}
 
 		for _, object := range res.Items {
-			// Charts should be named bucket/chart-X.Y.Z.tgz, so tease apart the name
+			// Charts should be named chart-X.Y.Z.tgz, so tease apart the name
 			m := ChartNameMatcher.FindStringSubmatch(object.Name)
 			if len(m) != 3 {
 				continue
@@ -156,7 +153,7 @@ func (g *GCSRepo) ListCharts(regex *regexp.Regexp) ([]string, error) {
 
 // GetChart retrieves, unpacks and returns a chart by name.
 func (g *GCSRepo) GetChart(name string) (*chart.Chart, error) {
-	// Charts should be named bucket/chart-X.Y.Z.tgz, so check that the name matches
+	// Charts should be named chart-X.Y.Z.tgz, so check that the name matches
 	if !ChartNameMatcher.MatchString(name) {
 		return nil, fmt.Errorf("name must be of the form <name>-<version>.tgz, was %s", name)
 	}

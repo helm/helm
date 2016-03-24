@@ -29,28 +29,21 @@ import (
 	"sync"
 )
 
-// IRepoProvider is a factory for IChartRepo instances.
-type IRepoProvider interface {
-	GetRepoByURL(URL string) (IChartRepo, error)
-	GetRepoByName(repoName string) (IChartRepo, error)
-	GetChartByReference(reference string) (*chart.Chart, IChartRepo, error)
-}
-
 type repoProvider struct {
 	sync.RWMutex
 	rs    IRepoService
 	cp    ICredentialProvider
-	gcsrp GCSRepoProvider
+	gcsrp IGCSRepoProvider
 	repos map[string]IChartRepo
 }
 
 // NewRepoProvider creates a new repository provider.
-func NewRepoProvider(rs IRepoService, gcsrp GCSRepoProvider, cp ICredentialProvider) IRepoProvider {
+func NewRepoProvider(rs IRepoService, gcsrp IGCSRepoProvider, cp ICredentialProvider) IRepoProvider {
 	return newRepoProvider(rs, gcsrp, cp)
 }
 
 // newRepoProvider creates a new repository provider.
-func newRepoProvider(rs IRepoService, gcsrp GCSRepoProvider, cp ICredentialProvider) *repoProvider {
+func newRepoProvider(rs IRepoService, gcsrp IGCSRepoProvider, cp ICredentialProvider) *repoProvider {
 	if rs == nil {
 		rs = NewInmemRepoService()
 	}
@@ -79,20 +72,20 @@ func (rp *repoProvider) GetCredentialProvider() ICredentialProvider {
 }
 
 // GetGCSRepoProvider returns the GCS repository provider used by this repository provider.
-func (rp *repoProvider) GetGCSRepoProvider() GCSRepoProvider {
+func (rp *repoProvider) GetGCSRepoProvider() IGCSRepoProvider {
 	return rp.gcsrp
 }
 
-// GetRepoByName returns the repository with the given name.
-func (rp *repoProvider) GetRepoByName(repoName string) (IChartRepo, error) {
+// GetRepoByURL returns the repository with the given name.
+func (rp *repoProvider) GetRepoByURL(URL string) (IChartRepo, error) {
 	rp.Lock()
 	defer rp.Unlock()
 
-	if r, ok := rp.repos[repoName]; ok {
+	if r, ok := rp.repos[URL]; ok {
 		return r, nil
 	}
 
-	cr, err := rp.rs.Get(repoName)
+	cr, err := rp.rs.GetRepoByURL(URL)
 	if err != nil {
 		return nil, err
 	}
@@ -115,25 +108,25 @@ func (rp *repoProvider) createRepoByType(r IRepo) (IChartRepo, error) {
 }
 
 func (rp *repoProvider) createRepo(cr IChartRepo) (IChartRepo, error) {
-	name := cr.GetName()
-	if _, ok := rp.repos[name]; ok {
-		return nil, fmt.Errorf("respository named %s already exists", name)
+	URL := cr.GetURL()
+	if _, ok := rp.repos[URL]; ok {
+		return nil, fmt.Errorf("respository with URL %s already exists", URL)
 	}
 
-	rp.repos[name] = cr
+	rp.repos[URL] = cr
 	return cr, nil
 }
 
-// GetRepoByURL returns the repository whose URL is a prefix of the given URL.
-func (rp *repoProvider) GetRepoByURL(URL string) (IChartRepo, error) {
+// GetRepoByChartURL returns the repository whose URL is a prefix of the given URL.
+func (rp *repoProvider) GetRepoByChartURL(URL string) (IChartRepo, error) {
 	rp.Lock()
 	defer rp.Unlock()
 
-	if r := rp.findRepoByURL(URL); r != nil {
+	if r := rp.findRepoByChartURL(URL); r != nil {
 		return r, nil
 	}
 
-	cr, err := rp.rs.GetByURL(URL)
+	cr, err := rp.rs.GetRepoByChartURL(URL)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +134,7 @@ func (rp *repoProvider) GetRepoByURL(URL string) (IChartRepo, error) {
 	return rp.createRepoByType(cr)
 }
 
-func (rp *repoProvider) findRepoByURL(URL string) IChartRepo {
+func (rp *repoProvider) findRepoByChartURL(URL string) IChartRepo {
 	var found IChartRepo
 	for _, r := range rp.repos {
 		rURL := r.GetURL()
@@ -157,19 +150,14 @@ func (rp *repoProvider) findRepoByURL(URL string) IChartRepo {
 
 // GetChartByReference maps the supplied chart reference into a fully qualified
 // URL, uses the URL to find the repository it references, queries the repository
-// for the chart by URL, and returns the chart and the repository that backs it.
+// for the chart, and then returns the chart and the repository that backs it.
 func (rp *repoProvider) GetChartByReference(reference string) (*chart.Chart, IChartRepo, error) {
-	l, err := ParseGCSChartReference(reference)
+	l, URL, err := parseChartReference(reference)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	URL, err := l.Long(true)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid reference %s: %s", reference, err)
-	}
-
-	r, err := rp.GetRepoByURL(URL)
+	r, err := rp.GetRepoByChartURL(URL)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -183,17 +171,45 @@ func (rp *repoProvider) GetChartByReference(reference string) (*chart.Chart, ICh
 	return c, r, nil
 }
 
-// GCSRepoProvider is a factory for GCS IRepo instances.
-type GCSRepoProvider interface {
-	GetGCSRepo(r IRepo) (IStorageRepo, error)
+// IsChartReference returns true if the supplied string is a reference to a chart in a repository
+func IsChartReference(reference string) bool {
+	if _, err := ParseChartReference(reference); err != nil {
+		return false
+	}
+
+	return true
+}
+
+// ParseChartReference parses a reference to a chart in a repository and returns the URL for the chart
+func ParseChartReference(reference string) (*chart.Locator, error) {
+	l, _, err := parseChartReference(reference)
+	if err != nil {
+		return nil, err
+	}
+
+	return l, nil
+}
+
+func parseChartReference(reference string) (*chart.Locator, string, error) {
+	l, err := chart.Parse(reference)
+	if err != nil {
+		return nil, "", fmt.Errorf("cannot parse chart reference %s: %s", reference, err)
+	}
+
+	URL, err := l.Long(true)
+	if err != nil {
+		return nil, "", fmt.Errorf("chart reference %s does not resolve to a URL: %s", reference, err)
+	}
+
+	return l, URL, nil
 }
 
 type gcsRepoProvider struct {
 	cp ICredentialProvider
 }
 
-// NewGCSRepoProvider creates a GCSRepoProvider.
-func NewGCSRepoProvider(cp ICredentialProvider) GCSRepoProvider {
+// NewGCSRepoProvider creates a IGCSRepoProvider.
+func NewGCSRepoProvider(cp ICredentialProvider) IGCSRepoProvider {
 	if cp == nil {
 		cp = NewInmemCredentialProvider()
 	}
@@ -209,7 +225,7 @@ func (gcsrp gcsRepoProvider) GetGCSRepo(r IRepo) (IStorageRepo, error) {
 		return nil, err
 	}
 
-	return NewGCSRepo(r.GetName(), r.GetURL(), r.GetCredentialName(), client)
+	return NewGCSRepo(r.GetURL(), r.GetCredentialName(), client)
 }
 
 func (gcsrp gcsRepoProvider) createGCSClient(credentialName string) (*http.Client, error) {
@@ -233,8 +249,8 @@ func (gcsrp gcsRepoProvider) createGCSClient(credentialName string) (*http.Clien
 }
 
 // IsGCSChartReference returns true if the supplied string is a reference to a chart in a GCS repository
-func IsGCSChartReference(r string) bool {
-	if _, err := ParseGCSChartReference(r); err != nil {
+func IsGCSChartReference(reference string) bool {
+	if _, err := ParseGCSChartReference(reference); err != nil {
 		return false
 	}
 
@@ -242,20 +258,15 @@ func IsGCSChartReference(r string) bool {
 }
 
 // ParseGCSChartReference parses a reference to a chart in a GCS repository and returns the URL for the chart
-func ParseGCSChartReference(r string) (*chart.Locator, error) {
-	l, err := chart.Parse(r)
+func ParseGCSChartReference(reference string) (*chart.Locator, error) {
+	l, URL, err := parseChartReference(reference)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse chart reference %s: %s", r, err)
-	}
-
-	URL, err := l.Long(true)
-	if err != nil {
-		return nil, fmt.Errorf("chart reference %s does not resolve to a URL: %s", r, err)
+		return nil, err
 	}
 
 	m := GCSChartURLMatcher.FindStringSubmatch(URL)
 	if len(m) != 4 {
-		return nil, fmt.Errorf("chart reference %s resolve to invalid URL: %s", r, URL)
+		return nil, fmt.Errorf("chart reference %s resolve to invalid URL: %s", reference, URL)
 	}
 
 	return l, nil

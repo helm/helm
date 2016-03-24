@@ -17,7 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"github.com/kubernetes/helm/pkg/chart"
 	"time"
 )
 
@@ -90,35 +89,6 @@ type ChartInstance struct {
 	Path       string `json:"path"`       // JSON path within manifest
 }
 
-// TODO: Remove the following section when the refactoring of templates is complete.
-
-// Template describes a set of resources to be deployed.
-// Manager expands a Template into a Configuration, which
-// describes the set in a form that can be instantiated.
-type Template struct {
-	Name    string        `json:"name"`
-	Content string        `json:"content"`
-	Imports []*ImportFile `json:"imports"`
-}
-
-// ImportFile describes a base64 encoded file imported by a Template.
-type ImportFile struct {
-	Name    string `json:"name,omitempty"`
-	Path    string `json:"path,omitempty"` // Actual URL for the file
-	Content string `json:"content"`
-}
-
-// SchemaImport represents an import as declared in a schema file.
-type SchemaImport struct {
-	Path string `json:"path"`
-	Name string `json:"name"`
-}
-
-// Schema is a partial DM schema. We only need access to the imports object at this level.
-type Schema struct {
-	Imports []SchemaImport `json:"imports"`
-}
-
 // LayoutResource defines the structure of resources in the manifest layout.
 type LayoutResource struct {
 	Resource
@@ -128,22 +98,6 @@ type LayoutResource struct {
 // Layout defines the structure of a layout as returned from expansion.
 type Layout struct {
 	Resources []*LayoutResource `json:"resources,omitempty"`
-}
-
-// ExpansionRequest defines the API to expander.
-type ExpansionRequest struct {
-	ChartInvocation *Resource      `json:"chart_invocation"`
-	Chart           *chart.Content `json:"chart"`
-}
-
-// ExpansionResponse defines the API to expander.
-type ExpansionResponse struct {
-	Resources []interface{} `json:"resources"`
-}
-
-// Expander abstracts interactions with the expander and deployer services.
-type Expander interface {
-	ExpandChart(request *ExpansionRequest) (*ExpansionResponse, error)
 }
 
 // Configuration describes a set of resources in a form
@@ -179,4 +133,22 @@ type Resource struct {
 	Type       string                 `json:"type"`
 	Properties map[string]interface{} `json:"properties,omitempty"`
 	State      *ResourceState         `json:"state,omitempty"`
+}
+
+// TODO: Remove the following section when the refactoring of templates is complete.
+
+// Template describes a set of resources to be deployed.
+// Manager expands a Template into a Configuration, which
+// describes the set in a form that can be instantiated.
+type Template struct {
+	Name    string        `json:"name"`
+	Content string        `json:"content"`
+	Imports []*ImportFile `json:"imports"`
+}
+
+// ImportFile describes a base64 encoded file imported by a Template.
+type ImportFile struct {
+	Name    string `json:"name,omitempty"`
+	Path    string `json:"path,omitempty"` // Actual URL for the file
+	Content string `json:"content"`
 }

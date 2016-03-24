@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -71,13 +70,6 @@ func registerDeploymentRoutes(c *router.Context, h *router.Handler) {
 	h.Add("GET /charts/*/repository", getRepoForChartHandlerFunc)
 	h.Add("GET /charts/*/metadata", getMetadataForChartHandlerFunc)
 	h.Add("GET /charts/*", getChartHandlerFunc)
-
-	// TODO: Refactor these commented out routes
-	//	h.Add("GET /repositories/*", getRepoHandlerFunc)
-	//	h.Add("POST /repositories/*", createRepoHandlerFunc)
-
-	h.Add("GET /repositories/*/charts", listRepositoryChartsHandlerFunc)
-	h.Add("GET /repositories/*/charts/*", getRepositoryChartHandlerFunc)
 	h.Add("POST /credentials/*", createCredentialHandlerFunc)
 	h.Add("GET /credentials/*", getCredentialHandlerFunc)
 }
@@ -453,122 +445,6 @@ func getChartHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Conte
 	}
 
 	util.LogHandlerExitWithJSON(handler, w, ch, http.StatusOK)
-	return nil
-}
-
-// TODO: Refactor this commented out code.
-
-/*
-
-func getRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: get repository"
-	util.LogHandlerEntry(handler, r)
-	repoName, err := pos(w, r, 2)
-	if err != nil {
-		return err
-	}
-
-	cr, err := c.Manager.GetRepo(repoName)
-	if err != nil {
-		httputil.BadRequest(w, r, err)
-		return nil
-	}
-
-	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
-	return nil
-}
-
-func getRepo(w http.ResponseWriter, r *http.Request, handler string) *repo.Repo {
-	util.LogHandlerEntry(handler, r)
-
-	t := &repo.Repo{}
-	if err := httputil.Decode(w, r, t); err != nil {
-		httputil.BadRequest(w, r, err)
-		return nil
-	}
-	return t
-}
-
-func createRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: create repository"
-	util.LogHandlerEntry(handler, r)
-	defer r.Body.Close()
-	repoName, err := pos(w, r, 2)
-	if err != nil {
-		return err
-	}
-
-	reg := getRepo(w, r, handler)
-	if reg.Name != repoName {
-		e := fmt.Errorf("Repo name does not match %s != %s", reg.Name, repoName)
-		httputil.BadRequest(w, r, e)
-		return nil
-	}
-	if reg != nil {
-		err = c.Manager.CreateRepo(reg)
-		if err != nil {
-			httputil.BadRequest(w, r, err)
-			return nil
-		}
-	}
-
-	util.LogHandlerExitWithJSON(handler, w, reg, http.StatusOK)
-	return nil
-}
-*/
-
-func listRepositoryChartsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: list repository charts"
-	util.LogHandlerEntry(handler, r)
-	repoName, err := pos(w, r, 2)
-	if err != nil {
-		return err
-	}
-
-	values, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		httputil.BadRequest(w, r, err)
-		return nil
-	}
-
-	var regex *regexp.Regexp
-	regexString := values.Get("regex")
-	if regexString != "" {
-		regex, err = regexp.Compile(regexString)
-		if err != nil {
-			httputil.BadRequest(w, r, err)
-			return nil
-		}
-	}
-
-	repoCharts, err := c.Manager.ListRepoCharts(repoName, regex)
-	if err != nil {
-		return err
-	}
-
-	util.LogHandlerExitWithJSON(handler, w, repoCharts, http.StatusOK)
-	return nil
-}
-
-func getRepositoryChartHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
-	handler := "manager: get repository charts"
-	util.LogHandlerEntry(handler, r)
-	repoName, err := pos(w, r, 2)
-	if err != nil {
-		return err
-	}
-
-	chartName, err := pos(w, r, 4)
-	if err != nil {
-		return err
-	}
-
-	repoChart, err := c.Manager.GetChartForRepo(repoName, chartName)
-	if err != nil {
-		return err
-	}
-
-	util.LogHandlerExitWithJSON(handler, w, repoChart, http.StatusOK)
 	return nil
 }
 

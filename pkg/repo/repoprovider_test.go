@@ -41,12 +41,12 @@ var InvalidChartReferences = []string{
 
 func TestRepoProvider(t *testing.T) {
 	rp := NewRepoProvider(nil, nil, nil)
-	haveRepo, err := rp.GetRepoByName(GCSPublicRepoName)
+	haveRepo, err := rp.GetRepoByURL(GCSPublicRepoURL)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := validateRepo(haveRepo, GCSPublicRepoName, GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType); err != nil {
+	if err := validateRepo(haveRepo, GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType); err != nil {
 		t.Fatal(err)
 	}
 
@@ -62,7 +62,8 @@ func TestRepoProvider(t *testing.T) {
 	}
 
 	wantRepo := haveRepo
-	haveRepo, err = rp.GetRepoByURL(GCSPublicRepoURL)
+	URL := GCSPublicRepoURL + TestArchiveName
+	haveRepo, err = rp.GetRepoByChartURL(URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,21 +73,21 @@ func TestRepoProvider(t *testing.T) {
 	}
 }
 
-func TestGetRepoByNameWithInvalidName(t *testing.T) {
-	var invalidName = "InvalidRepoName"
-	rp := NewRepoProvider(nil, nil, nil)
-	_, err := rp.GetRepoByName(invalidName)
-	if err == nil {
-		t.Fatalf("found repo using invalid name: %s", invalidName)
-	}
-}
-
 func TestGetRepoByURLWithInvalidURL(t *testing.T) {
 	var invalidURL = "https://valid.url/wrong/scheme"
 	rp := NewRepoProvider(nil, nil, nil)
 	_, err := rp.GetRepoByURL(invalidURL)
 	if err == nil {
 		t.Fatalf("found repo using invalid URL: %s", invalidURL)
+	}
+}
+
+func TestGetRepoByChartURLWithInvalidChartURL(t *testing.T) {
+	var invalidURL = "https://valid.url/wrong/scheme"
+	rp := NewRepoProvider(nil, nil, nil)
+	_, err := rp.GetRepoByChartURL(invalidURL)
+	if err == nil {
+		t.Fatalf("found repo using invalid chart URL: %s", invalidURL)
 	}
 }
 
@@ -115,12 +116,12 @@ func TestGetChartByReferenceWithValidReferences(t *testing.T) {
 func getTestRepoProvider(t *testing.T) IRepoProvider {
 	rp := newRepoProvider(nil, nil, nil)
 	rs := rp.GetRepoService()
-	tr, err := newRepo(TestRepoName, TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)
+	tr, err := newRepo(TestRepoURL, TestRepoCredentialName, TestRepoFormat, TestRepoType)
 	if err != nil {
 		t.Fatalf("cannot create test repository: %s", err)
 	}
 
-	if err := rs.Create(tr); err != nil {
+	if err := rs.CreateRepo(tr); err != nil {
 		t.Fatalf("cannot initialize repository service: %s", err)
 	}
 

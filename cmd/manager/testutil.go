@@ -91,7 +91,7 @@ func (m *mockManager) GetChart(chartName string) (*chart.Chart, error) {
 	return nil, nil
 }
 
-func (m *mockManager) AddChartRepo(name string) error {
+func (m *mockManager) AddChartRepo(addition repo.IRepo) error {
 	return nil
 }
 
@@ -101,6 +101,10 @@ func (m *mockManager) ListChartRepos() ([]string, error) {
 
 func (m *mockManager) RemoveChartRepo(name string) error {
 	return nil
+}
+
+func (m *mockManager) GetChartRepo(URL string) (repo.IRepo, error) {
+	return nil, nil
 }
 
 func (m *mockManager) ListRepos() ([]*repo.Repo, error) {

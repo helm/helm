@@ -50,8 +50,8 @@ type Manager interface {
 	GetChart(chartName string) (*chart.Chart, error)
 
 	// Repo Charts
-	ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error)
-	GetChartForRepo(repoName, chartName string) (*chart.Chart, error)
+	ListRepoCharts(repoURL string, regex *regexp.Regexp) ([]string, error)
+	GetChartForRepo(repoURL, chartName string) (*chart.Chart, error)
 
 	// Credentials
 	CreateCredential(name string, c *repo.Credential) error
@@ -59,8 +59,9 @@ type Manager interface {
 
 	// Chart Repositories
 	ListChartRepos() ([]string, error)
-	AddChartRepo(name string) error
+	AddChartRepo(addition repo.IRepo) error
 	RemoveChartRepo(name string) error
+	GetChartRepo(URL string) (repo.IRepo, error)
 }
 
 type manager struct {
@@ -335,19 +336,19 @@ func (m *manager) ListChartInstances(chartName string) ([]*common.ChartInstance,
 	return m.repository.GetChartInstances(chartName)
 }
 
-// GetRepoForChart returns the repository where a chart resides.
-func (m *manager) GetRepoForChart(chartName string) (string, error) {
-	_, r, err := m.repoProvider.GetChartByReference(chartName)
+// GetRepoForChart returns the repository where the referenced chart resides.
+func (m *manager) GetRepoForChart(reference string) (string, error) {
+	_, r, err := m.repoProvider.GetChartByReference(reference)
 	if err != nil {
 		return "", err
 	}
 
-	return r.GetName(), nil
+	return r.GetURL(), nil
 }
 
-// GetMetadataForChart returns the metadata for a chart.
-func (m *manager) GetMetadataForChart(chartName string) (*chart.Chartfile, error) {
-	c, _, err := m.repoProvider.GetChartByReference(chartName)
+// GetMetadataForChart returns the metadata for the referenced chart.
+func (m *manager) GetMetadataForChart(reference string) (*chart.Chartfile, error) {
+	c, _, err := m.repoProvider.GetChartByReference(reference)
 	if err != nil {
 		return nil, err
 	}
@@ -355,9 +356,9 @@ func (m *manager) GetMetadataForChart(chartName string) (*chart.Chartfile, error
 	return c.Chartfile(), nil
 }
 
-// GetChart returns a chart.
-func (m *manager) GetChart(chartName string) (*chart.Chart, error) {
-	c, _, err := m.repoProvider.GetChartByReference(chartName)
+// GetChart returns the referenced chart.
+func (m *manager) GetChart(reference string) (*chart.Chart, error) {
+	c, _, err := m.repoProvider.GetChartByReference(reference)
 	if err != nil {
 		return nil, err
 	}
@@ -365,28 +366,24 @@ func (m *manager) GetChart(chartName string) (*chart.Chart, error) {
 	return c, nil
 }
 
-// ListChartRepos returns the list of chart repositories
+// ListChartRepos returns the list of available chart repository URLs
 func (m *manager) ListChartRepos() ([]string, error) {
-	return m.service.List()
+	return m.service.ListRepos()
 }
 
-// AddChartRepo adds a chart repository to list of available chart repositories
-func (m *manager) AddChartRepo(name string) error {
-	//TODO: implement
-	return nil
+// AddChartRepo adds a chart repository to the list
+func (m *manager) AddChartRepo(addition repo.IRepo) error {
+	return m.service.CreateRepo(addition)
 }
 
-// RemoveChartRepo removes a chart repository to list of available chart repositories
-func (m *manager) RemoveChartRepo(name string) error {
-	return m.service.Delete(name)
+// RemoveChartRepo removes a chart repository from the list by URL
+func (m *manager) RemoveChartRepo(URL string) error {
+	return m.service.DeleteRepo(URL)
 }
 
-func (m *manager) CreateRepo(pr repo.IRepo) error {
-	return m.service.Create(pr)
-}
-
-func (m *manager) GetRepo(name string) (repo.IRepo, error) {
-	return m.service.Get(name)
+// GetChartRepo returns the chart repository with the given URL
+func (m *manager) GetChartRepo(URL string) (repo.IRepo, error) {
+	return m.service.GetRepoByURL(URL)
 }
 
 func generateManifestName() string {
@@ -411,11 +408,11 @@ func getResourceErrors(c *common.Configuration) []string {
 	return errs
 }
 
-// ListRepoCharts lists charts in a given repository whose names
+// ListRepoCharts lists charts in a given repository whose URLs
 // conform to the supplied regular expression, or all charts, if the regular
 // expression is nil.
-func (m *manager) ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error) {
-	r, err := m.repoProvider.GetRepoByName(repoName)
+func (m *manager) ListRepoCharts(repoURL string, regex *regexp.Regexp) ([]string, error) {
+	r, err := m.repoProvider.GetRepoByURL(repoURL)
 	if err != nil {
 		return nil, err
 	}
@@ -423,9 +420,9 @@ func (m *manager) ListRepoCharts(repoName string, regex *regexp.Regexp) ([]strin
 	return r.ListCharts(regex)
 }
 
-// GetChartForRepo returns a chart from a given repository.
-func (m *manager) GetChartForRepo(repoName, chartName string) (*chart.Chart, error) {
-	r, err := m.repoProvider.GetRepoByName(repoName)
+// GetChartForRepo returns a chart by name from a given repository.
+func (m *manager) GetChartForRepo(repoURL, chartName string) (*chart.Chart, error) {
+	r, err := m.repoProvider.GetRepoByURL(repoURL)
 	if err != nil {
 		return nil, err
 	}
