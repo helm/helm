@@ -31,11 +31,20 @@ func init() {
 	addCommands(chartCommands())
 }
 
+const chartDesc = `A Chart is a package that can be installed and managed by Helm.
+
+   The 'helm chart' subcommands provide tools for working with Helm charts. To
+   get started creating your own chart, use 'helm chart create NAME'.
+
+   For details, use 'helm chart CMD -h'.
+`
+
 func chartCommands() cli.Command {
 	return cli.Command{
 		// Names following form prescribed here: http://is.gd/QUSEOF
-		Name:  "chart",
-		Usage: "Perform chart-centered operations.",
+		Name:        "chart",
+		Usage:       "Perform chart-centered operations.",
+		Description: chartDesc,
 		Subcommands: []cli.Command{
 			{
 				Name:      "config",

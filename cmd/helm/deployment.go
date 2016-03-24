@@ -28,6 +28,17 @@ import (
 
 var errMissingDeploymentArg = errors.New("First argument, deployment name, is required. Try 'helm get --help'")
 
+const deploymentDesc = `A deployment is an instance of a Chart running in the cluster.
+
+   Deployments have a name, a chart, and possibly a set of properites. The deployment
+   commands provide tools for managing deployments.
+
+   To deploy a new chart, use the top-level 'helm deploy' command. From there,
+   the 'helm deployment' commands may be used to work with the deployed
+   application.
+
+   For more help, use 'helm deployment CMD -h'.`
+
 const defaultShowFormat = `Name: {{.Name}}
 Status: {{.State.Status}}
 {{with .State.Errors}}Errors:
@@ -41,9 +52,10 @@ func init() {
 func deploymentCommands() cli.Command {
 	return cli.Command{
 		// Names following form prescribed here: http://is.gd/QUSEOF
-		Name:    "deployment",
-		Aliases: []string{"dep"},
-		Usage:   "Perform deployment-centered operations.",
+		Name:        "deployment",
+		Aliases:     []string{"dep"},
+		Usage:       "Perform deployment-centered operations.",
+		Description: deploymentDesc,
 		Subcommands: []cli.Command{
 			{
 				Name:      "config",
