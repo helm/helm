@@ -1,7 +1,7 @@
-﻿# Helm-DM Charts Proposal
+﻿# Helm Charts
 
-
-This document contains a proposal for a new Chart format that both Helm and DM would standardize upon as Helm becomes a DM client.
+This document describes the Helm Chart format, its presentation as an
+archive, and its storage and retrieval.
 
 
 * [Changes](#changes)
@@ -39,6 +39,7 @@ This document contains a proposal for a new Chart format that both Helm and DM w
 | 2016-01-21  | mbutcher@deis | Added manifests/ to chart.                             |
 | 2016-01-25  | mbutcher@deis | Added clarifications based on comments.                |
 | 2016-01-26  | mbutcher@deis | Added hook/, removed manifests/. Added generate header.|
+| 2016-03-24  | mbutcher@deis | Updated title and intro of document.                   |
 
 
 ## tl;dr: Summary
