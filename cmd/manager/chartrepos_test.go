@@ -7,10 +7,10 @@ import (
 
 func TestListChartRepositories(t *testing.T) {
 	c := stubContext()
-	s := httpHarness(c, "GET /chart_repositories", listChartRepositoriesHandlerFunc)
+	s := httpHarness(c, "GET /repositories", listChartReposHandlerFunc)
 	defer s.Close()
 
-	res, err := http.Get(s.URL + "/chart_repositories")
+	res, err := http.Get(s.URL + "/repositories")
 	if err != nil {
 		t.Errorf("Failed GET: %s", err)
 	} else if res.StatusCode != http.StatusOK {
