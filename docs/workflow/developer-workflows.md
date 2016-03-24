@@ -374,34 +374,34 @@ helm release [-u destination] PATH|FILE
 
 ### Helm Cluster Management Commands
 
-#### Install
+#### Install a Helm server
 ```
-$ helm dm install
+$ helm server install
 ```
 - Client installs using the current kubectl configuration
 
 General pattern:
 ```
-helm dm install
+helm server [--dry-run] install
 ```
 
 #### Uninstall
 
 ```
-$ helm dm uninstall
+$ helm server uninstall
 ```
 
 - The client interacts with the Kubernetes API server
 
 General pattern:
 ```
-helm dm uninstall
+helm server [--dry-run] uninstall
 ```
 
 #### Check which cluster is the current target for helm
 
 ```
-$ helm dm target
+$ helm server target
 API Endpoint: https://10.21.21.21/
 ```
 
@@ -409,13 +409,13 @@ API Endpoint: https://10.21.21.21/
 
 General pattern:
 ```
-helm search PATTERN
+helm server target
 ```
 
 #### View status of DM service
 
 ```
-$ helm dm status
+$ helm server status
 OK
 ```
 
@@ -423,7 +423,7 @@ OK
 
 General pattern:
 ```
-helm dm status
+helm server status
 ```
 
 ### Repository Configuration
