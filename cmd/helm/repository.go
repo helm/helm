@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
@@ -61,19 +62,20 @@ func repoCommands() cli.Command {
 func addRepo(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		return errors.New("'helm repo add' requires a repository as an argument")
+		return errors.New("'helm repo add' requires a repository url as an argument")
 	}
 	repoURL := args[0]
-	dest := repo.Repo{}
-	if _, err := NewClient(c).Post(chartRepoPath, repoURL, &dest); err != nil {
+	payload, _ := json.Marshal(repo.Repo{URL: repoURL})
+	msg := ""
+	if _, err := NewClient(c).Post(chartRepoPath, payload, &msg); err != nil {
 		return err
 	}
-	format.Msg(dest.URL + "has been added to your list of chart repositories")
+	format.Msg(repoURL + " has been added to your list of chart repositories")
 	return nil
 }
 
 func listRepos(c *cli.Context) error {
-	dest := []repo.Repo{}
+	dest := []string{}
 	if _, err := NewClient(c).Get(chartRepoPath, &dest); err != nil {
 		return err
 	}
@@ -82,9 +84,7 @@ func listRepos(c *cli.Context) error {
 		format.Info("Add a chart repository using the `helm repo add [REPOSITORY_URL]` command.")
 	} else {
 		format.Msg("Chart Repositories:\n")
-		for _, r := range dest {
-			format.Msg(r.URL + "\n")
-		}
+		format.List(dest)
 	}
 	return nil
 }
@@ -92,13 +92,12 @@ func listRepos(c *cli.Context) error {
 func removeRepo(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		return errors.New("'helm repo remove' requires a repository as an argument")
+		return errors.New("'helm repo remove' requires a repository url as an argument")
 	}
 	repoURL := args[0]
-	dest := repo.Repo{URL: repoURL}
-	if _, err := NewClient(c).Delete(chartRepoPath, &dest); err != nil {
+	if _, err := NewClient(c).Delete(chartRepoPath, repoURL); err != nil {
 		return err
 	}
-	format.Msg(dest.URL + "has been removed.\n")
+	format.Msg(repoURL + "has been removed.\n")
 	return nil
 }
