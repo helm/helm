@@ -6,6 +6,7 @@ import (
 	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/kubernetes/helm/pkg/util"
 
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -46,7 +47,8 @@ func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 		return nil
 	}
 
-	util.LogHandlerExitWithText(handler, w, "added", http.StatusOK)
+	msg, _ := json.Marshal(cr.URL + " has been added to the list of chart repositories.")
+	util.LogHandlerExitWithJSON(handler, w, msg, http.StatusCreated)
 	return nil
 }
 
