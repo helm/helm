@@ -24,15 +24,15 @@ import (
 	"testing"
 
 	"github.com/kubernetes/helm/pkg/chart"
-	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/expander"
 )
 
 var expanderName = "../../../expansion/expansion.py"
 
 type testCase struct {
 	Description      string
-	Request          *common.ExpansionRequest
-	ExpectedResponse *common.ExpansionResponse
+	Request          *expander.ExpansionRequest
+	ExpectedResponse *expander.ExpansionResponse
 	ExpectedError    string
 }
 
@@ -47,8 +47,8 @@ func funcName() string {
 	return runtime.FuncForPC(pc).Name()
 }
 
-func testExpansion(t *testing.T, req *common.ExpansionRequest,
-	expResponse *common.ExpansionResponse, expError string) {
+func testExpansion(t *testing.T, req *expander.ExpansionRequest,
+	expResponse *expander.ExpansionResponse, expError string) {
 	backend := NewExpander(expanderName)
 	response, err := backend.ExpandChart(req)
 	if err != nil {
@@ -81,8 +81,8 @@ var jinjaExpander = &chart.Expander{
 func TestEmptyJinja(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -99,7 +99,7 @@ func TestEmptyJinja(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{},
 		},
 		"", // Error
@@ -109,8 +109,8 @@ func TestEmptyJinja(t *testing.T) {
 func TestEmptyPython(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -130,7 +130,7 @@ func TestEmptyPython(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{},
 		},
 		"", // Error
@@ -140,8 +140,8 @@ func TestEmptyPython(t *testing.T) {
 func TestSimpleJinja(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -162,7 +162,7 @@ func TestSimpleJinja(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
 					"name": "foo",
@@ -177,8 +177,8 @@ func TestSimpleJinja(t *testing.T) {
 func TestSimplePython(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -201,7 +201,7 @@ func TestSimplePython(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
 					"name": "foo",
@@ -216,8 +216,8 @@ func TestSimplePython(t *testing.T) {
 func TestPropertiesJinja(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 				Properties: map[string]interface{}{
@@ -244,7 +244,7 @@ func TestPropertiesJinja(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
 					"name": "foo",
@@ -262,8 +262,8 @@ func TestPropertiesJinja(t *testing.T) {
 func TestPropertiesPython(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 				Properties: map[string]interface{}{
@@ -292,7 +292,7 @@ func TestPropertiesPython(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
 					"name": "foo",
@@ -310,8 +310,8 @@ func TestPropertiesPython(t *testing.T) {
 func TestMultiFileJinja(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -336,7 +336,7 @@ func TestMultiFileJinja(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
 					"name": "foo",
@@ -368,8 +368,8 @@ var schemaContent = content([]string{
 func TestSchema(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 				Properties: map[string]interface{}{
@@ -401,7 +401,7 @@ func TestSchema(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
 					"name": "foo",
@@ -419,8 +419,8 @@ func TestSchema(t *testing.T) {
 func TestSchemaFail(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 				Properties: map[string]interface{}{
@@ -460,8 +460,8 @@ func TestSchemaFail(t *testing.T) {
 func TestMultiFileJinjaMissing(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -486,8 +486,8 @@ func TestMultiFileJinjaMissing(t *testing.T) {
 func TestMultiFilePython(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -531,7 +531,7 @@ func TestMultiFilePython(t *testing.T) {
 				},
 			},
 		},
-		&common.ExpansionResponse{
+		&expander.ExpansionResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
 					"name": "foo",
@@ -546,8 +546,8 @@ func TestMultiFilePython(t *testing.T) {
 func TestMultiFilePythonMissing(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -574,8 +574,8 @@ func TestMultiFilePythonMissing(t *testing.T) {
 func TestWrongChartName(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -600,8 +600,8 @@ func TestWrongChartName(t *testing.T) {
 func TestEntrypointNotFound(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -621,8 +621,8 @@ func TestEntrypointNotFound(t *testing.T) {
 func TestMalformedResource(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -650,8 +650,8 @@ func TestMalformedResource(t *testing.T) {
 func TestResourceNoName(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},
@@ -679,8 +679,8 @@ func TestResourceNoName(t *testing.T) {
 func TestResourceNoType(t *testing.T) {
 	testExpansion(
 		t,
-		&common.ExpansionRequest{
-			ChartInvocation: &common.Resource{
+		&expander.ExpansionRequest{
+			ChartInvocation: &expander.Resource{
 				Name: "test_invocation",
 				Type: funcName(),
 			},

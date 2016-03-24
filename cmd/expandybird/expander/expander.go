@@ -24,16 +24,16 @@ import (
 	"log"
 	"os/exec"
 
-	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/expander"
 )
 
-type expander struct {
+type expandyBirdExpander struct {
 	ExpansionBinary string
 }
 
 // NewExpander returns an ExpandyBird expander.
-func NewExpander(binary string) common.Expander {
-	return &expander{binary}
+func NewExpander(binary string) expander.Expander {
+	return &expandyBirdExpander{binary}
 }
 
 type expandyBirdConfigOutput struct {
@@ -47,7 +47,7 @@ type expandyBirdOutput struct {
 
 // ExpandChart passes the given configuration to the expander and returns the
 // expanded configuration as a string on success.
-func (e *expander) ExpandChart(request *common.ExpansionRequest) (*common.ExpansionResponse, error) {
+func (e *expandyBirdExpander) ExpandChart(request *expander.ExpansionRequest) (*expander.ExpansionResponse, error) {
 	if request.ChartInvocation == nil {
 		return nil, fmt.Errorf("Request does not have invocation field")
 	}
@@ -155,5 +155,5 @@ func (e *expander) ExpandChart(request *common.ExpansionRequest) (*common.Expans
 		return nil, fmt.Errorf("cannot unmarshal expansion result (%s):\n%s", err, output)
 	}
 
-	return &common.ExpansionResponse{Resources: output.Config.Resources}, nil
+	return &expander.ExpansionResponse{Resources: output.Config.Resources}, nil
 }
