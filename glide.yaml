@@ -1,9 +1,12 @@
 package: github.com/kubernetes/helm
+license: Apache-2.0
 ignore:
-- google.golang.com/appengine
+- google.golang.org/appengine
 import:
 - package: github.com/Masterminds/semver
+  version: ^1.1.0
 - package: github.com/aokoli/goutils
+  version: ^1.0.0
 - package: github.com/codegangsta/cli
 - package: github.com/emicklei/go-restful
 - package: github.com/ghodss/yaml
@@ -11,7 +14,9 @@ import:
   subpackages:
   - github
 - package: github.com/gorilla/handlers
+  version: ^1.1
 - package: github.com/gorilla/mux
 - package: gopkg.in/yaml.v2
 - package: github.com/Masterminds/sprig
+  version: ^1.2.0
 - package: github.com/Masterminds/httputil
