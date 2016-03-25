@@ -47,16 +47,28 @@ func httpHarness(c *router.Context, route string, fn router.HandlerFunc) *httpte
 func stubContext() *router.Context {
 	return &router.Context{
 		Config:             &router.Config{},
-		Manager:            &mockManager{},
+		Manager:            newMockManager(),
 		CredentialProvider: repo.NewInmemCredentialProvider(),
 		Encoder:            httputil.DefaultEncoder,
 	}
 }
 
-type mockManager struct{}
+func newMockManager() *mockManager {
+	return &mockManager{
+		deployments: []*common.Deployment{},
+	}
+}
+
+type mockManager struct {
+	deployments []*common.Deployment
+}
 
 func (m *mockManager) ListDeployments() ([]common.Deployment, error) {
-	return []common.Deployment{}, nil
+	d := make([]common.Deployment, len(m.deployments))
+	for i, dd := range m.deployments {
+		d[i] = *dd
+	}
+	return d, nil
 }
 
 func (m *mockManager) GetDeployment(name string) (*common.Deployment, error) {

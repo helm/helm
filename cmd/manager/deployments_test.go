@@ -76,3 +76,31 @@ func TestCreateDeployments(t *testing.T) {
 		t.Errorf("Expected status %d, got %d", http.StatusCreated, res.StatusCode)
 	}
 }
+
+func TestListDeployments(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "GET /deployments", listDeploymentsHandlerFunc)
+	defer s.Close()
+
+	man := c.Manager.(*mockManager)
+	man.deployments = []*common.Deployment{
+		&common.Deployment{Name: "one", State: &common.DeploymentState{Status: common.CreatedStatus}},
+		&common.Deployment{Name: "two", State: &common.DeploymentState{Status: common.DeployedStatus}},
+	}
+
+	res, err := http.Get(s.URL + "/deployments")
+	if err != nil {
+		t.Errorf("Failed GET: %s", err)
+	} else if res.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status code: %d", res.StatusCode)
+	}
+
+	var out []string
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		t.Errorf("Failed to parse results: %s", err)
+		return
+	}
+	if len(out) != 2 {
+		t.Errorf("Expected 2 names, got %d", len(out))
+	}
+}
