@@ -25,6 +25,28 @@ import (
 	"github.com/kubernetes/helm/pkg/version"
 )
 
+const desc = `Helm: the package and deployment manager for Kubernetes
+
+   Helm is a tool for packaging, deploying, and managing Kubernetes
+   applications. It has a client component (this tool) and several in-cluster
+   components.
+
+   Before you can use Helm to manage applications, you must install the
+   in-cluster components into the target Kubernetes cluster:
+
+      $ helm server install
+
+   Once the in-cluster portion is running, you can use 'helm deploy' to
+   deploy a new application:
+
+      $ helm deploy CHARTNAME
+
+   For more information on Helm commands, you can use the following tools:
+
+      $ helm help          # top-level help
+      $ helm CMD --help    # help for a particular command or set of commands
+`
+
 var commands []cli.Command
 
 func init() {
@@ -41,7 +63,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "helm"
 	app.Version = version.Version
-	app.Usage = `Deploy and manage packages.`
+	app.Usage = desc
 	app.Commands = commands
 
 	// TODO: make better

@@ -37,6 +37,18 @@ func dmCmd() cli.Command {
 	return cli.Command{
 		Name:  "server",
 		Usage: "Manage Helm server-side components",
+		Description: `Server commands manage the in-cluster portion of Helm.
+
+   Helm  has several components that run inside of Kubernetes. Before Helm can
+   be used to install and manage packages, it must be installed into the
+   Kubernetes cluster in which packages will be installed.
+
+   The 'helm server' commands rely upon a properly configured 'kubectl' to
+   communicate with the Kubernetes cluster. To verify that your 'kubectl'
+   client is pointed to the correct cluster, use 'kubectl cluster-info'.
+
+   Use 'helm server install' to install the in-cluster portion of Helm.
+`,
 		Subcommands: []cli.Command{
 			{
 				Name:      "install",

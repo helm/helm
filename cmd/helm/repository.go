@@ -32,11 +32,23 @@ func init() {
 
 const chartRepoPath = "repositories"
 
+const repoDesc = `Helm repositories store Helm charts.
+
+   The repository commands are used to manage which Helm repositories Helm may
+   use as a source for Charts. The repositories are accessed by in-cluster Helm
+   components.
+
+   To list the repositories that your server knows about, use 'helm repo list'.
+
+   For more details, use 'helm repo CMD -h'.
+`
+
 func repoCommands() cli.Command {
 	return cli.Command{
-		Name:    "repository",
-		Aliases: []string{"repo"},
-		Usage:   "Perform chart repository operations.",
+		Name:        "repository",
+		Aliases:     []string{"repo"},
+		Usage:       "Perform chart repository operations.",
+		Description: repoDesc,
 		Subcommands: []cli.Command{
 			{
 				Name:      "add",
