@@ -33,6 +33,7 @@ var (
 	TestChartFile          = "testdata/frobnitz/Chart.yaml"
 	TestShouldFindRegex    = regexp.MustCompile(TestArchiveName)
 	TestShouldNotFindRegex = regexp.MustCompile("foobar")
+	TestName               = "bucket-name"
 )
 
 func TestValidGSURL(t *testing.T) {
@@ -51,7 +52,7 @@ func TestValidGSURL(t *testing.T) {
 
 func TestInvalidGSURL(t *testing.T) {
 	var invalidGSURL = "https://valid.url/wrong/scheme"
-	_, err := NewGCSRepo(invalidGSURL, TestRepoCredentialName, nil)
+	_, err := NewGCSRepo(invalidGSURL, TestRepoCredentialName, TestName, nil)
 	if err == nil {
 		t.Fatalf("expected error did not occur for invalid GS URL")
 	}
@@ -126,7 +127,7 @@ func TestGetChartWithInvalidName(t *testing.T) {
 }
 
 func getTestRepo(t *testing.T) IStorageRepo {
-	tr, err := NewGCSRepo(TestRepoURL, TestRepoCredentialName, nil)
+	tr, err := NewGCSRepo(TestRepoURL, TestRepoCredentialName, TestName, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

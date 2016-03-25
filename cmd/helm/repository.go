@@ -17,51 +17,44 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	"path/filepath"
+
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
+	"github.com/kubernetes/helm/pkg/repo"
 )
 
 func init() {
 	addCommands(repoCommands())
 }
 
-const chartRepoPath = "chart_repositories"
+const chartRepoPath = "repositories"
 
 func repoCommands() cli.Command {
 	return cli.Command{
 		Name:    "repository",
 		Aliases: []string{"repo"},
-		Usage:   "Perform repository operations.",
+		Usage:   "Perform chart repository operations.",
 		Subcommands: []cli.Command{
 			{
 				Name:      "add",
-				Usage:     "Add a repository to the remote manager.",
-				ArgsUsage: "REPOSITORY",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:  "cred",
-						Usage: "The name of the credential.",
-					},
-				},
-				Action: func(c *cli.Context) { run(c, addRepo) },
-			},
-			{
-				Name:      "show",
-				Usage:     "Show the repository details for a given repository.",
-				ArgsUsage: "REPOSITORY",
+				Usage:     "Add a chart repository to the remote manager.",
+				ArgsUsage: "[NAME] [REPOSITORY_URL]",
+				Action:    func(c *cli.Context) { run(c, addRepo) },
 			},
 			{
 				Name:      "list",
-				Usage:     "List the repositories on the remote manager.",
+				Usage:     "List the chart repositories on the remote manager.",
 				ArgsUsage: "",
 				Action:    func(c *cli.Context) { run(c, listRepos) },
 			},
 			{
 				Name:      "remove",
 				Aliases:   []string{"rm"},
-				Usage:     "Remove a repository from the remote manager.",
-				ArgsUsage: "REPOSITORY",
+				Usage:     "Remove a chart repository from the remote manager.",
+				ArgsUsage: "REPOSITORY_URL",
 				Action:    func(c *cli.Context) { run(c, removeRepo) },
 			},
 		},
@@ -70,35 +63,48 @@ func repoCommands() cli.Command {
 
 func addRepo(c *cli.Context) error {
 	args := c.Args()
-	if len(args) < 1 {
-		return errors.New("'helm repo add' requires a repository as an argument")
+	if len(args) < 2 {
+		return errors.New("'helm repo add' requires a name and repository url as arguments")
 	}
-	dest := ""
-	if _, err := NewClient(c).Post(chartRepoPath, nil, &dest); err != nil {
+	name := args[0]
+	repoURL := args[1]
+	payload, _ := json.Marshal(repo.Repo{URL: repoURL, Name: name})
+	msg := ""
+	if _, err := NewClient(c).Post(chartRepoPath, payload, &msg); err != nil {
+		//TODO: Return more specific errors to the user
 		return err
 	}
-	format.Msg(dest)
+	format.Info(name + " has been added to your chart repositories!")
 	return nil
 }
 
 func listRepos(c *cli.Context) error {
-	dest := ""
+	dest := map[string]string{}
 	if _, err := NewClient(c).Get(chartRepoPath, &dest); err != nil {
 		return err
 	}
-	format.Msg(dest)
+	if len(dest) < 1 {
+		format.Info("Looks like you don't have any chart repositories.")
+		format.Info("Add a chart repository using the `helm repo add [REPOSITORY_URL]` command.")
+	} else {
+		format.Msg("Chart Repositories:\n")
+		for k, v := range dest {
+			//TODO: make formatting pretty
+			format.Msg(k + "\t" + v + "\n")
+		}
+	}
 	return nil
 }
 
 func removeRepo(c *cli.Context) error {
 	args := c.Args()
 	if len(args) < 1 {
-		return errors.New("'helm repo remove' requires a repository as an argument")
+		return errors.New("'helm repo remove' requires a repository name as an argument")
 	}
-	dest := ""
-	if _, err := NewClient(c).Delete(chartRepoPath, &dest); err != nil {
+	name := args[0]
+	if _, err := NewClient(c).Delete(filepath.Join(chartRepoPath, name), nil); err != nil {
 		return err
 	}
-	format.Msg(dest)
+	format.Msg(name + " has been removed.\n")
 	return nil
 }

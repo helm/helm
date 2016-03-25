@@ -70,6 +70,7 @@ const (
 
 // Repo describes a repository
 type Repo struct {
+	Name           string      `json:"name"`                     // Name of repository
 	URL            string      `json:"url"`                      // URL to the root of this repository
 	CredentialName string      `json:"credentialname,omitempty"` // Credential name used to access this repository
 	Format         ERepoFormat `json:"format,omitempty"`         // Format of this repository
@@ -78,6 +79,8 @@ type Repo struct {
 
 // IRepo abstracts a repository.
 type IRepo interface {
+	// GetName returns the name of the repository
+	GetName() string
 	// GetURL returns the URL to the root of this repository.
 	GetURL() string
 	// GetCredentialName returns the credential name used to access this repository.
@@ -115,11 +118,13 @@ type IStorageRepo interface {
 // repository based operations, such as search and chart reference resolution.
 type IRepoService interface {
 	// ListRepos returns the list of all known chart repositories
-	ListRepos() ([]string, error)
+	ListRepos() (map[string]string, error)
 	// CreateRepo adds a known repository to the list
 	CreateRepo(repository IRepo) error
 	// GetRepoByURL returns the repository with the given name
 	GetRepoByURL(name string) (IRepo, error)
+	// GetRepoURLByName return url for a repository with the given name
+	GetRepoURLByName(name string) (string, error)
 	// GetRepoByChartURL returns the repository that backs the given URL
 	GetRepoByChartURL(URL string) (IRepo, error)
 	// DeleteRepo removes a known repository from the list

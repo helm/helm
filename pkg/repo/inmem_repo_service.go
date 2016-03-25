@@ -42,13 +42,13 @@ func NewInmemRepoService() IRepoService {
 }
 
 // ListRepos returns the list of all known chart repositories
-func (rs *inmemRepoService) ListRepos() ([]string, error) {
+func (rs *inmemRepoService) ListRepos() (map[string]string, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
-	ret := []string{}
+	ret := make(map[string]string)
 	for _, r := range rs.repositories {
-		ret = append(ret, r.GetURL())
+		ret[r.GetName()] = r.GetURL()
 	}
 
 	return ret, nil
@@ -60,9 +60,14 @@ func (rs *inmemRepoService) CreateRepo(repository IRepo) error {
 	defer rs.Unlock()
 
 	URL := repository.GetURL()
-	_, ok := rs.repositories[URL]
-	if ok {
-		return fmt.Errorf("Repository with URL %s already exists", URL)
+	name := repository.GetName()
+
+	for u, r := range rs.repositories {
+		if u == URL {
+			return fmt.Errorf("Repository with URL %s already exists", URL)
+		} else if r.GetName() == name {
+			return fmt.Errorf("Repository with Name %s already exists", name)
+		}
 	}
 
 	rs.repositories[URL] = repository
@@ -116,4 +121,14 @@ func (rs *inmemRepoService) DeleteRepo(URL string) error {
 
 	delete(rs.repositories, URL)
 	return nil
+}
+
+func (rs *inmemRepoService) GetRepoURLByName(name string) (string, error) {
+	for url, r := range rs.repositories {
+		if r.GetName() == name {
+			return url, nil
+		}
+	}
+	err := fmt.Errorf("No repository url found with name %s", name)
+	return "", err
 }

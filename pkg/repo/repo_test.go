@@ -29,7 +29,7 @@ var (
 )
 
 func TestValidRepoURL(t *testing.T) {
-	tr, err := NewRepo(TestRepoURL, TestRepoCredentialName, string(TestRepoFormat), string(TestRepoType))
+	tr, err := NewRepo(TestRepoURL, TestRepoCredentialName, TestRepoBucket, string(TestRepoFormat), string(TestRepoType))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,14 +40,14 @@ func TestValidRepoURL(t *testing.T) {
 }
 
 func TestInvalidRepoURL(t *testing.T) {
-	_, err := newRepo("%:invalid&url:%", TestRepoCredentialName, TestRepoFormat, TestRepoType)
+	_, err := newRepo("%:invalid&url:%", TestRepoCredentialName, TestRepoBucket, TestRepoFormat, TestRepoType)
 	if err == nil {
 		t.Fatalf("expected error did not occur for invalid URL")
 	}
 }
 
 func TestDefaultCredentialName(t *testing.T) {
-	tr, err := newRepo(TestRepoURL, "", TestRepoFormat, TestRepoType)
+	tr, err := newRepo(TestRepoURL, "", TestRepoBucket, TestRepoFormat, TestRepoType)
 	if err != nil {
 		t.Fatalf("cannot create repo using default credential name")
 	}
@@ -60,7 +60,7 @@ func TestDefaultCredentialName(t *testing.T) {
 }
 
 func TestInvalidRepoFormat(t *testing.T) {
-	_, err := newRepo(TestRepoURL, TestRepoCredentialName, "", TestRepoType)
+	_, err := newRepo(TestRepoURL, TestRepoCredentialName, TestRepoBucket, "", TestRepoType)
 	if err == nil {
 		t.Fatalf("expected error did not occur for invalid format")
 	}

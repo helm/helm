@@ -22,11 +22,11 @@ import (
 )
 
 // NewRepo takes params and returns a IRepo
-func NewRepo(URL, credentialName, repoFormat, repoType string) (IRepo, error) {
-	return newRepo(URL, credentialName, ERepoFormat(repoFormat), ERepoType(repoType))
+func NewRepo(URL, credentialName, repoName, repoFormat, repoType string) (IRepo, error) {
+	return newRepo(URL, credentialName, repoName, ERepoFormat(repoFormat), ERepoType(repoType))
 }
 
-func newRepo(URL, credentialName string, repoFormat ERepoFormat, repoType ERepoType) (*Repo, error) {
+func newRepo(URL, credentialName, repoName string, repoFormat ERepoFormat, repoType ERepoType) (*Repo, error) {
 	_, err := url.Parse(URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL (%s): %s", URL, err)
@@ -41,6 +41,7 @@ func newRepo(URL, credentialName string, repoFormat ERepoFormat, repoType ERepoT
 	}
 
 	r := &Repo{
+		Name:           repoName,
 		URL:            URL,
 		CredentialName: credentialName,
 		Type:           repoType,
@@ -63,6 +64,11 @@ func validateRepoFormat(repoFormat ERepoFormat) error {
 // GetType returns the technology implementing this repository.
 func (r *Repo) GetType() ERepoType {
 	return r.Type
+}
+
+// GetName returns the name of this repository.
+func (r *Repo) GetName() string {
+	return r.Name
 }
 
 // GetURL returns the URL to the root of this repository.

@@ -32,7 +32,11 @@ func TestService(t *testing.T) {
 		t.Fatalf("unexpected repo count; want: %d, have %d.", 1, len(repos))
 	}
 
-	tr, err := rs.GetRepoByURL(repos[0])
+	u := ""
+	for _, url := range repos {
+		u = url
+	}
+	tr, err := rs.GetRepoByURL(u)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +75,7 @@ func TestService(t *testing.T) {
 
 func TestCreateRepoWithDuplicateURL(t *testing.T) {
 	rs := NewInmemRepoService()
-	r, err := newRepo(GCSPublicRepoURL, "", GCSRepoFormat, GCSRepoType)
+	r, err := newRepo(GCSPublicRepoURL, "", TestName, GCSRepoFormat, GCSRepoType)
 	if err != nil {
 		t.Fatalf("cannot create test repo: %s", err)
 	}
@@ -88,6 +92,25 @@ func TestGetRepoWithInvalidURL(t *testing.T) {
 	if err == nil {
 		t.Fatalf("found repo with invalid URL: %s", invalidURL)
 	}
+}
+
+func TestGetRepoURLByName(t *testing.T) {
+	rs := NewInmemRepoService()
+	testURL := "gcs://helm-test-charts"
+	r, err := newRepo(testURL, "", TestName, GCSRepoFormat, GCSRepoType)
+	err = rs.CreateRepo(r)
+	if err != nil {
+		t.Fatalf("Error creating repo: %s", err)
+	}
+	expectedURL := testURL
+	actualURL, err := rs.GetRepoURLByName(TestName)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if expectedURL != actualURL {
+		t.Fatalf("Incorrect resulting URL. Expected %s. Got %s", expectedURL, actualURL)
+	}
+
 }
 
 func TestGetRepoWithInvalidChartURL(t *testing.T) {
