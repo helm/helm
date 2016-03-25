@@ -84,8 +84,8 @@ func TestListDeployments(t *testing.T) {
 
 	man := c.Manager.(*mockManager)
 	man.deployments = []*common.Deployment{
-		&common.Deployment{Name: "one", State: &common.DeploymentState{Status: common.CreatedStatus}},
-		&common.Deployment{Name: "two", State: &common.DeploymentState{Status: common.DeployedStatus}},
+		{Name: "one", State: &common.DeploymentState{Status: common.CreatedStatus}},
+		{Name: "two", State: &common.DeploymentState{Status: common.DeployedStatus}},
 	}
 
 	res, err := http.Get(s.URL + "/deployments")
