@@ -119,19 +119,19 @@ func (m *mockManager) GetChart(chartName string) (*chart.Chart, error) {
 	return nil, nil
 }
 
-func (m *mockManager) AddChartRepo(addition repo.IRepo) error {
+func (m *mockManager) AddRepo(addition repo.IRepo) error {
 	return nil
 }
 
-func (m *mockManager) ListChartRepos() (map[string]string, error) {
+func (m *mockManager) ListRepos() (map[string]string, error) {
 	return map[string]string{}, nil
 }
 
-func (m *mockManager) RemoveChartRepo(name string) error {
+func (m *mockManager) RemoveRepo(name string) error {
 	return nil
 }
 
-func (m *mockManager) GetChartRepo(URL string) (repo.IRepo, error) {
+func (m *mockManager) GetRepo(URL string) (repo.IRepo, error) {
 	return nil, nil
 }
 

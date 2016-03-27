@@ -58,10 +58,10 @@ type Manager interface {
 	GetCredential(name string) (*repo.Credential, error)
 
 	// Chart Repositories
-	ListChartRepos() (map[string]string, error)
-	AddChartRepo(addition repo.IRepo) error
-	RemoveChartRepo(name string) error
-	GetChartRepo(URL string) (repo.IRepo, error)
+	ListRepos() (map[string]string, error)
+	AddRepo(addition repo.IRepo) error
+	RemoveRepo(name string) error
+	GetRepo(URL string) (repo.IRepo, error)
 }
 
 type manager struct {
@@ -366,18 +366,18 @@ func (m *manager) GetChart(reference string) (*chart.Chart, error) {
 	return c, nil
 }
 
-// ListChartRepos returns the list of available chart repository URLs
-func (m *manager) ListChartRepos() (map[string]string, error) {
+// ListRepos returns the list of available repository URLs
+func (m *manager) ListRepos() (map[string]string, error) {
 	return m.service.ListRepos()
 }
 
-// AddChartRepo adds a chart repository to the list
-func (m *manager) AddChartRepo(addition repo.IRepo) error {
+// AddRepo adds a repository to the list
+func (m *manager) AddRepo(addition repo.IRepo) error {
 	return m.service.CreateRepo(addition)
 }
 
-// RemoveChartRepo removes a chart repository from the list by URL
-func (m *manager) RemoveChartRepo(name string) error {
+// RemoveRepo removes a repository from the list by URL
+func (m *manager) RemoveRepo(name string) error {
 	url, err := m.service.GetRepoURLByName(name)
 	if err != nil {
 		return err
@@ -385,8 +385,8 @@ func (m *manager) RemoveChartRepo(name string) error {
 	return m.service.DeleteRepo(url)
 }
 
-// GetChartRepo returns the chart repository with the given URL
-func (m *manager) GetChartRepo(URL string) (repo.IRepo, error) {
+// GetRepo returns the repository with the given URL
+func (m *manager) GetRepo(URL string) (repo.IRepo, error) {
 	return m.service.GetRepoByURL(URL)
 }
 
