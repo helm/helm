@@ -159,3 +159,39 @@ func getRepoChartHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 	util.LogHandlerExitWithJSON(handler, w, repoChart, http.StatusOK)
 	return nil
 }
+
+func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: add chart repository"
+	util.LogHandlerEntry(handler, r)
+	defer r.Body.Close()
+	cr := &repo.Repo{}
+	if err := httputil.Decode(w, r, cr); err != nil {
+		httputil.BadRequest(w, r, err)
+		return nil
+	}
+
+	if err := c.Manager.AddChartRepo(cr); err != nil {
+		httputil.BadRequest(w, r, err)
+		return nil
+	}
+
+	util.LogHandlerExitWithText(handler, w, "added", http.StatusOK)
+	return nil
+}
+
+func removeChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
+	handler := "manager: remove chart repository"
+	util.LogHandlerEntry(handler, r)
+	URL, err := pos(w, r, 2)
+	if err != nil {
+		return err
+	}
+
+	err = c.Manager.RemoveChartRepo(URL)
+	if err != nil {
+		return err
+	}
+
+	util.LogHandlerExitWithText(handler, w, "removed", http.StatusOK)
+	return nil
+}
