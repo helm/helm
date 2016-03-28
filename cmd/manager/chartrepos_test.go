@@ -29,8 +29,8 @@ import (
 )
 
 var (
-	//	TestRepoURL            = "gs://kubernetes-charts-testing"
-	TestRepoURL            = "foo"
+	TestRepoBucket         = "kubernetes-charts-testing"
+	TestRepoURL            = "gs://" + TestRepoBucket
 	TestChartName          = "frobnitz-0.0.1.tgz"
 	TestRepoType           = string(repo.GCSRepoType)
 	TestRepoFormat         = string(repo.GCSRepoFormat)
@@ -58,7 +58,7 @@ func TestGetChartRepo(t *testing.T) {
 	s := httpHarness(c, "GET /repositories/*", getChartRepoHandlerFunc)
 	defer s.Close()
 
-	URL := getTestURL(t, s.URL, url.QueryEscape(TestRepoURL), "")
+	URL := getTestURL(t, s.URL, TestRepoBucket, "")
 	res, err := http.Get(URL)
 	if err != nil {
 		t.Fatalf("Failed GET: %s", err)
@@ -74,7 +74,7 @@ func TestListRepoCharts(t *testing.T) {
 	s := httpHarness(c, "GET /repositories/*/charts", listRepoChartsHandlerFunc)
 	defer s.Close()
 
-	URL := getTestURL(t, s.URL, url.QueryEscape(TestRepoURL), "charts")
+	URL := getTestURL(t, s.URL, TestRepoBucket, "charts")
 	res, err := http.Get(URL)
 	if err != nil {
 		t.Fatalf("Failed GET: %s", err)
@@ -91,7 +91,7 @@ func TestGetRepoChart(t *testing.T) {
 	defer s.Close()
 
 	chartURL := fmt.Sprintf("charts/%s", TestChartName)
-	URL := getTestURL(t, s.URL, url.QueryEscape(TestRepoURL), chartURL)
+	URL := getTestURL(t, s.URL, TestRepoBucket, chartURL)
 	res, err := http.Get(URL)
 	if err != nil {
 		t.Fatalf("Failed GET: %s", err)
@@ -114,7 +114,7 @@ func TestAddChartRepo(t *testing.T) {
 		t.Fatalf("Failed POST: %s", err)
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusCreated {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, res.StatusCode)
 	}
 }
@@ -124,7 +124,7 @@ func TestRemoveChartRepo(t *testing.T) {
 	s := httpHarness(c, "DELETE /repositories/*", removeChartRepoHandlerFunc)
 	defer s.Close()
 
-	URL := getTestURL(t, s.URL, url.QueryEscape(TestRepoURL), "")
+	URL := getTestURL(t, s.URL, TestRepoBucket, "")
 	req, err := http.NewRequest("DELETE", URL, nil)
 	if err != nil {
 		t.Fatalf("Cannot create DELETE request: %s", err)
@@ -142,7 +142,7 @@ func TestRemoveChartRepo(t *testing.T) {
 }
 
 func getTestRepo(t *testing.T, URL string) io.Reader {
-	tr, err := repo.NewRepo(URL, TestRepoCredentialName, TestRepoFormat, TestRepoType)
+	tr, err := repo.NewRepo(URL, TestRepoCredentialName, TestRepoBucket, TestRepoFormat, TestRepoType)
 	if err != nil {
 		t.Fatalf("Cannot create test repository: %s", err)
 	}
