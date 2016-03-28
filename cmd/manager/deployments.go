@@ -111,12 +111,12 @@ func newManager(c *router.Context) manager.Manager {
 	cfg := c.Config
 	service := repo.NewInmemRepoService()
 	cp := c.CredentialProvider
-	repoProvider := repo.NewRepoProvider(service, repo.NewGCSRepoProvider(cp), cp)
-	expander := manager.NewExpander(getServiceURL(cfg.ExpanderURL, cfg.ExpanderName, expanderPort))
+	rp := repo.NewRepoProvider(service, repo.NewGCSRepoProvider(cp), cp)
+	expander := manager.NewExpander(getServiceURL(cfg.ExpanderURL, cfg.ExpanderName, expanderPort), rp)
 	deployer := manager.NewDeployer(getServiceURL(cfg.DeployerURL, cfg.DeployerName, deployerPort))
 	address := strings.TrimPrefix(getServiceURL(cfg.MongoAddress, cfg.MongoName, cfg.MongoPort), "http://")
 	repository := createRepository(address)
-	return manager.NewManager(expander, deployer, repository, repoProvider, service, c.CredentialProvider)
+	return manager.NewManager(expander, deployer, repository, rp, service, c.CredentialProvider)
 }
 
 func createRepository(address string) repository.Repository {
