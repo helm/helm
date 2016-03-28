@@ -92,10 +92,12 @@ func (rs *inmemRepoService) GetRepoByChartURL(URL string) (IRepo, error) {
 	rs.RLock()
 	defer rs.RUnlock()
 
+	cSplit := strings.Split(URL, "/")
 	var found IRepo
 	for _, r := range rs.repositories {
 		rURL := r.GetURL()
-		if strings.HasPrefix(URL, rURL) {
+		rSplit := strings.Split(rURL, "/")
+		if hasPrefix(cSplit, rSplit) {
 			if found == nil || len(found.GetURL()) < len(rURL) {
 				found = r
 			}
@@ -107,6 +109,20 @@ func (rs *inmemRepoService) GetRepoByChartURL(URL string) (IRepo, error) {
 	}
 
 	return found, nil
+}
+
+func hasPrefix(cSplit, rSplit []string) bool {
+	if len(rSplit) > len(cSplit) {
+		return false
+	}
+
+	for i := range rSplit {
+		if rSplit[i] != cSplit[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // DeleteRepo removes a known repository from the list

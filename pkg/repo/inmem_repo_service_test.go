@@ -54,7 +54,7 @@ func TestService(t *testing.T) {
 		t.Fatalf("invalid repo returned; want: %#v, have %#v.", tr, r1)
 	}
 
-	URL := GCSPublicRepoURL + TestArchiveName
+	URL := GCSPublicRepoURL + "/" + TestArchiveName
 	r2, err := rs.GetRepoByChartURL(URL)
 	if err != nil {
 		t.Fatal(err)

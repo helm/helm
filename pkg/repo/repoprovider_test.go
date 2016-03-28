@@ -62,7 +62,7 @@ func TestRepoProvider(t *testing.T) {
 	}
 
 	wantRepo := haveRepo
-	URL := GCSPublicRepoURL + TestArchiveName
+	URL := GCSPublicRepoURL + "/" + TestArchiveName
 	haveRepo, err = rp.GetRepoByChartURL(URL)
 	if err != nil {
 		t.Fatal(err)
