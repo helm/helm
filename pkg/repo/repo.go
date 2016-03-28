@@ -17,9 +17,15 @@ limitations under the License.
 package repo
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
+	"strings"
 )
+
+// URL is the url pattern used to check if a given repo url is valid
+const URL string = `^((http|gs|https?):\/\/)?(\S+(:\S*)?@)?((([1-9]\d?|1\d\d|2[01]\d|22[0-3])(\.(1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.([0-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(([a-zA-Z0-9]+([-\.][a-zA-Z0-9]+)*)|((www\.)?))?(([a-zA-Z\x{00a1}-\x{ffff}0-9]+-?-?)*[a-zA-Z\x{00a1}-\x{ffff}0-9]+)(?:\.([a-zA-Z\x{00a1}-\x{ffff}]{2,}))?))(:(\d{1,5}))?((\/|\?|#)[^\s]*)?$`
 
 // NewRepo takes params and returns a IRepo
 func NewRepo(URL, credentialName, repoName, repoFormat, repoType string) (IRepo, error) {
@@ -111,5 +117,28 @@ func validateRepo(tr IRepo, wantURL, wantCredentialName string, wantFormat ERepo
 		return fmt.Errorf("unexpected repository type; want: %s, have %s", wantType, haveType)
 	}
 
+	return nil
+}
+
+// ValidateRepoURL checks if the string is a valid URL.
+// This was inspired by the IsURL function in govalidator https://github.com/asaskevich/govalidator
+func ValidateRepoURL(str string) error {
+	err := errors.New("Invalid Repository URL")
+	if str == "" || len(str) >= 2083 || len(str) <= 3 || strings.HasPrefix(str, ".") {
+		return err
+	}
+	u, err := url.Parse(str)
+	if err != nil {
+		return err
+	}
+	if strings.HasPrefix(u.Host, ".") {
+		return err
+	}
+	if u.Host == "" && (u.Path != "" && !strings.Contains(u.Path, ".")) {
+		return err
+	}
+	if !regexp.MustCompile(URL).MatchString(str) {
+		return err
+	}
 	return nil
 }
