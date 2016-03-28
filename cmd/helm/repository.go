@@ -19,7 +19,10 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
@@ -32,6 +35,9 @@ func init() {
 
 const chartRepoPath = "repositories"
 
+// URL is the url pattern used to check if a given repo url is valid
+const URL string = `^((http|gs|https?):\/\/)?(\S+(:\S*)?@)?((([1-9]\d?|1\d\d|2[01]\d|22[0-3])(\.(1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.([0-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(([a-zA-Z0-9]+([-\.][a-zA-Z0-9]+)*)|((www\.)?))?(([a-zA-Z\x{00a1}-\x{ffff}0-9]+-?-?)*[a-zA-Z\x{00a1}-\x{ffff}0-9]+)(?:\.([a-zA-Z\x{00a1}-\x{ffff}]{2,}))?))(:(\d{1,5}))?((\/|\?|#)[^\s]*)?$`
+
 const repoDesc = `Helm repositories store Helm charts.
 
    The repository commands are used to manage which Helm repositories Helm may
@@ -43,6 +49,16 @@ const repoDesc = `Helm repositories store Helm charts.
    For more details, use 'helm repo CMD -h'.
 `
 
+const addRepoDesc = `helm repository|repo add [NAME] [REPOSITORY_URL]
+
+   The add repository command is used to add a name a repository url to your
+   chart repository list. The repository url must begin with a valid protocoal
+   These include https, http, and gs.
+
+   A valid command might look like:
+   $ helm repo add charts gs://kubernetes-charts
+`
+
 func repoCommands() cli.Command {
 	return cli.Command{
 		Name:        "repository",
@@ -51,10 +67,11 @@ func repoCommands() cli.Command {
 		Description: repoDesc,
 		Subcommands: []cli.Command{
 			{
-				Name:      "add",
-				Usage:     "Add a chart repository to the remote manager.",
-				ArgsUsage: "[NAME] [REPOSITORY_URL]",
-				Action:    func(c *cli.Context) { run(c, addRepo) },
+				Name:        "add",
+				Usage:       "Add a chart repository to the remote manager.",
+				Description: addRepoDesc,
+				ArgsUsage:   "[NAME] [REPOSITORY_URL]",
+				Action:      func(c *cli.Context) { run(c, addRepo) },
 			},
 			{
 				Name:      "list",
@@ -80,10 +97,13 @@ func addRepo(c *cli.Context) error {
 	}
 	name := args[0]
 	repoURL := args[1]
+	valid := IsValidURL(repoURL)
+	if !valid {
+		return errors.New(repoURL + " is not a valid URL")
+	}
 	payload, _ := json.Marshal(repo.Repo{URL: repoURL, Name: name})
 	msg := ""
 	if _, err := NewClient(c).Post(chartRepoPath, payload, &msg); err != nil {
-		//TODO: Return more specific errors to the user
 		return err
 	}
 	format.Info(name + " has been added to your chart repositories!")
@@ -119,4 +139,23 @@ func removeRepo(c *cli.Context) error {
 	}
 	format.Msg(name + " has been removed.\n")
 	return nil
+}
+
+// IsValidURL checks if the string is a valid URL.
+// This was inspired by the IsURL function in govalidator https://github.com/asaskevich/govalidator
+func IsValidURL(str string) bool {
+	if str == "" || len(str) >= 2083 || len(str) <= 3 || strings.HasPrefix(str, ".") {
+		return false
+	}
+	u, err := url.Parse(str)
+	if err != nil {
+		return false
+	}
+	if strings.HasPrefix(u.Host, ".") {
+		return false
+	}
+	if u.Host == "" && (u.Path != "" && !strings.Contains(u.Path, ".")) {
+		return false
+	}
+	return regexp.MustCompile(URL).MatchString(str)
 }
