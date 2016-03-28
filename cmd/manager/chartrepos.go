@@ -39,7 +39,7 @@ func registerChartRepoRoutes(c *router.Context, h *router.Handler) {
 
 func listChartReposHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
 	handler := "manager: list chart repositories"
-	repos, err := c.Manager.ListChartRepos()
+	repos, err := c.Manager.ListRepos()
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 		return nil
 	}
 
-	if err := c.Manager.AddChartRepo(cr); err != nil {
+	if err := c.Manager.AddRepo(cr); err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
 	}
@@ -77,7 +77,7 @@ func removeChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *route
 		return err
 	}
 
-	err = c.Manager.RemoveChartRepo(name)
+	err = c.Manager.RemoveRepo(name)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func getChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 		return err
 	}
 
-	cr, err := c.Manager.GetChartRepo(repoURL)
+	cr, err := c.Manager.GetRepo(repoURL)
 	if err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil

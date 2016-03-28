@@ -112,41 +112,11 @@ func (m *mockManager) GetRepoForChart(chartName string) (string, error) {
 }
 
 func (m *mockManager) GetMetadataForChart(chartName string) (*chart.Chartfile, error) {
-	return nil, nil
+	return &chart.Chartfile{}, nil
 }
 
 func (m *mockManager) GetChart(chartName string) (*chart.Chart, error) {
-	return nil, nil
-}
-
-func (m *mockManager) AddChartRepo(addition repo.IRepo) error {
-	return nil
-}
-
-func (m *mockManager) ListChartRepos() (map[string]string, error) {
-	return map[string]string{}, nil
-}
-
-func (m *mockManager) RemoveChartRepo(name string) error {
-	return nil
-}
-
-func (m *mockManager) GetChartRepo(URL string) (repo.IRepo, error) {
-	return nil, nil
-}
-
-func (m *mockManager) ListRepos() ([]*repo.Repo, error) {
-	return []*repo.Repo{}, nil
-}
-
-func (m *mockManager) CreateRepo(pr *repo.Repo) error {
-	return nil
-}
-func (m *mockManager) GetRepo(name string) (*repo.Repo, error) {
-	return &repo.Repo{}, nil
-}
-func (m *mockManager) DeleteRepo(name string) error {
-	return nil
+	return &chart.Chart{}, nil
 }
 
 func (m *mockManager) ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error) {
@@ -154,7 +124,7 @@ func (m *mockManager) ListRepoCharts(repoName string, regex *regexp.Regexp) ([]s
 }
 
 func (m *mockManager) GetChartForRepo(repoName, chartName string) (*chart.Chart, error) {
-	return nil, nil
+	return &chart.Chart{}, nil
 }
 
 func (m *mockManager) CreateCredential(name string, c *repo.Credential) error {
@@ -162,4 +132,20 @@ func (m *mockManager) CreateCredential(name string, c *repo.Credential) error {
 }
 func (m *mockManager) GetCredential(name string) (*repo.Credential, error) {
 	return &repo.Credential{}, nil
+}
+
+func (m *mockManager) ListRepos() (map[string]string, error) {
+	return map[string]string{}, nil
+}
+
+func (m *mockManager) AddRepo(addition repo.IRepo) error {
+	return nil
+}
+
+func (m *mockManager) RemoveRepo(name string) error {
+	return nil
+}
+
+func (m *mockManager) GetRepo(name string) (repo.IRepo, error) {
+	return &repo.Repo{}, nil
 }

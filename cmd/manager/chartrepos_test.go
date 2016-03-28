@@ -17,19 +17,158 @@ limitations under the License.
 package main
 
 import (
+	"github.com/kubernetes/helm/pkg/repo"
+
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"testing"
 )
 
-func TestListChartRepositories(t *testing.T) {
+var (
+	TestRepoBucket         = "kubernetes-charts-testing"
+	TestRepoURL            = "gs://" + TestRepoBucket
+	TestChartName          = "frobnitz-0.0.1.tgz"
+	TestRepoType           = string(repo.GCSRepoType)
+	TestRepoFormat         = string(repo.GCSRepoFormat)
+	TestRepoCredentialName = "default"
+)
+
+func TestListChartRepos(t *testing.T) {
 	c := stubContext()
 	s := httpHarness(c, "GET /repositories", listChartReposHandlerFunc)
 	defer s.Close()
 
-	res, err := http.Get(s.URL + "/repositories")
+	URL := getTestURL(t, s.URL, "", "")
+	res, err := http.Get(URL)
 	if err != nil {
-		t.Errorf("Failed GET: %s", err)
-	} else if res.StatusCode != http.StatusOK {
+		t.Fatalf("Failed GET: %s", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
 		t.Errorf("Expected status %d, got %d", http.StatusOK, res.StatusCode)
 	}
+}
+
+func TestGetChartRepo(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "GET /repositories/*", getChartRepoHandlerFunc)
+	defer s.Close()
+
+	URL := getTestURL(t, s.URL, TestRepoBucket, "")
+	res, err := http.Get(URL)
+	if err != nil {
+		t.Fatalf("Failed GET: %s", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, res.StatusCode)
+	}
+}
+
+func TestListRepoCharts(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "GET /repositories/*/charts", listRepoChartsHandlerFunc)
+	defer s.Close()
+
+	URL := getTestURL(t, s.URL, TestRepoBucket, "charts")
+	res, err := http.Get(URL)
+	if err != nil {
+		t.Fatalf("Failed GET: %s", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, res.StatusCode)
+	}
+}
+
+func TestGetRepoChart(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "GET /repositories/*/charts/*", getRepoChartHandlerFunc)
+	defer s.Close()
+
+	chartURL := fmt.Sprintf("charts/%s", TestChartName)
+	URL := getTestURL(t, s.URL, TestRepoBucket, chartURL)
+	res, err := http.Get(URL)
+	if err != nil {
+		t.Fatalf("Failed GET: %s", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, res.StatusCode)
+	}
+}
+
+func TestAddChartRepo(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "POST /repositories", addChartRepoHandlerFunc)
+	defer s.Close()
+
+	URL := getTestURL(t, s.URL, "", "")
+	body := getTestRepo(t, URL)
+	res, err := http.Post(URL, "application/json", body)
+	if err != nil {
+		t.Fatalf("Failed POST: %s", err)
+	}
+
+	if res.StatusCode != http.StatusCreated {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, res.StatusCode)
+	}
+}
+
+func TestRemoveChartRepo(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "DELETE /repositories/*", removeChartRepoHandlerFunc)
+	defer s.Close()
+
+	URL := getTestURL(t, s.URL, TestRepoBucket, "")
+	req, err := http.NewRequest("DELETE", URL, nil)
+	if err != nil {
+		t.Fatalf("Cannot create DELETE request: %s", err)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Failed DELETE: %s", err)
+	}
+
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, res.StatusCode)
+	}
+}
+
+func getTestRepo(t *testing.T, URL string) io.Reader {
+	tr, err := repo.NewRepo(URL, TestRepoCredentialName, TestRepoBucket, TestRepoFormat, TestRepoType)
+	if err != nil {
+		t.Fatalf("Cannot create test repository: %s", err)
+	}
+
+	trb, err := json.Marshal(&tr)
+	if err != nil {
+		t.Fatalf("Cannot marshal test repository: %s", err)
+	}
+
+	return bytes.NewReader(trb)
+}
+
+func getTestURL(t *testing.T, baseURL, repoURL, chartURL string) string {
+	URL := fmt.Sprintf("%s/repositories", baseURL)
+	if repoURL != "" {
+		URL = fmt.Sprintf("%s/%s", URL, repoURL)
+	}
+
+	if chartURL != "" {
+		URL = fmt.Sprintf("%s/%s", URL, chartURL)
+	}
+
+	u, err := url.Parse(URL)
+	if err != nil {
+		t.Fatalf("cannot parse test URL %s: %s", URL, err)
+	}
+
+	return u.String()
 }

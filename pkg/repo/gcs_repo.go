@@ -59,12 +59,12 @@ type GCSRepo struct {
 }
 
 // NewPublicGCSRepo creates a new an IStorageRepo for the public GCS repository.
-func NewPublicGCSRepo(httpClient *http.Client) (IStorageRepo, error) {
+func NewPublicGCSRepo(httpClient *http.Client) (*GCSRepo, error) {
 	return NewGCSRepo(GCSPublicRepoURL, "", GCSPublicRepoBucket, nil)
 }
 
 // NewGCSRepo creates a new IStorageRepo for a given GCS repository.
-func NewGCSRepo(URL, credentialName, repoName string, httpClient *http.Client) (IStorageRepo, error) {
+func NewGCSRepo(URL, credentialName, repoName string, httpClient *http.Client) (*GCSRepo, error) {
 	r, err := newRepo(URL, credentialName, repoName, GCSRepoFormat, GCSRepoType)
 	if err != nil {
 		return nil, err
