@@ -26,7 +26,10 @@ import (
 	"github.com/kubernetes/helm/pkg/format"
 )
 
-var errMissingDeploymentArg = errors.New("First argument, deployment name, is required. Try 'helm get --help'")
+var (
+	errMissingDeploymentArg = errors.New("First argument, deployment name, is required. Try 'helm get --help'")
+	errTooManyArgs          = errors.New("Too many arguments provided. Try 'helm dep describe [DEPLOYMENT]'")
+)
 
 const deploymentDesc = `A deployment is an instance of a Chart running in the cluster.
 
@@ -68,6 +71,12 @@ func deploymentCommands() cli.Command {
 				Usage:     "Deletes the named deployment(s).",
 				ArgsUsage: "DEPLOYMENT [DEPLOYMENT [...]]",
 				Action:    func(c *cli.Context) { run(c, deleteDeployment) },
+			},
+			{
+				Name:      "describe",
+				Usage:     "Describes the kubernetes resources for the named deployment(s).",
+				ArgsUsage: "DEPLOYMENT",
+				Action:    func(c *cli.Context) { run(c, describeDeployment) },
 			},
 			{
 				Name:      "manifest",
@@ -134,6 +143,25 @@ func deleteDeployment(c *cli.Context) error {
 		}
 		format.Info("Deleted %q at %s", name, deployment.DeletedAt)
 	}
+	return nil
+}
+
+func describeDeployment(c *cli.Context) error {
+	args := c.Args()
+	if len(args) < 1 {
+		return errMissingDeploymentArg
+	}
+	if len(args) > 1 {
+		return errTooManyArgs
+	}
+	name := args[0]
+	_, err := NewClient(c).DescribeDeployment(name)
+	if err != nil {
+		return err
+	}
+
+	format.Info("TO BE IMPLEMENTED")
+
 	return nil
 }
 

@@ -100,6 +100,13 @@ func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 	return deployment, err
 }
 
+// DescribDeployment describes the kubernetes resources of the supplied deployment
+func (c *Client) DescribeDeployment(name string) (*common.Deployment, error) {
+	var deployment *common.Deployment
+	//TODO: implement
+	return deployment, nil
+}
+
 // PostDeployment posts a deployment object to the manager service.
 func (c *Client) PostDeployment(res *common.Resource) error {
 	// This is a stop-gap until we get this API cleaned up.
