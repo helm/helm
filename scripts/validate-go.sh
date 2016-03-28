@@ -48,6 +48,7 @@ if [[ -n "${failed_fmt}" ]]; then
   echo "${red}"
   echo "gofmt check failed:"
   echo "$failed_fmt"
+  find_go_files | xargs gofmt -s -d
   echo "${reset}"
   exit_code=1
 fi
