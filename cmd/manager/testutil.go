@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"net/http/httptest"
 	"regexp"
 
@@ -72,7 +73,14 @@ func (m *mockManager) ListDeployments() ([]common.Deployment, error) {
 }
 
 func (m *mockManager) GetDeployment(name string) (*common.Deployment, error) {
-	return &common.Deployment{}, nil
+
+	for _, d := range m.deployments {
+		if d.Name == name {
+			return d, nil
+		}
+	}
+
+	return nil, errors.New("mock error: No such deployment")
 }
 
 func (m *mockManager) CreateDeployment(t *common.Template) (*common.Deployment, error) {
