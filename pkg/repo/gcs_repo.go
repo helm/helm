@@ -64,7 +64,7 @@ func NewPublicGCSRepo(httpClient *http.Client) (*GCSRepo, error) {
 }
 
 // NewGCSRepo creates a new IStorageRepo for a given GCS repository.
-func NewGCSRepo(URL, credentialName, repoName string, httpClient *http.Client) (IStorageRepo, error) {
+func NewGCSRepo(URL, credentialName, repoName string, httpClient *http.Client) (*GCSRepo, error) {
 	r, err := newRepo(URL, credentialName, repoName, GCSRepoFormat, GCSRepoType)
 	if err != nil {
 		return nil, err
