@@ -19,14 +19,13 @@ package manager
 import (
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/repo"
+	"github.com/kubernetes/helm/pkg/util"
 
 	"errors"
 	"reflect"
 	"strings"
 	"testing"
 )
-
-var template = common.Template{Name: "test", Content: "test"}
 
 var layout = common.Layout{
 	Resources: []*common.LayoutResource{{Resource: common.Resource{Name: "test", Type: "test"}}},
@@ -47,7 +46,9 @@ var resourcesWithFailureState = common.Configuration{
 		},
 	}},
 }
-var expandedConfig = ExpandedTemplate{
+var template = common.Template{Name: "test", Content: util.ToYAMLOrError(&configuration)}
+
+var expandedConfig = ExpandedConfiguration{
 	Config: &configuration,
 	Layout: &layout,
 }
@@ -70,8 +71,8 @@ var errTest = errors.New("test error")
 
 type expanderStub struct{}
 
-func (expander *expanderStub) ExpandTemplate(t *common.Template) (*ExpandedTemplate, error) {
-	if reflect.DeepEqual(*t, template) {
+func (expander *expanderStub) ExpandConfiguration(conf *common.Configuration) (*ExpandedConfiguration, error) {
+	if reflect.DeepEqual(conf, &configuration) {
 		return &expandedConfig, nil
 	}
 
@@ -422,14 +423,18 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 		t.Fatal("CreateDeployment failure did not mark deployment as failed")
 	}
 
-	if !strings.HasPrefix(testRepository.ManifestAdd[template.Name].Name, "manifest-") {
-		t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
-			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
+	if manifest, ok := testRepository.ManifestAdd[template.Name]; ok {
+		if !strings.HasPrefix(manifest.Name, "manifest-") {
+			t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
+				"to begin with manifest-.", manifest.Name)
+		}
 	}
 
-	if !strings.HasPrefix(testRepository.ManifestSet[template.Name].Name, "manifest-") {
-		t.Fatalf("Repository SetManifest was called with %s but expected manifest name"+
-			"to begin with manifest-.", testRepository.ManifestSet[template.Name].Name)
+	if manifest, ok := testRepository.ManifestSet[template.Name]; ok {
+		if !strings.HasPrefix(manifest.Name, "manifest-") {
+			t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
+				"to begin with manifest-.", manifest.Name)
+		}
 	}
 
 	if err != nil || !reflect.DeepEqual(d, &deployment) {
@@ -495,18 +500,6 @@ func TestExpand(t *testing.T) {
 	m, err := testManager.Expand(&template)
 	if err != nil {
 		t.Fatal("Failed to expand template into manifest.")
-	}
-
-	if m.Name != "" {
-		t.Fatalf("Name was not empty: %v", *m)
-	}
-
-	if m.Deployment != "" {
-		t.Fatalf("Deployment was not empty: %v", *m)
-	}
-
-	if m.InputConfig != nil {
-		t.Fatalf("Input config not nil: %v", *m)
 	}
 
 	if !reflect.DeepEqual(*m.ExpandedConfig, configuration) {

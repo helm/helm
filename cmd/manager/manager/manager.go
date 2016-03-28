@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/kubernetes/helm/cmd/manager/repository"
 	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/common"
@@ -136,7 +137,7 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 		return nil, err
 	}
 
-	manifest, err := m.createManifest(t)
+	manifest, err := m.Expand(t)
 	if err != nil {
 		log.Printf("Manifest creation failed: %v", err)
 		m.repository.SetDeploymentState(t.Name, failState(err))
@@ -184,22 +185,6 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 	// Finally update the type instances for this deployment.
 	m.setChartInstances(t.Name, manifest.Name, manifest.Layout)
 	return m.repository.GetValidDeployment(t.Name)
-}
-
-func (m *manager) createManifest(t *common.Template) (*common.Manifest, error) {
-	et, err := m.expander.ExpandTemplate(t)
-	if err != nil {
-		log.Printf("Expansion failed %v", err)
-		return nil, err
-	}
-
-	return &common.Manifest{
-		Name:           generateManifestName(),
-		Deployment:     t.Name,
-		InputConfig:    t,
-		ExpandedConfig: et.Config,
-		Layout:         et.Layout,
-	}, nil
 }
 
 func (m *manager) setChartInstances(deploymentName string, manifestName string, layout *common.Layout) {
@@ -290,7 +275,7 @@ func (m *manager) PutDeployment(name string, t *common.Template) (*common.Deploy
 		return nil, err
 	}
 
-	manifest, err := m.createManifest(t)
+	manifest, err := m.Expand(t)
 	if err != nil {
 		log.Printf("Manifest creation failed: %v", err)
 		m.repository.SetDeploymentState(name, failState(err))
@@ -316,15 +301,23 @@ func (m *manager) PutDeployment(name string, t *common.Template) (*common.Deploy
 }
 
 func (m *manager) Expand(t *common.Template) (*common.Manifest, error) {
-	et, err := m.expander.ExpandTemplate(t)
+	conf := &common.Configuration{}
+	if err := yaml.Unmarshal([]byte(t.Content), conf); err != nil {
+		return nil, fmt.Errorf("Unable to unmarshal configuration: %s\n%s\n", err, t.Content)
+	}
+
+	expConf, err := m.expander.ExpandConfiguration(conf)
 	if err != nil {
 		log.Printf("Expansion failed %v", err)
 		return nil, err
 	}
 
 	return &common.Manifest{
-		ExpandedConfig: et.Config,
-		Layout:         et.Layout,
+		Name:           generateManifestName(),
+		Deployment:     t.Name,
+		InputConfig:    t,
+		ExpandedConfig: expConf.Config,
+		Layout:         expConf.Layout,
 	}, nil
 }
 
