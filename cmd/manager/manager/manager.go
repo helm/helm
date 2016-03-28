@@ -50,8 +50,8 @@ type Manager interface {
 	GetChart(chartName string) (*chart.Chart, error)
 
 	// Repo Charts
-	ListRepoCharts(repoURL string, regex *regexp.Regexp) ([]string, error)
-	GetChartForRepo(repoURL, chartName string) (*chart.Chart, error)
+	ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error)
+	GetChartForRepo(repoName, chartName string) (*chart.Chart, error)
 
 	// Credentials
 	CreateCredential(name string, c *repo.Credential) error
@@ -60,8 +60,8 @@ type Manager interface {
 	// Chart Repositories
 	ListRepos() (map[string]string, error)
 	AddRepo(addition repo.IRepo) error
-	RemoveRepo(name string) error
-	GetRepo(URL string) (repo.IRepo, error)
+	RemoveRepo(repoName string) error
+	GetRepo(repoName string) (repo.IRepo, error)
 }
 
 type manager struct {
@@ -377,17 +377,23 @@ func (m *manager) AddRepo(addition repo.IRepo) error {
 }
 
 // RemoveRepo removes a repository from the list by URL
-func (m *manager) RemoveRepo(name string) error {
-	url, err := m.service.GetRepoURLByName(name)
+func (m *manager) RemoveRepo(repoName string) error {
+	repoURL, err := m.service.GetRepoURLByName(repoName)
 	if err != nil {
 		return err
 	}
-	return m.service.DeleteRepo(url)
+
+	return m.service.DeleteRepo(repoURL)
 }
 
 // GetRepo returns the repository with the given URL
-func (m *manager) GetRepo(URL string) (repo.IRepo, error) {
-	return m.service.GetRepoByURL(URL)
+func (m *manager) GetRepo(repoName string) (repo.IRepo, error) {
+	repoURL, err := m.service.GetRepoURLByName(repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.service.GetRepoByURL(repoURL)
 }
 
 func generateManifestName() string {
@@ -412,10 +418,15 @@ func getResourceErrors(c *common.Configuration) []string {
 	return errs
 }
 
-// ListRepoCharts lists charts in a given repository whose URLs
+// ListRepoCharts lists charts in a given repository whose names
 // conform to the supplied regular expression, or all charts, if the regular
 // expression is nil.
-func (m *manager) ListRepoCharts(repoURL string, regex *regexp.Regexp) ([]string, error) {
+func (m *manager) ListRepoCharts(repoName string, regex *regexp.Regexp) ([]string, error) {
+	repoURL, err := m.service.GetRepoURLByName(repoName)
+	if err != nil {
+		return nil, err
+	}
+
 	r, err := m.repoProvider.GetRepoByURL(repoURL)
 	if err != nil {
 		return nil, err
@@ -425,7 +436,12 @@ func (m *manager) ListRepoCharts(repoURL string, regex *regexp.Regexp) ([]string
 }
 
 // GetChartForRepo returns a chart by name from a given repository.
-func (m *manager) GetChartForRepo(repoURL, chartName string) (*chart.Chart, error) {
+func (m *manager) GetChartForRepo(repoName, chartName string) (*chart.Chart, error) {
+	repoURL, err := m.service.GetRepoURLByName(repoName)
+	if err != nil {
+		return nil, err
+	}
+
 	r, err := m.repoProvider.GetRepoByURL(repoURL)
 	if err != nil {
 		return nil, err
