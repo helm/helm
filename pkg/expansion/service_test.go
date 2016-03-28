@@ -14,71 +14,119 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package service
+package expansion
 
-/*
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/kubernetes/helm/cmd/expandybird/expander"
+	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/util"
-
-	restful "github.com/emicklei/go-restful"
 )
 
-func GetTemplateReader(t *testing.T, description string, templateFileName string) io.Reader {
-	template, err := util.NewTemplateFromFileNames(templateFileName, importFileNames)
-	if err != nil {
-		t.Errorf("cannot create template for test case (%s): %s\n", err, description)
+var (
+	testRequest = &ServiceRequest{
+		ChartInvocation: &common.Resource{
+			Name: "test_invocation",
+			Type: "Test Chart",
+		},
+		Chart: &chart.Content{
+			Chartfile: &chart.Chartfile{
+				Name: "TestChart",
+				Expander: &chart.Expander{
+					Name:       "FakeExpander",
+					Entrypoint: "None",
+				},
+			},
+			Members: []*chart.Member{
+				{
+					Path:    "templates/testfile",
+					Content: []byte("test"),
+				},
+			},
+		},
 	}
-
-	templateData, err := json.Marshal(template)
-	if err != nil {
-		t.Errorf("cannot marshal template for test case (%s): %s\n", err, description)
+	testResponse = &ServiceResponse{
+		Resources: []interface{}{"test"},
 	}
-
-	reader := bytes.NewReader(templateData)
-	return reader
-}
-
-func GetOutputString(t *testing.T, description string) string {
-	output, err := ioutil.ReadFile(outputFileName)
-	if err != nil {
-		t.Errorf("cannot read output file for test case (%s): %s\n", err, description)
-	}
-
-	return string(output)
-}
-
-const (
-	httpGETMethod      = "GET"
-	httpPOSTMethod     = "POST"
-	validServiceURL    = "/expand"
-	invalidServiceURL  = "http://localhost:8080/invalidurlpath"
-	jsonContentType    = "application/json"
-	invalidContentType = "invalid/content-type"
-	inputFileName      = "../test/ValidContent.yaml"
-	outputFileName     = "../test/ExpectedOutput.yaml"
 )
 
-var importFileNames = []string{
-	"../test/replicatedservice.py",
+// A FakeExpander returns testResponse if it was given testRequest, otherwise raises an error.
+type FakeExpander struct {
 }
 
+func (fake *FakeExpander) ExpandChart(req *ServiceRequest) (*ServiceResponse, error) {
+	if reflect.DeepEqual(req, testRequest) {
+		return testResponse, nil
+	}
+	return nil, fmt.Errorf("Test Error Response")
+}
+
+func wrapReader(value interface{}) (io.Reader, error) {
+	valueJSON, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(valueJSON), nil
+}
+
+func GeneralTest(t *testing.T, httpMeth string, url string, contentType string, req *ServiceRequest,
+	expResponse *ServiceResponse, expStatus int) {
+	service := NewService("127.0.0.1", 8080, &FakeExpander{})
+	handlerTester := util.NewHandlerTester(service.container)
+	reader, err := wrapReader(testRequest)
+	if err != nil {
+		t.Fatalf("unexpected error: %s\n", err)
+	}
+	w, err := handlerTester(httpMeth, url, contentType, reader)
+	if err != nil {
+		t.Fatalf("unexpected error: %s\n", err)
+	}
+	var data = w.Body.Bytes()
+	if w.Code != expStatus {
+		t.Fatalf("wrong status code:\nwant: %s\ngot:  %s\ncontent: %s\n", expStatus, w.Code, data)
+	}
+	if expResponse != nil {
+		var response ServiceResponse
+		err = json.Unmarshal(data, &response)
+		if err != nil {
+			t.Fatalf("Response could not be unmarshalled: %s\nresponse: %s", err, string(data))
+		}
+		if !reflect.DeepEqual(response, *expResponse) {
+			t.Fatalf("Response did not match.\nwant: %s\ngot:  %s\n", expResponse, response)
+		}
+	}
+}
+
+func TestInvalidMethod(t *testing.T) {
+	GeneralTest(t, "GET", "/expand", "application/json", nil, nil, http.StatusMethodNotAllowed)
+}
+
+func TestInvalidURL(t *testing.T) {
+	GeneralTest(t, "POST", "/erroneus", "application/json", testRequest, nil, http.StatusNotFound)
+}
+
+func TestInvalidMimeType(t *testing.T) {
+	GeneralTest(t, "POST", "/expand", "erroneus", nil, nil, http.StatusUnsupportedMediaType)
+}
+
+func TestExpandOK(t *testing.T) {
+	GeneralTest(t, "POST", "/expand", "application/json", testRequest, testResponse, http.StatusOK)
+}
+
+/*
 type ServiceWrapperTestCase struct {
-	Description    string
-	HTTPMethod     string
+	Description	string
+	HTTPMethod	 string
 	ServiceURLPath string
-	ContentType    string
-	StatusCode     int
+	ContentType	string
+	StatusCode	 int
 }
 
 var ServiceWrapperTestCases = []ServiceWrapperTestCase{
@@ -161,7 +209,7 @@ func TestServiceWrapper(t *testing.T) {
 }
 
 type ExpansionHandlerTestCase struct {
-	Description      string
+	Description	  string
 	TemplateFileName string
 }
 
