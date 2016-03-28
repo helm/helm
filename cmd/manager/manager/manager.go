@@ -379,7 +379,7 @@ func (m *manager) RemoveRepo(repoName string) error {
 	return m.service.DeleteRepo(repoURL)
 }
 
-// GetRepo returns the repository with the given URL
+// GetRepo returns the repository with the given name
 func (m *manager) GetRepo(repoName string) (repo.IRepo, error) {
 	repoURL, err := m.service.GetRepoURLByName(repoName)
 	if err != nil {
