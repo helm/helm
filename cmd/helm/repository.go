@@ -49,9 +49,7 @@ const repoDesc = `Helm repositories store Helm charts.
    For more details, use 'helm repo CMD -h'.
 `
 
-const addRepoDesc = `helm repository|repo add [NAME] [REPOSITORY_URL]
-
-   The add repository command is used to add a name a repository url to your
+const addRepoDesc = ` The add repository command is used to add a name a repository url to your
    chart repository list. The repository url must begin with a valid protocoal
    These include https, http, and gs.
 
@@ -99,7 +97,7 @@ func addRepo(c *cli.Context) error {
 	repoURL := args[1]
 	valid := IsValidURL(repoURL)
 	if !valid {
-		return errors.New(repoURL + " is not a valid URL")
+		return errors.New(repoURL + " is not a valid REPOSITOTY_URL argument \n" + addRepoDesc)
 	}
 	payload, _ := json.Marshal(repo.Repo{URL: repoURL, Name: name})
 	msg := ""
