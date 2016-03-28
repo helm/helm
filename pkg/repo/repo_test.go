@@ -65,3 +65,26 @@ func TestInvalidRepoFormat(t *testing.T) {
 		t.Fatalf("expected error did not occur for invalid format")
 	}
 }
+
+func TestValidateRepoURL(t *testing.T) {
+	validURLs := []string{
+		"https://host/bucket",
+		"http://host/bucket",
+		"gs://bucket-name",
+	}
+	invalidURLs := []string{"charts"}
+
+	for _, url := range validURLs {
+		err := ValidateRepoURL(url)
+		if err != nil {
+			t.Fatalf("Expected repo url: %v to be valid but threw an error")
+		}
+	}
+
+	for _, url := range invalidURLs {
+		err := ValidateRepoURL(url)
+		if err == nil {
+			t.Fatalf("Expected repo url: %v to be invalid but did not throw an error")
+		}
+	}
+}

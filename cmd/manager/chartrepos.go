@@ -57,6 +57,9 @@ func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 		httputil.BadRequest(w, r, err)
 		return nil
 	}
+	if err := repo.ValidateRepoURL(cr.URL); err != nil {
+		return err
+	}
 
 	if err := c.Manager.AddRepo(cr); err != nil {
 		httputil.BadRequest(w, r, err)

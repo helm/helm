@@ -43,6 +43,14 @@ const repoDesc = `Helm repositories store Helm charts.
    For more details, use 'helm repo CMD -h'.
 `
 
+const addRepoDesc = `The add repository command is used to add a name a repository url to your
+   chart repository list. The repository url must begin with a valid protocoal
+   These include https, http, and gs.
+
+   A valid command might look like:
+   $ helm repo add charts gs://kubernetes-charts
+`
+
 func repoCommands() cli.Command {
 	return cli.Command{
 		Name:        "repository",
@@ -51,10 +59,11 @@ func repoCommands() cli.Command {
 		Description: repoDesc,
 		Subcommands: []cli.Command{
 			{
-				Name:      "add",
-				Usage:     "Add a chart repository to the remote manager.",
-				ArgsUsage: "[NAME] [REPOSITORY_URL]",
-				Action:    func(c *cli.Context) { run(c, addRepo) },
+				Name:        "add",
+				Usage:       "Add a chart repository to the remote manager.",
+				Description: addRepoDesc,
+				ArgsUsage:   "[NAME] [REPOSITORY_URL]",
+				Action:      func(c *cli.Context) { run(c, addRepo) },
 			},
 			{
 				Name:      "list",
@@ -66,7 +75,7 @@ func repoCommands() cli.Command {
 				Name:      "remove",
 				Aliases:   []string{"rm"},
 				Usage:     "Remove a chart repository from the remote manager.",
-				ArgsUsage: "REPOSITORY_URL",
+				ArgsUsage: "REPOSITORY_NAME",
 				Action:    func(c *cli.Context) { run(c, removeRepo) },
 			},
 		},
@@ -83,7 +92,6 @@ func addRepo(c *cli.Context) error {
 	payload, _ := json.Marshal(repo.Repo{URL: repoURL, Name: name})
 	msg := ""
 	if _, err := NewClient(c).Post(chartRepoPath, payload, &msg); err != nil {
-		//TODO: Return more specific errors to the user
 		return err
 	}
 	format.Info(name + " has been added to your chart repositories!")
