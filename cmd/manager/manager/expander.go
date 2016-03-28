@@ -17,63 +17,51 @@ limitations under the License.
 package manager
 
 import (
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/expansion"
+	"github.com/kubernetes/helm/pkg/repo"
+
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/ghodss/yaml"
-	"github.com/kubernetes/helm/pkg/common"
 )
 
+/*
 const (
 	// TODO (iantw): Align this with a character not allowed to show up in resource names.
 	layoutNodeKeySeparator = "#"
 )
+*/
 
-// ExpandedTemplate is the structure returned by the expansion service.
-type ExpandedTemplate struct {
+// ExpandedConfiguration is the structure returned by the expansion service.
+type ExpandedConfiguration struct {
 	Config *common.Configuration `json:"config"`
 	Layout *common.Layout        `json:"layout"`
 }
 
 // Expander abstracts interactions with the expander and deployer services.
 type Expander interface {
-	ExpandTemplate(t *common.Template) (*ExpandedTemplate, error)
-}
-
-// TODO: Remove mockResolver when type resolver is completely excised
-type mockResolver struct {
-}
-
-func (r *mockResolver) ResolveTypes(c *common.Configuration, i []*common.ImportFile) ([]*common.ImportFile, error) {
-	return nil, nil
+	ExpandConfiguration(conf *common.Configuration) (*ExpandedConfiguration, error)
 }
 
 // NewExpander returns a new initialized Expander.
-func NewExpander(url string) Expander {
-	tr := &mockResolver{}
-	return &expander{url, tr}
+func NewExpander(URL string, rp repo.IRepoProvider) Expander {
+	if rp == nil {
+		rp = repo.NewRepoProvider(nil, nil, nil)
+	}
+
+	return &expander{expanderURL: URL, repoProvider: rp}
 }
 
 type expander struct {
+	repoProvider repo.IRepoProvider
 	expanderURL  string
-	typeResolver TypeResolver
-}
-
-// TypeResolver finds Types in a Configuration which aren't yet reduceable to an import file
-// or primitive, and attempts to replace them with a template from a URL.
-type TypeResolver interface {
-	ResolveTypes(config *common.Configuration, imports []*common.ImportFile) ([]*common.ImportFile, error)
 }
 
 func (e *expander) getBaseURL() string {
 	return fmt.Sprintf("%s/expand", e.expanderURL)
-}
-
-func expanderError(t *common.Template, err error) error {
-	return fmt.Errorf("cannot expand template named %s (%s):\n%s", t.Name, err, t.Content)
 }
 
 // ExpanderResponse gives back a layout, which has nested structure
@@ -108,6 +96,7 @@ func expanderError(t *common.Template, err error) error {
 // between the name#template key to exist in the layout given a particular choice of naming.
 // In practice, it would be nearly impossible to hit, but consider including properties/name/type
 // into a hash of sorts to make this robust...
+/*
 func walkLayout(l *common.Layout, imports []*common.ImportFile, toReplace map[string]*common.LayoutResource) map[string]*common.LayoutResource {
 	ret := map[string]*common.LayoutResource{}
 	toVisit := l.Resources
@@ -126,81 +115,68 @@ func walkLayout(l *common.Layout, imports []*common.ImportFile, toReplace map[st
 
 	return ret
 }
+*/
 
-// isTemplate returns whether a given type is a template.
-func isTemplate(t string, imports []*common.ImportFile) bool {
-	for _, imp := range imports {
-		if imp.Name == t {
-			return true
-		}
-	}
-
-	return false
-}
-
-// ExpandTemplate expands the supplied template, and returns a configuration.
-// It will also update the imports in the provided template if any were added
-// during type resolution.
-func (e *expander) ExpandTemplate(t *common.Template) (*ExpandedTemplate, error) {
-	// We have a fencepost problem here.
-	// 1. Start by trying to resolve any missing templates
-	// 2. Expand the configuration using all the of the imports available to us at this point
-	// 3. Expansion may yield additional templates, so we run the type resolution again
-	// 4. If type resolution resulted in new imports being available, return to 2.
-	config := &common.Configuration{}
-	if err := yaml.Unmarshal([]byte(t.Content), config); err != nil {
-		e := fmt.Errorf("Unable to unmarshal configuration (%s): %s", err, t.Content)
-		return nil, e
-	}
-
-	var finalLayout *common.Layout
-	needResolve := map[string]*common.LayoutResource{}
-
-	// Start things off by attempting to resolve the templates in a first pass.
-	newImp, err := e.typeResolver.ResolveTypes(config, t.Imports)
+// ExpandConfiguration expands the supplied configuration and returns
+// an expanded configuration.
+func (e *expander) ExpandConfiguration(conf *common.Configuration) (*ExpandedConfiguration, error) {
+	expConf, err := e.expandConfiguration(conf)
 	if err != nil {
-		e := fmt.Errorf("type resolution failed: %s", err)
-		return nil, expanderError(t, e)
+		return nil, fmt.Errorf("cannot expand configuration:%s\n%v\n", err, conf)
 	}
 
-	t.Imports = append(t.Imports, newImp...)
-
-	for {
-		// Now expand with everything imported.
-		result, err := e.expandTemplate(t)
-		if err != nil {
-			e := fmt.Errorf("template expansion: %s", err)
-			return nil, expanderError(t, e)
-		}
-
-		// Once we set this layout, we're operating on the "needResolve" *LayoutResources,
-		// which are pointers into the original layout structure. After each expansion we
-		// lose the templates in the previous expansion, so we have to keep the first one
-		// around and keep appending to the pointers in it as we get more layers of expansion.
-		if finalLayout == nil {
-			finalLayout = result.Layout
-		}
-		needResolve = walkLayout(result.Layout, t.Imports, needResolve)
-
-		newImp, err = e.typeResolver.ResolveTypes(result.Config, t.Imports)
-		if err != nil {
-			e := fmt.Errorf("type resolution failed: %s", err)
-			return nil, expanderError(t, e)
-		}
-
-		// If the new imports contain nothing, we are done. Everything is fully expanded.
-		if len(newImp) == 0 {
-			result.Layout = finalLayout
-			return result, nil
-		}
-
-		// Update imports with any new imports from type resolution.
-		t.Imports = append(t.Imports, newImp...)
-	}
+	return expConf, nil
 }
 
-func (e *expander) expandTemplate(t *common.Template) (*ExpandedTemplate, error) {
-	j, err := json.Marshal(t)
+func (e *expander) expandConfiguration(conf *common.Configuration) (*ExpandedConfiguration, error) {
+	resources := []*common.Resource{}
+	layout := []*common.LayoutResource{}
+
+	for _, resource := range conf.Resources {
+		if !repo.IsChartReference(resource.Type) {
+			resources = append(resources, resource)
+			continue
+		}
+
+		cbr, _, err := e.repoProvider.GetChartByReference(resource.Type)
+		if err != nil {
+			return nil, err
+		}
+
+		defer cbr.Close()
+		content, err := cbr.LoadContent()
+		if err != nil {
+			return nil, err
+		}
+
+		svcReq := &expansion.ServiceRequest{
+			ChartInvocation: resource,
+			Chart:           content,
+		}
+
+		svcResp, err := e.callService(svcReq)
+		if err != nil {
+			return nil, err
+		}
+
+		expConf, err := e.expandConfiguration(svcResp)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: build up layout hiearchically
+		resources = append(resources, expConf.Config.Resources...)
+		layout = append(layout, expConf.Layout.Resources...)
+	}
+
+	return &ExpandedConfiguration{
+		Config: &common.Configuration{Resources: resources},
+		Layout: &common.Layout{Resources: layout},
+	}, nil
+}
+
+func (e *expander) callService(svcReq *expansion.ServiceRequest) (*common.Configuration, error) {
+	j, err := json.Marshal(svcReq)
 	if err != nil {
 		return nil, err
 	}
@@ -232,37 +208,11 @@ func (e *expander) expandTemplate(t *common.Template) (*ExpandedTemplate, error)
 		return nil, err
 	}
 
-	er := &ExpansionResponse{}
-	if err := json.Unmarshal(body, er); err != nil {
+	svcResp := &common.Configuration{}
+	if err := json.Unmarshal(body, svcResp); err != nil {
 		e := fmt.Errorf("cannot unmarshal response body (%s):%s", err, body)
 		return nil, e
 	}
 
-	template, err := er.Unmarshal()
-	if err != nil {
-		e := fmt.Errorf("cannot unmarshal response yaml (%s):%v", err, er)
-		return nil, e
-	}
-
-	return template, nil
-}
-
-// ExpansionResponse describes the results of marshaling an ExpandedTemplate.
-type ExpansionResponse struct {
-	Config string `json:"config"`
-	Layout string `json:"layout"`
-}
-
-// Unmarshal creates and returns an ExpandedTemplate from an ExpansionResponse.
-func (er *ExpansionResponse) Unmarshal() (*ExpandedTemplate, error) {
-	template := &ExpandedTemplate{}
-	if err := yaml.Unmarshal([]byte(er.Config), &template.Config); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal config (%s):\n%s", err, er.Config)
-	}
-
-	if err := yaml.Unmarshal([]byte(er.Layout), &template.Layout); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal layout (%s):\n%s", err, er.Layout)
-	}
-
-	return template, nil
+	return svcResp, nil
 }

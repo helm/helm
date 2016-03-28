@@ -26,44 +26,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubernetes/helm/pkg/common"
-	"github.com/kubernetes/helm/pkg/util"
-
 	"github.com/ghodss/yaml"
+	"github.com/kubernetes/helm/pkg/chart"
+	"github.com/kubernetes/helm/pkg/common"
+	"github.com/kubernetes/helm/pkg/expansion"
+	"github.com/kubernetes/helm/pkg/repo"
+	"github.com/kubernetes/helm/pkg/util"
 )
 
-var validTemplateTestCaseData = common.Template{
-	Name:    "TestTemplate",
-	Content: string(validContentTestCaseData),
-	Imports: validImportFilesTestCaseData,
-}
+var (
+	TestRepoBucket   = "kubernetes-charts-testing"
+	TestRepoURL      = "gs://" + TestRepoBucket
+	TestChartName    = "frobnitz"
+	TestChartVersion = "0.0.1"
+	TestArchiveName  = TestChartName + "-" + TestChartVersion + ".tgz"
+	TestResourceType = TestRepoURL + "/" + TestArchiveName
+)
 
-var validContentTestCaseData = []byte(`
-imports:
-- path: test-type.py
-resources:
-- name: test
-  type: test-type.py
-  properties:
-    test-property: test-value
-`)
-
-var validImportFilesTestCaseData = []*common.ImportFile{
-	{
-		Name:    "test-type.py",
-		Content: "test-type.py validTemplateTestCaseData content",
-	},
-	{
-		Name:    "test.py",
-		Content: "test.py validTemplateTestCaseData content",
-	},
-	{
-		Name:    "test2.py",
-		Content: "test2.py validTemplateTestCaseData content",
-	},
-}
-
-var validConfigTestCaseData = []byte(`
+var validResponseTestCaseData = []byte(`
 resources:
 - name: test-service
   properties:
@@ -91,6 +71,7 @@ resources:
   type: ReplicationController
 `)
 
+/*
 var validLayoutTestCaseData = []byte(`
 resources:
 - name: test
@@ -126,18 +107,12 @@ resources:
   type: test2.jinja
 `)
 
-var validResponseTestCaseData = ExpansionResponse{
-	Config: string(validConfigTestCaseData),
-	Layout: string(validLayoutTestCaseData),
-}
-
 var roundTripContent = `
-config:
-  resources:
-  - name: test
-    type: test.py
-    properties:
-      test: test
+resources:
+- name: test
+  type: test.py
+  properties:
+    test: test
 `
 
 var roundTripExpanded = `
@@ -207,35 +182,58 @@ layout:
           test: test
 `
 
-var roundTripTemplate = common.Template{
-	Name:    "TestTemplate",
-	Content: roundTripContent,
-	Imports: nil,
+var roundTripResponse = &ExpandedConfiguration{
+	Config: roundTripExpanded,
+}
+
+var roundTripResponse2 = &ExpandedConfiguration{
+	Config: roundTripExpanded2,
+}
+
+var roundTripResponses = []*ExpandedConfiguration{
+	roundTripResponse,
+	roundTripResponse2,
+}
+*/
+
+type mockRepoProvider struct {
+}
+
+func (m *mockRepoProvider) GetChartByReference(reference string) (*chart.Chart, repo.IChartRepo, error) {
+	return &chart.Chart{}, nil, nil
+}
+
+func (m *mockRepoProvider) GetRepoByChartURL(URL string) (repo.IChartRepo, error) {
+	return nil, nil
+}
+
+func (m *mockRepoProvider) GetRepoByURL(URL string) (repo.IChartRepo, error) {
+	return nil, nil
 }
 
 type ExpanderTestCase struct {
 	Description   string
 	Error         string
 	Handler       func(w http.ResponseWriter, r *http.Request)
-	ValidResponse *ExpandedTemplate
+	ValidResponse *ExpandedConfiguration
 }
 
 func TestExpandTemplate(t *testing.T) {
-	roundTripResponse := &ExpandedTemplate{}
-	if err := yaml.Unmarshal([]byte(finalExpanded), roundTripResponse); err != nil {
-		panic(err)
-	}
+	//	roundTripResponse := &ExpandedConfiguration{}
+	//	if err := yaml.Unmarshal([]byte(finalExpanded), roundTripResponse); err != nil {
+	//		panic(err)
+	//	}
 
 	tests := []ExpanderTestCase{
 		{
-			"expect success for ExpandTemplate",
+			"expect success for ExpandConfiguration",
 			"",
 			expanderSuccessHandler,
-			getValidResponse(t, "expect success for ExpandTemplate"),
+			getValidExpandedConfiguration(),
 		},
 		{
-			"expect error for ExpandTemplate",
-			"cannot expand template",
+			"expect error for ExpandConfiguration",
+			"simulated failure",
 			expanderErrorHandler,
 			nil,
 		},
@@ -245,12 +243,23 @@ func TestExpandTemplate(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(etc.Handler))
 		defer ts.Close()
 
-		expander := NewExpander(ts.URL)
-		actualResponse, err := expander.ExpandTemplate(&validTemplateTestCaseData)
+		expander := NewExpander(ts.URL, nil)
+		resource := &common.Resource{
+			Name: "test_invocation",
+			Type: TestResourceType,
+		}
+
+		conf := &common.Configuration{
+			Resources: []*common.Resource{
+				resource,
+			},
+		}
+
+		actualResponse, err := expander.ExpandConfiguration(conf)
 		if err != nil {
 			message := err.Error()
 			if etc.Error == "" {
-				t.Errorf("Error in test case %s when there should not be.", etc.Description)
+				t.Errorf("unexpected error in test case %s: %s", etc.Description, err)
 			}
 			if !strings.Contains(message, etc.Error) {
 				t.Errorf("error in test case:%s:%s\n", etc.Description, message)
@@ -270,42 +279,41 @@ func TestExpandTemplate(t *testing.T) {
 	}
 }
 
-func getValidResponse(t *testing.T, description string) *ExpandedTemplate {
-	response, err := validResponseTestCaseData.Unmarshal()
-	if err != nil {
-		t.Errorf("cannot unmarshal valid response for test case '%s': %s\n", description, err)
+func getValidServiceResponse() *common.Configuration {
+	conf := &common.Configuration{}
+	if err := yaml.Unmarshal(validResponseTestCaseData, conf); err != nil {
+		panic(fmt.Errorf("cannot unmarshal valid response: %s\n", err))
 	}
 
-	return response
+	return conf
+}
+
+func getValidExpandedConfiguration() *ExpandedConfiguration {
+	conf := getValidServiceResponse()
+	layout := &common.Layout{Resources: []*common.LayoutResource{}}
+	return &ExpandedConfiguration{Config: conf, Layout: layout}
+
 }
 
 func expanderErrorHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	http.Error(w, "something failed", http.StatusInternalServerError)
+	http.Error(w, "simulated failure", http.StatusInternalServerError)
 }
 
-var roundTripResponse = ExpansionResponse{
-	Config: roundTripExpanded,
-	Layout: roundTripLayout,
-}
-
-var roundTripResponse2 = ExpansionResponse{
-	Config: roundTripExpanded2,
-	Layout: roundTripLayout2,
-}
-
-var roundTripResponses = []ExpansionResponse{
-	roundTripResponse,
-	roundTripResponse2,
-}
-
+/*
 func roundTripHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	handler := "expandybird: expand"
 	util.LogHandlerEntry(handler, r)
+	if len(roundTripResponses) < 1 {
+		http.Error(w, "Too many calls to round trip handler", http.StatusInternalServerError)
+		return
+	}
+
 	util.LogHandlerExitWithJSON(handler, w, roundTripResponses[0], http.StatusOK)
 	roundTripResponses = roundTripResponses[1:]
 }
+*/
 
 func expanderSuccessHandler(w http.ResponseWriter, r *http.Request) {
 	handler := "expandybird: expand"
@@ -318,19 +326,22 @@ func expanderSuccessHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	template := &common.Template{}
-	if err := json.Unmarshal(body, template); err != nil {
+	svcReq := &expansion.ServiceRequest{}
+	if err := json.Unmarshal(body, svcReq); err != nil {
 		status := fmt.Sprintf("cannot unmarshal request body:%s\n%s\n", err, body)
 		http.Error(w, status, http.StatusInternalServerError)
 		return
 	}
 
-	if !reflect.DeepEqual(validTemplateTestCaseData, *template) {
-		status := fmt.Sprintf("error in http handler:\nwant:%s\nhave:%s\n",
-			util.ToJSONOrError(validTemplateTestCaseData), util.ToJSONOrError(template))
-		http.Error(w, status, http.StatusInternalServerError)
-		return
-	}
+	/*
+		if !reflect.DeepEqual(validRequestTestCaseData, *svcReq) {
+			status := fmt.Sprintf("error in http handler:\nwant:%s\nhave:%s\n",
+				util.ToJSONOrError(validRequestTestCaseData), util.ToJSONOrError(template))
+			http.Error(w, status, http.StatusInternalServerError)
+			return
+		}
+	*/
 
-	util.LogHandlerExitWithJSON(handler, w, validResponseTestCaseData, http.StatusOK)
+	svcResp := getValidServiceResponse()
+	util.LogHandlerExitWithJSON(handler, w, svcResp, http.StatusOK)
 }
