@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubernetes/helm/pkg/httputil"
 	"github.com/kubernetes/helm/pkg/version"
 )
 
@@ -221,16 +222,31 @@ func (r *Response) Success() bool {
 
 // HTTPError creates a new HTTPError from response
 func (r *Response) HTTPError() error {
+	contentType := r.Header.Get("Content-Type")
+
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
+
+	if contentType == "application/json" {
+		httpErr := httputil.Error{}
+		json.Unmarshal(body, &httpErr)
+		return &HTTPError{
+			StatusCode: r.StatusCode,
+			Message:    httpErr.Msg,
+			URL:        r.Request.URL,
+		}
+	} else {
+		if err != nil {
+			return err
+		}
+		return &HTTPError{
+			StatusCode: r.StatusCode,
+			Message:    string(body),
+			URL:        r.Request.URL,
+		}
 	}
-	return &HTTPError{
-		StatusCode: r.StatusCode,
-		Message:    string(body),
-		URL:        r.Request.URL,
-	}
+
+	return nil
 }
 
 // HTTPError is an error caused by an unexpected HTTP status code.
