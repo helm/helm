@@ -71,8 +71,27 @@ resources:
   type: ReplicationController
 `)
 
-/*
 var validLayoutTestCaseData = []byte(`
+resources:
+- name: test_invocation
+  resources:
+  - name: test-service
+    type: Service
+  - name: test-rc
+    type: ReplicationController
+  - name: test3-service
+    type: Service
+  - name: test3-rc
+    type: ReplicationController
+  - name: test4-service
+    type: Service
+  - name: test4-rc
+    type: ReplicationController
+  type: gs://kubernetes-charts-testing/frobnitz-0.0.1.tgz
+`)
+
+/*
+[]byte(`
 resources:
 - name: test
   properties:
@@ -290,7 +309,11 @@ func getValidServiceResponse() *common.Configuration {
 
 func getValidExpandedConfiguration() *ExpandedConfiguration {
 	conf := getValidServiceResponse()
-	layout := &common.Layout{Resources: []*common.LayoutResource{}}
+	layout := &common.Layout{}
+	if err := yaml.Unmarshal(validLayoutTestCaseData, layout); err != nil {
+		panic(fmt.Errorf("cannot unmarshal valid response: %s\n", err))
+	}
+
 	return &ExpandedConfiguration{Config: conf, Layout: layout}
 
 }

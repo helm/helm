@@ -64,59 +64,6 @@ func (e *expander) getBaseURL() string {
 	return fmt.Sprintf("%s/expand", e.expanderURL)
 }
 
-// ExpanderResponse gives back a layout, which has nested structure
-// Resource0
-//		ResourceDefinition
-//		Resource0, 0
-//				ResourceDefinition
-//				Resource0, 0, 0
-//						ResourceDefinition
-//				Resource0, 0, 1
-//						ResourceDefinition
-//		Resource0, 1
-//				ResourceDefinition
-//
-// All the leaf nodes in this tree are either primitives or a currently unexpandable type.
-// Next we will resolve all the unexpandable types and re-enter expansion, at which point
-// all primitives are untouched and returned as root siblings with no children in the
-// resulting layout. The previously unexpandable nodes will become sibling root nodes,
-// but with children. We want to replace the leaf nodes that were formerly unexpandable
-// with their respective newly created trees.
-//
-// So, do as follows:
-// 1) Do a walk of the tree and find each leaf. Check its Type and place a pointer to it
-// into a map with the resource name and type as key if it is non-primitive.
-// 2) Re-expand the template with the new imports.
-// 3) For each root level sibling, check if its name exists in the hash map from (1)
-// 4) Replace the Layout of the node in the hash map with the current node if applicable.
-// 5) Return to (1)
-
-// TODO (iantw): There may be a tricky corner case here where a known template could be
-// masked by an unknown template, which on the subsequent expansion could allow a collision
-// between the name#template key to exist in the layout given a particular choice of naming.
-// In practice, it would be nearly impossible to hit, but consider including properties/name/type
-// into a hash of sorts to make this robust...
-/*
-func walkLayout(l *common.Layout, imports []*common.ImportFile, toReplace map[string]*common.LayoutResource) map[string]*common.LayoutResource {
-	ret := map[string]*common.LayoutResource{}
-	toVisit := l.Resources
-
-	for len(toVisit) > 0 {
-		lr := toVisit[0]
-		nodeKey := lr.Resource.Name + layoutNodeKeySeparator + lr.Resource.Type
-		if len(lr.Layout.Resources) == 0 && isTemplate(lr.Resource.Type, imports) {
-			ret[nodeKey] = lr
-		} else if toReplace[nodeKey] != nil {
-			toReplace[nodeKey].Resources = lr.Resources
-		}
-		toVisit = append(toVisit, lr.Resources...)
-		toVisit = toVisit[1:]
-	}
-
-	return ret
-}
-*/
-
 // ExpandConfiguration expands the supplied configuration and returns
 // an expanded configuration.
 func (e *expander) ExpandConfiguration(conf *common.Configuration) (*ExpandedConfiguration, error) {
@@ -130,25 +77,42 @@ func (e *expander) ExpandConfiguration(conf *common.Configuration) (*ExpandedCon
 
 func (e *expander) expandConfiguration(conf *common.Configuration) (*ExpandedConfiguration, error) {
 	resources := []*common.Resource{}
-	layout := []*common.LayoutResource{}
+	layouts := []*common.LayoutResource{}
 
+	// Iterate over all of the resources in the unexpanded configuration
 	for _, resource := range conf.Resources {
+		// A primitive layout resource captures only the name and type
+		layout := &common.LayoutResource{
+			Resource: common.Resource{
+				Name: resource.Name, Type: resource.Type,
+			},
+		}
+
+		// If the type is not a chart reference, then it must be primitive
 		if !repo.IsChartReference(resource.Type) {
+			// Add it to the flat list of exapnded resources
 			resources = append(resources, resource)
+
+			// Add its layout to the list of layouts at this level
+			layouts = append(layouts, layout)
 			continue
 		}
 
+		// It is a chart, so go fetch it, decompress it and unpack it
 		cbr, _, err := e.repoProvider.GetChartByReference(resource.Type)
 		if err != nil {
 			return nil, err
 		}
 
 		defer cbr.Close()
+
+		// Now, load the charts contents into strings that we can pass to exapnsion
 		content, err := cbr.LoadContent()
 		if err != nil {
 			return nil, err
 		}
 
+		// Build a request to the expansion service and call it to do the expansion
 		svcReq := &expansion.ServiceRequest{
 			ChartInvocation: resource,
 			Chart:           content,
@@ -159,19 +123,27 @@ func (e *expander) expandConfiguration(conf *common.Configuration) (*ExpandedCon
 			return nil, err
 		}
 
+		// Call ourselves recursively with the list of resources returned by expansion
 		expConf, err := e.expandConfiguration(svcResp)
 		if err != nil {
 			return nil, err
 		}
 
-		// TODO: build up layout hiearchically
+		// Append the reources returned by the recursion to the flat list of resources
 		resources = append(resources, expConf.Config.Resources...)
-		layout = append(layout, expConf.Layout.Resources...)
+
+		// This was not a primitive resource, so add its properties to the layout
+		layout.Properties = resource.Properties
+
+		// Now add the all of the layout resources returned by the recursion to the layout
+		layout.Resources = expConf.Layout.Resources
+		layouts = append(layouts, layout)
 	}
 
+	// All done with this level, so return the espanded configuration
 	return &ExpandedConfiguration{
 		Config: &common.Configuration{Resources: resources},
-		Layout: &common.Layout{Resources: layout},
+		Layout: &common.Layout{Resources: layouts},
 	}, nil
 }
 
