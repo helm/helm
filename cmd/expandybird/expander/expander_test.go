@@ -31,13 +31,6 @@ import (
 
 var expanderName = "../../../expansion/expansion.py"
 
-type testCase struct {
-	Description      string
-	Request          *expansion.ServiceRequest
-	ExpectedResponse *expansion.ServiceResponse
-	ExpectedError    string
-}
-
 // content provides an easy way to provide file content verbatim in tests.
 func content(lines []string) []byte {
 	return []byte(strings.Join(lines, "\n") + "\n")
