@@ -70,9 +70,14 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "host,u",
-			Usage:  "The URL of the DM server.",
+			Usage:  "The URL of the DM server",
 			EnvVar: "HELM_HOST",
 			Value:  "https://localhost:8000/",
+		},
+		cli.StringFlag{
+			Name:   "kubectl",
+			Usage:  "The path to the kubectl binary",
+			EnvVar: "KUBECTL",
 		},
 		cli.IntFlag{
 			Name:  "timeout",

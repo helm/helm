@@ -128,7 +128,8 @@ func installServer(c *cli.Context) error {
 	manImg := c.String("manager-image")
 
 	dryRun := c.Bool("dry-run")
-	runner := buildKubectlRunner(dryRun)
+	kubectlPath := c.String("kubectl")
+	runner := buildKubectlRunner(kubectlPath, dryRun)
 
 	i := client.NewInstaller()
 	i.Manager["Image"] = manImg
@@ -145,7 +146,8 @@ func installServer(c *cli.Context) error {
 
 func uninstallServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	runner := buildKubectlRunner(dryRun)
+	kubectlPath := c.String("kubectl")
+	runner := buildKubectlRunner(kubectlPath, dryRun)
 
 	out, err := client.Uninstall(runner)
 	if err != nil {
@@ -157,7 +159,8 @@ func uninstallServer(c *cli.Context) error {
 
 func statusServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	runner := buildKubectlRunner(dryRun)
+	kubectlPath := c.String("kubectl")
+	runner := buildKubectlRunner(kubectlPath, dryRun)
 
 	out, err := runner.GetByKind("pods", "", "dm")
 	if err != nil {
@@ -169,7 +172,9 @@ func statusServer(c *cli.Context) error {
 
 func targetServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	runner := buildKubectlRunner(dryRun)
+	kubectlPath := c.String("kubectl")
+	runner := buildKubectlRunner(kubectlPath, dryRun)
+
 	out, err := runner.ClusterInfo()
 	if err != nil {
 		return fmt.Errorf("%s (%s)", out, err)
@@ -178,9 +183,13 @@ func targetServer(c *cli.Context) error {
 	return nil
 }
 
-func buildKubectlRunner(dryRun bool) kubectl.Runner {
+func buildKubectlRunner(kubectlPath string, dryRun bool) kubectl.Runner {
 	if dryRun {
 		return &kubectl.PrintRunner{}
+	}
+	// TODO: Refactor out kubectl.Path global
+	if kubectlPath != "" {
+		kubectl.Path = kubectlPath
 	}
 	return &kubectl.RealRunner{}
 }
