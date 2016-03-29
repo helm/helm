@@ -18,6 +18,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"regexp"
 
@@ -88,7 +89,13 @@ func (m *mockManager) CreateDeployment(depReq *common.DeploymentRequest) (*commo
 }
 
 func (m *mockManager) DeleteDeployment(name string, forget bool) (*common.Deployment, error) {
-	return &common.Deployment{}, nil
+	for _, d := range m.deployments {
+		if d.Name == name {
+			return d, nil
+		}
+	}
+	fmt.Printf("Could not find %s", name)
+	return nil, errors.New("Deployment not found")
 }
 
 func (m *mockManager) PutDeployment(name string, depReq *common.DeploymentRequest) (*common.Deployment, error) {
