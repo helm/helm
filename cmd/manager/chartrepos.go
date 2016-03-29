@@ -59,7 +59,7 @@ func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 	}
 
 	if string(cr.Format) == "" {
-		cr.Type = repo.GCSRepoType
+		cr.Format = repo.GCSRepoFormat
 	}
 
 	if string(cr.Type) == "" {
