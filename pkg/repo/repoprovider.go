@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"sync"
 )
 
@@ -117,35 +116,21 @@ func (rp *repoProvider) createRepo(cr IChartRepo) (IChartRepo, error) {
 	return cr, nil
 }
 
-// GetRepoByChartURL returns the repository whose URL is a prefix of the given URL.
+// GetRepoByChartURL returns the repository that backs a given chart URL.
 func (rp *repoProvider) GetRepoByChartURL(URL string) (IChartRepo, error) {
 	rp.Lock()
 	defer rp.Unlock()
-
-	if r := rp.findRepoByChartURL(URL); r != nil {
-		return r, nil
-	}
 
 	cr, err := rp.rs.GetRepoByChartURL(URL)
 	if err != nil {
 		return nil, err
 	}
 
-	return rp.createRepoByType(cr)
-}
-
-func (rp *repoProvider) findRepoByChartURL(URL string) IChartRepo {
-	var found IChartRepo
-	for _, r := range rp.repos {
-		rURL := r.GetURL()
-		if strings.HasPrefix(URL, rURL) {
-			if found == nil || len(found.GetURL()) < len(rURL) {
-				found = r
-			}
-		}
+	if r, ok := rp.repos[cr.GetURL()]; ok {
+		return r, nil
 	}
 
-	return found
+	return rp.createRepoByType(cr)
 }
 
 // GetChartByReference maps the supplied chart reference into a fully qualified
