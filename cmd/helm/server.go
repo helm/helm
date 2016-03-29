@@ -123,11 +123,12 @@ func dmCmd() cli.Command {
 }
 
 func installServer(c *cli.Context) error {
-	dryRun := c.Bool("dry-run")
 	resImg := c.String("resourcifier-image")
 	ebImg := c.String("expandybird-image")
 	manImg := c.String("manager-image")
-	runner := getKubectlRunner(dryRun)
+
+	dryRun := c.Bool("dry-run")
+	runner := buildKubectlRunner(dryRun)
 
 	i := client.NewInstaller()
 	i.Manager["Image"] = manImg
@@ -144,7 +145,7 @@ func installServer(c *cli.Context) error {
 
 func uninstallServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	runner := getKubectlRunner(dryRun)
+	runner := buildKubectlRunner(dryRun)
 
 	out, err := client.Uninstall(runner)
 	if err != nil {
@@ -156,12 +157,9 @@ func uninstallServer(c *cli.Context) error {
 
 func statusServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	client := kubectl.Client
-	if dryRun {
-		client = kubectl.PrintRunner{}
-	}
+	runner := buildKubectlRunner(dryRun)
 
-	out, err := client.GetByKind("pods", "", "dm")
+	out, err := runner.GetByKind("pods", "", "dm")
 	if err != nil {
 		return err
 	}
@@ -169,23 +167,20 @@ func statusServer(c *cli.Context) error {
 	return nil
 }
 
-func getKubectlRunner(dryRun bool) kubectl.Runner {
-	if dryRun {
-		return &kubectl.PrintRunner{}
-	}
-	return &kubectl.RealRunner{}
-}
-
 func targetServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	client := kubectl.Client
-	if dryRun {
-		client = kubectl.PrintRunner{}
-	}
-	out, err := client.ClusterInfo()
+	runner := buildKubectlRunner(dryRun)
+	out, err := runner.ClusterInfo()
 	if err != nil {
 		return fmt.Errorf("%s (%s)", out, err)
 	}
 	format.Msg(string(out))
 	return nil
+}
+
+func buildKubectlRunner(dryRun bool) kubectl.Runner {
+	if dryRun {
+		return &kubectl.PrintRunner{}
+	}
+	return &kubectl.RealRunner{}
 }
