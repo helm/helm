@@ -100,7 +100,7 @@ func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 	return deployment, err
 }
 
-// DescribDeployment describes the kubernetes resources of the supplied deployment
+// DescribeDeployment describes the kubernetes resources of the supplied deployment
 func (c *Client) DescribeDeployment(name string) (*common.Deployment, error) {
 	var deployment *common.Deployment
 	//TODO: implement
