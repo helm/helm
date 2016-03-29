@@ -83,7 +83,6 @@ func addRepo(c *cli.Context) error {
 	payload, _ := json.Marshal(repo.Repo{URL: repoURL, Name: name})
 	msg := ""
 	if _, err := NewClient(c).Post(chartRepoPath, payload, &msg); err != nil {
-		//TODO: Return more specific errors to the user
 		return err
 	}
 	format.Info(name + " has been added to your chart repositories!")
