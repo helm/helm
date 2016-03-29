@@ -136,3 +136,38 @@ func TestGetDeployments(t *testing.T) {
 		t.Errorf("Unexpected status %d", out.State.Status)
 	}
 }
+
+func TestDeleteDeployments(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "DELETE /deployments/*", deleteDeploymentHandlerFunc)
+	defer s.Close()
+
+	man := c.Manager.(*mockManager)
+	man.deployments = []*common.Deployment{
+		{Name: "portunes", State: &common.DeploymentState{Status: common.CreatedStatus}},
+	}
+
+	req, err := http.NewRequest("DELETE", s.URL+"/deployments/portunes", nil)
+	if err != nil {
+		t.Fatal("Failed to create delete request")
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to execute delete request: %s", err)
+	}
+
+	if res.StatusCode != 200 {
+		t.Errorf("Expected status code 200, got %d", res.StatusCode)
+	}
+
+	var out common.Deployment
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		t.Errorf("Failed to parse results: %s", err)
+		return
+	}
+
+	if out.Name != "portunes" {
+		t.Errorf("Unexpected name %q", out.Name)
+	}
+}
