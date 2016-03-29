@@ -19,7 +19,6 @@ package manager
 import (
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/repo"
-	"github.com/kubernetes/helm/pkg/util"
 
 	"errors"
 	"reflect"
@@ -46,7 +45,7 @@ var resourcesWithFailureState = common.Configuration{
 		},
 	}},
 }
-var template = common.Template{Name: "test", Content: util.ToYAMLOrError(&configuration)}
+var deploymentRequest = common.DeploymentRequest{Name: "test", Configuration: configuration}
 
 var expandedConfig = ExpandedConfiguration{
 	Config: &configuration,
@@ -334,25 +333,25 @@ func TestGetManifest(t *testing.T) {
 func TestCreateDeployment(t *testing.T) {
 	testRepository.reset()
 	testDeployer.reset()
-	d, err := testManager.CreateDeployment(&template)
+	d, err := testManager.CreateDeployment(&deploymentRequest)
 	if !reflect.DeepEqual(d, &deployment) || err != nil {
 		t.Fatalf("Expected a different set of response values from invoking CreateDeployment."+
 			"Received: %v, %s. Expected: %#v, %s.", d, err, &deployment, "nil")
 	}
 
-	if testRepository.Created[0] != template.Name {
+	if testRepository.Created[0] != deploymentRequest.Name {
 		t.Fatalf("Repository CreateDeployment was called with %s but expected %s.",
-			testRepository.Created[0], template.Name)
+			testRepository.Created[0], deploymentRequest.Name)
 	}
 
-	if !strings.HasPrefix(testRepository.ManifestAdd[template.Name].Name, "manifest-") {
+	if !strings.HasPrefix(testRepository.ManifestAdd[deploymentRequest.Name].Name, "manifest-") {
 		t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
-			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
+			"to begin with manifest-.", testRepository.ManifestAdd[deploymentRequest.Name].Name)
 	}
 
-	if !strings.HasPrefix(testRepository.ManifestSet[template.Name].Name, "manifest-") {
+	if !strings.HasPrefix(testRepository.ManifestSet[deploymentRequest.Name].Name, "manifest-") {
 		t.Fatalf("Repository SetManifest was called with %s but expected manifest name"+
-			"to begin with manifest-.", testRepository.ManifestSet[template.Name].Name)
+			"to begin with manifest-.", testRepository.ManifestSet[deploymentRequest.Name].Name)
 	}
 
 	if !reflect.DeepEqual(*testDeployer.Created[0], configuration) || err != nil {
@@ -377,11 +376,11 @@ func TestCreateDeploymentCreationFailure(t *testing.T) {
 	testRepository.reset()
 	testDeployer.reset()
 	testDeployer.FailCreate = true
-	d, err := testManager.CreateDeployment(&template)
+	d, err := testManager.CreateDeployment(&deploymentRequest)
 
-	if testRepository.Created[0] != template.Name {
+	if testRepository.Created[0] != deploymentRequest.Name {
 		t.Fatalf("Repository CreateDeployment was called with %s but expected %s.",
-			testRepository.Created[0], template.Name)
+			testRepository.Created[0], deploymentRequest.Name)
 	}
 
 	if len(testRepository.Deleted) != 0 {
@@ -407,11 +406,11 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 	testRepository.reset()
 	testDeployer.reset()
 	testDeployer.FailCreateResource = true
-	d, err := testManager.CreateDeployment(&template)
+	d, err := testManager.CreateDeployment(&deploymentRequest)
 
-	if testRepository.Created[0] != template.Name {
+	if testRepository.Created[0] != deploymentRequest.Name {
 		t.Fatalf("Repository CreateDeployment was called with %s but expected %s.",
-			testRepository.Created[0], template.Name)
+			testRepository.Created[0], deploymentRequest.Name)
 	}
 
 	if len(testRepository.Deleted) != 0 {
@@ -423,14 +422,14 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 		t.Fatal("CreateDeployment failure did not mark deployment as failed")
 	}
 
-	if manifest, ok := testRepository.ManifestAdd[template.Name]; ok {
+	if manifest, ok := testRepository.ManifestAdd[deploymentRequest.Name]; ok {
 		if !strings.HasPrefix(manifest.Name, "manifest-") {
 			t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
 				"to begin with manifest-.", manifest.Name)
 		}
 	}
 
-	if manifest, ok := testRepository.ManifestSet[template.Name]; ok {
+	if manifest, ok := testRepository.ManifestSet[deploymentRequest.Name]; ok {
 		if !strings.HasPrefix(manifest.Name, "manifest-") {
 			t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
 				"to begin with manifest-.", manifest.Name)
@@ -450,25 +449,25 @@ func TestCreateDeploymentCreationResourceFailure(t *testing.T) {
 func TestDeleteDeploymentForget(t *testing.T) {
 	testRepository.reset()
 	testDeployer.reset()
-	d, err := testManager.CreateDeployment(&template)
+	d, err := testManager.CreateDeployment(&deploymentRequest)
 	if !reflect.DeepEqual(d, &deployment) || err != nil {
 		t.Fatalf("Expected a different set of response values from invoking CreateDeployment."+
 			"Received: %v, %s. Expected: %#v, %s.", d, err, &deployment, "nil")
 	}
 
-	if testRepository.Created[0] != template.Name {
+	if testRepository.Created[0] != deploymentRequest.Name {
 		t.Fatalf("Repository CreateDeployment was called with %s but expected %s.",
-			testRepository.Created[0], template.Name)
+			testRepository.Created[0], deploymentRequest.Name)
 	}
 
-	if !strings.HasPrefix(testRepository.ManifestAdd[template.Name].Name, "manifest-") {
+	if !strings.HasPrefix(testRepository.ManifestAdd[deploymentRequest.Name].Name, "manifest-") {
 		t.Fatalf("Repository AddManifest was called with %s but expected manifest name"+
-			"to begin with manifest-.", testRepository.ManifestAdd[template.Name].Name)
+			"to begin with manifest-.", testRepository.ManifestAdd[deploymentRequest.Name].Name)
 	}
 
-	if !strings.HasPrefix(testRepository.ManifestSet[template.Name].Name, "manifest-") {
+	if !strings.HasPrefix(testRepository.ManifestSet[deploymentRequest.Name].Name, "manifest-") {
 		t.Fatalf("Repository SetManifest was called with %s but expected manifest name"+
-			"to begin with manifest-.", testRepository.ManifestSet[template.Name].Name)
+			"to begin with manifest-.", testRepository.ManifestSet[deploymentRequest.Name].Name)
 	}
 
 	if !reflect.DeepEqual(*testDeployer.Created[0], configuration) || err != nil {
@@ -497,9 +496,9 @@ func TestDeleteDeploymentForget(t *testing.T) {
 }
 
 func TestExpand(t *testing.T) {
-	m, err := testManager.Expand(&template)
+	m, err := testManager.Expand(&deploymentRequest)
 	if err != nil {
-		t.Fatal("Failed to expand template into manifest.")
+		t.Fatal("Failed to expand deployment request into manifest.")
 	}
 
 	if !reflect.DeepEqual(*m.ExpandedConfig, configuration) {

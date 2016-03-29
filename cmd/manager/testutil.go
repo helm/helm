@@ -83,7 +83,7 @@ func (m *mockManager) GetDeployment(name string) (*common.Deployment, error) {
 	return nil, errors.New("mock error: No such deployment")
 }
 
-func (m *mockManager) CreateDeployment(t *common.Template) (*common.Deployment, error) {
+func (m *mockManager) CreateDeployment(depReq *common.DeploymentRequest) (*common.Deployment, error) {
 	return &common.Deployment{}, nil
 }
 
@@ -91,7 +91,7 @@ func (m *mockManager) DeleteDeployment(name string, forget bool) (*common.Deploy
 	return &common.Deployment{}, nil
 }
 
-func (m *mockManager) PutDeployment(name string, t *common.Template) (*common.Deployment, error) {
+func (m *mockManager) PutDeployment(name string, depReq *common.DeploymentRequest) (*common.Deployment, error) {
 	return &common.Deployment{}, nil
 }
 
@@ -103,7 +103,7 @@ func (m *mockManager) GetManifest(deploymentName string, manifest string) (*comm
 	return &common.Manifest{}, nil
 }
 
-func (m *mockManager) Expand(t *common.Template) (*common.Manifest, error) {
+func (m *mockManager) Expand(depReq *common.DeploymentRequest) (*common.Manifest, error) {
 	return &common.Manifest{}, nil
 }
 
