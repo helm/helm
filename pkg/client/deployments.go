@@ -110,8 +110,9 @@ func (c *Client) DescribeDeployment(name string) (*common.Deployment, error) {
 // PostDeployment posts a deployment object to the manager service.
 func (c *Client) PostDeployment(res *common.Resource) error {
 	// This is a stop-gap until we get this API cleaned up.
-	t := common.CreateDeploymentRequest{
-		ChartInvocation: res,
+	t := common.DeploymentRequest{
+		Configuration: common.Configuration{Resources: []*common.Resource{res}},
+		Name:          res.Name,
 	}
 
 	data, err := json.Marshal(t)

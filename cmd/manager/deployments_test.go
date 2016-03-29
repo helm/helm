@@ -60,12 +60,12 @@ func TestHealthz(t *testing.T) {
 
 func TestCreateDeployments(t *testing.T) {
 	c := stubContext()
-	tpl := &common.Template{Name: "foo"}
+	depReq := &common.DeploymentRequest{Name: "foo"}
 	s := httpHarness(c, "POST /deployments", createDeploymentHandlerFunc)
 	defer s.Close()
 
 	var b bytes.Buffer
-	if err := json.NewEncoder(&b).Encode(tpl); err != nil {
+	if err := json.NewEncoder(&b).Encode(depReq); err != nil {
 		t.Fatal(err)
 	}
 

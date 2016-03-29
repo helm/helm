@@ -202,9 +202,9 @@ func createDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *rout
 	handler := "manager: create deployment"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
-	t := getTemplate(w, r, handler)
-	if t != nil {
-		d, err := c.Manager.CreateDeployment(t)
+	depReq := getDeploymentRequest(w, r, handler)
+	if depReq != nil {
+		d, err := c.Manager.CreateDeployment(depReq)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -212,6 +212,7 @@ func createDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *rout
 
 		util.LogHandlerExitWithJSON(handler, w, d, http.StatusCreated)
 	}
+
 	return nil
 }
 
@@ -242,9 +243,9 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 		return err
 	}
 
-	t := getTemplate(w, r, handler)
-	if t != nil {
-		d, err := c.Manager.PutDeployment(name, t)
+	depReq := getDeploymentRequest(w, r, handler)
+	if depReq != nil {
+		d, err := c.Manager.PutDeployment(name, depReq)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -252,6 +253,7 @@ func putDeploymentHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 
 		util.LogHandlerExitWithJSON(handler, w, d, http.StatusCreated)
 	}
+
 	return nil
 }
 
@@ -289,14 +291,15 @@ func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler s
 	return unescaped, nil
 }
 
-func getTemplate(w http.ResponseWriter, r *http.Request, handler string) *common.Template {
+func getDeploymentRequest(w http.ResponseWriter, r *http.Request, handler string) *common.DeploymentRequest {
 	util.LogHandlerEntry(handler, r)
-	t := &common.Template{}
-	if err := httputil.Decode(w, r, t); err != nil {
+	depReq := &common.DeploymentRequest{}
+	if err := httputil.Decode(w, r, depReq); err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil
 	}
-	return t
+
+	return depReq
 }
 
 func listManifestsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
@@ -348,9 +351,9 @@ func expandHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context
 	handler := "manager: expand config"
 	util.LogHandlerEntry(handler, r)
 	defer r.Body.Close()
-	t := getTemplate(w, r, handler)
-	if t != nil {
-		c, err := c.Manager.Expand(t)
+	depReq := getDeploymentRequest(w, r, handler)
+	if depReq != nil {
+		c, err := c.Manager.Expand(depReq)
 		if err != nil {
 			httputil.BadRequest(w, r, err)
 			return nil
@@ -358,6 +361,7 @@ func expandHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context
 
 		util.LogHandlerExitWithJSON(handler, w, c, http.StatusCreated)
 	}
+
 	return nil
 }
 
