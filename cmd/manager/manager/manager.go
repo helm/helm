@@ -33,14 +33,14 @@ type Manager interface {
 	// Deployments
 	ListDeployments() ([]common.Deployment, error)
 	GetDeployment(name string) (*common.Deployment, error)
-	CreateDeployment(t *common.Template) (*common.Deployment, error)
+	CreateDeployment(depReq *common.DeploymentRequest) (*common.Deployment, error)
 	DeleteDeployment(name string, forget bool) (*common.Deployment, error)
-	PutDeployment(name string, t *common.Template) (*common.Deployment, error)
+	PutDeployment(name string, depReq *common.DeploymentRequest) (*common.Deployment, error)
 
 	// Manifests
 	ListManifests(deploymentName string) (map[string]*common.Manifest, error)
 	GetManifest(deploymentName string, manifest string) (*common.Manifest, error)
-	Expand(t *common.Template) (*common.Manifest, error)
+	Expand(t *common.DeploymentRequest) (*common.Manifest, error)
 
 	// Charts
 	ListCharts() ([]string, error)
@@ -125,27 +125,27 @@ func (m *manager) GetManifest(deploymentName string, manifestName string) (*comm
 	return d, nil
 }
 
-// CreateDeployment expands the supplied template, creates the resulting
-// configuration in the cluster, creates a new deployment that tracks it,
-// and stores the deployment in the repository. Returns the deployment.
-func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, error) {
-	log.Printf("Creating deployment: %s", t.Name)
-	_, err := m.repository.CreateDeployment(t.Name)
+// CreateDeployment expands the supplied configuration, creates the resulting
+// resources in the cluster, creates a new deployment that tracks it, stores the
+// deployment in the repository and returns the deployment.
+func (m *manager) CreateDeployment(depReq *common.DeploymentRequest) (*common.Deployment, error) {
+	log.Printf("Creating deployment: %s", depReq.Name)
+	_, err := m.repository.CreateDeployment(depReq.Name)
 	if err != nil {
 		log.Printf("CreateDeployment failed %v", err)
 		return nil, err
 	}
 
-	manifest, err := m.createManifest(t)
+	manifest, err := m.Expand(depReq)
 	if err != nil {
 		log.Printf("Manifest creation failed: %v", err)
-		m.repository.SetDeploymentState(t.Name, failState(err))
+		m.repository.SetDeploymentState(depReq.Name, failState(err))
 		return nil, err
 	}
 
 	if err := m.repository.AddManifest(manifest); err != nil {
 		log.Printf("AddManifest failed %v", err)
-		m.repository.SetDeploymentState(t.Name, failState(err))
+		m.repository.SetDeploymentState(depReq.Name, failState(err))
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 	if err != nil {
 		// Deployment failed, mark as failed
 		log.Printf("CreateConfiguration failed: %v", err)
-		m.repository.SetDeploymentState(t.Name, failState(err))
+		m.repository.SetDeploymentState(depReq.Name, failState(err))
 
 		// If we failed before being able to create some of the resources, then
 		// return the failure as such. Otherwise, we're going to add the manifest
@@ -166,40 +166,24 @@ func (m *manager) CreateDeployment(t *common.Template) (*common.Deployment, erro
 		errs := getResourceErrors(actualConfig)
 		if len(errs) > 0 {
 			e := fmt.Errorf("Found resource errors during deployment: %v", errs)
-			m.repository.SetDeploymentState(t.Name, failState(e))
+			m.repository.SetDeploymentState(depReq.Name, failState(e))
 			return nil, e
 		}
 
-		m.repository.SetDeploymentState(t.Name, &common.DeploymentState{Status: common.DeployedStatus})
+		m.repository.SetDeploymentState(depReq.Name, &common.DeploymentState{Status: common.DeployedStatus})
 	}
 
 	// Update the manifest with the actual state of the reified resources
 	manifest.ExpandedConfig = actualConfig
 	if err := m.repository.SetManifest(manifest); err != nil {
 		log.Printf("SetManifest failed %v", err)
-		m.repository.SetDeploymentState(t.Name, failState(err))
+		m.repository.SetDeploymentState(depReq.Name, failState(err))
 		return nil, err
 	}
 
 	// Finally update the type instances for this deployment.
-	m.setChartInstances(t.Name, manifest.Name, manifest.Layout)
-	return m.repository.GetValidDeployment(t.Name)
-}
-
-func (m *manager) createManifest(t *common.Template) (*common.Manifest, error) {
-	et, err := m.expander.ExpandTemplate(t)
-	if err != nil {
-		log.Printf("Expansion failed %v", err)
-		return nil, err
-	}
-
-	return &common.Manifest{
-		Name:           generateManifestName(),
-		Deployment:     t.Name,
-		InputConfig:    t,
-		ExpandedConfig: et.Config,
-		Layout:         et.Layout,
-	}, nil
+	m.setChartInstances(depReq.Name, manifest.Name, manifest.Layout)
+	return m.repository.GetValidDeployment(depReq.Name)
 }
 
 func (m *manager) setChartInstances(deploymentName string, manifestName string, layout *common.Layout) {
@@ -284,13 +268,13 @@ func (m *manager) DeleteDeployment(name string, forget bool) (*common.Deployment
 
 // PutDeployment replaces the configuration of the deployment with
 // the supplied identifier in the cluster, and returns the deployment.
-func (m *manager) PutDeployment(name string, t *common.Template) (*common.Deployment, error) {
+func (m *manager) PutDeployment(name string, depReq *common.DeploymentRequest) (*common.Deployment, error) {
 	_, err := m.repository.GetValidDeployment(name)
 	if err != nil {
 		return nil, err
 	}
 
-	manifest, err := m.createManifest(t)
+	manifest, err := m.Expand(depReq)
 	if err != nil {
 		log.Printf("Manifest creation failed: %v", err)
 		m.repository.SetDeploymentState(name, failState(err))
@@ -311,20 +295,23 @@ func (m *manager) PutDeployment(name string, t *common.Template) (*common.Deploy
 	}
 
 	// Finally update the type instances for this deployment.
-	m.setChartInstances(t.Name, manifest.Name, manifest.Layout)
-	return m.repository.GetValidDeployment(t.Name)
+	m.setChartInstances(depReq.Name, manifest.Name, manifest.Layout)
+	return m.repository.GetValidDeployment(depReq.Name)
 }
 
-func (m *manager) Expand(t *common.Template) (*common.Manifest, error) {
-	et, err := m.expander.ExpandTemplate(t)
+func (m *manager) Expand(depReq *common.DeploymentRequest) (*common.Manifest, error) {
+	expConf, err := m.expander.ExpandConfiguration(&depReq.Configuration)
 	if err != nil {
 		log.Printf("Expansion failed %v", err)
 		return nil, err
 	}
 
 	return &common.Manifest{
-		ExpandedConfig: et.Config,
-		Layout:         et.Layout,
+		Name:           generateManifestName(),
+		Deployment:     depReq.Name,
+		InputConfig:    &depReq.Configuration,
+		ExpandedConfig: expConf.Config,
+		Layout:         expConf.Layout,
 	}, nil
 }
 
@@ -386,7 +373,7 @@ func (m *manager) RemoveRepo(repoName string) error {
 	return m.service.DeleteRepo(repoURL)
 }
 
-// GetRepo returns the repository with the given URL
+// GetRepo returns the repository with the given name
 func (m *manager) GetRepo(repoName string) (repo.IRepo, error) {
 	repoURL, err := m.service.GetRepoURLByName(repoName)
 	if err != nil {

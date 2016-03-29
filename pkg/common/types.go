@@ -70,14 +70,15 @@ func (s DeploymentStatus) String() string {
 type Manifest struct {
 	Deployment     string         `json:"deployment,omitempty"`
 	Name           string         `json:"name,omitempty"`
-	InputConfig    *Template      `json:"inputConfig,omitempty"`
+	InputConfig    *Configuration `json:"inputConfig,omitempty"`
 	ExpandedConfig *Configuration `json:"expandedConfig,omitempty"`
 	Layout         *Layout        `json:"layout,omitempty"`
 }
 
-// CreateDeploymentRequest defines the manager API to create deployments.
-type CreateDeploymentRequest struct {
-	ChartInvocation *Resource `json:"chart_invocation"`
+// DeploymentRequest defines the manager API to create deployments.
+type DeploymentRequest struct {
+	Configuration
+	Name string `json:"name"`
 }
 
 // ChartInstance defines the metadata for an instantiation of a chart.
