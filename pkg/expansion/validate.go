@@ -17,9 +17,12 @@ limitations under the License.
 package expansion
 
 import (
-	"github.com/kubernetes/helm/pkg/chart"
-
+	"bytes"
 	"fmt"
+
+	"github.com/ghodss/yaml"
+	"github.com/juju/gojsonschema"
+	"github.com/kubernetes/helm/pkg/chart"
 )
 
 // ValidateRequest does basic sanity checks on the request.
@@ -49,4 +52,75 @@ func ValidateRequest(request *ServiceRequest) error {
 	}
 
 	return nil
+}
+
+// ValidateProperties validates the properties in the chart invocation against the schema file in
+// the chart itself, which is assumed to be JSONschema.  It also modifies a copy of the request to
+// add defaults values if properties are not provided (according to the default field in
+// JSONschema), and returns this copy.
+func ValidateProperties(request *ServiceRequest) (*ServiceRequest, error) {
+
+	schemaFilename := request.Chart.Chartfile.Schema
+
+	if schemaFilename == "" {
+		// No schema, so perform no validation.
+		return request, nil
+	}
+
+	chartInv := request.ChartInvocation
+
+	var schemaBytes *[]byte
+	for _, f := range request.Chart.Members {
+		if f.Path == schemaFilename {
+			schemaBytes = &f.Content
+		}
+	}
+	if schemaBytes == nil {
+		return nil, fmt.Errorf("%s: The schema referenced from the Chart.yaml cannot be found: %s",
+			chartInv.Name, schemaFilename)
+	}
+	var schemaDoc interface{}
+
+	if err := yaml.Unmarshal(*schemaBytes, &schemaDoc); err != nil {
+		return nil, fmt.Errorf("%s: %s was not valid YAML: %v",
+			chartInv.Name, schemaFilename, err)
+	}
+
+	// Build a schema object
+	schema, err := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schemaDoc))
+	if err != nil {
+		return nil, err
+	}
+
+	// Do validation
+	result, err := schema.Validate(gojsonschema.NewGoLoader(request.ChartInvocation.Properties))
+	if err != nil {
+		return nil, err
+	}
+
+	// Need to concat errors here
+	if !result.Valid() {
+		var message bytes.Buffer
+		message.WriteString("Properties failed validation:\n")
+		for _, err := range result.Errors() {
+			message.WriteString(fmt.Sprintf("- %s", err))
+		}
+		return nil, fmt.Errorf("%s: %s", chartInv.Name, message.String())
+	}
+
+	// Fill in defaults (after validation).
+	modifiedProperties, err := schema.InsertDefaults(request.ChartInvocation.Properties)
+	if err != nil {
+		return nil, err
+	}
+
+	modifiedResource := *request.ChartInvocation
+	modifiedResource.Properties = modifiedProperties
+
+	modifiedRequest := &ServiceRequest{
+		ChartInvocation: &modifiedResource,
+		Chart:           request.Chart,
+	}
+
+	return modifiedRequest, nil
 }

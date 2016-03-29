@@ -90,7 +90,10 @@ func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.Se
 		return nil, err
 	}
 
-	// TODO(dcunnin): Validate via JSONschema.
+	request, err = expansion.ValidateProperties(request)
+	if err != nil {
+		return nil, err
+	}
 
 	chartInv := request.ChartInvocation
 	chartMembers := request.Chart.Members
