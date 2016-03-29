@@ -18,6 +18,7 @@ package expander
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -42,10 +43,40 @@ func content(lines []string) []byte {
 	return []byte(strings.Join(lines, "\n") + "\n")
 }
 
-// funcName returns the name of the calling function.
-func funcName() string {
+func getChartNameFromPC(pc uintptr) string {
+	rf := runtime.FuncForPC(pc)
+	fn := rf.Name()
+	bn := filepath.Base(fn)
+	split := strings.Split(bn, ".")
+	if len(split) > 1 {
+		split = split[1:]
+	}
+
+	cn := fmt.Sprintf("%s-1.2.3.tgz", split[0])
+	return cn
+}
+
+func getChartURLFromPC(pc uintptr) string {
+	cn := getChartNameFromPC(pc)
+	cu := fmt.Sprintf("gs://kubernetes-charts-testing/%s", cn)
+	return cu
+}
+
+func getTestChartName(t *testing.T) string {
 	pc, _, _, _ := runtime.Caller(1)
-	return runtime.FuncForPC(pc).Name()
+	cu := getChartURLFromPC(pc)
+	cl, err := chart.Parse(cu)
+	if err != nil {
+		t.Fatalf("cannot parse chart reference %s: %s", cu, err)
+	}
+
+	return cl.Name
+}
+
+func getTestChartURL() string {
+	pc, _, _, _ := runtime.Caller(1)
+	cu := getChartURLFromPC(pc)
+	return cu
 }
 
 func testExpansion(t *testing.T, req *expansion.ServiceRequest,
@@ -85,11 +116,11 @@ func TestEmptyJinja(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
@@ -113,11 +144,11 @@ func TestEmptyPython(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: pyExpander,
 				},
 				Members: []*chart.Member{
@@ -144,11 +175,11 @@ func TestSimpleJinja(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
@@ -181,11 +212,11 @@ func TestSimplePython(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: pyExpander,
 				},
 				Members: []*chart.Member{
@@ -220,7 +251,7 @@ func TestPropertiesJinja(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 				Properties: map[string]interface{}{
 					"prop1": 3.0,
 					"prop2": "foo",
@@ -228,7 +259,7 @@ func TestPropertiesJinja(t *testing.T) {
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
@@ -266,7 +297,7 @@ func TestPropertiesPython(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 				Properties: map[string]interface{}{
 					"prop1": 3.0,
 					"prop2": "foo",
@@ -274,7 +305,7 @@ func TestPropertiesPython(t *testing.T) {
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: pyExpander,
 				},
 				Members: []*chart.Member{
@@ -314,11 +345,11 @@ func TestMultiFileJinja(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
@@ -372,7 +403,7 @@ func TestSchema(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 				Properties: map[string]interface{}{
 					"prop1": 3.0,
 					"prop2": "foo",
@@ -380,7 +411,7 @@ func TestSchema(t *testing.T) {
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 					Schema:   "Schema.yaml",
 				},
@@ -423,7 +454,7 @@ func TestSchemaFail(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 				Properties: map[string]interface{}{
 					"prop1": 3.0,
 					"prop3": "foo",
@@ -431,7 +462,7 @@ func TestSchemaFail(t *testing.T) {
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 					Schema:   "Schema.yaml",
 				},
@@ -464,11 +495,11 @@ func TestMultiFileJinjaMissing(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
@@ -490,11 +521,11 @@ func TestMultiFilePython(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: pyExpander,
 				},
 				Members: []*chart.Member{
@@ -550,11 +581,11 @@ func TestMultiFilePythonMissing(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: pyExpander,
 				},
 				Members: []*chart.Member{
@@ -578,7 +609,7 @@ func TestWrongChartName(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
@@ -594,7 +625,7 @@ func TestWrongChartName(t *testing.T) {
 			},
 		},
 		nil, // Response
-		"Request chart invocation does not match provided chart",
+		"does not match provided chart",
 	)
 }
 
@@ -604,11 +635,11 @@ func TestEntrypointNotFound(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{},
@@ -625,11 +656,11 @@ func TestMalformedResource(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
@@ -654,11 +685,11 @@ func TestResourceNoName(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
@@ -683,11 +714,11 @@ func TestResourceNoType(t *testing.T) {
 		&expansion.ServiceRequest{
 			ChartInvocation: &common.Resource{
 				Name: "test_invocation",
-				Type: funcName(),
+				Type: getTestChartURL(),
 			},
 			Chart: &chart.Content{
 				Chartfile: &chart.Chartfile{
-					Name:     funcName(),
+					Name:     getTestChartName(t),
 					Expander: jinjaExpander,
 				},
 				Members: []*chart.Member{
