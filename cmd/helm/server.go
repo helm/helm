@@ -128,7 +128,7 @@ func installServer(c *cli.Context) error {
 	manImg := c.String("manager-image")
 
 	dryRun := c.Bool("dry-run")
-	kubectlPath := c.String("kubectl")
+	kubectlPath := c.GlobalString("kubectl")
 	runner := buildKubectlRunner(kubectlPath, dryRun)
 
 	i := client.NewInstaller()
@@ -146,7 +146,7 @@ func installServer(c *cli.Context) error {
 
 func uninstallServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	kubectlPath := c.String("kubectl")
+	kubectlPath := c.GlobalString("kubectl")
 	runner := buildKubectlRunner(kubectlPath, dryRun)
 
 	out, err := client.Uninstall(runner)
@@ -159,7 +159,7 @@ func uninstallServer(c *cli.Context) error {
 
 func statusServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	kubectlPath := c.String("kubectl")
+	kubectlPath := c.GlobalString("kubectl")
 	runner := buildKubectlRunner(kubectlPath, dryRun)
 
 	out, err := runner.GetByKind("pods", "", "dm")
@@ -172,7 +172,7 @@ func statusServer(c *cli.Context) error {
 
 func targetServer(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
-	kubectlPath := c.String("kubectl")
+	kubectlPath := c.GlobalString("kubectl")
 	runner := buildKubectlRunner(kubectlPath, dryRun)
 
 	out, err := runner.ClusterInfo()
