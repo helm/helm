@@ -58,6 +58,14 @@ func addChartRepoHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.C
 		return nil
 	}
 
+	if string(cr.Format) == "" {
+		cr.Format = repo.GCSRepoFormat
+	}
+
+	if string(cr.Type) == "" {
+		cr.Type = repo.GCSRepoType
+	}
+
 	if err := c.Manager.AddRepo(cr); err != nil {
 		httputil.BadRequest(w, r, err)
 		return nil

@@ -65,15 +65,17 @@ func TestListCharts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(charts) != 1 {
-		t.Fatalf("expected one chart in list, got %d", len(charts))
+	if len(charts) < 1 {
+		t.Fatalf("expected at least one chart in test repository %s", TestRepoURL)
 	}
 
-	haveName := charts[0]
-	wantName := TestArchiveName
-	if haveName != wantName {
-		t.Fatalf("expected chart named %s, got %s", wantName, haveName)
+	for _, ch := range charts {
+		if ch == TestArchiveName {
+			return
+		}
 	}
+
+	t.Fatalf("expected chart named %s in test repository %s", TestArchiveName, TestRepoURL)
 }
 
 func TestListChartsWithShouldFindRegex(t *testing.T) {

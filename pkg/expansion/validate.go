@@ -17,6 +17,8 @@ limitations under the License.
 package expansion
 
 import (
+	"github.com/kubernetes/helm/pkg/chart"
+
 	"fmt"
 )
 
@@ -32,8 +34,13 @@ func ValidateRequest(request *ServiceRequest) error {
 	chartInv := request.ChartInvocation
 	chartFile := request.Chart.Chartfile
 
-	if chartInv.Type != chartFile.Name {
-		return fmt.Errorf("Request chart invocation does not match provided chart")
+	l, err := chart.Parse(chartInv.Type)
+	if err != nil {
+		return fmt.Errorf("cannot parse chart reference %s: %s", chartInv.Type, err)
+	}
+
+	if l.Name != chartFile.Name {
+		return fmt.Errorf("Chart invocation type (%s) does not match provided chart (%s)", chartInv.Type, chartFile.Name)
 	}
 
 	if chartFile.Expander == nil {

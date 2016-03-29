@@ -58,11 +58,6 @@ func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.Se
 	chartFile := request.Chart.Chartfile
 	chartMembers := request.Chart.Members
 
-	if chartFile.Expander.Name != "ExpandyBird" {
-		message := fmt.Sprintf("ExpandyBird cannot do this kind of expansion: ", chartFile.Expander.Name)
-		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
-	}
-
 	if e.ExpansionBinary == "" {
 		message := fmt.Sprintf("expansion binary cannot be empty")
 		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
