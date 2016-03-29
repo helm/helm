@@ -35,12 +35,16 @@ import (
 )
 
 var (
-	TestRepoBucket   = "kubernetes-charts-testing"
-	TestRepoURL      = "gs://" + TestRepoBucket
-	TestChartName    = "frobnitz"
-	TestChartVersion = "0.0.1"
-	TestArchiveName  = TestChartName + "-" + TestChartVersion + ".tgz"
-	TestResourceType = TestRepoURL + "/" + TestArchiveName
+	TestRepoBucket         = "kubernetes-charts-testing"
+	TestRepoURL            = "gs://" + TestRepoBucket
+	TestChartName          = "frobnitz"
+	TestChartVersion       = "0.0.1"
+	TestArchiveName        = TestChartName + "-" + TestChartVersion + ".tgz"
+	TestResourceType       = TestRepoURL + "/" + TestArchiveName
+	TestRepoType           = string(repo.GCSRepoType)
+	TestRepoFormat         = string(repo.GCSRepoFormat)
+	TestRepoCredentialName = "default"
+	TestRepoName           = TestRepoBucket
 )
 
 var validResponseTestCaseData = []byte(`
@@ -262,7 +266,7 @@ func TestExpandTemplate(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(etc.Handler))
 		defer ts.Close()
 
-		expander := NewExpander(ts.URL, nil)
+		expander := NewExpander(ts.URL, getTestRepoProvider(t))
 		resource := &common.Resource{
 			Name: "test_invocation",
 			Type: TestResourceType,
@@ -367,4 +371,19 @@ func expanderSuccessHandler(w http.ResponseWriter, r *http.Request) {
 
 	svcResp := getValidServiceResponse()
 	util.LogHandlerExitWithJSON(handler, w, svcResp, http.StatusOK)
+}
+
+func getTestRepoProvider(t *testing.T) repo.IRepoProvider {
+	rs := repo.NewInmemRepoService()
+	rp := repo.NewRepoProvider(rs, nil, nil)
+	tr, err := repo.NewRepo(TestRepoURL, TestRepoCredentialName, TestRepoName, TestRepoFormat, TestRepoType)
+	if err != nil {
+		t.Fatalf("cannot create test repository: %s", err)
+	}
+
+	if err := rs.CreateRepo(tr); err != nil {
+		t.Fatalf("cannot initialize repository service: %s", err)
+	}
+
+	return rp
 }
