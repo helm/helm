@@ -160,4 +160,14 @@ func TestDeleteDeployments(t *testing.T) {
 	if res.StatusCode != 200 {
 		t.Errorf("Expected status code 200, got %d", res.StatusCode)
 	}
+
+	var out common.Deployment
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		t.Errorf("Failed to parse results: %s", err)
+		return
+	}
+
+	if out.Name != "portunes" {
+		t.Errorf("Unexpected name %q", out.Name)
+	}
 }
