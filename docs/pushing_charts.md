@@ -57,7 +57,7 @@ To handle more granular permissions, use the 'gsutil help acls' command.
 
 Using the example above, you could make this publicy readable by doing:
 ```
-gsutil cp -a public-read  nginx-0.0.1.tgz gs://<yourbucket>/
+gsutil cp -a public-read nginx-0.0.1.tgz gs://<yourbucket>/
 ```
 
 
