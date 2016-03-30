@@ -97,11 +97,7 @@ func main() {
 }
 
 func cmds() []cli.Command {
-	return []cli.Command{
-		{
-			Name: "search",
-		},
-	}
+	return []cli.Command{}
 }
 
 func addCommands(cmds ...cli.Command) {

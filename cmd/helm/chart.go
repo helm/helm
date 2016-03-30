@@ -47,31 +47,10 @@ func chartCommands() cli.Command {
 		Description: chartDesc,
 		Subcommands: []cli.Command{
 			{
-				Name:      "config",
-				Usage:     "Create a configuration parameters file for this chart.",
-				ArgsUsage: "CHART",
-			},
-			{
-				Name:      "show",
-				Aliases:   []string{"info"},
-				Usage:     "Provide details about this package.",
-				ArgsUsage: "CHART",
-			},
-			{
 				Name:      "create",
 				Usage:     "Create a new chart directory and set up base files and directories.",
 				ArgsUsage: "CHARTNAME",
 				Action:    func(c *cli.Context) { run(c, createChart) },
-			},
-			{
-				Name:      "list",
-				Usage:     "list all deployed charts, optionally constraining by pattern.",
-				ArgsUsage: "[PATTERN]",
-			},
-			{
-				Name:      "deployments",
-				Usage:     "given a chart, show all the deployments that reference it.",
-				ArgsUsage: "CHART",
 			},
 			{
 				Name:      "package",
