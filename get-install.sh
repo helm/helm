@@ -16,12 +16,12 @@
 set -euo pipefail
 
 DEFAULT_TAG=v1.2
-DEFAULT_BINARY=${GOPATH}/bin/dm
+DEFAULT_BINARY=${GOPATH}/bin/helm
 DEFAULT_PLATFORM=$(uname | tr '[:upper:]' '[:lower:]')
 DEFAULT_ARCH=$(uname -m)
 
 STORAGE_URL=http://get-dm.storage.googleapis.com
-ZIP=dm-${TAG:-${DEFAULT_TAG}}-${PLATFORM:-${DEFAULT_PLATFORM}}-${ARCH:-${DEFAULT_ARCH}}.zip
+ZIP=helm-${TAG:-${DEFAULT_TAG}}-${PLATFORM:-${DEFAULT_PLATFORM}}-${ARCH:-${DEFAULT_ARCH}}.zip
 
 echo "Downloading ${ZIP}..."
 curl -Ls "${STORAGE_URL}/${ZIP}" -O
@@ -29,20 +29,20 @@ curl -Ls "${STORAGE_URL}/${ZIP}" -O
 unzip -qo ${ZIP}
 rm ${ZIP}
 
-chmod +x dm
+chmod +x helm
 
 cat <<EOF
 
-dm is now available in your current directory.
+helm is now available in your current directory.
 
-Before using it, please install the Deployment Manager service in your
+Before using it, please install the Helm service in your
 kubernetes cluster by running
 
-  $ kubectl create -f install.yaml
+  $ helm server install
 
 To get started, run:
 
-  $ ./dm
+  $ helm help
 
 EOF
 

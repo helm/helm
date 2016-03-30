@@ -1,2 +1,2 @@
-// Package pkg contains all libraries for Deployment Manager
+// Package pkg contains all libraries for Helm.
 package pkg

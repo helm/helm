@@ -21,7 +21,7 @@ import (
 	"github.com/kubernetes/helm/pkg/common"
 )
 
-// Repository manages storage for all Deployment Manager entities, as well as
+// Repository manages storage for all Helm entities, as well as
 // the common operations to store, access and manage them.
 type Repository interface {
 	// Deployments.

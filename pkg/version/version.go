@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package version represents the current version of the project.
 package version
 
-// Version is the current version of the Deployment Manager.
+// Version is the current version of the Helm.
 // Update this whenever making a new release.
 // The version is of the format Major.Minor.Patch
 // Increment major number for new feature additions and behavioral changes.

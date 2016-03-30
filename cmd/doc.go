@@ -14,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package cmd contains the executables for Deployment Manager.
+// Package cmd contains the executables for Helm.
 package cmd
