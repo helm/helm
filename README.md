@@ -32,7 +32,7 @@ From a Linux or Mac OS X client:
 $ git clone https://github.com/kubernetes/deployment-manager.git
 $ cd deployment-manager
 $ make build
-$ bin/helm dm install
+$ bin/helm server install
 ```
 
 That's it. You can now use `kubectl` to see DM running in your cluster:
@@ -55,10 +55,10 @@ kubectl proxy --port=8001 --namespace=dm &
 
 ## Uninstalling Helm from Kubernetes
 
-You can uninstall Deployment Manager using the same configuration:
+You can uninstall Helm using the same configuration:
 
 ```
-helm dm uninstall
+helm server uninstall
 ```
 
 ## Installing Charts
@@ -69,7 +69,7 @@ To quickly deploy a chart, you can use the Helm command line tool:
 $ helm deploy CHARTNAME
 ```
 
-## Design of Deployment Manager
+## Design of Helm
 
 There is a more detailed [design document](docs/design/design.md) available.
 
