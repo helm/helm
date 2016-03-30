@@ -43,7 +43,8 @@ func TestDeployment(t *testing.T) {
 			&common.Deployment{
 				Name: "guestbook.yaml",
 				State: &common.DeploymentState{
-					common.FailedStatus, []string{"error message"},
+					Status: common.FailedStatus,
+					Errors: []string{"error message"},
 				},
 			},
 			"Name: guestbook.yaml\nStatus: Failed\nErrors:\n  error message\n",

@@ -90,7 +90,7 @@ func GeneralTest(t *testing.T, httpMeth string, url string, contentType string, 
 	}
 	var data = w.Body.Bytes()
 	if w.Code != expStatus {
-		t.Fatalf("wrong status code:\nwant: %s\ngot:  %s\ncontent: %s\n", expStatus, w.Code, data)
+		t.Fatalf("wrong status code:\nwant: %d\ngot:  %d\ncontent: %s\n", expStatus, w.Code, data)
 	}
 	if expResponse != nil {
 		var response ServiceResponse
