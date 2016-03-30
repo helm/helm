@@ -42,7 +42,7 @@ func doctor(c *cli.Context) error {
 	if client.IsInstalled(runner) {
 		format.Success("You have everything you need. Go forth my friend!")
 	} else {
-		format.Warning("Looks like you don't have DM installed.\nRun: `helm install`")
+		format.Warning("Looks like you don't have DM installed.\nRun: `helm server install`")
 	}
 
 	return nil

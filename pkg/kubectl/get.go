@@ -34,7 +34,7 @@ func (r RealRunner) GetByKind(kind, name, ns string) (string, error) {
 	args := []string{"get", kind}
 
 	if name != "" {
-		args = append([]string{name}, args...)
+		args = append(args, name)
 	}
 
 	if ns != "" {
