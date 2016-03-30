@@ -187,7 +187,7 @@ func TestLoadTemplates(t *testing.T) {
 	}
 
 	if len(members) != len(files) {
-		t.Fatalf("Expected %s templates, got %d", len(files), len(members))
+		t.Fatalf("Expected %d templates, got %d", len(files), len(members))
 	}
 
 	root := c.loader.dir()

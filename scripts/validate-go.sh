@@ -36,11 +36,9 @@ for pkg in $(glide nv); do
 done
 
 echo "==> Running go vet..."
-if ! vet_out=$(go vet "$(glide nv)" 2>&1); then
-  echo
-  echo "${red}${vet_out}${reset}"
-  exit_code=1
-fi
+echo -n "$red"
+go vet $(glide nv) 2>&1 | grep -v "^exit status " || exit_code=${PIPESTATUS[0]}
+echo -n "$reset"
 
 echo "==> Running gofmt..."
 failed_fmt=$(find_go_files | xargs gofmt -s -l)
