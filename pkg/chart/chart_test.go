@@ -17,7 +17,6 @@ limitations under the License.
 package chart
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -204,7 +203,7 @@ func findMember(root, path string, members []*Member) error {
 	for _, member := range members {
 		if member.Path == path {
 			filename := filepath.Join(root, path)
-			if err := compareContent(filename, string(member.Content)); err != nil {
+			if err := compareContent(filename, member.Content); err != nil {
 				return err
 			}
 
@@ -235,7 +234,7 @@ func TestLoadMember(t *testing.T) {
 	}
 
 	filename := filepath.Join(c.loader.dir(), testmember)
-	if err := compareContent(filename, string(member.Content)); err != nil {
+	if err := compareContent(filename, member.Content); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -268,20 +267,19 @@ func TestLoadContent(t *testing.T) {
 		t.Logf("%s:\n%s\n\n", member.Path, member.Content)
 		want := wantMember.Content
 		if !reflect.DeepEqual(want, have) {
-			t.Errorf("Unexpected chart member %s\nwant:\n%s\nhave:\n%s\n", member.Path, want, have)
+			t.Errorf("Unexpected chart member %s\nwant:\n%v\nhave:\n%v\n", member.Path, want, have)
 		}
 	}
 }
 
-func compareContent(filename, content string) error {
-	b, err := ioutil.ReadFile(filename)
+func compareContent(filename string, content []byte) error {
+	compare, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("Cannot read test file %s: %s", filename, err)
 	}
 
-	compare := base64.StdEncoding.EncodeToString(b)
-	if content != compare {
-		return fmt.Errorf("Expected member content\n%v\ngot\n%v", []byte(compare), []byte(content))
+	if !reflect.DeepEqual(compare, content) {
+		return fmt.Errorf("Expected member content\n%v\ngot\n%v", compare, content)
 	}
 
 	return nil
