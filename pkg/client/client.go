@@ -226,27 +226,28 @@ func (r *Response) HTTPError() error {
 
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
 
 	if contentType == "application/json" {
 		httpErr := httputil.Error{}
-		json.Unmarshal(body, &httpErr)
+		if err := json.Unmarshal(body, &httpErr); err != nil {
+			return err
+		}
 		return &HTTPError{
 			StatusCode: r.StatusCode,
 			Message:    httpErr.Msg,
 			URL:        r.Request.URL,
 		}
-	} else {
-		if err != nil {
-			return err
-		}
-		return &HTTPError{
-			StatusCode: r.StatusCode,
-			Message:    string(body),
-			URL:        r.Request.URL,
-		}
 	}
 
-	return nil
+	return &HTTPError{
+		StatusCode: r.StatusCode,
+		Message:    string(body),
+		URL:        r.Request.URL,
+	}
+
 }
 
 // HTTPError is an error caused by an unexpected HTTP status code.
