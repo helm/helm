@@ -171,3 +171,45 @@ func TestDeleteDeployments(t *testing.T) {
 		t.Errorf("Unexpected name %q", out.Name)
 	}
 }
+
+func TestPutDeployment(t *testing.T) {
+	c := stubContext()
+	s := httpHarness(c, "PUT /deployments/*", putDeploymentHandlerFunc)
+	defer s.Close()
+
+	man := c.Manager.(*mockManager)
+	man.deployments = []*common.Deployment{
+		{Name: "demeter", State: &common.DeploymentState{Status: common.CreatedStatus}},
+	}
+
+	depreq := &common.DeploymentRequest{Name: "demeter"}
+	depreq.Configuration = common.Configuration{Resources: []*common.Resource{}}
+	out, err := json.Marshal(depreq)
+	if err != nil {
+		t.Fatalf("Failed to marshal DeploymentRequest: %s", err)
+	}
+
+	req, err := http.NewRequest("PUT", s.URL+"/deployments/demeter", bytes.NewBuffer(out))
+	if err != nil {
+		t.Fatal("Failed to create PUT request")
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Failed to execute PUT request: %s", err)
+	}
+
+	if res.StatusCode != 201 {
+		t.Errorf("Expected status code 201, got %d", res.StatusCode)
+	}
+
+	d := &common.Deployment{}
+	if err := json.NewDecoder(res.Body).Decode(&d); err != nil {
+		t.Errorf("Failed to parse results: %s", err)
+		return
+	}
+
+	if d.Name != "demeter" {
+		t.Errorf("Unexpected name %q", d.Name)
+	}
+}
