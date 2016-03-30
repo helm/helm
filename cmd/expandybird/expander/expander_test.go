@@ -79,7 +79,7 @@ func testExpansion(t *testing.T, req *expansion.ServiceRequest,
 	if err != nil {
 		message := err.Error()
 		if expResponse != nil || !strings.Contains(message, expError) {
-			t.Fatalf("unexpected error: %s\n", message)
+			t.Fatalf("unexpected error: %v\n", err)
 		}
 	} else {
 		if expResponse == nil {
@@ -727,5 +727,106 @@ func TestResourceNoType(t *testing.T) {
 		},
 		nil, // Response.
 		"Resource does not have type defined",
+	)
+}
+
+func TestReplicatedService(t *testing.T) {
+	replicatedService, err := chart.LoadDir("../../../examples/charts/replicatedservice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replicatedServiceContent, err := replicatedService.LoadContent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testExpansion(
+		t,
+		&expansion.ServiceRequest{
+			ChartInvocation: &common.Resource{
+				Name: "test_invocation",
+				Type: "gs://kubernetes-charts-testing/replicatedservice-1.2.3.tgz",
+				Properties: map[string]interface{}{
+					"image":          "myimage",
+					"container_port": 1234,
+					"replicas":       3,
+				},
+			},
+			Chart: replicatedServiceContent,
+		},
+		&expansion.ServiceResponse{
+			Resources: []interface{}{
+				map[string]interface{}{
+					"type": "Service",
+					"name": "test_invocation-service",
+					"properties": map[string]interface{}{
+						"kind":       "Service",
+						"apiVersion": "v1",
+						"namespace":  "default",
+						"metadata": map[string]interface{}{
+							"name": "test_invocation-service",
+							"labels": map[string]interface{}{
+								"name": "test_invocation-service",
+							},
+						},
+						"spec": map[string]interface{}{
+							"ports": []interface{}{
+								map[string]interface{}{
+									"name":       "test_invocation",
+									"port":       1234.0,
+									"targetPort": 1234.0,
+								},
+							},
+							"selector": map[string]interface{}{
+								"name": "test_invocation",
+							},
+						},
+					},
+				},
+				map[string]interface{}{
+					"type": "ReplicationController",
+					"name": "test_invocation-rc",
+					"properties": map[string]interface{}{
+						"kind":       "ReplicationController",
+						"apiVersion": "v1",
+						"namespace":  "default",
+						"metadata": map[string]interface{}{
+							"name": "test_invocation-rc",
+							"labels": map[string]interface{}{
+								"name": "test_invocation-rc",
+							},
+						},
+						"spec": map[string]interface{}{
+							"replicas": 3.0,
+							"selector": map[string]interface{}{
+								"name": "test_invocation",
+							},
+							"template": map[string]interface{}{
+								"metadata": map[string]interface{}{
+									"labels": map[string]interface{}{
+										"name": "test_invocation",
+									},
+								},
+								"spec": map[string]interface{}{
+									"containers": []interface{}{
+										map[string]interface{}{
+											"env":   []interface{}{},
+											"image": "myimage",
+											"name":  "test_invocation",
+											"ports": []interface{}{
+												map[string]interface{}{
+													"containerPort": 1234.0,
+													"name":          "test_invocation",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"", // Error.
 	)
 }
