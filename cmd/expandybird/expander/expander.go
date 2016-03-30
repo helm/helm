@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	"log"
+	"os"
 	"os/exec"
 
 	"github.com/kubernetes/helm/pkg/expansion"
@@ -104,7 +105,8 @@ func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.Se
 	}
 
 	if chartFile.Schema != "" {
-		cmd.Env = []string{"VALIDATE_SCHEMA=1"}
+		// appending to exsiting Env is required
+		cmd.Env = append(os.Environ(), "VALIDATE_SCHEMA=1")
 	}
 
 	for i, f := range chartMembers {
