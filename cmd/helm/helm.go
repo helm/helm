@@ -39,7 +39,7 @@ const desc = `Helm: the package and deployment manager for Kubernetes
    Once the in-cluster portion is running, you can use 'helm deploy' to
    deploy a new application:
 
-      $ helm deploy CHARTNAME
+      $ helm deploy -n NAME CHART
 
    For more information on Helm commands, you can use the following tools:
 
