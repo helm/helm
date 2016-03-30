@@ -40,15 +40,15 @@ func parseProperties(kvstr string) (map[string]interface{}, error) {
 		// Allow for "k=v, k=v"
 		p = strings.TrimSpace(p)
 		pair := strings.Split(p, "=")
-		if len(pair) == 1 {
+		if len(pair) < 2 {
 			return properties, errInvalidProperty
 		}
 
 		// If the value looks int-like, convert it.
 		if i, err := strconv.Atoi(pair[1]); err == nil {
-			properties[pair[0]] = pair[1]
-		} else {
 			properties[pair[0]] = i
+		} else {
+			properties[pair[0]] = pair[1]
 		}
 	}
 
