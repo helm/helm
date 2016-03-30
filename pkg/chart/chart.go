@@ -220,20 +220,25 @@ func fname(name string) string {
 // If you are just reading the Chart.yaml file, it is substantially more
 // performant to use LoadChartfile.
 func LoadDir(chart string) (*Chart, error) {
-	if fi, err := os.Stat(chart); err != nil {
-		return nil, err
-	} else if !fi.IsDir() {
-		return nil, fmt.Errorf("Chart %s is not a directory.", chart)
+	dir, err := filepath.Abs(chart)
+	if err != nil {
+		return nil, fmt.Errorf("%s is not a valid path", chart)
 	}
 
-	cf, err := LoadChartfile(filepath.Join(chart, "Chart.yaml"))
+	if fi, err := os.Stat(dir); err != nil {
+		return nil, err
+	} else if !fi.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", chart)
+	}
+
+	cf, err := LoadChartfile(filepath.Join(dir, "Chart.yaml"))
 	if err != nil {
 		return nil, err
 	}
 
 	cl := &dirChart{
 		chartyaml: cf,
-		chartdir:  chart,
+		chartdir:  dir,
 	}
 
 	return &Chart{
@@ -293,9 +298,16 @@ func loadTar(r *tar.Reader) (*tarChart, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// ioutil.TempDir uses Getenv("TMPDIR"), so there are no guarantees
+	dir, err := filepath.Abs(td)
+	if err != nil {
+		return nil, fmt.Errorf("%s is not a valid path", td)
+	}
+
 	c := &tarChart{
 		chartyaml: &Chartfile{},
-		tmpDir:    td,
+		tmpDir:    dir,
 	}
 
 	firstDir := ""
