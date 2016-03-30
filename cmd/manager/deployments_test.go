@@ -133,7 +133,7 @@ func TestGetDeployments(t *testing.T) {
 	}
 
 	if out.State.Status != common.CreatedStatus {
-		t.Errorf("Unexpected status %d", out.State.Status)
+		t.Errorf("Unexpected status %v", out.State.Status)
 	}
 }
 
