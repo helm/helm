@@ -40,6 +40,6 @@ func main() {
 	backend := expander.NewExpander(*expansionBinary)
 	service := expansion.NewService(*address, *port, backend)
 	log.Printf("Version: %s", version.Version)
-	log.Printf("Listening on http://%s:%s/expand", *address, port)
+	log.Printf("Listening on http://%s:%d/expand", *address, *port)
 	log.Fatal(service.ListenAndServe())
 }
