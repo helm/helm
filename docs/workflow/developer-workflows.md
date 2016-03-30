@@ -18,17 +18,19 @@ kicker" and "standard user" personas.
 Currently, the client can be used with no installation. However, installing the server side component is done like this:
 
 ```
-$ helm dm install
+$ helm server install
 ```
 
 - Client uses existing `kubectl` configuration to install built-in manifests.
 
 General pattern:
 ```
-helm dm install
+helm server install
 ```
 
 #### Searching
+
+*Not implemented yet*
 
 ```
 $ helm search bar
@@ -49,7 +51,7 @@ helm search PATTERN
 #### Simple deployment:
 
 ```
-$ helm deploy helm:example.com/foo/bar
+$ helm deploy -n wonky-panda helm:example.com/foo/bar
 Created wonky-panda
 ```
 
@@ -65,6 +67,8 @@ helm deploy [-f CONFIG] [-n NAME] [CHART]
 
 #### Find out about params:
 
+*Not implemented yet*
+
 In this operation, helm reads a chart and returns the list of parameters
 that can be supplied in a template:
 
@@ -78,12 +82,13 @@ Params:
 - The client sends the request to the API server
 - The API server fetches the chart, analyzes it, and returns the list of
   parameters.
-  
+
 General pattern:
 ```
 helm chart show CHART
 ```
 
+*Not implemented yet*
 
 #### Generate the params for me:
 
@@ -110,7 +115,7 @@ In this operation, the user deploys a chart with an associated values
 file.
 
 ```
-$ helm deploy -f values.yaml helm:example.com/foo/bar 
+$ helm deploy -f values.yaml -n taco-tuesday helm:example.com/foo/bar 
 Created taco-tuesday
 ```
 
@@ -153,6 +158,8 @@ helm status NAME
 ```
 
 #### Edit and redeploy:
+
+*Not implemented yet*
 
 Redeployment is taking an existing _instance_ and changing its template
 values, and then re-deploying it.
@@ -202,6 +209,9 @@ This follows the deployment process above. The server _must_ ensure that
 the name is unique.
 
 #### Get values for an app:
+
+*Not implemented yet*
+
 ```
 $ helm deployment params taco-tuesday
 Stored in values.yaml
@@ -220,6 +230,8 @@ helm deployment params NAME [NAME...]
 When more than one name is specified, the resulting file will contain configs for all names.
 
 #### Get fully generated manifest files
+
+*Not implemented yet*
 
 ```
 $ helm deployment manifest taco-tuesday
@@ -250,9 +262,11 @@ helm doctor
 
 #### Listing all installed charts
 
+*Not implemented yet*
+
 ```
 $ helm chart list
-helm:example.com/foo/bar#1.1.1 
+helm:example.com/foo/bar#1.1.1
 helm:example.com/foo/bar#1.1.2
 helm:example.com/foo/barbecue#0.1.0
 ```
@@ -270,7 +284,7 @@ helm chart list
 NB: We might rename this `helm chart instances`, as that is less vague.
 
 ```
-$ helm chart get helm:example.com/foo/bar 
+$ helm chart get helm:example.com/foo/bar
 taco-tuesday
 taco-wednesday
 ```
@@ -303,6 +317,8 @@ helm deployment list
 ```
 
 ### Getting details of a deployment
+
+*Not implemented yet*
 
 _NB: Might not need this._
 
@@ -348,6 +364,8 @@ General pattern for lint:
 ```
 helm lint PATH
 ```
+*Lint is not implemented yet*
+
 
 #### Packaging and Releasing packages
 
@@ -359,6 +377,8 @@ Created foo-1.1.2.tgz
 ```
 
 Releasing a chart:
+
+*Not implemented yet*
 
 ```
 $ helm release -u https://example.com/bucket ./foo-1.1.2.tgz
@@ -444,6 +464,8 @@ helm repo list
 
 #### Adding credentials
 
+*Not implemented yet*
+
 ```
 $ helm credential add aff34... 89897a...
 Created token-foo
@@ -486,6 +508,8 @@ helm repo rm REPO_URL
 
 #### Listing Credentials
 
+*Not implemented yet*
+
 ```
 $ helm credential list
 token-foo: TOKEN
@@ -500,6 +524,8 @@ helm credential list [PATTERN]
 ```
 
 #### Removing credentials
+
+*Not implemented yet*
 
 ```
 $ helm credential rm token-foo
