@@ -756,44 +756,16 @@ func TestReplicatedService(t *testing.T) {
 		&expansion.ServiceResponse{
 			Resources: []interface{}{
 				map[string]interface{}{
-					"type": "Service",
-					"name": "test_invocation-service",
-					"properties": map[string]interface{}{
-						"kind":       "Service",
-						"apiVersion": "v1",
-						"namespace":  "default",
-						"metadata": map[string]interface{}{
-							"name": "test_invocation-service",
-							"labels": map[string]interface{}{
-								"name": "test_invocation-service",
-							},
-						},
-						"spec": map[string]interface{}{
-							"ports": []interface{}{
-								map[string]interface{}{
-									"name":       "test_invocation",
-									"port":       1234.0,
-									"targetPort": 1234.0,
-								},
-							},
-							"selector": map[string]interface{}{
-								"name": "test_invocation",
-							},
-						},
-					},
-				},
-				map[string]interface{}{
-					"type": "ReplicationController",
 					"name": "test_invocation-rc",
 					"properties": map[string]interface{}{
-						"kind":       "ReplicationController",
 						"apiVersion": "v1",
-						"namespace":  "default",
+						"kind":       "ReplicationController",
 						"metadata": map[string]interface{}{
-							"name": "test_invocation-rc",
 							"labels": map[string]interface{}{
 								"name": "test_invocation-rc",
 							},
+							"name":      "test_invocation-rc",
+							"namespace": "default",
 						},
 						"spec": map[string]interface{}{
 							"replicas": 3.0,
@@ -824,6 +796,34 @@ func TestReplicatedService(t *testing.T) {
 							},
 						},
 					},
+					"type": "ReplicationController",
+				},
+				map[string]interface{}{
+					"name": "test_invocation-service",
+					"properties": map[string]interface{}{
+						"apiVersion": "v1",
+						"kind":       "Service",
+						"metadata": map[string]interface{}{
+							"labels": map[string]interface{}{
+								"name": "test_invocation-service",
+							},
+							"name":      "test_invocation-service",
+							"namespace": "default",
+						},
+						"spec": map[string]interface{}{
+							"ports": []interface{}{
+								map[string]interface{}{
+									"name":       "test_invocation",
+									"port":       1234.0,
+									"targetPort": 1234.0,
+								},
+							},
+							"selector": map[string]interface{}{
+								"name": "test_invocation",
+							},
+						},
+					},
+					"type": "Service",
 				},
 			},
 		},

@@ -37,20 +37,20 @@ def GenerateConfig(context):
 
   service = {
       'name': service_name,
-      'type': service_type,
       'properties': {
           'apiVersion': 'v1',
           'kind': 'Service',
-          'namespace': namespace,
           'metadata': {
-              'name': service_name,
               'labels': GenerateLabels(context, service_name),
+              'name': service_name,
+              'namespace': namespace,
           },
           'spec': {
               'ports': [GenerateServicePorts(context, container_name)],
               'selector': GenerateLabels(context, name)
           }
-      }
+      },
+      'type': service_type,
   }
   set_up_external_lb = context.properties.get('external_service', None)
   if set_up_external_lb:
@@ -58,7 +58,6 @@ def GenerateConfig(context):
   cluster_ip = context.properties.get('cluster_ip', None)
   if cluster_ip:
     service['properties']['spec']['clusterIP'] = cluster_ip
-  config['resources'].append(service)
 
   rc = {
       'name': rc_name,
@@ -66,10 +65,10 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'ReplicationController',
-          'namespace': namespace,
           'metadata': {
-              'name': rc_name,
               'labels': GenerateLabels(context, rc_name),
+              'name': rc_name,
+              'namespace': namespace,
           },
           'spec': {
               'replicas': context.properties['replicas'],
@@ -82,8 +81,8 @@ def GenerateConfig(context):
                       'containers': [
                           {
                               'env': GenerateEnv(context),
-                              'name': container_name,
                               'image': context.properties['image'],
+                              'name': container_name,
                               'ports': [
                                   {
                                       'name': container_name,
@@ -121,6 +120,7 @@ def GenerateConfig(context):
     }
 
   config['resources'].append(rc)
+  config['resources'].append(service)
   return yaml.dump(config)
 
 
