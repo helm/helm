@@ -42,7 +42,7 @@ func deployCmd() cli.Command {
 				Usage: "The configuration YAML file for this deployment.",
 			},
 			cli.StringFlag{
-				Name:  "name",
+				Name:  "name,n",
 				Usage: "Name of deployment, used for deploy and update commands (defaults to template name)",
 			},
 			// TODO: I think there is a Generic flag type that we can implement parsing with.
