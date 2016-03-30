@@ -1,0 +1,7 @@
+name: redis
+description: Port of the replicatedservice template from kubernetes/charts
+version: "2"
+home: ""
+expander:
+  name: Expandybird
+  entrypoint: templates/redis.jinja
