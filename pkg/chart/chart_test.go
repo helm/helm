@@ -141,18 +141,19 @@ func TestChart(t *testing.T) {
 		t.Errorf("Unexpected chart file name: %s", c.Chartfile().Name)
 	}
 
+	dir := c.Dir()
 	d := c.DocsDir()
-	if d != filepath.Join(testdir, preDocs) {
+	if d != filepath.Join(dir, preDocs) {
 		t.Errorf("Unexpectedly, docs are in %s", d)
 	}
 
 	d = c.TemplatesDir()
-	if d != filepath.Join(testdir, preTemplates) {
+	if d != filepath.Join(dir, preTemplates) {
 		t.Errorf("Unexpectedly, templates are in %s", d)
 	}
 
 	d = c.HooksDir()
-	if d != filepath.Join(testdir, preHooks) {
+	if d != filepath.Join(dir, preHooks) {
 		t.Errorf("Unexpectedly, hooks are in %s", d)
 	}
 
@@ -160,7 +161,7 @@ func TestChart(t *testing.T) {
 	if err != nil {
 		t.Errorf("No icon found in test chart: %s", err)
 	}
-	if i != filepath.Join(testdir, preIcon) {
+	if i != filepath.Join(dir, preIcon) {
 		t.Errorf("Unexpectedly, icon is in %s", i)
 	}
 }
