@@ -16,7 +16,7 @@
 set -o errexit
 set -o pipefail
 
-readonly ALL_TARGETS=(cmd/dm cmd/expandybird cmd/helm cmd/manager cmd/resourcifier)
+readonly ALL_TARGETS=(cmd/expandybird cmd/helm cmd/manager cmd/resourcifier)
 
 error_exit() {
   # Display error message and exit
