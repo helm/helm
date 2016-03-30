@@ -61,11 +61,6 @@ func deploymentCommands() cli.Command {
 		Description: deploymentDesc,
 		Subcommands: []cli.Command{
 			{
-				Name:      "config",
-				Usage:     "Dump the configuration file for this deployment.",
-				ArgsUsage: "DEPLOYMENT",
-			},
-			{
 				Name:      "remove",
 				Aliases:   []string{"rm"},
 				Usage:     "Deletes the named deployment(s).",
@@ -77,11 +72,6 @@ func deploymentCommands() cli.Command {
 				Usage:     "Describes the kubernetes resources for the named deployment(s).",
 				ArgsUsage: "DEPLOYMENT",
 				Action:    func(c *cli.Context) { run(c, describeDeployment) },
-			},
-			{
-				Name:      "manifest",
-				Usage:     "Dump the Kubernetes manifest file for this deployment.",
-				ArgsUsage: "DEPLOYMENT",
 			},
 			{
 				Name:      "show",
