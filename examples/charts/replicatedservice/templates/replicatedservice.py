@@ -41,9 +41,9 @@ def GenerateConfig(context):
       'properties': {
           'apiVersion': 'v1',
           'kind': 'Service',
-          'namespace': namespace,
           'metadata': {
               'name': service_name,
+              'namespace': namespace,
               'labels': GenerateLabels(context, service_name),
           },
           'spec': {
