@@ -49,14 +49,18 @@ func NewService(address string, port int, backend Expander) *Service {
 			badRequest(resp, err.Error())
 			return
 		}
+
+		reqMsg := fmt.Sprintf("\nhandling request:\n%s\n", util.ToYAMLOrError(request))
+		util.LogHandlerText("expansion service", reqMsg)
 		response, err := backend.ExpandChart(request)
 		if err != nil {
 			badRequest(resp, fmt.Sprintf("error expanding chart: %s", err))
 			return
 		}
+
 		util.LogHandlerExit("expansion service", http.StatusOK, "OK", resp.ResponseWriter)
-		message := fmt.Sprintf("\nResources:\n%s\n", response.Resources)
-		util.LogHandlerText("expansion service", message)
+		respMsg := fmt.Sprintf("\nreturning response:\n%s\n", util.ToYAMLOrError(response.Resources))
+		util.LogHandlerText("expansion service", respMsg)
 		resp.WriteEntity(response)
 	}
 	webService.Route(

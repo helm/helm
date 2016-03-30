@@ -20,7 +20,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -412,16 +411,16 @@ func (c *Chart) loadMember(filename string) (*Member, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(filename)
+	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	path := strings.TrimPrefix(filename, dir)
-	content := base64.StdEncoding.EncodeToString(b)
+	path = strings.TrimLeft(path, "/")
 	result := &Member{
 		Path:    path,
-		Content: []byte(content),
+		Content: content,
 	}
 
 	return result, nil
