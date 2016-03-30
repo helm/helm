@@ -61,10 +61,9 @@ Logging to ${LOGDIR}
 To use helm:
 
   export HELM_HOST=http://localhost:${MANAGER_PORT}
-  ./bin/helm list
-
-To deploy example guestbook:
-
-     ./bin/dm -service=http://localhost:8088 deploy examples/guestbook/guestbook.yaml
+  For list of commands, run:
+  $./bin/helm
+  Example Command:
+  $./bin/helm repo list
 
 EOF
