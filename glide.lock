@@ -1,64 +1,61 @@
-hash: 88b391c4f1cccfb1db3fa5450e63c5903804b47d410dc6aa95c07fec6c395b96
-updated: 2016-03-25T11:39:43.823542317-04:00
+hash: 5a891985ff2f22aed4eaa4f7f3819f0866750c065c7acd0118415c34788bc665
+updated: 2016-03-30T15:52:37.011995847-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 45307ec16e3cd47cd841506c081f7afd8237d210
-- name: github.com/cloudfoundry-incubator/candiedyaml
-  version: 4e924c79e32959414e8c7aaed6607176d8ee79c3
 - name: github.com/codegangsta/cli
-  version: 9fec0fad02befc9209347cc6d620e68e1b45f74d
+  version: a2943485b110df8842045ae0600047f88a3a56a1
 - name: github.com/emicklei/go-restful
-  version: 402f11d42bfe18198ffd5c68258c631c8fbf2c3c
+  version: b86acf97a74ed7603ac78d012f5535b4d587b156
   subpackages:
   - log
 - name: github.com/ghodss/yaml
-  version: 1a6f069841556a7bcaff4a397ca6e8328d266c2f
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/google/go-github
-  version: 2741d958876b6b98c4fd35d7fd74baa83115e953
+  version: b8b4ac742977310ff6e75140a403a38dab109977
   subpackages:
   - github
 - name: github.com/gorilla/context
-  version: 1ea25387ff6f684839d82767c1733ff4d4d15d0a
+  version: 1c83b3eabd45b6d76072b66b746c20815fb2872d
 - name: github.com/gorilla/handlers
   version: ee54c7b44cab12289237fb8631314790076e728b
 - name: github.com/gorilla/mux
-  version: 0eeaf8392f5b04950925b8a69fe70f110fa7cbfc
+  version: 26a6070f849969ba72b72256e9f14cf519751690
 - name: github.com/Masterminds/httputil
   version: e9b977e9cf16f9d339573e18f0f1f7ce5d3f419a
 - name: github.com/Masterminds/semver
   version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
-  version: fd057ca403105755181f84645696d705a58852dd
+  version: 679bb747f11c6ffc3373965988fea8877c40b47b
 - name: golang.org/x/net
-  version: 991d3e32f76f19ee6d9caadb3a22eae8d23315f7
+  version: 04b9de9b512f58addf28c9853d50ebef61c3953e
   subpackages:
   - context
   - context/ctxhttp
 - name: golang.org/x/oauth2
-  version: 2897dcade18a126645f1368de827f1e613a60049
+  version: 8a57ed94ffd43444c0879fe75701732a38afc985
   subpackages:
   - google
   - internal
   - jws
   - jwt
 - name: google.golang.org/api
-  version: 43c645d4bcf9251ced36c823a93b6d198764aae4
+  version: 0caa37974a5f5ae67172acf68b4970f7864f994c
   subpackages:
   - storage/v1
   - gensupport
   - googleapi
   - googleapi/internal/uritemplates
 - name: google.golang.org/cloud
-  version: eb47ba841d53d93506cfbfbc03927daf9cc48f88
+  version: fb10e8da373d97f6ba5e648299a10b3b91f14cd5
   subpackages:
   - compute/metadata
   - internal
 - name: gopkg.in/mgo.v2
-  version: b6e2fa371e64216a45e61072a96d4e3859f169da
+  version: d90005c5262a3463800497ea5a89aed5fe22c886
   subpackages:
   - bson
-  - internal/sasl
   - internal/scram
 - name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
+  version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
 devImports: []
