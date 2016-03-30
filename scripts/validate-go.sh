@@ -25,7 +25,7 @@ readonly yellow=$(tput bold; tput setaf 3)
 exit_code=0
 
 find_go_files() {
-  git ls-files '*.go'
+  find . -type f -name "*.go" | grep -v vendor
 }
 
 echo "==> Running golint..."
