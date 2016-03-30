@@ -20,10 +20,10 @@ DOCKER_REGISTRY ?= gcr.io
 DOCKER_PROJECT ?= $(PROJECT)
 
 # Support both local and remote repos, and support no project.
-ifdef $(DOCKER_PROJECT)
-PREFIX := $(DOCKER_REGISTRY)/$(DOCKER_PROJECT)
-else
+ifeq ($(DOCKER_PROJECT),)
 PREFIX := $(DOCKER_REGISTRY)
+else
+PREFIX := $(DOCKER_REGISTRY)/$(DOCKER_PROJECT)
 endif
 
 FULL_IMAGE := $(PREFIX)/$(IMAGE)
@@ -52,13 +52,16 @@ info:
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)
 	gcloud docker push $(FULL_IMAGE):$(TAG)
+	gcloud docker push $(FULL_IMAGE):latest
 else
 	docker push $(FULL_IMAGE):$(TAG)
+	docker push $(FULL_IMAGE):latest
 endif
 
 .PHONY: container
 container: .project .docker binary extras
 	docker build -t $(FULL_IMAGE):$(TAG) -f Dockerfile .
+	docker tag -f $(FULL_IMAGE):$(TAG) $(FULL_IMAGE):latest
 
 .project:
 ifeq ($(DOCKER_REGISTRY), gcr.io)
