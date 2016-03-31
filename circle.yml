@@ -1,13 +1,20 @@
 machine:
   environment:
-    GLIDE_VERSION: "0.9.1"
+    GLIDE_VERSION: "0.10.1"
     GO15VENDOREXPERIMENT: 1
     GOPATH: /usr/local/go_workspace
     HOME: /home/ubuntu
     IMPORT_PATH: "github.com/kubernetes/helm"
+    PATH: $HOME/go/bin:$PATH
+    GOROOT: $HOME/go
 
 dependencies:
   override:
+    - mkdir -p $HOME/go
+    - wget "https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz"
+    - tar -C $HOME -xzf go1.6.linux-amd64.tar.gz
+    - go version
+    - go env
     - sudo chown -R $(whoami):staff /usr/local
     - cd $GOPATH
     - mkdir -p $GOPATH/src/$IMPORT_PATH
