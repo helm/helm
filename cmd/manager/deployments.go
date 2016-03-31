@@ -19,17 +19,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
-	"github.com/ghodss/yaml"
-	"github.com/gorilla/mux"
 	"github.com/kubernetes/helm/cmd/manager/manager"
 	"github.com/kubernetes/helm/cmd/manager/repository"
 	"github.com/kubernetes/helm/cmd/manager/repository/persistent"
@@ -40,20 +35,6 @@ import (
 	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/kubernetes/helm/pkg/util"
 )
-
-// Deprecated. Use Context.Manager instead.
-var backend manager.Manager
-
-// Route defines a routing table entry to be registered with gorilla/mux.
-//
-// Route is deprecated. Use router.Routes instead.
-type Route struct {
-	Name        string
-	Path        string
-	Methods     string
-	HandlerFunc http.HandlerFunc
-	Type        string
-}
 
 func registerDeploymentRoutes(c *router.Context, h *router.Handler) {
 	h.Add("GET /healthz", healthz)
@@ -272,25 +253,6 @@ func pos(w http.ResponseWriter, r *http.Request, i int) (string, error) {
 	return parts[i], nil
 }
 
-func getPathVariable(w http.ResponseWriter, r *http.Request, variable, handler string) (string, error) {
-	vars := mux.Vars(r)
-	escaped, ok := vars[variable]
-	if !ok {
-		e := fmt.Errorf("%s name not found in URL", variable)
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
-		return "", e
-	}
-
-	unescaped, err := url.QueryUnescape(escaped)
-	if err != nil {
-		e := fmt.Errorf("cannot decode name (%v)", variable)
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
-		return "", e
-	}
-
-	return unescaped, nil
-}
-
 func getDeploymentRequest(w http.ResponseWriter, r *http.Request, handler string) *common.DeploymentRequest {
 	util.LogHandlerEntry(handler, r)
 	depReq := &common.DeploymentRequest{}
@@ -500,29 +462,4 @@ func getCredentialHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.
 
 	util.LogHandlerExitWithJSON(handler, w, cr, http.StatusOK)
 	return nil
-}
-
-func getJSONFromRequest(w http.ResponseWriter, r *http.Request, handler string) ([]byte, error) {
-	util.LogHandlerEntry(handler, r)
-	b := io.LimitReader(r.Body, *maxLength*1024)
-	y, err := ioutil.ReadAll(b)
-	if err != nil {
-		util.LogAndReturnError(handler, http.StatusBadRequest, err, w)
-		return []byte{}, err
-	}
-
-	// Reject the input if it exceeded the length limit,
-	// since we may not have read all of it into the buffer.
-	if _, err = b.Read(make([]byte, 0, 1)); err != io.EOF {
-		e := fmt.Errorf("template exceeds maximum length of %d KB", *maxLength)
-		util.LogAndReturnError(handler, http.StatusBadRequest, e, w)
-		return []byte{}, err
-	}
-
-	if err := r.Body.Close(); err != nil {
-		util.LogAndReturnError(handler, http.StatusInternalServerError, err, w)
-		return []byte{}, err
-	}
-
-	return yaml.YAMLToJSON(y)
 }
