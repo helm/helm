@@ -65,9 +65,9 @@ setup_iptables() {
 start_kubernetes() {
   echo "Getting the party going..."
 
-  if docker ps --filter "name=helm_kubelet" >/dev/null; then
-    error_exit "Kubernetes already running"
-  fi
+  #if docker ps --filter "name=helm_kubelet" >/dev/null; then
+    #error_exit "Kubernetes already running"
+  #fi
 
   docker run \
     --name=helm_kubelet \
