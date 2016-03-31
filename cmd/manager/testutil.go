@@ -99,7 +99,13 @@ func (m *mockManager) DeleteDeployment(name string, forget bool) (*common.Deploy
 }
 
 func (m *mockManager) PutDeployment(name string, depReq *common.DeploymentRequest) (*common.Deployment, error) {
-	return &common.Deployment{}, nil
+	for _, d := range m.deployments {
+		if d.Name == name {
+			d.State.Status = common.ModifiedStatus
+			return d, nil
+		}
+	}
+	return nil, errors.New("Deployment not found")
 }
 
 func (m *mockManager) ListManifests(deploymentName string) (map[string]*common.Manifest, error) {
