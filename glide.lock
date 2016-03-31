@@ -1,8 +1,10 @@
-hash: 5a891985ff2f22aed4eaa4f7f3819f0866750c065c7acd0118415c34788bc665
-updated: 2016-03-30T15:52:37.011995847-06:00
+hash: a72f13699934fc94c8df5b56c76fc66d2279b2a4ff1396c2f1bff944456a8adf
+updated: 2016-03-30T23:15:39.980396345-04:00
 imports:
 - name: github.com/aokoli/goutils
   version: 45307ec16e3cd47cd841506c081f7afd8237d210
+- name: github.com/cloudfoundry-incubator/candiedyaml
+  version: 479485e9bfc69ee37d074b36ce36da5e4fba7941
 - name: github.com/codegangsta/cli
   version: a2943485b110df8842045ae0600047f88a3a56a1
 - name: github.com/emicklei/go-restful
@@ -46,6 +48,10 @@ imports:
   - gensupport
   - googleapi
   - googleapi/internal/uritemplates
+- name: google.golang.org/appengine
+  version: a503df954af258b9a70918df2a524d6a85ecefdb
+  subpackages:
+  - urlfetch
 - name: google.golang.org/cloud
   version: fb10e8da373d97f6ba5e648299a10b3b91f14cd5
   subpackages:
@@ -55,6 +61,7 @@ imports:
   version: d90005c5262a3463800497ea5a89aed5fe22c886
   subpackages:
   - bson
+  - internal/sasl
   - internal/scram
 - name: gopkg.in/yaml.v2
   version: f7716cbe52baa25d2e9b0d0da546fcf909fc16b4
