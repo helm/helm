@@ -16,9 +16,7 @@ FROM alpine:3.3
 COPY . /
 
 # Install CA certs
-RUN apk add --update-cache ca-certificates
-RUN apk del --purge ca-certificates \
-  && rm -rf /var/cache/apk/*
+RUN apk add --no-cache ca-certificates
 
 EXPOSE 8080
 CMD ["/bin/manager", "--kubectl=/bin/kubectl"]
