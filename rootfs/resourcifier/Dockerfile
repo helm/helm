@@ -13,6 +13,7 @@
 # limitations under the License.
 
 FROM alpine:3.3
+RUN apk --update add ca-certificates
 COPY . /
 EXPOSE 8080
 CMD ["/bin/resourcifier", "--kubectl=/bin/kubectl"]
