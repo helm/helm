@@ -18,7 +18,7 @@ set -o pipefail
 
 readonly ROOTFS="${DIR}/rootfs"
 
-readonly STATIC_TARGETS=(cmd/expandybird cmd/manager cmd/resourcifier)
+readonly STATIC_TARGETS=(cmd/expandybird cmd/goexpander cmd/manager cmd/resourcifier)
 readonly ALL_TARGETS=(${STATIC_TARGETS[@]} cmd/helm)
 
 error_exit() {
