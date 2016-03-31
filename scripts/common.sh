@@ -27,6 +27,10 @@ error_exit() {
   exit 1
 }
 
+is_osx() {
+  [[ "$(uname)" == "Darwin" ]]
+}
+
 assign_version() {
   if [[ -z "${VERSION:-}" ]]; then
     VERSION=$(version_from_git)

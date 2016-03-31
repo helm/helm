@@ -16,3 +16,4 @@ nohup.out
 /rootfs/expandybird/opt/expansion
 .DS_Store
 /log/
+/scripts/env.sh
