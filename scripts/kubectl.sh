@@ -18,25 +18,11 @@ set -eo pipefail
 
 HELM_ROOT="${BASH_SOURCE[0]%/*}/.."
 source "${HELM_ROOT}/scripts/common.sh"
-
-if [ -f "${HELM_ROOT}/scripts/env.sh" ]; then
-  source "${HELM_ROOT}/scripts/env.sh"
-fi
+source "${HELM_ROOT}/scripts/docker.sh"
 
 K8S_VERSION=${K8S_VERSION:-1.2.0}
 KUBE_PORT=${KUBE_PORT:-8080}
-KUBE_CONFIG="${HELM_ROOT}/scripts/kubeconfig"
 KUBE_HOST=${KUBE_HOST:-localhost}
-
-is_docker_machine() {
-  [[ $(docker-machine active 2>/dev/null) ]]
-}
-
-active_docker_machine() {
-  if command -v docker-machine >/dev/null 2>&1; then
-    docker-machine active
-  fi
-}
 
 if is_docker_machine; then
   KUBE_HOST=$(docker-machine ip "$(active_docker_machine)")
