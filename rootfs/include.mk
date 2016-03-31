@@ -20,22 +20,26 @@ DOCKER_REGISTRY ?= gcr.io
 DOCKER_PROJECT ?= $(PROJECT)
 
 # Support both local and remote repos, and support no project.
-ifdef $(DOCKER_PROJECT)
-PREFIX := $(DOCKER_REGISTRY)/$(DOCKER_PROJECT)
-else
+ifeq ($(DOCKER_PROJECT),)
 PREFIX := $(DOCKER_REGISTRY)
+else
+PREFIX := $(DOCKER_REGISTRY)/$(DOCKER_PROJECT)
 endif
 
 FULL_IMAGE := $(PREFIX)/$(IMAGE)
 
 TAG ?= git-$(shell git rev-parse --short HEAD)
 
-DEFAULT_PLATFORM := $(shell uname | tr '[:upper:]' '[:lower:]')
+DEFAULT_PLATFORM := linux
 PLATFORM ?= $(DEFAULT_PLATFORM)
 
-DEFAULT_ARCH := $(shell uname -m)
+DEFAULT_ARCH := amd64
 ARCH ?= $(DEFAULT_ARCH)
 
+
+.PHONY: clean
+clean:
+	rm -rf bin opt
 
 .PHONY: info
 info:
@@ -52,13 +56,16 @@ info:
 push: container
 ifeq ($(DOCKER_REGISTRY),gcr.io)
 	gcloud docker push $(FULL_IMAGE):$(TAG)
+	gcloud docker push $(FULL_IMAGE):latest
 else
 	docker push $(FULL_IMAGE):$(TAG)
+	docker push $(FULL_IMAGE):latest
 endif
 
 .PHONY: container
 container: .project .docker binary extras
 	docker build -t $(FULL_IMAGE):$(TAG) -f Dockerfile .
+	docker tag -f $(FULL_IMAGE):$(TAG) $(FULL_IMAGE):latest
 
 .project:
 ifeq ($(DOCKER_REGISTRY), gcr.io)
@@ -70,17 +77,9 @@ endif
 .docker:
 	@if [[ -z `which docker` ]] || ! docker --version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
 
-CROSS_IMAGE := $(PLATFORM)-$(ARCH)/$(IMAGE)/$(IMAGE)
-
 .PHONY: binary
 binary:
-	@if [[ -z $(CROSS_IMAGE) ]]; then \
-		echo cp ../../bin/$(CROSS_IMAGE) ./bin ; \
-		cp ../../bin/$(CROSS_IMAGE) ./bin ; \
-	else \
-		echo cp ../../bin/$(IMAGE) ./bin ; \
-		cp ../../bin/$(IMAGE) ./bin ; \
-	fi
+	@if [[ ! -x "bin/$(IMAGE)" ]] ; then echo "binary bin/$(IMAGE) not found" ; exit 1 ; fi  
 
 .PHONY: kubectl
 kubectl:

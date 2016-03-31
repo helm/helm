@@ -24,19 +24,26 @@ endif
 GO_DIRS ?= $(shell glide nv -x )
 GO_PKGS ?= $(shell glide nv)
 
+ROOTFS := rootfs
+
 .PHONY: build
 build: gocheck
 	@scripts/build-go.sh
 
+.PHONY: build-static
+build-static: gocheck
+	@BUILD_TYPE=STATIC scripts/build-go.sh
+
 .PHONY: build-cross
 build-cross: gocheck
-	@BUILD_CROSS=1 scripts/build-go.sh
+	@BUILD_TYPE=CROSS scripts/build-go.sh
 
 .PHONY: all
 all: build
 
 .PHONY: clean
 clean:
+	$(MAKE) -C $(ROOTFS) $@
 	go clean -v $(GO_PKGS)
 	rm -rf bin
 
@@ -47,14 +54,12 @@ test: build test-style test-unit test-flake8
 quicktest: test-style
 	go test $(GO_PKGS)
 
-ROOTFS := rootfs
-
 .PHONY: push
-push: all
+push: build-static
 	$(MAKE) -C $(ROOTFS) $@
 
 .PHONY: container
-container: all
+container: build-static
 	$(MAKE) -C $(ROOTFS) $@
 
 .PHONY: test-unit

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 SUBDIRS := expandybird/. resourcifier/. manager/.
-TARGETS := info push container
+TARGETS := info push container clean
 
 SUBDIRS_TARGETS := \
 	$(foreach t,$(TARGETS),$(addsuffix $t,$(SUBDIRS)))

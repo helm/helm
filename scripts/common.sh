@@ -16,7 +16,10 @@
 set -o errexit
 set -o pipefail
 
-readonly ALL_TARGETS=(cmd/expandybird cmd/helm cmd/manager cmd/resourcifier)
+readonly ROOTFS="${DIR}/rootfs"
+
+readonly STATIC_TARGETS=(cmd/expandybird cmd/manager cmd/resourcifier)
+readonly ALL_TARGETS=(${STATIC_TARGETS[@]} cmd/helm)
 
 error_exit() {
   # Display error message and exit
@@ -42,6 +45,22 @@ version_from_git() {
   echo "${git_tag}+${git_commit}"
 }
 
+build_binary_static() {
+  local target="$1"
+  local basename="${target##*/}"
+  local context="${ROOTFS}/${basename}"
+
+  echo "Building ${target}"
+  CGO_ENABLED=0 \
+  GOOS=linux \
+  GOARCH=amd64 \
+  go build \
+    -ldflags="${LDFLAGS}" \
+    -a -installsuffix cgo \
+    -o "${context}/bin/${basename}" \
+    "${REPO}/${target}"	
+}
+
 build_binary_cross() {
   local target="$1"
 
@@ -50,25 +69,32 @@ build_binary_cross() {
     -ldflags="${LDFLAGS}" \
     -os="linux darwin" \
     -arch="amd64 386" \
-    -output="bin/{{.OS}}-{{.Arch}}/{{.Dir}}" "${REPO}/${target}"
+    -output="bin/{{.OS}}-{{.Arch}}/{{.Dir}}" \
+    "${REPO}/${target}"
 }
 
+#TODO: accept specific os/arch
 build_binaries() {
   local -a targets=($@)
-  #TODO: accept specific os/arch
-  local build_cross="${BUILD_CROSS:-}"
+  local build_type="${BUILD_TYPE:-}"
 
   if [[ ${#targets[@]} -eq 0 ]]; then
-    targets=("${ALL_TARGETS[@]}")
+    if [[ ${build_type} == STATIC ]]; then
+      targets=("${STATIC_TARGETS[@]}")
+    else
+      targets=("${ALL_TARGETS[@]}")
+    fi
   fi
 
   assign_version
   assign_ldflags
 
   for t in "${targets[@]}"; do
-    if [[ -n "$build_cross" ]]; then
+    if [[ ${build_type} == STATIC ]]; then
+      build_binary_static "$t"
+    elif [[ ${build_type} == CROSS ]]; then
       build_binary_cross "$t"
-    else
+    else    
       build_binary "$t"
     fi
   done
