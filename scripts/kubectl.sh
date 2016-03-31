@@ -20,7 +20,6 @@ HELM_ROOT="${BASH_SOURCE[0]%/*}/.."
 source "${HELM_ROOT}/scripts/common.sh"
 source "${HELM_ROOT}/scripts/docker.sh"
 
-K8S_VERSION=${K8S_VERSION:-1.2.0}
 KUBE_PORT=${KUBE_PORT:-8080}
 KUBE_HOST=${KUBE_HOST:-localhost}
 
