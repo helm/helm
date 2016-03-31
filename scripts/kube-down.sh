@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Tear down kubernetes in docker
+
 set -eo pipefail
 [[ "$TRACE" ]] && set -x
 

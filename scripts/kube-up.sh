@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Start a kubenetes cluster in docker
+#
+# Tested on darwin using docker-machine and linux
+
 set -eo pipefail
 [[ "$TRACE" ]] && set -x
 
