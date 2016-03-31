@@ -21,4 +21,4 @@ extras: expansion
 
 .PHONY: expansion
 expansion:
-	cp -R ../../expansion ./opt
+	mkdir -p ./opt && cp -R ../../expansion ./opt

@@ -30,12 +30,16 @@ FULL_IMAGE := $(PREFIX)/$(IMAGE)
 
 TAG ?= git-$(shell git rev-parse --short HEAD)
 
-DEFAULT_PLATFORM := $(shell uname | tr '[:upper:]' '[:lower:]')
+DEFAULT_PLATFORM := linux
 PLATFORM ?= $(DEFAULT_PLATFORM)
 
-DEFAULT_ARCH := $(shell uname -m)
+DEFAULT_ARCH := amd64
 ARCH ?= $(DEFAULT_ARCH)
 
+
+.PHONY: clean
+clean:
+	rm -rf bin opt
 
 .PHONY: info
 info:
@@ -73,17 +77,9 @@ endif
 .docker:
 	@if [[ -z `which docker` ]] || ! docker --version &> /dev/null; then echo "docker is not installed correctly"; exit 1; fi
 
-CROSS_IMAGE := $(PLATFORM)-$(ARCH)/$(IMAGE)/$(IMAGE)
-
 .PHONY: binary
 binary:
-	@if [[ -z $(CROSS_IMAGE) ]]; then \
-		echo cp ../../bin/$(CROSS_IMAGE) ./bin ; \
-		cp ../../bin/$(CROSS_IMAGE) ./bin ; \
-	else \
-		echo cp ../../bin/$(IMAGE) ./bin ; \
-		cp ../../bin/$(IMAGE) ./bin ; \
-	fi
+	@if [[ ! -x "bin/$(IMAGE)" ]] ; then echo "binary bin/$(IMAGE) not found" ; exit 1 ; fi  
 
 .PHONY: kubectl
 kubectl:
