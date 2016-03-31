@@ -13,7 +13,6 @@
 # limitations under the License.
 
 FROM alpine:3.3
-RUN apk --update add ca-certificates
 COPY . /
 
 # Install CA certs
