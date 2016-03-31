@@ -121,6 +121,6 @@ func (c *Client) PostDeployment(res *common.Resource) error {
 	}
 
 	var out struct{}
-	_, err = c.Post("/deployments", data, &out)
+	_, err = c.Post("deployments", data, &out)
 	return err
 }
