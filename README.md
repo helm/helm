@@ -38,7 +38,7 @@ $ bin/helm server install
 That's it. You can now use `kubectl` to see Helm running in your cluster like this:
 
 ```
-$ kubectl get pod,rc,service --namespace=dm
+$ kubectl get pod,rc,service --namespace=helm
 NAME                    READY        STATUS        RESTARTS   AGE
 expandybird-rc-e0whp    1/1          Running       0          35m
 expandybird-rc-zdp8w    1/1          Running       0          35m
@@ -80,13 +80,13 @@ Currently here is the step by step guide.
 First add a respository of Charts used for testing:
 
 ```
-$ helm repo add kubernetes-charts-testing gs://kubernetes-charts-testing
+$ bin/helm repo add kubernetes-charts-testing gs://kubernetes-charts-testing
 ```
 
 Then deploy a Chart from this repository. For example to start a Redis cluster:
 
 ```
-$ helm deploy --name test --properties "workers=2" gs://kubernetes-charts-testing/redis-2.tgz
+$ bin/helm deploy --name test --properties "workers=2" gs://kubernetes-charts-testing/redis-2.tgz
 ```
 
 Once images are downloaded you should see Redis rc, pods and services similar to this:
@@ -123,9 +123,9 @@ slave1:ip=172.17.0.11,port=6379,state=online,offset=925,lag=1
 Once you are done, you can delete your deployment with
 
 ```
-$ helm deployment list
+$ bin/helm deployment list
 test
-$ helm deployment rm test
+$ bin/helm deployment rm test
 ````
 
 ## Uninstalling Helm from Kubernetes
@@ -133,7 +133,7 @@ $ helm deployment rm test
 You can uninstall Helm entirely using the following command:
 
 ```
-$ helm server uninstall
+$ bin/helm server uninstall
 ```
 
 This command will remove everything in the Helm namespace being used.
