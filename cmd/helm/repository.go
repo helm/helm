@@ -75,7 +75,7 @@ func repoCommands() cli.Command {
 				Name:      "remove",
 				Aliases:   []string{"rm"},
 				Usage:     "Remove a chart repository from the remote manager.",
-				ArgsUsage: "REPOSITORY_URL",
+				ArgsUsage: "REPOSITORY_NAME",
 				Action:    func(c *cli.Context) { run(c, removeRepo) },
 			},
 		},
