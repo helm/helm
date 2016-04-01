@@ -85,6 +85,6 @@ binary:
 kubectl:
 ifeq ("$(wildcard bin/$(KUBE_VERSION))", "")
 	touch bin/$(KUBE_VERSION)
-	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl
+	curl -fsSL -o bin/kubectl https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/386/kubectl
 	chmod +x bin/kubectl
 endif
