@@ -9,6 +9,11 @@ import (
 	"testing"
 )
 
+const (
+	namespace = "dm"
+	apiProxy  = "/api/v1/proxy/namespaces/" + namespace + "/services/manager-service:manager/"
+)
+
 type HelmContext struct {
 	t    *testing.T
 	Path string
@@ -44,12 +49,21 @@ type HelmCmd struct {
 }
 
 func (h *HelmCmd) exec(args ...string) error {
+	args = append([]string{"--host", h.ctx.Host}, args...)
 	cmd := exec.Command(h.ctx.Path, args...)
 	h.stdout.Reset()
 	h.stderr.Reset()
 	cmd.Stdout = &h.stdout
 	cmd.Stderr = &h.stderr
 	status := cmd.Run()
+	if h.stdout.Len() > 0 {
+		h.ctx.t.Log("standard output:")
+		h.ctx.t.Log(h.stdout.String())
+	}
+	if h.stderr.Len() > 0 {
+		h.ctx.t.Log("standard error:")
+		h.ctx.t.Log(h.stderr.String())
+	}
 	h.ran = true
 	return status
 }
