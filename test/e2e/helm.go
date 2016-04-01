@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -84,6 +85,18 @@ func (h *HelmCmd) Stderr() string {
 		h.ctx.t.Fatal("internal testsuite error: stdout called before run")
 	}
 	return h.stderr.String()
+}
+
+func (h *HelmCmd) StdoutContains(substring string) bool {
+	return strings.Contains(h.Stdout(), substring)
+}
+
+func (h *HelmCmd) StderrContains(substring string) bool {
+	return strings.Contains(h.Stderr(), substring)
+}
+
+func (h *HelmCmd) Contains(substring string) bool {
+	return h.StdoutContains(substring) || h.StderrContains(substring)
 }
 
 func RepoRoot() string {
