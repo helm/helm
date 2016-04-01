@@ -73,7 +73,7 @@ func (i *Installer) expand() ([]byte, error) {
 func IsInstalled(runner kubectl.Runner) bool {
 	// Basically, we test "all-or-nothing" here: if this returns without error
 	// we know that we have both the namespace and the manager API server.
-	out, err := runner.GetByKind("rc", "manager-rc", "dm")
+	out, err := runner.GetByKind("rc", "manager-rc", "helm")
 	if err != nil {
 		format.Err("Installation not found: %s %s", out, err)
 		return false
@@ -101,44 +101,44 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    app: dm
-    name: dm-namespace
-  name: dm
+    app: helm
+    name: helm-namespace
+  name: helm
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: dm
+    app: helm
     name: expandybird-service
   name: expandybird-service
-  namespace: dm
+  namespace: helm
 spec:
   ports:
   - name: expandybird
     port: 8081
     targetPort: 8080
   selector:
-    app: dm
+    app: helm
     name: expandybird
 ---
 apiVersion: v1
 kind: ReplicationController
 metadata:
   labels:
-    app: dm
+    app: helm
     name: expandybird-rc
   name: expandybird-rc
-  namespace: dm
+  namespace: helm
 spec:
   replicas: 2
   selector:
-    app: dm
+    app: helm
     name: expandybird
   template:
     metadata:
       labels:
-        app: dm
+        app: helm
         name: expandybird
     spec:
       containers:
@@ -153,36 +153,36 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: dm
+    app: helm
     name: resourcifier-service
   name: resourcifier-service
-  namespace: dm
+  namespace: helm
 spec:
   ports:
   - name: resourcifier
     port: 8082
     targetPort: 8080
   selector:
-    app: dm
+    app: helm
     name: resourcifier
 ---
 apiVersion: v1
 kind: ReplicationController
 metadata:
   labels:
-    app: dm
+    app: helm
     name: resourcifier-rc
   name: resourcifier-rc
-  namespace: dm
+  namespace: helm
 spec:
   replicas: 2
   selector:
-    app: dm
+    app: helm
     name: resourcifier
   template:
     metadata:
       labels:
-        app: dm
+        app: helm
         name: resourcifier
     spec:
       containers:
@@ -197,36 +197,36 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: dm
+    app: helm
     name: manager-service
   name: manager-service
-  namespace: dm
+  namespace: helm
 spec:
   ports:
   - name: manager
     port: 8080
     targetPort: 8080
   selector:
-    app: dm
+    app: helm
     name: manager
 ---
 apiVersion: v1
 kind: ReplicationController
 metadata:
   labels:
-    app: dm
+    app: helm
     name: manager-rc
   name: manager-rc
-  namespace: dm
+  namespace: helm
 spec:
   replicas: 1
   selector:
-    app: dm
+    app: helm
     name: manager
   template:
     metadata:
       labels:
-        app: dm
+        app: helm
         name: manager
     spec:
       containers:
