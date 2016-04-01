@@ -162,7 +162,7 @@ func statusServer(c *cli.Context) error {
 	kubectlPath := c.GlobalString("kubectl")
 	runner := buildKubectlRunner(kubectlPath, dryRun)
 
-	out, err := runner.GetByKind("pods", "", "dm")
+	out, err := runner.GetByKind("pods", "", "helm")
 	if err != nil {
 		return err
 	}
