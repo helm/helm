@@ -33,6 +33,9 @@ func TestHelm(t *testing.T) {
 		t.Fatal("Not connected to kubernetes")
 	}
 
+	t.Log("Kuberneter Version")
+	t.Log(kube.Version())
+
 	if !helmRunning(helm) {
 		t.Fatal("Helm is not installed")
 	}

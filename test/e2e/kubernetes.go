@@ -74,3 +74,8 @@ func (k *KubeContext) Running() bool {
 	_, err := exec.Command(k.Path, "cluster-info").CombinedOutput()
 	return err == nil
 }
+
+func (k *KubeContext) Version() string {
+	out, _ := exec.Command(k.Path, "version").Output()
+	return string(out)
+}
