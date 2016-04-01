@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -18,15 +19,17 @@ const (
 )
 
 type HelmContext struct {
-	t    *testing.T
-	Path string
-	Host string
+	t       *testing.T
+	Path    string
+	Host    string
+	Timeout time.Duration
 }
 
 func NewHelmContext(t *testing.T) *HelmContext {
 	return &HelmContext{
-		t:    t,
-		Path: RepoRoot() + "/bin/helm",
+		t:       t,
+		Path:    RepoRoot() + "/bin/helm",
+		Timeout: time.Second * 20,
 	}
 }
 
