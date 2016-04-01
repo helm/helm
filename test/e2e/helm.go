@@ -30,10 +30,24 @@ func NewHelmContext(t *testing.T) *HelmContext {
 	}
 }
 
-func (h *HelmContext) Run(args ...string) *HelmCmd {
+func (h *HelmContext) MustRun(args ...string) *HelmCmd {
 	cmd := h.newCmd()
 	if status := cmd.exec(args...); status != nil {
 		h.t.Fatalf("helm %v failed unexpectedly: %v", args, status)
+	}
+	return cmd
+}
+
+func (h *HelmContext) Run(args ...string) *HelmCmd {
+	cmd := h.newCmd()
+	cmd.exec(args...)
+	return cmd
+}
+
+func (h *HelmContext) RunFail(args ...string) *HelmCmd {
+	cmd := h.newCmd()
+	if status := cmd.exec(args...); status == nil {
+		h.t.Fatalf("helm unexpected to fail: %v", args, status)
 	}
 	return cmd
 }
@@ -48,6 +62,7 @@ type HelmCmd struct {
 	ctx            *HelmContext
 	path           string
 	ran            bool
+	status         error
 	stdout, stderr bytes.Buffer
 }
 
@@ -58,7 +73,7 @@ func (h *HelmCmd) exec(args ...string) error {
 	h.stderr.Reset()
 	cmd.Stdout = &h.stdout
 	cmd.Stderr = &h.stderr
-	status := cmd.Run()
+	h.status = cmd.Run()
 	if h.stdout.Len() > 0 {
 		h.ctx.t.Log("standard output:")
 		h.ctx.t.Log(h.stdout.String())
@@ -68,7 +83,7 @@ func (h *HelmCmd) exec(args ...string) error {
 		h.ctx.t.Log(h.stderr.String())
 	}
 	h.ran = true
-	return status
+	return h.status
 }
 
 // Stdout returns standard output of the helmCmd run as a string.
