@@ -16,7 +16,7 @@ against other workflows.
 
 ### Helm Official
 
-The _Helm Official_ project focuses on maintaining a repository of high-quality production-ready charts. Charts may be contributed by anyone in the broad community, and they are vetted and maintained by the Helm Official core contributors.
+The _Helm Official_ project focuses on maintaining a repository of high-quality production-ready charts. Charts may be contributed by anyone in the broad community, and they are vetted and maintained by the charts-maintainers team in the Github Kubernetes organization.
 
 Stage | Devel | Review | Release | Store | Use
 ------|-------|--------|---------|-------|-----
