@@ -13,7 +13,7 @@
 # limitations under the License.
 
 IMAGE ?= resourcifier
-KUBE_VERSION ?= v1.1.7
+KUBE_VERSION ?= v1.2.0
 
 include ../include.mk
 
