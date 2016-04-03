@@ -18,6 +18,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -100,11 +101,20 @@ func (c *Client) DeleteDeployment(name string) (*common.Deployment, error) {
 	return deployment, err
 }
 
-// DescribeDeployment describes the kubernetes resources of the supplied deployment
-func (c *Client) DescribeDeployment(name string) (*common.Deployment, error) {
-	var deployment *common.Deployment
-	//TODO: implement
-	return deployment, nil
+// DescribeDeployment describes the kubernetes resources of the supplied deployment by fetching the
+// latest manifest.
+func (c *Client) DescribeDeployment(name string) (*common.Manifest, error) {
+	var manifest *common.Manifest
+	deployment, err := c.GetDeployment(name)
+	if err != nil {
+		return nil, err
+	}
+	if deployment.LatestManifest == "" {
+		return nil, errors.New("Deployment: '" + name + "' has no manifest")
+	}
+
+	_, err = c.Get(fancypath.Join("deployments", name, "manifests", deployment.LatestManifest), &manifest)
+	return manifest, err
 }
 
 // PostDeployment posts a deployment object to the manager service.

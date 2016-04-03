@@ -19,6 +19,7 @@ package client
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kubernetes/helm/pkg/common"
@@ -61,6 +62,81 @@ func TestGetDeployment(t *testing.T) {
 
 	if d.State.Status != common.DeployedStatus {
 		t.Fatalf("expected deployment status 'Deployed', got '%s'", d.State.Status)
+	}
+}
+
+func TestDescribeDeployment(t *testing.T) {
+	fc := &fakeClient{
+		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.String(), "manifest") {
+				w.Write([]byte(`{"deployment":"guestbook.yaml","name":"manifest-1454962670728402229","expandedConfig":{"resources":[{"name":"fe-rc","type":"ReplicationController","state":{"status":"Created"}},{"name":"fe","type":"Service","state":{"status":"Created"}}]}}`))
+			} else {
+				w.Write([]byte(`{"name":"guestbook.yaml","id":0,"createdAt":"2016-02-08T12:17:49.251658308-08:00","deployedAt":"2016-02-08T12:17:49.251658589-08:00","modifiedAt":"2016-02-08T12:17:51.177518098-08:00","deletedAt":"0001-01-01T00:00:00Z","state":{"status":"Deployed"},"latestManifest":"manifest-1454962670728402229"}`))
+			}
+
+		}),
+	}
+	defer fc.teardown()
+
+	m, err := fc.setup().DescribeDeployment("guestbook.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if m.Deployment != "guestbook.yaml" {
+		t.Fatalf("expected deployment name 'guestbook.yaml', got '%s'", m.Name)
+	}
+	if m.Name != "manifest-1454962670728402229" {
+		t.Fatalf("expected manifest name 'manifest-1454962670728402229', got '%s'", m.Name)
+	}
+	if len(m.ExpandedConfig.Resources) != 2 {
+		t.Fatalf("expected two resources, got %d", len(m.ExpandedConfig.Resources))
+	}
+	var foundFE = false
+	var foundFERC = false
+	for _, r := range m.ExpandedConfig.Resources {
+		if r.Name == "fe" {
+			foundFE = true
+			if r.Type != "Service" {
+				t.Fatalf("Incorrect type, expected 'Service' got '%s'", r.Type)
+			}
+		}
+		if r.Name == "fe-rc" {
+			foundFERC = true
+			if r.Type != "ReplicationController" {
+				t.Fatalf("Incorrect type, expected 'ReplicationController' got '%s'", r.Type)
+			}
+		}
+		if r.State.Status != common.Created {
+			t.Fatalf("Incorrect status, expected '%s' got '%s'", common.Created, r.State.Status)
+		}
+	}
+	if !foundFE {
+		t.Fatalf("didn't find 'fe' in resources")
+	}
+	if !foundFERC {
+		t.Fatalf("didn't find 'fe-rc' in resources")
+	}
+}
+
+func TestDescribeDeploymentFailedDeployment(t *testing.T) {
+	var expectedError = "Deployment: 'guestbook.yaml' has no manifest"
+	fc := &fakeClient{
+		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`{"name":"guestbook.yaml","createdAt":"2016-04-02T10:41:06.509049871-07:00","deployedAt":"0001-01-01T00:00:00Z","modifiedAt":"2016-04-02T10:41:06.509203582-07:00","deletedAt":"0001-01-01T00:00:00Z","state":{"status":"Failed","errors":["cannot expand configuration:No repository for url gs://kubernetes-charts-testing/redis-2.tgz\n\u0026{[0xc82014efc0]}\n"]},"latestManifest":""}`))
+		}),
+	}
+	defer fc.teardown()
+
+	m, err := fc.setup().DescribeDeployment("guestbook.yaml")
+	if err == nil {
+		t.Fatal("Did not get an error for missing manifest")
+	}
+	if err.Error() != expectedError {
+		t.Fatalf("Unexpected error message, wanted:\n%s\ngot:\n%s", expectedError, err.Error())
+	}
+	if m != nil {
+		t.Fatal("Got back manifest but shouldn't have")
 	}
 }
 

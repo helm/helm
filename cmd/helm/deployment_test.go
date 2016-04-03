@@ -54,6 +54,25 @@ func TestDeployment(t *testing.T) {
 			[]string{"guestbook.yaml"},
 			"guestbook.yaml\n",
 		},
+		{
+			[]string{"deployment", "describe", "guestbook.yaml"},
+			&common.Manifest{
+				Deployment: "guestbook.yaml",
+				Name:       "manifestxyz",
+				ExpandedConfig: &common.Configuration{
+					Resources: []*common.Resource{
+						{Name: "fe-rc", Type: "ReplicationController", State: &common.ResourceState{Status: common.Created}},
+						{Name: "fe", Type: "Service", State: &common.ResourceState{Status: common.Created}},
+						{Name: "be-rc", Type: "ReplicationController", State: &common.ResourceState{Status: common.Created}},
+						{Name: "be", Type: "Service", State: &common.ResourceState{Status: common.Created}},
+					},
+				},
+			},
+			"Name: fe-rc\nType: ReplicationController\nStatus: Created\n" +
+				"Name: fe\nType: Service\nStatus: Created\n" +
+				"Name: be-rc\nType: ReplicationController\nStatus: Created\n" +
+				"Name: be\nType: Service\nStatus: Created\n",
+		},
 	}
 
 	for _, tc := range deploymentTestCases {
