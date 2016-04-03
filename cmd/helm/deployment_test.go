@@ -24,64 +24,78 @@ import (
 	"github.com/kubernetes/helm/pkg/common"
 )
 
+type pathAndResponse struct {
+	path string
+	resp interface{}
+}
+
 func TestDeployment(t *testing.T) {
 	var deploymentTestCases = []struct {
 		args     []string
-		resp     interface{}
+		resp     []pathAndResponse
 		expected string
 	}{
 		{
 			[]string{"deployment", "show", "guestbook.yaml"},
-			&common.Deployment{
+			[]pathAndResponse{{"/deployments/", &common.Deployment{
 				Name:  "guestbook.yaml",
 				State: &common.DeploymentState{Status: common.CreatedStatus},
-			},
+			}}},
 			"Name: guestbook.yaml\nStatus: Created\n",
 		},
 		{
 			[]string{"deployment", "show", "guestbook.yaml"},
-			&common.Deployment{
+			[]pathAndResponse{{"/deployments/", &common.Deployment{
 				Name: "guestbook.yaml",
 				State: &common.DeploymentState{
 					Status: common.FailedStatus,
 					Errors: []string{"error message"},
 				},
-			},
+			}}},
 			"Name: guestbook.yaml\nStatus: Failed\nErrors:\n  error message\n",
 		},
 		{
 			[]string{"deployment", "list"},
-			[]string{"guestbook.yaml"},
+			[]pathAndResponse{{"/deployments/", []string{"guestbook.yaml"}}},
 			"guestbook.yaml\n",
 		},
 		{
 			[]string{"deployment", "describe", "guestbook.yaml"},
-			&common.Manifest{
-				Deployment: "guestbook.yaml",
-				Name:       "manifestxyz",
-				ExpandedConfig: &common.Configuration{
-					Resources: []*common.Resource{
-						{Name: "fe-rc", Type: "ReplicationController", State: &common.ResourceState{Status: common.Created}},
-						{Name: "fe", Type: "Service", State: &common.ResourceState{Status: common.Created}},
-						{Name: "be-rc", Type: "ReplicationController", State: &common.ResourceState{Status: common.Created}},
-						{Name: "be", Type: "Service", State: &common.ResourceState{Status: common.Created}},
+			[]pathAndResponse{{
+				"/deployments/guestbook.yaml",
+				&common.Deployment{Name: "guestbook.yaml",
+					State:          &common.DeploymentState{Status: common.CreatedStatus},
+					LatestManifest: "manifestxyz",
+				}},
+				{"/deployments/guestbook.yaml/manifests/manifestxyz", &common.Manifest{
+					Deployment: "guestbook.yaml",
+					Name:       "manifestxyz",
+					ExpandedConfig: &common.Configuration{
+						Resources: []*common.Resource{
+							{Name: "fe-rc", Type: "ReplicationController", State: &common.ResourceState{Status: common.Created}},
+							{Name: "fe", Type: "Service", State: &common.ResourceState{Status: common.Created}},
+							{Name: "be-rc", Type: "ReplicationController", State: &common.ResourceState{Status: common.Created}},
+							{Name: "be", Type: "Service", State: &common.ResourceState{Status: common.Created}},
+						},
 					},
-				},
-			},
-			"Name: fe-rc\nType: ReplicationController\nStatus: Created\n" +
-				"Name: fe\nType: Service\nStatus: Created\n" +
-				"Name: be-rc\nType: ReplicationController\nStatus: Created\n" +
-				"Name: be\nType: Service\nStatus: Created\n",
+				}}},
+			"Name:   fe-rc\nType:   ReplicationController\nStatus: Created\n" +
+				"Name:   fe\nType:   Service\nStatus: Created\n" +
+				"Name:   be-rc\nType:   ReplicationController\nStatus: Created\n" +
+				"Name:   be\nType:   Service\nStatus: Created\n",
 		},
 	}
 
 	for _, tc := range deploymentTestCases {
 		th := testHelm(t)
-		th.mux.HandleFunc("/deployments/", func(w http.ResponseWriter, r *http.Request) {
-			data, err := json.Marshal(tc.resp)
-			th.must(err)
-			w.Write(data)
-		})
+		for _, pathAndResponse := range tc.resp {
+			var response = pathAndResponse.resp
+			th.mux.HandleFunc(pathAndResponse.path, func(w http.ResponseWriter, r *http.Request) {
+				data, err := json.Marshal(response)
+				th.must(err)
+				w.Write(data)
+			})
+		}
 
 		th.run(tc.args...)
 
