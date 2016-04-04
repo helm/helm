@@ -21,3 +21,4 @@ import:
 - package: github.com/Masterminds/sprig
   version: ^2.1.0
 - package: github.com/Masterminds/httputil
+- package: github.com/juju/gojsonschema

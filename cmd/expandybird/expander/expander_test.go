@@ -478,7 +478,7 @@ func TestSchemaFail(t *testing.T) {
 			},
 		},
 		nil, // Response.
-		"Invalid properties for",
+		`"prop2" property is missing and required`,
 	)
 }
 

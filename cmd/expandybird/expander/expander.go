@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	"log"
-	"os"
 	"os/exec"
 
 	"github.com/kubernetes/helm/pkg/expansion"
@@ -50,7 +49,11 @@ type expandyBirdOutput struct {
 // expanded configuration as a string on success.
 func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.ServiceResponse, error) {
 
-	err := expansion.ValidateRequest(request)
+	if err := expansion.ValidateRequest(request); err != nil {
+		return nil, err
+	}
+
+	request, err := expansion.ValidateProperties(request)
 	if err != nil {
 		return nil, err
 	}
@@ -65,21 +68,13 @@ func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.Se
 	}
 
 	entrypointIndex := -1
-	schemaIndex := -1
 	for i, f := range chartMembers {
 		if f.Path == chartFile.Expander.Entrypoint {
 			entrypointIndex = i
 		}
-		if f.Path == chartFile.Schema {
-			schemaIndex = i
-		}
 	}
 	if entrypointIndex == -1 {
 		message := fmt.Sprintf("The entrypoint in the chart.yaml cannot be found: %s", chartFile.Expander.Entrypoint)
-		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
-	}
-	if chartFile.Schema != "" && schemaIndex == -1 {
-		message := fmt.Sprintf("The schema in the chart.yaml cannot be found: %s", chartFile.Schema)
 		return nil, fmt.Errorf("%s: %s", chartInv.Name, message)
 	}
 
@@ -104,20 +99,12 @@ func (e *expander) ExpandChart(request *expansion.ServiceRequest) (*expansion.Se
 		Stderr: &stderr,
 	}
 
-	if chartFile.Schema != "" {
-		// appending to exsiting Env is required
-		cmd.Env = append(os.Environ(), "VALIDATE_SCHEMA=1")
-	}
-
 	for i, f := range chartMembers {
 		name := f.Path
 		path := f.Path
 		if i == entrypointIndex {
 			// This is how expandyBird identifies the entrypoint.
 			name = chartInv.Type
-		} else if i == schemaIndex {
-			// Doesn't matter what it was originally called, expandyBird expects to find it here.
-			name = chartInv.Type + ".schema"
 		}
 		cmd.Args = append(cmd.Args, name, path, string(f.Content))
 	}
