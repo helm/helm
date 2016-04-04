@@ -48,6 +48,13 @@ Status: {{.State.Status}}
 {{range .}}  {{.}}{{end}}
 {{end}}`
 
+const defaultShowResourceFormat = `Name:   {{.Name}}
+Type:   {{.Type}}
+Status: {{.State.Status}}
+{{with .State.Errors}}Errors:
+{{range .}}  {{.}}{{end}}
+{{end}}`
+
 func init() {
 	addCommands(deploymentCommands())
 }
@@ -145,13 +152,23 @@ func describeDeployment(c *cli.Context) error {
 		return errTooManyArgs
 	}
 	name := args[0]
-	_, err := NewClient(c).DescribeDeployment(name)
+	manifest, err := NewClient(c).DescribeDeployment(name)
 	if err != nil {
 		return err
 	}
 
-	format.Info("TO BE IMPLEMENTED")
+	if manifest.ExpandedConfig == nil {
+		return errors.New("No ExpandedConfig found for: " + name)
+	}
 
+	for _, resource := range manifest.ExpandedConfig.Resources {
+		tmpl := template.Must(template.New("showresource").Parse(defaultShowResourceFormat))
+		err = tmpl.Execute(os.Stdout, resource)
+		if err != nil {
+			return err
+		}
+
+	}
 	return nil
 }
 
