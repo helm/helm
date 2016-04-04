@@ -17,6 +17,7 @@ limitations under the License.
 package repo
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -61,6 +62,11 @@ func (rs *inmemRepoService) CreateRepo(repository IRepo) error {
 
 	URL := repository.GetURL()
 	name := repository.GetName()
+
+	valid := GCSRepoURLMatcher.MatchString(URL)
+	if !valid {
+		return errors.New(URL + " is an invalid Repo URL")
+	}
 
 	for u, r := range rs.repositories {
 		if u == URL {

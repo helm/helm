@@ -85,6 +85,19 @@ func TestCreateRepoWithDuplicateURL(t *testing.T) {
 	}
 }
 
+func TestCreateRepoWithInvalidURL(t *testing.T) {
+	rs := NewInmemRepoService()
+	invalidURL := "fake://sfds"
+	r, err := newRepo(invalidURL, "", TestName, GCSRepoFormat, GCSRepoType)
+	if err != nil {
+		t.Fatalf("cannot create test repo: %v", err)
+	}
+
+	if err = rs.CreateRepo(r); err == nil {
+		t.Fatalf("created repo with invalid URL: %s", invalidURL)
+	}
+}
+
 func TestGetRepoWithInvalidURL(t *testing.T) {
 	invalidURL := "https://not.a.valid/url"
 	rs := NewInmemRepoService()
@@ -96,7 +109,7 @@ func TestGetRepoWithInvalidURL(t *testing.T) {
 
 func TestGetRepoURLByName(t *testing.T) {
 	rs := NewInmemRepoService()
-	testURL := "gcs://helm-test-charts"
+	testURL := "gs://helm-test-charts"
 	r, err := newRepo(testURL, "", TestName, GCSRepoFormat, GCSRepoType)
 	err = rs.CreateRepo(r)
 	if err != nil {
