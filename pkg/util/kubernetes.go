@@ -16,6 +16,14 @@ limitations under the License.
 
 package util
 
+import (
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"strings"
+)
+
 // KubernetesConfig defines the configuration options for talking to Kubernetes master
 type KubernetesConfig struct {
 	KubePath       string // The path to kubectl binary
@@ -55,4 +63,44 @@ type KubernetesSecret struct {
 	APIVersion string            `json:"apiVersion"`
 	Metadata   map[string]string `json:"metadata"`
 	Data       map[string]string `json:"data,omitempty"`
+}
+
+// GetServiceURL takes a default service URL, a service name and a service port,
+// and returns a URL for accessing the service. It first looks for an environment
+// variable set by Kubernetes by transposing the service name. If it can't find
+// one, it looks up the service name in DNS. If that fails, it returns the default
+// service URL.
+func GetServiceURL(serviceURL, serviceName, servicePort string) string {
+	if serviceURL == "" {
+		serviceURL = MakeEnvVariableURL(serviceName)
+		if serviceURL == "" {
+			addrs, err := net.LookupHost(serviceName)
+			if err != nil || len(addrs) < 1 {
+				log.Fatalf("cannot resolve service:%v. environment:%v\n", serviceName, os.Environ())
+			}
+
+			serviceURL = fmt.Sprintf("http://%s:%s", addrs[0], servicePort)
+		}
+	}
+
+	return serviceURL
+}
+
+// MakeEnvVariableURL takes a service name and returns the value of the
+// environment variable that identifies its URL, if it exists, or the empty
+// string, if it doesn't.
+func MakeEnvVariableURL(str string) string {
+	prefix := MakeEnvVariableName(str)
+	url := os.Getenv(prefix + "_PORT")
+	return strings.Replace(url, "tcp", "http", 1)
+}
+
+// MakeEnvVariableName is copied from the Kubernetes source,
+// which is referenced by the documentation for service environment variables.
+func MakeEnvVariableName(str string) string {
+	// TODO: If we simplify to "all names are DNS1123Subdomains" this
+	// will need two tweaks:
+	//   1) Handle leading digits
+	//   2) Handle dots
+	return strings.ToUpper(strings.Replace(str, "-", "_", -1))
 }

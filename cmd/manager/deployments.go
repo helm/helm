@@ -20,9 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/kubernetes/helm/cmd/manager/manager"
@@ -93,9 +91,9 @@ func newManager(c *router.Context) manager.Manager {
 	service := repo.NewInmemRepoService()
 	cp := c.CredentialProvider
 	rp := repo.NewRepoProvider(service, repo.NewGCSRepoProvider(cp), cp)
-	expander := manager.NewExpander(getServiceURL(cfg.ExpanderURL, cfg.ExpanderName, expanderPort), rp)
-	deployer := manager.NewDeployer(getServiceURL(cfg.DeployerURL, cfg.DeployerName, deployerPort))
-	address := strings.TrimPrefix(getServiceURL(cfg.MongoAddress, cfg.MongoName, cfg.MongoPort), "http://")
+	expander := manager.NewExpander(util.GetServiceURL(cfg.ExpanderURL, cfg.ExpanderName, expanderPort), rp)
+	deployer := manager.NewDeployer(util.GetServiceURL(cfg.DeployerURL, cfg.DeployerName, deployerPort))
+	address := strings.TrimPrefix(util.GetServiceURL(cfg.MongoAddress, cfg.MongoName, cfg.MongoPort), "http://")
 	repository := createRepository(address)
 	return manager.NewManager(expander, deployer, repository, rp, service, c.CredentialProvider)
 }
@@ -107,41 +105,6 @@ func createRepository(address string) repository.Repository {
 	}
 
 	return r
-}
-
-func getServiceURL(serviceURL, serviceName, servicePort string) string {
-	if serviceURL == "" {
-		serviceURL = makeEnvVariableURL(serviceName)
-		if serviceURL == "" {
-			addrs, err := net.LookupHost(serviceName)
-			if err != nil || len(addrs) < 1 {
-				log.Fatalf("cannot resolve service:%v. environment:%v\n", serviceName, os.Environ())
-			}
-
-			serviceURL = fmt.Sprintf("http://%s:%s", addrs[0], servicePort)
-		}
-	}
-
-	return serviceURL
-}
-
-// makeEnvVariableURL takes a service name and returns the value of the
-// environment variable that identifies its URL, if it exists, or the empty
-// string, if it doesn't.
-func makeEnvVariableURL(str string) string {
-	prefix := makeEnvVariableName(str)
-	url := os.Getenv(prefix + "_PORT")
-	return strings.Replace(url, "tcp", "http", 1)
-}
-
-// makeEnvVariableName is copied from the Kubernetes source,
-// which is referenced by the documentation for service environment variables.
-func makeEnvVariableName(str string) string {
-	// TODO: If we simplify to "all names are DNS1123Subdomains" this
-	// will need two tweaks:
-	//   1) Handle leading digits
-	//   2) Handle dots
-	return strings.ToUpper(strings.Replace(str, "-", "_", -1))
 }
 
 func listDeploymentsHandlerFunc(w http.ResponseWriter, r *http.Request, c *router.Context) error {
