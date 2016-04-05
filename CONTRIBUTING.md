@@ -57,6 +57,8 @@ If you change or add functionality, your changes should include the necessary te
 
 Pull requests that do not include sufficient tests or documentation will be rejected.
 
+***NOTE***: Please note that we are currently using Go version 1.6, and tests will fail if you run them on any other version of Go.
+
 ### Coding Standards
 
 Go code should always be run through `gofmt` on the default settings. Lines of code may be up to 99 characters long. Documentation strings and tests are required for all public methods. Use of third-party go packages should be minimal, but when doing so, vendor code using [Glide](http://glide.sh/).
