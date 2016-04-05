@@ -21,7 +21,6 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/kubernetes/helm/pkg/format"
 	"github.com/kubernetes/helm/pkg/kubectl"
 )
 
@@ -73,9 +72,8 @@ func (i *Installer) expand() ([]byte, error) {
 func IsInstalled(runner kubectl.Runner) bool {
 	// Basically, we test "all-or-nothing" here: if this returns without error
 	// we know that we have both the namespace and the manager API server.
-	out, err := runner.GetByKind("rc", "manager-rc", "helm")
+	_, err := runner.GetByKind("rc", "manager-rc", "helm")
 	if err != nil {
-		format.Err("Installation not found: %s %s", out, err)
 		return false
 	}
 	return true
