@@ -71,8 +71,8 @@ build_binary_cross() {
   echo "Building ${target}"
   gox -verbose \
     -ldflags="${LDFLAGS}" \
-    -os="linux darwin" \
-    -arch="amd64 386" \
+    -os="linux darwin freebsd windows" \
+    -arch="amd64 386 arm" \
     -output="bin/{{.OS}}-{{.Arch}}/{{.Dir}}" \
     "${REPO}/${target}"
 }

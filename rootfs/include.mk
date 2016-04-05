@@ -14,10 +14,11 @@
 
 # If you update this image please check the tag value before pushing.
 
-DOCKER_REGISTRY ?= gcr.io
+DEFAULT_REGISTRY := gcr.io
+DOCKER_REGISTRY ?= $(DEFAULT_REGISTRY)
 
-# Legacy support for $PROJECT
-DOCKER_PROJECT ?= $(PROJECT)
+DEFAULT_PROJECT := kubernetes-helm
+DOCKER_PROJECT ?= $(DEFAULT_PROJECT)
 
 # Support both local and remote repos, and support no project.
 ifeq ($(DOCKER_PROJECT),)
