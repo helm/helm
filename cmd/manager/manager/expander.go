@@ -69,7 +69,7 @@ func (e *expander) getBaseURL() string {
 func (e *expander) ExpandConfiguration(conf *common.Configuration) (*ExpandedConfiguration, error) {
 	expConf, err := e.expandConfiguration(conf)
 	if err != nil {
-		return nil, fmt.Errorf("cannot expand configuration:%s\n%v\n", err, conf)
+		return nil, err
 	}
 
 	return expConf, nil
