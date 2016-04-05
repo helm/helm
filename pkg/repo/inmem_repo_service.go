@@ -111,7 +111,7 @@ func (rs *inmemRepoService) GetRepoByChartURL(URL string) (IRepo, error) {
 	}
 
 	if found == nil {
-		return nil, fmt.Errorf("No repository for url %s", URL)
+		return nil, fmt.Errorf("No repository found for chart url: %s", URL)
 	}
 
 	return found, nil
