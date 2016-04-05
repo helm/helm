@@ -13,15 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Run this from the root of your clone of the kubernetes/helm repository.
+# Be sure to checkout the release you want to install before running it,
+# since it will attempt to pull the version from HEAD on the current branch.
+
 set -euo pipefail
 
-DEFAULT_TAG=v1.2
-DEFAULT_BINARY=${GOPATH}/bin/helm
+DEFAULT_TAG=git-$(git rev-parse --short HEAD)
 DEFAULT_PLATFORM=$(uname | tr '[:upper:]' '[:lower:]')
 DEFAULT_ARCH=$(uname -m)
 
-STORAGE_URL=http://get-dm.storage.googleapis.com
-ZIP=helm-${TAG:-${DEFAULT_TAG}}-${PLATFORM:-${DEFAULT_PLATFORM}}-${ARCH:-${DEFAULT_ARCH}}.zip
+if [[ "${DEFAULT_ARCH}" == x86_64 ]]; then
+	DEFAULT_ARCH=amd64
+fi
+
+PLATFORM=${PLATFORM:-${DEFAULT_PLATFORM}}
+ARCH=${ARCH:-${DEFAULT_ARCH}}
+TAG=${TAG:-${DEFAULT_TAG}}
+
+BINARY=helm-${PLATFORM}-${ARCH}
+ZIP=${TAG}-${BINARY}.zip
+
+STORAGE_URL=http://get-helm.storage.googleapis.com
 
 echo "Downloading ${ZIP}..."
 curl -Ls "${STORAGE_URL}/${ZIP}" -O
@@ -35,14 +48,13 @@ cat <<EOF
 
 helm is now available in your current directory.
 
-Before using it, please install the Helm service in your
+Before using it, please install the Deployment Manager service in your
 kubernetes cluster by running
 
-  $ helm server install
+$ ./helm server install
 
 To get started, run:
 
-  $ helm help
+$ ./helm help
 
 EOF
-

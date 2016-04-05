@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+GO_DIRS ?= $(shell glide nv -x )
+GO_PKGS ?= $(shell glide nv)
+
+ROOTFS := rootfs
+CLIENT := cmd/helm
+
 .PHONY: info
 info:
 	$(MAKE) -C $(ROOTFS) $@
@@ -20,11 +26,6 @@ info:
 ifndef GOPATH
 	$(error No GOPATH set)
 endif
-
-GO_DIRS ?= $(shell glide nv -x )
-GO_PKGS ?= $(shell glide nv)
-
-ROOTFS := rootfs
 
 .PHONY: build
 build: gocheck
@@ -55,8 +56,16 @@ quicktest: test-style
 	go test $(GO_PKGS)
 
 .PHONY: push
-push: build-static
-	$(MAKE) -C $(ROOTFS) $@
+push: push-server push-client
+
+.PHONY: push-server
+push-server: build-static
+	$(MAKE) -C $(ROOTFS) push
+
+.PHONY: push-client
+push-client: gocheck
+	@BUILD_TYPE=CROSS scripts/build-go.sh $(CLIENT)
+	$(MAKE) -C $(CLIENT) push
 
 .PHONY: container
 container: build-static
