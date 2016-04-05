@@ -6,7 +6,7 @@ This details the requirements and steps for doing a DM push.
 
 In order to build and push DM, you must:
 
-* be an editor or owner on the GCP project `dm-k8s-prod`
+* be an editor or owner on the GCP project `kubernetes-helm`
 * have `docker` installed and runnable in your current environment
 * have `gcloud` installed
 * have `gsutil` installed
@@ -17,7 +17,6 @@ To build and push the service containers:
 
 ```
 $ cd ${GOPATH}/src/github.com/kubernetes/helm
-$ export PROJECT=dm-k8s-prod
 $ make push
 ```
 

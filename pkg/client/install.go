@@ -143,7 +143,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: {{default "gcr.io/dm-k8s-prod/expandybird:v1.2.1" .Expandybird.Image}}
+        image: {{default "gcr.io/kubernetes-helm/expandybird:v1.2.1" .Expandybird.Image}}
         name: expandybird
         ports:
         - containerPort: 8080
@@ -187,7 +187,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: {{ default "gcr.io/dm-k8s-prod/resourcifier:v1.2.1" .Resourcifier.Image }}
+        image: {{ default "gcr.io/kubernetes-helm/resourcifier:v1.2.1" .Resourcifier.Image }}
         name: resourcifier
         ports:
         - containerPort: 8080
@@ -231,7 +231,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: {{ default "gcr.io/dm-k8s-prod/manager:v1.2.1" .Manager.Image }}
+        image: {{ default "gcr.io/kubernetes-helm/manager:v1.2.1" .Manager.Image }}
         name: manager
         ports:
         - containerPort: 8080

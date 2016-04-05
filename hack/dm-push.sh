@@ -17,7 +17,7 @@
 # Run this from helm root to build and push the dm client plus
 # kubernetes install config into the publicly readable GCS bucket gs://get-dm.
 #
-# Must have EDIT permissions on the dm-k8s-prod GCP project.
+# Must have EDIT permissions on the kubernetes-helm GCP project.
 
 set -euo pipefail
 
