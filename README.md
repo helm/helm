@@ -88,8 +88,9 @@ Then deploy a Chart from this repository. For example to start a Redis cluster:
 ```
 $ bin/helm deploy --name test --properties "workers=2" gs://kubernetes-charts-testing/redis-2.tgz
 ```
+The command above will create a helm "deployment" called `test` using the `redis-2.tgz` chart stored in the google storage bucket `kubernetes-charts-testing`.
 
-Once images are downloaded you should see Redis rc, pods and services similar to this:
+`$ bin/helm deployment describe test` will allow you to see the status of the resources you just created using the redis-v2.tgz chart. You can also use kubectl to see the the same resources. It'll look like this:
 
 ```
 $ kubectl get pods,svc,rc
