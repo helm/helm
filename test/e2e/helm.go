@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	namespace = "dm"
+	namespace = "helm"
 	apiProxy  = "/api/v1/proxy/namespaces/" + namespace + "/services/manager-service:manager/"
 )
 
