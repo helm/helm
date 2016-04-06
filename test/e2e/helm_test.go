@@ -64,9 +64,9 @@ func TestHelm(t *testing.T) {
 			"--expandybird-image", expandybirdImage,
 			"--manager-image", managerImage,
 		)
-		wait(func() bool {
-			return helm.Running()
-		})
+		if err := wait(helm.Running); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Add repo if it does not exsit
@@ -85,10 +85,9 @@ func TestHelm(t *testing.T) {
 		*chart,
 	)
 
-	err := wait(func() bool {
+	if err := wait(func() bool {
 		return kube.Run("get", "pods").Match("redis.*Running")
-	})
-	if err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	t.Log(kube.Run("get", "pods").Stdout())
@@ -112,16 +111,15 @@ func TestHelm(t *testing.T) {
 	}
 }
 
-func wait(fn func() bool) error {
+type conditionFunc func() bool
+
+func wait(fn conditionFunc) error {
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(poll) {
 		if fn() {
-			continue
+			return nil
 		}
 	}
-	if !fn() {
-		return fmt.Errorf("Polling timeout")
-	}
-	return nil
+	return fmt.Errorf("Polling timeout")
 }
 
 func genName() string {
