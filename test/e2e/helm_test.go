@@ -46,6 +46,7 @@ func TestHelm(t *testing.T) {
 		t.Fatal("Not connected to kubernetes")
 	}
 	t.Log(kube.Version())
+	t.Log(helm.MustRun("version").Stdout())
 
 	helm.Host = helmHost()
 	if helm.Host == "" {
