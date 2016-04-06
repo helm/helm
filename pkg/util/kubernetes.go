@@ -65,42 +65,48 @@ type KubernetesSecret struct {
 	Data       map[string]string `json:"data,omitempty"`
 }
 
-// GetServiceURL takes a default service URL, a service name and a service port,
+// GetServiceURL takes a service name, a service port, and a default service URL,
 // and returns a URL for accessing the service. It first looks for an environment
 // variable set by Kubernetes by transposing the service name. If it can't find
-// one, it looks up the service name in DNS. If that fails, it returns the default
-// service URL.
-func GetServiceURL(serviceURL, serviceName, servicePort string) string {
-	if serviceURL == "" {
-		serviceURL = MakeEnvVariableURL(serviceName)
-		if serviceURL == "" {
-			addrs, err := net.LookupHost(serviceName)
-			if err != nil || len(addrs) < 1 {
-				log.Fatalf("cannot resolve service:%v. environment:%v\n", serviceName, os.Environ())
-			}
+// one, it looks up the service name in DNS. If that doesn't work, it returns the
+// default service URL. If that's empty, it returns an HTTP localhost URL for the
+// service port. If service port is empty, it panics.
+func GetServiceURL(serviceName, servicePort, serviceURL string) (string, error) {
+	if serviceName != "" {
+		varBase := strings.Replace(serviceName, "-", "_", -1)
+		varName := strings.ToUpper(varBase) + "_PORT"
+		serviceURL := os.Getenv(varName)
+		if serviceURL != "" {
+			return strings.Replace(serviceURL, "tcp", "http", 1), nil
+		}
 
-			serviceURL = fmt.Sprintf("http://%s:%s", addrs[0], servicePort)
+		if servicePort != "" {
+			addrs, err := net.LookupHost(serviceName)
+			if err == nil && len(addrs) > 0 {
+				return fmt.Sprintf("http://%s:%s", addrs[0], servicePort), nil
+			}
 		}
 	}
 
-	return serviceURL
+	if serviceURL != "" {
+		return serviceURL, nil
+	}
+
+	if servicePort != "" {
+		serviceURL = fmt.Sprintf("http://localhost:%s", servicePort)
+		return serviceURL, nil
+	}
+
+	err := fmt.Errorf("cannot resolve service:%v in environment:%v\n", serviceName, os.Environ())
+	return "", err
 }
 
-// MakeEnvVariableURL takes a service name and returns the value of the
-// environment variable that identifies its URL, if it exists, or the empty
-// string, if it doesn't.
-func MakeEnvVariableURL(str string) string {
-	prefix := MakeEnvVariableName(str)
-	url := os.Getenv(prefix + "_PORT")
-	return strings.Replace(url, "tcp", "http", 1)
-}
+// GetServiceURLOrDie calls GetServiceURL and exits if it returns an error.
+func GetServiceURLOrDie(serviceName, servicePort, serviceURL string) string {
+	URL, err := GetServiceURL(serviceName, servicePort, serviceURL)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-// MakeEnvVariableName is copied from the Kubernetes source,
-// which is referenced by the documentation for service environment variables.
-func MakeEnvVariableName(str string) string {
-	// TODO: If we simplify to "all names are DNS1123Subdomains" this
-	// will need two tweaks:
-	//   1) Handle leading digits
-	//   2) Handle dots
-	return strings.ToUpper(strings.Replace(str, "-", "_", -1))
+	return URL
 }
