@@ -38,7 +38,7 @@ func (h *Cmd) exec() error {
 		h.t.Logf("standard output:\n%s", h.stdout.String())
 	}
 	if h.stderr.Len() > 0 {
-		h.t.Log("standard error: %s\n", h.stderr.String())
+		h.t.Logf("standard error: %s\n", h.stderr.String())
 	}
 
 	h.ran = true
