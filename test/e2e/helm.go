@@ -3,12 +3,10 @@
 package e2e
 
 import (
-	"bytes"
+	"net/http"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
@@ -33,88 +31,50 @@ func NewHelmContext(t *testing.T) *HelmContext {
 	}
 }
 
-func (h *HelmContext) MustRun(args ...string) *HelmCmd {
-	cmd := h.newCmd()
-	if status := cmd.exec(args...); status != nil {
-		h.t.Fatalf("helm %v failed unexpectedly: %v", args, status)
+func (h *HelmContext) MustRun(args ...string) *Cmd {
+	cmd := h.newCmd(args...)
+	if status := cmd.exec(); status != nil {
+		h.t.Errorf("helm %v failed unexpectedly: %v", args, status)
+		h.t.Errorf("%s", cmd.Stderr())
+		h.t.FailNow()
 	}
 	return cmd
 }
 
-func (h *HelmContext) Run(args ...string) *HelmCmd {
-	cmd := h.newCmd()
-	cmd.exec(args...)
+func (h *HelmContext) Run(args ...string) *Cmd {
+	cmd := h.newCmd(args...)
+	cmd.exec()
 	return cmd
 }
 
-func (h *HelmContext) RunFail(args ...string) *HelmCmd {
-	cmd := h.newCmd()
-	if status := cmd.exec(args...); status == nil {
+func (h *HelmContext) RunFail(args ...string) *Cmd {
+	cmd := h.newCmd(args...)
+	if status := cmd.exec(); status == nil {
 		h.t.Fatalf("helm unexpected to fail: %v", args, status)
 	}
 	return cmd
 }
 
-func (h *HelmContext) newCmd() *HelmCmd {
-	return &HelmCmd{
-		ctx: h,
+func (h *HelmContext) newCmd(args ...string) *Cmd {
+	args = append([]string{"--host", h.Host}, args...)
+	return &Cmd{
+		t:    h.t,
+		path: h.Path,
+		args: args,
 	}
 }
 
-type HelmCmd struct {
-	ctx            *HelmContext
-	path           string
-	ran            bool
-	status         error
-	stdout, stderr bytes.Buffer
-}
+func (h *HelmContext) Running() bool {
+	endpoint := h.Host + "healthz"
 
-func (h *HelmCmd) exec(args ...string) error {
-	args = append([]string{"--host", h.ctx.Host}, args...)
-	cmd := exec.Command(h.ctx.Path, args...)
-	h.stdout.Reset()
-	h.stderr.Reset()
-	cmd.Stdout = &h.stdout
-	cmd.Stderr = &h.stderr
-	h.status = cmd.Run()
-	if h.stdout.Len() > 0 {
-		h.ctx.t.Log("standard output:")
-		h.ctx.t.Log(h.stdout.String())
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		h.t.Errorf("Could not GET %s: %s", endpoint, err)
 	}
-	if h.stderr.Len() > 0 {
-		h.ctx.t.Log("standard error:")
-		h.ctx.t.Log(h.stderr.String())
-	}
-	h.ran = true
-	return h.status
-}
+	return resp.StatusCode == 200
 
-// Stdout returns standard output of the helmCmd run as a string.
-func (h *HelmCmd) Stdout() string {
-	if !h.ran {
-		h.ctx.t.Fatal("internal testsuite error: stdout called before run")
-	}
-	return h.stdout.String()
-}
-
-// Stderr returns standard error of the helmCmd run as a string.
-func (h *HelmCmd) Stderr() string {
-	if !h.ran {
-		h.ctx.t.Fatal("internal testsuite error: stdout called before run")
-	}
-	return h.stderr.String()
-}
-
-func (h *HelmCmd) StdoutContains(substring string) bool {
-	return strings.Contains(h.Stdout(), substring)
-}
-
-func (h *HelmCmd) StderrContains(substring string) bool {
-	return strings.Contains(h.Stderr(), substring)
-}
-
-func (h *HelmCmd) Contains(substring string) bool {
-	return h.StdoutContains(substring) || h.StderrContains(substring)
+	//out := h.MustRun("server", "status").Stdout()
+	//return strings.Count(out, "Running") == 5
 }
 
 func RepoRoot() string {
