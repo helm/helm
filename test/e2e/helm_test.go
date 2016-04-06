@@ -16,10 +16,15 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
+const (
+	timeout = 10 * time.Second
+	poll    = 2 * time.Second
+)
+
 var (
-	repoURL  = flag.String("repo-url", "gs://areese-charts", "Repository URL")
-	repoName = flag.String("repo-name", "areese-charts", "Repository name")
-	chart    = flag.String("chart", "gs://areese-charts/replicatedservice-3.tgz", "Chart to deploy")
+	repoURL  = flag.String("repo-url", "gs://kubernetes-charts-testing", "Repository URL")
+	repoName = flag.String("repo-name", "kubernetes-charts-testing", "Repository name")
+	chart    = flag.String("chart", "gs://kubernetes-charts-testing/redis-2.tgz", "Chart to deploy")
 	host     = flag.String("host", "", "The URL to the helm server")
 
 	resourcifierImage = "quay.io/adamreese/resourcifier:latest"
