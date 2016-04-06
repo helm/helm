@@ -18,5 +18,5 @@ supported platforms and architectures, checkout the branch and tag you intend to
 and then run the following:
 
 ```
-$ PROJECT=kubernetes-helm make push
+$ DOCKER_PROJECT=kubernetes-helm make push
 ```

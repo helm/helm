@@ -1,7 +1,7 @@
 .PHONY: all build push clean
 
 DOCKER_REGISTRY = gcr.io
-PREFIX = $(DOCKER_REGISTRY)/$(PROJECT)
+PREFIX = $(DOCKER_REGISTRY)/$(DOCKER_PROJECT)
 IMAGE = nginx
 TAG = latest
 

@@ -17,9 +17,6 @@
 DEFAULT_REGISTRY := gcr.io
 DOCKER_REGISTRY ?= $(DEFAULT_REGISTRY)
 
-DEFAULT_PROJECT := kubernetes-helm
-DOCKER_PROJECT ?= $(DEFAULT_PROJECT)
-
 # Support both local and remote repos, and support no project.
 ifeq ($(DOCKER_PROJECT),)
 PREFIX := $(DOCKER_REGISTRY)
@@ -46,7 +43,7 @@ clean:
 info:
 	@echo "Build tag: ${TAG}"
 	@echo "Registry: ${DOCKER_REGISTRY}"
-	@echo "Project: ${PROJECT}"
+	@echo "Project: ${DOCKER_PROJECT}"
 	@echo "Image: ${IMAGE}"
 	@echo "Platform: ${PLATFORM}"
 	@echo "Arch: ${ARCH}"
