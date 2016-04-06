@@ -31,7 +31,10 @@ import (
 var (
 	port              = flag.Int("port", 8080, "The port to listen on")
 	maxLength         = flag.Int64("maxLength", 1024, "The maximum length (KB) of a template.")
+	expanderPort      = flag.String("expanderPort", "8081", "The IP port of the default expander service.")
+	expanderURL       = flag.String("expanderURL", "", "The URL for the default expander service.")
 	deployerName      = flag.String("deployer", "resourcifier-service", "The DNS name of the deployer service.")
+	deployerPort      = flag.String("deployerPort", "8082", "The IP port of the deployer service.")
 	deployerURL       = flag.String("deployerURL", "", "The URL for the deployer service.")
 	credentialFile    = flag.String("credentialFile", "", "Local file to use for credentials.")
 	credentialSecrets = flag.Bool("credentialSecrets", true, "Use secrets for credentials.")
@@ -71,7 +74,10 @@ func parseFlags() *router.Config {
 	return &router.Config{
 		Address:           fmt.Sprintf(":%d", *port),
 		MaxTemplateLength: *maxLength,
+		ExpanderPort:      *expanderPort,
+		ExpanderURL:       *expanderURL,
 		DeployerName:      *deployerName,
+		DeployerPort:      *deployerPort,
 		DeployerURL:       *deployerURL,
 		CredentialFile:    *credentialFile,
 		CredentialSecrets: *credentialSecrets,

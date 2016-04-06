@@ -83,21 +83,14 @@ func setupDependencies(c *router.Context) error {
 	return nil
 }
 
-const (
-	expanderName = "expander-service"
-	expanderPort = "8080"
-	expanderURL  = "http://localhost:8081"
-	deployerPort = "8080"
-)
-
 func newManager(c *router.Context) manager.Manager {
 	cfg := c.Config
 	service := repo.NewInmemRepoService()
 	cp := c.CredentialProvider
 	rp := repo.NewRepoProvider(service, repo.NewGCSRepoProvider(cp), cp)
-	expander := manager.NewExpander(util.GetServiceURL(expanderURL, expanderName, expanderPort), rp)
-	deployer := manager.NewDeployer(util.GetServiceURL(cfg.DeployerURL, cfg.DeployerName, deployerPort))
-	address := strings.TrimPrefix(util.GetServiceURL(cfg.MongoAddress, cfg.MongoName, cfg.MongoPort), "http://")
+	expander := manager.NewExpander(cfg.ExpanderPort, cfg.ExpanderURL, rp)
+	deployer := manager.NewDeployer(util.GetServiceURLOrDie(cfg.DeployerName, cfg.DeployerPort, cfg.DeployerURL))
+	address := strings.TrimPrefix(util.GetServiceURLOrDie(cfg.MongoName, cfg.MongoPort, cfg.MongoAddress), "http://")
 	repository := createRepository(address)
 	return manager.NewManager(expander, deployer, repository, rp, service, c.CredentialProvider)
 }
