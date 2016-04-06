@@ -2,8 +2,8 @@
 .*.swp
 *.pyc
 .project
-coverage.out
 nohup.out
+/.coverage
 /bin
 /vendor/*
 /rootfs/manager/bin/manager
