@@ -63,7 +63,7 @@ endif
 .PHONY: container
 container: .project .docker binary extras
 	docker build -t $(FULL_IMAGE):$(TAG) -f Dockerfile .
-	docker tag -f $(FULL_IMAGE):$(TAG) $(FULL_IMAGE):latest
+	docker tag $(FULL_IMAGE):$(TAG) $(FULL_IMAGE):latest
 
 .project:
 ifeq ($(DOCKER_REGISTRY), gcr.io)
@@ -77,7 +77,7 @@ endif
 
 .PHONY: binary
 binary:
-	@if [[ ! -x "bin/$(IMAGE)" ]] ; then echo "binary bin/$(IMAGE) not found" ; exit 1 ; fi  
+	@if [[ ! -x "bin/$(IMAGE)" ]] ; then echo "binary bin/$(IMAGE) not found" ; exit 1 ; fi
 
 .PHONY: kubectl
 kubectl:
