@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/expansion"
 	"github.com/kubernetes/helm/pkg/repo"
@@ -219,21 +218,6 @@ var roundTripResponses = []*ExpandedConfiguration{
 }
 */
 
-type mockRepoProvider struct {
-}
-
-func (m *mockRepoProvider) GetChartByReference(reference string) (*chart.Chart, repo.IChartRepo, error) {
-	return &chart.Chart{}, nil, nil
-}
-
-func (m *mockRepoProvider) GetRepoByChartURL(URL string) (repo.IChartRepo, error) {
-	return nil, nil
-}
-
-func (m *mockRepoProvider) GetRepoByURL(URL string) (repo.IChartRepo, error) {
-	return nil, nil
-}
-
 type ExpanderTestCase struct {
 	Description   string
 	Error         string
@@ -266,7 +250,7 @@ func TestExpandTemplate(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(etc.Handler))
 		defer ts.Close()
 
-		expander := NewExpander(ts.URL, getTestRepoProvider(t))
+		expander := NewExpander("8081", ts.URL, getTestRepoProvider(t))
 		resource := &common.Resource{
 			Name: "test_invocation",
 			Type: TestResourceType,

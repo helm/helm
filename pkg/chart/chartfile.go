@@ -61,7 +61,7 @@ type EnvConstraint struct {
 
 // Expander controls how template/ is evaluated.
 type Expander struct {
-	// Currently just Expandybird or GoTemplate
+	// Kubernetes service name to look up in DNS.
 	Name string `json:"name"`
 	// During evaluation, which file to start from.
 	Entrypoint string `json:"entrypoint"`

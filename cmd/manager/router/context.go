@@ -31,12 +31,14 @@ type Config struct {
 	Address string
 	// MaxTemplateLength is the maximum length of a template.
 	MaxTemplateLength int64
-	// ExpanderName is the DNS name of the expansion service.
-	ExpanderName string
-	// ExpanderURL is the expander service's URL.
+	// ExpanderPort is the default expander's IP port
+	ExpanderPort string
+	// ExpanderURL is the default expander's URL
 	ExpanderURL string
 	// DeployerName is the deployer's DNS name
 	DeployerName string
+	// DeployerPort is the deployer's IP port
+	DeployerPort string
 	// DeployerURL is the deployer's URL
 	DeployerURL string
 	// CredentialFile is the file to the credentials.

@@ -16,6 +16,14 @@ limitations under the License.
 
 package util
 
+import (
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"strings"
+)
+
 // KubernetesConfig defines the configuration options for talking to Kubernetes master
 type KubernetesConfig struct {
 	KubePath       string // The path to kubectl binary
@@ -55,4 +63,50 @@ type KubernetesSecret struct {
 	APIVersion string            `json:"apiVersion"`
 	Metadata   map[string]string `json:"metadata"`
 	Data       map[string]string `json:"data,omitempty"`
+}
+
+// GetServiceURL takes a service name, a service port, and a default service URL,
+// and returns a URL for accessing the service. It first looks for an environment
+// variable set by Kubernetes by transposing the service name. If it can't find
+// one, it looks up the service name in DNS. If that doesn't work, it returns the
+// default service URL. If that's empty, it returns an HTTP localhost URL for the
+// service port. If service port is empty, it panics.
+func GetServiceURL(serviceName, servicePort, serviceURL string) (string, error) {
+	if serviceName != "" {
+		varBase := strings.Replace(serviceName, "-", "_", -1)
+		varName := strings.ToUpper(varBase) + "_PORT"
+		serviceURL := os.Getenv(varName)
+		if serviceURL != "" {
+			return strings.Replace(serviceURL, "tcp", "http", 1), nil
+		}
+
+		if servicePort != "" {
+			addrs, err := net.LookupHost(serviceName)
+			if err == nil && len(addrs) > 0 {
+				return fmt.Sprintf("http://%s:%s", addrs[0], servicePort), nil
+			}
+		}
+	}
+
+	if serviceURL != "" {
+		return serviceURL, nil
+	}
+
+	if servicePort != "" {
+		serviceURL = fmt.Sprintf("http://localhost:%s", servicePort)
+		return serviceURL, nil
+	}
+
+	err := fmt.Errorf("cannot resolve service:%v in environment:%v\n", serviceName, os.Environ())
+	return "", err
+}
+
+// GetServiceURLOrDie calls GetServiceURL and exits if it returns an error.
+func GetServiceURLOrDie(serviceName, servicePort, serviceURL string) string {
+	URL, err := GetServiceURL(serviceName, servicePort, serviceURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return URL
 }

@@ -44,7 +44,7 @@ echo "Starting expandybird..."
 nohup $EXPANDYBIRD > $LOGDIR/expandybird.log 2>&1 --port=8081 --expansion_binary=expansion/expansion.py &
 
 echo "Starting deployment manager..."
-nohup $MANAGER > $LOGDIR/manager.log 2>&1 --port="${MANAGER_PORT}"  --kubectl="${KUBECTL}" --expanderURL=http://localhost:8081 --deployerURL=http://localhost:8082 &
+nohup $MANAGER > $LOGDIR/manager.log 2>&1 --port="${MANAGER_PORT}"  --kubectl="${KUBECTL}" --expanderPort=8081 --deployerPort=8082 &
 
 if [[ "$KUBE_PROXY" ]]; then
   echo "Starting kubectl proxy..."

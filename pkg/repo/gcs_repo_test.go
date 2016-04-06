@@ -30,7 +30,7 @@ var (
 	TestChartName          = "frobnitz"
 	TestChartVersion       = "0.0.1"
 	TestArchiveName        = TestChartName + "-" + TestChartVersion + ".tgz"
-	TestChartFile          = "testdata/frobnitz/Chart.yaml"
+	TestChartFile          = "../chart/testdata/frobnitz/Chart.yaml"
 	TestShouldFindRegex    = regexp.MustCompile(TestArchiveName)
 	TestShouldNotFindRegex = regexp.MustCompile("foobar")
 	TestName               = "bucket-name"
