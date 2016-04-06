@@ -20,20 +20,16 @@ import (
 	"github.com/kubernetes/helm/pkg/common"
 	"github.com/kubernetes/helm/pkg/expansion"
 	"github.com/kubernetes/helm/pkg/repo"
+	"github.com/kubernetes/helm/pkg/util"
 
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strings"
 )
-
-/*
-const (
-	// TODO (iantw): Align this with a character not allowed to show up in resource names.
-	layoutNodeKeySeparator = "#"
-)
-*/
 
 // ExpandedConfiguration is the structure returned by the expansion service.
 type ExpandedConfiguration struct {
@@ -47,21 +43,18 @@ type Expander interface {
 }
 
 // NewExpander returns a new initialized Expander.
-func NewExpander(URL string, rp repo.IRepoProvider) Expander {
+func NewExpander(port, URL string, rp repo.IRepoProvider) Expander {
 	if rp == nil {
 		rp = repo.NewRepoProvider(nil, nil, nil)
 	}
 
-	return &expander{expanderURL: URL, repoProvider: rp}
+	return &expander{expanderPort: port, expanderURL: URL, repoProvider: rp}
 }
 
 type expander struct {
 	repoProvider repo.IRepoProvider
+	expanderPort string
 	expanderURL  string
-}
-
-func (e *expander) getBaseURL() string {
-	return fmt.Sprintf("%s/expand", e.expanderURL)
 }
 
 // ExpandConfiguration expands the supplied configuration and returns
@@ -81,80 +74,81 @@ func (e *expander) expandConfiguration(conf *common.Configuration) (*ExpandedCon
 
 	// Iterate over all of the resources in the unexpanded configuration
 	for _, resource := range conf.Resources {
-		// A primitive layout resource captures only the name and type
+		additions := []*common.Resource{resource}
 		layout := &common.LayoutResource{
 			Resource: common.Resource{
 				Name: resource.Name, Type: resource.Type,
 			},
 		}
 
-		// If the type is not a chart reference, then it must be primitive
-		if !repo.IsChartReference(resource.Type) {
-			// Add it to the flat list of exapnded resources
-			resources = append(resources, resource)
+		// If the type is a chart reference
+		if repo.IsChartReference(resource.Type) {
+			// Fetch, decompress and unpack
+			cbr, _, err := e.repoProvider.GetChartByReference(resource.Type)
+			if err != nil {
+				return nil, err
+			}
 
-			// Add its layout to the list of layouts at this level
-			layouts = append(layouts, layout)
-			continue
+			defer cbr.Close()
+			expander := cbr.Chartfile().Expander
+			if expander != nil && expander.Name != "" {
+				// Load the charts contents into strings that we can pass to exapnsion
+				content, err := cbr.LoadContent()
+				if err != nil {
+					return nil, err
+				}
+
+				// Build a request to the expansion service and call it to do the expansion
+				svcReq := &expansion.ServiceRequest{
+					ChartInvocation: resource,
+					Chart:           content,
+				}
+
+				svcResp, err := e.callService(expander.Name, svcReq)
+				if err != nil {
+					return nil, err
+				}
+
+				// Call ourselves recursively with the list of resources returned by expansion
+				expConf, err := e.expandConfiguration(svcResp)
+				if err != nil {
+					return nil, err
+				}
+
+				// Append the reources returned by the recursion to the flat list of resources
+				additions = expConf.Config.Resources
+
+				// This was not a primitive resource, so add its properties to the layout
+				// Then add the all of the layout resources returned by the recursion to the layout
+				layout.Properties = resource.Properties
+				layout.Resources = expConf.Layout.Resources
+			}
 		}
 
-		// It is a chart, so go fetch it, decompress it and unpack it
-		cbr, _, err := e.repoProvider.GetChartByReference(resource.Type)
-		if err != nil {
-			return nil, err
-		}
-
-		defer cbr.Close()
-
-		// Now, load the charts contents into strings that we can pass to exapnsion
-		content, err := cbr.LoadContent()
-		if err != nil {
-			return nil, err
-		}
-
-		// Build a request to the expansion service and call it to do the expansion
-		svcReq := &expansion.ServiceRequest{
-			ChartInvocation: resource,
-			Chart:           content,
-		}
-
-		svcResp, err := e.callService(svcReq)
-		if err != nil {
-			return nil, err
-		}
-
-		// Call ourselves recursively with the list of resources returned by expansion
-		expConf, err := e.expandConfiguration(svcResp)
-		if err != nil {
-			return nil, err
-		}
-
-		// Append the reources returned by the recursion to the flat list of resources
-		resources = append(resources, expConf.Config.Resources...)
-
-		// This was not a primitive resource, so add its properties to the layout
-		layout.Properties = resource.Properties
-
-		// Now add the all of the layout resources returned by the recursion to the layout
-		layout.Resources = expConf.Layout.Resources
+		resources = append(resources, additions...)
 		layouts = append(layouts, layout)
 	}
 
-	// All done with this level, so return the espanded configuration
+	// All done with this level, so return the expanded configuration
 	return &ExpandedConfiguration{
 		Config: &common.Configuration{Resources: resources},
 		Layout: &common.Layout{Resources: layouts},
 	}, nil
 }
 
-func (e *expander) callService(svcReq *expansion.ServiceRequest) (*common.Configuration, error) {
+func (e *expander) callService(svcName string, svcReq *expansion.ServiceRequest) (*common.Configuration, error) {
+	svcURL, err := e.getServiceURL(svcName)
+	if err != nil {
+		return nil, err
+	}
+
 	j, err := json.Marshal(svcReq)
 	if err != nil {
 		return nil, err
 	}
 
 	reader := ioutil.NopCloser(bytes.NewReader(j))
-	request, err := http.NewRequest("POST", e.getBaseURL(), reader)
+	request, err := http.NewRequest("POST", svcURL, reader)
 	if err != nil {
 		return nil, err
 	}
@@ -187,4 +181,22 @@ func (e *expander) callService(svcReq *expansion.ServiceRequest) (*common.Config
 	}
 
 	return svcResp, nil
+}
+
+func (e *expander) getServiceURL(svcName string) (string, error) {
+	if !strings.HasPrefix(svcName, "http:") && !strings.HasPrefix(svcName, "https:") {
+		var err error
+		svcName, err = util.GetServiceURL(svcName, e.expanderPort, e.expanderURL)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	u, err := url.Parse(svcName)
+	if err != nil {
+		return "", err
+	}
+
+	u.Path = fmt.Sprintf("%s/expand", u.Path)
+	return u.String(), nil
 }
