@@ -62,8 +62,10 @@ setup_iptables() {
   echo "Adding iptables hackery for docker-machine..."
 
   local machine_ip=$(docker-machine ip "$machine")
-  if ! docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -L -n" | grep -q "${machine_ip}" | grep -q ":${KUBE_PORT}"; then
-    docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -I PREROUTING -p tcp -d ${machine_ip} --dport ${KUBE_PORT} -j DNAT --to-destination 127.0.0.1:${KUBE_PORT}"
+  local iptables_rule="PREROUTING -p tcp -d ${machine_ip} --dport ${KUBE_PORT} -j DNAT --to-destination 127.0.0.1:${KUBE_PORT}"
+
+  if ! docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -C ${iptables_rule}"; then
+    docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -I ${iptables_rule}"
   fi
 }
 
