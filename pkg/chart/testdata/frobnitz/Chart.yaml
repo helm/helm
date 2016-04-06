@@ -27,7 +27,7 @@ environment:
     apiGroups:
       - 3rdParty
 expander:
-  name: Expandybird
+  name: expandybird-service
   entrypoint: templates/wordpress.jinja
 schema: wordpress.jinja.schema
   

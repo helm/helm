@@ -55,8 +55,8 @@ func TestLoadChartfile(t *testing.T) {
 	if expander == nil {
 		t.Errorf("No expander found in %s", testfile)
 	} else {
-		if expander.Name != "Expandybird" {
-			t.Errorf("Expected expander name Expandybird, got %s", expander.Name)
+		if expander.Name != "expandybird-service" {
+			t.Errorf("Expected expander name expandybird-service, got %s", expander.Name)
 		}
 
 		if expander.Entrypoint != "templates/wordpress.jinja" {
