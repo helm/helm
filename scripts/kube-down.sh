@@ -23,9 +23,9 @@ source "${HELM_ROOT}/scripts/common.sh"
 source "${HELM_ROOT}/scripts/docker.sh"
 
 KUBE_PORT=${KUBE_PORT:-8080}
-KUBE_HOST=${KUBE_HOST:-$DOCKER_HOST_IP}
-KUBE_HOST=${KUBE_HOST:-localhost}
-KUBECTL="kubectl -s ${KUBE_HOST}:${KUBE_PORT}"
+KUBE_MASTER_IP=${KUBE_MASTER_IP:-$DOCKER_HOST_IP}
+KUBE_MASTER_IP=${KUBE_MASTER_IP:-localhost}
+KUBECTL="kubectl -s ${KUBE_MASTER_IP}:${KUBE_PORT}"
 
 delete_kube_resources() {
   echo "Deleting resources in kubernetes..."
