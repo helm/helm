@@ -21,10 +21,10 @@ source "${HELM_ROOT}/scripts/common.sh"
 source "${HELM_ROOT}/scripts/docker.sh"
 
 KUBE_PORT=${KUBE_PORT:-8080}
-KUBE_HOST=${KUBE_HOST:-localhost}
+KUBE_MASTER_IP=${KUBE_MASTER_IP:-localhost}
 
 if is_docker_machine; then
-  KUBE_HOST=$(docker-machine ip "$(active_docker_machine)")
+  KUBE_MASTER_IP=$(docker-machine ip "$(active_docker_machine)")
 fi
 
-kubectl -s ${KUBE_HOST}:${KUBE_PORT} "$@"
+kubectl -s ${KUBE_MASTER_IP}:${KUBE_PORT} "$@"

@@ -26,9 +26,10 @@ source "${HELM_ROOT}/scripts/docker.sh"
 
 K8S_VERSION=${K8S_VERSION:-1.2.0}
 KUBE_PORT=${KUBE_PORT:-8080}
-KUBE_HOST=${KUBE_HOST:-$DOCKER_HOST_IP}
-KUBE_HOST=${KUBE_HOST:-localhost}
-KUBECTL="kubectl -s ${KUBE_HOST}:${KUBE_PORT}"
+KUBE_MASTER_IP=${KUBE_MASTER_IP:-$DOCKER_HOST_IP}
+KUBE_MASTER_IP=${KUBE_MASTER_IP:-localhost}
+KUBECTL="kubectl -s ${KUBE_MASTER_IP}:${KUBE_PORT}"
+KUBE_CONTEXT=${KUBE_CONTEXT:-docker}
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -61,8 +62,10 @@ setup_iptables() {
   echo "Adding iptables hackery for docker-machine..."
 
   local machine_ip=$(docker-machine ip "$machine")
-  if ! docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -L -n" | grep -q "${machine_ip}" | grep -q ":${KUBE_PORT}"; then
-    docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -I PREROUTING -p tcp -d ${machine_ip} --dport ${KUBE_PORT} -j DNAT --to-destination 127.0.0.1:${KUBE_PORT}"
+  local iptables_rule="PREROUTING -p tcp -d ${machine_ip} --dport ${KUBE_PORT} -j DNAT --to-destination 127.0.0.1:${KUBE_PORT}"
+
+  if ! docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -C ${iptables_rule}"; then
+    docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -I ${iptables_rule}"
   fi
 }
 
@@ -150,6 +153,20 @@ spec:
 EOF
 }
 
+# Generate kubeconfig data for the created cluster.
+create_kubeconfig() {
+  local cluster_args=(
+      "--server=http://${KUBE_MASTER_IP}:${KUBE_PORT}"
+      "--insecure-skip-tls-verify=true"
+  )
+
+  kubectl config set-cluster "${KUBE_CONTEXT}" "${cluster_args[@]}"
+  kubectl config set-context "${KUBE_CONTEXT}" --cluster="${KUBE_CONTEXT}"
+  kubectl config use-context "${KUBE_CONTEXT}"
+
+  echo "Wrote config for ${KUBE_CONTEXT}"
+}
+
 main() {
   verify_prereqs
 
@@ -159,8 +176,10 @@ main() {
 
   start_kubernetes
   wait_for_kubernetes
+
   create_kube_system_namespace
   create_kube_dns
+  create_kubeconfig
 
   $KUBECTL cluster-info
 }
