@@ -32,7 +32,7 @@ var (
 )
 
 func logKubeEnv(k *KubeContext) {
-	config := k.Run("config", "view", "--flatten", "--minified").Stdout()
+	config := k.Run("config", "view", "--flatten", "--minify").Stdout()
 	k.t.Logf("Kubernetes Environment\n%s", config)
 }
 
