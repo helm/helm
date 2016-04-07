@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -77,7 +78,13 @@ func GetServiceURL(serviceName, servicePort, serviceURL string) (string, error) 
 		varName := strings.ToUpper(varBase) + "_PORT"
 		serviceURL := os.Getenv(varName)
 		if serviceURL != "" {
-			return strings.Replace(serviceURL, "tcp", "http", 1), nil
+			u, err := url.Parse(serviceURL)
+			if err != nil || u.Path != "" || u.Scheme != "tcp" {
+				return "", fmt.Errorf("malformed value: %s for envinronment variable: %s", serviceURL, varName)
+			}
+
+			u.Scheme = "http"
+			return u.String(), nil
 		}
 
 		if servicePort != "" {
