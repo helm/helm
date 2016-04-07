@@ -90,14 +90,15 @@ func (e *expander) expandConfiguration(conf *common.Configuration) (*ExpandedCon
 			}
 
 			defer cbr.Close()
+
+			// Load the charts contents into strings that we can pass to exapnsion
+			content, err := cbr.LoadContent()
+			if err != nil {
+				return nil, err
+			}
+
 			expander := cbr.Chartfile().Expander
 			if expander != nil && expander.Name != "" {
-				// Load the charts contents into strings that we can pass to exapnsion
-				content, err := cbr.LoadContent()
-				if err != nil {
-					return nil, err
-				}
-
 				// Build a request to the expansion service and call it to do the expansion
 				svcReq := &expansion.ServiceRequest{
 					ChartInvocation: resource,
@@ -120,8 +121,28 @@ func (e *expander) expandConfiguration(conf *common.Configuration) (*ExpandedCon
 
 				// This was not a primitive resource, so add its properties to the layout
 				// Then add the all of the layout resources returned by the recursion to the layout
-				layout.Properties = resource.Properties
 				layout.Resources = expConf.Layout.Resources
+				layout.Properties = resource.Properties
+			} else {
+				// Raise an error if a non template chart supplies properties
+				if resource.Properties != nil {
+					return nil, fmt.Errorf("properties provided for non template chart %s", resource.Type)
+				}
+
+				additions = []*common.Resource{}
+				for _, member := range content.Members {
+					segments := strings.Split(member.Path, "/")
+					if len(segments) > 1 && segments[0] == "templates" {
+						if strings.HasSuffix(member.Path, "yaml") || strings.HasSuffix(member.Path, "json") {
+							resource, err := util.ParseKubernetesObject(member.Content)
+							if err != nil {
+								return nil, err
+							}
+
+							resources = append(resources, resource)
+						}
+					}
+				}
 			}
 		}
 
@@ -130,10 +151,12 @@ func (e *expander) expandConfiguration(conf *common.Configuration) (*ExpandedCon
 	}
 
 	// All done with this level, so return the expanded configuration
-	return &ExpandedConfiguration{
+	result := &ExpandedConfiguration{
 		Config: &common.Configuration{Resources: resources},
 		Layout: &common.Layout{Resources: layouts},
-	}, nil
+	}
+
+	return result, nil
 }
 
 func (e *expander) callService(svcName string, svcReq *expansion.ServiceRequest) (*common.Configuration, error) {

@@ -28,18 +28,24 @@ import (
 func ParseKubernetesObject(object []byte) (*common.Resource, error) {
 	o := &KubernetesObject{}
 	if err := yaml.Unmarshal(object, &o); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal native kubernetes object (%#v)", err)
+		return nil, fmt.Errorf("cannot unmarshal native kubernetes object (%s): %s", object, err)
 	}
 
 	// Ok, it appears to be a valid object, create a Resource out of it.
 	r := &common.Resource{}
-	r.Name = getRandomName(o.Metadata["name"].(string))
+	md, ok := o.Metadata["name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("cannot parse native kubernetes object (%s)", object)
+	}
+
+	r.Name = getRandomName(md)
 	r.Type = o.Kind
 
 	r.Properties = make(map[string]interface{})
 	if err := yaml.Unmarshal(object, &r.Properties); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal native kubernetes object (%#v)", err)
+		return nil, fmt.Errorf("cannot unmarshal native kubernetes object (%s): %s", object, err)
 	}
+
 	return r, nil
 }
 
