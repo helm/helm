@@ -36,10 +36,11 @@ delete_kube_resources() {
 }
 
 delete_hyperkube_containers() {
-  echo "Stopping main kubelet..."
+  echo "Stopping kubelet..."
 
-  docker stop helm_kubelet > /dev/null 2>&1 || true
-  docker rm --force --volumes helm_kubelet > /dev/null 2>&1 || true
+  docker stop kubelet > /dev/null 2>&1 || :
+  docker wait kubelet > /dev/null 2>&1 || :
+  docker rm --force --volumes kubelet > /dev/null 2>&1 || :
 
   echo "Stopping remaining kubernetes containers..."
 
@@ -49,6 +50,11 @@ delete_hyperkube_containers() {
     docker wait $kube_containers > /dev/null 2>&1
     docker rm --force --volumes $kube_containers > /dev/null 2>&1
   fi
+
+  echo "Stopping etcd..."
+  docker stop etcd > /dev/null 2>&1 || :
+  docker wait etcd > /dev/null 2>&1 || :
+  docker rm --force --volumes etcd > /dev/null 2>&1 || :
 }
 
 main() {
