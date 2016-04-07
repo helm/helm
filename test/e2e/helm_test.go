@@ -16,19 +16,18 @@ func init() {
 }
 
 const (
-	timeout = 10 * time.Second
+	timeout = 20 * time.Second
 	poll    = 2 * time.Second
 )
 
 var (
-	repoURL  = flag.String("repo-url", "gs://kubernetes-charts-testing", "Repository URL")
-	repoName = flag.String("repo-name", "kubernetes-charts-testing", "Repository name")
-	chart    = flag.String("chart", "gs://kubernetes-charts-testing/redis-2.tgz", "Chart to deploy")
-	host     = flag.String("host", "", "The URL to the helm server")
-
-	resourcifierImage = "quay.io/adamreese/resourcifier:latest"
-	expandybirdImage  = "quay.io/adamreese/expandybird:latest"
-	managerImage      = "quay.io/adamreese/manager:latest"
+	repoURL           = flag.String("repo-url", "gs://kubernetes-charts-testing", "Repository URL")
+	repoName          = flag.String("repo-name", "kubernetes-charts-testing", "Repository name")
+	chart             = flag.String("chart", "gs://kubernetes-charts-testing/redis-2.tgz", "Chart to deploy")
+	host              = flag.String("host", "", "The URL to the helm server")
+	resourcifierImage = flag.String("resourcifier-image", "", "The full image name of the Docker image for resourcifier.")
+	expandybirdImage  = flag.String("expandybird-image", "", "The full image name of the Docker image for expandybird.")
+	managerImage      = flag.String("manager-image", "", "The full image name of the Docker image for manager.")
 )
 
 func logKubeEnv(k *KubeContext) {
@@ -54,16 +53,12 @@ func TestHelm(t *testing.T) {
 	}
 	t.Logf("Using host: %v", helm.Host)
 
-	//TODO: skip check if running local binaries
+	//TODO skip check if running local binaries
 	if !helm.Running() {
 		t.Error("Helm is not installed")
-		helm.MustRun(
-			"server",
-			"install",
-			"--resourcifier-image", resourcifierImage,
-			"--expandybird-image", expandybirdImage,
-			"--manager-image", managerImage,
-		)
+
+		//TODO wire in flag overides
+		helm.MustRun("server", "install")
 		if err := wait(helm.Running); err != nil {
 			t.Fatal(err)
 		}
