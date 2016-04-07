@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 type Cmd struct {
@@ -32,7 +33,9 @@ func (h *Cmd) exec() error {
 	cmd.Stderr = &h.stderr
 
 	h.t.Logf("Executing command: %s", h)
+	start := time.Now()
 	h.status = cmd.Run()
+	h.t.Logf("Finished in %v", time.Since(start))
 
 	if h.stdout.Len() > 0 {
 		h.t.Logf("standard output:\n%s", h.stdout.String())
