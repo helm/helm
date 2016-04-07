@@ -45,7 +45,7 @@ func TestHelm(t *testing.T) {
 		t.Fatal("Not connected to kubernetes")
 	}
 	t.Log(kube.Version())
-	t.Log(helm.MustRun("version").Stdout())
+	t.Log(helm.MustRun("--version").Stdout())
 
 	helm.Host = helmHost()
 	if helm.Host == "" {
@@ -80,6 +80,7 @@ func TestHelm(t *testing.T) {
 		*chart,
 	)
 
+	//TODO get pods to lookup dynamically
 	if err := wait(func() bool {
 		return kube.Run("get", "pods").Match("redis.*Running")
 	}); err != nil {
