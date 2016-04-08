@@ -1,0 +1,6 @@
+package: github.com/deis/tiller
+import:
+- package: google.golang.org/grpc
+- package: golang.org/x/net
+  subpackages:
+  - context

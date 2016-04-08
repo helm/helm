@@ -1,0 +1,49 @@
+hash: 9bf35c0cd5fd9a87324b8b410499579fd983072338d8b6522987b630353bf986
+updated: 2016-04-08T15:50:43.442411072-06:00
+imports:
+- name: github.com/aokoli/goutils
+  version: 45307ec16e3cd47cd841506c081f7afd8237d210
+- name: github.com/cloudfoundry-incubator/candiedyaml
+  version: 5cef21e2e4f0fd147973b558d4db7395176bcd95
+- name: github.com/codegangsta/cli
+  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+- name: github.com/ghodss/yaml
+  version: 1a6f069841556a7bcaff4a397ca6e8328d266c2f
+- name: github.com/golang/protobuf
+  version: dda510ac0fd43b39770f22ac6260eb91d377bce3
+  subpackages:
+  - proto
+- name: github.com/kubernetes/helm
+  version: d11dd488257d4ed3f5c861b9ca8d35cd3b49fa75
+  subpackages:
+  - pkg/log
+  - pkg/common
+  - pkg/httputil
+  - pkg/kubectl
+  - pkg/version
+- name: github.com/Masterminds/semver
+  version: 7e56b5cd00f9666fc899aa9c11c9a7d51f2a9995
+- name: github.com/Masterminds/sprig
+  version: 679bb747f11c6ffc3373965988fea8877c40b47b
+- name: golang.org/x/net
+  version: e45385e9b226f570b1f086bf287b25d3d4117776
+  subpackages:
+  - context
+  - http2
+  - trace
+  - http2/hpack
+  - internal/timeseries
+- name: google.golang.org/grpc
+  version: 7834b974e55fbf85a5b01afb5821391c71084efd
+  subpackages:
+  - codes
+  - credentials
+  - grpclog
+  - internal
+  - metadata
+  - naming
+  - transport
+  - peer
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
+devImports: []
