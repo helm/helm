@@ -16,7 +16,7 @@ func init() {
 }
 
 const (
-	timeout = 20 * time.Second
+	timeout = 180 * time.Second
 	poll    = 2 * time.Second
 )
 
