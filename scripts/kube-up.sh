@@ -70,7 +70,7 @@ setup_iptables() {
   local machine_ip=$(docker-machine ip "$machine")
   local iptables_rule="PREROUTING -p tcp -d ${machine_ip} --dport ${KUBE_PORT} -j DNAT --to-destination 127.0.0.1:${KUBE_PORT}"
 
-  if ! docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -C ${iptables_rule}"; then
+  if ! docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -C ${iptables_rule}" &> /dev/null; then
     docker-machine ssh "${machine}" "sudo /usr/local/sbin/iptables -t nat -I ${iptables_rule}"
   fi
 }
@@ -86,7 +86,7 @@ start_kubernetes() {
     gcr.io/google_containers/etcd:2.2.1 \
     /usr/local/bin/etcd \
       --listen-client-urls=http://127.0.0.1:4001 \
-      --advertise-client-urls=http://127.0.0.1:4001 >/dev/null 2>&1
+      --advertise-client-urls=http://127.0.0.1:4001 >/dev/null
 
   echo "Starting kubelet"
   docker run \
@@ -108,27 +108,38 @@ start_kubernetes() {
       --config=/etc/kubernetes/manifests-multi \
       --cluster-dns=10.0.0.10 \
       --cluster-domain=cluster.local \
-      --allow-privileged=true --v=2 >/dev/null 2>&1
+      --allow-privileged=true --v=2 >/dev/null
 }
 
-wait_for_kubernetes() {
+wait_for_kubernetes_cluster() {
   echo "Waiting for Kubernetes cluster to become available..."
+  while true; do
+    local running_count=$($KUBECTL get pods --all-namespaces --no-headers 2>/dev/null | grep "Running" | wc -l)
+    # We expect to have 3 running pods - master, kube-proxy, and dns
+    if [ "$running_count" -ge 3 ]; then
+      break
+    fi
+    sleep 1
+  done
+}
+
+wait_for_kubernetes_master() {
+  echo "Waiting for Kubernetes master to become available..."
   until $($KUBECTL cluster-info &> /dev/null); do
     sleep 1
   done
-  echo "Kubernetes cluster is up."
 }
 
 create_kube_system_namespace() {
   echo "Creating kube-system namespace..."
 
-  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/kube-system.yaml"
+  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/kube-system.yaml" >/dev/null
 }
 
 create_kube_dns() {
   echo "Setting up internal dns..."
 
-  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/skydns.yaml"
+  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/skydns.yaml" >/dev/null
 }
 
 # Generate kubeconfig data for the created cluster.
@@ -138,11 +149,11 @@ create_kubeconfig() {
       "--insecure-skip-tls-verify=true"
   )
 
-  kubectl config set-cluster "${KUBE_CONTEXT}" "${cluster_args[@]}"
-  kubectl config set-context "${KUBE_CONTEXT}" --cluster="${KUBE_CONTEXT}"
-  kubectl config use-context "${KUBE_CONTEXT}"
+  kubectl config set-cluster "${KUBE_CONTEXT}" "${cluster_args[@]}" >/dev/null
+  kubectl config set-context "${KUBE_CONTEXT}" --cluster="${KUBE_CONTEXT}" >/dev/null
+  kubectl config use-context "${KUBE_CONTEXT}" > /dev/null
 
-  echo "Wrote config for ${KUBE_CONTEXT}"
+  echo "Wrote config for kubeconfig using context: '${KUBE_CONTEXT}'"
 }
 
 # https://github.com/kubernetes/kubernetes/issues/23197
@@ -164,24 +175,21 @@ cleanup_volumes() {
   fi
 }
 
-main() {
-  verify_prereqs
-  cleanup_volumes
+verify_prereqs
+cleanup_volumes
 
-  if is_docker_machine; then
-    setup_iptables
-  fi
+if is_docker_machine; then
+  setup_iptables
+fi
 
-  start_kubernetes
-  wait_for_kubernetes
+start_kubernetes
+wait_for_kubernetes_master
 
-  create_kube_system_namespace
-  create_kube_dns
-  create_kubeconfig
+create_kube_system_namespace
+create_kube_dns
+wait_for_kubernetes_cluster
 
-  $KUBECTL cluster-info
-}
+create_kubeconfig
 
-main "$@"
 
-exit 0
+$KUBECTL cluster-info

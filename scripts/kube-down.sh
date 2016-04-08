@@ -37,27 +37,30 @@ delete_kube_resources() {
 
 delete_hyperkube_containers() {
   echo "Stopping kubelet..."
-
-  docker stop kubelet > /dev/null 2>&1 || :
-  docker wait kubelet > /dev/null 2>&1 || :
-  docker rm --force --volumes kubelet > /dev/null 2>&1 || :
+  delete_container kubelet
 
   echo "Stopping remaining kubernetes containers..."
-
-  local kube_containers=$(docker ps -aqf "name=k8s_")
-  if [ ! -z "$kube_containers" ]; then
-    docker stop $kube_containers > /dev/null 2>&1
-    docker wait $kube_containers > /dev/null 2>&1
-    docker rm --force --volumes $kube_containers > /dev/null 2>&1
+  local kube_containers=($(docker ps -aqf "name=k8s_"))
+  if [[ "${#kube_containers[@]}" -gt 0 ]]; then
+    delete_container "${kube_containers[@]}"
   fi
 
   echo "Stopping etcd..."
-  docker stop etcd > /dev/null 2>&1 || :
-  docker wait etcd > /dev/null 2>&1 || :
-  docker rm --force --volumes etcd > /dev/null 2>&1 || :
+  delete_container etcd
+}
+
+detect_master() {
+  local cc=$(kubectl config view -o jsonpath="{.current-context}")
+  local cluster=$(kubectl config view -o jsonpath="{.contexts[?(@.name == \"${cc}\")].context.cluster}")
+  kubectl config view -o jsonpath="{.clusters[?(@.name == \"${cluster}\")].cluster.server}"
 }
 
 main() {
+  if [ "$1" != "--force" ]; then
+    echo "WARNING: You are about to destroy kubernetes on $(detect_master)"
+    read -p "Press [Enter] key to continue..."
+  fi
+
   echo "Bringing down the kube..."
 
   delete_kube_resources
