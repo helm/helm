@@ -51,6 +51,11 @@ verify_prereqs() {
   if ! docker info > /dev/null 2>&1 ; then
     error_exit "Can't connect to 'docker' daemon.  please fix and retry."
   fi
+
+  if [[ ! $(docker version --format {{.Server.Version}})  == "1.10.3" ]]; then
+    error_exit "docker version 1.10.3 is required"
+  fi
+
   echo "You are golden, carry on..."
 }
 
@@ -117,7 +122,7 @@ wait_for_kubernetes() {
 create_kube_system_namespace() {
   echo "Creating kube-system namespace..."
 
-  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/kube-system.yaml" || :
+  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/kube-system.yaml"
 }
 
 create_kube_dns() {
