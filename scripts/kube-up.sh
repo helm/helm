@@ -24,12 +24,13 @@ HELM_ROOT="${BASH_SOURCE[0]%/*}/.."
 source "${HELM_ROOT}/scripts/common.sh"
 source "${HELM_ROOT}/scripts/docker.sh"
 
-K8S_VERSION=${K8S_VERSION:-1.2.0}
+K8S_VERSION=${K8S_VERSION:-1.2.1}
 KUBE_PORT=${KUBE_PORT:-8080}
 KUBE_MASTER_IP=${KUBE_MASTER_IP:-$DOCKER_HOST_IP}
 KUBE_MASTER_IP=${KUBE_MASTER_IP:-localhost}
-KUBECTL="kubectl -s ${KUBE_MASTER_IP}:${KUBE_PORT}"
 KUBE_CONTEXT=${KUBE_CONTEXT:-docker}
+
+KUBECTL="kubectl -s ${KUBE_MASTER_IP}:${KUBE_PORT}"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -72,31 +73,37 @@ setup_iptables() {
 start_kubernetes() {
   echo "Getting the party going..."
 
-  #if docker ps --filter "name=helm_kubelet" >/dev/null; then
-    #error_exit "Kubernetes already running"
-  #fi
-
+  echo "Starting etcd"
   docker run \
-    --name=helm_kubelet \
+    --name=etcd \
+    --net=host \
+    -d \
+    gcr.io/google_containers/etcd:2.2.1 \
+    /usr/local/bin/etcd \
+      --listen-client-urls=http://127.0.0.1:4001 \
+      --advertise-client-urls=http://127.0.0.1:4001 >/dev/null 2>&1
+
+  echo "Starting kubelet"
+  docker run \
+    --name=kubelet \
     --volume=/:/rootfs:ro \
     --volume=/sys:/sys:ro \
     --volume=/var/lib/docker/:/var/lib/docker:rw \
-    --volume=/var/lib/kubelet/:/var/lib/kubelet:rw \
     --volume=/var/run:/var/run:rw \
+    --volume=/var/lib/kubelet:/var/lib/kubelet:shared \
     --net=host \
     --pid=host \
     --privileged=true \
     -d \
     gcr.io/google_containers/hyperkube-amd64:v${K8S_VERSION} \
     /hyperkube kubelet \
-        --containerized \
-        --hostname-override="127.0.0.1" \
-        --address="0.0.0.0" \
-        --api-servers="http://localhost:${KUBE_PORT}" \
-        --config=/etc/kubernetes/manifests \
-        --cluster-dns=10.0.0.10 \
-        --cluster-domain=cluster.local \
-        --allow-privileged=true --v=2
+      --hostname-override="127.0.0.1" \
+      --address="0.0.0.0" \
+      --api-servers=http://localhost:${KUBE_PORT} \
+      --config=/etc/kubernetes/manifests-multi \
+      --cluster-dns=10.0.0.10 \
+      --cluster-domain=cluster.local \
+      --allow-privileged=true --v=2 >/dev/null 2>&1
 }
 
 wait_for_kubernetes() {
@@ -110,47 +117,13 @@ wait_for_kubernetes() {
 create_kube_system_namespace() {
   echo "Creating kube-system namespace..."
 
-  $KUBECTL create -f - << EOF
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: kube-system
-  labels:
-    name: kube-system
-EOF
+  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/kube-system.yaml" || :
 }
 
 create_kube_dns() {
   echo "Setting up internal dns..."
 
-  $KUBECTL --namespace=kube-system create -f - <<EOF
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: kube-dns
-  namespace: kube-system
-subsets:
-- addresses:
-  - ip: $DOCKER_HOST_IP
-  ports:
-  - port: 53
-    protocol: UDP
-    name: dns
-
----
-
-kind: Service
-apiVersion: v1
-metadata:
-  name: kube-dns
-  namespace: kube-system
-spec:
-  clusterIP: 10.0.0.10
-  ports:
-  - name: dns
-    port: 53
-    protocol: UDP
-EOF
+  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/skydns.yaml"
 }
 
 # Generate kubeconfig data for the created cluster.
@@ -167,8 +140,28 @@ create_kubeconfig() {
   echo "Wrote config for ${KUBE_CONTEXT}"
 }
 
+# https://github.com/kubernetes/kubernetes/issues/23197
+# code stolen from https://github.com/huggsboson/docker-compose-kubernetes/blob/SwitchToSharedMount/kube-up.sh
+cleanup_volumes() {
+  local machine=$(active_docker_machine)
+  if [ -n "$machine" ]; then
+    docker-machine ssh $machine "mount | grep -o 'on /var/lib/kubelet.* type' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount"
+    docker-machine ssh $machine "sudo rm -Rf /var/lib/kubelet"
+    docker-machine ssh $machine "sudo mkdir -p /var/lib/kubelet"
+    docker-machine ssh $machine "sudo mount --bind /var/lib/kubelet /var/lib/kubelet"
+    docker-machine ssh $machine "sudo mount --make-shared /var/lib/kubelet"
+  else
+    mount | grep -o 'on /var/lib/kubelet.* type' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount
+    sudo rm -Rf /var/lib/kubelet
+    sudo mkdir -p /var/lib/kubelet
+    sudo mount --bind /var/lib/kubelet /var/lib/kubelet
+    sudo mount --make-shared /var/lib/kubelet
+  fi
+}
+
 main() {
   verify_prereqs
+  cleanup_volumes
 
   if is_docker_machine; then
     setup_iptables
