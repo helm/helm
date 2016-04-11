@@ -21,10 +21,12 @@ set -eo pipefail
 [[ "$TRACE" ]] && set -x
 
 HELM_ROOT="${BASH_SOURCE[0]%/*}/.."
-source "${HELM_ROOT}/scripts/common.sh"
-source "${HELM_ROOT}/scripts/docker.sh"
+cd "$HELM_ROOT"
 
-K8S_VERSION=${K8S_VERSION:-1.2.1}
+source ./scripts/common.sh
+source ./scripts/docker.sh
+
+KUBE_VERSION=${KUBE_VERSION:-1.2.1}
 KUBE_PORT=${KUBE_PORT:-8080}
 KUBE_MASTER_IP=${KUBE_MASTER_IP:-$DOCKER_HOST_IP}
 KUBE_MASTER_IP=${KUBE_MASTER_IP:-localhost}
@@ -100,7 +102,7 @@ start_kubernetes() {
     --pid=host \
     --privileged=true \
     -d \
-    gcr.io/google_containers/hyperkube-amd64:v${K8S_VERSION} \
+    gcr.io/google_containers/hyperkube-amd64:v${KUBE_VERSION} \
     /hyperkube kubelet \
       --hostname-override="127.0.0.1" \
       --address="0.0.0.0" \
@@ -133,13 +135,13 @@ wait_for_kubernetes_master() {
 create_kube_system_namespace() {
   echo "Creating kube-system namespace..."
 
-  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/kube-system.yaml" >/dev/null
+  $KUBECTL create -f ./scripts/cluster/kube-system.yaml >/dev/null
 }
 
 create_kube_dns() {
   echo "Setting up internal dns..."
 
-  $KUBECTL create -f "${HELM_ROOT}/scripts/cluster/skydns.yaml" >/dev/null
+  $KUBECTL create -f ./scripts/cluster/skydns.yaml >/dev/null
 }
 
 # Generate kubeconfig data for the created cluster.
@@ -175,21 +177,67 @@ cleanup_volumes() {
   fi
 }
 
-verify_prereqs
-cleanup_volumes
-
-if is_docker_machine; then
-  setup_iptables
+uname=$(uname)
+if [[ "${uname}" == "Darwin" ]]; then
+  platform="darwin"
+elif [[ "${uname}" == "Linux" ]]; then
+  platform="linux"
+else
+  error_exit "unsupported platform: (${uname})."
 fi
 
-start_kubernetes
-wait_for_kubernetes_master
+machine=$(uname -m)
+if [[ "${machine}" == "x86_64" ]]; then
+  arch="amd64"
+elif [[ "${machine}" == "i686" ]]; then
+  arch="386"
+elif [[ "${machine}" == "arm*" ]]; then
+  arch="arm"
+elif [[ "${machine}" == "s390x*" ]]; then
+  arch="s390x"
+else
+  error_exit "unsupported architecture (${machine})."
+fi
 
-create_kube_system_namespace
-create_kube_dns
-wait_for_kubernetes_cluster
 
-create_kubeconfig
+download_kubectl() {
+    echo "Downloading kubectl binary..."
 
+    kubectl_url="https://storage.googleapis.com/kubernetes-release/release/v${KUBE_VERSION}/bin/${platform}/${arch}/kubectl"
+    (
+    cd ./bin
+    # cleanup anything old
+    rm ./kubectl
+    if [[ $(which wget) ]]; then
+      wget "${kubectl_url}"
+    elif [[ $(which curl) ]]; then
+      curl -OL "${kubectl_url}"
+    else
+      error_exit "Couldn't find curl or wget.  Bailing out."
+    fi
+    chmod a+x kubectl
+    )
+}
 
-$KUBECTL cluster-info
+main() {
+  verify_prereqs
+  cleanup_volumes
+
+  if is_docker_machine; then
+    setup_iptables
+  fi
+
+  download_kubectl
+  start_kubernetes
+  wait_for_kubernetes_master
+
+  create_kube_system_namespace
+  create_kube_dns
+  wait_for_kubernetes_cluster
+
+  create_kubeconfig
+
+  $KUBECTL cluster-info
+}
+
+main "$@"
