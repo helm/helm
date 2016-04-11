@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// Cmd provides helpers for command output
 type Cmd struct {
 	t              *testing.T
 	path           string

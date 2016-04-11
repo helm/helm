@@ -4,9 +4,6 @@ package e2e
 
 import (
 	"net/http"
-	"os"
-	"path"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -26,7 +23,7 @@ type HelmContext struct {
 func NewHelmContext(t *testing.T) *HelmContext {
 	return &HelmContext{
 		t:       t,
-		Path:    RepoRoot() + "/bin/helm",
+		Path:    "helm",
 		Timeout: time.Second * 20,
 	}
 }
@@ -50,7 +47,7 @@ func (h *HelmContext) Run(args ...string) *Cmd {
 func (h *HelmContext) RunFail(args ...string) *Cmd {
 	cmd := h.newCmd(args...)
 	if status := cmd.exec(); status == nil {
-		h.t.Fatalf("helm unexpected to fail: %v", args, status)
+		h.t.Fatalf("helm unexpected to fail: %v %v", args, status)
 	}
 	return cmd
 }
@@ -75,8 +72,4 @@ func (h *HelmContext) Running() bool {
 
 	//out := h.MustRun("server", "status").Stdout()
 	//return strings.Count(out, "Running") == 5
-}
-
-func RepoRoot() string {
-	return filepath.Clean(filepath.Join(path.Base(os.Args[0]), "../../.."))
 }

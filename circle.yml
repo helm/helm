@@ -30,4 +30,4 @@ dependencies:
 
 test:
   override:
-    - cd $GOPATH/src/$IMPORT_PATH && make bootstrap test
+    - cd $GOPATH/src/$IMPORT_PATH && make info bootstrap test local-cluster-up test-e2e DOCKER_REGISTRY=e2e

@@ -15,6 +15,8 @@
 GO_DIRS ?= $(shell glide nv -x )
 GO_PKGS ?= $(shell glide nv)
 
+BIN_DIR := bin
+PATH_WITH_BIN = PATH="$(shell pwd)/$(BIN_DIR):$(PATH)"
 ROOTFS := rootfs
 CLIENT := cmd/helm
 
@@ -85,6 +87,18 @@ test-flake8:
 .PHONY: test-style
 test-style:
 	@scripts/validate-go.sh
+
+.PHONY: test-e2e
+test-e2e: container
+	$(PATH_WITH_BIN) go test -tags=e2e ./test/e2e -v --manager-image=${DOCKER_REGISTRY}/manager:${TAG} --resourcifier-image=${DOCKER_REGISTRY}/resourcifier:${TAG} --expandybird-image=${DOCKER_REGISTRY}/expandybird:${TAG}
+
+.PHONY: local-cluster-up
+local-cluster-up:
+	@scripts/kube-up.sh
+
+.PHONY: local-cluster-down
+local-cluster-down:
+	@scripts/kube-down.sh
 
 HAS_GLIDE := $(shell command -v glide;)
 HAS_GOLINT := $(shell command -v golint;)

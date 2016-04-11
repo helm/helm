@@ -53,15 +53,11 @@ func TestHelm(t *testing.T) {
 	}
 	t.Logf("Using host: %v", helm.Host)
 
-	//TODO skip check if running local binaries
 	if !helm.Running() {
-		t.Error("Helm is not installed")
+		t.Log("Helm is not installed")
 
-		//TODO wire in flag overides
-		helm.MustRun("server", "install")
-		if err := wait(helm.Running); err != nil {
-			t.Fatal(err)
-		}
+		install(helm)
+
 	}
 
 	// Add repo if it does not exsit
@@ -127,4 +123,22 @@ func helmHost() string {
 		return *host
 	}
 	return os.Getenv("HELM_HOST")
+}
+
+func install(h *HelmContext) {
+	args := []string{"server", "install"}
+	if *expandybirdImage != "" {
+		args = append(args, *expandybirdImage)
+	}
+	if *managerImage != "" {
+		args = append(args, *managerImage)
+	}
+	if *resourcifierImage != "" {
+		args = append(args, *resourcifierImage)
+	}
+
+	h.MustRun(args...)
+	if err := wait(h.Running); err != nil {
+		h.t.Fatal(err)
+	}
 }
