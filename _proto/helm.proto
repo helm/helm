@@ -20,3 +20,13 @@ message PingRequest {
 message PingResponse {
   string status = 1;
 }
+
+message Chart {
+  string name = 1;
+}
+message Values {
+  string name = 1;
+}
+message Release {
+  string name = 1;
+}

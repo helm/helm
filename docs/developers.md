@@ -5,6 +5,11 @@ Helm and Tiller.
 
 ## Prerequisites
 
+- Go 1.6.0 or later
+- kubectl 1.2 or later
+- A Kubernetes cluster (optional)
+- The gRPC toolchain
+
 Tiller uses gRPC. To get started with gRPC, you will need to...
 
 - Install `protoc` for compiling protobuf files. Releases are
