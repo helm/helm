@@ -4,3 +4,6 @@ import:
 - package: golang.org/x/net
   subpackages:
   - context
+- package: github.com/spf13/cobra
+  subpackages:
+  - cobra
