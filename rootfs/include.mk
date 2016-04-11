@@ -61,7 +61,7 @@ else
 endif
 
 .PHONY: container
-container: .project .docker binary extras
+container: .project binary extras
 	docker build -t $(FULL_IMAGE):$(TAG) -f Dockerfile .
 	docker tag -f $(FULL_IMAGE):$(TAG) $(FULL_IMAGE):latest
 

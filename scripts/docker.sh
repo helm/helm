@@ -44,11 +44,3 @@ delete_container() {
   docker wait "${container[@]}" &>/dev/null || :
   docker rm --force --volumes "${container[@]}" &>/dev/null || :
 }
-
-dev_registry() {
-  if docker inspect registry >/dev/null 2>&1; then
-    docker start registry
-  else
-    docker run --restart="always" -d -p 5000:5000 --name registry registry:2
-  fi
-}

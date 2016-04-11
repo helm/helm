@@ -1,4 +1,10 @@
 machine:
+  pre:
+    - curl -sSL https://s3.amazonaws.com/circle-downloads/install-circleci-docker.sh | bash -s -- 1.10.3
+
+  services:
+    - docker
+
   environment:
     GLIDE_VERSION: "0.10.1"
     GO15VENDOREXPERIMENT: 1
@@ -15,6 +21,7 @@ dependencies:
     - tar -C $HOME -xzf go1.6.linux-amd64.tar.gz
     - go version
     - go env
+    - docker info
     - sudo chown -R $(whoami):staff /usr/local
     - cd $GOPATH
     - mkdir -p $GOPATH/src/$IMPORT_PATH
@@ -30,4 +37,4 @@ dependencies:
 
 test:
   override:
-    - cd $GOPATH/src/$IMPORT_PATH && make bootstrap test
+    - cd $GOPATH/src/$IMPORT_PATH && make info bootstrap test test-e2e DOCKER_REGISTRY=e2e
