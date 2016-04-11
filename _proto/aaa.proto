@@ -1,0 +1,53 @@
+syntax = "proto3";
+package hapi;
+
+message Chartfile {
+  string name = 1;
+  string version = 2;
+}
+
+message Chart {
+  // Option 1: Chart is raw []byte data
+  // Option 2: List of files as []byte data, with special treatment for Chart.yaml
+  // Option 3: Completely parsed out (probably very inflexible, ultimately)
+
+  // Option 2:
+  Chartfile chartfile = 1;
+  Values defaultValues = 2;
+  map<string,bytes> templates = 3; // filename => []bytes
+  repeated Chart charts = 4;
+}
+
+// Values represents a set of values that will be passed into the template.
+message Values {
+  // Option 1: "values" is unparsed TOML data (raw []byte)
+  // Option 2: Model TOML in Protobuf (not _too_ bad)
+  // Option 3: Force everything into a map[string]string model
+}
+
+message Release {
+  string name = 1;
+}
+
+message Status {
+  StatusCode code = 1;
+  string msg = 2;
+}
+
+message Error {
+  ErrorCode errror_code = 1;
+  string error_msg = 2;
+}
+
+enum ErrorCode {
+  ERROR_CODE_UNSET = 0;
+  BAD_REQUEST = 1;
+}
+
+enum StatusCode {
+  STATUS_CODE_UNSET = 0;
+  UNKNOWN = 1;
+  DEPLOYED = 2;
+  DELETED = 3;
+  SUPERSEDED = 4;
+}

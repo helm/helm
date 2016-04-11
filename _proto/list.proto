@@ -1,0 +1,20 @@
+syntax = "proto3";
+package hapi;
+
+message ListRequest {
+  int64 limit  = 1;
+  int64 offset = 2;
+}
+
+message ListResponseError {
+  oneof response {
+    Error = 1
+    ListResponse = 2
+  }
+}
+message ListResponse {
+  repeated Release releases = 1;
+  int64 count  = 2;
+  int64 offset = 3;
+  int64 total  = 4;
+}
