@@ -89,7 +89,7 @@ test-style:
 	@scripts/validate-go.sh
 
 .PHONY: test-e2e
-test-e2e: container
+test-e2e: container local-cluster-up
 	$(PATH_WITH_BIN) go test -tags=e2e ./test/e2e -v --manager-image=${DOCKER_REGISTRY}/manager:${TAG} --resourcifier-image=${DOCKER_REGISTRY}/resourcifier:${TAG} --expandybird-image=${DOCKER_REGISTRY}/expandybird:${TAG}
 
 .PHONY: local-cluster-up
