@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option java_package = "sh.helm";
+
+// hapi: The Helm API
+package hapi;
+
+// Probe is used to check liveness and readiness.
+service Probe {
+  // Run a readiness test.
+  rpc Ready (PingRequest) returns (PingResponse) {}
+}
+
+// The readiness test request.
+message PingRequest {
+  string name = 1;
+}
+
+// The readiness test response.
+message PingResponse {
+  string status = 1;
+}
+
+message Chart {
+  string name = 1;
+}
+message Values {
+  string name = 1;
+}
+message Release {
+  string name = 1;
+}
