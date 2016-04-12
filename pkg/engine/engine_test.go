@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+
+	"github.com/deis/tiller/cmd/tiller/environment"
 )
+
+var _ environment.Engine = &Engine{}
 
 func TestEngine(t *testing.T) {
 	e := New()
