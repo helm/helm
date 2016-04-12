@@ -19,11 +19,18 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
+	"os"
 	"path/filepath"
+	"text/tabwriter"
 
 	"github.com/codegangsta/cli"
 	"github.com/kubernetes/helm/pkg/format"
 	"github.com/kubernetes/helm/pkg/repo"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	storage "google.golang.org/api/storage/v1"
 )
 
 func init() {
@@ -51,6 +58,10 @@ const addRepoDesc = `The add repository command is used to add a name a reposito
    $ helm repo add charts gs://kubernetes-charts
 `
 
+const (
+	scope = storage.DevstorageReadOnlyScope
+)
+
 func repoCommands() cli.Command {
 	return cli.Command{
 		Name:        "repository",
@@ -67,6 +78,7 @@ func repoCommands() cli.Command {
 			},
 			{
 				Name:      "list",
+				Aliases:   []string{"ls"},
 				Usage:     "List the chart repositories on the remote manager.",
 				ArgsUsage: "",
 				Action:    func(c *cli.Context) { run(c, listRepos) },
@@ -77,6 +89,11 @@ func repoCommands() cli.Command {
 				Usage:     "Remove a chart repository from the remote manager.",
 				ArgsUsage: "REPOSITORY_NAME",
 				Action:    func(c *cli.Context) { run(c, removeRepo) },
+			},
+			{
+				Name:   "foobar",
+				Usage:  "foobar foobar.",
+				Action: func(c *cli.Context) { run(c, foobarRepo) },
 			},
 		},
 	}
@@ -107,11 +124,36 @@ func listRepos(c *cli.Context) error {
 		format.Info("Looks like you don't have any chart repositories.")
 		format.Info("Add a chart repository using the `helm repo add [REPOSITORY_URL]` command.")
 	} else {
-		format.Msg("Chart Repositories:\n")
+		w := tabwriter.NewWriter(os.Stdout, 5, 1, 3, ' ', 0)
+		fmt.Fprintln(w, "NAME\tURL")
 		for k, v := range dest {
 			//TODO: make formatting pretty
-			format.Msg(k + "\t" + v + "\n")
+			fmt.Fprintf(w, "%v\t%v\n", k, v)
 		}
+		w.Flush()
+	}
+	return nil
+}
+
+func foobarRepo(c *cli.Context) error {
+	repos := map[string]string{}
+	if _, err := NewClient(c).Get(chartRepoPath, &repos); err != nil {
+		return err
+	}
+	if len(repos) < 1 {
+		format.Info("Looks like you don't have any chart repositories.")
+		format.Info("Add a chart repository using the `helm repo add [REPOSITORY_URL]` command.")
+	} else {
+		w := tabwriter.NewWriter(os.Stdout, 5, 1, 3, ' ', 0)
+		fmt.Fprintln(w, "NAME\tURL")
+		for k, v := range repos {
+			//TODO: make formatting pretty
+			charts := chartRepos(k, v)
+			for _, chart := range charts {
+				fmt.Fprintf(w, "%v\t%s\n", v, chart)
+			}
+		}
+		w.Flush()
 	}
 	return nil
 }
@@ -127,4 +169,37 @@ func removeRepo(c *cli.Context) error {
 	}
 	format.Msg(name + " has been removed.\n")
 	return nil
+}
+
+func chartRepos(k string, b string) []string {
+	client, err := google.DefaultClient(oauth2.NoContext, scope)
+	if err != nil {
+		log.Fatalf("Foobar Unable to get default client: %v", err)
+	}
+	service, err := storage.New(client)
+	if err != nil {
+		log.Fatalf("Unable to create storage service: %v", err)
+	}
+
+	// List all objects in a bucket using pagination
+	var objects []string
+	var bucket string = k
+	pageToken := ""
+	for {
+		call := service.Objects.List(bucket)
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
+		}
+		res, err := call.Do()
+		if err != nil {
+			log.Fatalf("Objects.List failed: %v", err)
+		}
+		for _, object := range res.Items {
+			objects = append(objects, object.Name)
+		}
+		if pageToken = res.NextPageToken; pageToken == "" {
+			break
+		}
+	}
+	return objects
 }
