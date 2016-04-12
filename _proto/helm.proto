@@ -1,9 +1,35 @@
 syntax = "proto3";
 
-option java_package = "sh.helm";
+/*
+// No server
+helm init
+helm create
+helm fetch // Fetch chart from repo
+helm search
+helm package
+
+// Server
+
+// Releases
+helm install CHART
+helm list
+helm uninstall RELEASE
+helm status RELEASE
+helm get RELEASE
+helm update RELEASE
+*/
 
 // hapi: The Helm API
 package hapi;
+
+service ReleaseService {
+  rpc Install (InstallRequest) returns (InstallResponseError) {}
+  rpc List (ListRequest) returns (ListResponseError) {}
+  rpc Uninstall (UninstallRequest) returns (UninstallResponseError) {}
+  rpc Status (StatusRequest) returns (StatusResponseError) {}
+  rpc Get (GetRequest) returns (GetResponseError) {}
+  // rpc Update (UpdateRequest) returns (UpdateResponseError) {}
+}
 
 // Probe is used to check liveness and readiness.
 service Probe {
@@ -19,14 +45,4 @@ message PingRequest {
 // The readiness test response.
 message PingResponse {
   string status = 1;
-}
-
-message Chart {
-  string name = 1;
-}
-message Values {
-  string name = 1;
-}
-message Release {
-  string name = 1;
 }
