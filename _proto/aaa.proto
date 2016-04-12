@@ -1,11 +1,6 @@
 syntax = "proto3";
 package hapi;
 
-message Chartfile {
-  string name = 1;
-  string version = 2;
-}
-
 message Chart {
   // Option 1: Chart is raw []byte data
   // Option 2: List of files as []byte data, with special treatment for Chart.yaml

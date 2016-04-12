@@ -1,1 +1,2 @@
 vendor/
+_proto/*.pb.go
