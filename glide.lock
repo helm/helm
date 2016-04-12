@@ -1,12 +1,16 @@
-hash: 692bf17990973cf424c2dbfda6afee8b7002bbc07aaaa78372eac447fed4c8b0
-updated: 2016-04-11T16:13:14.192550144-06:00
+hash: 1dcbbc192182125021b40497fcf9d52bc643455a3bb03d6cd3458819fcb03dbb
+updated: 2016-04-12T13:27:50.987288211-06:00
 imports:
+- name: github.com/aokoli/goutils
+  version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/golang/protobuf
   version: dda510ac0fd43b39770f22ac6260eb91d377bce3
   subpackages:
   - proto
+- name: github.com/Masterminds/sprig
+  version: 679bb747f11c6ffc3373965988fea8877c40b47b
 - name: github.com/spf13/cobra
   version: 4c05eb1145f16d0e6bb4a3e1b6d769f4713cb41f
   subpackages:
