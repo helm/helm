@@ -111,7 +111,7 @@ redis-slave-rc          2            2             41m
 To connect to your Redis master with a local `redis-cli` just use `kubectl port-forward` in a similar manner to:
 
 ```
-$ kubectl port-forward redis-master-rc-8wrqt 6379:639 &
+$ kubectl port-forward redis-master-rc-8wrqt 6379:6379 &
 $ redis-cli
 127.0.0.1:6379> info
 ...
