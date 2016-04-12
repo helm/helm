@@ -13,7 +13,6 @@ find_go_files() {
 }
 
 hash golint 2>/dev/null || go get -u github.com/golang/lint/golint
-hash go vet 2>/dev/null || go get -u golang.org/x/tools/cmd/vet
 
 echo "==> Running golint..."
 for pkg in $(glide nv); do
