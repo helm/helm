@@ -26,12 +26,18 @@ Note: if you're exploring or using the project, you'll probably want to pull
 [the latest release](https://github.com/kubernetes/helm/releases/latest),
 since there may be undiscovered or unresolved issues at HEAD.
 
+Ensure GOPATH is set.
+
+Ensure you are authenticated to and have access to a Kubernetes cluster.
+
 From a Linux or Mac OS X client:
 
 ```
-$ git clone https://github.com/kubernetes/helm.git
-$ cd helm
+$ git clone https://github.com/kubernetes/helm.git $GOPATH/src/github.com/kubernetes/helm
+$ cd $GOPATH/src/github.com/kubernetes/helm
+$ go get ./...
 $ make build
+$ cd $GOPATH
 $ bin/helm server install
 ```
 
