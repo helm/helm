@@ -1,20 +1,20 @@
 hash: f9b47a1852e40963671d923d7170aa4d730f7d74de94a3c66420a3c1635bc5c5
-updated: 2016-04-01T21:35:30.235550603-04:00
+updated: 2016-04-12T08:53:23.594219654-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 45307ec16e3cd47cd841506c081f7afd8237d210
 - name: github.com/cloudfoundry-incubator/candiedyaml
-  version: 479485e9bfc69ee37d074b36ce36da5e4fba7941
+  version: 5cef21e2e4f0fd147973b558d4db7395176bcd95
 - name: github.com/codegangsta/cli
-  version: bc465becccd1d527002fda095fc3c19d9c115029
+  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/emicklei/go-restful
-  version: 402f11d42bfe18198ffd5c68258c631c8fbf2c3c
+  version: 496d495156da218b9912f03dfa7df7f80fbd8cc3
   subpackages:
   - log
 - name: github.com/ghodss/yaml
   version: 1a6f069841556a7bcaff4a397ca6e8328d266c2f
 - name: github.com/google/go-github
-  version: 4403af9a2a0f2c2577be18a928d98f77d5748168
+  version: 7f154f4cabd28c7b5962c37a5f59bb813ae3791a
   subpackages:
   - github
 - name: github.com/gorilla/context
@@ -36,26 +36,26 @@ imports:
 - name: github.com/Masterminds/sprig
   version: 679bb747f11c6ffc3373965988fea8877c40b47b
 - name: golang.org/x/net
-  version: 3e8a7b0329d536af18e227bb21b6da4d1dbbe180
+  version: 589fda73dd0faec3dc59e7d7dab5b069e3fce0f9
   subpackages:
   - context
   - context/ctxhttp
 - name: golang.org/x/oauth2
-  version: 33fa30fe45020622640e947917fd1fc4c81e3dce
+  version: b0e2337fe6ec0c637fa4f123268b972f334504eb
   subpackages:
   - google
   - internal
   - jws
   - jwt
 - name: google.golang.org/api
-  version: 43c645d4bcf9251ced36c823a93b6d198764aae4
+  version: 9737cc9e103c00d06a8f3993361dec083df3d252
   subpackages:
   - storage/v1
   - gensupport
   - googleapi
   - googleapi/internal/uritemplates
 - name: google.golang.org/cloud
-  version: 8a7fce32d2cdf2d4e19068ecc53164b973b3e958
+  version: 79ffda073da804f325135da5ff645a630a4d7625
   subpackages:
   - compute/metadata
   - internal
