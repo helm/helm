@@ -1,0 +1,6 @@
+imports:
+- path: wordpress.jinja
+
+resources:
+- name: wordpress
+  type: wordpress.jinja
