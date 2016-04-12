@@ -1,2 +1,4 @@
+.coverage/
+bin/
 vendor/
 _proto/*.pb.go
