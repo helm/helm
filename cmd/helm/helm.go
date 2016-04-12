@@ -72,7 +72,7 @@ func main() {
 			Name:   "host,u",
 			Usage:  "The URL of the DM server",
 			EnvVar: "HELM_HOST",
-			Value:  "https://localhost:8000/",
+			Value:  "http://localhost:8080/",
 		},
 		cli.StringFlag{
 			Name:   "kubectl",

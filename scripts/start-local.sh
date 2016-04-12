@@ -60,7 +60,6 @@ Logging to ${LOGDIR}
 
 To use helm:
 
-  export HELM_HOST=http://localhost:${MANAGER_PORT}
   For list of commands, run:
   $./bin/helm
   Example Command:
