@@ -17,10 +17,13 @@ func (y EngineYard) Get(k string) (Engine, bool) {
 // For some engines, "rendering" includes both compiling and executing. (Other
 // engines do not distinguish between phases.)
 //
+// The engine returns a map where the key is the named output entity (usually
+// a file name) and the value is the rendered content of the template.
+//
 // An Engine must be capable of executing multiple concurrent requests, but
 // without tainting one request's environment with data from another request.
 type Engine interface {
-	Render(*hapi.Chart, *hapi.Values) ([]byte, error)
+	Render(*hapi.Chart, *hapi.Values) (map[string]string, error)
 }
 
 // ReleaseStorage represents a storage engine for a Release.

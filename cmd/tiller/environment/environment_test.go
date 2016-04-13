@@ -7,10 +7,10 @@ import (
 )
 
 type mockEngine struct {
-	out []byte
+	out map[string]string
 }
 
-func (e *mockEngine) Render(chrt *hapi.Chart, v *hapi.Values) ([]byte, error) {
+func (e *mockEngine) Render(chrt *hapi.Chart, v *hapi.Values) (map[string]string, error) {
 	return e.out, nil
 }
 
@@ -39,7 +39,7 @@ var _ ReleaseStorage = &mockReleaseStorage{}
 var _ KubeClient = &mockKubeClient{}
 
 func TestEngine(t *testing.T) {
-	eng := &mockEngine{out: []byte("test")}
+	eng := &mockEngine{out: map[string]string{"albatross": "test"}}
 
 	env := New()
 	env.EngineYard = EngineYard(map[string]Engine{"test": eng})
@@ -48,8 +48,8 @@ func TestEngine(t *testing.T) {
 		t.Errorf("failed to get engine from EngineYard")
 	} else if out, err := engine.Render(&hapi.Chart{}, &hapi.Values{}); err != nil {
 		t.Errorf("unexpected template error: %s", err)
-	} else if string(out) != "test" {
-		t.Errorf("expected 'test', got %q", string(out))
+	} else if out["albatross"] != "test" {
+		t.Errorf("expected 'test', got %q", out["albatross"])
 	}
 }
 
