@@ -27,6 +27,14 @@ func (r *mockReleaseStorage) Set(k string, v *hapi.Release) error {
 	return nil
 }
 
+func (r *mockReleaseStorage) List() ([]*hapi.Release, error) {
+	return []*hapi.Release{}, nil
+}
+
+func (r *mockReleaseStorage) Query(labels map[string]string) ([]*hapi.Release, error) {
+	return []*hapi.Release{}, nil
+}
+
 type mockKubeClient struct {
 }
 

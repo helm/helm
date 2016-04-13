@@ -9,7 +9,10 @@ import (
 	"github.com/deis/tiller/pkg/hapi"
 )
 
+// Engine is an implementation of 'cmd/tiller/environment'.Engine that uses Go templates.
 type Engine struct {
+	// FuncMap contains the template functions that will be passed to each
+	// render call. This may only be modified before the first call to Render.
 	FuncMap template.FuncMap
 }
 

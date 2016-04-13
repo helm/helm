@@ -12,6 +12,10 @@ var DefaultEngine = GoTplEngine
 // EngineYard maps engine names to engine implementations.
 type EngineYard map[string]Engine
 
+// Get retrieves a template engine by name.
+//
+// If no matching template engine is found, the second return value will
+// be false.
 func (y EngineYard) Get(k string) (Engine, bool) {
 	e, ok := y[k]
 	return e, ok
@@ -49,8 +53,16 @@ type Engine interface {
 //
 // Release storage must be concurrency safe.
 type ReleaseStorage interface {
+	// Get takes a name and returns the accompanying release.
 	Get(key string) (*hapi.Release, error)
+	// Set saves the release with the given name.
 	Set(key string, val *hapi.Release) error
+	// List lists all active (non-deleted, non-superseded) releases.
+	//
+	// To get deleted or superseded releases, use Query.
+	List() ([]*hapi.Release, error)
+	// Query takes a map of labels and returns any releases that match.
+	Query(map[string]string) ([]*hapi.Release, error)
 }
 
 // KubeClient represents a client capable of communicating with the Kubernetes API.
