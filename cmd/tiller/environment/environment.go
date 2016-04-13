@@ -3,10 +3,15 @@ package environment
 import (
 	"github.com/deis/tiller/pkg/engine"
 	"github.com/deis/tiller/pkg/hapi"
+	"github.com/deis/tiller/pkg/storage"
 )
 
+// GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"
 
+// DefaultEngine points to the engine that the EngineYard should treat as the
+// default. A chart that does not specify an engine may be run through the
+// default engine.
 var DefaultEngine = GoTplEngine
 
 // EngineYard maps engine names to engine implementations.
@@ -93,8 +98,13 @@ type Environment struct {
 // New returns an environment initialized with the defaults.
 func New() *Environment {
 	e := engine.New()
-	var ey EngineYard = map[string]Engine{GoTplEngine: e}
+	var ey EngineYard = map[string]Engine{
+		// Currently, the only template engine we support is the GoTpl one. But
+		// we can easily add some here.
+		GoTplEngine: e,
+	}
 	return &Environment{
 		EngineYard: ey,
+		Releases:   storage.NewMemory(),
 	}
 }
