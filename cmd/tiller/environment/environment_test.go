@@ -30,7 +30,7 @@ func (r *mockReleaseStorage) Set(k string, v *hapi.Release) error {
 type mockKubeClient struct {
 }
 
-func (k *mockKubeClient) Install(manifest []byte) error {
+func (k *mockKubeClient) Install(manifests map[string]string) error {
 	return nil
 }
 
@@ -76,7 +76,9 @@ func TestKubeClient(t *testing.T) {
 	env := New()
 	env.KubeClient = kc
 
-	if err := env.KubeClient.Install([]byte("apiVersion: v1\n")); err != nil {
+	manifests := map[string]string{}
+
+	if err := env.KubeClient.Install(manifests); err != nil {
 		t.Errorf("Kubeclient failed: %s", err)
 	}
 }

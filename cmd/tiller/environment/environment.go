@@ -57,7 +57,13 @@ type ReleaseStorage interface {
 //
 // A KubeClient must be concurrency safe.
 type KubeClient interface {
-	Install(manifest []byte) error
+	// Install takes a map where the key is a "file name" (read: unique relational
+	// id) and the value is a Kubernetes manifest containing one or more resource
+	// definitions.
+	//
+	// TODO: Can these be in YAML or JSON, or must they be in one particular
+	// format?
+	Install(manifests map[string]string) error
 }
 
 // Environment provides the context for executing a client request.
