@@ -1,21 +1,49 @@
-GO ?= go
+DOCKER_REGISTRY :=
+IMAGE_PREFIX    ?= helm
+SHORT_NAME      ?= tiller
 
+# go option
+GO        ?= go
+GOARCH    ?= $(shell go env GOARCH)
+GOOS      ?= $(shell go env GOOS)
 PKG       := $(shell glide novendor)
 TAGS      :=
 TESTS     := .
 TESTFLAGS :=
 LDFLAGS   :=
+GOFLAGS   :=
+BINDIR    := ./bin
+BINARIES  := helm tiller
 
-BINARIES := helm tiller
+include versioning.mk
 
 .PHONY: all
 all: build
 
 .PHONY: build
+build: GOFLAGS += -v -a -installsuffix cgo
 build:
 	@for i in $(BINARIES); do \
-		$(GO) build -o ./bin/$$i -v $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/$$i || exit 1; \
+		CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -o $(BINDIR)/$$i $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/$$i || exit 1; \
 	done
+
+.PHONY: check-docker
+check-docker:
+	@if [ -z $$(which docker) ]; then \
+	  echo "Missing \`docker\` client which is required for development"; \
+	  exit 2; \
+	fi
+
+.PHONY: docker-binary
+docker-binary: GOOS = linux
+docker-binary: GOARCH = amd64
+docker-binary: BINDIR = ./rootfs
+docker-binary: build
+
+.PHONY: docker-build
+docker-build: check-docker docker-binary
+	docker build --rm -t ${IMAGE} rootfs
+	docker tag -f ${IMAGE} ${MUTABLE_IMAGE}
 
 .PHONY: test
 test: TESTFLAGS += -race -v
@@ -32,7 +60,7 @@ test-style:
 
 .PHONY: clean
 clean:
-	rm -rf ./bin
+	@rm -rf $(BINDIR)
 
 .PHONY: coverage
 coverage:
