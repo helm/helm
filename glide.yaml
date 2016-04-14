@@ -8,3 +8,7 @@ import:
   subpackages:
   - cobra
 - package: github.com/Masterminds/sprig
+  version: ^2.1
+- package: gopkg.in/yaml.v2
+- package: github.com/Masterminds/semver
+  version: 1.1.0

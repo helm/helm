@@ -1,14 +1,16 @@
-hash: 1dcbbc192182125021b40497fcf9d52bc643455a3bb03d6cd3458819fcb03dbb
-updated: 2016-04-12T13:27:50.987288211-06:00
+hash: 7f9a27ad54a10edaa7c57521246676477d0f84ef4246524bae75f8df9d049983
+updated: 2016-04-14T12:24:49.130995956-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/golang/protobuf
-  version: dda510ac0fd43b39770f22ac6260eb91d377bce3
+  version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
   subpackages:
   - proto
+- name: github.com/Masterminds/semver
+  version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
   version: 679bb747f11c6ffc3373965988fea8877c40b47b
 - name: github.com/spf13/cobra
@@ -16,9 +18,9 @@ imports:
   subpackages:
   - cobra
 - name: github.com/spf13/pflag
-  version: 1f296710f879815ad9e6d39d947c828c3e4b4c3d
+  version: 8f6a28b0916586e7f22fe931ae2fcfc380b1c0e6
 - name: golang.org/x/net
-  version: 589fda73dd0faec3dc59e7d7dab5b069e3fce0f9
+  version: fb93926129b8ec0056f2f458b1f519654814edf0
   subpackages:
   - context
   - http2
@@ -26,7 +28,7 @@ imports:
   - http2/hpack
   - internal/timeseries
 - name: google.golang.org/grpc
-  version: d07d0562ffca36dd7ee333b5d236209f98fe9ba0
+  version: 9ac074585f926c8506b6351bfdc396d2b19b1cb1
   subpackages:
   - codes
   - credentials
@@ -36,4 +38,6 @@ imports:
   - naming
   - transport
   - peer
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
 devImports: []
