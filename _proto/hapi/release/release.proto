@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package hapi.release;
+
+import "hapi/release/info.proto";
+import "hapi/chart/config.proto";
+import "hapi/chart/chart.proto";
+
+option go_package = "release";
+
+//
+// Release:
+//
+// 		TODO
+//
+message Release {
+	// TODO
+	string name = 1;
+
+	// TODO
+	hapi.release.Info info = 2;
+	
+	// TODO
+	hapi.chart.Chart chart = 3;
+	
+	// TODO
+	hapi.chart.Config config = 4;
+}

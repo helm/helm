@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package hapi.services.tiller;
+
+import "hapi/release/release.proto";
+import "hapi/release/status.proto";
+
+option go_package = "services";
+
+//
+// ReleaseService:
+//
+//		The service that a helm application uses to mutate,
+// 		query, and manage releases.
+//
+//		Release: A named installation composed of a chart and
+// 				 config. At any given time a release has one
+//				 chart and one config.
+//
+//		Config:  A config is a TOML file that supplies values
+//				 to the parametrizable templates of a chart.
+//
+//		Chart:   A chart is a helm package that contains
+//				 metadata, a default config, zero or more
+//				 optionally parameterizable templates, and
+//				 zero or more charts (dependencies).
+//		
+//
+service ReleaseService {
+	//
+	// Retrieve release history. TODO: Allow filtering the set of releases by
+	// release status. By default, ListAllReleases returns the releases who
+	// current status is "Active".
+	//
+	rpc ListReleases(ListReleasesRequest) returns (stream ListReleasesResponse) {
+	}
+	
+	//
+	// Retrieve status information for the specified release.
+	//
+	rpc GetReleaseStatus(GetReleaseStatusRequest) returns (GetReleaseStatusResponse) {
+	}
+	
+	//
+	// Retrieve the release content (chart + value) for the specifed release.
+	//
+	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
+	}
+
+	//
+	// Update release content.
+	//
+	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
+	}
+
+	//
+	// Request release install.
+	//
+	rpc InstallRelease(InstallReleaseRequest) returns (InstallReleaseResponse) {
+	}
+	
+	//
+	// Request release deletion.
+	//
+	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
+	}
+}
+
+//
+// ListReleasesRequest:
+//
+//		TODO
+//
+message ListReleasesRequest {
+	// The maximum number of releases to be returned
+	int64 limit  = 1;
+	
+	// The zero-based offset at which the returned release list begins 
+	int64 offset = 2;
+}
+
+//
+// ListReleasesResponse:
+//
+//		TODO
+//
+message ListReleasesResponse {
+ 	// The expected total number of releases to be returned
+	int64 count  = 1;
+	
+	// The zero-based offset at which the list is positioned
+	int64 offset = 2;
+	
+	// The total number of queryable releases
+	int64 total  = 3;
+	
+	// The resulting releases
+	repeated hapi.release.Release releases = 4;
+}
+
+//
+// GetReleaseStatusRequest:
+//
+//		TODO
+//
+message GetReleaseStatusRequest {
+	// The name of the release
+	string release_name = 1;
+}
+
+//
+// GetReleaseStatusResponse:
+//
+//		TODO
+//
+message GetReleaseStatusResponse {
+	// The name of the release
+	string release_name = 1;
+	
+	// The release status
+	hapi.release.Status release_status = 2;
+}
+
+//
+// GetReleaseContentRequest:
+//
+//		TODO
+//
+message GetReleaseContentRequest {
+	// The name of the release
+	string release_name = 1;
+}
+
+//
+// GetReleaseContentResponse:
+//
+//		TODO
+//
+message GetReleaseContentResponse {
+	// The release content
+	hapi.release.Release release = 1;
+}
+
+//
+// UpdateReleaseRequest:
+//
+//		TODO
+//
+message UpdateReleaseRequest {
+}
+
+//
+// UpdateReleaseResponse:
+//
+//		TODO
+//
+message UpdateReleaseResponse {
+}
+
+//
+// InstallReleaseRequest:
+//
+//		TODO
+//
+message InstallReleaseRequest {
+}
+
+//
+// InstallReleaseResponse:
+//
+//		TODO
+//
+message InstallReleaseResponse {
+}
+
+//
+// UninstallReleaseRequest:
+//
+//		TODO
+//
+message UninstallReleaseRequest {
+}
+
+//
+// UninstallReleaseResponse:
+//
+//		TODO
+//
+message UninstallReleaseResponse {
+}

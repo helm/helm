@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package hapi.services.probe;
+
+option go_package = "services";
+
+service ProbeService {
+	rpc Ready(ReadyRequest) returns (ReadyResponse) {
+	}
+}
+
+message ReadyRequest {
+}
+
+message ReadyResponse {
+}

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package hapi.chart;
+
+option go_package = "chart";
+
+//
+// Template:
+//		
+// 		TODO
+//
+message Templates {
+	// TODO
+	repeated Template templates = 1;
+}
+
+message Template {
+	// TODO
+	string template_name = 1;
+	
+	// TODO
+	bytes template_data = 2;
+}
