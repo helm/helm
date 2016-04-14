@@ -21,7 +21,7 @@ include versioning.mk
 all: build
 
 .PHONY: build
-build: GOFLAGS += -v -a -installsuffix cgo
+build: GOFLAGS += -a -installsuffix cgo
 build:
 	@for i in $(BINARIES); do \
 		CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -o $(BINDIR)/$$i $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/$$i || exit 1; \
