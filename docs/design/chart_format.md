@@ -316,7 +316,7 @@ For the purpose of providing versioning ranges, and also for backward compatibil
 
 ```
 helm:example.com/charts/nginx#1.2.3   // Exact version
-helm:example.com/charts/nginx#~2.1    // Version range
+helm:example.com/charts/nginx#~1.2    // Version range
 helm:example.com/charts/nginx         // Latest release
 ```
 
