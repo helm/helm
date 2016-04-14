@@ -20,7 +20,7 @@ type Installer struct {
 	Tiller map[string]interface{}
 }
 
-// New Installer creates a new Installer
+// NewInstaller creates a new Installer
 func NewInstaller() *Installer {
 	return &Installer{
 		Metadata: map[string]interface{}{},
