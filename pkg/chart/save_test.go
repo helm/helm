@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 )
 
@@ -66,20 +67,16 @@ func TestSave(t *testing.T) {
 	expect := []string{
 		"sprocket",
 		"sprocket/Chart.yaml",
-		"sprocket/LICENSE",
-		"sprocket/README.md",
-		"sprocket/docs",
-		"sprocket/docs/README.md",
-		"sprocket/hooks",
-		"sprocket/hooks/pre-install.py",
-		"sprocket/icon.svg",
+		"sprocket/values.toml",
 		"sprocket/templates",
-		"sprocket/templates/placeholder.txt",
+		"sprocket/templates/template.tpl",
 	}
 	if len(expect) != len(files) {
 		t.Errorf("Expected %d files, found %d", len(expect), len(files))
 		return
 	}
+	sort.Strings(files)
+	sort.Strings(expect)
 	for i := 0; i < len(expect); i++ {
 		if expect[i] != files[i] {
 			t.Errorf("Expected file %q, got %q", expect[i], files[i])
