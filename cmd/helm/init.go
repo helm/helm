@@ -9,6 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const longDesc = `
+This command installs Tiller (the helm server side component) onto your
+Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.helm/)
+`
+
 var tillerImg string
 
 func init() {
@@ -19,7 +24,7 @@ func init() {
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Helm on both client and server.",
-	Long:  `Add long help here`,
+	Long:  longDesc,
 	RunE:  RunInit,
 }
 
