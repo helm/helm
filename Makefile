@@ -1,5 +1,5 @@
-DOCKER_REGISTRY :=
-IMAGE_PREFIX    ?= helm
+DOCKER_REGISTRY ?= gcr.io
+IMAGE_PREFIX    ?= deis-sandbox
 SHORT_NAME      ?= tiller
 
 # go option
