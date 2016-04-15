@@ -6,13 +6,13 @@ import (
 	"github.com/deis/tiller/pkg/hapi"
 )
 
-func TestSet(t *testing.T) {
+func TestCreate(t *testing.T) {
 	k := "test-1"
 	r := &hapi.Release{Name: k}
 
 	ms := NewMemory()
-	if err := ms.Set(k, r); err != nil {
-		t.Fatalf("Failed set: %s", err)
+	if err := ms.Create(r); err != nil {
+		t.Fatalf("Failed create: %s", err)
 	}
 
 	if ms.releases[k].Name != k {
@@ -20,17 +20,34 @@ func TestSet(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestRead(t *testing.T) {
 	k := "test-1"
 	r := &hapi.Release{Name: k}
 
 	ms := NewMemory()
-	ms.Set(k, r)
+	ms.Create(r)
 
-	if out, err := ms.Get(k); err != nil {
+	if out, err := ms.Read(k); err != nil {
 		t.Errorf("Could not get %s: %s", k, err)
 	} else if out.Name != k {
 		t.Errorf("Expected %s, got %s", k, out.Name)
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	k := "test-1"
+	r := &hapi.Release{Name: k}
+
+	ms := NewMemory()
+	if err := ms.Create(r); err != nil {
+		t.Fatalf("Failed create: %s", err)
+	}
+	if err := ms.Update(r); err != nil {
+		t.Fatalf("Failed update: %s", err)
+	}
+
+	if ms.releases[k].Name != k {
+		t.Errorf("Unexpected release name: %s", ms.releases[k].Name)
 	}
 }
 
@@ -39,7 +56,7 @@ func TestList(t *testing.T) {
 	rels := []string{"a", "b", "c"}
 
 	for _, k := range rels {
-		ms.Set(k, &hapi.Release{Name: k})
+		ms.Create(&hapi.Release{Name: k})
 	}
 
 	l, err := ms.List()

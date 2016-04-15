@@ -19,10 +19,10 @@ func NewMemory() *Memory {
 
 var ErrNotFound = errors.New("release not found")
 
-// Get returns the named Release.
+// Read returns the named Release.
 //
 // If the release is not found, an ErrNotFound error is returned.
-func (m *Memory) Get(k string) (*hapi.Release, error) {
+func (m *Memory) Read(k string) (*hapi.Release, error) {
 	v, ok := m.releases[k]
 	if !ok {
 		return v, ErrNotFound
@@ -30,12 +30,33 @@ func (m *Memory) Get(k string) (*hapi.Release, error) {
 	return v, nil
 }
 
-// Set sets a release.
-//
-// TODO: Is there any reason why Set doesn't just use the release name?
-func (m *Memory) Set(k string, rel *hapi.Release) error {
-	m.releases[k] = rel
+// Create sets a release.
+func (m *Memory) Create(rel *hapi.Release) error {
+	m.releases[rel.Name] = rel
 	return nil
+}
+
+var ErrNoRelease = errors.New("no release found")
+
+// Update sets a release.
+func (m *Memory) Update(rel *hapi.Release) error {
+	if _, ok := m.releases[rel.Name]; !ok {
+		return ErrNoRelease
+	}
+
+	// FIXME: When Release is done, we need to do this right by marking the old
+	// release as superseded, and creating a new release.
+	m.releases[rel.Name] = rel
+	return nil
+}
+
+func (m *Memory) Delete(name string) (*hapi.Release, error) {
+	rel, ok := m.releases[name]
+	if !ok {
+		return nil, ErrNoRelease
+	}
+	delete(m.releases, name)
+	return rel, nil
 }
 
 // List returns all releases

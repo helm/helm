@@ -18,13 +18,22 @@ type mockReleaseStorage struct {
 	rel *hapi.Release
 }
 
-func (r *mockReleaseStorage) Get(k string) (*hapi.Release, error) {
+func (r *mockReleaseStorage) Create(v *hapi.Release) error {
+	r.rel = v
+	return nil
+}
+
+func (r *mockReleaseStorage) Read(k string) (*hapi.Release, error) {
 	return r.rel, nil
 }
 
-func (r *mockReleaseStorage) Set(k string, v *hapi.Release) error {
+func (r *mockReleaseStorage) Update(v *hapi.Release) error {
 	r.rel = v
 	return nil
+}
+
+func (r *mockReleaseStorage) Delete(k string) (*hapi.Release, error) {
+	return r.rel, nil
 }
 
 func (r *mockReleaseStorage) List() ([]*hapi.Release, error) {
@@ -68,14 +77,22 @@ func TestReleaseStorage(t *testing.T) {
 
 	release := &hapi.Release{Name: "mariner"}
 
-	if err := env.Releases.Set("albatross", release); err != nil {
+	if err := env.Releases.Create(release); err != nil {
 		t.Fatalf("failed to store release: %s", err)
 	}
 
-	if v, err := env.Releases.Get("albatross"); err != nil {
+	if err := env.Releases.Update(release); err != nil {
+		t.Fatalf("failed to update release: %s", err)
+	}
+
+	if v, err := env.Releases.Read("albatross"); err != nil {
 		t.Errorf("Error fetching release: %s", err)
 	} else if v.Name != "mariner" {
 		t.Errorf("Expected mariner, got %q", v.Name)
+	}
+
+	if _, err := env.Releases.Delete("albatross"); err != nil {
+		t.Fatalf("failed to delete release: %s", err)
 	}
 }
 
