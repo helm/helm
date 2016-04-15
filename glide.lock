@@ -1,8 +1,10 @@
-hash: 7f9a27ad54a10edaa7c57521246676477d0f84ef4246524bae75f8df9d049983
-updated: 2016-04-14T12:24:49.130995956-06:00
+hash: e7c99013acb06eb359cf20390579af9a4553ef0fbed3f7bbb784b4ab7c8df807
+updated: 2016-04-15T15:15:21.87772545-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
+- name: github.com/BurntSushi/toml
+  version: bbd5bb678321a0d6e58f1099321dfa73391c1b6f
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/golang/protobuf
@@ -28,7 +30,7 @@ imports:
   - http2/hpack
   - internal/timeseries
 - name: google.golang.org/grpc
-  version: 9ac074585f926c8506b6351bfdc396d2b19b1cb1
+  version: 8eeecf2291de9d171d0b1392a27ff3975679f4f5
   subpackages:
   - codes
   - credentials
