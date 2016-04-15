@@ -28,10 +28,16 @@ since there may be undiscovered or unresolved issues at HEAD.
 
 From a Linux or Mac OS X client:
 
+Ensure GOPATH is set.
+
+Ensure you are authenticated against and are able to access a Kubernetes cluster.
+
 ```
-$ git clone https://github.com/kubernetes/helm.git
-$ cd helm
+$ git clone https://github.com/kubernetes/helm.git $GOPATH/src/github.com/kubernetes/helm
+$ cd $GOPATH/src/github.com/kubernetes/helm
+$ go get ./...
 $ make build
+$ cd $GOPATH
 $ bin/helm server install
 ```
 
