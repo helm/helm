@@ -38,6 +38,12 @@ const (
 	preCharts    string = "charts/"
 )
 
+const defaultValues = `# Default values for %s.
+# This is a TOML-formatted file. https://github.com/toml-lang/toml
+# Declare name/value pairs to be passed into your templates.
+# name = "value"
+`
+
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
 // Chart represents a complete chart.
@@ -170,7 +176,7 @@ func Create(chartfile *Chartfile, dir string) (*Chart, error) {
 		return nil, err
 	}
 
-	val := []byte(fmt.Sprintf("# Default Values for %s\n", chartfile.Name))
+	val := []byte(fmt.Sprintf(defaultValues, chartfile.Name))
 	if err := ioutil.WriteFile(filepath.Join(cdir, preValues), val, 0644); err != nil {
 		return nil, err
 	}

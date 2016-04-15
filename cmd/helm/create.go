@@ -17,11 +17,13 @@ For example, 'helm create foo' will create a directory structure that looks
 something like this:
 
 	foo/
-	  |- Chart.yaml
+	  |- Chart.yaml    # Information about your chart
 	  |
-	  |- values.toml
+	  |- values.toml   # The default values for your templates
 	  |
-	  |- templates/
+	  |- charts/       # Charts that this chart depends on
+	  |
+	  |- templates/    # The template files
 
 'helm create' takes a path for an argument. If directories in the given path
 do not exist, Helm will attempt to create them as it goes. If the given
