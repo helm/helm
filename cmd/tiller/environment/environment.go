@@ -58,15 +58,46 @@ type Engine interface {
 //
 // Release storage must be concurrency safe.
 type ReleaseStorage interface {
-	// Get takes a name and returns the accompanying release.
-	Get(key string) (*hapi.Release, error)
-	// Set saves the release with the given name.
-	Set(key string, val *hapi.Release) error
+
+	// Create stores a release in the storage.
+	//
+	// If a release with the same name exists, this returns an error.
+	//
+	// It may return other errors in cases where it cannot write to storage.
+	Create(*hapi.Release) error
+	// Read takes a name and returns a release that has that name.
+	//
+	// It will only return releases that are not deleted and not superseded.
+	//
+	// It will return an error if no relevant release can be found, or if storage
+	// is not properly functioning.
+	Read(name string) (*hapi.Release, error)
+
+	// Update looks for a release with the same name and updates it with the
+	// present release contents.
+	//
+	// For immutable storage backends, this may result in a new release record
+	// being created, and the previous release being marked as superseded.
+	//
+	// It will return an error if a previous release is not found. It may also
+	// return an error if the storage backend encounters an error.
+	Update(*hapi.Release) error
+
+	// Delete marks a Release as deleted.
+	//
+	// It returns the deleted record. If the record is not found or if the
+	// underlying storage encounters an error, this will return an error.
+	Delete(name string) (*hapi.Release, error)
+
 	// List lists all active (non-deleted, non-superseded) releases.
 	//
 	// To get deleted or superseded releases, use Query.
 	List() ([]*hapi.Release, error)
+
 	// Query takes a map of labels and returns any releases that match.
+	//
+	// Query will search all releases, including deleted and superseded ones.
+	// The provided map will be used to filter results.
 	Query(map[string]string) ([]*hapi.Release, error)
 }
 
