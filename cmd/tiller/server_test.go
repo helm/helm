@@ -13,18 +13,17 @@ import (
 var _ environment.Engine = &engine.Engine{}
 var _ environment.ReleaseStorage = storage.NewMemory()
 
-func TestNewServer(t *testing.T) {
+func TestInit(t *testing.T) {
 	defer func() {
 		if recover() != nil {
 			t.Fatalf("Panic trapped. Check EngineYard.Default()")
 		}
 	}()
-	s := newServer()
 
 	// This will panic if it is not correct.
-	s.Environment.EngineYard.Default()
+	env.EngineYard.Default()
 
-	e, ok := s.Environment.EngineYard.Get(environment.GoTplEngine)
+	e, ok := env.EngineYard.Get(environment.GoTplEngine)
 	if !ok {
 		t.Fatalf("Could not find GoTplEngine")
 	}

@@ -2,10 +2,19 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/codegangsta/cli"
+	"github.com/deis/tiller/cmd/tiller/environment"
+	"google.golang.org/grpc"
 )
+
+// rootServer is the root gRPC server.
+//
+// Each gRPC service registers itself to this server during init().
+var rootServer *grpc.Server = grpc.NewServer()
+var env = environment.New()
 
 func main() {
 	app := cli.NewApp()
@@ -17,7 +26,16 @@ func main() {
 }
 
 func start(c *cli.Context) {
-	if err := startServer(":44134"); err != nil {
+	addr := ":44134"
+	lstn, err := net.Listen("tcp", addr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Tiller is running on %s\n", addr)
+
+	if err := rootServer.Serve(lstn); err != nil {
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
 		os.Exit(1)
 	}
