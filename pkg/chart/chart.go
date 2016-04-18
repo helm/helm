@@ -34,10 +34,15 @@ const ChartfileName string = "Chart.yaml"
 
 const (
 	preTemplates string = "templates/"
-	preHooks     string = "hooks/"
-	preDocs      string = "docs/"
-	preIcon      string = "icon.svg"
+	preValues    string = "values.toml"
+	preCharts    string = "charts/"
 )
+
+const defaultValues = `# Default values for %s.
+# This is a TOML-formatted file. https://github.com/toml-lang/toml
+# Declare name/value pairs to be passed into your templates.
+# name = "value"
+`
 
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
@@ -78,28 +83,14 @@ func (c *Chart) Dir() string {
 	return c.loader.dir()
 }
 
-// DocsDir returns the directory where the chart's documentation is stored.
-func (c *Chart) DocsDir() string {
-	return filepath.Join(c.loader.dir(), preDocs)
-}
-
-// HooksDir returns the directory where the hooks are stored.
-func (c *Chart) HooksDir() string {
-	return filepath.Join(c.loader.dir(), preHooks)
-}
-
 // TemplatesDir returns the directory where the templates are stored.
 func (c *Chart) TemplatesDir() string {
 	return filepath.Join(c.loader.dir(), preTemplates)
 }
 
-// Icon returns the path to the icon.svg file.
-//
-// If an icon is not found in the chart, this will return an error.
-func (c *Chart) Icon() (string, error) {
-	i := filepath.Join(c.Dir(), preIcon)
-	_, err := os.Stat(i)
-	return i, err
+// ChartsDir returns teh directory where dependency charts are stored.
+func (c *Chart) ChartsDir() string {
+	return filepath.Join(c.loader.dir(), preCharts)
 }
 
 // chartLoader provides load, close, and save implementations for a chart.
@@ -174,26 +165,24 @@ func Create(chartfile *Chartfile, dir string) (*Chart, error) {
 
 	n := fname(chartfile.Name)
 	cdir := filepath.Join(path, n)
-	if _, err := os.Stat(cdir); err == nil {
-		return nil, fmt.Errorf("directory already exists: %s", cdir)
+	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
+		return nil, fmt.Errorf("file %s already exists and is not a directory", cdir)
 	}
 	if err := os.MkdirAll(cdir, 0755); err != nil {
 		return nil, err
 	}
 
-	rollback := func() {
-		// TODO: Should we log failures here?
-		os.RemoveAll(cdir)
-	}
-
 	if err := chartfile.Save(filepath.Join(cdir, ChartfileName)); err != nil {
-		rollback()
 		return nil, err
 	}
 
-	for _, d := range []string{preHooks, preDocs, preTemplates} {
+	val := []byte(fmt.Sprintf(defaultValues, chartfile.Name))
+	if err := ioutil.WriteFile(filepath.Join(cdir, preValues), val, 0644); err != nil {
+		return nil, err
+	}
+
+	for _, d := range []string{preTemplates, preCharts} {
 		if err := os.MkdirAll(filepath.Join(cdir, d), 0755); err != nil {
-			rollback()
 			return nil, err
 		}
 	}

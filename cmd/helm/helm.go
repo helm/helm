@@ -8,6 +8,7 @@ import (
 
 var stdout = os.Stdout
 
+// RootCommand is the top-level command for Helm.
 var RootCommand = &cobra.Command{
 	Use:   "helm",
 	Short: "The Helm package manager for Kubernetes.",

@@ -19,6 +19,7 @@ package chart
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -45,6 +46,44 @@ func TestLoadDir(t *testing.T) {
 	if c.Chartfile().Name != "frobnitz" {
 		t.Errorf("Expected chart name to be 'frobnitz'. Got '%s'.", c.Chartfile().Name)
 	}
+}
+
+func TestCreate(t *testing.T) {
+	tdir, err := ioutil.TempDir("", "helm-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tdir)
+
+	cf := &Chartfile{Name: "foo"}
+
+	c, err := Create(cf, tdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir := filepath.Join(tdir, "foo")
+
+	if c.Chartfile().Name != "foo" {
+		t.Errorf("Expected name to be 'foo', got %q", c.Chartfile().Name)
+	}
+
+	for _, d := range []string{preTemplates, preCharts} {
+		if fi, err := os.Stat(filepath.Join(dir, d)); err != nil {
+			t.Errorf("Expected %s dir: %s", d, err)
+		} else if !fi.IsDir() {
+			t.Errorf("Expected %s to be a directory.", d)
+		}
+	}
+
+	for _, f := range []string{ChartfileName, preValues} {
+		if fi, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			t.Errorf("Expected %s file: %s", f, err)
+		} else if fi.IsDir() {
+			t.Errorf("Expected %s to be a fle.", f)
+		}
+	}
+
 }
 
 func TestLoad(t *testing.T) {
@@ -102,9 +141,9 @@ func TestChart(t *testing.T) {
 	}
 
 	dir := c.Dir()
-	d := c.DocsDir()
-	if d != filepath.Join(dir, preDocs) {
-		t.Errorf("Unexpectedly, docs are in %s", d)
+	d := c.ChartsDir()
+	if d != filepath.Join(dir, preCharts) {
+		t.Errorf("Unexpectedly, charts are in %s", d)
 	}
 
 	d = c.TemplatesDir()
