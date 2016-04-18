@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"os/user"
 	"path/filepath"
 
 	"github.com/deis/tiller/pkg/chart"
@@ -54,9 +53,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Name:        chartname,
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
-		Maintainers: []*chart.Maintainer{
-			{Name: username()},
-		},
 	}
 
 	if _, err := chart.Create(&cfile, filepath.Dir(cname)); err != nil {
@@ -64,16 +60,4 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func username() string {
-	uname := "Unknown"
-	u, err := user.Current()
-	if err == nil {
-		uname = u.Name
-		if uname == "" {
-			uname = u.Username
-		}
-	}
-	return uname
 }
