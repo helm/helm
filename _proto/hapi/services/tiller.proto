@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package hapi.services.tiller;
 
+import "hapi/chart/chart.proto";
+import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
 import "hapi/release/status.proto";
 
@@ -163,6 +165,10 @@ message UpdateReleaseResponse {
 //		TODO
 //
 message InstallReleaseRequest {
+  // Chart is the protobuf representation of a chart.
+  hapi.chart.Chart chart = 1;
+  // Values is a string containing (unparsed) TOML values.
+  hapi.chart.Config values = 2;
 }
 
 //
@@ -171,6 +177,7 @@ message InstallReleaseRequest {
 //		TODO
 //
 message InstallReleaseResponse {
+  hapi.release.Release release = 1;
 }
 
 //

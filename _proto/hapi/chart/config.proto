@@ -10,4 +10,5 @@ option go_package = "chart";
 //		A config supplies values to the parametrizable templates of a chart.
 //
 message Config {
+  string raw = 1;
 }
