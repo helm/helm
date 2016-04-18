@@ -1,5 +1,5 @@
-hash: e7c99013acb06eb359cf20390579af9a4553ef0fbed3f7bbb784b4ab7c8df807
-updated: 2016-04-15T15:15:21.87772545-06:00
+hash: 264d156a2a07d53efbf5f608ead3eb31c261de5124e0235139b3f99c6ead4dba
+updated: 2016-04-18T17:25:07.662942088-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -11,6 +11,8 @@ imports:
   version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
   subpackages:
   - proto
+  - ptypes/any
+  - ptypes/timestamp
 - name: github.com/Masterminds/semver
   version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
@@ -21,6 +23,8 @@ imports:
   - cobra
 - name: github.com/spf13/pflag
   version: 8f6a28b0916586e7f22fe931ae2fcfc380b1c0e6
+- name: github.com/technosophos/moniker
+  version: 9f956786b91d9786ca11aa5be6104542fa911546
 - name: golang.org/x/net
   version: fb93926129b8ec0056f2f458b1f519654814edf0
   subpackages:
@@ -30,7 +34,7 @@ imports:
   - http2/hpack
   - internal/timeseries
 - name: google.golang.org/grpc
-  version: 8eeecf2291de9d171d0b1392a27ff3975679f4f5
+  version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
   subpackages:
   - codes
   - credentials

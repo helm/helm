@@ -18,7 +18,7 @@ message Chart {
 	hapi.chart.Metadata metadata = 1;
 
 	// Templates for this chart.
-	hapi.chart.Templates templates = 2;
+	repeated hapi.chart.Template templates = 2;
 
 	// Charts that this chart depends on.
 	repeated Chart dependencies = 3;

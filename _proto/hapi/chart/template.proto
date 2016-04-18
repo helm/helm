@@ -4,20 +4,14 @@ package hapi.chart;
 
 option go_package = "chart";
 
+// Template represents a template as a name/value pair.
 //
-// Template:
-//		
-// 		TODO
-//
-message Templates {
-	// TODO
-	repeated Template templates = 1;
-}
-
+// By convention, name is a relative path within the scope of the chart's
+// base directory.
 message Template {
-	// TODO
-	string template_name = 1;
-	
-	// TODO
-	bytes template_data = 2;
+  // Name is the path-like name of the template.
+	string name = 1;
+
+	// Data is the template as byte data.
+	bytes data = 2;
 }

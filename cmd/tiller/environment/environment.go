@@ -3,6 +3,7 @@ package environment
 import (
 	"github.com/deis/tiller/pkg/engine"
 	"github.com/deis/tiller/pkg/hapi"
+	"github.com/deis/tiller/pkg/proto/hapi/chart"
 	"github.com/deis/tiller/pkg/storage"
 )
 
@@ -51,7 +52,7 @@ func (y EngineYard) Default() Engine {
 // An Engine must be capable of executing multiple concurrent requests, but
 // without tainting one request's environment with data from another request.
 type Engine interface {
-	Render(*hapi.Chart, *hapi.Values) (map[string]string, error)
+	Render(*chart.Chart, *chart.Config) (map[string]string, error)
 }
 
 // ReleaseStorage represents a storage engine for a Release.

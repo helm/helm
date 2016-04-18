@@ -13,3 +13,4 @@ import:
 - package: github.com/Masterminds/semver
   version: 1.1.0
 - package: github.com/BurntSushi/toml
+- package: github.com/technosophos/moniker

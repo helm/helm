@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/deis/tiller/pkg/hapi"
+	"github.com/deis/tiller/pkg/proto/hapi/chart"
 )
 
 type mockEngine struct {
 	out map[string]string
 }
 
-func (e *mockEngine) Render(chrt *hapi.Chart, v *hapi.Values) (map[string]string, error) {
+func (e *mockEngine) Render(chrt *chart.Chart, v *chart.Config) (map[string]string, error) {
 	return e.out, nil
 }
 
@@ -63,7 +64,7 @@ func TestEngine(t *testing.T) {
 
 	if engine, ok := env.EngineYard.Get("test"); !ok {
 		t.Errorf("failed to get engine from EngineYard")
-	} else if out, err := engine.Render(&hapi.Chart{}, &hapi.Values{}); err != nil {
+	} else if out, err := engine.Render(&chart.Chart{}, &chart.Config{}); err != nil {
 		t.Errorf("unexpected template error: %s", err)
 	} else if out["albatross"] != "test" {
 		t.Errorf("expected 'test', got %q", out["albatross"])
