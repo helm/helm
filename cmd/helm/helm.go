@@ -7,6 +7,7 @@ import (
 )
 
 var stdout = os.Stdout
+var helmHome string
 
 var globalUsage = `The Kubernetes package manager
 
@@ -33,6 +34,10 @@ var RootCommand = &cobra.Command{
 	Use:   "helm",
 	Short: "The Helm package manager for Kubernetes.",
 	Long:  globalUsage,
+}
+
+func init() {
+	RootCommand.PersistentFlags().StringVar(&helmHome, "home", "$HOME/.helm", "location of you Helm files [$HELM_HOME]")
 }
 
 func main() {
