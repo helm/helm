@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -23,5 +23,5 @@ func init() {
 }
 
 func Home(cmd *cobra.Command, args []string) {
-	fmt.Println("helm home was called")
+	cmd.Printf(os.ExpandEnv(helmHome) + "\n")
 }
