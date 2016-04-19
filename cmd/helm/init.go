@@ -20,7 +20,7 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 const repositoriesPath = ".repositories"
 const cachePath = "cache"
 const localPath = "local"
-const localCacheFilePath = localPath + "/cache.txt"
+const localCacheFilePath = localPath + "/cache.yaml"
 
 var defaultRepo = map[string]string{"default-name": "default-url"}
 var tillerImg string

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/deis/tiller/pkg/chart"
+	"github.com/deis/tiller/pkg/repo"
 	"github.com/spf13/cobra"
 )
 
@@ -55,11 +56,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 
 	// Save to $HELM_HOME/local directory.
 	if save {
-		dir := LocalDirectory(os.ExpandEnv(helmHome))
-		name, err := chart.Save(ch, dir)
-		if err == nil {
-			cmd.Printf("Saved %s to $HELM_HOME/local/\n", name)
-		} else {
+		if err := repo.AddChartToLocalRepo(ch, LocalDirectory(os.ExpandEnv(helmHome))); err != nil {
 			return err
 		}
 	}
