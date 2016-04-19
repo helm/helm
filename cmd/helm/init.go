@@ -20,6 +20,7 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 const repositoriesPath = ".repositories"
 const cachePath = "cache"
 const localPath = "local"
+const localCacheFilePath = localPath + "/cache.txt"
 
 var defaultRepo = map[string]string{"default-name": "default-url"}
 var tillerImg string
@@ -96,11 +97,24 @@ func ensureHome(home string) error {
 	repoPath := repositoriesFile(home)
 	if fi, err := os.Stat(repoPath); err != nil {
 		fmt.Printf("Creating %s \n", repoPath)
-		if err := ioutil.WriteFile(repoPath, []byte("test-charts: https://www.googleapis.com/storage/v1/b/test-charts/o\n"), 0644); err != nil {
+		if err := ioutil.WriteFile(repoPath, []byte("local: localhost:8879/charts"), 0644); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoPath)
+	}
+
+	localCacheFile := LocalDirCacheFile(home)
+	if fi, err := os.Stat(localCacheFile); err != nil {
+		fmt.Printf("Creating %s \n", localCacheFile)
+		_, err := os.Create(localCacheFile)
+		if err != nil {
+			return err
+		}
+
+		os.Symlink(localCacheFile, CacheDirectory(home)+"/local-cache.txt")
+	} else if fi.IsDir() {
+		return fmt.Errorf("%s must be a file, not a directory.", repoPath)
 	}
 	return nil
 }
@@ -115,4 +129,8 @@ func repositoriesFile(home string) string {
 
 func LocalDirectory(home string) string {
 	return filepath.Join(home, localPath)
+}
+
+func LocalDirCacheFile(home string) string {
+	return filepath.Join(home, localCacheFilePath)
 }
