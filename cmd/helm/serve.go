@@ -24,6 +24,5 @@ var serveCmd = &cobra.Command{
 }
 
 func ServeLocal(cmd *cobra.Command, args []string) {
-	localRepoPath := os.ExpandEnv(helmHome) + "/local/"
-	repo.StartLocalRepo(localRepoPath)
+	repo.StartLocalRepo(LocalDirectory(os.ExpandEnv(helmHome)))
 }

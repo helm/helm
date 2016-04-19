@@ -3,6 +3,7 @@ package repo
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -32,5 +33,5 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveFile(w http.ResponseWriter, r *http.Request, file string) {
-	http.ServeFile(w, r, localRepoPath+file)
+	http.ServeFile(w, r, filepath.Join(localRepoPath, file))
 }

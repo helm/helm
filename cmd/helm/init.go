@@ -19,6 +19,7 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 
 const repositoriesPath = ".repositories"
 const cachePath = "cache"
+const localPath = "local"
 
 var defaultRepo = map[string]string{"default-name": "default-url"}
 var tillerImg string
@@ -79,7 +80,7 @@ func buildKubectlRunner(kubectlPath string) kubectl.Runner {
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureHome(home string) error {
-	configDirectories := []string{home, cacheDirectory(home)}
+	configDirectories := []string{home, CacheDirectory(home), LocalDirectory(home)}
 
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
@@ -110,4 +111,8 @@ func cacheDirectory(home string) string {
 
 func repositoriesFile(home string) string {
 	return filepath.Join(home, repositoriesPath)
+}
+
+func LocalDirectory(home string) string {
+	return filepath.Join(home, localPath)
 }
