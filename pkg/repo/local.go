@@ -62,15 +62,12 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 	return nil
 }
 
-func ReindexCacheFile(ch *chart.Chart, path string) error {
-	name := ch.Chartfile().Name + "-" + ch.Chartfile().Version
-	fmt.Println("\nname: " + name)
+func LoadCacheFile(path string) (*CacheFile, error) {
 	b, err := ioutil.ReadFile(path)
-
 	if err != nil {
 		fmt.Println("read file err")
 		fmt.Printf("err, %s", err)
-		return err
+		return nil, err
 	}
 
 	var y CacheFile
@@ -78,13 +75,16 @@ func ReindexCacheFile(ch *chart.Chart, path string) error {
 	if err != nil {
 		fmt.Println("error unmarshaling")
 		fmt.Println("err, %s", err)
-		return err
+		return nil, err
 	}
-	fmt.Println("%v\n", y)
+	return &y, nil
+}
+
+func ReindexCacheFile(ch *chart.Chart, path string) error {
+	name := ch.Chartfile().Name + "-" + ch.Chartfile().Version
+	y, _ := LoadCacheFile(path) //TODO: handle err later
 	found := false
-	for k, v := range y.Entries {
-		fmt.Printf("in here: %v", v)
-		fmt.Printf("in here: %v", k)
+	for k, _ := range y.Entries {
 		if k == name {
 			found = true
 			break
