@@ -18,18 +18,18 @@ type CacheFile struct {
 }
 
 type ChartRef struct {
-	Name string `yaml:name`
-	Url  string `yaml:url`
+	Name string
+	Url  string
 }
 
 func StartLocalRepo(path string) {
 	fmt.Println("Now serving you on localhost:8879...")
 	localRepoPath = path
-	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/charts/", indexHandler)
 	http.ListenAndServe(":8879", nil)
 }
-func homeHandler(w http.ResponseWriter, r *http.Request) {
+func rootHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the Kubernetes Package manager!\nBrowse charts on localhost:8879/charts!")
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 	}
 	err = ReindexCacheFile(ch, path+"/cache.yaml")
 	if err != nil {
-		return nil
+		return err
 	}
 	fmt.Printf("Saved %s to $HELM_HOME/local", name)
 	return nil
@@ -65,16 +65,13 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 func LoadCacheFile(path string) (*CacheFile, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Println("read file err")
-		fmt.Printf("err, %s", err)
 		return nil, err
 	}
 
+	//TODO: change variable name - y is not helpful :P
 	var y CacheFile
 	err = yaml.Unmarshal(b, &y)
 	if err != nil {
-		fmt.Println("error unmarshaling")
-		fmt.Println("err, %s", err)
 		return nil, err
 	}
 	return &y, nil
@@ -82,9 +79,12 @@ func LoadCacheFile(path string) (*CacheFile, error) {
 
 func ReindexCacheFile(ch *chart.Chart, path string) error {
 	name := ch.Chartfile().Name + "-" + ch.Chartfile().Version
-	y, _ := LoadCacheFile(path) //TODO: handle err later
+	y, err := LoadCacheFile(path)
+	if err != nil {
+		return err
+	}
 	found := false
-	for k, _ := range y.Entries {
+	for k := range y.Entries {
 		if k == name {
 			found = true
 			break

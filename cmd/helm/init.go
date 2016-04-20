@@ -97,7 +97,7 @@ func ensureHome(home string) error {
 	repoPath := repositoriesFile(home)
 	if fi, err := os.Stat(repoPath); err != nil {
 		fmt.Printf("Creating %s \n", repoPath)
-		if err := ioutil.WriteFile(repoPath, []byte("local: localhost:8879/charts"), 0644); err != nil {
+		if err := ioutil.WriteFile(repoPath, []byte("local: localhost:8879/charts\n"), 0644); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
@@ -112,7 +112,8 @@ func ensureHome(home string) error {
 			return err
 		}
 
-		os.Symlink(localCacheFile, CacheDirectory(home)+"/local-cache.txt")
+		//TODO: take this out and replace with helm update functionality
+		os.Symlink(localCacheFile, CacheDirectory(home)+"/local-cache.yaml")
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory.", repoPath)
 	}

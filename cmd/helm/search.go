@@ -18,7 +18,7 @@ func init() {
 var searchCmd = &cobra.Command{
 	Use:   "search [CHART]",
 	Short: "Search for charts",
-	Long:  "",
+	Long:  "", //TODO: add search command description
 	RunE:  Search,
 }
 
@@ -51,7 +51,7 @@ func searchCacheForPattern(name string) ([]string, error) {
 	for _, f := range fileList {
 		cache, _ := repo.LoadCacheFile(f)
 		repoName := filepath.Base(strings.TrimRight(f, "-cache.txt"))
-		for k, _ := range cache.Entries {
+		for k := range cache.Entries {
 			if strings.Contains(k, name) {
 				matches = append(matches, repoName+"/"+k)
 			}
