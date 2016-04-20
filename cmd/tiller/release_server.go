@@ -73,7 +73,7 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		return nil, err
 	}
 
-	return &services.InstallReleaseResponse{Release: r}, errNotImplemented
+	return &services.InstallReleaseResponse{Release: r}, nil
 }
 
 func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
