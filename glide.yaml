@@ -1,6 +1,5 @@
 package: github.com/deis/tiller
 import:
-- package: google.golang.org/grpc
 - package: golang.org/x/net
   subpackages:
   - context
@@ -14,3 +13,7 @@ import:
   version: 1.1.0
 - package: github.com/BurntSushi/toml
 - package: github.com/technosophos/moniker
+- package: github.com/golang/protobuf
+  version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
+- package: google.golang.org/grpc
+  version: dec33edc378cf4971a2741cfd86ed70a644d6ba3

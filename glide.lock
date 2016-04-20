@@ -1,12 +1,10 @@
-hash: 264d156a2a07d53efbf5f608ead3eb31c261de5124e0235139b3f99c6ead4dba
-updated: 2016-04-18T17:25:07.662942088-06:00
+hash: 23af9670ae8c1600f0f3c70bd9191e0df9211fed1e57430160aed95d5c71c2d1
+updated: 2016-04-20T17:16:04.782839628-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/BurntSushi/toml
   version: bbd5bb678321a0d6e58f1099321dfa73391c1b6f
-- name: github.com/codegangsta/cli
-  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/golang/protobuf
   version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
   subpackages:
