@@ -5,8 +5,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/codegangsta/cli"
 	"github.com/deis/tiller/cmd/tiller/environment"
+	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
 
@@ -16,16 +16,25 @@ import (
 var rootServer *grpc.Server = grpc.NewServer()
 var env = environment.New()
 
-func main() {
-	app := cli.NewApp()
-	app.Name = "tiller"
-	app.Usage = `The Helm server.`
-	app.Action = start
+const globalUsage = `The Kubernetes Helm server.
 
-	app.Run(os.Args)
+Tiller is the server for Helm. It provides in-cluster resource management.
+
+By default, Tiller listens for gRPC connections on port 44134.
+`
+
+var rootCommand = &cobra.Command{
+	Use:   "tiller",
+	Short: "The Kubernetes Helm server.",
+	Long:  globalUsage,
+	Run:   start,
 }
 
-func start(c *cli.Context) {
+func main() {
+	rootCommand.Execute()
+}
+
+func start(c *cobra.Command, args []string) {
 	addr := ":44134"
 	lstn, err := net.Listen("tcp", addr)
 	if err != nil {
