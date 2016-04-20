@@ -7,12 +7,12 @@ import (
 )
 
 func TestEnsureHome(t *testing.T) {
-	home := CreateTmpHome()
-	if err := EnsureHome(home); err != nil {
+	home := createTmpHome()
+	if err := ensureHome(home); err != nil {
 		t.Errorf("%s", err)
 	}
 
-	dirs := []string{home, CacheDirectory(home)}
+	dirs := []string{home, cacheDirectory(home)}
 	for _, dir := range dirs {
 		if fi, err := os.Stat(dir); err != nil {
 			t.Errorf("%s", err)
@@ -21,7 +21,7 @@ func TestEnsureHome(t *testing.T) {
 		}
 	}
 
-	if fi, err := os.Stat(RepositoriesFile(home)); err != nil {
+	if fi, err := os.Stat(repositoriesFile(home)); err != nil {
 		t.Errorf("%s", err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
@@ -29,7 +29,7 @@ func TestEnsureHome(t *testing.T) {
 
 }
 
-func CreateTmpHome() string {
+func createTmpHome() string {
 	tmpHome, _ := ioutil.TempDir("", "helm_home")
 	defer os.Remove(tmpHome)
 	return tmpHome
