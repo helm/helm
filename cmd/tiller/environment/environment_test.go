@@ -3,45 +3,46 @@ package environment
 import (
 	"testing"
 
-	"github.com/deis/tiller/pkg/hapi"
+	"github.com/deis/tiller/pkg/proto/hapi/chart"
+	"github.com/deis/tiller/pkg/proto/hapi/release"
 )
 
 type mockEngine struct {
 	out map[string]string
 }
 
-func (e *mockEngine) Render(chrt *hapi.Chart, v *hapi.Values) (map[string]string, error) {
+func (e *mockEngine) Render(chrt *chart.Chart, v *chart.Config) (map[string]string, error) {
 	return e.out, nil
 }
 
 type mockReleaseStorage struct {
-	rel *hapi.Release
+	rel *release.Release
 }
 
-func (r *mockReleaseStorage) Create(v *hapi.Release) error {
+func (r *mockReleaseStorage) Create(v *release.Release) error {
 	r.rel = v
 	return nil
 }
 
-func (r *mockReleaseStorage) Read(k string) (*hapi.Release, error) {
+func (r *mockReleaseStorage) Read(k string) (*release.Release, error) {
 	return r.rel, nil
 }
 
-func (r *mockReleaseStorage) Update(v *hapi.Release) error {
+func (r *mockReleaseStorage) Update(v *release.Release) error {
 	r.rel = v
 	return nil
 }
 
-func (r *mockReleaseStorage) Delete(k string) (*hapi.Release, error) {
+func (r *mockReleaseStorage) Delete(k string) (*release.Release, error) {
 	return r.rel, nil
 }
 
-func (r *mockReleaseStorage) List() ([]*hapi.Release, error) {
-	return []*hapi.Release{}, nil
+func (r *mockReleaseStorage) List() ([]*release.Release, error) {
+	return []*release.Release{}, nil
 }
 
-func (r *mockReleaseStorage) Query(labels map[string]string) ([]*hapi.Release, error) {
-	return []*hapi.Release{}, nil
+func (r *mockReleaseStorage) Query(labels map[string]string) ([]*release.Release, error) {
+	return []*release.Release{}, nil
 }
 
 type mockKubeClient struct {
@@ -63,7 +64,7 @@ func TestEngine(t *testing.T) {
 
 	if engine, ok := env.EngineYard.Get("test"); !ok {
 		t.Errorf("failed to get engine from EngineYard")
-	} else if out, err := engine.Render(&hapi.Chart{}, &hapi.Values{}); err != nil {
+	} else if out, err := engine.Render(&chart.Chart{}, &chart.Config{}); err != nil {
 		t.Errorf("unexpected template error: %s", err)
 	} else if out["albatross"] != "test" {
 		t.Errorf("expected 'test', got %q", out["albatross"])
@@ -75,7 +76,7 @@ func TestReleaseStorage(t *testing.T) {
 	env := New()
 	env.Releases = rs
 
-	release := &hapi.Release{Name: "mariner"}
+	release := &release.Release{Name: "mariner"}
 
 	if err := env.Releases.Create(release); err != nil {
 		t.Fatalf("failed to store release: %s", err)

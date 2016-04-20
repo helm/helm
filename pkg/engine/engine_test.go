@@ -35,7 +35,7 @@ func TestRenderInternals(t *testing.T) {
 	}
 	vals := map[string]string{"Name": "one", "Value": "two"}
 
-	out, err := e.render("irrelevant", tpls, vals)
+	out, err := e.render(tpls, vals)
 	if err != nil {
 		t.Fatalf("Failed template rendering: %s", err)
 	}
@@ -68,7 +68,7 @@ func TestParallelRenderInternals(t *testing.T) {
 			tt := fmt.Sprintf("expect-%d", i)
 			tpls := map[string]string{fname: `{{.val}}`}
 			v := map[string]string{"val": tt}
-			out, err := e.render("intentionally_duplicated", tpls, v)
+			out, err := e.render(tpls, v)
 			if err != nil {
 				t.Errorf("Failed to render %s: %s", tt, err)
 			}

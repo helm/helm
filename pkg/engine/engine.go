@@ -6,7 +6,8 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/deis/tiller/pkg/hapi"
+	chartutil "github.com/deis/tiller/pkg/chart"
+	"github.com/deis/tiller/pkg/proto/hapi/chart"
 )
 
 // Engine is an implementation of 'cmd/tiller/environment'.Engine that uses Go templates.
@@ -38,13 +39,41 @@ func New() *Engine {
 //
 // This will look in the chart's 'templates' data (e.g. the 'templates/' directory)
 // and attempt to render the templates there using the values passed in.
-func (e *Engine) Render(chart *hapi.Chart, vals *hapi.Values) (map[string]string, error) {
-	// Uncomment this once the proto files compile.
-	//return render(chart.Chartfile.Name, chart.Templates, vals)
-	return map[string]string{}, nil
+func (e *Engine) Render(chrt *chart.Chart, vals *chart.Config) (map[string]string, error) {
+	var cvals chartutil.Values
+	if chrt.Values == nil {
+		cvals = map[string]interface{}{}
+	} else {
+		var err error
+		cvals, err = chartutil.ReadValues([]byte(chrt.Values.Raw))
+		if err != nil {
+			return map[string]string{}, err
+		}
+	}
+
+	// Parse values if not nil
+	if vals != nil {
+		evals, err := chartutil.ReadValues([]byte(vals.Raw))
+		if err != nil {
+			return map[string]string{}, err
+		}
+		// Coalesce chart default values and values
+		for k, v := range evals {
+			// FIXME: This needs to merge tables. Ideally, this feature should
+			// be part of the Values type.
+			cvals[k] = v
+		}
+	}
+
+	// Render the charts
+	tmap := make(map[string]string, len(chrt.Templates))
+	for _, tpl := range chrt.Templates {
+		tmap[tpl.Name] = string(tpl.Data)
+	}
+	return e.render(tmap, cvals)
 }
 
-func (e *Engine) render(name string, tpls map[string]string, v interface{}) (map[string]string, error) {
+func (e *Engine) render(tpls map[string]string, v interface{}) (map[string]string, error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -52,7 +81,7 @@ func (e *Engine) render(name string, tpls map[string]string, v interface{}) (map
 	// The idea with this process is to make it possible for more complex templates
 	// to share common blocks, but to make the entire thing feel like a file-based
 	// template engine.
-	t := template.New(name)
+	t := template.New("gotpl")
 	files := []string{}
 	for fname, tpl := range tpls {
 		t = t.New(fname).Funcs(e.FuncMap)

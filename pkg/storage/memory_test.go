@@ -3,12 +3,12 @@ package storage
 import (
 	"testing"
 
-	"github.com/deis/tiller/pkg/hapi"
+	"github.com/deis/tiller/pkg/proto/hapi/release"
 )
 
 func TestCreate(t *testing.T) {
 	k := "test-1"
-	r := &hapi.Release{Name: k}
+	r := &release.Release{Name: k}
 
 	ms := NewMemory()
 	if err := ms.Create(r); err != nil {
@@ -22,7 +22,7 @@ func TestCreate(t *testing.T) {
 
 func TestRead(t *testing.T) {
 	k := "test-1"
-	r := &hapi.Release{Name: k}
+	r := &release.Release{Name: k}
 
 	ms := NewMemory()
 	ms.Create(r)
@@ -36,7 +36,7 @@ func TestRead(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	k := "test-1"
-	r := &hapi.Release{Name: k}
+	r := &release.Release{Name: k}
 
 	ms := NewMemory()
 	if err := ms.Create(r); err != nil {
@@ -56,7 +56,7 @@ func TestList(t *testing.T) {
 	rels := []string{"a", "b", "c"}
 
 	for _, k := range rels {
-		ms.Create(&hapi.Release{Name: k})
+		ms.Create(&release.Release{Name: k})
 	}
 
 	l, err := ms.List()
