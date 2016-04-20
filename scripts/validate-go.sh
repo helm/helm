@@ -13,9 +13,10 @@ find_go_files() {
 }
 
 hash golint 2>/dev/null || go get -u github.com/golang/lint/golint
+hash godir 2>/dev/null || go get -u github.com/Masterminds/godir
 
 echo "==> Running golint..."
-for pkg in $(glide nv); do
+for pkg in $(godir pkgs | grep -v proto); do
   if golint_out=$(golint "$pkg" 2>&1); then
     echo "${yellow}${golint_out}${reset}"
   fi
@@ -23,7 +24,7 @@ done
 
 echo "==> Running go vet..."
 echo -n "$red"
-go vet $(glide nv) 2>&1 | grep -v "^exit status " || exit_code=${PIPESTATUS[0]}
+go vet $(godir pkgs) 2>&1 | grep -v "^exit status " || exit_code=${PIPESTATUS[0]}
 echo -n "$reset"
 
 echo "==> Running gofmt..."
