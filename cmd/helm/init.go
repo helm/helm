@@ -32,16 +32,16 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Helm on both client and server.",
 	Long:  installDesc,
-	RunE:  RunInit,
+	RunE:  runInit,
 }
 
-// RunInit initializes local config and installs tiller to Kubernetes Cluster
-func RunInit(cmd *cobra.Command, args []string) error {
+// runInit initializes local config and installs tiller to Kubernetes Cluster
+func runInit(cmd *cobra.Command, args []string) error {
 	if len(args) != 0 {
 		return errors.New("This command does not accept arguments. \n")
 	}
 
-	if err := EnsureHome(os.ExpandEnv(helmHome)); err != nil {
+	if err := ensureHome(os.ExpandEnv(helmHome)); err != nil {
 		return err
 	}
 
@@ -75,11 +75,11 @@ func buildKubectlRunner(kubectlPath string) kubectl.Runner {
 	return &kubectl.RealRunner{}
 }
 
-// EnsureHome checks to see if $HELM_HOME exists
+// ensureHome checks to see if $HELM_HOME exists
 //
 // If $HELM_HOME does not exist, this function will create it.
-func EnsureHome(home string) error {
-	configDirectories := []string{home, CacheDirectory(home)}
+func ensureHome(home string) error {
+	configDirectories := []string{home, cacheDirectory(home)}
 
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
@@ -88,26 +88,26 @@ func EnsureHome(home string) error {
 				return fmt.Errorf("Could not create %s: %s", p, err)
 			}
 		} else if !fi.IsDir() {
-			return fmt.Errorf("%s must be a directory.", p)
+			return fmt.Errorf("%s must be a directory", p)
 		}
 	}
 
-	repoPath := RepositoriesFile(home)
+	repoPath := repositoriesFile(home)
 	if fi, err := os.Stat(repoPath); err != nil {
 		fmt.Printf("Creating %s \n", repoPath)
 		if err := ioutil.WriteFile(repoPath, []byte("test-charts: https://www.googleapis.com/storage/v1/b/test-charts/o\n"), 0644); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory.", repoPath)
+		return fmt.Errorf("%s must be a file, not a directory", repoPath)
 	}
 	return nil
 }
 
-func CacheDirectory(home string) string {
+func cacheDirectory(home string) string {
 	return filepath.Join(home, cachePath)
 }
 
-func RepositoriesFile(home string) string {
+func repositoriesFile(home string) string {
 	return filepath.Join(home, repositoriesPath)
 }

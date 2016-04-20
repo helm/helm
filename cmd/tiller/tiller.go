@@ -13,7 +13,7 @@ import (
 // rootServer is the root gRPC server.
 //
 // Each gRPC service registers itself to this server during init().
-var rootServer *grpc.Server = grpc.NewServer()
+var rootServer = grpc.NewServer()
 var env = environment.New()
 
 const globalUsage = `The Kubernetes Helm server.
