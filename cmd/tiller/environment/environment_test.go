@@ -3,8 +3,8 @@ package environment
 import (
 	"testing"
 
-	"github.com/deis/tiller/pkg/hapi"
 	"github.com/deis/tiller/pkg/proto/hapi/chart"
+	"github.com/deis/tiller/pkg/proto/hapi/release"
 )
 
 type mockEngine struct {
@@ -16,33 +16,33 @@ func (e *mockEngine) Render(chrt *chart.Chart, v *chart.Config) (map[string]stri
 }
 
 type mockReleaseStorage struct {
-	rel *hapi.Release
+	rel *release.Release
 }
 
-func (r *mockReleaseStorage) Create(v *hapi.Release) error {
+func (r *mockReleaseStorage) Create(v *release.Release) error {
 	r.rel = v
 	return nil
 }
 
-func (r *mockReleaseStorage) Read(k string) (*hapi.Release, error) {
+func (r *mockReleaseStorage) Read(k string) (*release.Release, error) {
 	return r.rel, nil
 }
 
-func (r *mockReleaseStorage) Update(v *hapi.Release) error {
+func (r *mockReleaseStorage) Update(v *release.Release) error {
 	r.rel = v
 	return nil
 }
 
-func (r *mockReleaseStorage) Delete(k string) (*hapi.Release, error) {
+func (r *mockReleaseStorage) Delete(k string) (*release.Release, error) {
 	return r.rel, nil
 }
 
-func (r *mockReleaseStorage) List() ([]*hapi.Release, error) {
-	return []*hapi.Release{}, nil
+func (r *mockReleaseStorage) List() ([]*release.Release, error) {
+	return []*release.Release{}, nil
 }
 
-func (r *mockReleaseStorage) Query(labels map[string]string) ([]*hapi.Release, error) {
-	return []*hapi.Release{}, nil
+func (r *mockReleaseStorage) Query(labels map[string]string) ([]*release.Release, error) {
+	return []*release.Release{}, nil
 }
 
 type mockKubeClient struct {
@@ -76,7 +76,7 @@ func TestReleaseStorage(t *testing.T) {
 	env := New()
 	env.Releases = rs
 
-	release := &hapi.Release{Name: "mariner"}
+	release := &release.Release{Name: "mariner"}
 
 	if err := env.Releases.Create(release); err != nil {
 		t.Fatalf("failed to store release: %s", err)

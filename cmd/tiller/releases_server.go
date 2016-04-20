@@ -69,6 +69,10 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		},
 	}
 
+	if err := s.env.Releases.Create(r); err != nil {
+		return nil, err
+	}
+
 	return &services.InstallReleaseResponse{Release: r}, errNotImplemented
 }
 
