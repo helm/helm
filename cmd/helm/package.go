@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -24,7 +25,7 @@ func init() {
 }
 
 var packageCmd = &cobra.Command{
-	Use:   "package",
+	Use:   "package [CHART_PATH]",
 	Short: "Package a chart directory into a chart archive.",
 	Long:  packageDesc,
 	RunE:  runPackage,
@@ -32,8 +33,11 @@ var packageCmd = &cobra.Command{
 
 func runPackage(cmd *cobra.Command, args []string) error {
 	path := "."
+
 	if len(args) > 0 {
 		path = args[0]
+	} else {
+		return fmt.Errorf("This command needs at least one argument, the path to the chart.")
 	}
 
 	path, err := filepath.Abs(path)
