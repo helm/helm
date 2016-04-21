@@ -104,13 +104,16 @@ func (e *Engine) render(tpls map[string]string, v interface{}) (map[string]strin
 // allTemplates returns all templates for a chart and its dependencies.
 func allTemplates(c *chart.Chart) map[string]string {
 	templates := map[string]string{}
+	recAllTpls(c, templates)
+	return templates
+}
+
+func recAllTpls(c *chart.Chart, templates map[string]string) {
 	for _, child := range c.Dependencies {
-		for _, t := range child.Templates {
-			templates[t.Name] = string(t.Data)
-		}
+		recAllTpls(child, templates)
 	}
 	for _, t := range c.Templates {
 		templates[t.Name] = string(t.Data)
 	}
-	return templates
+
 }
