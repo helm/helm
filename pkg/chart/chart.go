@@ -93,6 +93,11 @@ func (c *Chart) ChartsDir() string {
 	return filepath.Join(c.loader.dir(), preCharts)
 }
 
+// LoadValues loads the contents of values.toml into a map
+func (c *Chart) LoadValues() (Values, error) {
+	return ReadValuesFile(filepath.Join(c.loader.dir(), preValues))
+}
+
 // chartLoader provides load, close, and save implementations for a chart.
 type chartLoader interface {
 	// Chartfile resturns a *Chartfile for this chart.

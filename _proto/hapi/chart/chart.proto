@@ -23,7 +23,7 @@ message Chart {
 	// Charts that this chart depends on.
 	repeated Chart dependencies = 3;
 
-  // Default config for this template.
-  hapi.chart.Config values = 4;
+  	// Default config for this template.
+  	hapi.chart.Config values = 4;
 
 }
