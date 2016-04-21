@@ -15,13 +15,13 @@ var homeCommand = &cobra.Command{
 	Use:   "home",
 	Short: "Displays the location of HELM_HOME",
 	Long:  longHomeHelp,
-	Run:   Home,
+	Run:   home,
 }
 
 func init() {
 	RootCommand.AddCommand(homeCommand)
 }
 
-func Home(cmd *cobra.Command, args []string) {
+func home(cmd *cobra.Command, args []string) {
 	cmd.Printf(os.ExpandEnv(helmHome) + "\n")
 }

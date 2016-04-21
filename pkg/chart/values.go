@@ -8,8 +8,10 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+// ErrNoTable indicates that a chart does not have a matching table.
 var ErrNoTable = errors.New("no table")
 
+// Values represents a collection of chart values.
 type Values map[string]interface{}
 
 // Table gets a table (TOML subsection) from a Values object.
