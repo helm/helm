@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+
+	"github.com/deis/tiller/pkg/proto/hapi/chart"
 )
 
 func TestEngine(t *testing.T) {
@@ -79,4 +81,56 @@ func TestParallelRenderInternals(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+func TestAllTemplates(t *testing.T) {
+	ch1 := &chart.Chart{
+		Templates: []*chart.Template{
+			{Name: "foo", Data: []byte("foo")},
+			{Name: "bar", Data: []byte("bar")},
+		},
+		Dependencies: []*chart.Chart{
+			{Templates: []*chart.Template{
+				{Name: "pinky", Data: []byte("pinky")},
+				{Name: "brain", Data: []byte("brain")},
+			}},
+		},
+	}
+
+	tpls := allTemplates(ch1)
+	if len(tpls) != 4 {
+		t.Errorf("Expected 4 charts, got %d", len(tpls))
+	}
+}
+
+func TestRenderDependency(t *testing.T) {
+	e := New()
+	deptpl := `{{define "myblock"}}World{{end}}`
+	toptpl := `Hello {{template "myblock"}}`
+	ch := &chart.Chart{
+		Templates: []*chart.Template{
+			{Name: "outer", Data: []byte(toptpl)},
+		},
+		Dependencies: []*chart.Chart{
+			{Templates: []*chart.Template{
+				{Name: "inner", Data: []byte(deptpl)},
+			}},
+		},
+	}
+
+	out, err := e.Render(ch, nil)
+
+	if err != nil {
+		t.Fatalf("failed to render chart: %s", err)
+	}
+
+	if len(out) != 2 {
+		t.Errorf("Expected 2, got %d", len(out))
+	}
+
+	expect := "Hello World"
+	if out["outer"] != expect {
+		t.Errorf("Expected %q, got %q", expect, out["outer"])
+	}
+
 }

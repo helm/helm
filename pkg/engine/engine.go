@@ -66,10 +66,7 @@ func (e *Engine) Render(chrt *chart.Chart, vals *chart.Config) (map[string]strin
 	}
 
 	// Render the charts
-	tmap := make(map[string]string, len(chrt.Templates))
-	for _, tpl := range chrt.Templates {
-		tmap[tpl.Name] = string(tpl.Data)
-	}
+	tmap := allTemplates(chrt)
 	return e.render(tmap, cvals)
 }
 
@@ -102,4 +99,18 @@ func (e *Engine) render(tpls map[string]string, v interface{}) (map[string]strin
 	}
 
 	return rendered, nil
+}
+
+// allTemplates returns all templates for a chart and its dependencies.
+func allTemplates(c *chart.Chart) map[string]string {
+	templates := map[string]string{}
+	for _, child := range c.Dependencies {
+		for _, t := range child.Templates {
+			templates[t.Name] = string(t.Data)
+		}
+	}
+	for _, t := range c.Templates {
+		templates[t.Name] = string(t.Data)
+	}
+	return templates
 }
