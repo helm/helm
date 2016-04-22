@@ -11,18 +11,23 @@ option go_package = "release";
 //
 // Release:
 //
-// 		TODO
+// 		A release describes a deployment of a chart, together with the chart
+//    and the variables used to deploy that chart.
 //
 message Release {
-	// TODO
+	// Name is the name of the release
 	string name = 1;
 
-	// TODO
+	// Info provides information about a release
 	hapi.release.Info info = 2;
-	
-	// TODO
+
+	// Chart is the chart that was released.
 	hapi.chart.Chart chart = 3;
-	
-	// TODO
+
+	// Config is the set of extra Values added to the chart.
+  // These values override the default values inside of the chart.
 	hapi.chart.Config config = 4;
+
+  // Manifest is the string representation of the rendered template.
+  string manifest = 5;
 }
