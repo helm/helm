@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const installDesc = `
+const initDesc = `
 This command installs Tiller (the helm server side component) onto your
 Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.helm/)
 `

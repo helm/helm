@@ -11,4 +11,15 @@ option go_package = "chart";
 //
 message Config {
   string raw = 1;
+
+  map<string,Value> values = 2;
+}
+
+//
+// Value:
+//
+//		TODO
+//
+message Value {
+	string value = 1;
 }

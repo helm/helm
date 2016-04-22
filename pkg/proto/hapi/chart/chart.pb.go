@@ -14,6 +14,7 @@ It is generated from these files:
 It has these top-level messages:
 	Chart
 	Config
+	Value
 	Maintainer
 	Metadata
 	Template

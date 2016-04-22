@@ -33,7 +33,7 @@ message Metadata {
 	string home = 2;
 
 	// Source is the URL to the source code of this chart
-	string source = 3;
+	repeated string sources = 3;
 	
 	// A SemVer 2 conformant version string of the chart
 	string version = 4;
