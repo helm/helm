@@ -17,10 +17,10 @@ var fetchCmd = &cobra.Command{
 	Use:   "fetch",
 	Short: "Download a chart from a repository and unpack it in local directory.",
 	Long:  "",
-	RunE:  Fetch,
+	RunE:  fetch,
 }
 
-func Fetch(cmd *cobra.Command, args []string) error {
+func fetch(cmd *cobra.Command, args []string) error {
 	// parse args
 	// get download url
 	// call download url

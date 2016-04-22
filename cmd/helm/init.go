@@ -81,7 +81,7 @@ func buildKubectlRunner(kubectlPath string) kubectl.Runner {
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureHome(home string) error {
-	configDirectories := []string{home, CacheDirectory(home), LocalDirectory(home)}
+	configDirectories := []string{home, cacheDirectory(home), localDirectory(home)}
 
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
@@ -104,7 +104,7 @@ func ensureHome(home string) error {
 		return fmt.Errorf("%s must be a file, not a directory", repoPath)
 	}
 
-	localCacheFile := LocalDirCacheFile(home)
+	localCacheFile := localDirCacheFile(home)
 	if fi, err := os.Stat(localCacheFile); err != nil {
 		fmt.Printf("Creating %s \n", localCacheFile)
 		_, err := os.Create(localCacheFile)
@@ -113,9 +113,9 @@ func ensureHome(home string) error {
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(localCacheFile, CacheDirectory(home)+"/local-cache.yaml")
+		os.Symlink(localCacheFile, cacheDirectory(home)+"/local-cache.yaml")
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory.", repoPath)
+		return fmt.Errorf("%s must be a file, not a directory", repoPath)
 	}
 	return nil
 }
@@ -128,10 +128,10 @@ func repositoriesFile(home string) string {
 	return filepath.Join(home, repositoriesPath)
 }
 
-func LocalDirectory(home string) string {
+func localDirectory(home string) string {
 	return filepath.Join(home, localPath)
 }
 
-func LocalDirCacheFile(home string) string {
+func localDirCacheFile(home string) string {
 	return filepath.Join(home, localCacheFilePath)
 }

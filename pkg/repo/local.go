@@ -13,15 +13,18 @@ import (
 
 var localRepoPath string
 
+// CacheFile represents the cache file in a chart repository
 type CacheFile struct {
 	Entries map[string]*ChartRef
 }
 
+// ChartRef represents a chart entry in the CacheFile
 type ChartRef struct {
 	Name string
-	Url  string
+	URL  string
 }
 
+// StartLocalRepo starts a web server and serves files from the given path
 func StartLocalRepo(path string) {
 	fmt.Println("Now serving you on localhost:8879...")
 	localRepoPath = path
@@ -49,6 +52,7 @@ func serveFile(w http.ResponseWriter, r *http.Request, file string) {
 	http.ServeFile(w, r, filepath.Join(localRepoPath, file))
 }
 
+// AddChartToLocalRepo saves a chart in the given path and then reindexes the cache file
 func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 	name, err := chart.Save(ch, path)
 	if err != nil {
@@ -62,6 +66,7 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 	return nil
 }
 
+// LoadCacheFile takes a file at the given path and returns a CacheFile object
 func LoadCacheFile(path string) (*CacheFile, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -77,6 +82,7 @@ func LoadCacheFile(path string) (*CacheFile, error) {
 	return &y, nil
 }
 
+// ReindexCacheFile adds an entry to the cache file at the given path
 func ReindexCacheFile(ch *chart.Chart, path string) error {
 	name := ch.Chartfile().Name + "-" + ch.Chartfile().Version
 	y, err := LoadCacheFile(path)
@@ -93,7 +99,7 @@ func ReindexCacheFile(ch *chart.Chart, path string) error {
 	if !found {
 		url := "localhost:8879/charts/" + name + ".tgz"
 
-		out, err := y.InsertChartEntry(name, url)
+		out, err := y.insertChartEntry(name, url)
 		if err != nil {
 			return err
 		}
@@ -102,6 +108,8 @@ func ReindexCacheFile(ch *chart.Chart, path string) error {
 	}
 	return nil
 }
+
+// UnmarshalYAML unmarshals the cache file
 func (c *CacheFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var refs map[string]*ChartRef
 	if err := unmarshal(&refs); err != nil {
@@ -113,13 +121,13 @@ func (c *CacheFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (cache *CacheFile) InsertChartEntry(name string, url string) ([]byte, error) {
-	if cache.Entries == nil {
-		cache.Entries = make(map[string]*ChartRef)
+func (c *CacheFile) insertChartEntry(name string, url string) ([]byte, error) {
+	if c.Entries == nil {
+		c.Entries = make(map[string]*ChartRef)
 	}
-	entry := ChartRef{Name: name, Url: url}
-	cache.Entries[name] = &entry
-	out, err := yaml.Marshal(&cache.Entries)
+	entry := ChartRef{Name: name, URL: url}
+	c.Entries[name] = &entry
+	out, err := yaml.Marshal(&c.Entries)
 	if err != nil {
 		return nil, err
 	}

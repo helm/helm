@@ -20,9 +20,9 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start a local http web server",
 	Long:  serveDesc,
-	Run:   ServeLocal,
+	Run:   serve,
 }
 
-func ServeLocal(cmd *cobra.Command, args []string) {
-	repo.StartLocalRepo(LocalDirectory(os.ExpandEnv(helmHome)))
+func serve(cmd *cobra.Command, args []string) {
+	repo.StartLocalRepo(localDirectory(os.ExpandEnv(helmHome)))
 }

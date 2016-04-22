@@ -19,10 +19,10 @@ var searchCmd = &cobra.Command{
 	Use:   "search [CHART]",
 	Short: "Search for charts",
 	Long:  "", //TODO: add search command description
-	RunE:  Search,
+	RunE:  search,
 }
 
-func Search(cmd *cobra.Command, args []string) error {
+func search(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return errors.New("This command needs at least one argument")
 	}
@@ -39,7 +39,7 @@ func Search(cmd *cobra.Command, args []string) error {
 }
 
 func searchCacheForPattern(name string) ([]string, error) {
-	dir := CacheDirectory(os.ExpandEnv(helmHome))
+	dir := cacheDirectory(os.ExpandEnv(helmHome))
 	fileList := []string{}
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
