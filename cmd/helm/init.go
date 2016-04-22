@@ -19,6 +19,8 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 
 const repositoriesPath = ".repositories"
 const cachePath = "cache"
+const localPath = "local"
+const localCacheFilePath = localPath + "/cache.yaml"
 
 var defaultRepo = map[string]string{"default-name": "default-url"}
 var tillerImg string
@@ -79,7 +81,7 @@ func buildKubectlRunner(kubectlPath string) kubectl.Runner {
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureHome(home string) error {
-	configDirectories := []string{home, cacheDirectory(home)}
+	configDirectories := []string{home, cacheDirectory(home), localDirectory(home)}
 
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
@@ -95,9 +97,23 @@ func ensureHome(home string) error {
 	repoPath := repositoriesFile(home)
 	if fi, err := os.Stat(repoPath); err != nil {
 		fmt.Printf("Creating %s \n", repoPath)
-		if err := ioutil.WriteFile(repoPath, []byte("test-charts: https://www.googleapis.com/storage/v1/b/test-charts/o\n"), 0644); err != nil {
+		if err := ioutil.WriteFile(repoPath, []byte("local: localhost:8879/charts\n"), 0644); err != nil {
 			return err
 		}
+	} else if fi.IsDir() {
+		return fmt.Errorf("%s must be a file, not a directory", repoPath)
+	}
+
+	localCacheFile := localDirCacheFile(home)
+	if fi, err := os.Stat(localCacheFile); err != nil {
+		fmt.Printf("Creating %s \n", localCacheFile)
+		_, err := os.Create(localCacheFile)
+		if err != nil {
+			return err
+		}
+
+		//TODO: take this out and replace with helm update functionality
+		os.Symlink(localCacheFile, cacheDirectory(home)+"/local-cache.yaml")
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoPath)
 	}
@@ -110,4 +126,12 @@ func cacheDirectory(home string) string {
 
 func repositoriesFile(home string) string {
 	return filepath.Join(home, repositoriesPath)
+}
+
+func localDirectory(home string) string {
+	return filepath.Join(home, localPath)
+}
+
+func localDirCacheFile(home string) string {
+	return filepath.Join(home, localCacheFilePath)
 }

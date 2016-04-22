@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/deis/tiller/pkg/chart"
+	"github.com/deis/tiller/pkg/repo"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +21,10 @@ Chart.yaml file, and (if found) build the current directory into a chart.
 Versioned chart archives are used by Helm package repositories.
 `
 
+var save bool
+
 func init() {
+	packageCmd.Flags().BoolVar(&save, "save", true, "save packaged chart to local chart repository")
 	RootCommand.AddCommand(packageCmd)
 }
 
@@ -50,6 +54,13 @@ func runPackage(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Save to $HELM_HOME/local directory.
+	if save {
+		if err := repo.AddChartToLocalRepo(ch, localDirectory(os.ExpandEnv(helmHome))); err != nil {
+			return err
+		}
+	}
+
 	// Save to the current working directory.
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -57,7 +68,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 	}
 	name, err := chart.Save(ch, cwd)
 	if err == nil {
-		cmd.Printf("Saved %s", name)
+		cmd.Printf("Saved %s to current directory\n", name)
 	}
 	return err
 }
