@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"log"
 
 	"github.com/deis/tiller/cmd/tiller/environment"
 	"github.com/deis/tiller/pkg/proto/hapi/release"
@@ -54,9 +56,19 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	name := namer.Name()
 
 	// Render the templates
-	_, err := s.env.EngineYard.Default().Render(req.Chart, req.Values)
+	files, err := s.env.EngineYard.Default().Render(req.Chart, req.Values)
 	if err != nil {
 		return nil, err
+	}
+
+	b := bytes.NewBuffer(nil)
+	for name, file := range files {
+		// Ignore empty documents because the Kubernetes library can't handle
+		// them.
+		if len(file) > 0 {
+			b.WriteString("\n---\n# Source: " + name + "\n")
+			b.WriteString(file)
+		}
 	}
 
 	// Store a release.
@@ -67,6 +79,12 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		Info: &release.Info{
 			Status: &release.Status{Code: release.Status_UNKNOWN},
 		},
+		Manifest: b.String(),
+	}
+
+	if req.DryRun {
+		log.Printf("Dry run for %s", name)
+		return &services.InstallReleaseResponse{Release: r}, nil
 	}
 
 	if err := s.env.Releases.Create(r); err != nil {
