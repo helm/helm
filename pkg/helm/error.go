@@ -8,6 +8,7 @@ const (
 	errMissingValues  = Error("missing chart values")
 )
 
+// Error represents a Helm client error.
 type Error string
 
 func (e Error) Error() string {

@@ -6,31 +6,42 @@ import (
 	"github.com/deis/tiller/pkg/proto/hapi/services"
 )
 
+// Config defines a gRPC client's configuration.
 var Config = &config{
 	ServAddr: ":44134",
 	Insecure: true,
 }
 
+// ListReleases lists the current releases.
 func ListReleases(limit, offset int) (<-chan *services.ListReleasesResponse, error) {
 	return nil, errNotImplemented
 }
 
+// GetReleaseStatus returns the given release's status.
 func GetReleaseStatus(name string) (*services.GetReleaseStatusResponse, error) {
 	return nil, errNotImplemented
 }
 
+// GetReleaseContent returns the configuration for a given release.
 func GetReleaseContent(name string) (*services.GetReleaseContentResponse, error) {
 	return nil, errNotImplemented
 }
 
+// UpdateRelease updates a release to a new/different chart.
+// TODO: This must take more than just name for an arg.
 func UpdateRelease(name string) (*services.UpdateReleaseResponse, error) {
 	return nil, errNotImplemented
 }
 
+// UninstallRelease uninstalls a named release and returns the response.
 func UninstallRelease(name string) (*services.UninstallReleaseResponse, error) {
-	return nil, errNotImplemented
+	u := &services.UninstallReleaseRequest{
+		Name: name,
+	}
+	return Config.client().uninstall(u)
 }
 
+// InstallRelease installs a new chart and returns the release response.
 func InstallRelease(ch *chart.Chart) (res *services.InstallReleaseResponse, err error) {
 	chpb := new(chartpb.Chart)
 
