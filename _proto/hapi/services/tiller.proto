@@ -184,18 +184,14 @@ message InstallReleaseResponse {
   hapi.release.Release release = 1;
 }
 
-//
-// UninstallReleaseRequest:
-//
-//		TODO
-//
+// UninstallReleaseRequest represents a request to uninstall a named release.
 message UninstallReleaseRequest {
+  // Name is the name of the release to delete.
+  string name = 1;
 }
 
-//
-// UninstallReleaseResponse:
-//
-//		TODO
-//
+// UninstallReleaseResponse represents a successful response to an uninstall request.
 message UninstallReleaseResponse {
+  // Release is the release that was marked deleted.
+  hapi.release.Release release = 1;
 }

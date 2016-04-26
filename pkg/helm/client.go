@@ -29,6 +29,15 @@ func (c *client) install(req *services.InstallReleaseRequest) (res *services.Ins
 	return c.impl.InstallRelease(context.TODO(), req, c.cfg.CallOpts()...)
 }
 
+func (c *client) uninstall(req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
+	if err := c.dial(); err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	return c.impl.UninstallRelease(context.TODO(), req, c.cfg.CallOpts()...)
+}
+
 func (c *client) Close() error {
 	return c.conn.Close()
 }

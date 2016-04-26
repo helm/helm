@@ -12,9 +12,12 @@ option go_package = "release";
 //
 //
 message Info {
-	Status status = 1;
+  Status status = 1;
 
-	google.protobuf.Timestamp first_deployed = 2;
+  google.protobuf.Timestamp first_deployed = 2;
 
-	google.protobuf.Timestamp last_deployed = 3;
+  google.protobuf.Timestamp last_deployed = 3;
+
+  // Deleted tracks when this object was deleted.
+  google.protobuf.Timestamp deleted = 4;
 }

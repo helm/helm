@@ -6,6 +6,7 @@ import (
 
 	"github.com/deis/tiller/cmd/tiller/environment"
 	"github.com/deis/tiller/pkg/proto/hapi/chart"
+	"github.com/deis/tiller/pkg/proto/hapi/release"
 	"github.com/deis/tiller/pkg/proto/hapi/services"
 	"github.com/deis/tiller/pkg/storage"
 	"golang.org/x/net/context"
@@ -94,6 +95,41 @@ func TestInstallReleaseDryRun(t *testing.T) {
 
 	if _, err := rs.env.Releases.Read(res.Release.Name); err == nil {
 		t.Errorf("Expected no stored release.")
+	}
+}
+
+func TestUninstallRelease(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rs.env.Releases.Create(&release.Release{
+		Name: "angry-panda",
+		Info: &release.Info{
+			FirstDeployed: now(),
+			Status: &release.Status{
+				Code: release.Status_DEPLOYED,
+			},
+		},
+	})
+
+	req := &services.UninstallReleaseRequest{
+		Name: "angry-panda",
+	}
+
+	res, err := rs.UninstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed uninstall: %s", err)
+	}
+
+	if res.Release.Name != "angry-panda" {
+		t.Errorf("Expected angry-panda, got %q", res.Release.Name)
+	}
+
+	if res.Release.Info.Status.Code != release.Status_DELETED {
+		t.Errorf("Expected status code to be DELETED, got %d", res.Release.Info.Status.Code)
+	}
+
+	if res.Release.Info.Deleted.Seconds <= 0 {
+		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
 	}
 }
 
