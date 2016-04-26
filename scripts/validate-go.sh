@@ -17,7 +17,8 @@ hash godir 2>/dev/null || go get -u github.com/Masterminds/godir
 
 echo "==> Running golint..."
 for pkg in $(godir pkgs | grep -v proto); do
-  if golint_out=$(golint "$pkg" 2>&1); then
+  golint_out=$(golint "$pkg" 2>&1)
+  if [[ -n "$golint_out" ]]; then
     echo "${yellow}${golint_out}${reset}"
   fi
 done
