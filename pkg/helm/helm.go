@@ -4,6 +4,7 @@ import (
 	"github.com/deis/tiller/pkg/chart"
 	chartpb "github.com/deis/tiller/pkg/proto/hapi/chart"
 	"github.com/deis/tiller/pkg/proto/hapi/services"
+	"golang.org/x/net/context"
 )
 
 // Config defines a gRPC client's configuration.
@@ -19,12 +20,26 @@ func ListReleases(limit, offset int) (<-chan *services.ListReleasesResponse, err
 
 // GetReleaseStatus returns the given release's status.
 func GetReleaseStatus(name string) (*services.GetReleaseStatusResponse, error) {
-	return nil, errNotImplemented
+	c := Config.client()
+	if err := c.dial(); err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	req := &services.GetReleaseStatusRequest{Name: name}
+	return c.impl.GetReleaseStatus(context.TODO(), req, c.cfg.CallOpts()...)
 }
 
 // GetReleaseContent returns the configuration for a given release.
 func GetReleaseContent(name string) (*services.GetReleaseContentResponse, error) {
-	return nil, errNotImplemented
+	c := Config.client()
+	if err := c.dial(); err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	req := &services.GetReleaseContentRequest{Name: name}
+	return c.impl.GetReleaseContent(context.TODO(), req, c.cfg.CallOpts()...)
 }
 
 // UpdateRelease updates a release to a new/different chart.
