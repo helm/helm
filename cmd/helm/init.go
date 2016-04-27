@@ -17,13 +17,13 @@ This command installs Tiller (the helm server side component) onto your
 Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.helm/)
 `
 
-const repositoriesPath = ".repositories"
-const cachePath = "cache"
-const localPath = "local"
-const localCacheFilePath = localPath + "/cache.yaml"
+var repositoriesFilePath string
+var cachePath string
+var localRepoPath string
+var localCacheFilePath string
+var tillerImg string
 
 var defaultRepo = map[string]string{"default-name": "default-url"}
-var tillerImg string
 
 func init() {
 	initCmd.Flags().StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
@@ -43,7 +43,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return errors.New("This command does not accept arguments. \n")
 	}
 
-	if err := ensureHome(os.ExpandEnv(helmHome)); err != nil {
+	if err := ensureHome(homePath()); err != nil {
 		return err
 	}
 
@@ -51,7 +51,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Tiller (the helm server side component) has been installed into your Kubernetes Cluster.\n$HELM_HOME has also been configured at %s.\nHappy Helming!\n", helmHome)
+	fmt.Println("Happy Helming!")
 	return nil
 }
 
@@ -66,6 +66,7 @@ func installTiller() error {
 	if err != nil {
 		return fmt.Errorf("error installing %s %s", string(out), err)
 	}
+	fmt.Println("\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 
 	return nil
 }
@@ -81,7 +82,13 @@ func buildKubectlRunner(kubectlPath string) kubectl.Runner {
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureHome(home string) error {
-	configDirectories := []string{home, cacheDirectory(home), localDirectory(home)}
+	repositoriesFilePath = filepath.Join(home, "repositories.yaml")
+	cachePath = filepath.Join(home, "cache")
+	localRepoPath = filepath.Join(home, "local")
+	localCacheFilePath = filepath.Join(home, "cache.yaml")
+
+	fmt.Println("home path: " + home)
+	configDirectories := []string{home, cachePath, localRepoPath}
 
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
@@ -94,44 +101,28 @@ func ensureHome(home string) error {
 		}
 	}
 
-	repoPath := repositoriesFile(home)
-	if fi, err := os.Stat(repoPath); err != nil {
-		fmt.Printf("Creating %s \n", repoPath)
-		if err := ioutil.WriteFile(repoPath, []byte("local: localhost:8879/charts\n"), 0644); err != nil {
+	if fi, err := os.Stat(repositoriesFilePath); err != nil {
+		fmt.Printf("Creating %s \n", repositoriesFilePath)
+		if err := ioutil.WriteFile(repositoriesFilePath, []byte("local: localhost:8879/charts\n"), 0644); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", repoPath)
+		return fmt.Errorf("%s must be a file, not a directory", repositoriesFilePath)
 	}
 
-	localCacheFile := localDirCacheFile(home)
-	if fi, err := os.Stat(localCacheFile); err != nil {
-		fmt.Printf("Creating %s \n", localCacheFile)
-		_, err := os.Create(localCacheFile)
+	if fi, err := os.Stat(localCacheFilePath); err != nil {
+		fmt.Printf("Creating %s \n", localCacheFilePath)
+		_, err := os.Create(localCacheFilePath)
 		if err != nil {
 			return err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(localCacheFile, cacheDirectory(home)+"/local-cache.yaml")
+		os.Symlink(localCacheFilePath, filepath.Join(cachePath, "local-cache.yaml"))
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", repoPath)
+		return fmt.Errorf("%s must be a file, not a directory", localCacheFilePath)
 	}
+
+	fmt.Printf("$HELM_HOME has also been configured at %s.\n", helmHome)
 	return nil
-}
-
-func cacheDirectory(home string) string {
-	return filepath.Join(home, cachePath)
-}
-
-func repositoriesFile(home string) string {
-	return filepath.Join(home, repositoriesPath)
-}
-
-func localDirectory(home string) string {
-	return filepath.Join(home, localPath)
-}
-
-func localDirCacheFile(home string) string {
-	return filepath.Join(home, localCacheFilePath)
 }

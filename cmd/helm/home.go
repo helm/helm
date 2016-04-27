@@ -23,5 +23,9 @@ func init() {
 }
 
 func home(cmd *cobra.Command, args []string) {
-	cmd.Printf(os.ExpandEnv(helmHome) + "\n")
+	cmd.Printf(homePath() + "\n")
+}
+
+func homePath() string {
+	return os.ExpandEnv(helmHome)
 }
