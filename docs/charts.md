@@ -31,13 +31,13 @@ name: The name of the chart (required)
 version: A SemVer 2 version (required)
 description: A single-sentence description of this project (optional)
 keywords:
-  - A list of keywords about this project
+  - A list of keywords about this project (optional)
 home: The URL of this project's home page (optional)
 sources:
   - A list of URLs to source code for this project (optional)
-maintainers:
-  - name: The maintainer's name
-    email: The maintainer's email
+maintainers: # (optional)
+  - name: The maintainer's name (required for each maintainer)
+    email: The maintainer's email (optional for each maintainer)
 ```
 
 If you are familiar with the Chart.yaml file format for Helm Classic, you will
