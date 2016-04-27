@@ -22,5 +22,5 @@ var serveCmd = &cobra.Command{
 }
 
 func serve(cmd *cobra.Command, args []string) {
-	repo.StartLocalRepo(localRepoPath)
+	repo.StartLocalRepo(localRepoDirectory())
 }

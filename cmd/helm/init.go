@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/deis/tiller/pkg/client"
 	"github.com/deis/tiller/pkg/kubectl"
@@ -17,13 +16,10 @@ This command installs Tiller (the helm server side component) onto your
 Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.helm/)
 `
 
-var repositoriesFilePath string
-var cachePath string
-var localRepoPath string
-var localCacheFilePath string
-var tillerImg string
-
-var defaultRepo = map[string]string{"default-name": "default-url"}
+var (
+	tillerImg   string
+	defaultRepo = map[string]string{"default-name": "default-url"}
+)
 
 func init() {
 	initCmd.Flags().StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
@@ -43,7 +39,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return errors.New("This command does not accept arguments. \n")
 	}
 
-	if err := ensureHome(homePath()); err != nil {
+	if err := ensureHome(); err != nil {
 		return err
 	}
 
@@ -81,14 +77,8 @@ func buildKubectlRunner(kubectlPath string) kubectl.Runner {
 // ensureHome checks to see if $HELM_HOME exists
 //
 // If $HELM_HOME does not exist, this function will create it.
-func ensureHome(home string) error {
-	repositoriesFilePath = filepath.Join(home, "repositories.yaml")
-	cachePath = filepath.Join(home, "cache")
-	localRepoPath = filepath.Join(home, "local")
-	localCacheFilePath = filepath.Join(home, "cache.yaml")
-
-	fmt.Println("home path: " + home)
-	configDirectories := []string{home, cachePath, localRepoPath}
+func ensureHome() error {
+	configDirectories := []string{homePath(), cacheDirectory(), localRepoDirectory()}
 
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
@@ -101,28 +91,30 @@ func ensureHome(home string) error {
 		}
 	}
 
-	if fi, err := os.Stat(repositoriesFilePath); err != nil {
-		fmt.Printf("Creating %s \n", repositoriesFilePath)
-		if err := ioutil.WriteFile(repositoriesFilePath, []byte("local: localhost:8879/charts\n"), 0644); err != nil {
+	repoFile := repositoriesFile()
+	if fi, err := os.Stat(repoFile); err != nil {
+		fmt.Printf("Creating %s \n", repoFile)
+		if err := ioutil.WriteFile(repoFile, []byte("local: localhost:8879/charts\n"), 0644); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", repositoriesFilePath)
+		return fmt.Errorf("%s must be a file, not a directory", repoFile)
 	}
 
-	if fi, err := os.Stat(localCacheFilePath); err != nil {
-		fmt.Printf("Creating %s \n", localCacheFilePath)
-		_, err := os.Create(localCacheFilePath)
+	localRepoCacheFile := localRepoDirectory(localRepoCacheFilePath)
+	if fi, err := os.Stat(localRepoCacheFile); err != nil {
+		fmt.Printf("Creating %s \n", localRepoCacheFile)
+		_, err := os.Create(localRepoCacheFile)
 		if err != nil {
 			return err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(localCacheFilePath, filepath.Join(cachePath, "local-cache.yaml"))
+		os.Symlink(localRepoCacheFile, cacheDirectory("local-cache.yaml"))
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", localCacheFilePath)
+		return fmt.Errorf("%s must be a file, not a directory", localRepoCacheFile)
 	}
 
-	fmt.Printf("$HELM_HOME has also been configured at %s.\n", helmHome)
+	fmt.Printf("$HELM_HOME has been configured at %s.\n", helmHome)
 	return nil
 }

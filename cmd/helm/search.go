@@ -40,7 +40,7 @@ func search(cmd *cobra.Command, args []string) error {
 
 func searchCacheForPattern(name string) ([]string, error) {
 	fileList := []string{}
-	filepath.Walk(cachePath, func(path string, f os.FileInfo, err error) error {
+	filepath.Walk(cacheDirectory(), func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			fileList = append(fileList, path)
 		}
