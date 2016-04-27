@@ -46,6 +46,7 @@ docker-build: check-docker docker-binary
 	docker tag -f ${IMAGE} ${MUTABLE_IMAGE}
 
 .PHONY: test
+test: build
 test: TESTFLAGS += -race -v
 test: test-style
 test: test-unit
