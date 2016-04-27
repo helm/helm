@@ -9,12 +9,36 @@ import (
 	"github.com/deis/tiller/pkg/proto/hapi/release"
 	"github.com/deis/tiller/pkg/proto/hapi/services"
 	"github.com/deis/tiller/pkg/storage"
+	"github.com/deis/tiller/pkg/timeconv"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
 )
 
 func rsFixture() *releaseServer {
 	return &releaseServer{
 		env: mockEnvironment(),
+	}
+}
+
+func releaseMock() *release.Release {
+	date := timestamp.Timestamp{242085845, 0}
+	return &release.Release{
+		Name: "angry-panda",
+		Info: &release.Info{
+			FirstDeployed: &date,
+			LastDeployed:  &date,
+			Status:        &release.Status{Code: release.Status_DEPLOYED},
+		},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:    "foo",
+				Version: "0.1.0-beta.1",
+			},
+			Templates: []*chart.Template{
+				{Name: "foo.tpl", Data: []byte("Hello")},
+			},
+		},
+		Config: &chart.Config{Raw: `name = "value"`},
 	}
 }
 
@@ -104,7 +128,7 @@ func TestUninstallRelease(t *testing.T) {
 	rs.env.Releases.Create(&release.Release{
 		Name: "angry-panda",
 		Info: &release.Info{
-			FirstDeployed: now(),
+			FirstDeployed: timeconv.Now(),
 			Status: &release.Status{
 				Code: release.Status_DEPLOYED,
 			},
@@ -130,6 +154,42 @@ func TestUninstallRelease(t *testing.T) {
 
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
+	}
+}
+
+func TestGetReleaseContent(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rel := releaseMock()
+	if err := rs.env.Releases.Create(rel); err != nil {
+		t.Fatalf("Could not store mock release: %s", err)
+	}
+
+	res, err := rs.GetReleaseContent(c, &services.GetReleaseContentRequest{Name: rel.Name})
+	if err != nil {
+		t.Errorf("Error getting release content: %s", err)
+	}
+
+	if res.Release.Chart.Metadata.Name != rel.Chart.Metadata.Name {
+		t.Errorf("Expected %q, got %q", rel.Chart.Metadata.Name, res.Release.Chart.Metadata.Name)
+	}
+}
+
+func TestGetReleaseStatus(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rel := releaseMock()
+	if err := rs.env.Releases.Create(rel); err != nil {
+		t.Fatalf("Could not store mock release: %s", err)
+	}
+
+	res, err := rs.GetReleaseStatus(c, &services.GetReleaseStatusRequest{Name: rel.Name})
+	if err != nil {
+		t.Errorf("Error getting release content: %s", err)
+	}
+
+	if res.Info.Status.Code != release.Status_DEPLOYED {
+		t.Errorf("Expected %d, got %d", release.Status_DEPLOYED, res.Info.Status.Code)
 	}
 }
 

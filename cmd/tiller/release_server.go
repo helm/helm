@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"log"
-	"time"
 
 	"github.com/deis/tiller/cmd/tiller/environment"
 	"github.com/deis/tiller/pkg/proto/hapi/release"
 	"github.com/deis/tiller/pkg/proto/hapi/services"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/deis/tiller/pkg/timeconv"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
 )
@@ -39,11 +38,25 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 }
 
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
-	return nil, errNotImplemented
+	if req.Name == "" {
+		return nil, errMissingRelease
+	}
+	rel, err := s.env.Releases.Read(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	if rel.Info == nil {
+		return nil, errors.New("release info is missing")
+	}
+	return &services.GetReleaseStatusResponse{Info: rel.Info}, nil
 }
 
 func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
-	return nil, errNotImplemented
+	if req.Name == "" {
+		return nil, errMissingRelease
+	}
+	rel, err := s.env.Releases.Read(req.Name)
+	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
 func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
@@ -59,7 +72,7 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	namer := moniker.New()
 	// TODO: Make sure this is unique.
 	name := namer.NameSep("-")
-	ts := now()
+	ts := timeconv.Now()
 
 	// Render the templates
 	files, err := s.env.EngineYard.Default().Render(req.Chart, req.Values)
@@ -102,15 +115,6 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	return &services.InstallReleaseResponse{Release: r}, nil
 }
 
-func now() *timestamp.Timestamp {
-	t := time.Now()
-	ts := &timestamp.Timestamp{
-		Seconds: t.Unix(),
-		Nanos:   int32(t.Nanosecond()),
-	}
-	return ts
-}
-
 func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
 	if req.Name == "" {
 		log.Printf("uninstall: Release not found: %s", req.Name)
@@ -125,7 +129,7 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 	log.Printf("uninstall: Deleting %s", req.Name)
 	rel.Info.Status.Code = release.Status_DELETED
-	rel.Info.Deleted = now()
+	rel.Info.Deleted = timeconv.Now()
 
 	// TODO: Once KubeClient is ready, delete the resources.
 	log.Println("WARNING: Currently not deleting resources from k8s")

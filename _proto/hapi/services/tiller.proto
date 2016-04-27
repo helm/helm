@@ -5,7 +5,7 @@ package hapi.services.tiller;
 import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
-import "hapi/release/status.proto";
+import "hapi/release/info.proto";
 
 option go_package = "services";
 
@@ -89,55 +89,39 @@ message ListReleasesRequest {
 message ListReleasesResponse {
  	// The expected total number of releases to be returned
 	int64 count  = 1;
-	
+
 	// The zero-based offset at which the list is positioned
 	int64 offset = 2;
-	
+
 	// The total number of queryable releases
 	int64 total  = 3;
-	
+
 	// The resulting releases
 	repeated hapi.release.Release releases = 4;
 }
 
-//
-// GetReleaseStatusRequest:
-//
-//		TODO
-//
+// GetReleaseStatusRequest is a request to get the status of a release.
 message GetReleaseStatusRequest {
-	// The name of the release
-	string release_name = 1;
+	// Name is the name of the release
+	string name = 1;
 }
 
-//
-// GetReleaseStatusResponse:
-//
-//		TODO
-//
+// GetReleaseStatusResponse is the response indicating the status of the named release.
 message GetReleaseStatusResponse {
-	// The name of the release
-	string release_name = 1;
-	
-	// The release status
-	hapi.release.Status release_status = 2;
+	// Name is the name of the release.
+	string name = 1;
+
+	// Info contains information about the release.
+	hapi.release.Info info = 2;
 }
 
-//
-// GetReleaseContentRequest:
-//
-//		TODO
-//
+// GetReleaseContentRequest is a request to get the contents of a release.
 message GetReleaseContentRequest {
 	// The name of the release
-	string release_name = 1;
+	string name = 1;
 }
 
-//
-// GetReleaseContentResponse:
-//
-//		TODO
-//
+// GetReleaseContentResponse is a response containing the contents of a release.
 message GetReleaseContentResponse {
 	// The release content
 	hapi.release.Release release = 1;
