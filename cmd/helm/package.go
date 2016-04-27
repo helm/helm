@@ -56,7 +56,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 
 	// Save to $HELM_HOME/local directory.
 	if save {
-		if err := repo.AddChartToLocalRepo(ch, localRepoPath); err != nil {
+		if err := repo.AddChartToLocalRepo(ch, localRepoDirectory()); err != nil {
 			return err
 		}
 	}

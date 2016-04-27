@@ -8,11 +8,12 @@ import (
 
 func TestEnsureHome(t *testing.T) {
 	home := createTmpHome()
-	if err := ensureHome(home); err != nil {
+	helmHome = home
+	if err := ensureHome(); err != nil {
 		t.Errorf("%s", err)
 	}
 
-	expectedDirs := []string{home, cachePath, localRepoPath}
+	expectedDirs := []string{homePath(), cacheDirectory(), localRepoDirectory()}
 	for _, dir := range expectedDirs {
 		if fi, err := os.Stat(dir); err != nil {
 			t.Errorf("%s", err)
@@ -21,13 +22,13 @@ func TestEnsureHome(t *testing.T) {
 		}
 	}
 
-	if fi, err := os.Stat(repositoriesFilePath); err != nil {
+	if fi, err := os.Stat(repositoriesFile()); err != nil {
 		t.Errorf("%s", err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
 	}
 
-	if fi, err := os.Stat(localCacheFilePath); err != nil {
+	if fi, err := os.Stat(localRepoDirectory(localRepoCacheFilePath)); err != nil {
 		t.Errorf("%s", err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)

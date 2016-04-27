@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +22,4 @@ func init() {
 
 func home(cmd *cobra.Command, args []string) {
 	cmd.Printf(homePath() + "\n")
-}
-
-func homePath() string {
-	return os.ExpandEnv(helmHome)
 }
