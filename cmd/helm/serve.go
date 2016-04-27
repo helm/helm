@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/deis/tiller/pkg/repo"
 	"github.com/spf13/cobra"
 )
@@ -24,5 +22,5 @@ var serveCmd = &cobra.Command{
 }
 
 func serve(cmd *cobra.Command, args []string) {
-	repo.StartLocalRepo(localDirectory(os.ExpandEnv(helmHome)))
+	repo.StartLocalRepo(localRepoPath)
 }
