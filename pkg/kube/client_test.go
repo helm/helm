@@ -4,15 +4,18 @@ import (
 	"os"
 	"testing"
 
+	"k8s.io/kubernetes/pkg/api/meta"
+	"k8s.io/kubernetes/pkg/client/unversioned/fake"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 func TestPerform(t *testing.T) {
-	f, err := os.Open("./testdata/guestbook-all-in-one.yaml")
+	input, err := os.Open("./testdata/guestbook-all-in-one.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer input.Close()
 
 	results := []*resource.Info{}
 
@@ -26,7 +29,12 @@ func TestPerform(t *testing.T) {
 		return nil
 	}
 
-	if err := perform("test", f, fn, nil); err != nil {
+	f := cmdutil.NewFactory(nil)
+	f.ClientForMapping = func(mapping *meta.RESTMapping) (resource.RESTClient, error) {
+		return &fake.RESTClient{}, nil
+	}
+
+	if err := perform(f, "test", input, fn); err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 

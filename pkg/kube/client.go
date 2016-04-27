@@ -19,16 +19,11 @@ type ResourceActorFunc func(*resource.Info) error
 // Namespace will set the namespace
 // Config allows for overiding values from kubectl
 func Create(namespace string, reader io.Reader, config clientcmd.ClientConfig) error {
-	return perform(namespace, reader, createResource, config)
+	f := cmdutil.NewFactory(config)
+	return perform(f, namespace, reader, createResource)
 }
 
-func perform(namespace string, reader io.Reader, fn ResourceActorFunc, config clientcmd.ClientConfig) error {
-	f := cmdutil.NewFactory(config)
-	//schema, err := f.Validator(true, "")
-	//if err != nil {
-	//return err
-	//}
-
+func perform(f *cmdutil.Factory, namespace string, reader io.Reader, fn ResourceActorFunc) error {
 	r := f.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
