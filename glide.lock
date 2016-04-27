@@ -1,5 +1,5 @@
-hash: 78e69db1e2c08b4c326c61c47d602ccb5d0d4a782e5047a460e984d0c22f43a3
-updated: 2016-04-27T13:31:53.384640094-07:00
+hash: 998d87445fec0bd715fa5ccbcc227cb4997e56ceff58dc8eb53ea2e0cc84abfd
+updated: 2016-04-27T16:11:47.531200165-06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c
@@ -121,6 +121,11 @@ imports:
   - version
 - name: github.com/google/gofuzz
   version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
+- name: github.com/gosuri/uitable
+  version: 36ee7e946282a3fb1cfecd476ddc9b35d8847e42
+  subpackages:
+  - util/strutil
+  - util/wordwrap
 - name: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/inconshreveable/mousetrap
@@ -131,6 +136,8 @@ imports:
   version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
   version: e6494bc7e81206ba6db404d2fd96500ffc453407
+- name: github.com/mattn/go-runewidth
+  version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:

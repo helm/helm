@@ -5,12 +5,14 @@ import (
 	"os"
 
 	"github.com/deis/tiller/pkg/repo"
+	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
 func init() {
 	repoCmd.AddCommand(repoAddCmd)
+	repoCmd.AddCommand(repoListCmd)
 	RootCommand.AddCommand(repoCmd)
 }
 
@@ -25,6 +27,12 @@ var repoAddCmd = &cobra.Command{
 	RunE:  runRepoAdd,
 }
 
+var repoListCmd = &cobra.Command{
+	Use:   "list [flags]",
+	Short: "list chart repositories",
+	RunE:  runRepoList,
+}
+
 func runRepoAdd(cmd *cobra.Command, args []string) error {
 	if len(args) != 2 {
 		return fmt.Errorf("This command needs two argument, a name for the chart repository and the url of the chart repository")
@@ -35,6 +43,25 @@ func runRepoAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	fmt.Println(args[0] + " has been added to your repositories")
+	return nil
+}
+
+func runRepoList(cmd *cobra.Command, args []string) error {
+	f, err := repo.LoadRepositoriesFile(repositoriesFile())
+	if err != nil {
+		return err
+	}
+	if len(f.Repositories) == 0 {
+		fmt.Println("No repositories to show")
+		return nil
+	}
+	table := uitable.New()
+	table.MaxColWidth = 50
+	table.AddRow("NAME", "URL")
+	for k, v := range f.Repositories {
+		table.AddRow(k, v)
+	}
+	fmt.Println(table)
 	return nil
 }
 
