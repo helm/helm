@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{default "alpine" .name}}
+  labels:
+    heritage: helm
+spec:
+  restartPolicy: {{default "Never" .restart_policy}}
+  containers:
+  - name: waiter
+    image: "alpine:3.3"
+    command: ["/bin/sleep","9000"]
