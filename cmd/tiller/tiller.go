@@ -14,7 +14,13 @@ import (
 //
 // Each gRPC service registers itself to this server during init().
 var rootServer = grpc.NewServer()
+
+// env is the default environment.
+//
+// Any changes to env should be done before rootServer.Serve() is called.
 var env = environment.New()
+
+var addr = ":44134"
 
 const globalUsage = `The Kubernetes Helm server.
 
@@ -31,11 +37,11 @@ var rootCommand = &cobra.Command{
 }
 
 func main() {
+	rootCommand.PersistentFlags().StringVarP(&addr, "listen", "l", ":44134", "The address:port to listen on")
 	rootCommand.Execute()
 }
 
 func start(c *cobra.Command, args []string) {
-	addr := ":44134"
 	lstn, err := net.Listen("tcp", addr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
