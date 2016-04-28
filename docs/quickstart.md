@@ -29,10 +29,10 @@ $ helm init
 
 To install an existing chart, you can run the `helm install` command:
 
-_TODO:_ Update this to the correct URL.
+_TODO:_ Might need instructions about repos.
 
 ```console
-$ helm install https://helm.sh/charts/nginx-0.1.0.tgz
+$ helm install nginx-1.0.0
 Released smiling-penguin
 ```
 
