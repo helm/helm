@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package hapi.release;
+
+import "hapi/release/info.proto";
+import "hapi/chart/config.proto";
+import "hapi/chart/chart.proto";
+
+option go_package = "release";
+
+//
+// Release:
+//
+// 		A release describes a deployment of a chart, together with the chart
+//    and the variables used to deploy that chart.
+//
+message Release {
+	// Name is the name of the release
+	string name = 1;
+
+	// Info provides information about a release
+	hapi.release.Info info = 2;
+
+	// Chart is the chart that was released.
+	hapi.chart.Chart chart = 3;
+
+	// Config is the set of extra Values added to the chart.
+  // These values override the default values inside of the chart.
+	hapi.chart.Config config = 4;
+
+  // Manifest is the string representation of the rendered template.
+  string manifest = 5;
+}

@@ -1,0 +1,32 @@
+package: github.com/deis/tiller
+import:
+- package: golang.org/x/net
+  version: fb93926129b8ec0056f2f458b1f519654814edf0
+  subpackages:
+  - context
+- package: github.com/spf13/cobra
+  subpackages:
+  - cobra
+- package: github.com/Masterminds/sprig
+  version: ^2.1
+- package: gopkg.in/yaml.v2
+- package: github.com/Masterminds/semver
+  version: 1.1.0
+- package: github.com/BurntSushi/toml
+  version: bbd5bb678321a0d6e58f1099321dfa73391c1b6f
+- package: github.com/technosophos/moniker
+- package: github.com/golang/protobuf
+  version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
+  subpackages:
+  - proto
+  - ptypes/any
+  - ptypes/timestamp
+- package: google.golang.org/grpc
+  version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
+- package: k8s.io/kubernetes
+  version: ^1.2
+  subpackages:
+  - pkg/client/unversioned/clientcmd
+  - pkg/kubectl/cmd/util
+  - pkg/kubectl/resource
+- package: github.com/gosuri/uitable

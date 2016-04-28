@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package hapi.release;
+
+import "google/protobuf/any.proto";
+
+option go_package = "release";
+
+//
+// Status:
+//
+//
+message Status {
+	enum Code {
+		UNKNOWN = 0;
+	
+		DEPLOYED = 1;
+	
+		DELETED = 2;
+	
+		SUPERSEDED = 3;
+	}
+	
+	Code code = 1;
+	
+	google.protobuf.Any details = 2;
+}

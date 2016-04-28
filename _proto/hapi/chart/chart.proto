@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package hapi.chart;
+
+import "hapi/chart/config.proto";
+import "hapi/chart/metadata.proto";
+import "hapi/chart/template.proto";
+
+option go_package = "chart";
+
+//
+// Chart:
+//		A chart is a helm package that contains metadata, a default config, zero or more
+//		optionally parameterizable templates, and zero or more charts (dependencies).
+//
+message Chart {
+	// Contents of the Chartfile.
+	hapi.chart.Metadata metadata = 1;
+
+	// Templates for this chart.
+	repeated hapi.chart.Template templates = 2;
+
+	// Charts that this chart depends on.
+	repeated Chart dependencies = 3;
+
+  	// Default config for this template.
+  	hapi.chart.Config values = 4;
+
+}

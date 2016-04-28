@@ -1,0 +1,15 @@
+name = "frobnitz"
+description = "This is a frobniz."
+version = "1.2.3-alpha.1+12345"
+keywords = ["frobnitz", "sprocket", "dodad"]
+home = "http://example.com"
+source = [
+  "https://example.com/foo/bar",
+  "https://github.com/example/foo"
+]
+[[maintainer]]
+  name = "The Helm Team"
+  email = "helm@example.com"
+[[maintainer]]
+  name = "Someone Else"
+  email = "nobody@example.com"
