@@ -2,16 +2,22 @@ package lint
 
 import "fmt"
 
+// Severity indicatest the severity of a Message.
 type Severity int
 
 const (
+	// UnknownSev indicates that the severity of the error is unknown, and should not stop processing.
 	UnknownSev = iota
+	// WarningSev indicates that something does not meet code standards, but will likely function.
 	WarningSev
+	// ErrorSev indicates that something will not likely function.
 	ErrorSev
 )
 
+// sev matches the *Sev states.
 var sev = []string{"INFO", "WARNING", "ERROR"}
 
+// Message is a linting output message
 type Message struct {
 	// Severity is one of the *Sev constants
 	Severity int
