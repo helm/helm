@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/kubernetes/helm/pkg/client"
-	"github.com/kubernetes/helm/pkg/kubectl"
 	"github.com/spf13/cobra"
 )
 
@@ -52,26 +51,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 }
 
 func installTiller() error {
-	// TODO: take value of global flag kubectl and pass that in
-	runner := buildKubectlRunner("")
-
 	i := client.NewInstaller()
 	i.Tiller["Image"] = tillerImg
-	out, err := i.Install(runner)
+	err := i.Install()
 
 	if err != nil {
-		return fmt.Errorf("error installing %s %s", string(out), err)
+		return fmt.Errorf("error installing: %s", err)
 	}
 	fmt.Println("\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 
 	return nil
-}
-
-func buildKubectlRunner(kubectlPath string) kubectl.Runner {
-	if kubectlPath != "" {
-		kubectl.Path = kubectlPath
-	}
-	return &kubectl.RealRunner{}
 }
 
 // ensureHome checks to see if $HELM_HOME exists

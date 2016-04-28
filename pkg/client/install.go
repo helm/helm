@@ -5,7 +5,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/kubernetes/helm/pkg/kubectl"
+	"github.com/kubernetes/helm/pkg/kube"
 )
 
 // Installer installs tiller into Kubernetes
@@ -28,25 +28,22 @@ func NewInstaller() *Installer {
 	}
 }
 
-// Install uses kubectl to install tiller
+// Install uses kubernetes client to install tiller
 //
 // Returns the string output received from the operation, and an error if the
 // command failed.
-func (i *Installer) Install(runner kubectl.Runner) (string, error) {
-	b, err := i.expand()
+func (i *Installer) Install() error {
+
+	var b bytes.Buffer
+	err := template.Must(template.New("manifest").Funcs(sprig.TxtFuncMap()).
+		Parse(InstallYAML)).
+		Execute(&b, i)
+
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	o, err := runner.Create(b)
-	return string(o), err
-}
-
-func (i *Installer) expand() ([]byte, error) {
-	var b bytes.Buffer
-	t := template.Must(template.New("manifest").Funcs(sprig.TxtFuncMap()).Parse(InstallYAML))
-	err := t.Execute(&b, i)
-	return b.Bytes(), err
+	return kube.Create("helm", &b, nil)
 }
 
 // InstallYAML is the installation YAML for DM.
