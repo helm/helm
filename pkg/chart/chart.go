@@ -98,6 +98,23 @@ func (c *Chart) LoadValues() (Values, error) {
 	return ReadValuesFile(filepath.Join(c.loader.dir(), preValues))
 }
 
+// ChartDepNames returns the list of chart names found in ChartsDir.
+func (c *Chart) ChartDepNames() ([]string, error) {
+	files, err := ioutil.ReadDir(c.ChartsDir())
+	if err != nil {
+		return nil, err
+	}
+
+	var deps []string
+	for _, file := range files {
+		if file.IsDir() {
+			deps = append(deps, filepath.Join(c.ChartsDir(), file.Name()))
+		}
+	}
+
+	return deps, nil
+}
+
 // chartLoader provides load, close, and save implementations for a chart.
 type chartLoader interface {
 	// Chartfile resturns a *Chartfile for this chart.
@@ -236,6 +253,32 @@ func LoadDir(chart string) (*Chart, error) {
 	return &Chart{
 		loader: cl,
 	}, nil
+}
+
+// LoadChart loads an entire chart archive.
+//
+// The following are valid values for 'chfi':
+//
+//		- relative path to the chart archive
+//		- absolute path to the chart archive
+// 		- name of the chart directory
+//
+func LoadChart(chfi string) (*Chart, error) {
+	path, err := filepath.Abs(chfi)
+	if err != nil {
+		return nil, err
+	}
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi.IsDir() {
+		return LoadDir(path)
+	}
+
+	return Load(path)
 }
 
 // LoadData loads a chart from data, where data is a []byte containing a gzipped tar file.
