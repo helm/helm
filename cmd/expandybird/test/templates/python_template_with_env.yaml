@@ -1,8 +1,0 @@
-imports: ["python_template_with_env.py"]
-
-resources:
-- name: python_template_with_env_name
-  type: python_template_with_env.py
-  properties:
-    masterAddress: master-address
-    zone: my-zone

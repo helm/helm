@@ -1,6 +1,0 @@
-imports: ["jinja_noparams.jinja"]
-
-resources:
-- name: jinja_noparams_name
-  type: jinja_noparams.jinja
-

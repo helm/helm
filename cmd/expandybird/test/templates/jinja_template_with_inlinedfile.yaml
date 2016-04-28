@@ -1,7 +1,0 @@
-imports: ["jinja_template_with_inlinedfile.jinja", "helpers/common.jinja", "description_text.txt"]
-
-resources:
-- name: jinja_template_with_inlinedfile_name
-  type: jinja_template_with_inlinedfile.jinja
-  properties:
-    description-file: description_text.txt

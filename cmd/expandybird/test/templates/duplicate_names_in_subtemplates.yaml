@@ -1,5 +1,0 @@
-imports: ["duplicate_names_in_subtemplates.jinja"]
-
-resources:
-- name: subtemplate
-  type: duplicate_names_in_subtemplates.jinja

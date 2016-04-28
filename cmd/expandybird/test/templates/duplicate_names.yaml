@@ -1,9 +1,0 @@
-resources:
-- type: compute.v1.instance
-  name: my_instance
-  properties:
-    zone: test-zone-a
-- type: compute.v1.instance
-  name: my_instance
-  properties:
-    zone: test-zone-b
