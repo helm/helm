@@ -33,7 +33,7 @@ To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 
 ## gRPC and Protobuf
 
-Tiller uses gRPC. To get started with gRPC, you will need to...
+Helm and Tiller communicate using gRPC. To get started with gRPC, you will need to...
 
 - Install `protoc` for compiling protobuf files. Releases are
   [here](https://github.com/google/protobuf/releases)
@@ -66,6 +66,10 @@ order to ensure that (a) code quality remains high, (b) the project
 remains consistent, and (c) contributions follow the open source legal
 requirements. Our intent is not to burden contributors, but to build
 elegant and high-quality open source code so that our users will benefit.
+
+Make sure you have read and understood the main CONTRIBUTING guide:
+
+https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md
 
 We follow the coding standards and guidelines outlined by the Deis
 project:

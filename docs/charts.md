@@ -44,6 +44,13 @@ If you are familiar with the Chart.yaml file format for Helm Classic, you will
 notice that fields specifying dependencies have been removed. That is because
 the new Chart format expresses dependencies using the `charts/` directory.
 
+### Charts and Versioning
+
+Every chart must have a version number. A version must follow the
+[SemVer 2](http://semver.org/) standard. Unlike Helm Classic, Kubernetes
+Helm uses version numbers as release markers. Packages in repositories
+are identified by name plus version.
+
 ## Chart Dependencies
 
 In Helm, one chart may depend on any number of other charts. These
@@ -71,10 +78,14 @@ The example above shows how the Wordpress chart expresses its dependency
 on Apache and MySQL by including those charts inside of its `charts/`
 directory.
 
+**TIP:** _To drop a dependency into your `charts/` directory, use the
+`helm fetch` command._
+
 ## Templates and Values
 
-In Helm Charts, templates are written in the Go template language, with the 
-addition of 50 or so add-on template functions.
+In Helm Charts, templates are written in the Go template language, with the
+addition of 50 or so [add-on template
+functions](https://github.com/Masterminds/sprig).
 
 All template files are stored in a chart's `templates/` folder. When
 Helm renders the charts, it will pass every file in that directory
