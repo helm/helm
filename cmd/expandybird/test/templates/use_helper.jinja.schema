@@ -1,4 +1,0 @@
-properties:
-  barfoo:
-    type: string
-    default: Use this schema also

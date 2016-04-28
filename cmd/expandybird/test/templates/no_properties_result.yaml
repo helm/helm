@@ -1,6 +1,0 @@
-config:
-  resources: []
-layout:
-  resources:
-  - name: test-resource
-    type: no_properties.py

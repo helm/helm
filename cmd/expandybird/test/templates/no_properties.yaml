@@ -1,6 +1,0 @@
-imports:
-- path: "no_properties.py"
-
-resources:
-- name: test-resource
-  type: no_properties.py

@@ -23,8 +23,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
-	"github.com/kubernetes/helm/pkg/log"
 )
 
 // Save creates an archived chart to the given directory.
@@ -73,7 +71,6 @@ func Save(c *Chart, outDir string) (string, error) {
 		zipper.Close()
 		f.Close()
 		if rollback {
-			log.Warn("Removing incomplete archive %s", filename)
 			os.Remove(filename)
 		}
 	}()

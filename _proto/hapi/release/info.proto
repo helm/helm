@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package hapi.release;
+
+import "google/protobuf/timestamp.proto";
+import "hapi/release/status.proto";
+
+option go_package = "release";
+
+//
+// Info:
+//
+//
+message Info {
+  Status status = 1;
+
+  google.protobuf.Timestamp first_deployed = 2;
+
+  google.protobuf.Timestamp last_deployed = 3;
+
+  // Deleted tracks when this object was deleted.
+  google.protobuf.Timestamp deleted = 4;
+}

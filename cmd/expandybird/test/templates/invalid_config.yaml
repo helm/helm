@@ -1,2 +1,0 @@
-resources:
-- name: foo properties: bar: baz

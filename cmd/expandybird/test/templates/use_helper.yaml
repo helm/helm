@@ -1,3 +1,0 @@
-resources:
-- name: use-helper
-  type: use_helper.jinja

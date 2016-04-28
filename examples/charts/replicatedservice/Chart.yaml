@@ -1,7 +1,0 @@
-name: replicatedservice
-description: Port of the replicatedservice template from kubernetes/charts
-version: "3.0.0"
-home: ""
-expander:
-  name: expandybird-service
-  entrypoint: templates/replicatedservice.py

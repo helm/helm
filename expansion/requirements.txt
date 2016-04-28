@@ -1,3 +1,0 @@
-pyyaml
-Jinja2
-Jsonschema

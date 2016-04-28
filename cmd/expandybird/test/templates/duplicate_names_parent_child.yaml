@@ -1,7 +1,0 @@
-imports: ["duplicate_names_B.jinja"]
-
-resources:
-- name: A
-  type: duplicate_names_B.jinja
-- name: B
-  type: compute.v1.instance

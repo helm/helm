@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package hapi.chart;
+
+option go_package = "chart";
+
+//
+// Config:
+//
+//		A config supplies values to the parametrizable templates of a chart.
+//
+message Config {
+  string raw = 1;
+
+  map<string,Value> values = 2;
+}
+
+//
+// Value:
+//
+//		TODO
+//
+message Value {
+	string value = 1;
+}

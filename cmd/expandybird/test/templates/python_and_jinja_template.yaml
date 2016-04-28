@@ -1,9 +1,0 @@
-imports: ["python_and_jinja_template.jinja", "python_and_jinja_template.py"]
-
-resources:
-- name: python_and_jinja_template_name
-  type: python_and_jinja_template.py
-  properties:
-    masterAddress: master-address
-    project: my-project
-    zone: my-zone

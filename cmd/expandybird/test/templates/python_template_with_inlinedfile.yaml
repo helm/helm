@@ -1,7 +1,0 @@
-imports: ["python_template_with_inlinedfile.py", "helpers/common.py", "helpers/common2.py", "helpers/__init__.py", "description_text.txt"]
-
-resources:
-- name: python_template_with_inlinedfile_name
-  type: python_template_with_inlinedfile.py
-  properties:
-    description-file: description_text.txt

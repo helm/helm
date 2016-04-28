@@ -1,4 +1,15 @@
 name: sprocket
-description: This is a sprocket.
+description: This is a sprocket"
 version: 1.2.3-alpha.1+12345
-home: ""
+keywords:
+- frobnitz
+- sprocket
+- dodad
+maintainers:
+- name: The Helm Team
+  email: helm@example.com
+- name: Someone Else
+  email: nobody@example.com
+source:
+- https://example.com/foo/bar
+home: http://example.com

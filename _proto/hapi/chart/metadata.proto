@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package hapi.chart;
+
+option go_package = "chart";
+
+//
+// Maintainer:
+//
+// 		A descriptor of the Chart maintainer(s).
+//
+message Maintainer {
+	// Name is a user name or organization name
+	string name = 1;
+
+	// Email is an optional email address to contact the named maintainer
+	string email = 2;
+}
+
+//
+// Metadata:
+//		
+//		Metadata for a Chart file. This models the structure
+//		of a Chart.yaml file.
+//
+// 		Spec: https://github.com/kubernetes/helm/blob/master/docs/design/chart_format.md#the-chart-file
+//
+message Metadata {
+	// The name of the chart
+	string name = 1;
+	
+	// The URL to a relecant project page, git repo, or contact person
+	string home = 2;
+
+	// Source is the URL to the source code of this chart
+	repeated string sources = 3;
+	
+	// A SemVer 2 conformant version string of the chart
+	string version = 4;
+	
+	// A one-sentence description of the chart
+	string description = 5;
+	
+	// A list of string keywords
+	repeated string keywords = 6;
+	
+	// A list of name and URL/email address combinations for the maintainer(s)
+	repeated Maintainer maintainers = 7;
+}

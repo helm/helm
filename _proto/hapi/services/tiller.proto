@@ -1,0 +1,181 @@
+syntax = "proto3";
+
+package hapi.services.tiller;
+
+import "hapi/chart/chart.proto";
+import "hapi/chart/config.proto";
+import "hapi/release/release.proto";
+import "hapi/release/info.proto";
+
+option go_package = "services";
+
+//
+// ReleaseService:
+//
+//		The service that a helm application uses to mutate,
+// 		query, and manage releases.
+//
+//		Release: A named installation composed of a chart and
+// 				 config. At any given time a release has one
+//				 chart and one config.
+//
+//		Config:  A config is a TOML file that supplies values
+//				 to the parametrizable templates of a chart.
+//
+//		Chart:   A chart is a helm package that contains
+//				 metadata, a default config, zero or more
+//				 optionally parameterizable templates, and
+//				 zero or more charts (dependencies).
+//		
+//
+service ReleaseService {
+	//
+	// Retrieve release history. TODO: Allow filtering the set of releases by
+	// release status. By default, ListAllReleases returns the releases who
+	// current status is "Active".
+	//
+	rpc ListReleases(ListReleasesRequest) returns (stream ListReleasesResponse) {
+	}
+	
+	//
+	// Retrieve status information for the specified release.
+	//
+	rpc GetReleaseStatus(GetReleaseStatusRequest) returns (GetReleaseStatusResponse) {
+	}
+	
+	//
+	// Retrieve the release content (chart + value) for the specifed release.
+	//
+	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
+	}
+
+	//
+	// Update release content.
+	//
+	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
+	}
+
+	//
+	// Request release install.
+	//
+	rpc InstallRelease(InstallReleaseRequest) returns (InstallReleaseResponse) {
+	}
+	
+	//
+	// Request release deletion.
+	//
+	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
+	}
+}
+
+//
+// ListReleasesRequest:
+//
+//		TODO
+//
+message ListReleasesRequest {
+	// The maximum number of releases to be returned
+	int64 limit  = 1;
+	
+	// The zero-based offset at which the returned release list begins 
+	int64 offset = 2;
+}
+
+//
+// ListReleasesResponse:
+//
+//		TODO
+//
+message ListReleasesResponse {
+ 	// The expected total number of releases to be returned
+	int64 count  = 1;
+
+	// The zero-based offset at which the list is positioned
+	int64 offset = 2;
+
+	// The total number of queryable releases
+	int64 total  = 3;
+
+	// The resulting releases
+	repeated hapi.release.Release releases = 4;
+}
+
+// GetReleaseStatusRequest is a request to get the status of a release.
+message GetReleaseStatusRequest {
+	// Name is the name of the release
+	string name = 1;
+}
+
+// GetReleaseStatusResponse is the response indicating the status of the named release.
+message GetReleaseStatusResponse {
+	// Name is the name of the release.
+	string name = 1;
+
+	// Info contains information about the release.
+	hapi.release.Info info = 2;
+}
+
+// GetReleaseContentRequest is a request to get the contents of a release.
+message GetReleaseContentRequest {
+	// The name of the release
+	string name = 1;
+}
+
+// GetReleaseContentResponse is a response containing the contents of a release.
+message GetReleaseContentResponse {
+	// The release content
+	hapi.release.Release release = 1;
+}
+
+//
+// UpdateReleaseRequest:
+//
+//		TODO
+//
+message UpdateReleaseRequest {
+}
+
+//
+// UpdateReleaseResponse:
+//
+//		TODO
+//
+message UpdateReleaseResponse {
+}
+
+//
+// InstallReleaseRequest:
+//
+//		TODO
+//
+message InstallReleaseRequest {
+  // Chart is the protobuf representation of a chart.
+  hapi.chart.Chart chart = 1;
+  // Values is a string containing (unparsed) TOML values.
+  hapi.chart.Config values = 2;
+  // DryRun, if true, will run through the release logic, but neither create
+  // a release object nor deploy to Kubernetes. The release object returned
+  // in the response will be fake.
+  bool dry_run = 3;
+}
+
+//
+// InstallReleaseResponse:
+//
+//		TODO
+//
+message InstallReleaseResponse {
+  hapi.release.Release release = 1;
+}
+
+// UninstallReleaseRequest represents a request to uninstall a named release.
+message UninstallReleaseRequest {
+  // Name is the name of the release to delete.
+  string name = 1;
+}
+
+// UninstallReleaseResponse represents a successful response to an uninstall request.
+message UninstallReleaseResponse {
+  // Release is the release that was marked deleted.
+  hapi.release.Release release = 1;
+}

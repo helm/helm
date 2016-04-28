@@ -1,7 +1,0 @@
-{% import 'helpers/common.jinja' as common %}
-resources:
-- name: {{ common.GenerateMachineName("myFrontend", "prod") }}
-  type: compute.v1.instance
-  properties:
-    description: {{ imports[properties["description-file"]] }}
-    machineSize: big

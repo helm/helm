@@ -25,8 +25,6 @@ dependencies:
     - tar -vxz -C $HOME/bin --strip=1 -f glide-$GLIDE_VERSION-linux-amd64.tar.gz
     - export PATH="$HOME/bin:$PATH" GLIDE_HOME="$HOME/.glide"
     - cd $GOPATH/src/$IMPORT_PATH
-    - sudo pip install -r expansion/requirements.txt
-    - sudo pip install flake8
 
 test:
   override:
