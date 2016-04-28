@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/deis/tiller/pkg/client"
-	"github.com/deis/tiller/pkg/kubectl"
+	"github.com/kubernetes/helm/pkg/client"
+	"github.com/kubernetes/helm/pkg/kubectl"
 	"github.com/spf13/cobra"
 )
 

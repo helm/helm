@@ -2,7 +2,7 @@ space := $(empty) $(empty)
 comma := ,
 empty :=
 
-import_path = github.com/deis/tiller/pkg/proto/hapi
+import_path = github.com/kubernetes/helm/pkg/proto/hapi
 
 dst 	= ../pkg/proto
 target  = go

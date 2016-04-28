@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/deis/tiller/pkg/repo"
+	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
 )
 

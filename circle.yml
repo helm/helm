@@ -4,7 +4,7 @@ machine:
     GO15VENDOREXPERIMENT: 1
     GOPATH: /usr/local/go_workspace
     HOME: /home/ubuntu
-    IMPORT_PATH: "github.com/deis/tiller"
+    IMPORT_PATH: "github.com/kubernetes/helm"
     PATH: $HOME/go/bin:$PATH
     GOROOT: $HOME/go
 

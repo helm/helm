@@ -1,9 +1,9 @@
 package helm
 
 import (
-	"github.com/deis/tiller/pkg/chart"
-	chartpb "github.com/deis/tiller/pkg/proto/hapi/chart"
-	"github.com/deis/tiller/pkg/proto/hapi/services"
+	"github.com/kubernetes/helm/pkg/chart"
+	chartpb "github.com/kubernetes/helm/pkg/proto/hapi/chart"
+	"github.com/kubernetes/helm/pkg/proto/hapi/services"
 	"golang.org/x/net/context"
 )
 

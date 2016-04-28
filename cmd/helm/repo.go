@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/deis/tiller/pkg/repo"
 	"github.com/gosuri/uitable"
+	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )

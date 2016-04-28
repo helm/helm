@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/deis/tiller/pkg/repo"
+	"github.com/kubernetes/helm/pkg/repo"
 )
 
 func TestRepoAdd(t *testing.T) {

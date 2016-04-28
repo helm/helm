@@ -1,4 +1,4 @@
-package: github.com/deis/tiller
+package: github.com/kubernetes/helm
 import:
 - package: golang.org/x/net
   version: fb93926129b8ec0056f2f458b1f519654814edf0

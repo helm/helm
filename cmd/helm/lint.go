@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/deis/tiller/pkg/lint"
+	"github.com/kubernetes/helm/pkg/lint"
 	"github.com/spf13/cobra"
 )
 

@@ -5,7 +5,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/deis/tiller/cmd/tiller/environment"
+	"github.com/kubernetes/helm/cmd/tiller/environment"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )

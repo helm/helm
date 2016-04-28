@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deis/tiller/cmd/tiller/environment"
-	"github.com/deis/tiller/pkg/proto/hapi/chart"
-	"github.com/deis/tiller/pkg/proto/hapi/release"
-	"github.com/deis/tiller/pkg/proto/hapi/services"
-	"github.com/deis/tiller/pkg/storage"
-	"github.com/deis/tiller/pkg/timeconv"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/kubernetes/helm/cmd/tiller/environment"
+	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
+	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"github.com/kubernetes/helm/pkg/proto/hapi/services"
+	"github.com/kubernetes/helm/pkg/storage"
+	"github.com/kubernetes/helm/pkg/timeconv"
 	"golang.org/x/net/context"
 )
 

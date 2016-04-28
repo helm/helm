@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/deis/tiller/pkg/helm"
-	"github.com/deis/tiller/pkg/timeconv"
+	"github.com/kubernetes/helm/pkg/helm"
+	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/spf13/cobra"
 )
 

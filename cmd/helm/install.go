@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/deis/tiller/pkg/chart"
-	"github.com/deis/tiller/pkg/helm"
+	"github.com/kubernetes/helm/pkg/chart"
+	"github.com/kubernetes/helm/pkg/helm"
 )
 
 const installDesc = `

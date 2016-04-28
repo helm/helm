@@ -7,8 +7,8 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	chartutil "github.com/deis/tiller/pkg/chart"
-	"github.com/deis/tiller/pkg/proto/hapi/chart"
+	chartutil "github.com/kubernetes/helm/pkg/chart"
+	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
 )
 
 // Engine is an implementation of 'cmd/tiller/environment'.Engine that uses Go templates.

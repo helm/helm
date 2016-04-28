@@ -1,10 +1,10 @@
 package environment
 
 import (
-	"github.com/deis/tiller/pkg/engine"
-	"github.com/deis/tiller/pkg/proto/hapi/chart"
-	"github.com/deis/tiller/pkg/proto/hapi/release"
-	"github.com/deis/tiller/pkg/storage"
+	"github.com/kubernetes/helm/pkg/engine"
+	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
+	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"github.com/kubernetes/helm/pkg/storage"
 )
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.

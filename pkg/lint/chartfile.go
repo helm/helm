@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	chartutil "github.com/deis/tiller/pkg/chart"
+	chartutil "github.com/kubernetes/helm/pkg/chart"
 )
 
 func Chartfile(basepath string) (m []Message) {

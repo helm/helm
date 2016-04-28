@@ -7,10 +7,10 @@ package services
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import hapi_chart3 "github.com/deis/tiller/pkg/proto/hapi/chart"
-import hapi_chart "github.com/deis/tiller/pkg/proto/hapi/chart"
-import hapi_release2 "github.com/deis/tiller/pkg/proto/hapi/release"
-import hapi_release1 "github.com/deis/tiller/pkg/proto/hapi/release"
+import hapi_chart3 "github.com/kubernetes/helm/pkg/proto/hapi/chart"
+import hapi_chart "github.com/kubernetes/helm/pkg/proto/hapi/chart"
+import hapi_release2 "github.com/kubernetes/helm/pkg/proto/hapi/release"
+import hapi_release1 "github.com/kubernetes/helm/pkg/proto/hapi/release"
 
 import (
 	context "golang.org/x/net/context"

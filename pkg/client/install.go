@@ -5,7 +5,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/deis/tiller/pkg/kubectl"
+	"github.com/kubernetes/helm/pkg/kubectl"
 )
 
 // Installer installs tiller into Kubernetes

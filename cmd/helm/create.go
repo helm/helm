@@ -4,7 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/deis/tiller/pkg/chart"
+	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/spf13/cobra"
 )
 

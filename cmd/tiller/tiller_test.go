@@ -3,9 +3,9 @@ package main
 import (
 	"testing"
 
-	"github.com/deis/tiller/cmd/tiller/environment"
-	"github.com/deis/tiller/pkg/engine"
-	"github.com/deis/tiller/pkg/storage"
+	"github.com/kubernetes/helm/cmd/tiller/environment"
+	"github.com/kubernetes/helm/pkg/engine"
+	"github.com/kubernetes/helm/pkg/storage"
 )
 
 // These are canary tests to make sure that the default server actually

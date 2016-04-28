@@ -5,10 +5,10 @@ import (
 	"errors"
 	"log"
 
-	"github.com/deis/tiller/cmd/tiller/environment"
-	"github.com/deis/tiller/pkg/proto/hapi/release"
-	"github.com/deis/tiller/pkg/proto/hapi/services"
-	"github.com/deis/tiller/pkg/timeconv"
+	"github.com/kubernetes/helm/cmd/tiller/environment"
+	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"github.com/kubernetes/helm/pkg/proto/hapi/services"
+	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
 )

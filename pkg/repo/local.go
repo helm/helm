@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/deis/tiller/pkg/chart"
+	"github.com/kubernetes/helm/pkg/chart"
 	"gopkg.in/yaml.v2"
 )
 
