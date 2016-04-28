@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/sprig"
 )
 
+// Templates lints a chart's templates.
 func Templates(basepath string) (messages []Message) {
 	messages = []Message{}
 	path := filepath.Join(basepath, "templates")
