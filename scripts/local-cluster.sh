@@ -128,7 +128,7 @@ start_kubernetes() {
 
   # Enable dns
   if [[ "${ENABLE_CLUSTER_DNS}" = true ]]; then
-    dns_args="--cluster-dns=10.0.0.1 --cluster-domain=cluster.local"
+    dns_args="--cluster-dns=10.0.0.10 --cluster-domain=cluster.local"
   else
     # DNS server for real world hostnames.
     dns_args="--cluster-dns=8.8.8.8"
