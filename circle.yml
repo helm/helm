@@ -8,6 +8,9 @@ machine:
     PATH: $HOME/go/bin:$PATH
     GOROOT: $HOME/go
 
+  services:
+    - docker
+
 dependencies:
   override:
     - mkdir -p $HOME/go
@@ -28,4 +31,4 @@ dependencies:
 
 test:
   override:
-    - cd $GOPATH/src/$IMPORT_PATH && make bootstrap test
+    - cd $GOPATH/src/$IMPORT_PATH && make bootstrap test test-e2e
