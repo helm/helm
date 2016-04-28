@@ -18,7 +18,7 @@ dependencies:
     - sudo chown -R $(whoami):staff /usr/local
     - cd $GOPATH
     - mkdir -p $GOPATH/src/$IMPORT_PATH
-    - cd $HOME/tiller
+    - cd $HOME/helm
     - rsync -az --delete ./ "$GOPATH/src/$IMPORT_PATH/"
     - wget "https://github.com/Masterminds/glide/releases/download/$GLIDE_VERSION/glide-$GLIDE_VERSION-linux-amd64.tar.gz"
     - mkdir -p $HOME/bin
