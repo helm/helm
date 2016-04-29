@@ -253,10 +253,10 @@ clean_volumes() {
   echo "Cleaning up volumes"
 
   if [[ -n "${DOCKER_MACHINE_NAME:-}" ]]; then
-    docker-machine ssh "${DOCKER_MACHINE_NAME}" "mount | grep -o 'on /var/lib/kubelet' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount"
+    docker-machine ssh "${DOCKER_MACHINE_NAME}" "mount | grep -o 'on /var/lib/kubelet.* type' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount"
     docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo rm -rf /var/lib/kubelet"
   else
-    mount | grep -o 'on /var/lib/kubelet' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount
+    mount | grep -o 'on /var/lib/kubelet.* type' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount
     sudo rm -rf /var/lib/kubelet
   fi
 }
@@ -291,8 +291,12 @@ kube_up() {
   verify_prereqs
 
   set_master_ip
-  clean_volumes
-  setup_firewall
+
+  # skip on ci
+  if [[ -z "${CI:-}" ]]; then
+    clean_volumes
+    setup_firewall
+  fi
 
   start_kubernetes
   generate_kubeconfig
