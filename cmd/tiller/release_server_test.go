@@ -21,7 +21,7 @@ func rsFixture() *releaseServer {
 }
 
 func releaseMock() *release.Release {
-	date := timestamp.Timestamp{242085845, 0}
+	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
 	return &release.Release{
 		Name: "angry-panda",
 		Info: &release.Info{
