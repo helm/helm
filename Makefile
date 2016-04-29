@@ -15,13 +15,11 @@ GOFLAGS   :=
 BINDIR    := ./bin
 BINARIES  := helm tiller
 
-include versioning.mk
-
 .PHONY: all
 all: build
 
 .PHONY: build
-build: GOFLAGS += -a -installsuffix cgo
+build: GOFLAGS += -i
 build:
 	@for i in $(BINARIES); do \
 		CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -o $(BINDIR)/$$i $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/$$i || exit 1; \
@@ -38,6 +36,7 @@ check-docker:
 docker-binary: GOOS = linux
 docker-binary: GOARCH = amd64
 docker-binary: BINDIR = ./rootfs
+docker-binary: GOFLAGS += -a -installsuffix cgo
 docker-binary: build
 
 .PHONY: docker-build
@@ -71,3 +70,4 @@ coverage:
 bootstrap:
 	glide install
 
+include versioning.mk
