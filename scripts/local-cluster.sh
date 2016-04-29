@@ -99,12 +99,12 @@ get_latest_version_number() {
 
 # Detect ip address od docker host
 detect_docker_host_ip() {
-  if [ -n "${DOCKER_HOST:-}" ]; then
+  if [[ -n "${DOCKER_HOST:-}" ]]; then
     awk -F'[/:]' '{print $4}' <<< "$DOCKER_HOST"
   else
     ifconfig docker0 \
       | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' \
-      | grep -Eo '([0-9]*\.){3}[0-9]*' >/dev/null 2>&1 || :
+      | grep -Eo '([0-9]*\.){3}[0-9]*'
   fi
 }
 
@@ -134,7 +134,9 @@ start_kubernetes() {
     dns_args="--cluster-dns=8.8.8.8"
   fi
 
-  local start_time=$(date +%s)
+  local started_at
+  local finished_at
+  started_at=$(date +%s)
 
   docker run \
     --name=kubelet \
@@ -147,7 +149,7 @@ start_kubernetes() {
     --pid=host \
     --privileged=true \
     -d \
-    gcr.io/google_containers/hyperkube-amd64:${KUBE_VERSION} \
+    "gcr.io/google_containers/hyperkube-amd64:${KUBE_VERSION}" \
       /hyperkube kubelet \
         --containerized \
         --hostname-override="127.0.0.1" \
@@ -155,7 +157,7 @@ start_kubernetes() {
         --config=/etc/kubernetes/manifests \
         --allow-privileged=true \
         ${dns_args} \
-        --v=${LOG_LEVEL} >/dev/null
+        --v="${LOG_LEVEL}" >/dev/null
 
   # We expect to have at least 3 running pods - etcd, master and kube-proxy.
   local attempt=1
@@ -165,13 +167,13 @@ start_kubernetes() {
   done
   echo
 
-  local end_time=$(date +%s)
-  echo "Started master components in $((end_time - start_time)) seconds."
+  finished_at=$(date +%s)
+  echo "Started master components in $((finished_at - started_at)) seconds."
 }
 
 # Open kubernetes master api port.
 setup_firewall() {
-  [[ -n "${DOCKER_MACHINE_NAME}" ]] || return
+  [[ -n "${DOCKER_MACHINE_NAME:-}" ]] || return
 
   echo "Adding iptables hackery for docker-machine..."
 
@@ -195,7 +197,9 @@ create_kube_system_namespace() {
 create_kube_dns() {
   [[ "${ENABLE_CLUSTER_DNS}" = true ]] || return
 
-  local start_time=$(date +%s)
+  local started_at
+  local finished_at
+  started_at=$(date +%s)
 
   echo "Setting up cluster dns..."
 
@@ -209,8 +213,8 @@ create_kube_dns() {
     sleep $(( attempt++ ))
   done
   echo
-  local end_time=$(date +%s)
-  echo "Started DNS in $((end_time - start_time)) seconds."
+  finished_at=$(date +%s)
+  echo "Started DNS in $((finished_at - started_at)) seconds."
 }
 
 # Generate kubeconfig data for the created cluster.
@@ -245,22 +249,15 @@ download_kubectl() {
 }
 
 # Clean volumes that are left by kubelet
-#
-# https://github.com/kubernetes/kubernetes/issues/23197
-# code stolen from https://github.com/huggsboson/docker-compose-kubernetes/blob/SwitchToSharedMount/kube-up.sh
 clean_volumes() {
+  echo "Cleaning up volumes"
+
   if [[ -n "${DOCKER_MACHINE_NAME:-}" ]]; then
-    docker-machine ssh "${DOCKER_MACHINE_NAME}" "mount | grep -o 'on /var/lib/kubelet.* type' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount"
-    docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo rm -Rf /var/lib/kubelet"
-    docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo mkdir -p /var/lib/kubelet"
-    docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo mount --bind /var/lib/kubelet /var/lib/kubelet"
-    docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo mount --make-shared /var/lib/kubelet"
+    docker-machine ssh "${DOCKER_MACHINE_NAME}" "mount | grep -o 'on /var/lib/kubelet' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount"
+    docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo rm -rf /var/lib/kubelet"
   else
-    mount | grep -o 'on /var/lib/kubelet.* type' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount
-    sudo rm -Rf /var/lib/kubelet
-    sudo mkdir -p /var/lib/kubelet
-    sudo mount --bind /var/lib/kubelet /var/lib/kubelet
-    sudo mount --make-shared /var/lib/kubelet
+    mount | grep -o 'on /var/lib/kubelet' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount
+    sudo rm -rf /var/lib/kubelet
   fi
 }
 
