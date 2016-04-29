@@ -1,11 +1,11 @@
 package helm
 
 const (
-	errNotImplemented = Error("helm api not implemented")
-	errMissingSrvAddr = Error("missing tiller address")
-	errMissingTpls    = Error("missing chart templates")
-	errMissingChart   = Error("missing chart metadata")
-	errMissingValues  = Error("missing chart values")
+	ErrNotImplemented = Error("helm api not implemented")
+	ErrInvalidSrvAddr = Error("invalid tiller address")
+	ErrMissingTpls    = Error("missing chart templates")
+	ErrMissingChart   = Error("missing chart metadata")
+	ErrMissingValues  = Error("missing chart values")
 )
 
 // Error represents a Helm client error.
