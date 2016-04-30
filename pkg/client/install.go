@@ -78,7 +78,7 @@ spec:
     spec:
       containers:
       - env: []
-        image: {{default "gcr.io/deis-sandbox/tiller:canary" .Tiller.Image}}
+        image: {{default "gcr.io/kubernetes-helm/tiller:canary" .Tiller.Image}}
         name: tiller
         ports:
         - containerPort: 8080

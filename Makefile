@@ -1,5 +1,5 @@
 DOCKER_REGISTRY ?= gcr.io
-IMAGE_PREFIX    ?= deis-sandbox
+IMAGE_PREFIX    ?= kubernetes-helm
 SHORT_NAME      ?= tiller
 
 # go option
