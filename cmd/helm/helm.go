@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -43,4 +45,15 @@ func init() {
 
 func main() {
 	RootCommand.Execute()
+}
+
+func checkArgsLength(expectedNum, actualNum int, requiredArgs ...string) error {
+	if actualNum != expectedNum {
+		arg := "arguments"
+		if expectedNum == 1 {
+			arg = "argument"
+		}
+		return fmt.Errorf("This command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
+	}
+	return nil
 }

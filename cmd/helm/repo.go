@@ -34,8 +34,8 @@ var repoListCmd = &cobra.Command{
 }
 
 func runRepoAdd(cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
-		return fmt.Errorf("This command needs two argument, a name for the chart repository and the url of the chart repository")
+	if err := checkArgsLength(2, len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
+		return err
 	}
 
 	err := insertRepoLine(args[0], args[1])
