@@ -2,6 +2,7 @@ package chart
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"strings"
 
@@ -38,6 +39,10 @@ func (v Values) Table(name string) (Values, error) {
 		}
 	}
 	return table, err
+}
+
+func (v Values) Encode(w io.Writer) error {
+	return toml.NewEncoder(w).Encode(v)
 }
 
 func tableLookup(v Values, simple string) (Values, error) {

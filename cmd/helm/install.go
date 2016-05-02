@@ -3,22 +3,32 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
-	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/helm"
+	"github.com/kubernetes/helm/pkg/proto/hapi/release"
 )
 
 const installDesc = `
 This command installs a chart archive.
+
+The install argument must be either a relative
+path to a chart directory or the name of a
+chart in the current working directory.
 `
 
-func init() {
-	RootCommand.Flags()
-	RootCommand.AddCommand(installCmd)
-}
+const (
+	hostEnvVar  = "TILLER_HOST"
+	defaultHost = ":44134"
+)
+
+// install flags & args
+var (
+	installArg string // name or relative path of the chart to install
+	tillerHost string // override TILLER_HOST envVar
+	verbose    bool   // enable verbose install
+)
 
 var installCmd = &cobra.Command{
 	Use:   "install [CHART]",
@@ -28,38 +38,59 @@ var installCmd = &cobra.Command{
 }
 
 func runInstall(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("This command needs at least one argument, the name of the chart.")
-	}
+	setupInstallEnv(args)
 
-	ch, err := loadChart(args[0])
+	res, err := helm.InstallRelease(installArg)
 	if err != nil {
 		return err
 	}
 
-	res, err := helm.InstallRelease(ch)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("release.name:   %s\n", res.Release.Name)
-	fmt.Printf("release.chart:  %s\n", res.Release.Chart.Metadata.Name)
-	fmt.Printf("release.status: %s\n", res.Release.Info.Status.Code)
+	printRelease(res.GetRelease())
 
 	return nil
 }
 
-func loadChart(path string) (*chart.Chart, error) {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
+// TODO -- Display formatted description of install release status / info.
+// 		   Might be friendly to wrap our proto model with pretty-printers.
+//
+func printRelease(rel *release.Release) {
+	if verbose {
+		if rel != nil {
+			fmt.Printf("release.name:   %s\n", rel.Name)
+			fmt.Printf("release.info:   %s\n", rel.GetInfo())
+			fmt.Printf("release.chart:  %s\n", rel.GetChart())
+		}
+	}
+}
+
+func setupInstallEnv(args []string) {
+	if len(args) > 0 {
+		installArg = args[0]
+	} else {
+		fatalf("This command needs at least one argument, the name of the chart.")
 	}
 
-	if fi, err := os.Stat(path); err != nil {
-		return nil, err
-	} else if fi.IsDir() {
-		return chart.LoadDir(path)
+	// note: TILLER_HOST envvar is only
+	// acknowledged iff the host flag
+	// does not override the default.
+	if tillerHost == defaultHost {
+		host := os.Getenv(hostEnvVar)
+		if host != "" {
+			tillerHost = host
+		}
 	}
 
-	return chart.Load(path)
+	helm.Config.ServAddr = tillerHost
+}
+
+func fatalf(format string, args ...interface{}) {
+	fmt.Printf("fatal: %s\n", fmt.Sprintf(format, args...))
+	os.Exit(0)
+}
+
+func init() {
+	installCmd.Flags().StringVar(&tillerHost, "host", defaultHost, "address of tiller server")
+	installCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose install")
+
+	RootCommand.AddCommand(installCmd)
 }
