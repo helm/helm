@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/kubernetes/helm/pkg/client"
@@ -16,8 +15,7 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 `
 
 var (
-	tillerImg   string
-	defaultRepo = map[string]string{"default-name": "default-url"}
+	tillerImg string
 )
 
 func init() {
@@ -83,7 +81,10 @@ func ensureHome() error {
 	repoFile := repositoriesFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Printf("Creating %s \n", repoFile)
-		if err := ioutil.WriteFile(repoFile, []byte("local: localhost:8879/charts\n"), 0644); err != nil {
+		if _, err := os.Create(repoFile); err != nil {
+			return err
+		}
+		if err := insertRepoLine("local", "localhost:8879/charts"); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
