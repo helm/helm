@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"io/ioutil"
 
 	"github.com/gosuri/uitable"
 	"github.com/kubernetes/helm/pkg/repo"
@@ -13,6 +13,7 @@ import (
 func init() {
 	repoCmd.AddCommand(repoAddCmd)
 	repoCmd.AddCommand(repoListCmd)
+	repoCmd.AddCommand(repoRemoveCmd)
 	RootCommand.AddCommand(repoCmd)
 }
 
@@ -33,9 +34,15 @@ var repoListCmd = &cobra.Command{
 	RunE:  runRepoList,
 }
 
+var repoRemoveCmd = &cobra.Command{
+	Use:   "remove [flags] [NAME]",
+	Short: "remove a chart repository",
+	RunE:  runRepoRemove,
+}
+
 func runRepoAdd(cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
-		return fmt.Errorf("This command needs two argument, a name for the chart repository and the url of the chart repository")
+	if err := checkArgsLength(2, len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
+		return err
 	}
 
 	err := insertRepoLine(args[0], args[1])
@@ -65,35 +72,60 @@ func runRepoList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func insertRepoLine(name, url string) error {
-	err := checkUniqueName(name)
+func runRepoRemove(cmd *cobra.Command, args []string) error {
+	if err := checkArgsLength(1, len(args), "name of chart repository"); err != nil {
+		return err
+	}
+	if err := removeRepoLine(args[0]); err != nil {
+		return err
+	}
+	return nil
+}
+
+func removeRepoLine(name string) error {
+	r, err := repo.LoadRepositoriesFile(repositoriesFile())
 	if err != nil {
 		return err
 	}
 
-	b, _ := yaml.Marshal(map[string]string{name: url})
-	f, err := os.OpenFile(repositoriesFile(), os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.Write(b)
-	if err != nil {
-		return err
+	_, ok := r.Repositories[name]
+	if ok {
+		delete(r.Repositories, name)
+		b, err := yaml.Marshal(&r.Repositories)
+		if err != nil {
+			return err
+		}
+		if err := ioutil.WriteFile(repositoriesFile(), b, 0666); err != nil {
+			return err
+		}
+
+	} else {
+		return fmt.Errorf("The repository, %s, does not exist in your repositories list", name)
 	}
 
 	return nil
 }
 
-func checkUniqueName(name string) error {
-	file, err := repo.LoadRepositoriesFile(repositoriesFile())
+func insertRepoLine(name, url string) error {
+	f, err := repo.LoadRepositoriesFile(repositoriesFile())
 	if err != nil {
 		return err
 	}
-
-	_, ok := file.Repositories[name]
+	_, ok := f.Repositories[name]
 	if ok {
 		return fmt.Errorf("The repository name you provided (%s) already exists. Please specifiy a different name.", name)
 	}
+
+	if f.Repositories == nil {
+		f.Repositories = make(map[string]string)
+	}
+
+	f.Repositories[name] = url
+
+	b, _ := yaml.Marshal(&f.Repositories)
+	if err := ioutil.WriteFile(repositoriesFile(), b, 0666); err != nil {
+		return err
+	}
+
 	return nil
 }
