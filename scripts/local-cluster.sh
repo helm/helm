@@ -298,8 +298,8 @@ kube_up() {
     setup_firewall
   fi
 
-  start_kubernetes
   generate_kubeconfig
+  start_kubernetes
   create_kube_system_namespace
   create_kube_dns
 
