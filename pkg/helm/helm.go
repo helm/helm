@@ -13,8 +13,20 @@ var Config = &config{
 }
 
 // ListReleases lists the current releases.
-func ListReleases(limit, offset int) (<-chan *services.ListReleasesResponse, error) {
-	return nil, ErrNotImplemented
+func ListReleases(limit, offset int) (*services.ListReleasesResponse, error) {
+	c := Config.client()
+	if err := c.dial(); err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	req := &services.ListReleasesRequest{}
+	cli, err := c.impl.ListReleases(context.TODO(), req, c.cfg.CallOpts()...)
+	if err != nil {
+		return nil, err
+	}
+
+	return cli.Recv()
 }
 
 // GetReleaseStatus returns the given release's status.

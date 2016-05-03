@@ -34,7 +34,21 @@ var (
 )
 
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
-	return errNotImplemented
+	rels, err := s.env.Releases.List()
+	if err != nil {
+		return err
+	}
+
+	l := int64(len(rels))
+
+	res := &services.ListReleasesResponse{
+		Offset:   0,
+		Count:    l,
+		Total:    l,
+		Releases: rels,
+	}
+	stream.Send(res)
+	return nil
 }
 
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
