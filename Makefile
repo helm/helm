@@ -12,18 +12,16 @@ TESTS     := .
 TESTFLAGS :=
 LDFLAGS   :=
 GOFLAGS   :=
-BINDIR    := ./bin
+BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
 
 .PHONY: all
 all: build
 
 .PHONY: build
-build: GOFLAGS += -i
+docker-binary: GOFLAGS += -i
 build:
-	@for i in $(BINARIES); do \
-		CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build -o $(BINDIR)/$$i $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/$$i || exit 1; \
-	done
+	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' github.com/kubernetes/helm/cmd/...
 
 .PHONY: check-docker
 check-docker:
@@ -35,7 +33,7 @@ check-docker:
 .PHONY: docker-binary
 docker-binary: GOOS = linux
 docker-binary: GOARCH = amd64
-docker-binary: BINDIR = ./rootfs
+docker-binary: BINDIR = $(CURDIR)/rootfs
 docker-binary: GOFLAGS += -a -installsuffix cgo
 docker-binary: build
 
