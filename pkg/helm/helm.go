@@ -20,7 +20,10 @@ func ListReleases(limit, offset int) (*services.ListReleasesResponse, error) {
 	}
 	defer c.Close()
 
-	req := &services.ListReleasesRequest{}
+	req := &services.ListReleasesRequest{
+		Limit:  int64(limit),
+		Offset: int64(offset),
+	}
 	cli, err := c.impl.ListReleases(context.TODO(), req, c.cfg.CallOpts()...)
 	if err != nil {
 		return nil, err
