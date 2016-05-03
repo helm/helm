@@ -9,7 +9,17 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
-const includeThirdPartyAPIs = false
+// Client represents a client capable of communicating with the Kubernetes API.
+type Client struct {
+	config clientcmd.ClientConfig
+}
+
+// New create a new Client
+func New(config clientcmd.ClientConfig) *Client {
+	return &Client{
+		config: config,
+	}
+}
 
 // ResourceActorFunc performs an action on a signle resource.
 type ResourceActorFunc func(*resource.Info) error
@@ -17,11 +27,12 @@ type ResourceActorFunc func(*resource.Info) error
 // Create creates kubernetes resources from an io.reader
 //
 // Namespace will set the namespace
-// Config allows for overiding values from kubectl
-func Create(namespace string, reader io.Reader, config clientcmd.ClientConfig) error {
-	f := cmdutil.NewFactory(config)
+func (c *Client) Create(namespace string, reader io.Reader) error {
+	f := cmdutil.NewFactory(c.config)
 	return perform(f, namespace, reader, createResource)
 }
+
+const includeThirdPartyAPIs = false
 
 func perform(f *cmdutil.Factory, namespace string, reader io.Reader, fn ResourceActorFunc) error {
 	r := f.NewBuilder(includeThirdPartyAPIs).
