@@ -19,7 +19,6 @@ BINARIES  := helm tiller
 all: build
 
 .PHONY: build
-docker-binary: GOFLAGS += -i
 build:
 	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' github.com/kubernetes/helm/cmd/...
 
