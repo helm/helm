@@ -43,7 +43,7 @@ func (i *Installer) Install() error {
 		return err
 	}
 
-	return kube.Create("helm", &b, nil)
+	return kube.New(nil).Create("helm", &b)
 }
 
 // InstallYAML is the installation YAML for DM.
