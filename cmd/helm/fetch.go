@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
 )
@@ -39,27 +40,22 @@ func fetch(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Grab the package name that we'll use for the name of the file to download to.
-	p := strings.Split(u.String(), "/")
-	chartName := p[len(p)-1]
-	out, err := os.Create(chartName)
+	resp, err := http.Get(u.String())
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	resp, err := http.Get(u)
-	// unpack file
-	if err != nil {
-		return err
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Failed to fetch %s : %s", u.String(), resp.Status)
 	}
 
 	defer resp.Body.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
+	// TODO(vaikas): Implement untar / flag
+	untar := false
+	if untar {
+		return untarChart(resp.Body)
 	}
-	return nil
+	p := strings.Split(u.String(), "/")
+	return saveChartFile(p[len(p)-1], resp.Body)
 }
 
 // mapRepoArg figures out which format the argument is given, and creates a fetchable
@@ -71,22 +67,46 @@ func mapRepoArg(arg string, r map[string]string) (*url.URL, error) {
 		// If it has a scheme and host and path, it's a full URL
 		if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
 			return u, nil
-		} else {
-			return nil, fmt.Errorf("Invalid chart url format: %s", arg)
 		}
+		return nil, fmt.Errorf("Invalid chart url format: %s", arg)
 	}
 	// See if it's of the form: repo/path_to_chart
 	p := strings.Split(arg, "/")
 	if len(p) > 1 {
-		if baseUrl, ok := r[p[0]]; ok {
-			if !strings.HasSuffix(baseUrl, "/") {
-				baseUrl = baseUrl + "/"
+		if baseURL, ok := r[p[0]]; ok {
+			if !strings.HasSuffix(baseURL, "/") {
+				baseURL = baseURL + "/"
 			}
-			return url.ParseRequestURI(baseUrl + strings.Join(p[1:], "/"))
-		} else {
-			return nil, fmt.Errorf("No such repo: %s", p[0])
+			return url.ParseRequestURI(baseURL + strings.Join(p[1:], "/"))
 		}
-	} else {
-		return nil, fmt.Errorf("Invalid chart url format: %s", arg)
+		return nil, fmt.Errorf("No such repo: %s", p[0])
 	}
+	return nil, fmt.Errorf("Invalid chart url format: %s", arg)
+}
+
+func untarChart(r io.Reader) error {
+	c, err := chart.LoadDataFromReader(r)
+	if err != nil {
+		return err
+	}
+	if c == nil {
+		fmt.Errorf("Failed to untar the chart")
+	}
+	return fmt.Errorf("Not implemented yeet")
+
+}
+
+func saveChartFile(c string, r io.Reader) error {
+	// Grab the chart name that we'll use for the name of the file to download to.
+	out, err := os.Create(c)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, r)
+	if err != nil {
+		return err
+	}
+	return nil
 }
