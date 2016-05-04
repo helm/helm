@@ -54,12 +54,13 @@ func runInstall(cmd *cobra.Command, args []string) error {
 // 		   Might be friendly to wrap our proto model with pretty-printers.
 //
 func printRelease(rel *release.Release) {
+	if rel == nil {
+		return
+	}
+	fmt.Printf("release.name:   %s\n", rel.Name)
 	if verbose {
-		if rel != nil {
-			fmt.Printf("release.name:   %s\n", rel.Name)
-			fmt.Printf("release.info:   %s\n", rel.GetInfo())
-			fmt.Printf("release.chart:  %s\n", rel.GetChart())
-		}
+		fmt.Printf("release.info:   %s\n", rel.GetInfo())
+		fmt.Printf("release.chart:  %s\n", rel.GetChart())
 	}
 }
 

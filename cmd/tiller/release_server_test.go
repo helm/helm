@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/kubernetes/helm/pkg/storage"
 	"github.com/kubernetes/helm/pkg/timeconv"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 func rsFixture() *releaseServer {
@@ -193,8 +195,44 @@ func TestGetReleaseStatus(t *testing.T) {
 	}
 }
 
+func TestListReleases(t *testing.T) {
+	rs := rsFixture()
+	num := 7
+	for i := 0; i < num; i++ {
+		rel := releaseMock()
+		rel.Name = fmt.Sprintf("rel-%d", i)
+		if err := rs.env.Releases.Create(rel); err != nil {
+			t.Fatalf("Could not store mock release: %s", err)
+		}
+	}
+
+	mrs := &mockListServer{}
+	if err := rs.ListReleases(&services.ListReleasesRequest{Offset: 0, Limit: 64}, mrs); err != nil {
+		t.Fatalf("Failed listing: %s", err)
+	}
+
+	if len(mrs.val.Releases) != num {
+		t.Errorf("Expected %d releases, got %d", num, len(mrs.val.Releases))
+	}
+}
+
 func mockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.NewMemory()
 	return e
 }
+
+type mockListServer struct {
+	val *services.ListReleasesResponse
+}
+
+func (l *mockListServer) Send(res *services.ListReleasesResponse) error {
+	l.val = res
+	return nil
+}
+
+func (l *mockListServer) Context() context.Context       { return context.TODO() }
+func (l *mockListServer) SendMsg(v interface{}) error    { return nil }
+func (l *mockListServer) RecvMsg(v interface{}) error    { return nil }
+func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
+func (l *mockListServer) SetTrailer(m metadata.MD)       {}

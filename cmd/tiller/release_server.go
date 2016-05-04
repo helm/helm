@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/kubernetes/helm/cmd/tiller/environment"
@@ -33,8 +34,43 @@ var (
 	errMissingRelease = errors.New("no release provided")
 )
 
+// ListDefaultLimit is the default limit for number of items returned in a list.
+var ListDefaultLimit int64 = 512
+
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
-	return errNotImplemented
+	rels, err := s.env.Releases.List()
+	if err != nil {
+		return err
+	}
+
+	total := int64(len(rels))
+
+	l := int64(len(rels))
+	if req.Offset > 0 {
+		if req.Offset >= l {
+			return fmt.Errorf("offset %d is outside of range %d", req.Offset, l)
+		}
+		rels = rels[req.Offset:]
+		l = int64(len(rels))
+	}
+
+	if req.Limit == 0 {
+		req.Limit = ListDefaultLimit
+	}
+
+	if l > req.Limit {
+		rels = rels[0:req.Limit]
+		l = int64(len(rels))
+	}
+
+	res := &services.ListReleasesResponse{
+		Offset:   0,
+		Count:    l,
+		Total:    total,
+		Releases: rels,
+	}
+	stream.Send(res)
+	return nil
 }
 
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
