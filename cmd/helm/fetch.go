@@ -105,8 +105,5 @@ func saveChartFile(c string, r io.Reader) error {
 	defer out.Close()
 
 	_, err = io.Copy(out, r)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
