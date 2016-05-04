@@ -90,9 +90,9 @@ func untarChart(r io.Reader) error {
 		return err
 	}
 	if c == nil {
-		fmt.Errorf("Failed to untar the chart")
+		return fmt.Errorf("Failed to untar the chart")
 	}
-	return fmt.Errorf("Not implemented yeet")
+	return fmt.Errorf("Not implemented yee")
 
 }
 
