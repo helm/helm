@@ -1,9 +1,13 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{default "alpine" .name}}
+  name: {{.Release.Name}}-{{.Chart.Name}}
   labels:
-    heritage: helm
+    heritage: {{.Release.Service}}
+    chartName: {{.Chart.Name}}
+    chartVersion: {{.Chart.Version}}
+  annotations:
+    "helm.sh/created": {{.Release.Time.Seconds}}
 spec:
   restartPolicy: {{default "Never" .restart_policy}}
   containers:

@@ -1,7 +1,16 @@
+/*Package environment describes the operating environment for Tiller.
+
+Tiller's environment encapsulates all of the service dependencies Tiller has.
+These dependencies are expressed as interfaces so that alternate implementations
+(mocks, etc.) can be easily generated.
+*/
 package environment
 
 import (
+	"io"
+
 	"github.com/kubernetes/helm/pkg/engine"
+	"github.com/kubernetes/helm/pkg/kube"
 	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
 	"github.com/kubernetes/helm/pkg/proto/hapi/release"
 	"github.com/kubernetes/helm/pkg/storage"
@@ -9,6 +18,9 @@ import (
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"
+
+// DefaultNamespace is the default namespace for Tiller.
+const DefaultNamespace = "helm"
 
 // DefaultEngine points to the engine that the EngineYard should treat as the
 // default. A chart that does not specify an engine may be run through the
@@ -52,7 +64,11 @@ func (y EngineYard) Default() Engine {
 // An Engine must be capable of executing multiple concurrent requests, but
 // without tainting one request's environment with data from another request.
 type Engine interface {
-	Render(*chart.Chart, *chart.Config) (map[string]string, error)
+	// Render renders a chart.
+	//
+	// It receives a chart, a config, and a map of overrides to the config.
+	// Overrides are assumed to be passed from the system, not the user.
+	Render(*chart.Chart, *chart.Config, map[string]interface{}) (map[string]string, error)
 }
 
 // ReleaseStorage represents a storage engine for a Release.
@@ -106,19 +122,37 @@ type ReleaseStorage interface {
 //
 // A KubeClient must be concurrency safe.
 type KubeClient interface {
-	// Install takes a map where the key is a "file name" (read: unique relational
-	// id) and the value is a Kubernetes manifest containing one or more resource
-	// definitions.
+	// Create creates one or more resources.
 	//
-	// TODO: Can these be in YAML or JSON, or must they be in one particular
-	// format?
-	Install(manifests map[string]string) error
+	// namespace must contain a valid existing namespace.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n").
+	//
+	// config is optional. If nil, the client will use its existing configuration.
+	// If set, the client will override its default configuration with the
+	// passed in one.
+	Create(namespace string, reader io.Reader) error
+}
+
+// PrintingKubeClient implements KubeClient, but simply prints the reader to
+// the given output.
+type PrintingKubeClient struct {
+	Out io.Writer
+}
+
+// Create prints the values of what would be created with a real KubeClient.
+func (p *PrintingKubeClient) Create(ns string, r io.Reader) error {
+	_, err := io.Copy(p.Out, r)
+	return err
 }
 
 // Environment provides the context for executing a client request.
 //
 // All services in a context are concurrency safe.
 type Environment struct {
+	// The default namespace
+	Namespace string
 	// EngineYard provides access to the known template engines.
 	EngineYard EngineYard
 	// Releases stores records of releases.
@@ -136,7 +170,9 @@ func New() *Environment {
 		GoTplEngine: e,
 	}
 	return &Environment{
+		Namespace:  DefaultNamespace,
 		EngineYard: ey,
 		Releases:   storage.NewMemory(),
+		KubeClient: kube.New(nil), //&PrintingKubeClient{Out: os.Stdout},
 	}
 }

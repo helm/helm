@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -219,6 +220,7 @@ func TestListReleases(t *testing.T) {
 func mockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.NewMemory()
+	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
 	return e
 }
 

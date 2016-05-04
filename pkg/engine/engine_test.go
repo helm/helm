@@ -22,7 +22,38 @@ func TestEngine(t *testing.T) {
 }
 
 func TestRender(t *testing.T) {
-	t.Skip()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.Template{
+			{Name: "test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
+		},
+		Values: &chart.Config{
+			Raw: `outer = "DEFAULT"\ninner= "DEFAULT"\n`,
+		},
+	}
+
+	vals := &chart.Config{
+		Raw: `outer = "BAD"
+		inner= "inn"`,
+	}
+
+	overrides := map[string]interface{}{
+		"outer": "spouter",
+	}
+
+	e := New()
+	out, err := e.Render(c, vals, overrides)
+	if err != nil {
+		t.Errorf("Failed to render templates: %s", err)
+	}
+
+	expect := "Spouter Inn"
+	if out["test1"] != expect {
+		t.Errorf("Expected %q, got %q", expect, out["test1"])
+	}
 }
 
 func TestRenderInternals(t *testing.T) {
@@ -129,7 +160,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	}
 
-	out, err := e.Render(ch, nil)
+	out, err := e.Render(ch, nil, map[string]interface{}{})
 
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
@@ -190,7 +221,7 @@ func TestRenderNestedValues(t *testing.T) {
 		what = "flower"`,
 	}
 
-	out, err := e.Render(outer, &inject)
+	out, err := e.Render(outer, &inject, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}

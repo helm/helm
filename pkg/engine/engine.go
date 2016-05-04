@@ -59,7 +59,7 @@ func New() *Engine {
 //	- Scalar values and arrays are replaced, maps are merged
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
-func (e *Engine) Render(chrt *chart.Chart, vals *chart.Config) (map[string]string, error) {
+func (e *Engine) Render(chrt *chart.Chart, vals *chart.Config, overrides map[string]interface{}) (map[string]string, error) {
 	var cvals chartutil.Values
 
 	// Parse values if not nil. We merge these at the top level because
@@ -68,6 +68,12 @@ func (e *Engine) Render(chrt *chart.Chart, vals *chart.Config) (map[string]strin
 		evals, err := chartutil.ReadValues([]byte(vals.Raw))
 		if err != nil {
 			return map[string]string{}, err
+		}
+		// Override the top-level values. Overrides are NEVER merged deeply.
+		// The assumption is that an override is intended to set an explicit
+		// and exact value.
+		for k, v := range overrides {
+			evals[k] = v
 		}
 		cvals = coalesceValues(chrt, evals)
 	}
