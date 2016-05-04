@@ -84,7 +84,7 @@ func ensureHome() error {
 		if _, err := os.Create(repoFile); err != nil {
 			return err
 		}
-		if err := insertRepoLine("local", "localhost:8879/charts"); err != nil {
+		if err := insertRepoLine("local", "http://localhost:8879/charts"); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
