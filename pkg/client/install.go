@@ -85,4 +85,20 @@ spec:
           name: tiller
         imagePullPolicy: Always
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: helm
+    name: tiller
+  name: tiller-svc
+  namespace: helm
+spec:
+  selector:
+    app: helm
+    name: tiller
+  ports:
+    - protocol: TCP
+      port: 44134
+      targetPort: 44134
 `
