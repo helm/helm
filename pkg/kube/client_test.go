@@ -65,6 +65,17 @@ func TestPerform(t *testing.T) {
 	}
 }
 
+func TestReal(t *testing.T) {
+	t.Skip("This is a live test, comment this line to run")
+	if err := New(nil).Create("test", strings.NewReader(guestbookManifest)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := New(nil).Delete("test", strings.NewReader(guestbookManifest)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 const guestbookManifest = `
 apiVersion: v1
 kind: Service
