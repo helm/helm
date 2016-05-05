@@ -55,6 +55,13 @@ test-unit:
 test-style:
 	@scripts/validate-go.sh
 
+.PHONY: test-e2e
+test-e2e: TESTFLAGS += -v -tags=e2e
+test-e2e: PKG = ./test/e2e
+test-e2e:
+	@scripts/local-cluster.sh up
+	$(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+
 .PHONY: clean
 clean:
 	@rm -rf $(BINDIR)
