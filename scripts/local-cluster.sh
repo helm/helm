@@ -78,8 +78,12 @@ verify_prereqs() {
 
   command_exists docker || error_exit "You need docker"
 
-  if ! docker info > /dev/null 2>&1 ; then
+  if ! docker info >/dev/null 2>&1 ; then
     error_exit "Can't connect to 'docker' daemon."
+  fi
+
+  if docker inspect kubelet >/dev/null 2>&1 ; then
+    error_exit "Kubernetes is already running"
   fi
 
   $KUBECTL version --client >/dev/null || download_kubectl
@@ -99,7 +103,7 @@ get_latest_version_number() {
 
 # Detect ip address od docker host
 detect_docker_host_ip() {
-  if [ -n "${DOCKER_HOST:-}" ]; then
+  if [[ -n "${DOCKER_HOST:-}" ]]; then
     awk -F'[/:]' '{print $4}' <<< "$DOCKER_HOST"
   else
     ifconfig docker0 \
