@@ -165,27 +165,33 @@ start_kubernetes() {
       /hyperkube kubelet \
         --containerized \
         --hostname-override="127.0.0.1" \
-        --api-servers=http://localhost:8080 \
+        --api-servers=http://localhost:${KUBE_PORT} \
         --config=/etc/kubernetes/manifests \
         --allow-privileged=true \
         ${dns_args} \
         --v=${LOG_LEVEL} >/dev/null
 
+  until $KUBECTL cluster-info &> /dev/null; do
+    sleep 1
+  done
+
+  # Create kube-system namespace in kubernetes
+  $KUBECTL create namespace kube-system >/dev/null
+
   # We expect to have at least 3 running pods - etcd, master and kube-proxy.
   local attempt=1
-  while (($($KUBECTL get pods --no-headers 2>/dev/null | grep -c "Running") < 3)); do
+  while (($(KUBECTL get pods --all-namespaces --no-headers 2>/dev/null | grep -c "Running") < 3)); do
     echo -n "."
     sleep $(( attempt++ ))
   done
   echo
 
-  local end_time=$(date +%s)
-  echo "Started master components in $((end_time - start_time)) seconds."
+  echo "Started master components in $(($(date +%s) - start_time)) seconds."
 }
 
 # Open kubernetes master api port.
 setup_firewall() {
-  [[ -n "${DOCKER_MACHINE_NAME}" ]] || return
+  [[ -n "${DOCKER_MACHINE_NAME:-}" ]] || return
 
   echo "Adding iptables hackery for docker-machine..."
 
@@ -196,13 +202,6 @@ setup_firewall() {
   if ! docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo /usr/local/sbin/iptables -t nat -C ${iptables_rule}" &> /dev/null; then
     docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo /usr/local/sbin/iptables -t nat -I ${iptables_rule}"
   fi
-}
-
-# Create kube-system namespace in kubernetes
-create_kube_system_namespace() {
-  echo "Creating kube-system namespace..."
-
-  $KUBECTL create -f ./scripts/cluster/kube-system.yaml >/dev/null
 }
 
 # Activate skydns in kubernetes and wait for pods to be ready.
@@ -223,8 +222,7 @@ create_kube_dns() {
     sleep $(( attempt++ ))
   done
   echo
-  local end_time=$(date +%s)
-  echo "Started DNS in $((end_time - start_time)) seconds."
+  echo "Started DNS in $(($(date +%s) - start_time)) seconds."
 }
 
 # Generate kubeconfig data for the created cluster.
@@ -307,9 +305,8 @@ kube_up() {
   clean_volumes
   setup_firewall
 
-  start_kubernetes
   generate_kubeconfig
-  create_kube_system_namespace
+  start_kubernetes
   create_kube_dns
 
   $KUBECTL cluster-info
