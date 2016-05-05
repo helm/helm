@@ -30,6 +30,18 @@ command_exists() {
   hash "${1}" 2>/dev/null
 }
 
+# fetch url using wget or curl and print to stdout
+fetch_url() {
+  local url="$1"
+  if command_exists wget; then
+    curl -sSL "$url"
+  elif command_exists curl; then
+    wget -qO- "$url"
+  else
+    error_exit "Couldn't find curl or wget.  Bailing out."
+  fi
+}
+
 # Program Functions ------------------------------------------------------------
 
 # Check host platform and docker host
@@ -91,14 +103,12 @@ verify_prereqs() {
 
 # Get the latest stable release tag
 get_latest_version_number() {
-  local -r latest_url="https://storage.googleapis.com/kubernetes-release/release/stable.txt"
-  if command_exists wget ; then
-    wget -qO- ${latest_url}
-  elif command_exists curl ; then
-    curl -Ss ${latest_url}
-  else
-    error_exit "Couldn't find curl or wget.  Bailing out."
+  local channel="stable"
+  if [[ -n "${ALPHA:-}" ]]; then
+    channel="latest"
   fi
+  local latest_url="https://storage.googleapis.com/kubernetes-release/release/${channel}.txt"
+  fetch_url "$latest_url"
 }
 
 # Detect ip address od docker host
@@ -235,17 +245,13 @@ generate_kubeconfig() {
 download_kubectl() {
   echo "Downloading kubectl binary..."
 
-  kubectl_url="https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/${host_os}/${host_arch}/kubectl"
-  if command_exists wget; then
-    wget -O ./bin/kubectl "${kubectl_url}"
-  elif command_exists curl; then
-    curl -sSOL ./bin/kubectl "${kubectl_url}"
-  else
-    error_exit "Couldn't find curl or wget.  Bailing out."
-  fi
-  chmod a+x ./bin/kubectl
+  local output="/usr/local/bin/kubectl"
 
-  KUBECTL=./bin/kubectl
+  kubectl_url="https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/${host_os}/${host_arch}/kubectl"
+  fetch_url "${kubectl_url}" > "${output}"
+  chmod a+x "${output}"
+
+  KUBECTL="${output}"
 }
 
 # Clean volumes that are left by kubelet
