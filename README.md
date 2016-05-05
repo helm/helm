@@ -37,10 +37,10 @@ Make sure you have the prerequisites:
 - Go 1.6
 - A running Kubernetes cluster
 - `kubectl` properly configured to talk to your cluster
-- Glide 0.10 or greater
+- [Glide](https://glide.sh/) 0.10 or greater
 
 1. Clone (or otherwise download) this repository
-2. Run `make boostrap build`
+2. Run `make bootstrap build`
 
 You will now have two binaries built:
 
