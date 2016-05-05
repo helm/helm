@@ -9,6 +9,7 @@ import (
 	"github.com/kubernetes/helm/cmd/tiller/environment"
 	"github.com/kubernetes/helm/pkg/proto/hapi/release"
 	"github.com/kubernetes/helm/pkg/proto/hapi/services"
+	"github.com/kubernetes/helm/pkg/storage"
 	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
@@ -99,19 +100,44 @@ func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	return nil, errNotImplemented
 }
 
+func (s *releaseServer) uniqName() (string, error) {
+	maxTries := 5
+	for i := 0; i < maxTries; i++ {
+		namer := moniker.New()
+		name := namer.NameSep("-")
+		if _, err := s.env.Releases.Read(name); err == storage.ErrNotFound {
+			return name, nil
+		}
+		log.Printf("info: Name %q is taken. Searching again.", name)
+	}
+	log.Printf("warning: No available release names found after %d tries", maxTries)
+	return "ERROR", errors.New("no available release name found")
+}
+
 func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	if req.Chart == nil {
 		return nil, errMissingChart
 	}
 
-	// We should probably make a name generator part of the Environment.
-	namer := moniker.New()
-	// TODO: Make sure this is unique.
-	name := namer.NameSep("-")
 	ts := timeconv.Now()
+	name, err := s.uniqName()
+	if err != nil {
+		return nil, err
+	}
+
+	overrides := map[string]interface{}{
+		"Release": map[string]interface{}{
+			"Name":      name,
+			"Time":      ts,
+			"Namespace": s.env.Namespace,
+			"Service":   "Tiller",
+		},
+		"Chart": req.Chart.Metadata,
+	}
 
 	// Render the templates
-	files, err := s.env.EngineYard.Default().Render(req.Chart, req.Values)
+	// TODO: Fix based on whether chart has `engine: SOMETHING` set.
+	files, err := s.env.EngineYard.Default().Render(req.Chart, req.Values, overrides)
 	if err != nil {
 		return nil, err
 	}
@@ -139,16 +165,30 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		Manifest: b.String(),
 	}
 
+	res := &services.InstallReleaseResponse{Release: r}
+
 	if req.DryRun {
 		log.Printf("Dry run for %s", name)
-		return &services.InstallReleaseResponse{Release: r}, nil
+		return res, nil
 	}
 
+	if err := s.env.KubeClient.Create(s.env.Namespace, b); err != nil {
+		r.Info.Status.Code = release.Status_FAILED
+		log.Printf("warning: Release %q failed: %s", name, err)
+		return res, fmt.Errorf("release %s failed: %s", name, err)
+	}
+
+	// This is a tricky case. The release has been created, but the result
+	// cannot be recorded. The truest thing to tell the user is that the
+	// release was created. However, the user will not be able to do anything
+	// further with this release.
+	//
+	// One possible strategy would be to do a timed retry to see if we can get
+	// this stored in the future.
 	if err := s.env.Releases.Create(r); err != nil {
-		return nil, err
+		log.Printf("warning: Failed to record release %q: %s", name, err)
 	}
-
-	return &services.InstallReleaseResponse{Release: r}, nil
+	return res, nil
 }
 
 func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {

@@ -1,6 +1,8 @@
 package environment
 
 import (
+	"bytes"
+	"io"
 	"testing"
 
 	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
@@ -11,7 +13,7 @@ type mockEngine struct {
 	out map[string]string
 }
 
-func (e *mockEngine) Render(chrt *chart.Chart, v *chart.Config) (map[string]string, error) {
+func (e *mockEngine) Render(chrt *chart.Chart, v *chart.Config, o map[string]interface{}) (map[string]string, error) {
 	return e.out, nil
 }
 
@@ -48,13 +50,14 @@ func (r *mockReleaseStorage) Query(labels map[string]string) ([]*release.Release
 type mockKubeClient struct {
 }
 
-func (k *mockKubeClient) Install(manifests map[string]string) error {
+func (k *mockKubeClient) Create(ns string, r io.Reader) error {
 	return nil
 }
 
 var _ Engine = &mockEngine{}
 var _ ReleaseStorage = &mockReleaseStorage{}
 var _ KubeClient = &mockKubeClient{}
+var _ KubeClient = &PrintingKubeClient{}
 
 func TestEngine(t *testing.T) {
 	eng := &mockEngine{out: map[string]string{"albatross": "test"}}
@@ -64,7 +67,7 @@ func TestEngine(t *testing.T) {
 
 	if engine, ok := env.EngineYard.Get("test"); !ok {
 		t.Errorf("failed to get engine from EngineYard")
-	} else if out, err := engine.Render(&chart.Chart{}, &chart.Config{}); err != nil {
+	} else if out, err := engine.Render(&chart.Chart{}, &chart.Config{}, map[string]interface{}{}); err != nil {
 		t.Errorf("unexpected template error: %s", err)
 	} else if out["albatross"] != "test" {
 		t.Errorf("expected 'test', got %q", out["albatross"])
@@ -102,9 +105,18 @@ func TestKubeClient(t *testing.T) {
 	env := New()
 	env.KubeClient = kc
 
-	manifests := map[string]string{}
+	manifests := map[string]string{
+		"foo": "name: value\n",
+		"bar": "name: value\n",
+	}
 
-	if err := env.KubeClient.Install(manifests); err != nil {
+	b := bytes.NewBuffer(nil)
+	for _, content := range manifests {
+		b.WriteString("\n---\n")
+		b.WriteString(content)
+	}
+
+	if err := env.KubeClient.Create("sharry-bobbins", b); err != nil {
 		t.Errorf("Kubeclient failed: %s", err)
 	}
 }
