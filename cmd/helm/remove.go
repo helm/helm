@@ -39,7 +39,7 @@ func rmRelease(cmd *cobra.Command, args []string) error {
 
 	// TODO: Handle dry run use case.
 	if removeDryRun {
-		fmt.Printf("Deleting %s\n", args[0])
+		fmt.Printf("DRY RUN: Deleting %s\n", args[0])
 		return nil
 	}
 
