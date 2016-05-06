@@ -77,7 +77,11 @@ spec:
         name: tiller
     spec:
       containers:
-      - env: []
+      - env:
+          - name: DEFAULT_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
         image: {{default "gcr.io/kubernetes-helm/tiller:canary" .Tiller.Image}}
         name: tiller
         ports:
