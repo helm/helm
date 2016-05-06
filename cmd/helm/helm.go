@@ -11,6 +11,9 @@ import (
 var stdout = os.Stdout
 var helmHome string
 
+// flagVerbose is a signal that the user wants additional output.
+var flagVerbose bool
+
 var globalUsage = `The Kubernetes package manager
 
 To begin working with Helm, run the 'helm init' command:
@@ -41,6 +44,7 @@ var RootCommand = &cobra.Command{
 
 func init() {
 	RootCommand.PersistentFlags().StringVar(&helmHome, "home", "$HOME/.helm", "location of you Helm files [$HELM_HOME]")
+	RootCommand.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose output")
 }
 
 func main() {

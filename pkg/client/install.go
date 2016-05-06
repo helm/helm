@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -32,7 +33,7 @@ func NewInstaller() *Installer {
 //
 // Returns the string output received from the operation, and an error if the
 // command failed.
-func (i *Installer) Install() error {
+func (i *Installer) Install(verbose bool) error {
 
 	var b bytes.Buffer
 	err := template.Must(template.New("manifest").Funcs(sprig.TxtFuncMap()).
@@ -43,19 +44,23 @@ func (i *Installer) Install() error {
 		return err
 	}
 
+	if verbose {
+		fmt.Println(b.String())
+	}
+
 	return kube.New(nil).Create("helm", &b)
 }
 
 // InstallYAML is the installation YAML for DM.
 const InstallYAML = `
----
+---{{$namespace := default "helm" .Tiller.Namespace}}
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
     app: helm
     name: helm-namespace
-  name: helm
+  name: {{$namespace}}
 ---
 apiVersion: v1
 kind: ReplicationController
@@ -64,7 +69,7 @@ metadata:
     app: helm
     name: tiller
   name: tiller-rc
-  namespace: helm
+  namespace: {{$namespace}}
 spec:
   replicas: 1
   selector:
