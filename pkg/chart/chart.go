@@ -88,7 +88,7 @@ func (c *Chart) TemplatesDir() string {
 	return filepath.Join(c.loader.dir(), preTemplates)
 }
 
-// ChartsDir returns teh directory where dependency charts are stored.
+// ChartsDir returns the directory where dependency charts are stored.
 func (c *Chart) ChartsDir() string {
 	return filepath.Join(c.loader.dir(), preCharts)
 }
@@ -212,6 +212,44 @@ func Create(chartfile *Chartfile, dir string) (*Chart, error) {
 	return &Chart{
 		loader: &dirChart{chartyaml: chartfile, chartdir: cdir},
 	}, nil
+}
+
+// Expand uncompresses and extracts a chart into the specified directory.
+func Expand(dir string, r io.Reader) error {
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return err
+	}
+	defer gr.Close()
+	tr := tar.NewReader(gr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		path := filepath.Clean(filepath.Join(dir, header.Name))
+		info := header.FileInfo()
+		if info.IsDir() {
+			if err = os.MkdirAll(path, info.Mode()); err != nil {
+				return err
+			}
+			continue
+		}
+
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = io.Copy(file, tr)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // fname prepares names for the filesystem
