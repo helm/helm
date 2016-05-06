@@ -14,8 +14,6 @@ import (
 )
 
 var untarFile bool
-
-// TODO(vaikas): Is there a well known directory for these??
 var untarDir string
 
 func init() {
