@@ -63,8 +63,21 @@ clean:
 coverage:
 	@scripts/coverage.sh
 
+HAS_GLIDE := $(shell command -v glide;)
+HAS_HG := $(shell command -v hg;)
+HAS_GIT := $(shell command -v git;)
+
 .PHONY: bootstrap
 bootstrap:
+ifndef HAS_GLIDE
+	go get -u github.com/Masterminds/glide
+endif
+ifndef HAS_HG
+	$(error You must install Mercurial (hg))
+endif
+ifndef HAS_GIT
+	$(error You must install Git)
+endif
 	glide install
 
 include versioning.mk
