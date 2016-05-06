@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"github.com/kubernetes/helm/pkg/repo"
 )
@@ -18,7 +20,7 @@ var verboseUpdate bool
 var updateCommand = &cobra.Command{
 	Use:   "update",
 	Short: "Update information on available charts in the chart repositories.",
-	RunE:  update,
+	RunE:  runUpdate,
 }
 
 func init() {
@@ -26,7 +28,7 @@ func init() {
 	RootCommand.AddCommand(updateCommand)
 }
 
-func update(cmd *cobra.Command, args []string) error {
+func runUpdate(cmd *cobra.Command, args []string) error {
 
 	f, err := repo.LoadRepositoriesFile(repositoriesFile())
 	if err != nil {
@@ -68,9 +70,20 @@ func downloadCacheFile(name, url string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	var cacheFile *os.File
-	defer resp.Body.Close()
+	var r repo.RepoFile
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if err := yaml.Unmarshal(b, &r); err != nil {
+		return err
+	}
+
 	cacheFile, err = os.Create(cacheDirectory(name + "-cache.yaml"))
 	if err != nil {
 		return err
