@@ -13,8 +13,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var untarFile bool
+var untarDir string
+
 func init() {
 	RootCommand.AddCommand(fetchCmd)
+	fetchCmd.Flags().BoolVar(&untarFile, "untar", false, "If set to true, will untar the chart after downloading it.")
+	fetchCmd.Flags().StringVar(&untarDir, "untardir", ".", "If untar is specified, this flag specifies where to untar the chart.")
 }
 
 var fetchCmd = &cobra.Command{
@@ -49,10 +54,8 @@ func fetch(cmd *cobra.Command, args []string) error {
 	}
 
 	defer resp.Body.Close()
-	// TODO(vaikas): Implement untar / flag
-	untar := false
-	if untar {
-		return untarChart(resp.Body)
+	if untarFile {
+		return chart.Expand(untarDir, resp.Body)
 	}
 	p := strings.Split(u.String(), "/")
 	return saveChartFile(p[len(p)-1], resp.Body)
@@ -82,18 +85,6 @@ func mapRepoArg(arg string, r map[string]string) (*url.URL, error) {
 		return nil, fmt.Errorf("No such repo: %s", p[0])
 	}
 	return nil, fmt.Errorf("Invalid chart url format: %s", arg)
-}
-
-func untarChart(r io.Reader) error {
-	c, err := chart.LoadDataFromReader(r)
-	if err != nil {
-		return err
-	}
-	if c == nil {
-		return fmt.Errorf("Failed to untar the chart")
-	}
-	return fmt.Errorf("Not implemented yee")
-
 }
 
 func saveChartFile(c string, r io.Reader) error {

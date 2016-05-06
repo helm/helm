@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	testfile    = "testdata/frobnitz/Chart.yaml"
-	testdir     = "testdata/frobnitz/"
-	testarchive = "testdata/frobnitz-0.0.1.tgz"
-	testmember  = "templates/template.tpl"
+	testfile         = "testdata/frobnitz/Chart.yaml"
+	testdir          = "testdata/frobnitz/"
+	testarchive      = "testdata/frobnitz-0.0.1.tgz"
+	testmember       = "templates/template.tpl"
+	expectedTemplate = "Hello {{.Name | default \"world\"}}\n"
 )
 
 // Type canaries. If these fail, they will fail at compile time.
@@ -269,4 +270,43 @@ func compareContent(filename string, content []byte) error {
 	}
 
 	return nil
+}
+
+func TestExpand(t *testing.T) {
+	r, err := os.Open(testarchive)
+	if err != nil {
+		t.Errorf("Failed to read testarchive file: %s", err)
+		return
+	}
+
+	td, err := ioutil.TempDir("", "helm-unittest-chart-")
+	if err != nil {
+		t.Errorf("Failed to create tempdir: %s", err)
+		return
+	}
+
+	err = Expand(td, r)
+	if err != nil {
+		t.Errorf("Failed to expand testarchive file: %s", err)
+	}
+
+	fi, err := os.Lstat(td + "/frobnitz/Chart.yaml")
+	if err != nil {
+		t.Errorf("Failed to stat Chart.yaml from expanded archive: %s", err)
+	}
+	if fi.Name() != "Chart.yaml" {
+		t.Errorf("Didn't get the right file name from stat, expected Chart.yaml, got: %s", fi.Name())
+	}
+
+	tr, err := os.Open(td + "/frobnitz/templates/template.tpl")
+	if err != nil {
+		t.Errorf("Failed to open template.tpl from expanded archive: %s", err)
+	}
+	c, err := ioutil.ReadAll(tr)
+	if err != nil {
+		t.Errorf("Failed to read contents of template.tpl from expanded archive: %s", err)
+	}
+	if string(c) != expectedTemplate {
+		t.Errorf("Contents of the expanded template differ, wanted '%s' got '%s'", expectedTemplate, c)
+	}
 }
