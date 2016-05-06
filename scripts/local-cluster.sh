@@ -30,6 +30,18 @@ command_exists() {
   hash "${1}" 2>/dev/null
 }
 
+# fetch url using wget or curl and print to stdout
+fetch_url() {
+  local url="$1"
+  if command_exists wget; then
+    curl -sSL "$url"
+  elif command_exists curl; then
+    wget -qO- "$url"
+  else
+    error_exit "Couldn't find curl or wget.  Bailing out."
+  fi
+}
+
 # Program Functions ------------------------------------------------------------
 
 # Check host platform and docker host
@@ -78,8 +90,12 @@ verify_prereqs() {
 
   command_exists docker || error_exit "You need docker"
 
-  if ! docker info > /dev/null 2>&1 ; then
+  if ! docker info >/dev/null 2>&1 ; then
     error_exit "Can't connect to 'docker' daemon."
+  fi
+
+  if docker inspect kubelet >/dev/null 2>&1 ; then
+    error_exit "Kubernetes is already running"
   fi
 
   $KUBECTL version --client >/dev/null || download_kubectl
@@ -87,19 +103,17 @@ verify_prereqs() {
 
 # Get the latest stable release tag
 get_latest_version_number() {
-  local -r latest_url="https://storage.googleapis.com/kubernetes-release/release/stable.txt"
-  if command_exists wget ; then
-    wget -qO- ${latest_url}
-  elif command_exists curl ; then
-    curl -Ss ${latest_url}
-  else
-    error_exit "Couldn't find curl or wget.  Bailing out."
+  local channel="stable"
+  if [[ -n "${ALPHA:-}" ]]; then
+    channel="latest"
   fi
+  local latest_url="https://storage.googleapis.com/kubernetes-release/release/${channel}.txt"
+  fetch_url "$latest_url"
 }
 
 # Detect ip address od docker host
 detect_docker_host_ip() {
-  if [ -n "${DOCKER_HOST:-}" ]; then
+  if [[ -n "${DOCKER_HOST:-}" ]]; then
     awk -F'[/:]' '{print $4}' <<< "$DOCKER_HOST"
   else
     ifconfig docker0 \
@@ -151,27 +165,33 @@ start_kubernetes() {
       /hyperkube kubelet \
         --containerized \
         --hostname-override="127.0.0.1" \
-        --api-servers=http://localhost:8080 \
+        --api-servers=http://localhost:${KUBE_PORT} \
         --config=/etc/kubernetes/manifests \
         --allow-privileged=true \
         ${dns_args} \
         --v=${LOG_LEVEL} >/dev/null
 
+  until $KUBECTL cluster-info &> /dev/null; do
+    sleep 1
+  done
+
+  # Create kube-system namespace in kubernetes
+  $KUBECTL create namespace kube-system >/dev/null
+
   # We expect to have at least 3 running pods - etcd, master and kube-proxy.
   local attempt=1
-  while (($($KUBECTL get pods --no-headers 2>/dev/null | grep -c "Running") < 3)); do
+  while (($(KUBECTL get pods --all-namespaces --no-headers 2>/dev/null | grep -c "Running") < 3)); do
     echo -n "."
     sleep $(( attempt++ ))
   done
   echo
 
-  local end_time=$(date +%s)
-  echo "Started master components in $((end_time - start_time)) seconds."
+  echo "Started master components in $(($(date +%s) - start_time)) seconds."
 }
 
 # Open kubernetes master api port.
 setup_firewall() {
-  [[ -n "${DOCKER_MACHINE_NAME}" ]] || return
+  [[ -n "${DOCKER_MACHINE_NAME:-}" ]] || return
 
   echo "Adding iptables hackery for docker-machine..."
 
@@ -182,13 +202,6 @@ setup_firewall() {
   if ! docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo /usr/local/sbin/iptables -t nat -C ${iptables_rule}" &> /dev/null; then
     docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo /usr/local/sbin/iptables -t nat -I ${iptables_rule}"
   fi
-}
-
-# Create kube-system namespace in kubernetes
-create_kube_system_namespace() {
-  echo "Creating kube-system namespace..."
-
-  $KUBECTL create -f ./scripts/cluster/kube-system.yaml >/dev/null
 }
 
 # Activate skydns in kubernetes and wait for pods to be ready.
@@ -209,8 +222,7 @@ create_kube_dns() {
     sleep $(( attempt++ ))
   done
   echo
-  local end_time=$(date +%s)
-  echo "Started DNS in $((end_time - start_time)) seconds."
+  echo "Started DNS in $(($(date +%s) - start_time)) seconds."
 }
 
 # Generate kubeconfig data for the created cluster.
@@ -231,17 +243,13 @@ generate_kubeconfig() {
 download_kubectl() {
   echo "Downloading kubectl binary..."
 
-  kubectl_url="https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/${host_os}/${host_arch}/kubectl"
-  if command_exists wget; then
-    wget -O ./bin/kubectl "${kubectl_url}"
-  elif command_exists curl; then
-    curl -sSOL ./bin/kubectl "${kubectl_url}"
-  else
-    error_exit "Couldn't find curl or wget.  Bailing out."
-  fi
-  chmod a+x ./bin/kubectl
+  local output="/usr/local/bin/kubectl"
 
-  KUBECTL=./bin/kubectl
+  kubectl_url="https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/${host_os}/${host_arch}/kubectl"
+  fetch_url "${kubectl_url}" > "${output}"
+  chmod a+x "${output}"
+
+  KUBECTL="${output}"
 }
 
 # Clean volumes that are left by kubelet
@@ -297,9 +305,8 @@ kube_up() {
   clean_volumes
   setup_firewall
 
-  start_kubernetes
   generate_kubeconfig
-  create_kube_system_namespace
+  start_kubernetes
   create_kube_dns
 
   $KUBECTL cluster-info
