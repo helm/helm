@@ -27,7 +27,7 @@ func search(cmd *cobra.Command, args []string) error {
 		return errors.New("This command needs at least one argument (search string)")
 	}
 
-	results, err := searchCacheForPattern(args[0], cacheDirectory())
+	results, err := searchCacheForPattern(cacheDirectory(), args[0])
 	if err != nil {
 		return err
 	}
