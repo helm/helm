@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"sort"
 
 	"github.com/kubernetes/helm/cmd/tiller/environment"
@@ -48,11 +49,14 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		return err
 	}
 
-	total := int64(len(rels))
-
-	if req.SortBy != services.ListSort_UNKNOWN {
-		log.Printf("Sorting by %q", req.SortBy)
+	if len(req.Filter) != 0 {
+		rels, err = filterReleases(req.Filter, rels)
+		if err != nil {
+			return err
+		}
 	}
+
+	total := int64(len(rels))
 
 	switch req.SortBy {
 	case services.ListSort_NAME:
@@ -87,6 +91,20 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 	}
 	stream.Send(res)
 	return nil
+}
+
+func filterReleases(filter string, rels []*release.Release) ([]*release.Release, error) {
+	preg, err := regexp.Compile(filter)
+	if err != nil {
+		return rels, err
+	}
+	matches := []*release.Release{}
+	for _, r := range rels {
+		if preg.MatchString(r.Name) {
+			matches = append(matches, r)
+		}
+	}
+	return matches, nil
 }
 
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {

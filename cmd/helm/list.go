@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/kubernetes/helm/pkg/helm"
@@ -14,13 +15,28 @@ import (
 var listHelp = `
 This command lists all of the currently deployed releases.
 
-By default, items are sorted alphabetically. Sorting is done client-side, so if
-the number of releases is less than the setting in '--max', some values will
-be omitted, and in no particular lexicographic order.
+By default, items are sorted alphabetically. Use the '-d' flag to sort by
+release date.
+
+If an argument is provided, it will be treated as a filter. Filters are
+regular expressions (Perl compatible) that are applied to the list of releases.
+Only items that match the filter will be returned.
+
+	$ helm list -l 'ara[a-z]+'
+	NAME            	UPDATED                 	CHART
+	maudlin-arachnid	Mon May  9 16:07:08 2016	alpine-0.1.0
+
+If no results are found, 'helm list' will exit 0, but with no output (or in
+the case of '-l', only headers).
+
+By default, up to 256 items may be returned. To limit this, use the '--max' flag.
+Setting '--max' to 0 will not return all results. Rather, it will return the
+server's default, which may be much higher than 256. Pairing the '--max'
+flag with the '--offset' flag allows you to page through results.
 `
 
 var listCommand = &cobra.Command{
-	Use:     "list [flags]",
+	Use:     "list [flags] [FILTER]",
 	Short:   "List releases",
 	Long:    listHelp,
 	RunE:    listCmd,
@@ -41,8 +57,9 @@ func init() {
 }
 
 func listCmd(cmd *cobra.Command, args []string) error {
+	var filter string
 	if len(args) > 0 {
-		fmt.Println("TODO: Implement filter.")
+		filter = strings.Join(args, " ")
 	}
 
 	sortBy := services.ListSort_NAME
@@ -50,14 +67,14 @@ func listCmd(cmd *cobra.Command, args []string) error {
 		sortBy = services.ListSort_LAST_RELEASED
 	}
 
-	res, err := helm.ListReleases(listMax, listOffset, sortBy)
+	res, err := helm.ListReleases(listMax, listOffset, sortBy, filter)
 	if err != nil {
 		return prettyError(err)
 	}
 
 	rels := res.Releases
-	if res.Count+res.Offset < res.Total {
-		fmt.Println("Not all values were fetched.")
+	if flagVerbose && res.Count+res.Offset < res.Total {
+		fmt.Println("==> Not all values were fetched.")
 	}
 
 	// Purty output, ya'll

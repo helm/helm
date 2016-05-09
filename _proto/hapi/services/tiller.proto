@@ -66,6 +66,11 @@ message ListReleasesRequest {
 
   // SortBy is the sort field that the ListReleases server should sort data before returning.
   ListSort.SortBy sort_by = 3;
+
+  // Filter is a regular expression used to filter which releases should be listed.
+  //
+  // Anything that matches the regexp will be included in the results.
+  string filter = 4;
 }
 
 message ListSort{
