@@ -40,7 +40,7 @@ Make sure you have the prerequisites:
 - Glide 0.10 or greater
 
 1. Clone (or otherwise download) this repository
-2. Run `make boostrap build`
+2. Run `make bootstrap build`
 
 You will now have two binaries built:
 
