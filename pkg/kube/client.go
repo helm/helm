@@ -28,22 +28,24 @@ type ResourceActorFunc func(*resource.Info) error
 //
 // Namespace will set the namespace
 func (c *Client) Create(namespace string, reader io.Reader) error {
-	f := cmdutil.NewFactory(c.config)
-	return perform(f, namespace, reader, createResource)
+	return perform(c, namespace, reader, createResource)
 }
 
 // Delete deletes kubernetes resources from an io.reader
 //
 // Namespace will set the namespace
 func (c *Client) Delete(namespace string, reader io.Reader) error {
-	f := cmdutil.NewFactory(c.config)
-	return perform(f, namespace, reader, deleteResource)
+	return perform(c, namespace, reader, deleteResource)
+}
+
+func (c *Client) factory() *cmdutil.Factory {
+	return cmdutil.NewFactory(c.config)
 }
 
 const includeThirdPartyAPIs = false
 
-func perform(f *cmdutil.Factory, namespace string, reader io.Reader, fn ResourceActorFunc) error {
-	r := f.NewBuilder(includeThirdPartyAPIs).
+func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc) error {
+	r := c.factory().NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
 		RequireNamespace().
