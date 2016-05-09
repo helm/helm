@@ -15,11 +15,13 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 `
 
 var (
-	tillerImg string
+	tillerImg  string
+	clientOnly bool
 )
 
 func init() {
 	initCmd.Flags().StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
+	initCmd.Flags().BoolVarP(&clientOnly, "client-only", "c", false, "If set does not install tiller")
 	RootCommand.AddCommand(initCmd)
 }
 
@@ -40,8 +42,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := installTiller(); err != nil {
-		return err
+	if !clientOnly {
+		if err := installTiller(); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("Not installing tiller due to 'client-only' flag having been set")
 	}
 
 	fmt.Println("Happy Helming!")
