@@ -26,7 +26,12 @@ import:
 - package: k8s.io/kubernetes
   version: ^1.2
   subpackages:
+  - pkg/api
+  - pkg/client/restclient
+  - pkg/client/unversioned
   - pkg/client/unversioned/clientcmd
+  - pkg/client/unversioned/portforward
+  - pkg/client/unversioned/remotecommand
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
 - package: github.com/gosuri/uitable
