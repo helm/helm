@@ -2,10 +2,6 @@ package main
 
 import (
 	"fmt"
-	//	"io"
-	//	"net/http"
-	//"net/url"
-	//	"os"
 
 	"testing"
 )
