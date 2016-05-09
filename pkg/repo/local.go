@@ -20,8 +20,10 @@ type CacheFile struct {
 
 // ChartRef represents a chart entry in the CacheFile
 type ChartRef struct {
-	Name string
-	URL  string
+	Name     string   `yaml:"name"`
+	URL      string   `yaml:"url"`
+	Keywords []string `yaml:"keywords"`
+	Removed  bool     `yaml:"removed,omitempty"`
 }
 
 // StartLocalRepo starts a web server and serves files from the given path
