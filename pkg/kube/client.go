@@ -32,6 +32,14 @@ func (c *Client) Create(namespace string, reader io.Reader) error {
 	return perform(f, namespace, reader, createResource)
 }
 
+// Delete deletes kubernetes resources from an io.reader
+//
+// Namespace will set the namespace
+func (c *Client) Delete(namespace string, reader io.Reader) error {
+	f := cmdutil.NewFactory(c.config)
+	return perform(f, namespace, reader, deleteResource)
+}
+
 const includeThirdPartyAPIs = false
 
 func perform(f *cmdutil.Factory, namespace string, reader io.Reader, fn ResourceActorFunc) error {
@@ -72,4 +80,8 @@ func perform(f *cmdutil.Factory, namespace string, reader io.Reader, fn Resource
 func createResource(info *resource.Info) error {
 	_, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
 	return err
+}
+
+func deleteResource(info *resource.Info) error {
+	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 }

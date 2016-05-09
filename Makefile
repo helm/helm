@@ -4,8 +4,6 @@ SHORT_NAME      ?= tiller
 
 # go option
 GO        ?= go
-GOARCH    ?= $(shell go env GOARCH)
-GOOS      ?= $(shell go env GOOS)
 PKG       := $(shell glide novendor)
 TAGS      :=
 TESTS     := .
@@ -30,11 +28,10 @@ check-docker:
 	fi
 
 .PHONY: docker-binary
-docker-binary: GOOS = linux
-docker-binary: GOARCH = amd64
-docker-binary: BINDIR = $(CURDIR)/rootfs
+docker-binary: BINDIR = ./rootfs
 docker-binary: GOFLAGS += -a -installsuffix cgo
-docker-binary: build
+docker-binary:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/tiller $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' github.com/kubernetes/helm/cmd/tiller
 
 .PHONY: docker-build
 docker-build: check-docker docker-binary
@@ -58,13 +55,27 @@ test-style:
 .PHONY: clean
 clean:
 	@rm -rf $(BINDIR)
+	@rm ./rootfs/tiller
 
 .PHONY: coverage
 coverage:
 	@scripts/coverage.sh
 
+HAS_GLIDE := $(shell command -v glide;)
+HAS_HG := $(shell command -v hg;)
+HAS_GIT := $(shell command -v git;)
+
 .PHONY: bootstrap
 bootstrap:
+ifndef HAS_GLIDE
+	go get -u github.com/Masterminds/glide
+endif
+ifndef HAS_HG
+	$(error You must install Mercurial (hg))
+endif
+ifndef HAS_GIT
+	$(error You must install Git)
+endif
 	glide install
 
 include versioning.mk

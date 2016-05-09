@@ -207,8 +207,12 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	rel.Info.Status.Code = release.Status_DELETED
 	rel.Info.Deleted = timeconv.Now()
 
-	// TODO: Once KubeClient is ready, delete the resources.
-	log.Println("WARNING: Currently not deleting resources from k8s")
+	b := bytes.NewBuffer([]byte(rel.Manifest))
+
+	if err := s.env.KubeClient.Delete(s.env.Namespace, b); err != nil {
+		log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
+		return nil, err
+	}
 
 	if err := s.env.Releases.Update(rel); err != nil {
 		log.Printf("uninstall: Failed to store updated release: %s", err)

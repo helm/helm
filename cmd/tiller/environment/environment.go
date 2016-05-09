@@ -128,11 +128,15 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	//
-	// config is optional. If nil, the client will use its existing configuration.
-	// If set, the client will override its default configuration with the
-	// passed in one.
 	Create(namespace string, reader io.Reader) error
+
+	// Delete destroys one or more resources.
+	//
+	// namespace must contain a valid existing namespace.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n").
+	Delete(namespace string, reader io.Reader) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -143,6 +147,10 @@ type PrintingKubeClient struct {
 
 // Create prints the values of what would be created with a real KubeClient.
 func (p *PrintingKubeClient) Create(ns string, r io.Reader) error {
+	_, err := io.Copy(p.Out, r)
+	return err
+}
+func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
