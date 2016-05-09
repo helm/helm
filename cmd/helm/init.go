@@ -111,6 +111,6 @@ func ensureHome() error {
 		return fmt.Errorf("%s must be a file, not a directory", localRepoCacheFile)
 	}
 
-	fmt.Printf("$HELM_HOME has been configured at %s.", helmHome)
+	fmt.Printf("$HELM_HOME has been configured at %s.\n", helmHome)
 	return nil
 }
