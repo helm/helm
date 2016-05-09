@@ -53,12 +53,27 @@ service ReleaseService {
 }
 
 // ListReleasesRequest requests a list of releases.
+//
+// Releases can be retrieved in chunks by setting limit and offset.
+//
+// Releases can be sorted according to a few pre-determined sort stategies.
 message ListReleasesRequest {
-	// The maximum number of releases to be returned
+	// Limit is the maximum number of releases to be returned.
 	int64 limit  = 1;
 
-	// The zero-based offset at which the returned release list begins
+	// Offset is the zero-based offset at which the returned release list begins.
 	int64 offset = 2;
+
+  // SortBy is the sort field that the ListReleases server should sort data before returning.
+  ListSort.SortBy sort_by = 3;
+}
+
+message ListSort{
+  enum SortBy {
+    UNKNOWN = 0;
+    NAME = 1;
+    LAST_RELEASED = 2;
+  }
 }
 
 // ListReleasesResponse is a list of releases.

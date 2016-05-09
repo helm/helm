@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/gosuri/uitable"
 	"github.com/kubernetes/helm/pkg/helm"
 	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"github.com/kubernetes/helm/pkg/proto/hapi/services"
 	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +45,12 @@ func listCmd(cmd *cobra.Command, args []string) error {
 		fmt.Println("TODO: Implement filter.")
 	}
 
-	res, err := helm.ListReleases(listMax, listOffset)
+	sortBy := services.ListSort_NAME
+	if listByDate {
+		sortBy = services.ListSort_LAST_RELEASED
+	}
+
+	res, err := helm.ListReleases(listMax, listOffset, sortBy)
 	if err != nil {
 		return prettyError(err)
 	}
@@ -53,12 +58,6 @@ func listCmd(cmd *cobra.Command, args []string) error {
 	rels := res.Releases
 	if res.Count+res.Offset < res.Total {
 		fmt.Println("Not all values were fetched.")
-	}
-
-	if listByDate {
-		sort.Sort(byDate(rels))
-	} else {
-		sort.Sort(byName(rels))
 	}
 
 	// Purty output, ya'll
@@ -84,27 +83,4 @@ func formatList(rels []*release.Release) error {
 	fmt.Println(table)
 
 	return nil
-}
-
-// byName implements the sort.Interface for []*release.Release.
-type byName []*release.Release
-
-func (r byName) Len() int {
-	return len(r)
-}
-func (r byName) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byName) Less(i, j int) bool {
-	return r[i].Name < r[j].Name
-}
-
-type byDate []*release.Release
-
-func (r byDate) Len() int { return len(r) }
-func (r byDate) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byDate) Less(p, q int) bool {
-	return r[p].Info.LastDeployed.Seconds < r[q].Info.LastDeployed.Seconds
 }
