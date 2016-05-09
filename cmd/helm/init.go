@@ -15,13 +15,15 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 `
 
 var (
-	tillerImg  string
-	clientOnly bool
+	tillerImg       string
+	clientOnly      bool
+	tillerNamespace string
 )
 
 func init() {
 	initCmd.Flags().StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
 	initCmd.Flags().BoolVarP(&clientOnly, "client-only", "c", false, "If set does not install tiller")
+	initCmd.Flags().StringVarP(&tillerNamespace, "namespace", "n", "helm", "set the tiller namespace")
 	RootCommand.AddCommand(initCmd)
 }
 
@@ -57,7 +59,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 func installTiller() error {
 	i := client.NewInstaller()
 	i.Tiller["Image"] = tillerImg
-	err := i.Install()
+	i.Tiller["Namespace"] = tillerNamespace
+	err := i.Install(flagVerbose)
 
 	if err != nil {
 		return fmt.Errorf("error installing: %s", err)

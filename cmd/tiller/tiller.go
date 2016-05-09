@@ -21,6 +21,7 @@ var rootServer = grpc.NewServer()
 var env = environment.New()
 
 var addr = ":44134"
+var namespace = ""
 
 const globalUsage = `The Kubernetes Helm server.
 
@@ -37,11 +38,14 @@ var rootCommand = &cobra.Command{
 }
 
 func main() {
-	rootCommand.PersistentFlags().StringVarP(&addr, "listen", "l", ":44134", "The address:port to listen on")
+	pf := rootCommand.PersistentFlags()
+	pf.StringVarP(&addr, "listen", "l", ":44134", "The address:port to listen on")
+	pf.StringVarP(&namespace, "namespace", "n", "", "The namespace Tiller calls home")
 	rootCommand.Execute()
 }
 
 func start(c *cobra.Command, args []string) {
+	setNamespace()
 	lstn, err := net.Listen("tcp", addr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
@@ -53,5 +57,22 @@ func start(c *cobra.Command, args []string) {
 	if err := rootServer.Serve(lstn); err != nil {
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
 		os.Exit(1)
+	}
+}
+
+// setNamespace sets the namespace.
+//
+// It checks for the --namespace flag first, then checks the environment
+// (set by Downward API), then goes to default.
+func setNamespace() {
+	if len(namespace) != 0 {
+		fmt.Printf("Setting namespace to %q\n", namespace)
+		srv.env.Namespace = namespace
+	} else if ns := os.Getenv("DEFAULT_NAMESPACE"); len(ns) != 0 {
+		fmt.Printf("Inhereting namespace %q from Downward API\n", ns)
+		srv.env.Namespace = ns
+	} else {
+		fmt.Printf("Using default namespace %q", environment.DefaultNamespace)
+		srv.env.Namespace = environment.DefaultNamespace
 	}
 }

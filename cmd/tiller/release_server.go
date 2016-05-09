@@ -15,10 +15,13 @@ import (
 	ctx "golang.org/x/net/context"
 )
 
+var srv *releaseServer
+
 func init() {
-	srv := &releaseServer{
+	srv = &releaseServer{
 		env: env,
 	}
+	srv.env.Namespace = namespace
 	services.RegisterReleaseServiceServer(rootServer, srv)
 }
 
