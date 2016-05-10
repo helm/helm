@@ -9,7 +9,7 @@ option go_package = "chart";
 // By convention, name is a relative path within the scope of the chart's
 // base directory.
 message Template {
-  // Name is the path-like name of the template.
+	// Name is the path-like name of the template.
 	string name = 1;
 
 	// Data is the template as byte data.

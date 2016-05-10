@@ -31,10 +31,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 const _ = proto.ProtoPackageIsVersion1
 
-//
-// Info:
-//
-//
+// Info describes release information.
 type Info struct {
 	Status        *Status                    `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
 	FirstDeployed *google_protobuf.Timestamp `protobuf:"bytes,2,opt,name=first_deployed,json=firstDeployed" json:"first_deployed,omitempty"`

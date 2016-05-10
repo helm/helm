@@ -49,10 +49,7 @@ func (x Status_Code) String() string {
 }
 func (Status_Code) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{0, 0} }
 
-//
-// Status:
-//
-//
+// Status defines the status of a release.
 type Status struct {
 	Code    Status_Code           `protobuf:"varint,1,opt,name=code,enum=hapi.release.Status_Code" json:"code,omitempty"`
 	Details *google_protobuf1.Any `protobuf:"bytes,2,opt,name=details" json:"details,omitempty"`
