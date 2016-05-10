@@ -34,6 +34,22 @@ func TestRead(t *testing.T) {
 	}
 }
 
+func TestHistory(t *testing.T) {
+	k := "test-1"
+	r := &release.Release{Name: k}
+
+	ms := NewMemory()
+	ms.Create(r)
+
+	if out, err := ms.History(k); err != nil {
+		t.Errorf("Could not get %s: %s", k, err)
+	} else if len(out) != 1 {
+		t.Fatalf("Expected 1 release, got %d", len(out))
+	} else if out[0].Name != k {
+		t.Errorf("Expected %s, got %s", k, out[0].Name)
+	}
+}
+
 func TestUpdate(t *testing.T) {
 	k := "test-1"
 	r := &release.Release{Name: k}

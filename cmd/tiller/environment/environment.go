@@ -116,6 +116,9 @@ type ReleaseStorage interface {
 	// Query will search all releases, including deleted and superseded ones.
 	// The provided map will be used to filter results.
 	Query(map[string]string) ([]*release.Release, error)
+
+	// History takes a release name and returns the history of releases.
+	History(name string) ([]*release.Release, error)
 }
 
 // KubeClient represents a client capable of communicating with the Kubernetes API.

@@ -87,5 +87,16 @@ func (m *Memory) List() ([]*release.Release, error) {
 func (m *Memory) Query(labels map[string]string) ([]*release.Release, error) {
 	m.RLock()
 	defer m.RUnlock()
-	return []*release.Release{}, errors.New("Cannot implement until release.Release is defined.")
+	return []*release.Release{}, errors.New("not implemented")
+}
+
+// History returns the history of this release, in the form of a series of releases.
+func (m *Memory) History(name string) ([]*release.Release, error) {
+	// TODO: This _should_ return all of the releases with the given name, sorted
+	// by LastDeployed, regardless of status.
+	r, err := m.Read(name)
+	if err != nil {
+		return []*release.Release{}, err
+	}
+	return []*release.Release{r}, nil
 }
