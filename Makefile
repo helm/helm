@@ -52,6 +52,10 @@ test-unit:
 test-style:
 	@scripts/validate-go.sh
 
+.PHONY: protoc
+protoc:
+	$(MAKE) -C _proto/ all
+
 .PHONY: clean
 clean:
 	@rm -rf $(BINDIR)
