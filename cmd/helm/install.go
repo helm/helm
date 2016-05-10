@@ -42,11 +42,15 @@ var installCmd = &cobra.Command{
 }
 
 func runInstall(cmd *cobra.Command, args []string) error {
-	setupInstallEnv(args)
+	if err := checkArgsLength(1, len(args), "chart name"); err != nil {
+		return err
+	}
+	installArg = args[0]
+	setupInstallEnv()
 
 	res, err := helm.InstallRelease(installArg, installDryRun)
 	if err != nil {
-		return err
+		return prettyError(err)
 	}
 
 	printRelease(res.GetRelease())
@@ -54,9 +58,6 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// TODO -- Display formatted description of install release status / info.
-// 		   Might be friendly to wrap our proto model with pretty-printers.
-//
 func printRelease(rel *release.Release) {
 	if rel == nil {
 		return
@@ -71,16 +72,13 @@ func printRelease(rel *release.Release) {
 	}
 }
 
-func setupInstallEnv(args []string) {
-	if len(args) > 0 {
-		installArg = args[0]
-	} else {
-		fatalf("This command needs at least one argument, the name of the chart.")
-	}
-
-	// note: TILLER_HOST envvar is only
+func setupInstallEnv() {
+	// note: TILLER_HOST envvar is
 	// acknowledged iff the host flag
 	// does not override the default.
+	//
+	// bug: except that if the host flag happens to set the host to the same
+	// value as the defaultHost, the env var will be used instead.
 	if tillerHost == defaultHost {
 		host := os.Getenv(hostEnvVar)
 		if host != "" {
@@ -89,11 +87,6 @@ func setupInstallEnv(args []string) {
 	}
 
 	helm.Config.ServAddr = tillerHost
-}
-
-func fatalf(format string, args ...interface{}) {
-	fmt.Printf("fatal: %s\n", fmt.Sprintf(format, args...))
-	os.Exit(0)
 }
 
 func init() {

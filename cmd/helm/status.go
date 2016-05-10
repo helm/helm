@@ -30,7 +30,7 @@ func status(cmd *cobra.Command, args []string) error {
 
 	res, err := helm.GetReleaseStatus(args[0])
 	if err != nil {
-		return err
+		return prettyError(err)
 	}
 
 	fmt.Printf("Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))

@@ -47,7 +47,7 @@ func listCmd(cmd *cobra.Command, args []string) error {
 
 	res, err := helm.ListReleases(listMax, listOffset)
 	if err != nil {
-		return err
+		return prettyError(err)
 	}
 
 	rels := res.Releases
