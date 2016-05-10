@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 
@@ -44,11 +45,16 @@ func runRepoAdd(cmd *cobra.Command, args []string) error {
 	if err := checkArgsLength(2, len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
 		return err
 	}
+	name, url := args[0], args[1]
 
-	err := insertRepoLine(args[0], args[1])
-	if err != nil {
+	if err := downloadCacheFile(name, url); err != nil {
+		return errors.New("Oops! Looks like " + url + " is not a valid chart repository or cannot be reached\n")
+	}
+
+	if err := insertRepoLine(name, url); err != nil {
 		return err
 	}
+
 	fmt.Println(args[0] + " has been added to your repositories")
 	return nil
 }
