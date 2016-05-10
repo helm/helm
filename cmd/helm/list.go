@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/gosuri/uitable"
 	"github.com/kubernetes/helm/pkg/helm"
@@ -79,7 +78,7 @@ func formatList(rels []*release.Release) error {
 	table.AddRow("NAME", "UPDATED", "CHART")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
-		t := timeconv.Format(r.Info.LastDeployed, time.ANSIC)
+		t := timeconv.String(r.Info.LastDeployed)
 		table.AddRow(r.Name, t, c)
 	}
 	fmt.Println(table)

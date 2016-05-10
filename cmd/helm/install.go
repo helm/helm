@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -64,7 +63,7 @@ func printRelease(rel *release.Release) {
 	}
 	if flagVerbose {
 		fmt.Printf("NAME:   %s\n", rel.Name)
-		fmt.Printf("INFO:   %s %s\n", timeconv.Format(rel.Info.LastDeployed, time.ANSIC), rel.Info.Status)
+		fmt.Printf("INFO:   %s %s\n", timeconv.String(rel.Info.LastDeployed), rel.Info.Status)
 		fmt.Printf("CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
 		fmt.Printf("MANIFEST: %s\n", rel.Manifest)
 	} else {

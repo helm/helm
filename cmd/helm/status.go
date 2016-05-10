@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/kubernetes/helm/pkg/helm"
 	"github.com/kubernetes/helm/pkg/timeconv"
@@ -34,7 +33,7 @@ func status(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Last Deployed: %s\n", timeconv.Format(res.Info.LastDeployed, time.ANSIC))
+	fmt.Printf("Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
 	fmt.Printf("Status: %s\n", res.Info.Status.Code)
 	if res.Info.Status.Details != nil {
 		fmt.Printf("Details: %s\n", res.Info.Status.Details)
