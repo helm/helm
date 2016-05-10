@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/kubernetes/helm/pkg/helm"
+	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/spf13/cobra"
 )
 
@@ -82,10 +84,11 @@ func getCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Chart/Version: %s %s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
-	fmt.Println("Config:")
-	fmt.Println(res.Release.Config)
-	fmt.Println("\nManifest:")
+	fmt.Printf("CHART: %s-%s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
+	fmt.Printf("RELEASED: %s\n", timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC))
+	fmt.Println("CONFIG:")
+	fmt.Println(res.Release.Config.Raw)
+	fmt.Println("MANIFEST:")
 	fmt.Println(res.Release.Manifest)
 	return nil
 }
