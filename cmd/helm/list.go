@@ -45,6 +45,11 @@ func listCmd(cmd *cobra.Command, args []string) error {
 		fmt.Println("TODO: Implement filter.")
 	}
 
+	pf, err := newTillerPortForwarder()
+	defer pf.Close()
+
+	helm.Config.ServAddr = fmt.Sprintf(":%d", pf.Local)
+
 	res, err := helm.ListReleases(listMax, listOffset)
 	if err != nil {
 		return prettyError(err)

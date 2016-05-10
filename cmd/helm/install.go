@@ -8,6 +8,7 @@ import (
 
 	"github.com/kubernetes/helm/pkg/helm"
 	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"github.com/kubernetes/helm/pkg/tiller"
 	"github.com/kubernetes/helm/pkg/timeconv"
 )
 
@@ -18,11 +19,6 @@ The install argument must be either a relative
 path to a chart directory or the name of a
 chart in the current working directory.
 `
-
-const (
-	hostEnvVar  = "TILLER_HOST"
-	defaultHost = ":44134"
-)
 
 // install flags & args
 var (
@@ -47,6 +43,11 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	}
 	installArg = args[0]
 	setupInstallEnv()
+
+	pf, err := newTillerPortForwarder()
+	defer pf.Close()
+
+	helm.Config.ServAddr = fmt.Sprintf(":%d", pf.Local)
 
 	res, err := helm.InstallRelease(installArg, installDryRun)
 	if err != nil {
@@ -79,8 +80,8 @@ func setupInstallEnv() {
 	//
 	// bug: except that if the host flag happens to set the host to the same
 	// value as the defaultHost, the env var will be used instead.
-	if tillerHost == defaultHost {
-		host := os.Getenv(hostEnvVar)
+	if tillerHost == tiller.DefaultHost {
+		host := os.Getenv(tiller.HostEnvVar)
 		if host != "" {
 			tillerHost = host
 		}
@@ -90,7 +91,7 @@ func setupInstallEnv() {
 }
 
 func init() {
-	installCmd.Flags().StringVar(&tillerHost, "host", defaultHost, "address of tiller server")
+	installCmd.Flags().StringVar(&tillerHost, "host", tiller.DefaultHost, "address of tiller server")
 	installCmd.Flags().BoolVar(&installDryRun, "dry-run", false, "simulate an install")
 
 	RootCommand.AddCommand(installCmd)

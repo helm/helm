@@ -11,13 +11,13 @@ import (
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
-	config clientcmd.ClientConfig
+	*cmdutil.Factory
 }
 
 // New create a new Client
 func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
-		config: config,
+		Factory: cmdutil.NewFactory(config),
 	}
 }
 
@@ -38,14 +38,10 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, deleteResource)
 }
 
-func (c *Client) factory() *cmdutil.Factory {
-	return cmdutil.NewFactory(c.config)
-}
-
 const includeThirdPartyAPIs = false
 
 func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc) error {
-	r := c.factory().NewBuilder(includeThirdPartyAPIs).
+	r := c.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
 		RequireNamespace().

@@ -1,8 +1,8 @@
-hash: 43d0eadd3ed4b3563b4a6a49d3bd6d083bcb8fbe9d201dfef763b90c1677738c
-updated: 2016-05-09T10:30:30.592692551-07:00
+hash: 63afc29bc3d5032c6c2829b7bf9ffba43555ad5a3faf72a14ef2a86155c0514c
+updated: 2016-05-11T14:15:54.42108644-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
-  version: 75cd24fc2f2c
+  version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/beorn7/perks
@@ -245,13 +245,13 @@ imports:
   - pkg/client/unversioned/remotecommand
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
+  - pkg/labels
   - pkg/api/meta
   - pkg/api/resource
   - pkg/api/unversioned
   - pkg/auth/user
   - pkg/conversion
   - pkg/fields
-  - pkg/labels
   - pkg/runtime
   - pkg/runtime/serializer
   - pkg/types
@@ -259,6 +259,7 @@ imports:
   - pkg/util/intstr
   - pkg/util/rand
   - pkg/util/sets
+  - pkg/util/validation
   - pkg/api/errors
   - pkg/api/v1
   - pkg/api/validation
@@ -271,34 +272,23 @@ imports:
   - pkg/version
   - pkg/watch
   - pkg/watch/json
-  - pkg/api/install
-  - pkg/apimachinery/registered
-  - pkg/apis/apps
-  - pkg/apis/apps/install
-  - pkg/apis/authorization/install
-  - pkg/apis/autoscaling
-  - pkg/apis/autoscaling/install
-  - pkg/apis/batch
-  - pkg/apis/batch/install
-  - pkg/apis/componentconfig/install
-  - pkg/apis/extensions
-  - pkg/apis/extensions/install
-  - pkg/apis/metrics/install
-  - pkg/client/typed/discovery
-  - pkg/util/wait
-  - plugin/pkg/client/auth
   - pkg/client/unversioned/auth
   - pkg/client/unversioned/clientcmd/api/latest
   - pkg/util/errors
   - pkg/util/homedir
-  - pkg/util/validation
   - pkg/kubelet/server/portforward
   - pkg/util/httpstream
   - pkg/util/runtime
   - pkg/kubelet/server/remotecommand
   - pkg/util/httpstream/spdy
   - pkg/apimachinery
+  - pkg/apimachinery/registered
+  - pkg/apis/apps
+  - pkg/apis/autoscaling
+  - pkg/apis/batch
+  - pkg/apis/extensions
   - pkg/apis/metrics
+  - pkg/client/typed/discovery
   - pkg/client/unversioned/adapters/internalclientset
   - pkg/kubectl
   - pkg/registry/thirdpartyresourcedata
@@ -312,6 +302,7 @@ imports:
   - pkg/runtime/serializer/protobuf
   - pkg/runtime/serializer/recognizer
   - pkg/runtime/serializer/versioning
+  - pkg/util/wait
   - pkg/util/validation/field
   - pkg/util/parsers
   - pkg/watch/versioned
@@ -321,37 +312,44 @@ imports:
   - pkg/api/util
   - pkg/capabilities
   - pkg/util/integer
-  - pkg/apis/apps/v1alpha1
-  - pkg/apis/authorization
-  - pkg/apis/authorization/v1beta1
-  - pkg/apis/autoscaling/v1
-  - pkg/apis/batch/v1
-  - pkg/apis/componentconfig
-  - pkg/apis/componentconfig/v1alpha1
-  - pkg/apis/extensions/v1beta1
-  - pkg/apis/metrics/v1alpha1
-  - plugin/pkg/client/auth/gcp
   - pkg/client/unversioned/clientcmd/api/v1
   - pkg/httplog
   - pkg/util/wsstream
   - third_party/golang/netutil
+  - pkg/api/install
+  - pkg/apis/apps/install
+  - pkg/apis/authorization/install
+  - pkg/apis/autoscaling/install
+  - pkg/apis/batch/install
+  - pkg/apis/componentconfig/install
+  - pkg/apis/extensions/install
+  - pkg/apis/metrics/install
+  - plugin/pkg/client/auth
   - pkg/client/clientset_generated/internalclientset
   - pkg/client/clientset_generated/internalclientset/typed/core/unversioned
   - pkg/client/clientset_generated/internalclientset/typed/extensions/unversioned
+  - pkg/apis/batch/v1
   - pkg/credentialprovider
   - pkg/fieldpath
   - pkg/kubelet/qos/util
   - pkg/util/deployment
   - pkg/util/jsonpath
   - pkg/api/rest
+  - pkg/apis/extensions/v1beta1
   - pkg/apis/extensions/validation
   - pkg/registry/generic
   - pkg/util/framer
   - third_party/forked/json
   - pkg/util/hash
   - pkg/util/net/sets
-  - pkg/kubelet/qos
-  - pkg/master/ports
+  - pkg/apis/apps/v1alpha1
+  - pkg/apis/authorization
+  - pkg/apis/authorization/v1beta1
+  - pkg/apis/autoscaling/v1
+  - pkg/apis/componentconfig
+  - pkg/apis/componentconfig/v1alpha1
+  - pkg/apis/metrics/v1alpha1
+  - plugin/pkg/client/auth/gcp
   - pkg/client/clientset_generated/internalclientset/typed/batch/unversioned
   - pkg/controller
   - pkg/util/labels
@@ -360,6 +358,8 @@ imports:
   - pkg/api/unversioned/validation
   - pkg/controller/podautoscaler
   - pkg/storage
+  - pkg/kubelet/qos
+  - pkg/master/ports
   - pkg/client/cache
   - pkg/client/record
   - pkg/controller/framework

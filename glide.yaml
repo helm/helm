@@ -34,4 +34,5 @@ import:
   - pkg/client/unversioned/remotecommand
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
+  - pkg/labels
 - package: github.com/gosuri/uitable
