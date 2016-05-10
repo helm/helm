@@ -7,6 +7,7 @@ import (
 	chartpbs "github.com/kubernetes/helm/pkg/proto/hapi/chart"
 )
 
+// ChartToProto converts a chart to its Protobuf struct representation.
 func ChartToProto(ch *chartutil.Chart) (chpb *chartpbs.Chart, err error) {
 	chpb = new(chartpbs.Chart)
 
@@ -42,6 +43,7 @@ func ChartToProto(ch *chartutil.Chart) (chpb *chartpbs.Chart, err error) {
 	return
 }
 
+// MetadataToProto converts Chart.yaml data into  protocol buffere Metadata.
 func MetadataToProto(ch *chartutil.Chart) (*chartpbs.Metadata, error) {
 	if ch == nil {
 		return nil, ErrMissingChart
@@ -72,6 +74,7 @@ func MetadataToProto(ch *chartutil.Chart) (*chartpbs.Metadata, error) {
 	return md, nil
 }
 
+// TemplatesToProto converts chart templates to their protobuf representation.
 func TemplatesToProto(ch *chartutil.Chart) (tpls []*chartpbs.Template, err error) {
 	if ch == nil {
 		return nil, ErrMissingChart
@@ -98,6 +101,7 @@ func TemplatesToProto(ch *chartutil.Chart) (tpls []*chartpbs.Template, err error
 	return
 }
 
+// ValuesToProto converts a chart's values.toml data to protobuf.
 func ValuesToProto(ch *chartutil.Chart) (*chartpbs.Config, error) {
 	if ch == nil {
 		return nil, ErrMissingChart

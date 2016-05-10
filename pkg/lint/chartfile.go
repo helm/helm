@@ -7,6 +7,7 @@ import (
 	chartutil "github.com/kubernetes/helm/pkg/chart"
 )
 
+// Chartfile checks the Chart.yaml file for errors and warnings.
 func Chartfile(basepath string) (m []Message) {
 	m = []Message{}
 

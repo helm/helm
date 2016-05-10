@@ -50,6 +50,10 @@ import (
 //
 //
 
+// WalkChartFile walks a chart and returns a *chartObj.
+//
+// FIXME: Why does an exported function return an unexported struct whose only
+// exported method is to return the object passed into this method?
 func WalkChartFile(chfi *chartutil.Chart) (*chartObj, error) {
 	root := &chartObj{file: chfi}
 	err := root.walkChartDeps(chfi)
@@ -62,6 +66,7 @@ type chartObj struct {
 	deps []*chartObj
 }
 
+// File returns the *chartutil.Chart associated with this *chartObj.
 func (chd *chartObj) File() *chartutil.Chart {
 	return chd.file
 }
