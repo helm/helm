@@ -7,7 +7,7 @@ import (
 )
 
 const testDir = "testdata/"
-const testFile = "testdata/local-cache.yaml"
+const testFile = "testdata/local-index.yaml"
 
 type searchTestCase struct {
 	in          string
@@ -49,9 +49,9 @@ func validateEntries(t *testing.T, in string, found []string, expected []string)
 }
 
 func searchTestRunner(t *testing.T, tc searchTestCase) {
-	cf, err := repo.LoadCacheFile(testFile)
+	cf, err := repo.LoadIndexFile(testFile)
 	if err != nil {
-		t.Errorf("Failed to load cache file : %s : %s", testFile, err)
+		t.Errorf("Failed to load index file : %s : %s", testFile, err)
 	}
 
 	u := searchChartRefsForPattern(tc.in, cf.Entries)

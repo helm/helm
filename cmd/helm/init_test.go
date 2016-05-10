@@ -28,7 +28,7 @@ func TestEnsureHome(t *testing.T) {
 		t.Errorf("%s should not be a directory", fi)
 	}
 
-	if fi, err := os.Stat(localRepoDirectory(localRepoCacheFilePath)); err != nil {
+	if fi, err := os.Stat(localRepoDirectory(localRepoIndexFilePath)); err != nil {
 		t.Errorf("%s", err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)

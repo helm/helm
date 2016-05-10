@@ -47,7 +47,7 @@ func runRepoAdd(cmd *cobra.Command, args []string) error {
 	}
 	name, url := args[0], args[1]
 
-	if err := downloadCacheFile(name, url); err != nil {
+	if err := downloadIndexFile(name, url); err != nil {
 		return errors.New("Oops! Looks like " + url + " is not a valid chart repository or cannot be reached\n")
 	}
 
