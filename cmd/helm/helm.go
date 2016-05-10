@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 var stdout = os.Stdout
@@ -48,7 +50,9 @@ func init() {
 }
 
 func main() {
-	RootCommand.Execute()
+	if err := RootCommand.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
 
 func checkArgsLength(expectedNum, actualNum int, requiredArgs ...string) error {
@@ -60,4 +64,12 @@ func checkArgsLength(expectedNum, actualNum int, requiredArgs ...string) error {
 		return fmt.Errorf("This command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
 	}
 	return nil
+}
+
+// prettyError unwraps or rewrites certain errors to make them more user-friendly.
+func prettyError(err error) error {
+	// This is ridiculous. Why is 'grpc.rpcError' not exported? The least they
+	// could do is throw an interface on the lib that would let us get back
+	// the desc. Instead, we have to pass ALL errors through this.
+	return errors.New(grpc.ErrorDesc(err))
 }

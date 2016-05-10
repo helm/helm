@@ -34,7 +34,7 @@ func init() {
 
 func delRelease(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.New("Command 'delete' requires a release name.")
+		return errors.New("command 'delete' requires a release name")
 	}
 
 	// TODO: Handle dry run use case.
@@ -45,7 +45,7 @@ func delRelease(cmd *cobra.Command, args []string) error {
 
 	_, err := helm.UninstallRelease(args[0])
 	if err != nil {
-		return err
+		return prettyError(err)
 	}
 
 	return nil

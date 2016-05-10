@@ -81,7 +81,7 @@ func getCmd(cmd *cobra.Command, args []string) error {
 
 	res, err := helm.GetReleaseContent(args[0])
 	if err != nil {
-		return err
+		return prettyError(err)
 	}
 
 	fmt.Printf("CHART: %s-%s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
@@ -101,7 +101,7 @@ func getValues(cmd *cobra.Command, args []string) error {
 
 	res, err := helm.GetReleaseContent(args[0])
 	if err != nil {
-		return err
+		return prettyError(err)
 	}
 	return getToFile(res.Release.Config)
 }
@@ -114,7 +114,7 @@ func getManifest(cmd *cobra.Command, args []string) error {
 
 	res, err := helm.GetReleaseContent(args[0])
 	if err != nil {
-		return err
+		return prettyError(err)
 	}
 	return getToFile(res.Release.Manifest)
 }
