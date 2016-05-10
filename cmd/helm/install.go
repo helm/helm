@@ -31,8 +31,6 @@ var (
 	installArg string
 	// tillerHost overrides TILLER_HOST envVar
 	tillerHost string
-	// verbose enables verbose output
-	verbose bool
 	// installDryRun performs a dry-run install
 	installDryRun bool
 )
@@ -64,11 +62,13 @@ func printRelease(rel *release.Release) {
 	if rel == nil {
 		return
 	}
-	fmt.Printf("release.name:   %s\n", rel.Name)
-	if verbose {
-		fmt.Printf("release.info:   %s %s\n", timeconv.Format(rel.Info.LastDeployed, time.ANSIC), rel.Info.Status)
-		fmt.Printf("release.chart:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
-		fmt.Printf("release.manifest: %s\n", rel.Manifest)
+	if flagVerbose {
+		fmt.Printf("NAME:   %s\n", rel.Name)
+		fmt.Printf("INFO:   %s %s\n", timeconv.Format(rel.Info.LastDeployed, time.ANSIC), rel.Info.Status)
+		fmt.Printf("CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
+		fmt.Printf("MANIFEST: %s\n", rel.Manifest)
+	} else {
+		fmt.Println(rel.Name)
 	}
 }
 
@@ -99,7 +99,6 @@ func fatalf(format string, args ...interface{}) {
 
 func init() {
 	installCmd.Flags().StringVar(&tillerHost, "host", defaultHost, "address of tiller server")
-	installCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose install")
 	installCmd.Flags().BoolVar(&installDryRun, "dry-run", false, "simulate an install")
 
 	RootCommand.AddCommand(installCmd)
