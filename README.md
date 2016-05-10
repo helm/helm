@@ -37,10 +37,11 @@ Make sure you have the prerequisites:
 - Go 1.6
 - A running Kubernetes cluster
 - `kubectl` properly configured to talk to your cluster
-- Glide 0.10 or greater
+- [Glide](https://glide.sh/) 0.10 or greater with both git and mercurial installed.
 
-1. Clone (or otherwise download) this repository
-2. Run `make bootstrap build`
+1. [Properly set your $GOPATH](https://golang.org/doc/code.html)
+2. Clone (or otherwise download) this repository into $GOPATH/src/github.com/kubernetes/helm
+3. Run `make bootstrap build`
 
 You will now have two binaries built:
 
