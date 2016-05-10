@@ -100,18 +100,18 @@ func ensureHome() error {
 		return fmt.Errorf("%s must be a file, not a directory", repoFile)
 	}
 
-	localRepoCacheFile := localRepoDirectory(localRepoCacheFilePath)
-	if fi, err := os.Stat(localRepoCacheFile); err != nil {
-		fmt.Printf("Creating %s \n", localRepoCacheFile)
-		_, err := os.Create(localRepoCacheFile)
+	localRepoIndexFile := localRepoDirectory(localRepoIndexFilePath)
+	if fi, err := os.Stat(localRepoIndexFile); err != nil {
+		fmt.Printf("Creating %s \n", localRepoIndexFile)
+		_, err := os.Create(localRepoIndexFile)
 		if err != nil {
 			return err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(localRepoCacheFile, cacheDirectory("local-cache.yaml"))
+		os.Symlink(localRepoIndexFile, cacheDirectory("local-index.yaml"))
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", localRepoCacheFile)
+		return fmt.Errorf("%s must be a file, not a directory", localRepoIndexFile)
 	}
 
 	fmt.Printf("$HELM_HOME has been configured at %s.\n", helmHome)

@@ -4,15 +4,15 @@ import (
 	"testing"
 )
 
-const testfile = "testdata/local-cache.yaml"
+const testfile = "testdata/local-index.yaml"
 
-func TestLoadCacheFile(t *testing.T) {
-	cf, err := LoadCacheFile(testfile)
+func TestLoadIndexFile(t *testing.T) {
+	cf, err := LoadIndexFile(testfile)
 	if err != nil {
-		t.Errorf("Failed to load cachefile: %s", err)
+		t.Errorf("Failed to load index file: %s", err)
 	}
 	if len(cf.Entries) != 2 {
-		t.Errorf("Expected 2 entries in the cache file, but got %d", len(cf.Entries))
+		t.Errorf("Expected 2 entries in the index file, but got %d", len(cf.Entries))
 	}
 	nginx := false
 	alpine := false

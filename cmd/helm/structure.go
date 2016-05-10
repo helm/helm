@@ -9,7 +9,7 @@ const (
 	repositoriesFilePath   string = "repositories.yaml"
 	cachePath              string = "cache"
 	localRepoPath          string = "local"
-	localRepoCacheFilePath string = "cache.yaml"
+	localRepoIndexFilePath string = "index.yaml"
 )
 
 func homePath() string {

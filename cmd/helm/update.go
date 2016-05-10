@@ -46,7 +46,7 @@ func updateCharts(repos map[string]string, verbose bool) {
 		wg.Add(1)
 		go func(n, u string) {
 			defer wg.Done()
-			err := downloadCacheFile(n, u)
+			err := downloadIndexFile(n, u)
 			if err != nil {
 				updateErr := "...Unable to get an update from the " + n + " chart repository"
 				if verbose {
@@ -62,17 +62,17 @@ func updateCharts(repos map[string]string, verbose bool) {
 	fmt.Println("Update Complete. Happy Helming!")
 }
 
-func downloadCacheFile(name, url string) error {
-	var cacheURL string
+func downloadIndexFile(name, url string) error {
+	var indexURL string
 
-	cacheURL = strings.TrimSuffix(url, "/") + "/cache.yaml"
-	resp, err := http.Get(cacheURL)
+	indexURL = strings.TrimSuffix(url, "/") + "/index.yaml"
+	resp, err := http.Get(indexURL)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	var cacheFile *os.File
+	var indexFile *os.File
 	var r repo.RepoFile
 
 	b, err := ioutil.ReadAll(resp.Body)
@@ -84,12 +84,12 @@ func downloadCacheFile(name, url string) error {
 		return err
 	}
 
-	cacheFile, err = os.Create(cacheDirectory(name + "-cache.yaml"))
+	indexFile, err = os.Create(cacheDirectory(name + "-index.yaml"))
 	if err != nil {
 		return err
 	}
 
-	if _, err := io.Copy(cacheFile, resp.Body); err != nil {
+	if _, err := io.Copy(indexFile, resp.Body); err != nil {
 		return err
 	}
 

@@ -64,9 +64,9 @@ func searchCacheForPattern(dir string, search string) ([]string, error) {
 	})
 	matches := []string{}
 	for _, f := range fileList {
-		cache, _ := repo.LoadCacheFile(f)
-		m := searchChartRefsForPattern(search, cache.Entries)
-		repoName := strings.TrimSuffix(filepath.Base(f), "-cache.yaml")
+		index, _ := repo.LoadIndexFile(f)
+		m := searchChartRefsForPattern(search, index.Entries)
+		repoName := strings.TrimSuffix(filepath.Base(f), "-index.yaml")
 		for _, c := range m {
 			matches = append(matches, repoName+"/"+c)
 		}
