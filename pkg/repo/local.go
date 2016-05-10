@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/kubernetes/helm/pkg/chart"
-	"gopkg.in/yaml.v2"
 )
 
 var localRepoPath string
@@ -55,22 +54,6 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 	return nil
 }
 
-// LoadIndexFile takes a file at the given path and returns an IndexFile object
-func LoadIndexFile(path string) (*IndexFile, error) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	//TODO: change variable name - y is not helpful :P
-	var y IndexFile
-	err = yaml.Unmarshal(b, &y)
-	if err != nil {
-		return nil, err
-	}
-	return &y, nil
-}
-
 // Reindex adds an entry to the index file at the given path
 func Reindex(ch *chart.Chart, path string) error {
 	name := ch.Chartfile().Name + "-" + ch.Chartfile().Version
@@ -88,7 +71,7 @@ func Reindex(ch *chart.Chart, path string) error {
 	if !found {
 		url := "localhost:8879/charts/" + name + ".tgz"
 
-		out, err := y.insertChartEntry(name, url)
+		out, err := y.addEntry(name, url)
 		if err != nil {
 			return err
 		}
@@ -96,30 +79,4 @@ func Reindex(ch *chart.Chart, path string) error {
 		ioutil.WriteFile(path, out, 0644)
 	}
 	return nil
-}
-
-// UnmarshalYAML unmarshals the index file
-func (i *IndexFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var refs map[string]*ChartRef
-	if err := unmarshal(&refs); err != nil {
-		if _, ok := err.(*yaml.TypeError); !ok {
-			return err
-		}
-	}
-	i.Entries = refs
-	return nil
-}
-
-func (i *IndexFile) insertChartEntry(name string, url string) ([]byte, error) {
-	if i.Entries == nil {
-		i.Entries = make(map[string]*ChartRef)
-	}
-	entry := ChartRef{Name: name, URL: url}
-	i.Entries[name] = &entry
-	out, err := yaml.Marshal(&i.Entries)
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
 }
