@@ -15,12 +15,8 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-//
-// Release:
-//
-// 		A release describes a deployment of a chart, together with the chart
-//    and the variables used to deploy that chart.
-//
+// Release describes a deployment of a chart, together with the chart
+// and the variables used to deploy that chart.
 type Release struct {
 	// Name is the name of the release
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`

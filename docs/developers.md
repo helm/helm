@@ -41,6 +41,11 @@ Helm and Tiller communicate using gRPC. To get started with gRPC, you will need 
 
 Note that you need to be on protobuf 3.x (`protoc --version`) and use the latest Go plugin.
 
+While the gRPC and ProtoBuf specs remain silent on indentation, we
+require that the indentation style matches the Go format specification.
+Namely, protocol buffers should use tab-based indentation and rpc
+declarations should follow the style of Go function declarations.
+
 ### The Helm API (HAPI)
 
 We use gRPC as an API layer. See `pkg/proto/hapi` for the generated Go code,

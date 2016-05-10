@@ -13,11 +13,7 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-//
-// Maintainer:
-//
-// 		A descriptor of the Chart maintainer(s).
-//
+// Maintainer describes a Chart maintainer.
 type Maintainer struct {
 	// Name is a user name or organization name
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -30,18 +26,13 @@ func (m *Maintainer) String() string            { return proto.CompactTextString
 func (*Maintainer) ProtoMessage()               {}
 func (*Maintainer) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
+// 	Metadata for a Chart file. This models the structure of a Chart.yaml file.
 //
-// Metadata:
-//
-// 		Metadata for a Chart file. This models the structure
-// 		of a Chart.yaml file.
-//
-// 		Spec: https://github.com/kubernetes/helm/blob/master/docs/design/chart_format.md#the-chart-file
-//
+// 	Spec: https://github.com/kubernetes/helm/blob/master/docs/design/chart_format.md#the-chart-file
 type Metadata struct {
 	// The name of the chart
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	// The URL to a relecant project page, git repo, or contact person
+	// The URL to a relevant project page, git repo, or contact person
 	Home string `protobuf:"bytes,2,opt,name=home" json:"home,omitempty"`
 	// Source is the URL to the source code of this chart
 	Sources []string `protobuf:"bytes,3,rep,name=sources" json:"sources,omitempty"`

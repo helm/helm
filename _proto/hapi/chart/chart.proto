@@ -8,11 +8,8 @@ import "hapi/chart/template.proto";
 
 option go_package = "chart";
 
-//
-// Chart:
-//		A chart is a helm package that contains metadata, a default config, zero or more
-//		optionally parameterizable templates, and zero or more charts (dependencies).
-//
+//	Chart is a helm package that contains metadata, a default config, zero or more
+//	optionally parameterizable templates, and zero or more charts (dependencies).
 message Chart {
 	// Contents of the Chartfile.
 	hapi.chart.Metadata metadata = 1;
@@ -23,7 +20,7 @@ message Chart {
 	// Charts that this chart depends on.
 	repeated Chart dependencies = 3;
 
-  	// Default config for this template.
-  	hapi.chart.Config values = 4;
+	// Default config for this template.
+	hapi.chart.Config values = 4;
 
 }

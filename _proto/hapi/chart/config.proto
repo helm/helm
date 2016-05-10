@@ -4,22 +4,14 @@ package hapi.chart;
 
 option go_package = "chart";
 
-//
-// Config:
-//
-//		A config supplies values to the parametrizable templates of a chart.
-//
+// Config supplies values to the parametrizable templates of a chart.
 message Config {
-  string raw = 1;
+	string raw = 1;
 
-  map<string,Value> values = 2;
+	map<string,Value> values = 2;
 }
 
-//
-// Value:
-//
-//		TODO
-//
+// Value describes a configuration value as a string.
 message Value {
 	string value = 1;
 }

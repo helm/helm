@@ -2,6 +2,26 @@
 // source: hapi/services/tiller.proto
 // DO NOT EDIT!
 
+/*
+Package services is a generated protocol buffer package.
+
+It is generated from these files:
+	hapi/services/tiller.proto
+
+It has these top-level messages:
+	ListReleasesRequest
+	ListReleasesResponse
+	GetReleaseStatusRequest
+	GetReleaseStatusResponse
+	GetReleaseContentRequest
+	GetReleaseContentResponse
+	UpdateReleaseRequest
+	UpdateReleaseResponse
+	InstallReleaseRequest
+	InstallReleaseResponse
+	UninstallReleaseRequest
+	UninstallReleaseResponse
+*/
 package services
 
 import proto "github.com/golang/protobuf/proto"
@@ -22,11 +42,11 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-//
-// ListReleasesRequest:
-//
-// 		TODO
-//
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.ProtoPackageIsVersion1
+
+// ListReleasesRequest requests a list of releases.
 type ListReleasesRequest struct {
 	// The maximum number of releases to be returned
 	Limit int64 `protobuf:"varint,1,opt,name=limit" json:"limit,omitempty"`
@@ -37,13 +57,9 @@ type ListReleasesRequest struct {
 func (m *ListReleasesRequest) Reset()                    { *m = ListReleasesRequest{} }
 func (m *ListReleasesRequest) String() string            { return proto.CompactTextString(m) }
 func (*ListReleasesRequest) ProtoMessage()               {}
-func (*ListReleasesRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (*ListReleasesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-//
-// ListReleasesResponse:
-//
-// 		TODO
-//
+// ListReleasesResponse is a list of releases.
 type ListReleasesResponse struct {
 	// The expected total number of releases to be returned
 	Count int64 `protobuf:"varint,1,opt,name=count" json:"count,omitempty"`
@@ -58,7 +74,7 @@ type ListReleasesResponse struct {
 func (m *ListReleasesResponse) Reset()                    { *m = ListReleasesResponse{} }
 func (m *ListReleasesResponse) String() string            { return proto.CompactTextString(m) }
 func (*ListReleasesResponse) ProtoMessage()               {}
-func (*ListReleasesResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+func (*ListReleasesResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *ListReleasesResponse) GetReleases() []*hapi_release2.Release {
 	if m != nil {
@@ -76,7 +92,7 @@ type GetReleaseStatusRequest struct {
 func (m *GetReleaseStatusRequest) Reset()                    { *m = GetReleaseStatusRequest{} }
 func (m *GetReleaseStatusRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetReleaseStatusRequest) ProtoMessage()               {}
-func (*GetReleaseStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+func (*GetReleaseStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 // GetReleaseStatusResponse is the response indicating the status of the named release.
 type GetReleaseStatusResponse struct {
@@ -89,7 +105,7 @@ type GetReleaseStatusResponse struct {
 func (m *GetReleaseStatusResponse) Reset()                    { *m = GetReleaseStatusResponse{} }
 func (m *GetReleaseStatusResponse) String() string            { return proto.CompactTextString(m) }
 func (*GetReleaseStatusResponse) ProtoMessage()               {}
-func (*GetReleaseStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
+func (*GetReleaseStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func (m *GetReleaseStatusResponse) GetInfo() *hapi_release1.Info {
 	if m != nil {
@@ -107,7 +123,7 @@ type GetReleaseContentRequest struct {
 func (m *GetReleaseContentRequest) Reset()                    { *m = GetReleaseContentRequest{} }
 func (m *GetReleaseContentRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetReleaseContentRequest) ProtoMessage()               {}
-func (*GetReleaseContentRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
+func (*GetReleaseContentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 // GetReleaseContentResponse is a response containing the contents of a release.
 type GetReleaseContentResponse struct {
@@ -118,7 +134,7 @@ type GetReleaseContentResponse struct {
 func (m *GetReleaseContentResponse) Reset()                    { *m = GetReleaseContentResponse{} }
 func (m *GetReleaseContentResponse) String() string            { return proto.CompactTextString(m) }
 func (*GetReleaseContentResponse) ProtoMessage()               {}
-func (*GetReleaseContentResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
+func (*GetReleaseContentResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 func (m *GetReleaseContentResponse) GetRelease() *hapi_release2.Release {
 	if m != nil {
@@ -127,37 +143,25 @@ func (m *GetReleaseContentResponse) GetRelease() *hapi_release2.Release {
 	return nil
 }
 
-//
-// UpdateReleaseRequest:
-//
-// 		TODO
-//
+// UpdateReleaseRequest updates a release.
 type UpdateReleaseRequest struct {
 }
 
 func (m *UpdateReleaseRequest) Reset()                    { *m = UpdateReleaseRequest{} }
 func (m *UpdateReleaseRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateReleaseRequest) ProtoMessage()               {}
-func (*UpdateReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{6} }
+func (*UpdateReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-//
-// UpdateReleaseResponse:
-//
-// 		TODO
-//
+// UpdateReleaseResponse is the response to an update request.
 type UpdateReleaseResponse struct {
 }
 
 func (m *UpdateReleaseResponse) Reset()                    { *m = UpdateReleaseResponse{} }
 func (m *UpdateReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateReleaseResponse) ProtoMessage()               {}
-func (*UpdateReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{7} }
+func (*UpdateReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
-//
-// InstallReleaseRequest:
-//
-// 		TODO
-//
+// InstallReleaseRequest is the request for an installation of a chart.
 type InstallReleaseRequest struct {
 	// Chart is the protobuf representation of a chart.
 	Chart *hapi_chart3.Chart `protobuf:"bytes,1,opt,name=chart" json:"chart,omitempty"`
@@ -172,7 +176,7 @@ type InstallReleaseRequest struct {
 func (m *InstallReleaseRequest) Reset()                    { *m = InstallReleaseRequest{} }
 func (m *InstallReleaseRequest) String() string            { return proto.CompactTextString(m) }
 func (*InstallReleaseRequest) ProtoMessage()               {}
-func (*InstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
+func (*InstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *InstallReleaseRequest) GetChart() *hapi_chart3.Chart {
 	if m != nil {
@@ -188,11 +192,7 @@ func (m *InstallReleaseRequest) GetValues() *hapi_chart.Config {
 	return nil
 }
 
-//
-// InstallReleaseResponse:
-//
-// 		TODO
-//
+// InstallReleaseResponse is the response from a release installation.
 type InstallReleaseResponse struct {
 	Release *hapi_release2.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
@@ -200,7 +200,7 @@ type InstallReleaseResponse struct {
 func (m *InstallReleaseResponse) Reset()                    { *m = InstallReleaseResponse{} }
 func (m *InstallReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*InstallReleaseResponse) ProtoMessage()               {}
-func (*InstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{9} }
+func (*InstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 func (m *InstallReleaseResponse) GetRelease() *hapi_release2.Release {
 	if m != nil {
@@ -218,7 +218,7 @@ type UninstallReleaseRequest struct {
 func (m *UninstallReleaseRequest) Reset()                    { *m = UninstallReleaseRequest{} }
 func (m *UninstallReleaseRequest) String() string            { return proto.CompactTextString(m) }
 func (*UninstallReleaseRequest) ProtoMessage()               {}
-func (*UninstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{10} }
+func (*UninstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.
 type UninstallReleaseResponse struct {
@@ -229,7 +229,7 @@ type UninstallReleaseResponse struct {
 func (m *UninstallReleaseResponse) Reset()                    { *m = UninstallReleaseResponse{} }
 func (m *UninstallReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*UninstallReleaseResponse) ProtoMessage()               {}
-func (*UninstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{11} }
+func (*UninstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 func (m *UninstallReleaseResponse) GetRelease() *hapi_release2.Release {
 	if m != nil {
@@ -264,31 +264,20 @@ const _ = grpc.SupportPackageIsVersion1
 // Client API for ReleaseService service
 
 type ReleaseServiceClient interface {
-	//
-	// Retrieve release history. TODO: Allow filtering the set of releases by
+	// ListReleases retrieves release history.
+	// TODO: Allow filtering the set of releases by
 	// release status. By default, ListAllReleases returns the releases who
 	// current status is "Active".
-	//
 	ListReleases(ctx context.Context, in *ListReleasesRequest, opts ...grpc.CallOption) (ReleaseService_ListReleasesClient, error)
-	//
-	// Retrieve status information for the specified release.
-	//
+	// GetReleasesStatus retrieves status information for the specified release.
 	GetReleaseStatus(ctx context.Context, in *GetReleaseStatusRequest, opts ...grpc.CallOption) (*GetReleaseStatusResponse, error)
-	//
-	// Retrieve the release content (chart + value) for the specifed release.
-	//
+	// GetReleaseContent retrieves the release content (chart + value) for the specifed release.
 	GetReleaseContent(ctx context.Context, in *GetReleaseContentRequest, opts ...grpc.CallOption) (*GetReleaseContentResponse, error)
-	//
-	// Update release content.
-	//
+	// UpdateRelease updates release content.
 	UpdateRelease(ctx context.Context, in *UpdateReleaseRequest, opts ...grpc.CallOption) (*UpdateReleaseResponse, error)
-	//
-	// Request release install.
-	//
+	// InstallRelease requests installation of a chart as a new release.
 	InstallRelease(ctx context.Context, in *InstallReleaseRequest, opts ...grpc.CallOption) (*InstallReleaseResponse, error)
-	//
-	// Request release deletion.
-	//
+	// UninstallRelease requests deletion of a named release.
 	UninstallRelease(ctx context.Context, in *UninstallReleaseRequest, opts ...grpc.CallOption) (*UninstallReleaseResponse, error)
 }
 
@@ -380,31 +369,20 @@ func (c *releaseServiceClient) UninstallRelease(ctx context.Context, in *Uninsta
 // Server API for ReleaseService service
 
 type ReleaseServiceServer interface {
-	//
-	// Retrieve release history. TODO: Allow filtering the set of releases by
+	// ListReleases retrieves release history.
+	// TODO: Allow filtering the set of releases by
 	// release status. By default, ListAllReleases returns the releases who
 	// current status is "Active".
-	//
 	ListReleases(*ListReleasesRequest, ReleaseService_ListReleasesServer) error
-	//
-	// Retrieve status information for the specified release.
-	//
+	// GetReleasesStatus retrieves status information for the specified release.
 	GetReleaseStatus(context.Context, *GetReleaseStatusRequest) (*GetReleaseStatusResponse, error)
-	//
-	// Retrieve the release content (chart + value) for the specifed release.
-	//
+	// GetReleaseContent retrieves the release content (chart + value) for the specifed release.
 	GetReleaseContent(context.Context, *GetReleaseContentRequest) (*GetReleaseContentResponse, error)
-	//
-	// Update release content.
-	//
+	// UpdateRelease updates release content.
 	UpdateRelease(context.Context, *UpdateReleaseRequest) (*UpdateReleaseResponse, error)
-	//
-	// Request release install.
-	//
+	// InstallRelease requests installation of a chart as a new release.
 	InstallRelease(context.Context, *InstallReleaseRequest) (*InstallReleaseResponse, error)
-	//
-	// Request release deletion.
-	//
+	// UninstallRelease requests deletion of a named release.
 	UninstallRelease(context.Context, *UninstallReleaseRequest) (*UninstallReleaseResponse, error)
 }
 
@@ -527,7 +505,7 @@ var _ReleaseService_serviceDesc = grpc.ServiceDesc{
 	},
 }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor0 = []byte{
 	// 540 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x55, 0xcd, 0x6e, 0xd3, 0x40,
 	0x10, 0xae, 0x49, 0x9a, 0x86, 0x29, 0x54, 0x74, 0xc8, 0x8f, 0xf1, 0xa9, 0xda, 0x03, 0x94, 0x42,

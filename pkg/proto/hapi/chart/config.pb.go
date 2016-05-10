@@ -13,11 +13,7 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-//
-// Config:
-//
-// 		A config supplies values to the parametrizable templates of a chart.
-//
+// Config supplies values to the parametrizable templates of a chart.
 type Config struct {
 	Raw    string            `protobuf:"bytes,1,opt,name=raw" json:"raw,omitempty"`
 	Values map[string]*Value `protobuf:"bytes,2,rep,name=values" json:"values,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -35,11 +31,7 @@ func (m *Config) GetValues() map[string]*Value {
 	return nil
 }
 
-//
-// Value:
-//
-// 		TODO
-//
+// Value describes a configuration value as a string.
 type Value struct {
 	Value string `protobuf:"bytes,1,opt,name=value" json:"value,omitempty"`
 }
