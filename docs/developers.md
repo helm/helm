@@ -46,8 +46,7 @@ Note that you need to be on protobuf 3.x (`protoc --version`) and use the latest
 We use gRPC as an API layer. See `pkg/proto/hapi` for the generated Go code,
 and `_proto` for the protocol buffer definitions.
 
-To regenerate the Go files from the protobuf source, `cd _proto &&
-make`.
+To regenerate the Go files from the protobuf source, `make protoc`.
 
 ## Docker Images
 
