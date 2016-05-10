@@ -150,6 +150,10 @@ func (p *PrintingKubeClient) Create(ns string, r io.Reader) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
+
+// Delete implements KubeClient delete.
+//
+// It only prints out the content to be deleted.
 func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
 	_, err := io.Copy(p.Out, r)
 	return err

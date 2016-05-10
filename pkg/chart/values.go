@@ -41,6 +41,7 @@ func (v Values) Table(name string) (Values, error) {
 	return table, err
 }
 
+// Encode writes serialized Values information to the given io.Writer.
 func (v Values) Encode(w io.Writer) error {
 	return toml.NewEncoder(w).Encode(v)
 }
