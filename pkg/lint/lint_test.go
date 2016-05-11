@@ -7,6 +7,7 @@ import (
 )
 
 const badChartDir = "testdata/badchartfile"
+const badValuesFileDir = "testdata/badvaluesfile"
 const badYamlFileDir = "testdata/albatross"
 const goodChartDir = "testdata/goodone"
 
@@ -40,10 +41,20 @@ func TestBadChart(t *testing.T) {
 func TestInvalidYaml(t *testing.T) {
 	m := All(badYamlFileDir)
 	if len(m) != 1 {
-		t.Errorf("All didn't fail with expected errors")
+		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
 	if !strings.Contains(m[0].Text, "deliberateSyntaxError") {
 		t.Errorf("All didn't have the error for deliberateSyntaxError")
+	}
+}
+
+func TestBadValues(t *testing.T) {
+	m := All(badValuesFileDir)
+	if len(m) != 1 {
+		t.Errorf("All didn't fail with expected errors, got %#v", m)
+	}
+	if !strings.Contains(m[0].Text, "Bare keys cannot contain ':'") {
+		t.Errorf("All didn't have the error for invalid key format")
 	}
 }
 
