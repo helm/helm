@@ -17,4 +17,9 @@ func TestMessage(t *testing.T) {
 	if m.String() != "[WARNING] Bar" {
 		t.Errorf("Unexpected output: %s", m.String())
 	}
+
+	m = Message{InfoSev, "FooBar"}
+	if m.String() != "[INFO] FooBar" {
+		t.Errorf("Unexpected output: %s", m.String())
+	}
 }

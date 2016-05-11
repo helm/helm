@@ -19,6 +19,7 @@ package chart
 import (
 	"io/ioutil"
 
+	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
 )
 
@@ -46,7 +47,16 @@ func LoadChartfile(filename string) (*Chartfile, error) {
 		return nil, err
 	}
 	var y Chartfile
-	return &y, yaml.Unmarshal(b, &y)
+	err = yaml.Unmarshal(b, &y)
+	if err != nil {
+		return nil, err
+	}
+	// Validate that the Version is actually a valid semver version
+	_, err = semver.NewVersion(y.Version)
+	if err != nil {
+		return nil, err
+	}
+	return &y, nil
 }
 
 // Save saves a Chart.yaml file
