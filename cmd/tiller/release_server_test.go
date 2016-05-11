@@ -208,7 +208,7 @@ func TestListReleases(t *testing.T) {
 	}
 
 	mrs := &mockListServer{}
-	if err := rs.ListReleases(&services.ListReleasesRequest{Offset: 0, Limit: 64}, mrs); err != nil {
+	if err := rs.ListReleases(&services.ListReleasesRequest{Offset: "", Limit: 64}, mrs); err != nil {
 		t.Fatalf("Failed listing: %s", err)
 	}
 
@@ -234,7 +234,7 @@ func TestListReleasesSort(t *testing.T) {
 	limit := 6
 	mrs := &mockListServer{}
 	req := &services.ListReleasesRequest{
-		Offset: 0,
+		Offset: "",
 		Limit:  int64(limit),
 		SortBy: services.ListSort_NAME,
 	}
@@ -276,7 +276,7 @@ func TestListReleasesFilter(t *testing.T) {
 
 	mrs := &mockListServer{}
 	req := &services.ListReleasesRequest{
-		Offset: 0,
+		Offset: "",
 		Limit:  64,
 		Filter: "neuro[a-z]+",
 		SortBy: services.ListSort_NAME,

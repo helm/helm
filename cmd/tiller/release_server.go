@@ -44,6 +44,7 @@ var (
 var ListDefaultLimit int64 = 512
 
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
+	more := false
 	rels, err := s.env.Releases.List()
 	if err != nil {
 		return err
@@ -65,12 +66,33 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		sort.Sort(byDate(rels))
 	}
 
-	l := int64(len(rels))
-	if req.Offset > 0 {
-		if req.Offset >= l {
-			return fmt.Errorf("offset %d is outside of range %d", req.Offset, l)
+	if req.SortOrder == services.ListSort_DESC {
+		ll := len(rels)
+		rr := make([]*release.Release, ll)
+		for i, item := range rels {
+			rr[ll-i-1] = item
 		}
-		rels = rels[req.Offset:]
+		rels = rr
+	}
+
+	l := int64(len(rels))
+	if req.Offset != "" {
+
+		i := -1
+		for ii, cur := range rels {
+			if cur.Name == req.Offset {
+				i = ii + 1
+			}
+		}
+		if i == -1 {
+			return fmt.Errorf("offset %q not found", req.Offset)
+		}
+
+		if len(rels) < i {
+			return fmt.Errorf("no items after %q", req.Offset)
+		}
+
+		rels = rels[i:]
 		l = int64(len(rels))
 	}
 
@@ -79,15 +101,21 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 	}
 
 	if l > req.Limit {
+		more = true
 		rels = rels[0:req.Limit]
 		l = int64(len(rels))
 	}
 
+	last := ""
+	if l > 0 {
+		last = rels[l-1].Name
+	}
 	res := &services.ListReleasesResponse{
-		Offset:   0,
+		Offset:   last,
 		Count:    l,
 		Total:    total,
 		Releases: rels,
+		More:     more,
 	}
 	stream.Send(res)
 	return nil

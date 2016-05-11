@@ -61,39 +61,56 @@ message ListReleasesRequest {
 	// Limit is the maximum number of releases to be returned.
 	int64 limit  = 1;
 
-	// Offset is the zero-based offset at which the returned release list begins.
-	int64 offset = 2;
+	// Offset is the last release name that was seen. The next listing
+	// operation will start with the name after this one.
+	// Example: If list one returns albert, bernie, carl and we supply
+	// carl as the offset, the next one should begin with the next release name
+	// after carl (e.g. dennis).
+	string offset = 2;
 
-  // SortBy is the sort field that the ListReleases server should sort data before returning.
-  ListSort.SortBy sort_by = 3;
+	// SortBy is the sort field that the ListReleases server should sort data before returning.
+	ListSort.SortBy sort_by = 3;
 
-  // Filter is a regular expression used to filter which releases should be listed.
-  //
-  // Anything that matches the regexp will be included in the results.
-  string filter = 4;
+	// Filter is a regular expression used to filter which releases should be listed.
+	//
+	// Anything that matches the regexp will be included in the results.
+	string filter = 4;
+
+	ListSort.SortOrder sort_order = 5;
 }
 
+// ListSort defines sorting fields on a release list.
 message ListSort{
-  enum SortBy {
-    UNKNOWN = 0;
-    NAME = 1;
-    LAST_RELEASED = 2;
-  }
+	// SortBy defines sort operations.
+	enum SortBy {
+		UNKNOWN = 0;
+		NAME = 1;
+		LAST_RELEASED = 2;
+	}
+
+	// SortOrder defines sort orders to augment sorting operations.
+	enum SortOrder {
+		ASC = 0;
+		DESC = 1;
+	}
 }
 
 // ListReleasesResponse is a list of releases.
 message ListReleasesResponse {
- 	// The expected total number of releases to be returned
+ 	// Count is the expected total number of releases to be returned.
 	int64 count  = 1;
 
-	// The zero-based offset at which the list is positioned
-	int64 offset = 2;
+	// Offset is the last-seen release name, used to offset the next set.
+	string offset = 2;
 
-	// The total number of queryable releases
+	// Total is the total number of queryable releases.
 	int64 total  = 3;
 
-	// The resulting releases
+	// Releases is the list of found release objects.
 	repeated hapi.release.Release releases = 4;
+
+	// More indicates whether there are more objects to retrieve.
+	bool more = 5;
 }
 
 // GetReleaseStatusRequest is a request to get the status of a release.

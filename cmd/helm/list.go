@@ -43,16 +43,22 @@ var listCommand = &cobra.Command{
 	Aliases: []string{"ls"},
 }
 
-var listLong bool
-var listMax int
-var listOffset int
-var listByDate bool
+var (
+	listLong     bool
+	listMax      int
+	listOffset   string
+	listByDate   bool
+	listSortDesc bool
+)
 
 func init() {
-	listCommand.Flags().BoolVarP(&listLong, "long", "l", false, "output long listing format")
-	listCommand.Flags().BoolVarP(&listByDate, "date", "d", false, "sort by release date")
-	listCommand.Flags().IntVarP(&listMax, "max", "m", 256, "maximum number of releases to fetch")
-	listCommand.Flags().IntVarP(&listOffset, "offset", "o", 0, "offset from start value (zero-indexed)")
+	f := listCommand.Flags()
+	f.BoolVarP(&listLong, "long", "l", false, "output long listing format")
+	f.BoolVarP(&listByDate, "date", "d", false, "sort by release date")
+	f.BoolVarP(&listSortDesc, "reverse", "r", false, "reverse the sort order")
+	f.IntVarP(&listMax, "max", "m", 256, "maximum number of releases to fetch")
+	f.StringVarP(&listOffset, "offset", "o", "", "the last seen release name, used to offset from start value")
+
 	RootCommand.AddCommand(listCommand)
 }
 
@@ -67,17 +73,17 @@ func listCmd(cmd *cobra.Command, args []string) error {
 		sortBy = services.ListSort_LAST_RELEASED
 	}
 
-	res, err := helm.ListReleases(listMax, listOffset, sortBy, filter)
+	sortOrder := services.ListSort_ASC
+	if listSortDesc {
+		sortOrder = services.ListSort_DESC
+	}
+
+	res, err := helm.ListReleases(listMax, listOffset, sortBy, sortOrder, filter)
 	if err != nil {
 		return prettyError(err)
 	}
 
 	rels := res.Releases
-	if flagVerbose && res.Count+res.Offset < res.Total {
-		fmt.Println("==> Not all values were fetched.")
-	}
-
-	// Purty output, ya'll
 	if listLong {
 		return formatList(rels)
 	}
