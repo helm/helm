@@ -47,6 +47,16 @@ func (r *mockReleaseStorage) Query(labels map[string]string) ([]*release.Release
 	return []*release.Release{}, nil
 }
 
+func (r *mockReleaseStorage) History(n string) ([]*release.Release, error) {
+	res := []*release.Release{}
+	rel, err := r.Read(n)
+	if err != nil {
+		return res, err
+	}
+	res = append(res, rel)
+	return res, nil
+}
+
 type mockKubeClient struct {
 }
 
