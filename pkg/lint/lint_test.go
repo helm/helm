@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const badChartDir = "testdata/badchartversion"
+const badChartDir = "testdata/badchartfile"
 const badYamlFileDir = "testdata/albatross"
 const goodChartDir = "testdata/goodone"
 
@@ -15,26 +15,24 @@ func TestBadChart(t *testing.T) {
 	if len(m) != 3 {
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	// There should be INFO, WARNING and ERROR messages, check for them
-	var i, w, e = false, false, false
+	// There should be 2 WARNINGs and one ERROR messages, check for them
+	var w, e, e2 = false, false, false
 	for _, msg := range m {
-		if msg.Severity == InfoSev {
-			if strings.Contains(msg.Text, "values.toml") {
-				i = true
-			}
-		}
 		if msg.Severity == WarningSev {
 			if strings.Contains(msg.Text, "No templates") {
 				w = true
 			}
 		}
 		if msg.Severity == ErrorSev {
-			if strings.Contains(msg.Text, "Chart.yaml does not exist") {
+			if strings.Contains(msg.Text, "must be greater than 0.0.0") {
 				e = true
+			}
+			if strings.Contains(msg.Text, "'name' is required") {
+				e2 = true
 			}
 		}
 	}
-	if !i || !w || !e {
+	if !e || !e2 || !w {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }
