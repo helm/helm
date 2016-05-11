@@ -30,3 +30,6 @@ import:
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
 - package: github.com/gosuri/uitable
+- package: speter.net/go/exp/math/dec/inf
+  vcs: git
+  repo: git@github.com:go-inf/inf.git

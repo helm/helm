@@ -73,16 +73,14 @@ func printRelease(rel *release.Release) {
 }
 
 func setupInstallEnv() {
-	// note: TILLER_HOST envvar is
-	// acknowledged iff the host flag
-	// does not override the default.
-	//
-	// bug: except that if the host flag happens to set the host to the same
-	// value as the defaultHost, the env var will be used instead.
-	if tillerHost == defaultHost {
-		host := os.Getenv(hostEnvVar)
-		if host != "" {
-			tillerHost = host
+	// The 'host' flag takes precendence uber alles.
+	// If set, proceed with install using provided host
+	// address. If unset, the 'TILLER_HOST' environment
+	// variable (if set) is used, otherwise defaults to ":44134".
+	if tillerHost == "" {
+		tillerHost = os.Getenv(hostEnvVar)
+		if tillerHost == "" {
+			tillerHost = defaultHost
 		}
 	}
 
@@ -90,7 +88,7 @@ func setupInstallEnv() {
 }
 
 func init() {
-	installCmd.Flags().StringVar(&tillerHost, "host", defaultHost, "address of tiller server")
+	installCmd.Flags().StringVar(&tillerHost, "host", "", "address of tiller server (default \":44134\")")
 	installCmd.Flags().BoolVar(&installDryRun, "dry-run", false, "simulate an install")
 
 	RootCommand.AddCommand(installCmd)
