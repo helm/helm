@@ -90,7 +90,7 @@ spec:
         image: {{default "gcr.io/kubernetes-helm/tiller:canary" .Tiller.Image}}
         name: tiller
         ports:
-        - containerPort: 8080
+        - containerPort: 44134
           name: tiller
         imagePullPolicy: Always
 ---
