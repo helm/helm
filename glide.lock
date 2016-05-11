@@ -1,5 +1,5 @@
-hash: 998d87445fec0bd715fa5ccbcc227cb4997e56ceff58dc8eb53ea2e0cc84abfd
-updated: 2016-04-27T16:11:47.531200165-06:00
+hash: 206ac8a0bde06c910b7100ca5de782dc96728e29693af6671cf5a52d1942b9c9
+updated: 2016-05-11T16:15:47.057456197-06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c
@@ -352,4 +352,6 @@ imports:
   - pkg/controller/podautoscaler/metrics
 - name: speter.net/go/exp/math/dec/inf
   version: 42ca6cd68aa922bc3f32f1e056e61b65945d9ad7
+  repo: git@github.com:go-inf/inf.git
+  vcs: git
 devImports: []
