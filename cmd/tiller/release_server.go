@@ -44,7 +44,6 @@ var (
 var ListDefaultLimit int64 = 512
 
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
-	more := false
 	rels, err := s.env.Releases.List()
 	if err != nil {
 		return err
@@ -81,7 +80,7 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		i := -1
 		for ii, cur := range rels {
 			if cur.Name == req.Offset {
-				i = ii + 1
+				i = ii
 			}
 		}
 		if i == -1 {
@@ -100,22 +99,18 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		req.Limit = ListDefaultLimit
 	}
 
+	next := ""
 	if l > req.Limit {
-		more = true
+		next = rels[req.Limit].Name
 		rels = rels[0:req.Limit]
 		l = int64(len(rels))
 	}
 
-	last := ""
-	if l > 0 {
-		last = rels[l-1].Name
-	}
 	res := &services.ListReleasesResponse{
-		Offset:   last,
+		Next:     next,
 		Count:    l,
 		Total:    total,
 		Releases: rels,
-		More:     more,
 	}
 	stream.Send(res)
 	return nil

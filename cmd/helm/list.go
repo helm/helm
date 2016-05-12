@@ -57,7 +57,7 @@ func init() {
 	f.BoolVarP(&listByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&listSortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&listMax, "max", "m", 256, "maximum number of releases to fetch")
-	f.StringVarP(&listOffset, "offset", "o", "", "the last seen release name, used to offset from start value")
+	f.StringVarP(&listOffset, "offset", "o", "", "the next release name in the list, used to offset from start value")
 
 	RootCommand.AddCommand(listCommand)
 }
@@ -81,6 +81,10 @@ func listCmd(cmd *cobra.Command, args []string) error {
 	res, err := helm.ListReleases(listMax, listOffset, sortBy, sortOrder, filter)
 	if err != nil {
 		return prettyError(err)
+	}
+
+	if res.Next != "" {
+		fmt.Printf("\tnext: %s", res.Next)
 	}
 
 	rels := res.Releases

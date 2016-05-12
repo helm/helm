@@ -63,9 +63,9 @@ message ListReleasesRequest {
 
 	// Offset is the last release name that was seen. The next listing
 	// operation will start with the name after this one.
-	// Example: If list one returns albert, bernie, carl and we supply
-	// carl as the offset, the next one should begin with the next release name
-	// after carl (e.g. dennis).
+	// Example: If list one returns albert, bernie, carl, and sets 'next: dennis'.
+	// dennis is the offset. Supplying 'dennis' for the next request should
+	// cause the next batch to return a set of results starting with 'dennis'.
 	string offset = 2;
 
 	// SortBy is the sort field that the ListReleases server should sort data before returning.
@@ -100,17 +100,15 @@ message ListReleasesResponse {
  	// Count is the expected total number of releases to be returned.
 	int64 count  = 1;
 
-	// Offset is the last-seen release name, used to offset the next set.
-	string offset = 2;
+	// Next is the name of the next release. If this is other than an empty
+	// string, it means there are more results.
+	string next = 2;
 
 	// Total is the total number of queryable releases.
 	int64 total  = 3;
 
 	// Releases is the list of found release objects.
 	repeated hapi.release.Release releases = 4;
-
-	// More indicates whether there are more objects to retrieve.
-	bool more = 5;
 }
 
 // GetReleaseStatusRequest is a request to get the status of a release.
