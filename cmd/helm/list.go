@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"sort"
+	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/kubernetes/helm/pkg/helm"
 	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"github.com/kubernetes/helm/pkg/proto/hapi/services"
 	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/spf13/cobra"
 )
@@ -14,54 +15,79 @@ import (
 var listHelp = `
 This command lists all of the currently deployed releases.
 
-By default, items are sorted alphabetically. Sorting is done client-side, so if
-the number of releases is less than the setting in '--max', some values will
-be omitted, and in no particular lexicographic order.
+By default, items are sorted alphabetically. Use the '-d' flag to sort by
+release date.
+
+If an argument is provided, it will be treated as a filter. Filters are
+regular expressions (Perl compatible) that are applied to the list of releases.
+Only items that match the filter will be returned.
+
+	$ helm list -l 'ara[a-z]+'
+	NAME            	UPDATED                 	CHART
+	maudlin-arachnid	Mon May  9 16:07:08 2016	alpine-0.1.0
+
+If no results are found, 'helm list' will exit 0, but with no output (or in
+the case of '-l', only headers).
+
+By default, up to 256 items may be returned. To limit this, use the '--max' flag.
+Setting '--max' to 0 will not return all results. Rather, it will return the
+server's default, which may be much higher than 256. Pairing the '--max'
+flag with the '--offset' flag allows you to page through results.
 `
 
 var listCommand = &cobra.Command{
-	Use:     "list [flags]",
+	Use:     "list [flags] [FILTER]",
 	Short:   "List releases",
 	Long:    listHelp,
 	RunE:    listCmd,
 	Aliases: []string{"ls"},
 }
 
-var listLong bool
-var listMax int
-var listOffset int
-var listByDate bool
+var (
+	listLong     bool
+	listMax      int
+	listOffset   string
+	listByDate   bool
+	listSortDesc bool
+)
 
 func init() {
-	listCommand.Flags().BoolVarP(&listLong, "long", "l", false, "output long listing format")
-	listCommand.Flags().BoolVarP(&listByDate, "date", "d", false, "sort by release date")
-	listCommand.Flags().IntVarP(&listMax, "max", "m", 256, "maximum number of releases to fetch")
-	listCommand.Flags().IntVarP(&listOffset, "offset", "o", 0, "offset from start value (zero-indexed)")
+	f := listCommand.Flags()
+	f.BoolVarP(&listLong, "long", "l", false, "output long listing format")
+	f.BoolVarP(&listByDate, "date", "d", false, "sort by release date")
+	f.BoolVarP(&listSortDesc, "reverse", "r", false, "reverse the sort order")
+	f.IntVarP(&listMax, "max", "m", 256, "maximum number of releases to fetch")
+	f.StringVarP(&listOffset, "offset", "o", "", "the next release name in the list, used to offset from start value")
+
 	RootCommand.AddCommand(listCommand)
 }
 
 func listCmd(cmd *cobra.Command, args []string) error {
+	var filter string
 	if len(args) > 0 {
-		fmt.Println("TODO: Implement filter.")
+		filter = strings.Join(args, " ")
 	}
 
-	res, err := helm.ListReleases(listMax, listOffset)
+	sortBy := services.ListSort_NAME
+	if listByDate {
+		sortBy = services.ListSort_LAST_RELEASED
+	}
+
+	sortOrder := services.ListSort_ASC
+	if listSortDesc {
+		sortOrder = services.ListSort_DESC
+	}
+
+	res, err := helm.ListReleases(listMax, listOffset, sortBy, sortOrder, filter)
 	if err != nil {
 		return prettyError(err)
 	}
 
+	if res.Next != "" {
+		fmt.Printf("\tnext: %s", res.Next)
+	}
+
 	rels := res.Releases
-	if res.Count+res.Offset < res.Total {
-		fmt.Println("Not all values were fetched.")
-	}
-
-	if listByDate {
-		sort.Sort(byDate(rels))
-	} else {
-		sort.Sort(byName(rels))
-	}
-
-	// Purty output, ya'll
 	if listLong {
 		return formatList(rels)
 	}
@@ -84,27 +110,4 @@ func formatList(rels []*release.Release) error {
 	fmt.Println(table)
 
 	return nil
-}
-
-// byName implements the sort.Interface for []*release.Release.
-type byName []*release.Release
-
-func (r byName) Len() int {
-	return len(r)
-}
-func (r byName) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byName) Less(i, j int) bool {
-	return r[i].Name < r[j].Name
-}
-
-type byDate []*release.Release
-
-func (r byDate) Len() int { return len(r) }
-func (r byDate) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byDate) Less(p, q int) bool {
-	return r[p].Info.LastDeployed.Seconds < r[q].Info.LastDeployed.Seconds
 }

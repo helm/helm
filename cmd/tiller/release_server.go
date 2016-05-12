@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
+	"sort"
 
 	"github.com/kubernetes/helm/cmd/tiller/environment"
 	"github.com/kubernetes/helm/pkg/proto/hapi/release"
@@ -47,14 +49,49 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		return err
 	}
 
+	if len(req.Filter) != 0 {
+		rels, err = filterReleases(req.Filter, rels)
+		if err != nil {
+			return err
+		}
+	}
+
 	total := int64(len(rels))
 
-	l := int64(len(rels))
-	if req.Offset > 0 {
-		if req.Offset >= l {
-			return fmt.Errorf("offset %d is outside of range %d", req.Offset, l)
+	switch req.SortBy {
+	case services.ListSort_NAME:
+		sort.Sort(byName(rels))
+	case services.ListSort_LAST_RELEASED:
+		sort.Sort(byDate(rels))
+	}
+
+	if req.SortOrder == services.ListSort_DESC {
+		ll := len(rels)
+		rr := make([]*release.Release, ll)
+		for i, item := range rels {
+			rr[ll-i-1] = item
 		}
-		rels = rels[req.Offset:]
+		rels = rr
+	}
+
+	l := int64(len(rels))
+	if req.Offset != "" {
+
+		i := -1
+		for ii, cur := range rels {
+			if cur.Name == req.Offset {
+				i = ii
+			}
+		}
+		if i == -1 {
+			return fmt.Errorf("offset %q not found", req.Offset)
+		}
+
+		if len(rels) < i {
+			return fmt.Errorf("no items after %q", req.Offset)
+		}
+
+		rels = rels[i:]
 		l = int64(len(rels))
 	}
 
@@ -62,19 +99,35 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		req.Limit = ListDefaultLimit
 	}
 
+	next := ""
 	if l > req.Limit {
+		next = rels[req.Limit].Name
 		rels = rels[0:req.Limit]
 		l = int64(len(rels))
 	}
 
 	res := &services.ListReleasesResponse{
-		Offset:   0,
+		Next:     next,
 		Count:    l,
 		Total:    total,
 		Releases: rels,
 	}
 	stream.Send(res)
 	return nil
+}
+
+func filterReleases(filter string, rels []*release.Release) ([]*release.Release, error) {
+	preg, err := regexp.Compile(filter)
+	if err != nil {
+		return rels, err
+	}
+	matches := []*release.Release{}
+	for _, r := range rels {
+		if preg.MatchString(r.Name) {
+			matches = append(matches, r)
+		}
+	}
+	return matches, nil
 }
 
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
@@ -223,4 +276,27 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 	res := services.UninstallReleaseResponse{Release: rel}
 	return &res, nil
+}
+
+// byName implements the sort.Interface for []*release.Release.
+type byName []*release.Release
+
+func (r byName) Len() int {
+	return len(r)
+}
+func (r byName) Swap(p, q int) {
+	r[p], r[q] = r[q], r[p]
+}
+func (r byName) Less(i, j int) bool {
+	return r[i].Name < r[j].Name
+}
+
+type byDate []*release.Release
+
+func (r byDate) Len() int { return len(r) }
+func (r byDate) Swap(p, q int) {
+	r[p], r[q] = r[q], r[p]
+}
+func (r byDate) Less(p, q int) bool {
+	return r[p].Info.LastDeployed.Seconds < r[q].Info.LastDeployed.Seconds
 }

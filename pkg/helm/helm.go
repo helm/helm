@@ -13,7 +13,7 @@ var Config = &config{
 }
 
 // ListReleases lists the current releases.
-func ListReleases(limit, offset int) (*services.ListReleasesResponse, error) {
+func ListReleases(limit int, offset string, sort services.ListSort_SortBy, order services.ListSort_SortOrder, filter string) (*services.ListReleasesResponse, error) {
 	c := Config.client()
 	if err := c.dial(); err != nil {
 		return nil, err
@@ -21,8 +21,11 @@ func ListReleases(limit, offset int) (*services.ListReleasesResponse, error) {
 	defer c.Close()
 
 	req := &services.ListReleasesRequest{
-		Limit:  int64(limit),
-		Offset: int64(offset),
+		Limit:     int64(limit),
+		Offset:    offset,
+		SortBy:    sort,
+		SortOrder: order,
+		Filter:    filter,
 	}
 	cli, err := c.impl.ListReleases(context.TODO(), req, c.cfg.CallOpts()...)
 	if err != nil {

@@ -53,26 +53,61 @@ service ReleaseService {
 }
 
 // ListReleasesRequest requests a list of releases.
+//
+// Releases can be retrieved in chunks by setting limit and offset.
+//
+// Releases can be sorted according to a few pre-determined sort stategies.
 message ListReleasesRequest {
-	// The maximum number of releases to be returned
+	// Limit is the maximum number of releases to be returned.
 	int64 limit  = 1;
 
-	// The zero-based offset at which the returned release list begins
-	int64 offset = 2;
+	// Offset is the last release name that was seen. The next listing
+	// operation will start with the name after this one.
+	// Example: If list one returns albert, bernie, carl, and sets 'next: dennis'.
+	// dennis is the offset. Supplying 'dennis' for the next request should
+	// cause the next batch to return a set of results starting with 'dennis'.
+	string offset = 2;
+
+	// SortBy is the sort field that the ListReleases server should sort data before returning.
+	ListSort.SortBy sort_by = 3;
+
+	// Filter is a regular expression used to filter which releases should be listed.
+	//
+	// Anything that matches the regexp will be included in the results.
+	string filter = 4;
+
+	ListSort.SortOrder sort_order = 5;
+}
+
+// ListSort defines sorting fields on a release list.
+message ListSort{
+	// SortBy defines sort operations.
+	enum SortBy {
+		UNKNOWN = 0;
+		NAME = 1;
+		LAST_RELEASED = 2;
+	}
+
+	// SortOrder defines sort orders to augment sorting operations.
+	enum SortOrder {
+		ASC = 0;
+		DESC = 1;
+	}
 }
 
 // ListReleasesResponse is a list of releases.
 message ListReleasesResponse {
- 	// The expected total number of releases to be returned
+ 	// Count is the expected total number of releases to be returned.
 	int64 count  = 1;
 
-	// The zero-based offset at which the list is positioned
-	int64 offset = 2;
+	// Next is the name of the next release. If this is other than an empty
+	// string, it means there are more results.
+	string next = 2;
 
-	// The total number of queryable releases
+	// Total is the total number of queryable releases.
 	int64 total  = 3;
 
-	// The resulting releases
+	// Releases is the list of found release objects.
 	repeated hapi.release.Release releases = 4;
 }
 

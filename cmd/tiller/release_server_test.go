@@ -208,12 +208,92 @@ func TestListReleases(t *testing.T) {
 	}
 
 	mrs := &mockListServer{}
-	if err := rs.ListReleases(&services.ListReleasesRequest{Offset: 0, Limit: 64}, mrs); err != nil {
+	if err := rs.ListReleases(&services.ListReleasesRequest{Offset: "", Limit: 64}, mrs); err != nil {
 		t.Fatalf("Failed listing: %s", err)
 	}
 
 	if len(mrs.val.Releases) != num {
 		t.Errorf("Expected %d releases, got %d", num, len(mrs.val.Releases))
+	}
+}
+
+func TestListReleasesSort(t *testing.T) {
+	rs := rsFixture()
+
+	// Put them in by reverse order so that the mock doesn't "accidentally"
+	// sort.
+	num := 7
+	for i := num; i > 0; i-- {
+		rel := releaseMock()
+		rel.Name = fmt.Sprintf("rel-%d", i)
+		if err := rs.env.Releases.Create(rel); err != nil {
+			t.Fatalf("Could not store mock release: %s", err)
+		}
+	}
+
+	limit := 6
+	mrs := &mockListServer{}
+	req := &services.ListReleasesRequest{
+		Offset: "",
+		Limit:  int64(limit),
+		SortBy: services.ListSort_NAME,
+	}
+	if err := rs.ListReleases(req, mrs); err != nil {
+		t.Fatalf("Failed listing: %s", err)
+	}
+
+	if len(mrs.val.Releases) != limit {
+		t.Errorf("Expected %d releases, got %d", limit, len(mrs.val.Releases))
+	}
+
+	for i := 0; i < limit; i++ {
+		n := fmt.Sprintf("rel-%d", i+1)
+		if mrs.val.Releases[i].Name != n {
+			t.Errorf("Expected %q, got %q", n, mrs.val.Releases[i].Name)
+		}
+	}
+}
+
+func TestListReleasesFilter(t *testing.T) {
+	rs := rsFixture()
+	names := []string{
+		"axon",
+		"dendrite",
+		"neuron",
+		"neuroglia",
+		"synapse",
+		"nucleus",
+		"organelles",
+	}
+	num := 7
+	for i := 0; i < num; i++ {
+		rel := releaseMock()
+		rel.Name = names[i]
+		if err := rs.env.Releases.Create(rel); err != nil {
+			t.Fatalf("Could not store mock release: %s", err)
+		}
+	}
+
+	mrs := &mockListServer{}
+	req := &services.ListReleasesRequest{
+		Offset: "",
+		Limit:  64,
+		Filter: "neuro[a-z]+",
+		SortBy: services.ListSort_NAME,
+	}
+	if err := rs.ListReleases(req, mrs); err != nil {
+		t.Fatalf("Failed listing: %s", err)
+	}
+
+	if len(mrs.val.Releases) != 2 {
+		t.Errorf("Expected 2 releases, got %d", len(mrs.val.Releases))
+	}
+
+	if mrs.val.Releases[0].Name != "neuroglia" {
+		t.Errorf("Unexpected sort order: %v.", mrs.val.Releases)
+	}
+	if mrs.val.Releases[1].Name != "neuron" {
+		t.Errorf("Unexpected sort order: %v.", mrs.val.Releases)
 	}
 }
 
