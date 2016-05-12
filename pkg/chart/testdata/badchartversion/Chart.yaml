@@ -1,0 +1,13 @@
+name: frobnitz
+description: This is a frobniz.
+version: "garbage"
+keywords:
+  - bad bad chart file
+maintainers:
+  - name: The Helm Team
+    email: helm@example.com
+  - name: Someone Else
+    email: nobody@example.com
+source:
+  - https://example.com/foo/bar
+home: http://example.com

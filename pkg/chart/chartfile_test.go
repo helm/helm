@@ -20,6 +20,8 @@ import (
 	"testing"
 )
 
+const badChart = "testdata/badchartversion/Chart.yaml"
+
 func TestLoadChartfile(t *testing.T) {
 	f, err := LoadChartfile(testfile)
 	if err != nil {
@@ -37,5 +39,21 @@ func TestLoadChartfile(t *testing.T) {
 
 	if f.Source[0] != "https://example.com/foo/bar" {
 		t.Errorf("Expected https://example.com/foo/bar, got %s", f.Source)
+	}
+}
+
+func TestLoadChartfileFailsWithInvalidVersion(t *testing.T) {
+	f, err := LoadChartfile(badChart)
+	if err == nil {
+		t.Errorf("LoadChartFile didn't fail with invalid version")
+		return
+	}
+	if err.Error() != "Invalid Semantic Version" {
+		t.Errorf("LoadChartFile didn't return the expected error")
+		return
+	}
+	if f != nil {
+		t.Errorf("LoadChartFile returned a chart despite error")
+		return
 	}
 }

@@ -13,7 +13,7 @@ func Chartfile(basepath string) (m []Message) {
 
 	path := filepath.Join(basepath, "Chart.yaml")
 	if fi, err := os.Stat(path); err != nil {
-		m = append(m, Message{Severity: ErrorSev, Text: "No Chart.yaml file"})
+		m = append(m, Message{Severity: ErrorSev, Text: "Chart.yaml file: " + path + " does not exist"})
 		return
 	} else if fi.IsDir() {
 		m = append(m, Message{Severity: ErrorSev, Text: "Chart.yaml is a directory."})

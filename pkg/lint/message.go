@@ -8,6 +8,8 @@ type Severity int
 const (
 	// UnknownSev indicates that the severity of the error is unknown, and should not stop processing.
 	UnknownSev = iota
+	// InfoSev indicates information, for example missing values.toml file
+	InfoSev
 	// WarningSev indicates that something does not meet code standards, but will likely function.
 	WarningSev
 	// ErrorSev indicates that something will not likely function.
@@ -15,7 +17,7 @@ const (
 )
 
 // sev matches the *Sev states.
-var sev = []string{"INFO", "WARNING", "ERROR"}
+var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 
 // Message is a linting output message
 type Message struct {
