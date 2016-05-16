@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -62,6 +63,8 @@ func init() {
 	RootCommand.AddCommand(listCommand)
 }
 
+var errListNoReleases = errors.New("no releases found")
+
 func listCmd(cmd *cobra.Command, args []string) error {
 	var filter string
 	if len(args) > 0 {
@@ -81,6 +84,10 @@ func listCmd(cmd *cobra.Command, args []string) error {
 	res, err := helm.ListReleases(listMax, listOffset, sortBy, sortOrder, filter)
 	if err != nil {
 		return prettyError(err)
+	}
+
+	if len(res.Releases) == 0 {
+		return errListNoReleases
 	}
 
 	if res.Next != "" {
