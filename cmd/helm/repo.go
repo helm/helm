@@ -65,8 +65,7 @@ func runRepoList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(f.Repositories) == 0 {
-		fmt.Println("No repositories to show")
-		return nil
+		return errors.New("no repositories to show")
 	}
 	table := uitable.New()
 	table.MaxColWidth = 50
