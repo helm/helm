@@ -104,9 +104,9 @@ type ListReleasesRequest struct {
 	Limit int64 `protobuf:"varint,1,opt,name=limit" json:"limit,omitempty"`
 	// Offset is the last release name that was seen. The next listing
 	// operation will start with the name after this one.
-	// Example: If list one returns albert, bernie, carl and we supply
-	// carl as the offset, the next one should begin with the next release name
-	// after carl (e.g. dennis).
+	// Example: If list one returns albert, bernie, carl, and sets 'next: dennis'.
+	// dennis is the offset. Supplying 'dennis' for the next request should
+	// cause the next batch to return a set of results starting with 'dennis'.
 	Offset string `protobuf:"bytes,2,opt,name=offset" json:"offset,omitempty"`
 	// SortBy is the sort field that the ListReleases server should sort data before returning.
 	SortBy ListSort_SortBy `protobuf:"varint,3,opt,name=sort_by,json=sortBy,enum=hapi.services.tiller.ListSort_SortBy" json:"sort_by,omitempty"`

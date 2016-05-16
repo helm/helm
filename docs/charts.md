@@ -1,7 +1,16 @@
 # Charts
 
 Helm uses a packaging format called _charts_. A chart is a collection of files
-that collectively describe a set of Kubernetes resources.
+that describe a related set of Kubernetes resources. A single chart
+might be used to deploy something simple, like a memcached pod, or
+something complex, like a full web app stack with HTTP servers,
+databases, caches, and so on.
+
+Charts are created as files laid out in a particular directory tree,
+then they can be packaged into versioned archives to be deployed.
+
+This document explains the chart format, and provides basic guidance for
+building charts with Helm.
 
 ## The Chart File Structure
 
@@ -14,17 +23,19 @@ Inside of this directory, Helm will expect a structure that matches this:
 ```
 wordpress/
   Chart.yaml        # A YAML file containing information about the chart
-  LICENSE           # A plain text file containing the license for the chart
-  README.md         # A human-readable README file
+  LICENSE           # OPTIONAL: A plain text file containing the license for the chart
+  README.md         # OPTIONAL: A human-readable README file
   values.toml       # The default configuration values for this chart
   charts/           # A directory containing any charts upon which this chart depends.
   templates/        # A directory of templates that, when combined with values,
                     # will generate valid Kubernetes manifest files.
 ```
 
+Helm will silently strip out any other files.
+
 ## The Chart.yaml File
 
-The Chart.yaml file is required for a chart. It contains the following fields:
+The `Chart.yaml` file is required for a chart. It contains the following fields:
 
 ```yaml
 name: The name of the chart (required)
@@ -38,11 +49,14 @@ sources:
 maintainers: # (optional)
   - name: The maintainer's name (required for each maintainer)
     email: The maintainer's email (optional for each maintainer)
+engine: gotpl # The name of the template engine (optional, defaults to gotpl)
 ```
 
-If you are familiar with the Chart.yaml file format for Helm Classic, you will
+If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
 notice that fields specifying dependencies have been removed. That is because
 the new Chart format expresses dependencies using the `charts/` directory.
+
+Other fields will be silently ignored.
 
 ### Charts and Versioning
 
@@ -51,11 +65,37 @@ Every chart must have a version number. A version must follow the
 Helm uses version numbers as release markers. Packages in repositories
 are identified by name plus version.
 
+For example, an `nginx` chart whose version field is set to `version:
+1.2.3` will be named:
+
+```
+nginix-1.2.3.tgz
+```
+
+More complex SemVer 2 names are also supported, such as
+`version: 1.2.3-alpha.1+ef365`. But non-SemVer names are explicitly
+disallowed by the system.
+
+**NOTE:** Whereas Helm Classic and Deployment Manager were both
+very GitHub oriented when it came to charts, Kubernetes Helm does not
+rely upon or require GitHub or even Git. Consequently, it does not use
+Git SHAs for versioning at all.
+
+The `version` field inside of the `Chart.yaml` is used by many of the
+Helm tools, including the CLI and the Tiller server. When generating a
+package, the `helm package` command will use the version that it finds
+in the `Chart.yaml` as a token in the package name. The system assumes
+that the version number in the chart package name matches the version number in
+the `Chart.yaml`. Failure to meet this assumption will cause an error.
+
 ## Chart Dependencies
 
 In Helm, one chart may depend on any number of other charts. These
 dependencies are expressed explicitly by copying the dependency charts
 into the `charts/` directory.
+
+**Note:** The `dependencies:` section of the `Glide.yaml` from Helm
+Classic has been completely removed.
 
 For example, if the Wordpress chart depends on the Apache chart, the
 Apache chart (of the correct version) is supplied in the Wordpress
@@ -83,9 +123,10 @@ directory.
 
 ## Templates and Values
 
-In Helm Charts, templates are written in the Go template language, with the
+By default, Helm Chart templates are written in the Go template language, with the
 addition of 50 or so [add-on template
-functions](https://github.com/Masterminds/sprig).
+functions](https://github.com/Masterminds/sprig). (In the future, Helm
+may support other template languages, like Python Jinja.)
 
 All template files are stored in a chart's `templates/` folder. When
 Helm renders the charts, it will pass every file in that directory
@@ -99,7 +140,6 @@ Values for the templates are supplied two ways:
 
 When a user supplies custom values, these values will override the
 values in the chart's `values.toml` file.
-
 ### Template Files
 
 Template files follow the standard conventions for writing Go templates.
@@ -146,6 +186,26 @@ It can use the following four template values:
 All of these values are defined by the template author. Helm does not
 require or dictate parameters.
 
+### Predefined Values
+
+The following values are pre-defined, are available to every template, and
+cannot be overridden. As with all values, the names are _case
+sensitive_.
+
+- `Release.Name`: The name of the release (not the chart)
+- `Release.Time`: The time the chart release was last updated. This will
+  match the `Last Released` time on a Release object.
+- `Release.Namespace`: The namespace the chart was released to.
+- `Release.Service`: The service that conducted the release. Usually
+  this is `Tiller`.
+- `Chart`: The contents of the `Chart.yaml`. Thus, the chart version is
+  obtainable as `Chart.Version` and the maintainers are in
+  `Chart.Maintainers`.
+
+**NOTE:** Any unknown Chart.yaml fields will be dropped. They will not
+be accessible inside of the `Chart` object. Thus, Chart.yaml cannot be
+used to pass arbitrarily structured data into the template.
+
 ### Values files
 
 Considering the template in the previous section, a `values.toml` file
@@ -158,23 +218,76 @@ pullPolicy = "alwaysPull"
 storage = "s3"
 ```
 
-When a chart includes dependency charts, values can be supplied to those
-charts using TOML tables:
+A values file is formatted in TOML. A chart may include a default
+`values.toml` file. The Helm install command allows a user to override
+values by supplying additional TOML values:
+
+```console
+$ helm install --values=myvals.toml wordpress
+```
+
+When values are passed in this way, they will be merged into the default
+values file. For example, consider a `myvals.toml` file that looks like
+this:
+
+```toml
+storage = "gcs"
+```
+
+When this is merged with the `values.toml` in the chart, the resulting
+generated content will be:
 
 ```toml
 imageRegistry = "quay.io/deis"
 dockerTag = "latest"
 pullPolicy = "alwaysPull"
-storage = "s3"
-
-[router]
-hostname = "example.com"
+storage = "gcs"
 ```
 
-In the above example, the value of `hostname` will be passed to a chart
-named `router` (if it exists) in the `charts/` directory.
+Note that only the last field was overridden.
+
+**NOTE:** The default values file included inside of a chart _must_ be named
+`values.toml`. But files specified on the command line can be named
+anything.
+
+### Scope, Dependencies, and Values
+
+Values files can declare values for the top-level chart, as well as for
+any of the charts that are included in that chart's `charts/` directory.
+Or, to phrase it differently, a values file can supply values to the
+chart as well as to any of its dependencies. For example, the
+demonstration Wordpress chart above has both `mysql` and `apache` as
+dependencies. The values file could supply values to all of these
+components:
+
+```toml
+title = "My Wordpress Site" # Sent to the Wordpress template
+
+[mysql]
+max_connections = 100 # Sent to MySQL
+password = "secret"
+
+[apache]
+port = 8080 # Passed to Apache
+```
+
+Charts at a higher level have access to all of the variables defined
+beneath. So the wordpress chart can access `mysql.password`. But lower
+level charts cannot access things in parent charts, so MySQL will not be
+able to access the `title` property. Nor, for that matter, can it access
+`apache.port`.
+
+Values are namespaced, but namespaces are pruned. So for the Wordpress
+chart, it can access the MySQL password field as `mysql.password`. But
+for the MySQL chart, the scope of the values has been reduced and the
+namespace prefix removed, so it will see the password field simply as
+`password`.
 
 ### References
+
+When it comes to writing templates and values files, there are several
+standard references that will help you out.
+
 - [Go templates](https://godoc.org/text/template)
 - [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
 - [The TOML format](https://github.com/toml-lang/toml)
@@ -205,3 +318,28 @@ formatting or information:
 $ helm lint mychart
 No issues found
 ```
+
+## Chart Repositories
+
+A _chart repository_ is an HTTP server that houses one or more packaged
+charts. While `helm` can be used to manage local chart directories, when
+it comes to sharing charts, the preferred mechanism is a chart
+repository.
+
+Any HTTP server that can serve YAML files and tar files and can answer
+GET requests can be used as a repository server.
+
+Helm comes with built-in package server for developer testing (`helm
+serve`). The Helm team has tested other servers, including Google Cloud
+Storage with website mode enabled, and S3 with website mode enabled.
+
+A repository is characterized primarily by the presence of a special
+file called `index.yaml` that has a list of all of the packages supplied
+by the repository, together with metadata that allows retrieving and
+verifying those packages.
+
+On the client side, repositories are managed with the `helm repo`
+commands. However, Helm does not provide tools for uploading charts to
+remote repository servers. This is because doing so would add
+substantial requirements to an implementing server, and thus raise the
+barrier for setting up a repository.
