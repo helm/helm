@@ -37,7 +37,7 @@ func search(cmd *cobra.Command, args []string) error {
 			fmt.Println(result)
 		}
 	} else {
-		cmd.Println("No matches found")
+		return errors.New("No matches found")
 	}
 	return nil
 }
