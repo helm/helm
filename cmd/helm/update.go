@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,6 +35,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	f, err := repo.LoadRepositoriesFile(repositoriesFile())
 	if err != nil {
 		return err
+	}
+
+	if len(f.Repositories) == 0 {
+		return errors.New("no repositories found. You must add one before updating")
 	}
 
 	updateCharts(f.Repositories, verboseUpdate)
