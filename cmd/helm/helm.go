@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var stdout = os.Stdout
 var helmHome string
 
 // flagVerbose is a signal that the user wants additional output.

@@ -30,7 +30,7 @@ func init() {
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Helm on both client and server.",
-	Long:  installDesc,
+	Long:  initDesc,
 	RunE:  runInit,
 }
 
