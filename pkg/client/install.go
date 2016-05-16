@@ -33,14 +33,24 @@ func NewInstaller() *Installer {
 //
 // Returns the string output received from the operation, and an error if the
 // command failed.
-func (i *Installer) Install(verbose bool) error {
+//
+// If verbose is true, this will print the manifest to stdout.
+//
+// If createNS is true, this will also create the namespace.
+func (i *Installer) Install(verbose, createNS bool) error {
 
 	var b bytes.Buffer
-	err := template.Must(template.New("manifest").Funcs(sprig.TxtFuncMap()).
-		Parse(InstallYAML)).
-		Execute(&b, i)
+	t := template.New("manifest").Funcs(sprig.TxtFuncMap())
 
-	if err != nil {
+	// Add namespace
+	if createNS {
+		if err := template.Must(t.Parse(NamespaceYAML)).Execute(&b, i); err != nil {
+			return err
+		}
+	}
+
+	// Add main install YAML
+	if err := template.Must(t.Parse(InstallYAML)).Execute(&b, i); err != nil {
 		return err
 	}
 
@@ -48,11 +58,10 @@ func (i *Installer) Install(verbose bool) error {
 		fmt.Println(b.String())
 	}
 
-	return kube.New(nil).Create("helm", &b)
+	return kube.New(nil).Create(i.Tiller["Namespace"].(string), &b)
 }
 
-// InstallYAML is the installation YAML for DM.
-const InstallYAML = `
+const NamespaceYAML = `
 ---{{$namespace := default "helm" .Tiller.Namespace}}
 apiVersion: v1
 kind: Namespace
@@ -61,7 +70,11 @@ metadata:
     app: helm
     name: helm-namespace
   name: {{$namespace}}
----
+`
+
+// InstallYAML is the installation YAML for DM.
+const InstallYAML = `
+---{{$namespace := default "helm" .Tiller.Namespace}}
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -93,5 +106,4 @@ spec:
         - containerPort: 44134
           name: tiller
         imagePullPolicy: Always
----
 `

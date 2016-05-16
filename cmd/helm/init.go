@@ -15,15 +15,18 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 `
 
 var (
-	tillerImg       string
-	clientOnly      bool
-	tillerNamespace string
+	tillerImg         string
+	tillerNamespace   string
+	clientOnly        bool
+	initSkipNamespace bool
 )
 
 func init() {
-	initCmd.Flags().StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
-	initCmd.Flags().BoolVarP(&clientOnly, "client-only", "c", false, "If set does not install tiller")
-	initCmd.Flags().StringVarP(&tillerNamespace, "namespace", "n", "helm", "set the tiller namespace")
+	f := initCmd.Flags()
+	f.StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
+	f.BoolVarP(&clientOnly, "client-only", "c", false, "If set does not install tiller")
+	f.BoolVarP(&initSkipNamespace, "skip-namespace", "s", false, "Do not attempt to create a namespace. Assume the namespace is already there.")
+	f.StringVarP(&tillerNamespace, "namespace", "n", "helm", "set the tiller namespace")
 	RootCommand.AddCommand(initCmd)
 }
 
@@ -60,7 +63,7 @@ func installTiller() error {
 	i := client.NewInstaller()
 	i.Tiller["Image"] = tillerImg
 	i.Tiller["Namespace"] = tillerNamespace
-	err := i.Install(flagVerbose)
+	err := i.Install(flagVerbose, !initSkipNamespace)
 
 	if err != nil {
 		return fmt.Errorf("error installing: %s", err)
