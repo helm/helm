@@ -16,9 +16,9 @@ func init() {
 }
 
 var searchCmd = &cobra.Command{
-	Use:   "search [CHART]",
-	Short: "Search for charts",
-	Long:  "", //TODO: add search command description
+	Use:   "search [keyword]",
+	Short: "Search for a keyword in charts",
+	Long:  "Searches the known repositories cache files for the specified search string, looks at name and keywords",
 	RunE:  search,
 }
 
@@ -31,9 +31,13 @@ func search(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cmd.Println("Charts:")
-	for _, result := range results {
-		fmt.Println(result)
+	if len(results) > 0 {
+		cmd.Println("Charts:")
+		for _, result := range results {
+			fmt.Println(result)
+		}
+	} else {
+		return errors.New("No matches found")
 	}
 	return nil
 }
