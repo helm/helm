@@ -13,19 +13,6 @@ import (
 
 var localRepoPath string
 
-// IndexFile represents the index file in a chart repository
-type IndexFile struct {
-	Entries map[string]*ChartRef
-}
-
-// ChartRef represents a chart entry in the IndexFile
-type ChartRef struct {
-	Name     string   `yaml:"name"`
-	URL      string   `yaml:"url"`
-	Keywords []string `yaml:"keywords"`
-	Removed  bool     `yaml:"removed,omitempty"`
-}
-
 // StartLocalRepo starts a web server and serves files from the given path
 func StartLocalRepo(path string) {
 	fmt.Println("Now serving you on localhost:8879...")
