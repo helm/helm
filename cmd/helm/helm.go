@@ -43,7 +43,7 @@ var RootCommand = &cobra.Command{
 }
 
 func init() {
-	RootCommand.PersistentFlags().StringVar(&helmHome, "home", "$HOME/.helm", "location of you Helm files [$HELM_HOME]")
+	RootCommand.PersistentFlags().StringVar(&helmHome, "home", "$HOME/.helm", "location of your Helm config")
 	RootCommand.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose output")
 }
 
