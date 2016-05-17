@@ -55,15 +55,10 @@ func runRepoAdd(cmd *cobra.Command, args []string) error {
 	}
 	name, url := args[0], args[1]
 
-	if err := repo.DownloadIndexFile(name, url, cacheDirectory(name, "-index.yaml")); err != nil {
-		return errors.New("Oops! Looks like " + url + " is not a valid chart repository or cannot be reached\n")
-	}
-
-	if err := insertRepoLine(name, url); err != nil {
+	if err := addRepository(name, url); err != nil {
 		return err
 	}
-
-	fmt.Println(args[0] + " has been added to your repositories")
+	fmt.Println(name + " has been added to your repositories")
 	return nil
 }
 
@@ -112,6 +107,14 @@ func index(dir, url string) error {
 	}
 
 	return chartRepo.Index()
+}
+
+func addRepository(name, url string) error {
+	if err := repo.DownloadIndexFile(name, url, cacheDirectory(name, "-index.yaml")); err != nil {
+		return errors.New("Looks like " + url + " is not a valid chart repository or cannot be reached\n")
+	}
+
+	return insertRepoLine(name, url)
 }
 
 func removeRepoLine(name string) error {

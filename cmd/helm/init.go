@@ -15,10 +15,12 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 `
 
 var (
-	tillerImg         string
-	tillerNamespace   string
-	clientOnly        bool
-	initSkipNamespace bool
+	tillerImg            string
+	tillerNamespace      string
+	clientOnly           bool
+	initSkipNamespace    bool
+	defaultRepository    = "kubernetes-charts"
+	defaultRepositoryURL = "http://storage.googleapis.com/kubernetes-charts"
 )
 
 func init() {
@@ -96,7 +98,7 @@ func ensureHome() error {
 		if _, err := os.Create(repoFile); err != nil {
 			return err
 		}
-		if err := insertRepoLine("local", "http://localhost:8879/charts"); err != nil {
+		if err := addRepository(defaultRepository, defaultRepositoryURL); err != nil {
 			return err
 		}
 	} else if fi.IsDir() {
