@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"strconv"
@@ -57,7 +58,8 @@ func (c *Client) ForwardPort(namespace, podName string, remote int) (*Tunnel, er
 
 	ports := []string{fmt.Sprintf("%d:%d", local, remote)}
 
-	pf, err := portforward.New(dialer, ports, t.stopChan)
+	var b bytes.Buffer
+	pf, err := portforward.New(dialer, ports, t.stopChan, &b, &b)
 	if err != nil {
 		return nil, err
 	}

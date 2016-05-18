@@ -24,7 +24,7 @@ import:
 - package: google.golang.org/grpc
   version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
 - package: k8s.io/kubernetes
-  version: ^1.2
+  version: 3a5d53d4679df921a6f79d20b69f4982953493f5
   subpackages:
   - pkg/api
   - pkg/client/restclient
