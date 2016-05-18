@@ -1,12 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 )
 
 func TestEnsureHome(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, "OK")
+	}))
+	defaultRepositoryURL = ts.URL
+
 	home := createTmpHome()
 	helmHome = home
 	if err := ensureHome(); err != nil {

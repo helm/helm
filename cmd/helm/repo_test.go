@@ -1,6 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/kubernetes/helm/pkg/repo"
@@ -12,13 +18,21 @@ var (
 )
 
 func TestRepoAdd(t *testing.T) {
-	home := createTmpHome()
-	helmHome = home
-	if err := ensureHome(); err != nil {
-		t.Errorf("%s", err)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, "OK")
+	}))
+
+	helmHome, _ = ioutil.TempDir("", "helm_home")
+	defer os.Remove(helmHome)
+	os.Mkdir(filepath.Join(helmHome, repositoryDir), 0755)
+	os.Mkdir(cacheDirectory(), 0755)
+
+	if err := ioutil.WriteFile(repositoriesFile(), []byte("example-repo: http://exampleurl.com"), 0666); err != nil {
+		t.Errorf("%#v", err)
 	}
 
-	if err := insertRepoLine(testName, testURL); err != nil {
+	if err := addRepository(testName, ts.URL); err != nil {
 		t.Errorf("%s", err)
 	}
 
@@ -31,7 +45,7 @@ func TestRepoAdd(t *testing.T) {
 		t.Errorf("%s was not successfully inserted into %s", testName, repositoriesFile())
 	}
 
-	if err := insertRepoLine(testName, testURL); err == nil {
+	if err := insertRepoLine(testName, ts.URL); err == nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 
