@@ -6,11 +6,20 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kubernetes/helm/pkg/helm"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
 
+const (
+	homeEnvVar  = "HELM_HOME"
+	defaultHome = "$HOME/.helm" // FIXME: is $HOME windows compatible?
+	hostEnvVar  = "TILLER_HOST"
+	defaultHost = ":44134"
+)
+
 var helmHome string
+var tillerHost string
 
 // flagVerbose is a signal that the user wants additional output.
 var flagVerbose bool
@@ -33,24 +42,41 @@ Common actions from this point include:
 
 Environment:
   $HELM_HOME    Set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $TILLER_HOST  Set an alternative Tiller host. The format is host:port (default ":44134").
 `
 
 // RootCommand is the top-level command for Helm.
 var RootCommand = &cobra.Command{
-	Use:   "helm",
-	Short: "The Helm package manager for Kubernetes.",
-	Long:  globalUsage,
+	Use:              "helm",
+	Short:            "The Helm package manager for Kubernetes.",
+	Long:             globalUsage,
+	PersistentPreRun: bootstrap,
 }
 
 func init() {
-	RootCommand.PersistentFlags().StringVar(&helmHome, "home", "$HOME/.helm", "location of your Helm config")
-	RootCommand.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose output")
+	home := os.Getenv(homeEnvVar)
+	if home == "" {
+		home = "$HOME/.helm"
+	}
+	thost := os.Getenv(hostEnvVar)
+	if thost == "" {
+		thost = defaultHost
+	}
+	p := RootCommand.PersistentFlags()
+	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
+	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $TILLER_HOST.")
+	p.BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose output")
 }
 
 func main() {
 	if err := RootCommand.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func bootstrap(c *cobra.Command, args []string) {
+	// Set up the gRPC config.
+	helm.Config.ServAddr = tillerHost
 }
 
 func checkArgsLength(expectedNum, actualNum int, requiredArgs ...string) error {

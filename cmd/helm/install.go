@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -19,17 +18,10 @@ path to a chart directory or the name of a
 chart in the current working directory.
 `
 
-const (
-	hostEnvVar  = "TILLER_HOST"
-	defaultHost = ":44134"
-)
-
 // install flags & args
 var (
 	// installArg is the name or relative path of the chart to install
 	installArg string
-	// tillerHost overrides TILLER_HOST envVar
-	tillerHost string
 	// installDryRun performs a dry-run install
 	installDryRun bool
 )
@@ -46,7 +38,6 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	installArg = args[0]
-	setupInstallEnv()
 
 	res, err := helm.InstallRelease(installArg, installDryRun)
 	if err != nil {
@@ -72,23 +63,7 @@ func printRelease(rel *release.Release) {
 	}
 }
 
-func setupInstallEnv() {
-	// The 'host' flag takes precendence uber alles.
-	// If set, proceed with install using provided host
-	// address. If unset, the 'TILLER_HOST' environment
-	// variable (if set) is used, otherwise defaults to ":44134".
-	if tillerHost == "" {
-		tillerHost = os.Getenv(hostEnvVar)
-		if tillerHost == "" {
-			tillerHost = defaultHost
-		}
-	}
-
-	helm.Config.ServAddr = tillerHost
-}
-
 func init() {
-	installCmd.Flags().StringVar(&tillerHost, "host", "", "address of tiller server (default \":44134\")")
 	installCmd.Flags().BoolVar(&installDryRun, "dry-run", false, "simulate an install")
 
 	RootCommand.AddCommand(installCmd)
