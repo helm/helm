@@ -61,6 +61,7 @@ func (i *Installer) Install(verbose, createNS bool) error {
 	return kube.New(nil).Create(i.Tiller["Namespace"].(string), &b)
 }
 
+// NamespaceYAML is the installation for a namespace.
 const NamespaceYAML = `
 ---{{$namespace := default "helm" .Tiller.Namespace}}
 apiVersion: v1
