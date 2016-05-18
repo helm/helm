@@ -8,6 +8,11 @@ import (
 )
 
 func TestInstallReleaseOverrides(t *testing.T) {
+	// FIXME: This can't currently run unless a Tiller server is running, simply
+	// because --dry-run still uses the server. There's already a WIP for a
+	// testing harness, so this can be ported when that is done.
+	t.Skip()
+
 	vals := `name = "mariner"`
 	ch := "./testdata/albatross"
 	ir, err := InstallRelease([]byte(vals), ch, true)
