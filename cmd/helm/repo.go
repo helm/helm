@@ -44,7 +44,7 @@ var repoRemoveCmd = &cobra.Command{
 }
 
 var repoIndexCmd = &cobra.Command{
-	Use:   "index [flags] [DIR]",
+	Use:   "index [flags] [DIR] [REPO_URL]",
 	Short: "generate an index file for a chart repository given a directory",
 	RunE:  runRepoIndex,
 }
@@ -96,7 +96,7 @@ func runRepoRemove(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoIndex(cmd *cobra.Command, args []string) error {
-	if err := checkArgsLength(1, len(args), "path to a directory"); err != nil {
+	if err := checkArgsLength(2, len(args), "path to a directory", "url of chart repository"); err != nil {
 		return err
 	}
 
@@ -105,15 +105,15 @@ func runRepoIndex(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := index(path); err != nil {
+	if err := index(path, args[1]); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func index(dir string) error {
-	chartRepo, err := repo.LoadChartRepository(dir)
+func index(dir, url string) error {
+	chartRepo, err := repo.LoadChartRepository(dir, url)
 	if err != nil {
 		return err
 	}

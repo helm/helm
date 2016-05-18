@@ -10,6 +10,7 @@ import (
 const testfile = "testdata/local-index.yaml"
 const testRepositoriesFile = "testdata/repositories.yaml"
 const testRepository = "testdata/repository"
+const testURL = "http://example-charts.com"
 
 func TestLoadIndexFile(t *testing.T) {
 	cf, err := LoadIndexFile(testfile)
@@ -72,7 +73,7 @@ func TestLoadRepositoriesFile(t *testing.T) {
 }
 
 func TestLoadChartRepository(t *testing.T) {
-	cr, err := LoadChartRepository(testRepository)
+	cr, err := LoadChartRepository(testRepository, testURL)
 	if err != nil {
 		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
 	}
@@ -86,10 +87,14 @@ func TestLoadChartRepository(t *testing.T) {
 	if !reflect.DeepEqual(cr.ChartPaths, paths) {
 		t.Errorf("Expected %#v but got %#v\n", paths, cr.ChartPaths)
 	}
+
+	if cr.URL != testURL {
+		t.Errorf("Expected url for chart repository to be %s but got %s", testURL, cr.URL)
+	}
 }
 
 func TestIndex(t *testing.T) {
-	cr, err := LoadChartRepository(testRepository)
+	cr, err := LoadChartRepository(testRepository, testURL)
 	if err != nil {
 		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
 	}

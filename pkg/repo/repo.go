@@ -7,11 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kubernetes/helm/pkg/chart"
 	"gopkg.in/yaml.v2"
-)
 
-var indexPath = "index.yaml"
+	"github.com/kubernetes/helm/pkg/chart"
+)
 
 // ChartRepository represents a chart repository
 type ChartRepository struct {
@@ -19,20 +18,6 @@ type ChartRepository struct {
 	URL        string // URL of repository
 	ChartPaths []string
 	IndexFile  *IndexFile
-}
-
-// IndexFile represents the index file in a chart repository
-type IndexFile struct {
-	Entries map[string]*ChartRef
-}
-
-// ChartRef represents a chart entry in the IndexFile
-type ChartRef struct {
-	Name      string          `yaml:"name"`
-	URL       string          `yaml:"url"`
-	Created   string          `yaml:"created,omitempty"`
-	Removed   bool            `yaml:"removed,omitempty"`
-	Chartfile chart.Chartfile `yaml:"chartfile"`
 }
 
 // RepoFile represents the repositories.yaml file in $HELM_HOME
@@ -73,7 +58,7 @@ func (rf *RepoFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 //
 // This function evaluates the contents of the directory and
 // returns a ChartRepository
-func LoadChartRepository(dir string) (*ChartRepository, error) {
+func LoadChartRepository(dir, url string) (*ChartRepository, error) {
 	dirInfo, err := os.Stat(dir)
 	if err != nil {
 		return nil, err
@@ -83,7 +68,7 @@ func LoadChartRepository(dir string) (*ChartRepository, error) {
 		return nil, errors.New(dir + "is not a directory")
 	}
 
-	r := &ChartRepository{RootPath: dir}
+	r := &ChartRepository{RootPath: dir, URL: url}
 
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
@@ -104,46 +89,17 @@ func LoadChartRepository(dir string) (*ChartRepository, error) {
 	return r, nil
 }
 
-// UnmarshalYAML unmarshals the index file
-func (i *IndexFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var refs map[string]*ChartRef
-	if err := unmarshal(&refs); err != nil {
-		if _, ok := err.(*yaml.TypeError); !ok {
-			return err
-		}
+func (r *ChartRepository) saveIndexFile() error {
+	index, err := yaml.Marshal(&r.IndexFile.Entries)
+	if err != nil {
+		return err
 	}
-	i.Entries = refs
+
+	if err = ioutil.WriteFile(filepath.Join(r.RootPath, indexPath), index, 0644); err != nil {
+		return err
+	}
+
 	return nil
-}
-
-func (i *IndexFile) addEntry(name string, url string) ([]byte, error) {
-	if i.Entries == nil {
-		i.Entries = make(map[string]*ChartRef)
-	}
-	entry := ChartRef{Name: name, URL: url}
-	i.Entries[name] = &entry
-	out, err := yaml.Marshal(&i.Entries)
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
-}
-
-// LoadIndexFile takes a file at the given path and returns an IndexFile object
-func LoadIndexFile(path string) (*IndexFile, error) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var indexfile IndexFile
-	err = yaml.Unmarshal(b, &indexfile)
-	if err != nil {
-		return nil, err
-	}
-
-	return &indexfile, nil
 }
 
 func (r *ChartRepository) Index() error {
@@ -163,7 +119,7 @@ func (r *ChartRepository) Index() error {
 			r.IndexFile.Entries = make(map[string]*ChartRef)
 		}
 
-		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: "", Created: "", Removed: false}
+		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: r.URL, Created: "", Removed: false}
 
 		//TODO: generate hash of contents of chart and add to the entry
 		//TODO: Set created timestamp
@@ -173,19 +129,6 @@ func (r *ChartRepository) Index() error {
 	}
 
 	if err := r.saveIndexFile(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *ChartRepository) saveIndexFile() error {
-	index, err := yaml.Marshal(&r.IndexFile.Entries)
-	if err != nil {
-		return err
-	}
-
-	if err = ioutil.WriteFile(filepath.Join(r.RootPath, indexPath), index, 0644); err != nil {
 		return err
 	}
 
