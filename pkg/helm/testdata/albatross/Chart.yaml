@@ -1,0 +1,4 @@
+name: albatross
+description: testing chart
+version: 0.1.0
+home: "https://github.com/kubernetes/helm"

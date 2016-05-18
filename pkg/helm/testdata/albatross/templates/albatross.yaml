@@ -1,0 +1,3 @@
+# Test data. Not a valid Kubernetes manifest
+name: {{.name}}
+home: {{.home}}

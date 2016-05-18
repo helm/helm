@@ -23,4 +23,9 @@ message Chart {
 	// Default config for this template.
 	hapi.chart.Config values = 4;
 
+	// License is the text of the LICENSE file, if included.
+	string license = 5;
+
+	// Readme is the text of the README.md file, if included.
+	string readme = 6;
 }

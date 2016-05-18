@@ -74,7 +74,7 @@ func UninstallRelease(name string) (*services.UninstallReleaseResponse, error) {
 }
 
 // InstallRelease installs a new chart and returns the release response.
-func InstallRelease(chStr string, dryRun bool) (*services.InstallReleaseResponse, error) {
+func InstallRelease(rawVals []byte, chStr string, dryRun bool) (*services.InstallReleaseResponse, error) {
 	chfi, err := chartutil.LoadChart(chStr)
 	if err != nil {
 		return nil, err
@@ -85,10 +85,7 @@ func InstallRelease(chStr string, dryRun bool) (*services.InstallReleaseResponse
 		return nil, err
 	}
 
-	vals, err := ValuesToProto(chfi)
-	if err != nil {
-		return nil, err
-	}
+	vals := OverridesToProto(rawVals)
 
 	return Config.client().install(&services.InstallReleaseRequest{
 		Chart:  chpb,
