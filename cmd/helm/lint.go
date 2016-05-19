@@ -30,7 +30,7 @@ func init() {
 	RootCommand.AddCommand(lintCommand)
 }
 
-var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml).")
+var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")
 
 func lintCmd(cmd *cobra.Command, args []string) error {
 	path := "."
