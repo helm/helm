@@ -5,6 +5,7 @@ package hapi.chart;
 import "hapi/chart/config.proto";
 import "hapi/chart/metadata.proto";
 import "hapi/chart/template.proto";
+import "google/protobuf/any.proto";
 
 option go_package = "chart";
 
@@ -23,9 +24,7 @@ message Chart {
 	// Default config for this template.
 	hapi.chart.Config values = 4;
 
-	// License is the text of the LICENSE file, if included.
-	string license = 5;
-
-	// Readme is the text of the README.md file, if included.
-	string readme = 6;
+	// Miscellaneous files in a chart archive,
+	// e.g. README, LICENSE, etc.
+	google.protobuf.Any files = 5;
 }
