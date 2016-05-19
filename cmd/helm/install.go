@@ -27,6 +27,8 @@ var (
 	installDryRun bool
 	// installValues is the filename of supplied values.
 	installValues string
+	// installRelName is the user-supplied release name.
+	installRelName string
 )
 
 var installCmd = &cobra.Command{
@@ -38,8 +40,8 @@ var installCmd = &cobra.Command{
 
 func init() {
 	f := installCmd.Flags()
-	f.StringVar(&tillerHost, "host", "", "address of tiller server (default \":44134\")")
 	f.StringVarP(&installValues, "values", "f", "", "path to a values TOML file")
+	f.StringVarP(&installRelName, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you.")
 	f.BoolVar(&installDryRun, "dry-run", false, "simulate an install")
 
 	RootCommand.AddCommand(installCmd)
@@ -56,7 +58,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	res, err := helm.InstallRelease(rawVals, installArg, installDryRun)
+	res, err := helm.InstallRelease(rawVals, installRelName, installArg, installDryRun)
 	if err != nil {
 		return prettyError(err)
 	}

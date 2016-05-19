@@ -77,6 +77,9 @@ func main() {
 func bootstrap(c *cobra.Command, args []string) {
 	// Set up the gRPC config.
 	helm.Config.ServAddr = tillerHost
+	if flagVerbose {
+		fmt.Printf("Server: %q\n", helm.Config.ServAddr)
+	}
 }
 
 func checkArgsLength(expectedNum, actualNum int, requiredArgs ...string) error {
