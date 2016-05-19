@@ -156,7 +156,19 @@ func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	return nil, errNotImplemented
 }
 
-func (s *releaseServer) uniqName() (string, error) {
+func (s *releaseServer) uniqName(start string) (string, error) {
+
+	// If a name is supplied, we check to see if that name is taken. Right now,
+	// we fail if it is already taken. We could instead fall-thru and allow
+	// an automatically generated name, but this seems to violate the principle
+	// of least surprise.
+	if start != "" {
+		if _, err := s.env.Releases.Read(start); err == storage.ErrNotFound {
+			return start, nil
+		}
+		return "", fmt.Errorf("a release named %q already exists", start)
+	}
+
 	maxTries := 5
 	for i := 0; i < maxTries; i++ {
 		namer := moniker.New()
@@ -176,7 +188,7 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	}
 
 	ts := timeconv.Now()
-	name, err := s.uniqName()
+	name, err := s.uniqName(req.Name)
 	if err != nil {
 		return nil, err
 	}

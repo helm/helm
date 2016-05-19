@@ -84,7 +84,7 @@ func UninstallRelease(name string, dryRun bool) (*services.UninstallReleaseRespo
 }
 
 // InstallRelease installs a new chart and returns the release response.
-func InstallRelease(rawVals []byte, chStr string, dryRun bool) (*services.InstallReleaseResponse, error) {
+func InstallRelease(rawVals []byte, name string, chStr string, dryRun bool) (*services.InstallReleaseResponse, error) {
 	chfi, err := chartutil.LoadChart(chStr)
 	if err != nil {
 		return nil, err
@@ -101,5 +101,6 @@ func InstallRelease(rawVals []byte, chStr string, dryRun bool) (*services.Instal
 		Chart:  chpb,
 		Values: vals,
 		DryRun: dryRun,
+		Name:   name,
 	})
 }

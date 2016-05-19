@@ -15,7 +15,7 @@ func TestInstallReleaseOverrides(t *testing.T) {
 
 	vals := `name = "mariner"`
 	ch := "./testdata/albatross"
-	ir, err := InstallRelease([]byte(vals), ch, true)
+	ir, err := InstallRelease([]byte(vals), "foo", ch, true)
 	if err != nil {
 		t.Fatalf("Failed to release: %s", err)
 	}

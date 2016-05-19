@@ -156,6 +156,11 @@ message InstallReleaseRequest {
 	// a release object nor deploy to Kubernetes. The release object returned
 	// in the response will be fake.
 	bool dry_run = 3;
+
+	// Name is the candidate release name. This must be unique to the
+	// namespace, otherwise the server will return an error. If it is not
+	// supplied, the server will autogenerate one.
+	string name = 4;
 }
 
 // InstallReleaseResponse is the response from a release installation.
