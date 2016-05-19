@@ -32,4 +32,4 @@ import:
 - package: github.com/gosuri/uitable
 - package: speter.net/go/exp/math/dec/inf
   vcs: git
-  repo: git@github.com:go-inf/inf.git
+  repo: https://github.com/go-inf/inf.git
