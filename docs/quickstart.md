@@ -50,10 +50,10 @@ Status: DEPLOYED
 
 ## Uninstall a Release
 
-To remove a release, use the `helm remove` command:
+To uninstall a release, use the `helm delete` command:
 
 ```console
-$ helm remove smiling-penguin
+$ helm delete smiling-penguin
 Removed smiling-penguin
 ```
 
