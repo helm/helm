@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/kubernetes/helm/pkg/helm"
 	"github.com/spf13/cobra"
@@ -37,13 +36,7 @@ func delRelease(cmd *cobra.Command, args []string) error {
 		return errors.New("command 'delete' requires a release name")
 	}
 
-	// TODO: Handle dry run use case.
-	if deleteDryRun {
-		fmt.Printf("DRY RUN: Deleting %s\n", args[0])
-		return nil
-	}
-
-	_, err := helm.UninstallRelease(args[0])
+	_, err := helm.UninstallRelease(args[0], deleteDryRun)
 	if err != nil {
 		return prettyError(err)
 	}

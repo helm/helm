@@ -66,7 +66,17 @@ func UpdateRelease(name string) (*services.UpdateReleaseResponse, error) {
 }
 
 // UninstallRelease uninstalls a named release and returns the response.
-func UninstallRelease(name string) (*services.UninstallReleaseResponse, error) {
+func UninstallRelease(name string, dryRun bool) (*services.UninstallReleaseResponse, error) {
+
+	if dryRun {
+		// In the dry run case, just see if the release exists.
+		res, err := GetReleaseContent(name)
+		if err != nil {
+			return &services.UninstallReleaseResponse{}, err
+		}
+		return &services.UninstallReleaseResponse{Release: res.Release}, nil
+	}
+
 	u := &services.UninstallReleaseRequest{
 		Name: name,
 	}
