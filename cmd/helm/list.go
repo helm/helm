@@ -108,11 +108,12 @@ func listCmd(cmd *cobra.Command, args []string) error {
 func formatList(rels []*release.Release) error {
 	table := uitable.New()
 	table.MaxColWidth = 30
-	table.AddRow("NAME", "UPDATED", "CHART")
+	table.AddRow("NAME", "UPDATED", "STATUS", "CHART")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
 		t := timeconv.String(r.Info.LastDeployed)
-		table.AddRow(r.Name, t, c)
+		s := r.Info.Status.Code.String()
+		table.AddRow(r.Name, t, s, c)
 	}
 	fmt.Println(table)
 
