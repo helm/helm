@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	"github.com/spf13/cobra"
 
@@ -24,6 +25,8 @@ var (
 	installArg string
 	// installDryRun performs a dry-run install
 	installDryRun bool
+	// installValues is the filename of supplied values.
+	installValues string
 )
 
 var installCmd = &cobra.Command{
@@ -33,13 +36,27 @@ var installCmd = &cobra.Command{
 	RunE:  runInstall,
 }
 
+func init() {
+	f := installCmd.Flags()
+	f.StringVar(&tillerHost, "host", "", "address of tiller server (default \":44134\")")
+	f.StringVarP(&installValues, "values", "f", "", "path to a values TOML file")
+	f.BoolVar(&installDryRun, "dry-run", false, "simulate an install")
+
+	RootCommand.AddCommand(installCmd)
+}
+
 func runInstall(cmd *cobra.Command, args []string) error {
 	if err := checkArgsLength(1, len(args), "chart name"); err != nil {
 		return err
 	}
 	installArg = args[0]
 
-	res, err := helm.InstallRelease(installArg, installDryRun)
+	rawVals, err := vals()
+	if err != nil {
+		return err
+	}
+
+	res, err := helm.InstallRelease(rawVals, installArg, installDryRun)
 	if err != nil {
 		return prettyError(err)
 	}
@@ -47,6 +64,13 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	printRelease(res.GetRelease())
 
 	return nil
+}
+
+func vals() ([]byte, error) {
+	if installValues == "" {
+		return []byte{}, nil
+	}
+	return ioutil.ReadFile(installValues)
 }
 
 func printRelease(rel *release.Release) {
@@ -61,10 +85,4 @@ func printRelease(rel *release.Release) {
 	} else {
 		fmt.Println(rel.Name)
 	}
-}
-
-func init() {
-	installCmd.Flags().BoolVar(&installDryRun, "dry-run", false, "simulate an install")
-
-	RootCommand.AddCommand(installCmd)
 }
