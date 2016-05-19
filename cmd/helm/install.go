@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -51,14 +54,20 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	if err := checkArgsLength(1, len(args), "chart name"); err != nil {
 		return err
 	}
-	installArg = args[0]
+	chartpath, err := locateChartPath(args[0])
+	if err != nil {
+		return err
+	}
+	if flagVerbose {
+		fmt.Printf("Chart path: %s\n", chartpath)
+	}
 
 	rawVals, err := vals()
 	if err != nil {
 		return err
 	}
 
-	res, err := helm.InstallRelease(rawVals, installRelName, installArg, installDryRun)
+	res, err := helm.InstallRelease(rawVals, installRelName, chartpath, installDryRun)
 	if err != nil {
 		return prettyError(err)
 	}
@@ -87,4 +96,27 @@ func printRelease(rel *release.Release) {
 	} else {
 		fmt.Println(rel.Name)
 	}
+}
+
+// locateChartPath looks for a chart directory in known places, and returns either the full path or an error.
+//
+// This does not ensure that the chart is well-formed; only that the requested filename exists.
+//
+// Order of resolution:
+// - current working directory
+// - if path is absolute or begins with '.', error out here
+// - chart repos in $HELM_HOME
+func locateChartPath(name string) (string, error) {
+	if _, err := os.Stat(name); err == nil {
+		return filepath.Abs(name)
+	}
+	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
+		return name, fmt.Errorf("path %q not found", name)
+	}
+
+	crepo := filepath.Join(repositoryDirectory(), name)
+	if _, err := os.Stat(crepo); err == nil {
+		return filepath.Abs(crepo)
+	}
+	return name, fmt.Errorf("file %q not found", name)
 }
