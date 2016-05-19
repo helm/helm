@@ -14,7 +14,7 @@ import (
 const (
 	homeEnvVar  = "HELM_HOME"
 	defaultHome = "$HOME/.helm" // FIXME: is $HOME windows compatible?
-	hostEnvVar  = "TILLER_HOST"
+	hostEnvVar  = "HELM_HOST"
 	defaultHost = ":44134"
 )
 
@@ -42,7 +42,7 @@ Common actions from this point include:
 
 Environment:
   $HELM_HOME    Set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $TILLER_HOST  Set an alternative Tiller host. The format is host:port (default ":44134").
+  $HELM_HOST  Set an alternative Tiller host. The format is host:port (default ":44134").
 `
 
 // RootCommand is the top-level command for Helm.
@@ -64,7 +64,7 @@ func init() {
 	}
 	p := RootCommand.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
-	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $TILLER_HOST.")
+	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
 	p.BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose output")
 }
 
