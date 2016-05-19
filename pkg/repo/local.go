@@ -43,7 +43,7 @@ func serveFile(w http.ResponseWriter, r *http.Request, file string) {
 
 // AddChartToLocalRepo saves a chart in the given path and then reindexes the index file
 func AddChartToLocalRepo(ch *chart.Chart, path string) error {
-	name, err := chart.Save(ch, path)
+	_, err := chart.Save(ch, path)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,6 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Saved %s to $HELM_HOME/local", name)
 	return nil
 }
 

@@ -54,21 +54,25 @@ func runPackage(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Save to $HELM_HOME/local directory.
-	if save {
-		if err := repo.AddChartToLocalRepo(ch, localRepoDirectory()); err != nil {
-			return err
-		}
-	}
-
 	// Save to the current working directory.
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 	name, err := chart.Save(ch, cwd)
-	if err == nil {
+	if err == nil && flagVerbose {
 		cmd.Printf("Saved %s to current directory\n", name)
 	}
+
+	// Save to $HELM_HOME/local directory. This is second, because we don't want
+	// the case where we saved here, but didn't save to the default destination.
+	if save {
+		if err := repo.AddChartToLocalRepo(ch, localRepoDirectory()); err != nil {
+			return err
+		} else if flagVerbose {
+			cmd.Printf("Saved %s to %s\n", name, localRepoDirectory())
+		}
+	}
+
 	return err
 }
