@@ -77,7 +77,7 @@ func installTiller() error {
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureHome() error {
-	configDirectories := []string{homePath(), cacheDirectory(), localRepoDirectory()}
+	configDirectories := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
 
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {

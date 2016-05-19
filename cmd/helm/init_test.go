@@ -13,7 +13,7 @@ func TestEnsureHome(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	expectedDirs := []string{homePath(), cacheDirectory(), localRepoDirectory()}
+	expectedDirs := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
 	for _, dir := range expectedDirs {
 		if fi, err := os.Stat(dir); err != nil {
 			t.Errorf("%s", err)
