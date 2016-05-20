@@ -107,6 +107,7 @@ func TestIndex(t *testing.T) {
 
 	tempIndexPath := filepath.Join(testRepository, indexPath)
 	actual, err := LoadIndexFile(tempIndexPath)
+	defer os.Remove(tempIndexPath) // clean up
 	if err != nil {
 		t.Errorf("Error loading index file %v", err)
 	}
@@ -117,6 +118,7 @@ func TestIndex(t *testing.T) {
 		t.Errorf("Expected 2 charts to be listed in index file but got %v", numEntries)
 	}
 
+	timestamps := make(map[string]string)
 	var empty time.Time
 	for chartName, details := range entries {
 		if details == nil {
@@ -126,13 +128,28 @@ func TestIndex(t *testing.T) {
 		if details.Created == empty.String() {
 			t.Errorf("Created timestamp under %s chart entry is nil", chartName)
 		}
+		timestamps[chartName] = details.Created
 
 		if details.Digest == "" {
 			t.Errorf("Digest was not set for %s", chartName)
 		}
 	}
 
-	//TODO: test update case
+	if err = cr.Index(); err != nil {
+		t.Errorf("Error performing index the second time: %v\n", err)
+	}
+	second, err := LoadIndexFile(tempIndexPath)
+	if err != nil {
+		t.Errorf("Error loading index file second time: %#v\n", err)
+	}
 
-	os.Remove(tempIndexPath) // clean up
+	for chart, created := range timestamps {
+		v, ok := second.Entries[chart]
+		if !ok {
+			t.Errorf("Expected %s chart entry in index file but did not find it", chart)
+		}
+		if v.Created != created {
+			t.Errorf("Expected Created timestamp to be %s, but got %s for chart %s", created, v.Created, chart)
+		}
+	}
 }

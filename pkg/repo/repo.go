@@ -115,6 +115,7 @@ func (r *ChartRepository) Index() error {
 		if err != nil {
 			return err
 		}
+
 		chartfile := ch.Chartfile()
 		hash, err := generateDigest(path)
 		if err != nil {
@@ -126,7 +127,15 @@ func (r *ChartRepository) Index() error {
 			r.IndexFile.Entries = make(map[string]*ChartRef)
 		}
 
-		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: r.URL, Created: time.Now().UTC().String(), Digest: hash, Removed: false}
+		ref, ok := r.IndexFile.Entries[key]
+		var created string
+		if ok && ref.Created != "" {
+			created = ref.Created
+		} else {
+			created = time.Now().UTC().String()
+		}
+
+		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: r.URL, Created: created, Digest: hash, Removed: false}
 
 		r.IndexFile.Entries[key] = entry
 
