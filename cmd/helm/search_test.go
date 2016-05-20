@@ -23,10 +23,10 @@ var searchTestCases = []searchTestCase{
 
 var searchCacheTestCases = []searchTestCase{
 	{"notthere", []string{}},
-	{"odd", []string{"foobar/oddness-1.2.3"}},
-	{"sumtin", []string{"local/alpine-1.0.0", "foobar/oddness-1.2.3"}},
-	{"foobar", []string{"foobar/foobar-0.1.0"}},
-	{"web", []string{"local/nginx-0.1.0"}},
+	{"odd", []string{"foobar/oddness-1.2.3.tgz"}},
+	{"sumtin", []string{"local/alpine-1.0.0.tgz", "foobar/oddness-1.2.3.tgz"}},
+	{"foobar", []string{"foobar/foobar-0.1.0.tgz"}},
+	{"web", []string{"local/nginx-0.1.0.tgz"}},
 }
 
 func validateEntries(t *testing.T, in string, found []string, expected []string) {

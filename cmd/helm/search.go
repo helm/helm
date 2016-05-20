@@ -32,7 +32,6 @@ func search(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(results) > 0 {
-		cmd.Println("Charts:")
 		for _, result := range results {
 			fmt.Println(result)
 		}
@@ -68,11 +67,19 @@ func searchCacheForPattern(dir string, search string) ([]string, error) {
 	})
 	matches := []string{}
 	for _, f := range fileList {
-		index, _ := repo.LoadIndexFile(f)
+		index, err := repo.LoadIndexFile(f)
+		if err != nil {
+			return matches, fmt.Errorf("index %s corrupted: %s", f, err)
+		}
+
 		m := searchChartRefsForPattern(search, index.Entries)
 		repoName := strings.TrimSuffix(filepath.Base(f), "-index.yaml")
 		for _, c := range m {
-			matches = append(matches, repoName+"/"+c)
+			// TODO: Is it possible for this file to be missing? Or to have
+			// an extension other than .tgz? Should the actual filename be in
+			// the YAML?
+			fname := filepath.Join(repoName, c+".tgz")
+			matches = append(matches, fname)
 		}
 	}
 	return matches, nil
