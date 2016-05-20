@@ -8,70 +8,9 @@ import (
 	"time"
 )
 
-const testfile = "testdata/local-index.yaml"
 const testRepositoriesFile = "testdata/repositories.yaml"
 const testRepository = "testdata/repository"
 const testURL = "http://example-charts.com"
-
-func TestLoadIndexFile(t *testing.T) {
-	cf, err := LoadIndexFile(testfile)
-	if err != nil {
-		t.Errorf("Failed to load index file: %s", err)
-	}
-	if len(cf.Entries) != 2 {
-		t.Errorf("Expected 2 entries in the index file, but got %d", len(cf.Entries))
-	}
-	nginx := false
-	alpine := false
-	for k, e := range cf.Entries {
-		if k == "nginx-0.1.0" {
-			if e.Name == "nginx" {
-				if len(e.Chartfile.Keywords) == 3 {
-					nginx = true
-				}
-			}
-		}
-		if k == "alpine-1.0.0" {
-			if e.Name == "alpine" {
-				if len(e.Chartfile.Keywords) == 4 {
-					alpine = true
-				}
-			}
-		}
-	}
-	if !nginx {
-		t.Errorf("nginx entry was not decoded properly")
-	}
-	if !alpine {
-		t.Errorf("alpine entry was not decoded properly")
-	}
-}
-
-func TestLoadRepositoriesFile(t *testing.T) {
-	rf, err := LoadRepositoriesFile(testRepositoriesFile)
-	if err != nil {
-		t.Errorf(testRepositoriesFile + " could not be loaded: " + err.Error())
-	}
-	expected := map[string]string{"best-charts-ever": "http://best-charts-ever.com",
-		"okay-charts": "http://okay-charts.org", "example123": "http://examplecharts.net/charts/123"}
-
-	numOfRepositories := len(rf.Repositories)
-	expectedNumOfRepositories := 3
-	if numOfRepositories != expectedNumOfRepositories {
-		t.Errorf("Expected %v repositories but only got %v", expectedNumOfRepositories, numOfRepositories)
-	}
-
-	for expectedRepo, expectedURL := range expected {
-		actual, ok := rf.Repositories[expectedRepo]
-		if !ok {
-			t.Errorf("Expected repository: %v but was not found", expectedRepo)
-		}
-
-		if expectedURL != actual {
-			t.Errorf("Expected url %s for the %s repository but got %s ", expectedURL, expectedRepo, actual)
-		}
-	}
-}
 
 func TestLoadChartRepository(t *testing.T) {
 	cr, err := LoadChartRepository(testRepository, testURL)
@@ -150,6 +89,32 @@ func TestIndex(t *testing.T) {
 		}
 		if v.Created != created {
 			t.Errorf("Expected Created timestamp to be %s, but got %s for chart %s", created, v.Created, chart)
+		}
+	}
+}
+
+func TestLoadRepositoriesFile(t *testing.T) {
+	rf, err := LoadRepositoriesFile(testRepositoriesFile)
+	if err != nil {
+		t.Errorf(testRepositoriesFile + " could not be loaded: " + err.Error())
+	}
+	expected := map[string]string{"best-charts-ever": "http://best-charts-ever.com",
+		"okay-charts": "http://okay-charts.org", "example123": "http://examplecharts.net/charts/123"}
+
+	numOfRepositories := len(rf.Repositories)
+	expectedNumOfRepositories := 3
+	if numOfRepositories != expectedNumOfRepositories {
+		t.Errorf("Expected %v repositories but only got %v", expectedNumOfRepositories, numOfRepositories)
+	}
+
+	for expectedRepo, expectedURL := range expected {
+		actual, ok := rf.Repositories[expectedRepo]
+		if !ok {
+			t.Errorf("Expected repository: %v but was not found", expectedRepo)
+		}
+
+		if expectedURL != actual {
+			t.Errorf("Expected url %s for the %s repository but got %s ", expectedURL, expectedRepo, actual)
 		}
 	}
 }

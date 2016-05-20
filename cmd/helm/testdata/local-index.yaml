@@ -1,22 +1,28 @@
 nginx-0.1.0:
   url: http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz
   name: nginx
-  description: string
-  version: 0.1.0
-  home: https://github.com/something
-  keywords:
-    - popular
-    - web server
-    - proxy
+  removed: false
+  chartfile:
+    name: nginx
+    description: string
+    version: 0.1.0
+    home: https://github.com/something
+    keywords:
+      - popular
+      - web server
+      - proxy
 alpine-1.0.0:
   url: http://storage.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
   name: alpine
-  description: string
-  version: 1.0.0
-  home: https://github.com/something
-  keywords:
-    - linux
-    - alpine
-    - small
-    - sumtin
+  removed: false
+  chartfile:
+    name: alpine
+    description: string
+    version: 1.0.0
+    home: https://github.com/something
+    keywords:
+      - linux
+      - alpine
+      - small
+      - sumtin
 
