@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 const testfile = "testdata/local-index.yaml"
@@ -110,10 +111,28 @@ func TestIndex(t *testing.T) {
 		t.Errorf("Error loading index file %v", err)
 	}
 
-	numEntries := len(actual.Entries)
+	entries := actual.Entries
+	numEntries := len(entries)
 	if numEntries != 2 {
 		t.Errorf("Expected 2 charts to be listed in index file but got %v", numEntries)
 	}
+
+	var empty time.Time
+	for chartName, details := range entries {
+		if details == nil {
+			t.Errorf("Chart Entry is not filled out for %s", chartName)
+		}
+
+		if details.Created == empty.String() {
+			t.Errorf("Created timestamp under %s chart entry is nil", chartName)
+		}
+
+		if details.Digest == "" {
+			t.Errorf("Digest was not set for %s", chartName)
+		}
+	}
+
+	//TODO: test update case
 
 	os.Remove(tempIndexPath) // clean up
 }

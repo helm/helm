@@ -1,11 +1,14 @@
 package repo
 
 import (
+	"crypto/sha1"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 
@@ -113,16 +116,17 @@ func (r *ChartRepository) Index() error {
 			return err
 		}
 		chartfile := ch.Chartfile()
+		hash, err := generateDigest(path)
+		if err != nil {
+			return err
+		}
 
 		key := chartfile.Name + "-" + chartfile.Version
 		if r.IndexFile.Entries == nil {
 			r.IndexFile.Entries = make(map[string]*ChartRef)
 		}
 
-		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: r.URL, Created: "", Removed: false}
-
-		//TODO: generate hash of contents of chart and add to the entry
-		//TODO: Set created timestamp
+		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: r.URL, Created: time.Now().UTC().String(), Digest: hash, Removed: false}
 
 		r.IndexFile.Entries[key] = entry
 
@@ -133,4 +137,20 @@ func (r *ChartRepository) Index() error {
 	}
 
 	return nil
+}
+
+func generateDigest(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+
+	result := sha1.Sum(b)
+
+	return fmt.Sprintf("%x", result), nil
 }

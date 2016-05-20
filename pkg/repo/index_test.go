@@ -52,5 +52,6 @@ func TestDownloadIndexFile(t *testing.T) {
 		t.Errorf("Expected 2 entries in index file but got %v", numEntries)
 	}
 	os.Remove(path)
+	os.Remove(dirName)
 
 }
