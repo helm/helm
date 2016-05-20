@@ -72,7 +72,7 @@ func setNamespace() {
 		fmt.Printf("Inhereting namespace %q from Downward API\n", ns)
 		srv.env.Namespace = ns
 	} else {
-		fmt.Printf("Using default namespace %q", environment.DefaultNamespace)
+		fmt.Printf("Using default namespace %q\n", environment.DefaultNamespace)
 		srv.env.Namespace = environment.DefaultNamespace
 	}
 }
