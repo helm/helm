@@ -135,7 +135,9 @@ func (r *ChartRepository) Index() error {
 			created = time.Now().UTC().String()
 		}
 
-		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: r.URL, Created: created, Digest: hash, Removed: false}
+		url := filepath.Join(r.URL, key+".tgz")
+
+		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: url, Created: created, Digest: hash, Removed: false}
 
 		r.IndexFile.Entries[key] = entry
 
