@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/kubernetes/helm/pkg/repo"
-
 	"testing"
+
+	"github.com/kubernetes/helm/pkg/repo"
 )
 
 const testDir = "testdata/"

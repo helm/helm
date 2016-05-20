@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/gosuri/uitable"
 	"github.com/kubernetes/helm/pkg/repo"
@@ -15,6 +16,7 @@ func init() {
 	repoCmd.AddCommand(repoAddCmd)
 	repoCmd.AddCommand(repoListCmd)
 	repoCmd.AddCommand(repoRemoveCmd)
+	repoCmd.AddCommand(repoIndexCmd)
 	RootCommand.AddCommand(repoCmd)
 }
 
@@ -39,6 +41,12 @@ var repoRemoveCmd = &cobra.Command{
 	Use:   "remove [flags] [NAME]",
 	Short: "remove a chart repository",
 	RunE:  runRepoRemove,
+}
+
+var repoIndexCmd = &cobra.Command{
+	Use:   "index [flags] [DIR] [REPO_URL]",
+	Short: "generate an index file for a chart repository given a directory",
+	RunE:  runRepoIndex,
 }
 
 func runRepoAdd(cmd *cobra.Command, args []string) error {
@@ -82,6 +90,35 @@ func runRepoRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if err := removeRepoLine(args[0]); err != nil {
+		return err
+	}
+	return nil
+}
+
+func runRepoIndex(cmd *cobra.Command, args []string) error {
+	if err := checkArgsLength(2, len(args), "path to a directory", "url of chart repository"); err != nil {
+		return err
+	}
+
+	path, err := filepath.Abs(args[0])
+	if err != nil {
+		return err
+	}
+
+	if err := index(path, args[1]); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func index(dir, url string) error {
+	chartRepo, err := repo.LoadChartRepository(dir, url)
+	if err != nil {
+		return err
+	}
+
+	if err := chartRepo.Index(); err != nil {
 		return err
 	}
 	return nil

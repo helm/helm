@@ -48,7 +48,7 @@ func searchChartRefsForPattern(search string, chartRefs map[string]*repo.ChartRe
 			matches = append(matches, k)
 			continue
 		}
-		for _, keyword := range c.Keywords {
+		for _, keyword := range c.Chartfile.Keywords {
 			if strings.Contains(keyword, search) {
 				matches = append(matches, k)
 			}
