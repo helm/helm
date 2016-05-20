@@ -72,7 +72,18 @@ func TestList(t *testing.T) {
 	rels := []string{"a", "b", "c"}
 
 	for _, k := range rels {
-		ms.Create(&release.Release{Name: k})
+		ms.Create(&release.Release{
+			Name: k,
+			Info: &release.Info{
+				Status: &release.Status{Code: release.Status_UNKNOWN},
+			},
+		})
+		ms.Create(&release.Release{
+			Name: "deleted-should-not-show-up",
+			Info: &release.Info{
+				Status: &release.Status{Code: release.Status_DELETED},
+			},
+		})
 	}
 
 	l, err := ms.List()
