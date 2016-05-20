@@ -8,6 +8,6 @@ maintainers:
     email: helm@example.com
   - name: Someone Else
     email: nobody@example.com
-source:
+sources:
   - https://example.com/foo/bar
 home: http://example.com

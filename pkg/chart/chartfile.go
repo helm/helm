@@ -30,7 +30,7 @@ type Chartfile struct {
 	Version     string        `yaml:"version"`
 	Keywords    []string      `yaml:"keywords,omitempty"`
 	Maintainers []*Maintainer `yaml:"maintainers,omitempty"`
-	Source      []string      `yaml:"source,omitempty"`
+	Source      []string      `yaml:"sources,omitempty"`
 	Home        string        `yaml:"home"`
 }
 
