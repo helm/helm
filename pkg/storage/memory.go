@@ -70,15 +70,15 @@ func (m *Memory) Delete(name string) (*release.Release, error) {
 	return rel, nil
 }
 
-// List returns all releases.
+// List returns all releases whose status is not Status_DELETED.
 func (m *Memory) List() ([]*release.Release, error) {
 	m.RLock()
 	defer m.RUnlock()
-	buf := make([]*release.Release, len(m.releases))
-	i := 0
+	buf := []*release.Release{}
 	for _, v := range m.releases {
-		buf[i] = v
-		i++
+		if v.Info.Status.Code != release.Status_DELETED {
+			buf = append(buf, v)
+		}
 	}
 	return buf, nil
 }
