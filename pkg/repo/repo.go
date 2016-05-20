@@ -117,7 +117,7 @@ func (r *ChartRepository) Index() error {
 		}
 
 		chartfile := ch.Chartfile()
-		hash, err := generateDigest(path)
+		hash, err := generateChecksum(path)
 		if err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ func (r *ChartRepository) Index() error {
 
 		url := filepath.Join(r.URL, key+".tgz")
 
-		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: url, Created: created, Digest: hash, Removed: false}
+		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: url, Created: created, Checksum: hash, Removed: false}
 
 		r.IndexFile.Entries[key] = entry
 
@@ -150,7 +150,7 @@ func (r *ChartRepository) Index() error {
 	return nil
 }
 
-func generateDigest(path string) (string, error) {
+func generateChecksum(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
