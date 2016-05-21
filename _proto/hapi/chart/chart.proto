@@ -26,5 +26,5 @@ message Chart {
 
 	// Miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
-	google.protobuf.Any files = 5;
+	repeated google.protobuf.Any files = 5;
 }
