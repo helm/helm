@@ -69,8 +69,8 @@ func TestIndex(t *testing.T) {
 		}
 		timestamps[chartName] = details.Created
 
-		if details.Digest == "" {
-			t.Errorf("Digest was not set for %s", chartName)
+		if details.Checksum == "" {
+			t.Errorf("Checksum was not set for %s", chartName)
 		}
 	}
 
@@ -89,6 +89,10 @@ func TestIndex(t *testing.T) {
 		}
 		if v.Created != created {
 			t.Errorf("Expected Created timestamp to be %s, but got %s for chart %s", created, v.Created, chart)
+		}
+		expectedURL := filepath.Join(cr.URL, chart+".tgz")
+		if v.URL != expectedURL {
+			t.Errorf("Expected url in entry to be %s but got %s for chart: %s", expectedURL, v.URL, chart)
 		}
 	}
 }

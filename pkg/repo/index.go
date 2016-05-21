@@ -23,7 +23,7 @@ type ChartRef struct {
 	URL       string          `yaml:"url"`
 	Created   string          `yaml:"created,omitempty"`
 	Removed   bool            `yaml:"removed,omitempty"`
-	Digest    string          `yaml:"digest,omitempty"`
+	Checksum  string          `yaml:"checksum,omitempty"`
 	Chartfile chart.Chartfile `yaml:"chartfile"`
 }
 
