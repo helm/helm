@@ -35,22 +35,22 @@ It will also set up any necessary local configuration.
 
 Common actions from this point include:
 
-- helm search: search for charts
-- helm fetch: download a chart to your local directory to view
-- helm install: upload the chart to Kubernetes
-- helm list: list releases of charts
+- helm search:    search for charts
+- helm fetch:     download a chart to your local directory to view
+- helm install:   upload the chart to Kubernetes
+- helm list:      list releases of charts
 
 Environment:
-  $HELM_HOME    Set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $HELM_HOST  Set an alternative Tiller host. The format is host:port (default ":44134").
+  $HELM_HOME      Set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $HELM_HOST      Set an alternative Tiller host. The format is host:port (default ":44134").
 `
 
 // RootCommand is the top-level command for Helm.
 var RootCommand = &cobra.Command{
-	Use:              "helm",
-	Short:            "The Helm package manager for Kubernetes.",
-	Long:             globalUsage,
-	PersistentPreRun: bootstrap,
+	Use:               "helm",
+	Short:             "The Helm package manager for Kubernetes.",
+	Long:              globalUsage,
+	PersistentPostRun: teardown,
 }
 
 func init() {
@@ -59,9 +59,6 @@ func init() {
 		home = "$HOME/.helm"
 	}
 	thost := os.Getenv(hostEnvVar)
-	if thost == "" {
-		thost = defaultHost
-	}
 	p := RootCommand.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
@@ -74,11 +71,31 @@ func main() {
 	}
 }
 
-func bootstrap(c *cobra.Command, args []string) {
+func setupConnection(c *cobra.Command, args []string) error {
+	if tillerHost == "" {
+		// Should failure fall back to default host?
+		tunnel, err := newTillerPortForwarder()
+		if err != nil {
+			return err
+		}
+
+		tillerHost = fmt.Sprintf(":%d", tunnel.Local)
+		if flagVerbose {
+			fmt.Printf("Created tunnel using local port: '%d'\n", tunnel.Local)
+		}
+	}
+
 	// Set up the gRPC config.
 	helm.Config.ServAddr = tillerHost
 	if flagVerbose {
 		fmt.Printf("Server: %q\n", helm.Config.ServAddr)
+	}
+	return nil
+}
+
+func teardown(c *cobra.Command, args []string) {
+	if tunnel != nil {
+		tunnel.Close()
 	}
 }
 
