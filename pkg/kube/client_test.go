@@ -7,7 +7,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/client/unversioned/fake"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
@@ -46,12 +45,12 @@ func TestPerform(t *testing.T) {
 			return nil
 		}
 
-		f := cmdutil.NewFactory(nil)
-		f.ClientForMapping = func(mapping *meta.RESTMapping) (resource.RESTClient, error) {
+		c := New(nil)
+		c.ClientForMapping = func(mapping *meta.RESTMapping) (resource.RESTClient, error) {
 			return &fake.RESTClient{}, nil
 		}
 
-		err := perform(f, tt.namespace, tt.reader, fn)
+		err := perform(c, tt.namespace, tt.reader, fn)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}
