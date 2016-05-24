@@ -9,12 +9,17 @@ import (
 	"github.com/kubernetes/helm/pkg/kube"
 )
 
+// TODO refactor out this global var
+var tunnel *kube.Tunnel
+
 func newTillerPortForwarder() (*kube.Tunnel, error) {
 	podName, err := getTillerPodName("helm")
 	if err != nil {
 		return nil, err
 	}
-	return kube.New(nil).ForwardPort("helm", podName, 44134)
+	// FIXME use a constain that is accessable on init
+	const tillerPort = 44134
+	return kube.New(nil).ForwardPort("helm", podName, tillerPort)
 }
 
 func getTillerPodName(namespace string) (string, error) {
@@ -23,6 +28,7 @@ func getTillerPodName(namespace string) (string, error) {
 		return "", err
 	}
 
+	// TODO use a const for labels
 	selector := labels.Set{"app": "helm", "name": "tiller"}.AsSelector()
 	options := api.ListOptions{LabelSelector: selector}
 	pods, err := client.Pods(namespace).List(options)

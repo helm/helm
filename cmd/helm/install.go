@@ -35,10 +35,11 @@ var (
 )
 
 var installCmd = &cobra.Command{
-	Use:   "install [CHART]",
-	Short: "install a chart archive.",
-	Long:  installDesc,
-	RunE:  runInstall,
+	Use:               "install [CHART]",
+	Short:             "install a chart archive.",
+	Long:              installDesc,
+	RunE:              runInstall,
+	PersistentPreRunE: setupConnection,
 }
 
 func init() {

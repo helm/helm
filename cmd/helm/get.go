@@ -46,10 +46,11 @@ var getOut = ""
 var errReleaseRequired = errors.New("release name is required")
 
 var getCommand = &cobra.Command{
-	Use:   "get [flags] RELEASE_NAME",
-	Short: "Download a named release",
-	Long:  getHelp,
-	RunE:  getCmd,
+	Use:               "get [flags] RELEASE_NAME",
+	Short:             "Download a named release",
+	Long:              getHelp,
+	RunE:              getCmd,
+	PersistentPreRunE: setupConnection,
 }
 
 var getValuesCommand = &cobra.Command{
