@@ -10,6 +10,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 )
 
+// Tunnel describes a ssh-like tunnel to a kubernetes pod
 type Tunnel struct {
 	Local    int
 	Remote   int
@@ -33,7 +34,8 @@ func (c *Client) ForwardPort(namespace, podName string, remote int) (*Tunnel, er
 		return nil, err
 	}
 
-	// http://192.168.64.94:8080/api/v1/namespaces/helm/pods/tiller-rc-9itlq/portforward
+	// Build a url to the portforward endpoing
+	// example: http://localhost:8080/api/v1/namespaces/helm/pods/tiller-rc-9itlq/portforward
 	u := client.RESTClient.Post().
 		Resource("pods").
 		Namespace(namespace).
