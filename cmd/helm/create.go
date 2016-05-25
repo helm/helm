@@ -55,9 +55,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Version:     "0.1.0",
 	}
 
-	if _, err := chart.Create(&cfile, filepath.Dir(cname)); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := chart.Create(&cfile, filepath.Dir(cname))
+	return err
 }

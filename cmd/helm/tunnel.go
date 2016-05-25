@@ -17,7 +17,7 @@ func newTillerPortForwarder() (*kube.Tunnel, error) {
 	if err != nil {
 		return nil, err
 	}
-	// FIXME use a constain that is accessable on init
+	// FIXME use a constain that is accessible on init
 	const tillerPort = 44134
 	return kube.New(nil).ForwardPort("helm", podName, tillerPort)
 }
