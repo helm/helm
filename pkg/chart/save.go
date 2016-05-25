@@ -103,11 +103,7 @@ func Save(c *Chart, outDir string) (string, error) {
 		}
 		_, err = io.Copy(twriter, in)
 		in.Close()
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	})
 	if err != nil {
 		rollback = true

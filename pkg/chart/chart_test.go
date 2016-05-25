@@ -191,11 +191,7 @@ func findMember(root, path string, members []*Member) error {
 	for _, member := range members {
 		if member.Path == path {
 			filename := filepath.Join(root, path)
-			if err := compareContent(filename, member.Content); err != nil {
-				return err
-			}
-
-			return nil
+			return compareContent(filename, member.Content)
 		}
 	}
 

@@ -89,10 +89,7 @@ func runRepoRemove(cmd *cobra.Command, args []string) error {
 	if err := checkArgsLength(1, len(args), "name of chart repository"); err != nil {
 		return err
 	}
-	if err := removeRepoLine(args[0]); err != nil {
-		return err
-	}
-	return nil
+	return removeRepoLine(args[0])
 }
 
 func runRepoIndex(cmd *cobra.Command, args []string) error {
@@ -105,11 +102,7 @@ func runRepoIndex(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := index(path, args[1]); err != nil {
-		return err
-	}
-
-	return nil
+	return index(path, args[1])
 }
 
 func index(dir, url string) error {
@@ -118,10 +111,7 @@ func index(dir, url string) error {
 		return err
 	}
 
-	if err := chartRepo.Index(); err != nil {
-		return err
-	}
-	return nil
+	return chartRepo.Index()
 }
 
 func removeRepoLine(name string) error {
@@ -165,9 +155,5 @@ func insertRepoLine(name, url string) error {
 	f.Repositories[name] = url
 
 	b, _ := yaml.Marshal(&f.Repositories)
-	if err := ioutil.WriteFile(repositoriesFile(), b, 0666); err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(repositoriesFile(), b, 0666)
 }
