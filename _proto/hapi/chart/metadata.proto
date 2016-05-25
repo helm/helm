@@ -37,4 +37,7 @@ message Metadata {
 
 	// A list of name and URL/email address combinations for the maintainer(s)
 	repeated Maintainer maintainers = 7;
+
+	// The name of the template engine to use. Defaults to 'gotpl'.
+	string engine = 8;
 }
