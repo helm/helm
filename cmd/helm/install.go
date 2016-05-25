@@ -24,8 +24,6 @@ chart in the current working directory.
 
 // install flags & args
 var (
-	// installArg is the name or relative path of the chart to install
-	installArg string
 	// installDryRun performs a dry-run install
 	installDryRun bool
 	// installValues is the filename of supplied values.

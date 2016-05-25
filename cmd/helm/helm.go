@@ -12,10 +12,8 @@ import (
 )
 
 const (
-	homeEnvVar  = "HELM_HOME"
-	defaultHome = "$HOME/.helm" // FIXME: is $HOME windows compatible?
-	hostEnvVar  = "HELM_HOST"
-	defaultHost = ":44134"
+	homeEnvVar = "HELM_HOME"
+	hostEnvVar = "HELM_HOST"
 )
 
 var helmHome string
