@@ -22,7 +22,7 @@ For Helm, there are three important concepts:
 3. A _release_ is a running instance of a _chart_, combined with a
    specific _config_.
 
-Following the formula made famous by the 12 Factor App, _chart + config
+Following the formula made famous by the [12 Factor App](http://12factor.net/), _chart + config
 = release_.
 
 ## Components
