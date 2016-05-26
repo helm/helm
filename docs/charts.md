@@ -174,8 +174,7 @@ spec:
               value: {{default "minio" .storage}}
 ```
 
-The above example, based loosely on [https://github.com/deis/charts](the
-chart for Deis), is a template for a Kubernetes replication controller.
+The above example, based loosely on [https://github.com/deis/charts](https://github.com/deis/charts), is a template for a Kubernetes replication controller.
 It can use the following four template values:
 
 - `imageRegistry`: The source registry for the Docker image.
