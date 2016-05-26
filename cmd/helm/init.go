@@ -65,7 +65,7 @@ func installTiller() error {
 	i := client.NewInstaller()
 	i.Tiller["Image"] = tillerImg
 	i.Tiller["Namespace"] = tillerNamespace
-	err := i.Install(flagVerbose, !initSkipNamespace)
+	err := i.Install(flagDebug, !initSkipNamespace)
 
 	if err != nil {
 		return fmt.Errorf("error installing: %s", err)

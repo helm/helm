@@ -60,7 +60,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	name, err := chart.Save(ch, cwd)
-	if err == nil && flagVerbose {
+	if err == nil && flagDebug {
 		cmd.Printf("Saved %s to current directory\n", name)
 	}
 
@@ -69,7 +69,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 	if save {
 		if err := repo.AddChartToLocalRepo(ch, localRepoDirectory()); err != nil {
 			return err
-		} else if flagVerbose {
+		} else if flagDebug {
 			cmd.Printf("Saved %s to %s\n", name, localRepoDirectory())
 		}
 	}

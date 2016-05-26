@@ -57,7 +57,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if flagVerbose {
+	if flagDebug {
 		fmt.Printf("Chart path: %s\n", chartpath)
 	}
 
@@ -87,7 +87,7 @@ func printRelease(rel *release.Release) {
 	if rel == nil {
 		return
 	}
-	if flagVerbose {
+	if flagDebug {
 		fmt.Printf("NAME:   %s\n", rel.Name)
 		fmt.Printf("INFO:   %s %s\n", timeconv.String(rel.Info.LastDeployed), rel.Info.Status)
 		fmt.Printf("CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
