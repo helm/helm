@@ -15,8 +15,16 @@ docker-push: docker-mutable-push docker-immutable-push
 
 .PHONY: docker-immutable-push
 docker-immutable-push:
+ifeq ($(DOCKER_REGISTRY),gcr.io)
+	gcloud docker push ${IMAGE}
+else
 	docker push ${IMAGE}
+endif
 
 .PHONY: docker-mutable-push
 docker-mutable-push:
+ifeq ($(DOCKER_REGISTRY),gcr.io)
+	gcloud docker push ${MUTABLE_IMAGE}
+else
 	docker push ${MUTABLE_IMAGE}
+endif
