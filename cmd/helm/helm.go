@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -19,8 +20,8 @@ const (
 var helmHome string
 var tillerHost string
 
-// flagVerbose is a signal that the user wants additional output.
-var flagVerbose bool
+// flagDebug is a signal that the user wants additional output.
+var flagDebug bool
 
 var globalUsage = `The Kubernetes package manager
 
@@ -60,7 +61,8 @@ func init() {
 	p := RootCommand.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
-	p.BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose output")
+	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
+	p.AddGoFlagSet(flag.CommandLine)
 }
 
 func main() {
@@ -78,14 +80,14 @@ func setupConnection(c *cobra.Command, args []string) error {
 		}
 
 		tillerHost = fmt.Sprintf(":%d", tunnel.Local)
-		if flagVerbose {
+		if flagDebug {
 			fmt.Printf("Created tunnel using local port: '%d'\n", tunnel.Local)
 		}
 	}
 
 	// Set up the gRPC config.
 	helm.Config.ServAddr = tillerHost
-	if flagVerbose {
+	if flagDebug {
 		fmt.Printf("Server: %q\n", helm.Config.ServAddr)
 	}
 	return nil
