@@ -10,7 +10,7 @@ PKG       := $(shell glide novendor)
 TAGS      :=
 TESTS     := .
 TESTFLAGS :=
-LDFLAGS   := "-X cmd.helm.cliVersion ${CLI_VERSION}"
+LDFLAGS   := -X cmd.helm.cliVersion=${CLI_VERSION}
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
