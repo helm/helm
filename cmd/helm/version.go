@@ -1,15 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/gosuri/uitable"
-	"github.com/kubernetes/helm/pkg/helm"
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
-	"github.com/kubernetes/helm/pkg/proto/hapi/services"
-	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/spf13/cobra"
 )
 
