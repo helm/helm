@@ -131,7 +131,7 @@ func (r *ChartRepository) Index() error {
 			created = time.Now().UTC().String()
 		}
 
-		url := filepath.Join(r.URL, key+".tgz")
+		url := strings.TrimSuffix(r.URL, "/") + "/" + key + ".tgz"
 
 		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: url, Created: created, Checksum: hash, Removed: false}
 
