@@ -25,6 +25,10 @@ func TestLoadFile(t *testing.T) {
 }
 
 func verifyChart(t *testing.T, c *chart.Chart) {
+	if c.Metadata.Name == "" {
+		t.Fatalf("No chart metadata found on %v", c)
+	}
+	t.Logf("Verifying chart %s", c.Metadata.Name)
 	if len(c.Templates) != 1 {
 		t.Errorf("Expected 1 template, got %d", len(c.Templates))
 	}
@@ -44,15 +48,18 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 	}
 
 	expect := map[string]map[string]string{
-		"alpine": map[string]string{
+		"alpine": {
 			"version": "0.1.0",
 		},
-		"mariner": map[string]string{
+		"mariner": {
 			"version": "4.3.2",
 		},
 	}
 
 	for _, dep := range c.Dependencies {
+		if dep.Metadata == nil {
+			t.Fatalf("expected metadata on dependency: %v", dep)
+		}
 		exp, ok := expect[dep.Metadata.Name]
 		if !ok {
 			t.Fatalf("Unknown dependency %s", dep.Metadata.Name)

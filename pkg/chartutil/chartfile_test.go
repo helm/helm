@@ -19,6 +19,10 @@ func TestLoadChartfile(t *testing.T) {
 
 func verifyChartfile(t *testing.T, f *chart.Metadata) {
 
+	if f == nil {
+		t.Fatal("Failed verifyChartfile because f is nil")
+	}
+
 	if f.Name != "frobnitz" {
 		t.Errorf("Expected frobnitz, got %s", f.Name)
 	}

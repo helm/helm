@@ -7,6 +7,7 @@ import (
 	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
 )
 
+// UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.
 func UnmarshalChartfile(data []byte) (*chart.Metadata, error) {
 	y := &chart.Metadata{}
 	err := yaml.Unmarshal(data, y)

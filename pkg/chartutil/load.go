@@ -31,50 +31,30 @@ func Load(name string) (*chart.Chart, error) {
 	return LoadFile(name)
 }
 
-// subchart is an intermediate representation of a dependency.
-//
-// It is used to temporarily store a dependency while we process the outer
-// file.
-type subchart []*afile
-
-func newSubchart() subchart {
-	return []*afile{}
-}
-
-func (s subchart) add(name string, data []byte, arch bool) subchart {
-	s = append(s, &afile{name, data, arch})
-	return s
-}
-
 // afile represents an archive file buffered for later processing.
 type afile struct {
-	name    string
-	data    []byte
-	archive bool
+	name string
+	data []byte
 }
 
 // LoadArchive loads from a reader containing a compressed tar archive.
 func LoadArchive(in io.Reader) (*chart.Chart, error) {
-	sc := map[string]subchart{}
 	unzipped, err := gzip.NewReader(in)
 	if err != nil {
-		return nil, err
+		return &chart.Chart{}, err
 	}
 	defer unzipped.Close()
 
-	c := &chart.Chart{}
-	b := bytes.NewBuffer(nil)
-
+	files := []*afile{}
 	tr := tar.NewReader(unzipped)
 	for {
+		b := bytes.NewBuffer(nil)
 		hd, err := tr.Next()
 		if err == io.EOF {
-			// We're done with the reader. Now add subcharts and exit.
-			e := addSubcharts(c, sc)
-			return c, e
+			break
 		}
 		if err != nil {
-			return c, err
+			return &chart.Chart{}, err
 		}
 
 		if hd.FileInfo().IsDir() {
@@ -87,22 +67,84 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 		n := strings.Join(parts[1:], "/")
 
 		if _, err := io.Copy(b, tr); err != nil {
-			return c, err
+			return &chart.Chart{}, err
 		}
 
-		if strings.HasPrefix(n, "charts/") {
-			// If there are subcharts, we put those into a temporary holding
-			// array for later processing.
-			fmt.Printf("Appending %s to chart %s:\n%s\n", n, c.Metadata.Name, b.String())
-			appendSubchart(sc, n, b.Bytes())
-			b.Reset()
-			continue
-		}
-
-		addToChart(c, n, b.Bytes())
+		files = append(files, &afile{name: n, data: b.Bytes()})
 		b.Reset()
 	}
 
+	if len(files) == 0 {
+		return nil, errors.New("no files in chart archive")
+	}
+
+	return loadFiles(files)
+}
+
+func loadFiles(files []*afile) (*chart.Chart, error) {
+	c := &chart.Chart{}
+	subcharts := map[string][]*afile{}
+
+	for _, f := range files {
+		if f.name == "Chart.yaml" {
+			m, err := UnmarshalChartfile(f.data)
+			if err != nil {
+				return c, err
+			}
+			c.Metadata = m
+		} else if f.name == "values.toml" || f.name == "values.yaml" {
+			c.Values = &chart.Config{Raw: string(f.data)}
+		} else if strings.HasPrefix(f.name, "templates/") {
+			c.Templates = append(c.Templates, &chart.Template{Name: f.name, Data: f.data})
+		} else if strings.HasPrefix(f.name, "charts/") {
+			cname := strings.TrimPrefix(f.name, "charts/")
+			parts := strings.SplitN(cname, "/", 2)
+			scname := parts[0]
+			subcharts[scname] = append(subcharts[scname], &afile{name: cname, data: f.data})
+		} else {
+			c.Files = append(c.Files, &any.Any{TypeUrl: f.name, Value: f.data})
+		}
+	}
+
+	// Ensure that we got a Chart.yaml file
+	if c.Metadata == nil || c.Metadata.Name == "" {
+		return c, errors.New("chart metadata (Chart.yaml) missing")
+	}
+
+	for n, files := range subcharts {
+		var sc *chart.Chart
+		var err error
+		if filepath.Ext(n) == ".tgz" {
+			file := files[0]
+			if file.name != n {
+				return c, fmt.Errorf("error unpacking tar in %s: expected %s, got %s", c.Metadata.Name, n, file.name)
+			}
+			// Untar the chart and add to c.Dependencies
+			b := bytes.NewBuffer(file.data)
+			sc, err = LoadArchive(b)
+		} else {
+			// We have to trim the prefix off of every file, and ignore any file
+			// that is in charts/, but isn't actually a chart.
+			buff := make([]*afile, 0, len(files))
+			for _, f := range files {
+				parts := strings.SplitN(f.name, "/", 2)
+				if len(parts) < 2 {
+					continue
+				}
+				f.name = parts[1]
+				buff = append(buff, f)
+			}
+			sc, err = loadFiles(buff)
+		}
+
+		if err != nil {
+			return c, fmt.Errorf("error unpacking %s in %s: %s", n, c.Metadata.Name, err)
+		}
+
+		c.Dependencies = append(c.Dependencies, sc)
+	}
+
+	return c, nil
 }
 
 // LoadFile loads from an archive file.
@@ -131,9 +173,11 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		return nil, err
 	}
 
-	topdir += string(filepath.Separator)
-	sc := map[string]subchart{}
+	// Just used for errors.
 	c := &chart.Chart{}
+
+	files := []*afile{}
+	topdir += string(filepath.Separator)
 	err = filepath.Walk(topdir, func(name string, fi os.FileInfo, err error) error {
 		n := strings.TrimPrefix(name, topdir)
 		if err != nil {
@@ -148,127 +192,12 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return fmt.Errorf("error reading %s: %s", n, err)
 		}
 
-		if strings.HasPrefix(n, "charts/") {
-			appendSubchart(sc, n, data)
-			return nil
-		}
-
-		return addToChart(c, n, data)
+		files = append(files, &afile{name: n, data: data})
+		return nil
 	})
 	if err != nil {
 		return c, err
 	}
 
-	// Ensure that we had a Chart.yaml file
-	if c.Metadata == nil || c.Metadata.Name == "" {
-		return c, errors.New("chart metadata (Chart.yaml) missing")
-	}
-
-	err = addSubcharts(c, sc)
-	return c, err
-}
-
-func addToChart(c *chart.Chart, n string, data []byte) error {
-	fmt.Printf("--> Scanning %s\n", n)
-	if n == "Chart.yaml" {
-		md, err := UnmarshalChartfile(data)
-		if err != nil {
-			return err
-		}
-		if md.Name == "" {
-			fmt.Printf("Chart:\n%s\n", string(data))
-		}
-		fmt.Printf("--> Adding %s as Chart.yaml\n", md.Name)
-		c.Metadata = md
-	} else if n == "values.toml" {
-		c.Values = &chart.Config{Raw: string(data)}
-		fmt.Printf("--> Adding to values:\n%s\n", string(data))
-	} else if strings.HasPrefix(n, "charts/") {
-		// SKIP THESE. These are handled elsewhere, because they need context
-		// to process.
-		return nil
-	} else if strings.HasPrefix(n, "templates/") {
-		c.Templates = append(c.Templates, &chart.Template{Name: n, Data: data})
-	} else {
-		c.Files = append(c.Files, &any.Any{TypeUrl: n, Value: data})
-	}
-	return nil
-}
-
-func addSubcharts(c *chart.Chart, s map[string]subchart) error {
-	for n, sc := range s {
-		fmt.Printf("===> Unpacking %s\n", n)
-		if err := addSubchart(c, sc); err != nil {
-			return fmt.Errorf("error adding %q: %s", n, err)
-		}
-	}
-	return nil
-}
-
-// addSubchart transforms a subchart to a new chart, and then embeds it into the given chart.
-func addSubchart(c *chart.Chart, sc subchart) error {
-	nc := &chart.Chart{}
-	deps := map[string]subchart{}
-
-	// The sc paths are all relative to the sc itself.
-	for _, sub := range sc {
-		if sub.archive {
-			b := bytes.NewBuffer(sub.data)
-			var err error
-			nc, err = LoadArchive(b)
-			if err != nil {
-				fmt.Printf("Bad data in %s: %q", sub.name, string(sub.data))
-				return err
-			}
-			break
-		} else if strings.HasPrefix(sub.name, "charts/") {
-			appendSubchart(deps, sub.name, sub.data)
-		} else {
-			fmt.Printf("Adding %s to subchart in %s\n", sub.name, c.Metadata.Name)
-			addToChart(nc, sub.name, sub.data)
-		}
-	}
-
-	if nc.Metadata == nil || nc.Metadata.Name == "" {
-		return errors.New("embedded chart is not well-formed")
-	}
-
-	fmt.Printf("Added dependency: %q\n", nc.Metadata.Name)
-	c.Dependencies = append(c.Dependencies, nc)
-	return nil
-}
-
-func appendSubchart(sc map[string]subchart, n string, b []byte) {
-	fmt.Printf("Append subchart %s\n", n)
-	// TODO: Do we need to filter out 0 byte files?
-	// TODO: If this finds a dependency that is a tarball, we need to untar it,
-	// and express it as a subchart.
-	parts := strings.SplitN(n, "/", 3)
-	lp := len(parts)
-	switch lp {
-	case 2:
-		if filepath.Ext(parts[1]) == ".tgz" {
-			fmt.Printf("--> Adding archive %s\n", n)
-			// Basically, we delay expanding tar files until the last minute,
-			// which helps (a little) keep memory usage down.
-			bn := strings.TrimSuffix(parts[1], ".tgz")
-			cc := newSubchart()
-			sc[bn] = cc.add(parts[1], b, true)
-			return
-		} else {
-			// Skip directory entries and non-charts.
-			return
-		}
-	case 3:
-		if _, ok := sc[parts[1]]; !ok {
-			sc[parts[1]] = newSubchart()
-		}
-		//fmt.Printf("Adding file %q to %s\n", parts[2], parts[1])
-		sc[parts[1]] = sc[parts[1]].add(parts[2], b, false)
-		return
-	default:
-		// Skip 1 or 0.
-		return
-	}
-
+	return loadFiles(files)
 }
