@@ -14,7 +14,7 @@ page.
 
 Alternately, you can clone the GitHub project and build your own
 client from source. The quickest route to installing from source is to
-run `make boostrap build`, and then use `bin/helm`.
+run `make bootstrap build`, and then use `bin/helm`.
 
 ## Initialize Helm and Install Tiller
 

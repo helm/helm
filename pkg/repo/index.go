@@ -28,7 +28,7 @@ type ChartRef struct {
 }
 
 // DownloadIndexFile uses
-func DownloadIndexFile(repoName, url, indexFileName string) error {
+func DownloadIndexFile(repoName, url, indexFilePath string) error {
 	var indexURL string
 
 	indexURL = strings.TrimSuffix(url, "/") + "/index.yaml"
@@ -49,11 +49,7 @@ func DownloadIndexFile(repoName, url, indexFileName string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(indexFileName, b, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(indexFilePath, b, 0644)
 }
 
 // UnmarshalYAML unmarshals the index file

@@ -1,8 +1,8 @@
-hash: b2c742106f6983fde0ea7c341a50ffdaef78f78e1302d15ec5dd17ea191247de
-updated: 2016-05-19T16:12:01.062464013-06:00
+hash: 2ac3dc0e19d5a688173924d35a07b4bad2454c7e6f5ff4d5a6911f33d1037586
+updated: 2016-05-24T09:51:36.455233258-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
-  version: 75cd24fc2f2c
+  version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/beorn7/perks
@@ -22,6 +22,17 @@ imports:
   subpackages:
   - digest
   - reference
+- name: github.com/docker/docker
+  version: 0f5c9d301b9b1cca66b3ea0f9dec3b5317d3686d
+  subpackages:
+  - pkg/jsonmessage
+  - pkg/mount
+  - pkg/stdcopy
+  - pkg/symlink
+  - pkg/term
+  - pkg/term/winconsole
+  - pkg/timeutils
+  - pkg/units
 - name: github.com/docker/engine-api
   version: 3d72d392d07bece8d7d7b2a3b6b2e57c2df376a2
   subpackages:
@@ -46,6 +57,10 @@ imports:
   - tlsconfig
 - name: github.com/docker/go-units
   version: 0bbddae09c5a5419a8c6dcdd7ff90da3d450393b
+- name: github.com/docker/spdystream
+  version: 449fdfce4d962303d702fec724ef0ad181c92528
+  subpackages:
+  - spdy
 - name: github.com/emicklei/go-restful
   version: 496d495156da218b9912f03dfa7df7f80fbd8cc3
   subpackages:
@@ -140,6 +155,8 @@ imports:
   - util/wordwrap
 - name: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
 - name: github.com/Masterminds/semver
@@ -152,6 +169,24 @@ imports:
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
+- name: github.com/opencontainers/runc
+  version: 7ca2aa4873aea7cb4265b1726acb24b90d8726c6
+  subpackages:
+  - libcontainer
+  - libcontainer/apparmor
+  - libcontainer/cgroups
+  - libcontainer/cgroups/fs
+  - libcontainer/cgroups/systemd
+  - libcontainer/configs
+  - libcontainer/configs/validate
+  - libcontainer/criurpc
+  - libcontainer/label
+  - libcontainer/seccomp
+  - libcontainer/selinux
+  - libcontainer/stacktrace
+  - libcontainer/system
+  - libcontainer/user
+  - libcontainer/utils
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/prometheus/client_golang
@@ -170,7 +205,7 @@ imports:
 - name: github.com/prometheus/procfs
   version: 490cc6eb5fa45bf8a8b7b73c8bc82a8160e8531d
 - name: github.com/spf13/cobra
-  version: e14e47b7a916ed178f4559ebd7e625cf16410181
+  version: f368244301305f414206f889b1735a54cfc8bde8
   subpackages:
   - cobra
 - name: github.com/spf13/pflag
@@ -190,6 +225,7 @@ imports:
   - trace
   - http2/hpack
   - internal/timeseries
+  - websocket
   - context/ctxhttp
 - name: golang.org/x/oauth2
   version: b5adcc2dcdf009d0391547edc6ecbaff889f5bb9
@@ -198,6 +234,18 @@ imports:
   - internal
   - jws
   - jwt
+- name: google.golang.org/appengine
+  version: 12d5545dc1cfa6047a286d5e853841b6471f4c19
+  subpackages:
+  - internal
+  - internal/app_identity
+  - internal/base
+  - internal/datastore
+  - internal/log
+  - internal/modules
+  - internal/remote_api
+  - urlfetch
+  - internal/urlfetch
 - name: google.golang.org/cloud
   version: eb47ba841d53d93506cfbfbc03927daf9cc48f88
   subpackages:
@@ -221,12 +269,18 @@ imports:
 - name: k8s.io/kubernetes
   version: 9990f843cd62caa90445cf76b07d63ba7b5c86fd
   subpackages:
+  - pkg/api
+  - pkg/api/meta
+  - pkg/client/restclient
+  - pkg/client/unversioned
   - pkg/client/unversioned/clientcmd
+  - pkg/client/unversioned/fake
+  - pkg/client/unversioned/portforward
+  - pkg/client/unversioned/remotecommand
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
-  - pkg/api
+  - pkg/labels
   - pkg/api/unversioned
-  - pkg/client/restclient
   - pkg/client/unversioned/auth
   - pkg/client/unversioned/clientcmd/api
   - pkg/client/unversioned/clientcmd/api/latest
@@ -234,8 +288,13 @@ imports:
   - pkg/util/errors
   - pkg/util/homedir
   - pkg/util/validation
+  - pkg/kubelet/server/portforward
+  - pkg/util/httpstream
+  - pkg/util/runtime
+  - pkg/client/transport
+  - pkg/kubelet/server/remotecommand
+  - pkg/util/httpstream/spdy
   - pkg/api/errors
-  - pkg/api/meta
   - pkg/api/validation
   - pkg/apimachinery
   - pkg/apimachinery/registered
@@ -246,11 +305,9 @@ imports:
   - pkg/apis/metrics
   - pkg/apis/policy
   - pkg/client/typed/discovery
-  - pkg/client/unversioned
   - pkg/client/unversioned/adapters/internalclientset
   - pkg/controller
   - pkg/kubectl
-  - pkg/labels
   - pkg/registry/thirdpartyresourcedata
   - pkg/runtime/serializer/json
   - pkg/util/flag
@@ -269,7 +326,6 @@ imports:
   - pkg/util/rand
   - pkg/api/v1
   - pkg/client/metrics
-  - pkg/client/transport
   - pkg/runtime/serializer/streaming
   - pkg/util/crypto
   - pkg/util/flowcontrol
@@ -280,6 +336,9 @@ imports:
   - pkg/runtime/serializer/versioning
   - pkg/conversion/queryparams
   - pkg/util/json
+  - pkg/httplog
+  - pkg/util/wsstream
+  - third_party/golang/netutil
   - pkg/util/validation/field
   - pkg/api/endpoints
   - pkg/api/pod
@@ -321,7 +380,6 @@ imports:
   - pkg/registry/generic
   - pkg/util/framer
   - third_party/forked/json
-  - pkg/util/runtime
   - third_party/forked/reflect
   - pkg/runtime/serializer/protobuf
   - pkg/runtime/serializer/recognizer

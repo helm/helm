@@ -98,11 +98,7 @@ func (r *ChartRepository) saveIndexFile() error {
 		return err
 	}
 
-	if err = ioutil.WriteFile(filepath.Join(r.RootPath, indexPath), index, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(filepath.Join(r.RootPath, indexPath), index, 0644)
 }
 
 func (r *ChartRepository) Index() error {
@@ -143,11 +139,7 @@ func (r *ChartRepository) Index() error {
 
 	}
 
-	if err := r.saveIndexFile(); err != nil {
-		return err
-	}
-
-	return nil
+	return r.saveIndexFile()
 }
 
 func generateChecksum(path string) (string, error) {

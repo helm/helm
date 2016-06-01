@@ -46,11 +46,7 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 	if err != nil {
 		return err
 	}
-	err = Reindex(ch, path+"/index.yaml")
-	if err != nil {
-		return err
-	}
-	return nil
+	return Reindex(ch, path+"/index.yaml")
 }
 
 // Reindex adds an entry to the index file at the given path

@@ -1,11 +1,28 @@
 MUTABLE_VERSION ?= canary
-VERSION ?= git-$(shell git rev-parse --short HEAD)
 
-IMAGE := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${VERSION}
+GIT_SHA := $(shell git rev-parse --short HEAD)
+GIT_TAG := $(shell git describe --tags --abbrev=0 2>/dev/null)
+
+ifdef VERSION
+	DOCKER_VERSION = $(VERSION)
+	BINARY_VERSION = $(VERSION)
+endif
+
+DOCKER_VERSION ?= git-${GIT_SHA}
+BINARY_VERSION ?= ${GIT_TAG}+${GIT_SHA}
+
+IMAGE := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${DOCKER_VERSION}
 MUTABLE_IMAGE := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
 
+LDFLAGS += -X github.com/kubernetes/helm/pkg/version.Version=${BINARY_VERSION}
+
+DOCKER_PUSH = docker push
+ifeq ($(DOCKER_REGISTRY),gcr.io)
+	DOCKER_PUSH = gcloud docker push
+endif
+
 info:
-	@echo "Build tag:       ${VERSION}"
+	@echo "Build tag:       ${DOCKER_VERSION}"
 	@echo "Registry:        ${DOCKER_REGISTRY}"
 	@echo "Immutable tag:   ${IMAGE}"
 	@echo "Mutable tag:     ${MUTABLE_IMAGE}"
@@ -15,8 +32,8 @@ docker-push: docker-mutable-push docker-immutable-push
 
 .PHONY: docker-immutable-push
 docker-immutable-push:
-	docker push ${IMAGE}
+	${DOCKER_PUSH} ${IMAGE}
 
 .PHONY: docker-mutable-push
 docker-mutable-push:
-	docker push ${MUTABLE_IMAGE}
+	${DOCKER_PUSH} ${MUTABLE_IMAGE}

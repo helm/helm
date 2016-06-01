@@ -24,8 +24,6 @@ chart in the current working directory.
 
 // install flags & args
 var (
-	// installArg is the name or relative path of the chart to install
-	installArg string
 	// installDryRun performs a dry-run install
 	installDryRun bool
 	// installValues is the filename of supplied values.
@@ -35,10 +33,11 @@ var (
 )
 
 var installCmd = &cobra.Command{
-	Use:   "install [CHART]",
-	Short: "install a chart archive.",
-	Long:  installDesc,
-	RunE:  runInstall,
+	Use:               "install [CHART]",
+	Short:             "install a chart archive.",
+	Long:              installDesc,
+	RunE:              runInstall,
+	PersistentPreRunE: setupConnection,
 }
 
 func init() {
@@ -58,7 +57,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if flagVerbose {
+	if flagDebug {
 		fmt.Printf("Chart path: %s\n", chartpath)
 	}
 
@@ -88,7 +87,7 @@ func printRelease(rel *release.Release) {
 	if rel == nil {
 		return
 	}
-	if flagVerbose {
+	if flagDebug {
 		fmt.Printf("NAME:   %s\n", rel.Name)
 		fmt.Printf("INFO:   %s %s\n", timeconv.String(rel.Info.LastDeployed), rel.Info.Status)
 		fmt.Printf("CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)

@@ -40,17 +40,18 @@ func NewInstaller() *Installer {
 func (i *Installer) Install(verbose, createNS bool) error {
 
 	var b bytes.Buffer
-	t := template.New("manifest").Funcs(sprig.TxtFuncMap())
 
 	// Add namespace
 	if createNS {
-		if err := template.Must(t.Parse(NamespaceYAML)).Execute(&b, i); err != nil {
+		nstpl := template.New("namespace").Funcs(sprig.TxtFuncMap())
+		if err := template.Must(nstpl.Parse(NamespaceYAML)).Execute(&b, i); err != nil {
 			return err
 		}
 	}
 
 	// Add main install YAML
-	if err := template.Must(t.Parse(InstallYAML)).Execute(&b, i); err != nil {
+	istpl := template.New("install").Funcs(sprig.TxtFuncMap())
+	if err := template.Must(istpl.Parse(InstallYAML)).Execute(&b, i); err != nil {
 		return err
 	}
 
