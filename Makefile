@@ -2,13 +2,15 @@ DOCKER_REGISTRY ?= gcr.io
 IMAGE_PREFIX    ?= kubernetes-helm
 SHORT_NAME      ?= tiller
 
+CLI_VERSION ?= devel
+
 # go option
 GO        ?= go
 PKG       := $(shell glide novendor)
 TAGS      :=
 TESTS     := .
 TESTFLAGS :=
-LDFLAGS   :=
+LDFLAGS   := "-X cmd.helm.cliVersion ${CLI_VERSION}"
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
