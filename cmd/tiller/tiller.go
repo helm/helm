@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 
 	"github.com/kubernetes/helm/cmd/tiller/environment"
@@ -65,7 +66,8 @@ func start(c *cobra.Command, args []string) {
 	}()
 
 	go func() {
-		if err := runProbesServer(probe); err != nil {
+		mux := newProbesMux()
+		if err := http.ListenAndServe(addr, mux); err != nil {
 			probeErrCh <- err
 		}
 	}()
