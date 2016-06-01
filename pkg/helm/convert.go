@@ -116,7 +116,8 @@ func ValuesToProto(ch *chartutil.Chart) (*chartpbs.Config, error) {
 
 	vals, err := ch.LoadValues()
 	if err != nil {
-		return nil, ErrMissingValues
+		//return nil, ErrMissingValues
+		vals = map[string]interface{}{}
 	}
 
 	var buf bytes.Buffer
