@@ -1,0 +1,4 @@
+# Default values for mariner.
+# This is a TOML-formatted file. https://github.com/toml-lang/toml
+# Declare name/value pairs to be passed into your templates.
+# name = "value"
