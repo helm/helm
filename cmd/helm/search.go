@@ -35,8 +35,6 @@ func search(cmd *cobra.Command, args []string) error {
 		for _, result := range results {
 			fmt.Println(result)
 		}
-	} else {
-		return errors.New("No matches found")
 	}
 	return nil
 }
