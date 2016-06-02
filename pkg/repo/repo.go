@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,9 +132,10 @@ func (r *ChartRepository) Index() error {
 			created = time.Now().UTC().String()
 		}
 
-		url := filepath.Join(r.URL, key+".tgz")
+		url, _ := url.Parse(r.URL)
+		url.Path = filepath.Join(url.Path, key+".tgz")
 
-		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: url, Created: created, Checksum: hash, Removed: false}
+		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: url.String(), Created: created, Checksum: hash, Removed: false}
 
 		r.IndexFile.Entries[key] = entry
 

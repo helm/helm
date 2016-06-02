@@ -90,7 +90,8 @@ func TestIndex(t *testing.T) {
 		if v.Created != created {
 			t.Errorf("Expected Created timestamp to be %s, but got %s for chart %s", created, v.Created, chart)
 		}
-		expectedURL := filepath.Join(cr.URL, chart+".tgz")
+		// Created manually since we control the input of the test
+		expectedURL := testURL + "/" + chart + ".tgz"
 		if v.URL != expectedURL {
 			t.Errorf("Expected url in entry to be %s but got %s for chart: %s", expectedURL, v.URL, chart)
 		}
