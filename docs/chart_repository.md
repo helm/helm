@@ -1,4 +1,4 @@
-# Chart Repository Guide
+# The Chart Repository Guide
 
 ## Prerequistes
 * Go through the [Quickstart](quickstart.md) Guide
@@ -7,7 +7,7 @@
 ## Create a chart repository
 A _chart repository_ is an HTTP server that houses one or more packaged charts. When you're ready to share your charts, the preferred mechanism is a chart repository. You can contribute to the official helm chart repository or create your own. Here we'll talk about creating your own chart repository.
 
-Because a chart repository can be any HTTP server that can serve YAML and tar files and can answer GET requests, you have a plethora of options when it comes down to hosting your own chart repository. For example, you can use a Google Cloud Storage(GCS) bucket, Amazon S3 bucket (in website mode), or even create your own web server.
+Because a chart repository can be any HTTP server that can serve YAML and tar files and can answer GET requests, you have a plethora of options when it comes down to hosting your own chart repository. For example, you can use a Google Cloud Storage(GCS) bucket, Amazon S3 bucket, or even create your own web server.
 
 ### The chart repository structure
 A chart repository consists of packaged charts and a special file called `index.yaml` which contains an index of all of the charts in the repository. A chart repository has a flat structure. Given a repository URL, you should be able to download a chart via a GET request to `URL/chartname-version.tgz`. 
