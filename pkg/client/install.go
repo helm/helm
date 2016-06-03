@@ -107,16 +107,16 @@ spec:
         - containerPort: 44134
           name: tiller
         imagePullPolicy: Always
-				livenessProbe:
-					httpGet:
-						path: /liveness
-						port: 44135
-					initialDelaySeconds: 1
-					timeoutSeconds: 1
-				readinessProbe:
-					httpGet:
-						path: /readiness
-						port: 44135
-					initialDelaySeconds: 1
-					timeoutSeconds:1
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: 44135
+          initialDelaySeconds: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 44135
+          initialDelaySeconds: 1
+          timeoutSeconds: 1
 `
