@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -62,7 +61,6 @@ func init() {
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
-	p.AddGoFlagSet(flag.CommandLine)
 }
 
 func main() {
