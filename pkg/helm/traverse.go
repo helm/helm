@@ -1,7 +1,7 @@
 package helm
 
 import (
-	chartutil "github.com/kubernetes/helm/pkg/chart"
+	chartutil "k8s.io/helm/pkg/chart"
 )
 
 //

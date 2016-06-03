@@ -18,7 +18,7 @@ all: build
 
 .PHONY: build
 build:
-	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' github.com/kubernetes/helm/cmd/...
+	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
 
 .PHONY: check-docker
 check-docker:
@@ -31,7 +31,7 @@ check-docker:
 docker-binary: BINDIR = ./rootfs
 docker-binary: GOFLAGS += -a -installsuffix cgo
 docker-binary:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/tiller $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' github.com/kubernetes/helm/cmd/tiller
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/tiller $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/tiller
 
 .PHONY: docker-build
 docker-build: check-docker docker-binary

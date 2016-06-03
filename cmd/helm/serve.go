@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/repo"
 )
 
 var serveDesc = `This command starts a local chart repository server that serves the charts saved in your $HELM_HOME/local/ directory.`

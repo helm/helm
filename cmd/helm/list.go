@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/gosuri/uitable"
-	"github.com/kubernetes/helm/pkg/helm"
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
-	"github.com/kubernetes/helm/pkg/proto/hapi/services"
-	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 var listHelp = `

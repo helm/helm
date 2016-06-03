@@ -9,11 +9,11 @@ package environment
 import (
 	"io"
 
-	"github.com/kubernetes/helm/pkg/engine"
-	"github.com/kubernetes/helm/pkg/kube"
-	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
-	"github.com/kubernetes/helm/pkg/storage"
+	"k8s.io/helm/pkg/engine"
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/storage"
 )
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.

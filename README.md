@@ -40,7 +40,7 @@ Make sure you have the prerequisites:
 - [Glide](https://glide.sh/) 0.10 or greater with both git and mercurial installed.
 
 1. [Properly set your $GOPATH](https://golang.org/doc/code.html)
-2. Clone (or otherwise download) this repository into $GOPATH/src/github.com/kubernetes/helm
+2. Clone (or otherwise download) this repository into $GOPATH/src/k8s.io/helm
 3. Run `make bootstrap build`
 
 You will now have two binaries built:

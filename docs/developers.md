@@ -73,7 +73,7 @@ elegant and high-quality open source code so that our users will benefit.
 
 Make sure you have read and understood the main CONTRIBUTING guide:
 
-https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md
+https://k8s.io/helm/blob/master/CONTRIBUTING.md
 
 We follow the coding standards and guidelines outlined by the Deis
 project:

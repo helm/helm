@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/repo"
 )
 
 func init() {

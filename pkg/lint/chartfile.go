@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	chartutil "github.com/kubernetes/helm/pkg/chart"
+	chartutil "k8s.io/helm/pkg/chart"
 )
 
 // Chartfile checks the Chart.yaml file for errors and warnings.

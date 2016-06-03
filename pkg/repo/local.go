@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kubernetes/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 var localRepoPath string

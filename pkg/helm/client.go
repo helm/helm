@@ -4,7 +4,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/kubernetes/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 type client struct {

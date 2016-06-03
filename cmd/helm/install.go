@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kubernetes/helm/pkg/helm"
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
-	"github.com/kubernetes/helm/pkg/timeconv"
+	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 const installDesc = `

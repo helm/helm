@@ -5,9 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kubernetes/helm/pkg/chart"
-	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/repo"
 )
 
 const packageDesc = `

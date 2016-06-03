@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kubernetes/helm/pkg/repo"
+	"k8s.io/helm/pkg/repo"
 )
 
 var verboseUpdate bool

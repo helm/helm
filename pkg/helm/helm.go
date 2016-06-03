@@ -1,9 +1,10 @@
 package helm
 
 import (
-	chartutil "github.com/kubernetes/helm/pkg/chart"
-	"github.com/kubernetes/helm/pkg/proto/hapi/services"
 	"golang.org/x/net/context"
+
+	chartutil "k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 // Config defines a gRPC client's configuration.

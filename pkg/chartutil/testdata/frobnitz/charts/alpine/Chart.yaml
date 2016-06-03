@@ -1,4 +1,4 @@
 name: alpine
 description: Deploy a basic Alpine Linux pod
 version: 0.1.0
-home: https://github.com/kubernetes/helm
+home: https://k8s.io/helm

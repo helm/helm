@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kubernetes/helm/pkg/client"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/client"
 )
 
 const initDesc = `

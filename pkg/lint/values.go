@@ -2,9 +2,9 @@ package lint
 
 import (
 	"os"
-
-	"github.com/kubernetes/helm/pkg/chart"
 	"path/filepath"
+
+	"k8s.io/helm/pkg/chart"
 )
 
 // Values lints a chart's values.toml file.

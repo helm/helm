@@ -3,8 +3,8 @@ package helm
 import (
 	"bytes"
 
-	chartutil "github.com/kubernetes/helm/pkg/chart"
-	chartpbs "github.com/kubernetes/helm/pkg/proto/hapi/chart"
+	chartutil "k8s.io/helm/pkg/chart"
+	chartpbs "k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 // ChartToProto converts a chart to its Protobuf struct representation.

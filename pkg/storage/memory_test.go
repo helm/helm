@@ -3,7 +3,7 @@ package storage
 import (
 	"testing"
 
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestCreate(t *testing.T) {
