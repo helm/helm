@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 
 	"github.com/kubernetes/helm/cmd/tiller/environment"
@@ -21,6 +22,7 @@ var rootServer = grpc.NewServer()
 var env = environment.New()
 
 var addr = ":44134"
+var probe = ":44135"
 var namespace = ""
 
 const globalUsage = `The Kubernetes Helm server.
@@ -53,10 +55,29 @@ func start(c *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Tiller is running on %s\n", addr)
+	fmt.Printf("Tiller probes server is running on %s\n", probe)
 
-	if err := rootServer.Serve(lstn); err != nil {
+	srvErrCh := make(chan error)
+	probeErrCh := make(chan error)
+	go func() {
+		if err := rootServer.Serve(lstn); err != nil {
+			srvErrCh <- err
+		}
+	}()
+
+	go func() {
+		mux := newProbesMux()
+		if err := http.ListenAndServe(addr, mux); err != nil {
+			probeErrCh <- err
+		}
+	}()
+
+	select {
+	case err := <-srvErrCh:
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
 		os.Exit(1)
+	case err := <-probeErrCh:
+		fmt.Fprintf(os.Stderr, "Probes server died: %s\n", err)
 	}
 }
 
