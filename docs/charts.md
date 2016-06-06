@@ -94,7 +94,7 @@ In Helm, one chart may depend on any number of other charts. These
 dependencies are expressed explicitly by copying the dependency charts
 into the `charts/` directory.
 
-**Note:** The `dependencies:` section of the `Glide.yaml` from Helm
+**Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
 
 For example, if the Wordpress chart depends on the Apache chart, the
