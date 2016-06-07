@@ -13,7 +13,8 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
+
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 // Load takes a string name, tries to resolve it to a file or directory, and then loads it.

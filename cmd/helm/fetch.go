@@ -8,9 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kubernetes/helm/pkg/chart"
-	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/repo"
 )
 
 var untarFile bool

@@ -6,9 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/kubernetes/helm/pkg/helm"
-	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 var getHelp = `

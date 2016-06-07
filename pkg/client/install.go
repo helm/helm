@@ -6,7 +6,8 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/kubernetes/helm/pkg/kube"
+
+	"k8s.io/helm/pkg/kube"
 )
 
 // Installer installs tiller into Kubernetes

@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/kubernetes/helm/pkg/repo"
+	"k8s.io/helm/pkg/repo"
 )
 
 const testDir = "testdata/"

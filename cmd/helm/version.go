@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/kubernetes/helm/pkg/version"
-
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/version"
 )
 
 func init() {

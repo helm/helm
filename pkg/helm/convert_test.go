@@ -3,8 +3,9 @@ package helm
 import (
 	"testing"
 
-	chartutil "github.com/kubernetes/helm/pkg/chart"
 	"gopkg.in/yaml.v2"
+
+	chartutil "k8s.io/helm/pkg/chart"
 )
 
 func TestInstallReleaseOverrides(t *testing.T) {

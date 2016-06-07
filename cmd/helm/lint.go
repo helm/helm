@@ -6,8 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kubernetes/helm/pkg/lint"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/lint"
 )
 
 var longLintHelp = `

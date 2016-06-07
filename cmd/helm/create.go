@@ -4,8 +4,9 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/kubernetes/helm/pkg/chart"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/chart"
 )
 
 const createDesc = `

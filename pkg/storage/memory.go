@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 // Memory is an in-memory ReleaseStorage implementation.

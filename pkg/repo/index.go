@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/kubernetes/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 var indexPath = "index.yaml"

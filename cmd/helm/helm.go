@@ -6,9 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kubernetes/helm/pkg/helm"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 const (

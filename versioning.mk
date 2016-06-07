@@ -14,7 +14,7 @@ BINARY_VERSION ?= ${GIT_TAG}+${GIT_SHA}
 IMAGE := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${DOCKER_VERSION}
 MUTABLE_IMAGE := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
 
-LDFLAGS += -X github.com/kubernetes/helm/pkg/version.Version=${BINARY_VERSION}
+LDFLAGS += -X k8s.io/helm/pkg/version.Version=${BINARY_VERSION}
 
 DOCKER_PUSH = docker push
 ifeq ($(DOCKER_REGISTRY),gcr.io)

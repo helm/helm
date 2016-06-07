@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
+
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")

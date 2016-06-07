@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/kubernetes/helm/cmd/tiller/environment"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	"k8s.io/helm/cmd/tiller/environment"
 )
 
 // rootServer is the root gRPC server.

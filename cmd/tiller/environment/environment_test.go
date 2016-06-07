@@ -5,8 +5,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 type mockEngine struct {

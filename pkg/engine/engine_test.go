@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	chartutil "github.com/kubernetes/helm/pkg/chart"
-	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
+	chartutil "k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 func TestEngine(t *testing.T) {

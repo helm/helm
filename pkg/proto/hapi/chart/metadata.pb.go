@@ -28,7 +28,7 @@ func (*Maintainer) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{
 
 // 	Metadata for a Chart file. This models the structure of a Chart.yaml file.
 //
-// 	Spec: https://github.com/kubernetes/helm/blob/master/docs/design/chart_format.md#the-chart-file
+// 	Spec: https://k8s.io/helm/blob/master/docs/design/chart_format.md#the-chart-file
 type Metadata struct {
 	// The name of the chart
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`

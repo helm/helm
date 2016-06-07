@@ -4,7 +4,8 @@ import (
 	"io/ioutil"
 
 	"github.com/ghodss/yaml"
-	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
+
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 // UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.

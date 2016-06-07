@@ -13,7 +13,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/kubernetes/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 // ChartRepository represents a chart repository

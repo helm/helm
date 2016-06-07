@@ -6,7 +6,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/labels"
 
-	"github.com/kubernetes/helm/pkg/kube"
+	"k8s.io/helm/pkg/kube"
 )
 
 // TODO refactor out this global var

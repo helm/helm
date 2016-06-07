@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 
 	"github.com/gosuri/uitable"
-	"github.com/kubernetes/helm/pkg/repo"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"k8s.io/helm/pkg/repo"
 )
 
 func init() {

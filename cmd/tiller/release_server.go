@@ -8,13 +8,14 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/kubernetes/helm/cmd/tiller/environment"
-	"github.com/kubernetes/helm/pkg/proto/hapi/release"
-	"github.com/kubernetes/helm/pkg/proto/hapi/services"
-	"github.com/kubernetes/helm/pkg/storage"
-	"github.com/kubernetes/helm/pkg/timeconv"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
+
+	"k8s.io/helm/cmd/tiller/environment"
+	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 var srv *releaseServer
