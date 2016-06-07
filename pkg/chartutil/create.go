@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kubernetes/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 const (
