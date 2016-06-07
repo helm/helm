@@ -13,7 +13,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
 )
 
 // ChartRepository represents a chart repository
@@ -108,12 +108,12 @@ func (r *ChartRepository) Index() error {
 	}
 
 	for _, path := range r.ChartPaths {
-		ch, err := chart.Load(path)
+		ch, err := chartutil.Load(path)
 		if err != nil {
 			return err
 		}
 
-		chartfile := ch.Chartfile()
+		chartfile := ch.Metadata
 		hash, err := generateChecksum(path)
 		if err != nil {
 			return err
@@ -135,7 +135,7 @@ func (r *ChartRepository) Index() error {
 		url, _ := url.Parse(r.URL)
 		url.Path = filepath.Join(url.Path, key+".tgz")
 
-		entry := &ChartRef{Chartfile: *chartfile, Name: chartfile.Name, URL: url.String(), Created: created, Checksum: hash, Removed: false}
+		entry := &ChartRef{Chartfile: chartfile, Name: chartfile.Name, URL: url.String(), Created: created, Checksum: hash, Removed: false}
 
 		r.IndexFile.Entries[key] = entry
 

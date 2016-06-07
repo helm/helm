@@ -29,7 +29,12 @@ func TestDownloadIndexFile(t *testing.T) {
 		fmt.Fprintln(w, string(fileBytes))
 	}))
 
-	dirName, err := ioutil.TempDir("testdata", "tmp")
+	dirName, err := ioutil.TempDir("", "tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dirName)
+
 	path := filepath.Join(dirName, testRepo+"-index.yaml")
 	if err := DownloadIndexFile(testRepo, ts.URL, path); err != nil {
 		t.Errorf("%#v", err)
@@ -54,8 +59,6 @@ func TestDownloadIndexFile(t *testing.T) {
 		t.Errorf("Expected 2 entries in index file but got %v", numEntries)
 	}
 	os.Remove(path)
-	os.Remove(dirName)
-
 }
 
 func TestLoadIndexFile(t *testing.T) {

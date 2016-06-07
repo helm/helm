@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 var indexPath = "index.yaml"
@@ -24,7 +24,7 @@ type ChartRef struct {
 	Created   string          `yaml:"created,omitempty"`
 	Removed   bool            `yaml:"removed,omitempty"`
 	Checksum  string          `yaml:"checksum,omitempty"`
-	Chartfile chart.Chartfile `yaml:"chartfile"`
+	Chartfile *chart.Metadata `yaml:"chartfile"`
 }
 
 // DownloadIndexFile uses
