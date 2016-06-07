@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 var localRepoPath string
@@ -42,7 +43,7 @@ func serveFile(w http.ResponseWriter, r *http.Request, file string) {
 
 // AddChartToLocalRepo saves a chart in the given path and then reindexes the index file
 func AddChartToLocalRepo(ch *chart.Chart, path string) error {
-	_, err := chart.Save(ch, path)
+	_, err := chartutil.Save(ch, path)
 	if err != nil {
 		return err
 	}
@@ -51,7 +52,7 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 
 // Reindex adds an entry to the index file at the given path
 func Reindex(ch *chart.Chart, path string) error {
-	name := ch.Chartfile().Name + "-" + ch.Chartfile().Version
+	name := ch.Metadata.Name + "-" + ch.Metadata.Version
 	y, err := LoadIndexFile(path)
 	if err != nil {
 		return err
