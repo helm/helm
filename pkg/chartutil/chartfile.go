@@ -26,3 +26,14 @@ func LoadChartfile(filename string) (*chart.Metadata, error) {
 	}
 	return UnmarshalChartfile(b)
 }
+
+// SaveChartfile saves the given metadata as a Chart.yaml file at the given path.
+//
+// 'filename' should be the complete path and filename ('foo/Chart.yaml')
+func SaveChartfile(filename string, cf *chart.Metadata) error {
+	out, err := yaml.Marshal(cf)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename, out, 0755)
+}
