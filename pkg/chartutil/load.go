@@ -93,7 +93,9 @@ func loadFiles(files []*afile) (*chart.Chart, error) {
 				return c, err
 			}
 			c.Metadata = m
-		} else if f.name == "values.toml" || f.name == "values.yaml" {
+		} else if f.name == "values.toml" {
+			return c, errors.New("values.toml is illegal as of 2.0.0-alpha.2")
+		} else if f.name == "values.yaml" {
 			c.Values = &chart.Config{Raw: string(f.data)}
 		} else if strings.HasPrefix(f.name, "templates/") {
 			c.Templates = append(c.Templates, &chart.Template{Name: f.name, Data: f.data})

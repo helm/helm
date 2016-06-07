@@ -4,18 +4,18 @@ import (
 	"os"
 	"path/filepath"
 
-	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
 )
 
-// Values lints a chart's values.toml file.
+// Values lints a chart's values.yaml file.
 func Values(basepath string) (messages []Message) {
-	vf := filepath.Join(basepath, "values.toml")
+	vf := filepath.Join(basepath, "values.yaml")
 	messages = []Message{}
 	if _, err := os.Stat(vf); err != nil {
-		messages = append(messages, Message{Severity: InfoSev, Text: "No values.toml file"})
+		messages = append(messages, Message{Severity: InfoSev, Text: "No values.yaml file"})
 		return
 	}
-	_, err := chart.ReadValuesFile(vf)
+	_, err := chartutil.ReadValuesFile(vf)
 	if err != nil {
 		messages = append(messages, Message{Severity: ErrorSev, Text: err.Error()})
 	}

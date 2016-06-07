@@ -7,8 +7,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-
-	chartutil "k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -177,7 +176,7 @@ func coalesceValues(c *chart.Chart, v chartutil.Values) chartutil.Values {
 	nv, err := chartutil.ReadValues([]byte(c.Values.Raw))
 	if err != nil {
 		// On error, we return just the overridden values.
-		// FIXME: We should log this error. It indicates that the TOML data
+		// FIXME: We should log this error. It indicates that the YAML data
 		// did not parse.
 		log.Printf("error reading default values: %s", err)
 		return v
@@ -226,7 +225,7 @@ func coalesceTables(dst, src map[string]interface{}) {
 	}
 }
 
-// istable is a special-purpose function to see if the present thing matches the definition of a TOML table.
+// istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
 func istable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})
 	return ok

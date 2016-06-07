@@ -19,7 +19,7 @@ something like this:
 	foo/
 	  |- Chart.yaml    # Information about your chart
 	  |
-	  |- values.toml   # The default values for your templates
+	  |- values.yaml   # The default values for your templates
 	  |
 	  |- charts/       # Charts that this chart depends on
 	  |

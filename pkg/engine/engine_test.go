@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	chartutil "k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -31,13 +31,12 @@ func TestRender(t *testing.T) {
 			{Name: "test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
 		},
 		Values: &chart.Config{
-			Raw: `outer = "DEFAULT"\ninner= "DEFAULT"\n`,
+			Raw: "outer: DEFAULT\ninner: DEFAULT",
 		},
 	}
 
 	vals := &chart.Config{
-		Raw: `outer = "BAD"
-		inner= "inn"`,
+		Raw: "outer: BAD\ninner: inn",
 	}
 
 	overrides := map[string]interface{}{
@@ -207,18 +206,20 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: outerpath, Data: []byte(`Gather ye {{.what}} while ye may`)},
 		},
 		Values: &chart.Config{
-			Raw: `what = "stinkweed"
-	[herrick]
-	who = "time"
-	`},
+			Raw: `
+what: stinkweed
+herrick:
+  who: time`,
+		},
 		Dependencies: []*chart.Chart{inner},
 	}
 
 	inject := chart.Config{
 		Raw: `
-		what = "rosebuds"
-		[herrick.deepest]
-		what = "flower"`,
+what: rosebuds
+herrick:
+  deepest:
+    what: flower`,
 	}
 
 	out, err := e.Render(outer, &inject, map[string]interface{}{})

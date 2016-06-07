@@ -25,7 +25,7 @@ wordpress/
   Chart.yaml        # A YAML file containing information about the chart
   LICENSE           # OPTIONAL: A plain text file containing the license for the chart
   README.md         # OPTIONAL: A human-readable README file
-  values.toml       # The default configuration values for this chart
+  values.yaml       # The default configuration values for this chart
   charts/           # A directory containing any charts upon which this chart depends.
   templates/        # A directory of templates that, when combined with values,
                     # will generate valid Kubernetes manifest files.
@@ -133,13 +133,13 @@ Helm renders the charts, it will pass every file in that directory
 through the template engine.
 
 Values for the templates are supplied two ways:
-  - Chart developers may supply a file called `values.toml` inside of a
+  - Chart developers may supply a file called `values.yaml` inside of a
     chart. This file can contain default values.
-  - Chart users may supply a TOML file that contains values. This can be
+  - Chart users may supply a YAML file that contains values. This can be
     provided on the command line with `helm install`.
 
 When a user supplies custom values, these values will override the
-values in the chart's `values.toml` file.
+values in the chart's `values.yaml` file.
 ### Template Files
 
 Template files follow the standard conventions for writing Go templates.
@@ -207,36 +207,36 @@ used to pass arbitrarily structured data into the template.
 
 ### Values files
 
-Considering the template in the previous section, a `values.toml` file
+Considering the template in the previous section, a `values.yaml` file
 that supplies the necessary values would look like this:
 
-```toml
+```yaml
 imageRegistry = "quay.io/deis"
 dockerTag = "latest"
 pullPolicy = "alwaysPull"
 storage = "s3"
 ```
 
-A values file is formatted in TOML. A chart may include a default
-`values.toml` file. The Helm install command allows a user to override
-values by supplying additional TOML values:
+A values file is formatted in YAML. A chart may include a default
+`values.yaml` file. The Helm install command allows a user to override
+values by supplying additional YAML values:
 
 ```console
-$ helm install --values=myvals.toml wordpress
+$ helm install --values=myvals.yaml wordpress
 ```
 
 When values are passed in this way, they will be merged into the default
-values file. For example, consider a `myvals.toml` file that looks like
+values file. For example, consider a `myvals.yaml` file that looks like
 this:
 
-```toml
+```yaml
 storage = "gcs"
 ```
 
-When this is merged with the `values.toml` in the chart, the resulting
+When this is merged with the `values.yaml` in the chart, the resulting
 generated content will be:
 
-```toml
+```yaml
 imageRegistry = "quay.io/deis"
 dockerTag = "latest"
 pullPolicy = "alwaysPull"
@@ -246,7 +246,7 @@ storage = "gcs"
 Note that only the last field was overridden.
 
 **NOTE:** The default values file included inside of a chart _must_ be named
-`values.toml`. But files specified on the command line can be named
+`values.yaml`. But files specified on the command line can be named
 anything.
 
 ### Scope, Dependencies, and Values
@@ -259,7 +259,7 @@ demonstration Wordpress chart above has both `mysql` and `apache` as
 dependencies. The values file could supply values to all of these
 components:
 
-```toml
+```yaml
 title = "My Wordpress Site" # Sent to the Wordpress template
 
 [mysql]
@@ -289,7 +289,7 @@ standard references that will help you out.
 
 - [Go templates](https://godoc.org/text/template)
 - [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
-- [The TOML format](https://github.com/toml-lang/toml)
+- [The YAML format]()
 
 ## Using Helm to Manage Charts
 

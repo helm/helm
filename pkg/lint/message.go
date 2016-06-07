@@ -8,7 +8,7 @@ type Severity int
 const (
 	// UnknownSev indicates that the severity of the error is unknown, and should not stop processing.
 	UnknownSev = iota
-	// InfoSev indicates information, for example missing values.toml file
+	// InfoSev indicates information, for example missing values.yaml file
 	InfoSev
 	// WarningSev indicates that something does not meet code standards, but will likely function.
 	WarningSev

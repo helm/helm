@@ -9,7 +9,7 @@ const (
 	ErrMissingTpls = Error("missing chart templates")
 	// ErrMissingChart indicates that the Chart.yaml data is missing.
 	ErrMissingChart = Error("missing chart metadata")
-	// ErrMissingValues indicates that the config values.toml data is missing.
+	// ErrMissingValues indicates that the config values.yaml data is missing.
 	ErrMissingValues = Error("missing chart values")
 )
 
