@@ -68,7 +68,7 @@ func start(c *cobra.Command, args []string) {
 
 	go func() {
 		mux := newProbesMux()
-		if err := http.ListenAndServe(addr, mux); err != nil {
+		if err := http.ListenAndServe(probe, mux); err != nil {
 			probeErrCh <- err
 		}
 	}()
