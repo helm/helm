@@ -78,7 +78,7 @@ Outside of your directory, run the `helm repo index [DIR] [URL]` command. This c
 $ helm repo index fantastic-charts http://storage.googleapis.com/fantastic-charts
 ```
 
-Now, you can upload the chart and the index file to your chart repository.
+Now, you can upload the chart and the index file to your chart repository using a sync tool or manually. If you're using Google Cloud Storage, check out this [example workflow](chart_respository_sync_example.md) using the gsutil client.
 
 ## Add a new chart to your chart repository
 
