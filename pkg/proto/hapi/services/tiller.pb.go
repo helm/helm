@@ -238,7 +238,7 @@ func (*UpdateReleaseResponse) Descriptor() ([]byte, []int) { return fileDescript
 type InstallReleaseRequest struct {
 	// Chart is the protobuf representation of a chart.
 	Chart *hapi_chart3.Chart `protobuf:"bytes,1,opt,name=chart" json:"chart,omitempty"`
-	// Values is a string containing (unparsed) TOML values.
+	// Values is a string containing (unparsed) YAML values.
 	Values *hapi_chart.Config `protobuf:"bytes,2,opt,name=values" json:"values,omitempty"`
 	// DryRun, if true, will run through the release logic, but neither create
 	// a release object nor deploy to Kubernetes. The release object returned

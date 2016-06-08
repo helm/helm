@@ -9,8 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-
-	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -56,7 +55,7 @@ func fetch(cmd *cobra.Command, args []string) error {
 
 	defer resp.Body.Close()
 	if untarFile {
-		return chart.Expand(untarDir, resp.Body)
+		return chartutil.Expand(untarDir, resp.Body)
 	}
 	p := strings.Split(u.String(), "/")
 	return saveChartFile(p[len(p)-1], resp.Body)

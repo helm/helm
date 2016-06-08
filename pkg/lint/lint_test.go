@@ -53,8 +53,8 @@ func TestBadValues(t *testing.T) {
 	if len(m) != 1 {
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	if !strings.Contains(m[0].Text, "Bare keys cannot contain ':'") {
-		t.Errorf("All didn't have the error for invalid key format")
+	if !strings.Contains(m[0].Text, "cannot unmarshal") {
+		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Text)
 	}
 }
 

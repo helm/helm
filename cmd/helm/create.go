@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-
-	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 const createDesc = `
@@ -19,7 +19,7 @@ something like this:
 	foo/
 	  |- Chart.yaml    # Information about your chart
 	  |
-	  |- values.toml   # The default values for your templates
+	  |- values.yaml   # The default values for your templates
 	  |
 	  |- charts/       # Charts that this chart depends on
 	  |
@@ -36,8 +36,8 @@ func init() {
 }
 
 var createCmd = &cobra.Command{
-	Use:   "create [PATH]",
-	Short: "Create a new chart at the location specified.",
+	Use:   "create NAME",
+	Short: "Create a new chart with the given name.",
 	Long:  createDesc,
 	RunE:  runCreate,
 }
@@ -50,12 +50,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	cmd.Printf("Creating %s\n", cname)
 
 	chartname := filepath.Base(cname)
-	cfile := chart.Chartfile{
+	cfile := &chart.Metadata{
 		Name:        chartname,
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
 	}
 
-	_, err := chart.Create(&cfile, filepath.Dir(cname))
+	_, err := chartutil.Create(cfile, filepath.Dir(cname))
 	return err
 }

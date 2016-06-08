@@ -16,7 +16,7 @@ option go_package = "services";
 // 				 config. At any given time a release has one
 //				 chart and one config.
 //
-//		Config:  A config is a TOML file that supplies values
+//		Config:  A config is a YAML file that supplies values
 //				 to the parametrizable templates of a chart.
 //
 //		Chart:   A chart is a helm package that contains
@@ -150,7 +150,7 @@ message UpdateReleaseResponse {
 message InstallReleaseRequest {
 	// Chart is the protobuf representation of a chart.
 	hapi.chart.Chart chart = 1;
-	// Values is a string containing (unparsed) TOML values.
+	// Values is a string containing (unparsed) YAML values.
 	hapi.chart.Config values = 2;
 	// DryRun, if true, will run through the release logic, but neither create
 	// a release object nor deploy to Kubernetes. The release object returned

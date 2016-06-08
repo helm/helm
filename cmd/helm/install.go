@@ -42,7 +42,7 @@ var installCmd = &cobra.Command{
 
 func init() {
 	f := installCmd.Flags()
-	f.StringVarP(&installValues, "values", "f", "", "path to a values TOML file")
+	f.StringVarP(&installValues, "values", "f", "", "path to a values YAML file")
 	f.StringVarP(&installRelName, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you.")
 	f.BoolVar(&installDryRun, "dry-run", false, "simulate an install")
 

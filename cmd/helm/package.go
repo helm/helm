@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-
-	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -50,7 +49,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ch, err := chart.LoadDir(path)
+	ch, err := chartutil.LoadDir(path)
 	if err != nil {
 		return err
 	}
@@ -60,7 +59,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	name, err := chart.Save(ch, cwd)
+	name, err := chartutil.Save(ch, cwd)
 	if err == nil && flagDebug {
 		cmd.Printf("Saved %s to current directory\n", name)
 	}
