@@ -26,8 +26,8 @@ wordpress/
   LICENSE           # OPTIONAL: A plain text file containing the license for the chart
   README.md         # OPTIONAL: A human-readable README file
   values.yaml       # The default configuration values for this chart
-  charts/           # A directory containing any charts upon which this chart depends.
-  templates/        # A directory of templates that, when combined with values,
+  charts/           # OPTIONAL: A directory containing any charts upon which this chart depends.
+  templates/        # OPTIONAL: A directory of templates that, when combined with values,
                     # will generate valid Kubernetes manifest files.
 ```
 
