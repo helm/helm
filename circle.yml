@@ -38,8 +38,8 @@ deployment:
     branch: master
     commands:
       - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
-      - sudo gcloud --quiet components update
-      - sudo gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
-      - sudo gcloud config set project $GCLOUD_PROJECT
+      - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
+      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
+      - sudo /opt/google-cloud-sdk/bin/gcloud config set project $GCLOUD_PROJECT
       - cd $GOPATH/src/$IMPORT_PATH
       - make docker-build docker-mutable-push
