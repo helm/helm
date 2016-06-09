@@ -2,9 +2,12 @@ package chartutil
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"text/template"
+
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 func TestReadValues(t *testing.T) {
@@ -138,4 +141,107 @@ func ttpl(tpl string, v map[string]interface{}) (string, error) {
 		return "", err
 	}
 	return b.String(), nil
+}
+
+var testCoalesceValuesYaml = `
+top: yup
+
+pequod:
+  ahab:
+    scope: whale
+`
+
+func TestCoalesceValues(t *testing.T) {
+	tchart := "testdata/moby"
+	overrides := map[string]interface{}{
+		"override": "good",
+	}
+	c, err := LoadDir(tchart)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tvals := &chart.Config{Raw: testCoalesceValuesYaml}
+
+	v, err := CoalesceValues(c, tvals, overrides)
+	j, _ := json.MarshalIndent(v, "", "  ")
+	t.Logf("Coalesced Values: %s", string(j))
+
+	tests := []struct {
+		tpl    string
+		expect string
+	}{
+		{"{{.top}}", "yup"},
+		{"{{.override}}", "good"},
+		{"{{.name}}", "moby"},
+		{"{{.pequod.name}}", "pequod"},
+		{"{{.pequod.ahab.name}}", "ahab"},
+		{"{{.pequod.ahab.scope}}", "whale"},
+	}
+
+	for _, tt := range tests {
+		if o, err := ttpl(tt.tpl, v); err != nil || o != tt.expect {
+			t.Errorf("Expected %q to expand to %q, got %q", tt.tpl, tt.expect, o)
+		}
+	}
+}
+
+func TestCoalesceTables(t *testing.T) {
+	dst := map[string]interface{}{
+		"name": "Ishmael",
+		"address": map[string]interface{}{
+			"street": "123 Spouter Inn Ct.",
+			"city":   "Nantucket",
+		},
+		"details": map[string]interface{}{
+			"friends": []string{"Tashtego"},
+		},
+		"boat": "pequod",
+	}
+	src := map[string]interface{}{
+		"occupation": "whaler",
+		"address": map[string]interface{}{
+			"state":  "MA",
+			"street": "234 Spouter Inn Ct.",
+		},
+		"details": "empty",
+		"boat": map[string]interface{}{
+			"mast": true,
+		},
+	}
+	coalesceTables(dst, src)
+
+	if dst["name"] != "Ishmael" {
+		t.Errorf("Unexpected name: %s", dst["name"])
+	}
+	if dst["occupation"] != "whaler" {
+		t.Errorf("Unexpected occupation: %s", dst["occupation"])
+	}
+
+	addr, ok := dst["address"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Address went away.")
+	}
+
+	if addr["street"].(string) != "234 Spouter Inn Ct." {
+		t.Errorf("Unexpected address: %v", addr["street"])
+	}
+
+	if addr["city"].(string) != "Nantucket" {
+		t.Errorf("Unexpected city: %v", addr["city"])
+	}
+
+	if addr["state"].(string) != "MA" {
+		t.Errorf("Unexpected state: %v", addr["state"])
+	}
+
+	if det, ok := dst["details"].(map[string]interface{}); !ok {
+		t.Fatalf("Details is the wrong type: %v", dst["details"])
+	} else if _, ok := det["friends"]; !ok {
+		t.Error("Could not find your friends. Maybe you don't have any. :-(")
+	}
+
+	if dst["boat"].(string) != "pequod" {
+		t.Errorf("Expected boat string, got %v", dst["boat"])
+	}
 }

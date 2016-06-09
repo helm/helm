@@ -1,0 +1,3 @@
+description: A Helm chart for Kubernetes
+name: pequod
+version: 0.1.0
