@@ -65,10 +65,12 @@ func tableLookup(v Values, simple string) (Values, error) {
 }
 
 // ReadValues will parse YAML byte data into a Values.
-func ReadValues(data []byte) (Values, error) {
-	out := map[string]interface{}{}
-	err := yaml.Unmarshal(data, &out)
-	return out, err
+func ReadValues(data []byte) (vals Values, err error) {
+	vals = make(map[string]interface{})
+	if len(data) > 0 {
+		err = yaml.Unmarshal(data, &vals)
+	}
+	return
 }
 
 // ReadValuesFile will parse a YAML file into a Values.

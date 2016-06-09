@@ -53,6 +53,10 @@ func TestRender(t *testing.T) {
 	if out["test1"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test1"])
 	}
+
+	if _, err := e.Render(c, &chart.Config{}, overrides); err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
 }
 
 func TestRenderInternals(t *testing.T) {
