@@ -4,3 +4,4 @@ rootfs/tiller
 vendor/
 _proto/*.pb.go
 .vimrc
+.DS_Store
