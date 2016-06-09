@@ -45,6 +45,11 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	issues := lint.All(path)
+
+	if len(issues) == 0 {
+		fmt.Println("Lint OK")
+	}
+
 	for _, i := range issues {
 		fmt.Printf("%s\n", i)
 	}

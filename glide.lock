@@ -5,6 +5,8 @@ imports:
   version: 75cd24fc2f2c
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
+- name: github.com/asaskevich/govalidator
+  version: df81827fdd59d8b4fb93d8910b286ab7a3919520
 - name: github.com/beorn7/perks
   version: b965b613227fddccbfffe13eae360ed3fa822f8d
   subpackages:
