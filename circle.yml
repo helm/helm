@@ -5,8 +5,12 @@ machine:
     GOPATH: /usr/local/go_workspace
     HOME: /home/ubuntu
     IMPORT_PATH: "k8s.io/helm"
-    PATH: $HOME/go/bin:$PATH
+    PATH: $HOME/go/bin:/opt/google-cloud-sdk/bin:$PATH
     GOROOT: $HOME/go
+    GCLOUD_PROJECT: kubernetes-helm
+
+  services:
+    - docker
 
 dependencies:
   override:
@@ -24,8 +28,18 @@ dependencies:
     - mkdir -p $HOME/bin
     - tar -vxz -C $HOME/bin --strip=1 -f glide-$GLIDE_VERSION-linux-amd64.tar.gz
     - export PATH="$HOME/bin:$PATH" GLIDE_HOME="$HOME/.glide"
-    - cd $GOPATH/src/$IMPORT_PATH
 
 test:
   override:
     - cd $GOPATH/src/$IMPORT_PATH && make bootstrap test
+
+deployment:
+  master-branch:
+    branch: master
+    commands:
+      - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
+      - sudo gcloud --quiet components update
+      - sudo gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
+      - sudo gcloud config set project $GCLOUD_PROJECT
+      - cd $GOPATH/src/$IMPORT_PATH
+      - make docker-build docker-mutable-push
