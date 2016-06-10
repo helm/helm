@@ -97,6 +97,8 @@ func TestInstallReleaseDryRun(t *testing.T) {
 				{Name: "hello", Data: []byte("hello: world")},
 				{Name: "goodbye", Data: []byte("goodbye: world")},
 				{Name: "empty", Data: []byte("")},
+				{Name: "with-partials", Data: []byte("hello: {{ template \"partials/_planet\" . }}")},
+				{Name: "partials/_planet", Data: []byte("Earth")},
 			},
 		},
 		DryRun: true,
@@ -115,6 +117,14 @@ func TestInstallReleaseDryRun(t *testing.T) {
 
 	if !strings.Contains(res.Release.Manifest, "---\n# Source: goodbye\ngoodbye: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
+	}
+
+	if !strings.Contains(res.Release.Manifest, "hello: Earth") {
+		t.Errorf("Should contain partial content. %s", res.Release.Manifest)
+	}
+
+	if strings.Contains(res.Release.Manifest, "hello: {{ template \"partials/_planet\" . }}") {
+		t.Errorf("Should not contain partial templates itself. %s", res.Release.Manifest)
 	}
 
 	if strings.Contains(res.Release.Manifest, "empty") {
