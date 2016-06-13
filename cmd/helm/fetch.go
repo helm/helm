@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -34,13 +35,18 @@ func fetch(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("This command needs at least one argument, url or repo/name of the chart.")
 	}
 
+	pname := args[0]
+	if filepath.Ext(pname) != ".tgz" {
+		pname += ".tgz"
+	}
+
 	f, err := repo.LoadRepositoriesFile(repositoriesFile())
 	if err != nil {
 		return err
 	}
 
 	// get download url
-	u, err := mapRepoArg(args[0], f.Repositories)
+	u, err := mapRepoArg(pname, f.Repositories)
 	if err != nil {
 		return err
 	}
