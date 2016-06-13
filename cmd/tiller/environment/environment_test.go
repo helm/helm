@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -13,7 +14,7 @@ type mockEngine struct {
 	out map[string]string
 }
 
-func (e *mockEngine) Render(chrt *chart.Chart, v *chart.Config, o map[string]interface{}) (map[string]string, error) {
+func (e *mockEngine) Render(chrt *chart.Chart, v chartutil.Values) (map[string]string, error) {
 	return e.out, nil
 }
 
@@ -80,7 +81,7 @@ func TestEngine(t *testing.T) {
 
 	if engine, ok := env.EngineYard.Get("test"); !ok {
 		t.Errorf("failed to get engine from EngineYard")
-	} else if out, err := engine.Render(&chart.Chart{}, &chart.Config{}, map[string]interface{}{}); err != nil {
+	} else if out, err := engine.Render(&chart.Chart{}, map[string]interface{}{}); err != nil {
 		t.Errorf("unexpected template error: %s", err)
 	} else if out["albatross"] != "test" {
 		t.Errorf("expected 'test', got %q", out["albatross"])

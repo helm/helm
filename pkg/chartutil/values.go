@@ -87,6 +87,14 @@ func ReadValuesFile(filename string) (Values, error) {
 // CoalesceValues coalesces all of the values in a chart (and its subcharts).
 //
 // The overrides map may be used to specifically override configuration values.
+//
+// Values are coalesced together using the fillowing rules:
+//
+//	- Values in a higher level chart always override values in a lower-level
+//		dependency chart
+//	- Scalar values and arrays are replaced, maps are merged
+//	- A chart has access to all of the variables for it, as well as all of
+//		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals *chart.Config, overrides map[string]interface{}) (Values, error) {
 	var cvals Values
 	// Parse values if not nil. We merge these at the top level because
@@ -152,15 +160,15 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) map[string]interfa
 		// On error, we return just the overridden values.
 		// FIXME: We should log this error. It indicates that the YAML data
 		// did not parse.
-		log.Printf("error reading default values: %s", err)
+		log.Printf("error reading default values (%s): %s", c.Values.Raw, err)
 		return v
 	}
 
 	for key, val := range nv {
 		if _, ok := v[key]; !ok {
 			v[key] = val
-		} else if dest, ok := v[key].(Values); ok {
-			src, ok := val.(Values)
+		} else if dest, ok := v[key].(map[string]interface{}); ok {
+			src, ok := val.(map[string]interface{})
 			if !ok {
 				log.Printf("warning: skipped value for %s: Not a table.", key)
 				continue

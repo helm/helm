@@ -44,7 +44,11 @@ func TestRender(t *testing.T) {
 	}
 
 	e := New()
-	out, err := e.Render(c, vals, overrides)
+	v, err := chartutil.CoalesceValues(c, vals, overrides)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+	out, err := e.Render(c, v)
 	if err != nil {
 		t.Errorf("Failed to render templates: %s", err)
 	}
@@ -54,7 +58,7 @@ func TestRender(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expect, out["test1"])
 	}
 
-	if _, err := e.Render(c, &chart.Config{}, overrides); err != nil {
+	if _, err := e.Render(c, v); err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
 }
@@ -163,7 +167,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	}
 
-	out, err := e.Render(ch, nil, map[string]interface{}{})
+	out, err := e.Render(ch, map[string]interface{}{})
 
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
@@ -192,7 +196,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.Template{
 			{Name: deepestpath, Data: []byte(`And this same {{.what}} that smiles to-day`)},
 		},
-		Values: &chart.Config{Raw: `what = "milkshake"`},
+		Values: &chart.Config{Raw: `what: "milkshake"`},
 	}
 
 	inner := &chart.Chart{
@@ -200,7 +204,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.Template{
 			{Name: innerpath, Data: []byte(`Old {{.who}} is still a-flyin'`)},
 		},
-		Values:       &chart.Config{Raw: `who = "Robert"`},
+		Values:       &chart.Config{Raw: `who: "Robert"`},
 		Dependencies: []*chart.Chart{deepest},
 	}
 
@@ -212,13 +216,14 @@ func TestRenderNestedValues(t *testing.T) {
 		Values: &chart.Config{
 			Raw: `
 what: stinkweed
+who: me
 herrick:
-  who: time`,
+    who: time`,
 		},
 		Dependencies: []*chart.Chart{inner},
 	}
 
-	inject := chart.Config{
+	injValues := chart.Config{
 		Raw: `
 what: rosebuds
 herrick:
@@ -226,7 +231,14 @@ herrick:
     what: flower`,
 	}
 
-	out, err := e.Render(outer, &inject, map[string]interface{}{})
+	inject, err := chartutil.CoalesceValues(outer, &injValues, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	t.Logf("Calculated values: %v", inject)
+
+	out, err := e.Render(outer, inject)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}
@@ -241,65 +253,5 @@ herrick:
 
 	if out[deepestpath] != "And this same flower that smiles to-day" {
 		t.Errorf("Unexpected deepest: %q", out[deepestpath])
-	}
-}
-
-func TestCoalesceTables(t *testing.T) {
-	dst := map[string]interface{}{
-		"name": "Ishmael",
-		"address": map[string]interface{}{
-			"street": "123 Spouter Inn Ct.",
-			"city":   "Nantucket",
-		},
-		"details": map[string]interface{}{
-			"friends": []string{"Tashtego"},
-		},
-		"boat": "pequod",
-	}
-	src := map[string]interface{}{
-		"occupation": "whaler",
-		"address": map[string]interface{}{
-			"state":  "MA",
-			"street": "234 Spouter Inn Ct.",
-		},
-		"details": "empty",
-		"boat": map[string]interface{}{
-			"mast": true,
-		},
-	}
-	coalesceTables(dst, src)
-
-	if dst["name"] != "Ishmael" {
-		t.Errorf("Unexpected name: %s", dst["name"])
-	}
-	if dst["occupation"] != "whaler" {
-		t.Errorf("Unexpected occupation: %s", dst["occupation"])
-	}
-
-	addr, ok := dst["address"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Address went away.")
-	}
-
-	if addr["street"].(string) != "234 Spouter Inn Ct." {
-		t.Errorf("Unexpected address: %v", addr["street"])
-	}
-
-	if addr["city"].(string) != "Nantucket" {
-		t.Errorf("Unexpected city: %v", addr["city"])
-	}
-
-	if addr["state"].(string) != "MA" {
-		t.Errorf("Unexpected state: %v", addr["state"])
-	}
-
-	if det, ok := dst["details"].(map[string]interface{}); !ok {
-		t.Fatalf("Details is the wrong type: %v", dst["details"])
-	} else if _, ok := det["friends"]; !ok {
-		t.Error("Could not find your friends. Maybe you don't have any. :-(")
-	}
-
-	if dst["boat"].(string) != "pequod" {
-		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 }
