@@ -12,6 +12,7 @@ import (
 	ctx "golang.org/x/net/context"
 
 	"k8s.io/helm/cmd/tiller/environment"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
@@ -206,7 +207,11 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 
 	// Render the templates
 	// TODO: Fix based on whether chart has `engine: SOMETHING` set.
-	files, err := s.env.EngineYard.Default().Render(req.Chart, req.Values, overrides)
+	vals, err := chartutil.CoalesceValues(req.Chart, req.Values, overrides)
+	if err != nil {
+		return nil, err
+	}
+	files, err := s.env.EngineYard.Default().Render(req.Chart, vals)
 	if err != nil {
 		return nil, err
 	}

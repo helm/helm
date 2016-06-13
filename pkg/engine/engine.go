@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -34,7 +33,7 @@ func New() *Engine {
 	}
 }
 
-// Render takes a chart, optional values, and attempts to render the Go templates.
+// Render takes a chart, optional values, and value overrids, and attempts to render the Go templates.
 //
 // Render can be called repeatedly on the same engine.
 //
@@ -45,41 +44,17 @@ func New() *Engine {
 // access to the values set for its parent. If chart "foo" includes chart "bar",
 // "bar" will not have access to the values for "foo".
 //
+// Values should be prepared with something like `chartutils.ReadValues`.
+//
 // Values are passed through the templates according to scope. If the top layer
 // chart includes the chart foo, which includes the chart bar, the values map
 // will be examined for a table called "foo". If "foo" is found in vals,
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-//
-// Values are coalesced together using the fillowing rules:
-//
-//	- Values in a higher level chart always override values in a lower-level
-//		dependency chart
-//	- Scalar values and arrays are replaced, maps are merged
-//	- A chart has access to all of the variables for it, as well as all of
-//		the values destined for its dependencies.
-func (e *Engine) Render(chrt *chart.Chart, vals *chart.Config, overrides map[string]interface{}) (map[string]string, error) {
-	var cvals chartutil.Values
-
-	// Parse values if not nil. We merge these at the top level because
-	// the passed-in values are in the same namespace as the parent chart.
-	if vals != nil {
-		evals, err := chartutil.ReadValues([]byte(vals.Raw))
-		if err != nil {
-			return map[string]string{}, err
-		}
-		// Override the top-level values. Overrides are NEVER merged deeply.
-		// The assumption is that an override is intended to set an explicit
-		// and exact value.
-		for k, v := range overrides {
-			evals[k] = v
-		}
-		cvals = coalesceValues(chrt, evals)
-	}
-
+func (e *Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	// Render the charts
-	tmap := allTemplates(chrt, cvals)
+	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
 
@@ -138,20 +113,20 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
 func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals chartutil.Values, top bool) {
-	var pvals chartutil.Values
+	var cvals chartutil.Values
 	if top {
 		// If this is the top of the rendering tree, assume that parentVals
 		// is already resolved to the authoritative values.
-		pvals = parentVals
+		cvals = parentVals
 	} else if c.Metadata != nil && c.Metadata.Name != "" {
 		// An error indicates that the table doesn't exist. So we leave it as
 		// an empty map.
 		tmp, err := parentVals.Table(c.Metadata.Name)
 		if err == nil {
-			pvals = tmp
+			cvals = tmp
 		}
 	}
-	cvals := coalesceValues(c, pvals)
+
 	//log.Printf("racAllTpls values: %v", cvals)
 	for _, child := range c.Dependencies {
 		recAllTpls(child, templates, cvals, false)
@@ -162,71 +137,4 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 			vals: cvals,
 		}
 	}
-}
-
-// coalesceValues builds up a values map for a particular chart.
-//
-// Values in v will override the values in the chart.
-func coalesceValues(c *chart.Chart, v chartutil.Values) chartutil.Values {
-	// If there are no values in the chart, we just return the given values
-	if c.Values == nil {
-		return v
-	}
-
-	nv, err := chartutil.ReadValues([]byte(c.Values.Raw))
-	if err != nil {
-		// On error, we return just the overridden values.
-		// FIXME: We should log this error. It indicates that the YAML data
-		// did not parse.
-		log.Printf("error reading default values: %s", err)
-		return v
-	}
-
-	for k, val := range v {
-		// NOTE: We could block coalesce on cases where nv does not explicitly
-		// declare a value. But that forces the chart author to explicitly
-		// set a default for every template param. We want to preserve the
-		// possibility of "hidden" parameters.
-		if istable(val) {
-			if inmap, ok := nv[k]; ok && istable(inmap) {
-				coalesceTables(inmap.(map[string]interface{}), val.(map[string]interface{}))
-			} else if ok {
-				log.Printf("Cannot copy table into non-table value for %s (%v)", k, inmap)
-			} else {
-				// The parent table does not have a key entry for this item,
-				// so we can safely set it. This is necessary for nested charts.
-				log.Printf("Copying %s into map %v", k, nv)
-				nv[k] = val
-			}
-		} else {
-			nv[k] = val
-		}
-	}
-	return nv
-}
-
-// coalesceTables merges a source map into a destination map.
-func coalesceTables(dst, src map[string]interface{}) {
-	for key, val := range src {
-		if istable(val) {
-			if innerdst, ok := dst[key]; !ok {
-				dst[key] = val
-			} else if istable(innerdst) {
-				coalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}))
-			} else {
-				log.Printf("Cannot overwrite table with non table for %s (%v)", key, val)
-			}
-			continue
-		} else if dv, ok := dst[key]; ok && istable(dv) {
-			log.Printf("Destination for %s is a table. Ignoring non-table value %v", key, val)
-			continue
-		}
-		dst[key] = val
-	}
-}
-
-// istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
-func istable(v interface{}) bool {
-	_, ok := v.(map[string]interface{})
-	return ok
 }

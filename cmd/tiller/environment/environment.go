@@ -9,6 +9,7 @@ package environment
 import (
 	"io"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -68,7 +69,7 @@ type Engine interface {
 	//
 	// It receives a chart, a config, and a map of overrides to the config.
 	// Overrides are assumed to be passed from the system, not the user.
-	Render(*chart.Chart, *chart.Config, map[string]interface{}) (map[string]string, error)
+	Render(*chart.Chart, chartutil.Values) (map[string]string, error)
 }
 
 // ReleaseStorage represents a storage engine for a Release.
