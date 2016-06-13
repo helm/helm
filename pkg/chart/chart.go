@@ -27,6 +27,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"k8s.io/helm/pkg/chartutil"
 )
 
 // ChartfileName is the default Chart file name.
@@ -34,14 +36,14 @@ const ChartfileName string = "Chart.yaml"
 
 const (
 	preTemplates string = "templates/"
-	preValues    string = "values.toml"
+	preValues    string = "values.yaml"
 	preCharts    string = "charts/"
 )
 
 const defaultValues = `# Default values for %s.
-# This is a TOML-formatted file. https://github.com/toml-lang/toml
+# This is a YAML-formatted file.
 # Declare name/value pairs to be passed into your templates.
-# name = "value"
+# name: value
 `
 
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
@@ -93,9 +95,13 @@ func (c *Chart) ChartsDir() string {
 	return filepath.Join(c.loader.dir(), preCharts)
 }
 
-// LoadValues loads the contents of values.toml into a map
+// LoadValues loads the contents of values.yaml into a map
 func (c *Chart) LoadValues() (Values, error) {
-	return ReadValuesFile(filepath.Join(c.loader.dir(), preValues))
+	m, err := chartutil.ReadValuesFile(filepath.Join(c.loader.dir(), preValues))
+	if err != nil {
+		return map[string]interface{}{}, err
+	}
+	return m.AsMap(), nil
 }
 
 // ChartDepNames returns the list of chart names found in ChartsDir.
