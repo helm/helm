@@ -76,6 +76,19 @@ func installTiller() error {
 	return nil
 }
 
+// requireHome checks to see if $HELM_HOME exists, and returns an error if it does not.
+func requireHome() error {
+	dirs := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
+	for _, d := range dirs {
+		if fi, err := os.Stat(d); err != nil {
+			return fmt.Errorf("directory %q is not configured", d)
+		} else if !fi.IsDir() {
+			return fmt.Errorf("expected %q to be a directory", d)
+		}
+	}
+	return nil
+}
+
 // ensureHome checks to see if $HELM_HOME exists
 //
 // If $HELM_HOME does not exist, this function will create it.

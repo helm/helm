@@ -17,10 +17,11 @@ func init() {
 }
 
 var searchCmd = &cobra.Command{
-	Use:   "search [keyword]",
-	Short: "Search for a keyword in charts",
-	Long:  "Searches the known repositories cache files for the specified search string, looks at name and keywords",
-	RunE:  search,
+	Use:     "search [keyword]",
+	Short:   "Search for a keyword in charts",
+	Long:    "Searches the known repositories cache files for the specified search string, looks at name and keywords",
+	RunE:    search,
+	PreRunE: requireInit,
 }
 
 func search(cmd *cobra.Command, args []string) error {
@@ -45,6 +46,9 @@ func searchChartRefsForPattern(search string, chartRefs map[string]*repo.ChartRe
 	for k, c := range chartRefs {
 		if strings.Contains(c.Name, search) {
 			matches = append(matches, k)
+			continue
+		}
+		if c.Chartfile == nil {
 			continue
 		}
 		for _, keyword := range c.Chartfile.Keywords {
