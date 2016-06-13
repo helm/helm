@@ -54,6 +54,10 @@ func runPackage(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if filepath.Base(path) != ch.Metadata.Name {
+		return fmt.Errorf("directory name (%s) and Chart.yaml name (%s) must match.", filepath.Base(path), ch.Metadata.Name)
+	}
+
 	// Save to the current working directory.
 	cwd, err := os.Getwd()
 	if err != nil {
