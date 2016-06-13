@@ -101,7 +101,7 @@ func TemplatesToProto(ch *chartutil.Chart) (tpls []*chartpbs.Template, err error
 	return
 }
 
-// OverridesToProto converts arbitary TOML override data to Config data.
+// OverridesToProto converts arbitrary TOML override data to Config data.
 func OverridesToProto(values []byte) *chartpbs.Config {
 	return &chartpbs.Config{
 		Raw: string(values),
