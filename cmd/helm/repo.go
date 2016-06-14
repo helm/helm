@@ -39,9 +39,10 @@ var repoListCmd = &cobra.Command{
 }
 
 var repoRemoveCmd = &cobra.Command{
-	Use:   "remove [flags] [NAME]",
-	Short: "remove a chart repository",
-	RunE:  runRepoRemove,
+	Use:     "remove [flags] [NAME]",
+	Aliases: []string{"rm"},
+	Short:   "remove a chart repository",
+	RunE:    runRepoRemove,
 }
 
 var repoIndexCmd = &cobra.Command{
