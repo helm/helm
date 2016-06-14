@@ -1,0 +1,124 @@
+package ignore
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+var testdata = "./testdata"
+
+func TestParse(t *testing.T) {
+	rules := `#ignore
+
+	#ignore
+foo
+bar/*
+baz/bar/foo.txt
+
+one/more
+`
+	r, err := parseString(rules)
+	if err != nil {
+		t.Fatalf("Error parsing rules: %s", err)
+	}
+
+	if len(r.patterns) != 4 {
+		t.Errorf("Expected 4 rules, got %d", len(r.patterns))
+	}
+
+	expects := []string{"foo", "bar/*", "baz/bar/foo.txt", "one/more"}
+	for i, p := range r.patterns {
+		if p.raw != expects[i] {
+			t.Errorf("Expected %q, got %q", expects[i], p.raw)
+		}
+		if p.match == nil {
+			t.Errorf("Expected %s to have a matcher function.", p.raw)
+		}
+	}
+}
+
+func TestParseFail(t *testing.T) {
+	shouldFail := []string{"foo/**/bar", "[z-"}
+	for _, fail := range shouldFail {
+		_, err := parseString(fail)
+		if err == nil {
+			t.Errorf("Rule %q should have failed", fail)
+		}
+	}
+
+}
+
+func TestParseFile(t *testing.T) {
+	f := filepath.Join(testdata, HelmIgnore)
+	if _, err := os.Stat(f); err != nil {
+		t.Fatalf("Fixture %s missing: %s", f, err)
+	}
+
+	r, err := ParseFile(f)
+	if err != nil {
+		t.Fatalf("Failed to parse rules file: %s", err)
+	}
+
+	if len(r.patterns) != 3 {
+		t.Errorf("Expected 3 patterns, got %d", len(r.patterns))
+	}
+}
+
+func TestIgnore(t *testing.T) {
+	// Test table: Given pattern and name, Ignore should return expect.
+	tests := []struct {
+		pattern string
+		name    string
+		expect  bool
+	}{
+		// Glob tests
+		{`helm.txt`, "helm.txt", true},
+		{`helm.*`, "helm.txt", true},
+		{`helm.*`, "rudder.txt", false},
+		{`*.txt`, "tiller.txt", true},
+		{`*.txt`, "cargo/a.txt", true},
+		{`cargo/*.txt`, "cargo/a.txt", true},
+		{`cargo/*.*`, "cargo/a.txt", true},
+		{`cargo/*.txt`, "mast/a.txt", false},
+		{`ru[c-e]?er.txt`, "rudder.txt", true},
+
+		// Directory tests
+		{`cargo/`, "cargo", true},
+		{`cargo/`, "cargo/", true},
+		{`cargo/`, "mast/", false},
+		{`helm.txt/`, "helm.txt", false},
+
+		// Negation tests
+		{`!helm.txt`, "helm.txt", false},
+		{`!helm.txt`, "tiller.txt", true},
+		{`!*.txt`, "cargo", true},
+		{`!cargo/`, "mast/", true},
+
+		// Absolute path tests
+		{`/a.txt`, "a.txt", true},
+		{`/a.txt`, "cargo/a.txt", false},
+		{`/cargo/a.txt`, "cargo/a.txt", true},
+	}
+
+	for _, test := range tests {
+		r, err := parseString(test.pattern)
+		if err != nil {
+			t.Fatalf("Failed to parse: %s", err)
+		}
+		fi, err := os.Stat(filepath.Join(testdata, test.name))
+		if err != nil {
+			t.Fatalf("Fixture missing: %s", err)
+		}
+
+		if r.Ignore(test.name, fi) != test.expect {
+			t.Errorf("Expected %q to be %v for pattern %q", test.name, test.expect, test.pattern)
+		}
+	}
+}
+
+func parseString(str string) (*Rules, error) {
+	b := bytes.NewBuffer([]byte(str))
+	return Parse(b)
+}

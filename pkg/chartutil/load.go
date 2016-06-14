@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/any"
 
+	"k8s.io/helm/pkg/ignore"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -21,6 +22,9 @@ import (
 //
 // This is the preferred way to load a chart. It will discover the chart encoding
 // and hand off to the appropriate chart reader.
+//
+// If a .helmignore file is present, the directory loader will skip loading any files
+// matching it. But .helmignore is not evaluated when reading out of an archive.
 func Load(name string) (*chart.Chart, error) {
 	fi, err := os.Stat(name)
 	if err != nil {
@@ -179,6 +183,17 @@ func LoadDir(dir string) (*chart.Chart, error) {
 	// Just used for errors.
 	c := &chart.Chart{}
 
+	rules := ignore.Empty()
+	ifile := filepath.Join(topdir, ignore.HelmIgnore)
+	fmt.Println(ifile)
+	if _, err := os.Stat(ifile); err == nil {
+		r, err := ignore.ParseFile(ifile)
+		if err != nil {
+			return c, err
+		}
+		rules = r
+	}
+
 	files := []*afile{}
 	topdir += string(filepath.Separator)
 	err = filepath.Walk(topdir, func(name string, fi os.FileInfo, err error) error {
@@ -187,6 +202,11 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return err
 		}
 		if fi.IsDir() {
+			return nil
+		}
+
+		// If a .helmignore file matches, skip this file.
+		if rules.Ignore(n, fi) {
 			return nil
 		}
 
