@@ -43,6 +43,16 @@ func (v Values) Table(name string) (Values, error) {
 	return table, err
 }
 
+// AsMap is a utility function for converting Values to a map[string]interface{}.
+//
+// It protects against nil map panics.
+func (v Values) AsMap() map[string]interface{} {
+	if v == nil || len(v) == 0 {
+		return map[string]interface{}{}
+	}
+	return v
+}
+
 // Encode writes serialized Values information to the given io.Writer.
 func (v Values) Encode(w io.Writer) error {
 	//return yaml.NewEncoder(w).Encode(v)
