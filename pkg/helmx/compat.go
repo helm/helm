@@ -49,6 +49,7 @@ func GetReleaseContent(rlsName string) (*rls.GetReleaseContentResponse, error) {
 	return NewClient(HelmHost(Config.ServAddr)).ReleaseContent(rlsName)
 }
 
+// Soon to be deprecated helm UpdateRelease API. See pkg/helmx.
 func UpdateRelease(rlsName string) (*rls.UpdateReleaseResponse, error) {
 	if !EnableNewHelm {
 		return helm.UpdateRelease(rlsName)
