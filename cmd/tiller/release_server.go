@@ -13,6 +13,7 @@ import (
 
 	"k8s.io/helm/cmd/tiller/environment"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
@@ -29,10 +30,6 @@ func init() {
 	services.RegisterReleaseServiceServer(rootServer, srv)
 }
 
-type releaseServer struct {
-	env *environment.Environment
-}
-
 var (
 	// errNotImplemented is a temporary error for uninmplemented callbacks.
 	errNotImplemented = errors.New("not implemented")
@@ -44,6 +41,10 @@ var (
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
 var ListDefaultLimit int64 = 512
+
+type releaseServer struct {
+	env *environment.Environment
+}
 
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
 	rels, err := s.env.Releases.List()
@@ -184,6 +185,18 @@ func (s *releaseServer) uniqName(start string) (string, error) {
 	return "ERROR", errors.New("no available release name found")
 }
 
+func (s *releaseServer) engine(ch *chart.Chart) environment.Engine {
+	renderer := s.env.EngineYard.Default()
+	if ch.Metadata.Engine != "" {
+		if r, ok := s.env.EngineYard.Get(ch.Metadata.Engine); ok {
+			renderer = r
+		} else {
+			log.Printf("warning: %s requested non-existent template engine %s", ch.Metadata.Name, ch.Metadata.Engine)
+		}
+	}
+	return renderer
+}
+
 func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	if req.Chart == nil {
 		return nil, errMissingChart
@@ -211,7 +224,9 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	if err != nil {
 		return nil, err
 	}
-	files, err := s.env.EngineYard.Default().Render(req.Chart, vals)
+
+	renderer := s.engine(req.Chart)
+	files, err := renderer.Render(req.Chart, vals)
 	if err != nil {
 		return nil, err
 	}
