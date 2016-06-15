@@ -29,6 +29,7 @@ func TestRender(t *testing.T) {
 		},
 		Templates: []*chart.Template{
 			{Name: "test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
+			{Name: "test2", Data: []byte("{{.global.callme | lower }}")},
 		},
 		Values: &chart.Config{
 			Raw: "outer: DEFAULT\ninner: DEFAULT",
@@ -41,6 +42,9 @@ func TestRender(t *testing.T) {
 
 	overrides := map[string]interface{}{
 		"outer": "spouter",
+		"global": map[string]interface{}{
+			"callme": "Ishmael",
+		},
 	}
 
 	e := New()
@@ -56,6 +60,11 @@ func TestRender(t *testing.T) {
 	expect := "Spouter Inn"
 	if out["test1"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test1"])
+	}
+
+	expect = "ishmael"
+	if out["test2"] != expect {
+		t.Errorf("Expected %q, got %q", expect, out["test2"])
 	}
 
 	if _, err := e.Render(c, v); err != nil {
@@ -194,7 +203,7 @@ func TestRenderNestedValues(t *testing.T) {
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
 		Templates: []*chart.Template{
-			{Name: deepestpath, Data: []byte(`And this same {{.what}} that smiles to-day`)},
+			{Name: deepestpath, Data: []byte(`And this same {{.what}} that smiles {{.global.when}}`)},
 		},
 		Values: &chart.Config{Raw: `what: "milkshake"`},
 	}
@@ -228,7 +237,9 @@ herrick:
 what: rosebuds
 herrick:
   deepest:
-    what: flower`,
+    what: flower
+global:
+  when: to-day`,
 	}
 
 	inject, err := chartutil.CoalesceValues(outer, &injValues, map[string]interface{}{})

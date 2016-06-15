@@ -14,6 +14,9 @@ import (
 // ErrNoTable indicates that a chart does not have a matching table.
 var ErrNoTable = errors.New("no table")
 
+// GlobalKey is the name of the Values key that is used for storing global vars.
+const GlobalKey = "global"
+
 // Values represents a collection of chart values.
 type Values map[string]interface{}
 
@@ -98,7 +101,7 @@ func ReadValuesFile(filename string) (Values, error) {
 //
 // The overrides map may be used to specifically override configuration values.
 //
-// Values are coalesced together using the fillowing rules:
+// Values are coalesced together using the following rules:
 //
 //	- Values in a higher level chart always override values in a lower-level
 //		dependency chart
@@ -110,6 +113,7 @@ func CoalesceValues(chrt *chart.Chart, vals *chart.Config, overrides map[string]
 	// Parse values if not nil. We merge these at the top level because
 	// the passed-in values are in the same namespace as the parent chart.
 	if vals != nil {
+		log.Printf("Merging overrides into config.")
 		evals, err := ReadValues([]byte(vals.Raw))
 		if err != nil {
 			return cvals, err
@@ -150,10 +154,55 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) map[string]int
 			return dest
 		}
 		if dv, ok := dest[subchart.Metadata.Name]; ok {
-			dest[subchart.Metadata.Name] = coalesce(subchart, dv.(map[string]interface{}))
+			dvmap := dv.(map[string]interface{})
+
+			// Get globals out of dest and merge them into dvmap.
+			coalesceGlobals(dvmap, dest)
+
+			// Now coalesce the rest of the values.
+			dest[subchart.Metadata.Name] = coalesce(subchart, dvmap)
 		}
 	}
 	return dest
+}
+
+// coalesceGlobals copies the globals out of src and merges them into dest.
+//
+// For convenience, returns dest.
+func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
+	var dg, sg map[string]interface{}
+
+	if destglob, ok := dest[GlobalKey]; !ok {
+		dg = map[string]interface{}{}
+	} else if dg, ok = destglob.(map[string]interface{}); !ok {
+		log.Printf("warning: skipping globals because destination %s is not a table.", GlobalKey)
+		return dg
+	}
+
+	if srcglob, ok := src[GlobalKey]; !ok {
+		sg = map[string]interface{}{}
+	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
+		log.Printf("warning: skipping globals because source %s is not a table.", GlobalKey)
+		return dg
+	}
+
+	// We manually copy (instead of using coalesceTables) because (a) we need
+	// to prevent loops, and (b) we disallow nesting tables under globals.
+	// Globals should _just_ be k/v pairs.
+	for key, val := range sg {
+		if istable(val) {
+			log.Printf("warning: nested values are illegal in globals (%s)", key)
+			continue
+		} else if dv, ok := dg[key]; ok && istable(dv) {
+			log.Printf("warning: nested values are illegal in globals (%s)", key)
+			continue
+		}
+		// TODO: Do we need to do any additional checking on the value?
+		dg[key] = val
+	}
+	dest[GlobalKey] = dg
+	return dest
+
 }
 
 // coalesceValues builds up a values map for a particular chart.

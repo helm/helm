@@ -146,7 +146,14 @@ func ttpl(tpl string, v map[string]interface{}) (string, error) {
 var testCoalesceValuesYaml = `
 top: yup
 
+global:
+  name: Ishmael
+  subject: Queequeg
+
 pequod:
+  global:
+    name: Stinky
+    harpooner: Tashtego
   ahab:
     scope: whale
 `
@@ -174,9 +181,19 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.top}}", "yup"},
 		{"{{.override}}", "good"},
 		{"{{.name}}", "moby"},
+		{"{{.global.name}}", "Ishmael"},
+		{"{{.global.subject}}", "Queequeg"},
+		{"{{.global.harpooner}}", "<no value>"},
 		{"{{.pequod.name}}", "pequod"},
 		{"{{.pequod.ahab.name}}", "ahab"},
 		{"{{.pequod.ahab.scope}}", "whale"},
+		{"{{.pequod.ahab.global.name}}", "Ishmael"},
+		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
+		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
+		{"{{.pequod.global.name}}", "Ishmael"},
+		{"{{.pequod.global.subject}}", "Queequeg"},
+		{"{{.spouter.global.name}}", "Ishmael"},
+		{"{{.spouter.global.harpooner}}", "<no value>"},
 	}
 
 	for _, tt := range tests {

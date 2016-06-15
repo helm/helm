@@ -211,10 +211,10 @@ Considering the template in the previous section, a `values.yaml` file
 that supplies the necessary values would look like this:
 
 ```yaml
-imageRegistry = "quay.io/deis"
-dockerTag = "latest"
-pullPolicy = "alwaysPull"
-storage = "s3"
+imageRegistry: "quay.io/deis"
+dockerTag: "latest"
+pullPolicy: "alwaysPull"
+storage: "s3"
 ```
 
 A values file is formatted in YAML. A chart may include a default
@@ -230,17 +230,17 @@ values file. For example, consider a `myvals.yaml` file that looks like
 this:
 
 ```yaml
-storage = "gcs"
+storage: "gcs"
 ```
 
 When this is merged with the `values.yaml` in the chart, the resulting
 generated content will be:
 
 ```yaml
-imageRegistry = "quay.io/deis"
-dockerTag = "latest"
-pullPolicy = "alwaysPull"
-storage = "gcs"
+imageRegistry: "quay.io/deis"
+dockerTag: "latest"
+pullPolicy: "alwaysPull"
+storage: "gcs"
 ```
 
 Note that only the last field was overridden.
@@ -260,27 +260,91 @@ dependencies. The values file could supply values to all of these
 components:
 
 ```yaml
-title = "My Wordpress Site" # Sent to the Wordpress template
+title: "My Wordpress Site" # Sent to the Wordpress template
 
-[mysql]
-max_connections = 100 # Sent to MySQL
-password = "secret"
+mysql:
+  max_connections: 100 # Sent to MySQL
+  password: "secret"
 
-[apache]
-port = 8080 # Passed to Apache
+apache:
+  port: 8080 # Passed to Apache
 ```
 
 Charts at a higher level have access to all of the variables defined
-beneath. So the wordpress chart can access `mysql.password`. But lower
+beneath. So the wordpress chart can access `.mysql.password`. But lower
 level charts cannot access things in parent charts, so MySQL will not be
 able to access the `title` property. Nor, for that matter, can it access
-`apache.port`.
+`.apache.port`.
 
 Values are namespaced, but namespaces are pruned. So for the Wordpress
-chart, it can access the MySQL password field as `mysql.password`. But
+chart, it can access the MySQL password field as `.mysql.password`. But
 for the MySQL chart, the scope of the values has been reduced and the
 namespace prefix removed, so it will see the password field simply as
-`password`.
+`.password`.
+
+#### Global Values
+
+As of 2.0.0-Alpha.2, Helm supports sspecial "global" value. Consider
+this modified version of the previous exampl:
+
+```yaml
+title: "My Wordpress Site" # Sent to the Wordpress template
+
+global:
+  app: MyWordpress
+
+mysql:
+  max_connections: 100 # Sent to MySQL
+  password: "secret"
+
+apache:
+  port: 8080 # Passed to Apache
+```
+
+The above adds a `global` section with the value `app: MyWordpress`.
+This value is available to _all_ charts as `.global.app`.
+
+For example, the `mysql` templates may access `app` as `{{.global.app}}`, and
+so can the `apache` chart. Effectively, the values file above is
+regenerated like this:
+
+```yaml
+title: "My Wordpress Site" # Sent to the Wordpress template
+
+global:
+  app: MyWordpress
+
+mysql:
+  global:
+    app: MyWordpress
+  max_connections: 100 # Sent to MySQL
+  password: "secret"
+
+apache:
+  global:
+    app: MyWordpress
+  port: 8080 # Passed to Apache
+```
+
+This provides a way of sharing one top-level variable with all
+subcharts, which is useful for things like setting `metadata` properties
+like labels.
+
+If a subchart declares a global variable, that global will be passed
+_downward_ (to the subchart's subcharts), but not _upward_ to the parent
+chart. There is no way for a subchart to influence the values of the
+parent chart.
+
+_Global sections are restricted to only simple key/value pairs. They do
+not support nesting._
+
+For example, the following is **illegal** and will not work:
+
+```yaml
+global:
+  foo:  # It is illegal to nest an object inside of global.
+    bar: baz
+```
 
 ### References
 
