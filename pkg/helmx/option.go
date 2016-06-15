@@ -7,12 +7,9 @@ import (
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
-// # Options
-//
-//      Option allows specifying various settings configurable by
-//      the helm client user for overriding the defaults used when
-//      issuing rpc's to the Tiller release server.
-//
+// Option allows specifying various settings configurable by
+// the helm client user for overriding the defaults used when
+// issuing rpc's to the Tiller release server.
 type Option func(*options)
 
 // options specify optional settings used by the helm client.
@@ -52,12 +49,9 @@ func HelmHost(host string) Option {
 	}
 }
 
-// # Release List Options
-//
-//      ReleaseListOption allows specifying various settings
-//      configurable by the helm client user for overriding
-//      the defaults used when running the `helm list` command.
-//
+// ReleaseListOption allows specifying various settings
+// configurable by the helm client user for overriding
+// the defaults used when running the `helm list` command.
 type ReleaseListOption func(*options)
 
 // ReleaseListOffset specifies the offset into a list of releases.
@@ -95,12 +89,9 @@ func ReleaseListSort(sort int32) ReleaseListOption {
 	}
 }
 
-// # Install Options
-//
-//		InstallOption allows specifying various settings
-//	    configurable by the helm client user for overriding
-//	    the defaults used when running the `helm install` command.
-//
+// InstallOption allows specifying various settings
+// configurable by the helm client user for overriding
+// the defaults used when running the `helm install` command.
 type InstallOption func(*options)
 
 // ValueOverrides specifies a list of values to include when installing.
@@ -117,24 +108,24 @@ func ReleaseName(name string) InstallOption {
 	}
 }
 
-// # ContentOption -- TODO
+// ContentOption -- TODO
 type ContentOption func(*options)
 
-// # StatusOption -- TODO
+// StatusOption -- TODO
 type StatusOption func(*options)
 
-// # DeleteOption -- TODO
+// DeleteOption -- TODO
 type DeleteOption func(*options)
 
-// # UpdateOption -- TODO
+// UpdateOption -- TODO
 type UpdateOption func(*options)
 
-// # RPC helpers defined on `options` type. Note: These actually execute the
-//   the corresponding tiller RPC. There is no particular reason why these
-//   are APIs are hung off `options`, they are internal to pkg/helm to remain
-//   malleable.
+// RPC helpers defined on `options` type. Note: These actually execute the
+// the corresponding tiller RPC. There is no particular reason why these
+// are APIs are hung off `options`, they are internal to pkg/helm to remain
+// malleable.
 
-// TODO: Executes tiller.ListReleases RPC. See issue #828
+// Executes tiller.ListReleases RPC.
 func (o *options) rpcListReleases(rlc rls.ReleaseServiceClient, opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
 	// apply release list options
 	for _, opt := range opts {
@@ -148,33 +139,45 @@ func (o *options) rpcListReleases(rlc rls.ReleaseServiceClient, opts ...ReleaseL
 	return s.Recv()
 }
 
-// TODO: Executes tiller.InstallRelease RPC. See issue #828
+// Executes tiller.InstallRelease RPC.
 func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	// apply the install options
 	for _, opt := range opts {
 		opt(o)
 	}
-
 	o.instReq.Chart = chr
+	o.instReq.DryRun = o.dryRun
+
 	return rlc.InstallRelease(context.TODO(), &o.instReq)
 }
 
-// TODO: Executes tiller.UninstallRelease RPC. See issue #828
+// Executes tiller.UninstallRelease RPC.
 func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
-	return nil, fmt.Errorf("helm: rpcDeleteRelease: not implemented")
+	if o.dryRun {
+		// In the dry run case, just see if the release exists
+		r, err := o.rpcGetReleaseContent(rlsName, rlc)
+		if err != nil {
+			return &rls.UninstallReleaseResponse{}, err
+		}
+		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
+	}
+
+	return rlc.UninstallRelease(context.TODO(), &rls.UninstallReleaseRequest{Name: rlsName})
 }
 
-// TODO: Executes tiller.UpdateRelease RPC. See issue #828
+// Executes tiller.UpdateRelease RPC.
 func (o *options) rpcUpdateRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, fmt.Errorf("helm: rpcUpdateRelease: not implemented")
+	return nil, fmt.Errorf("helm: UpdateRelease: not implemented")
 }
 
-// TODO: Executes tiller.GetReleaseStatus RPC. See issue #828
+// Executes tiller.GetReleaseStatus RPC.
 func (o *options) rpcGetReleaseStatus(rlsName string, rlc rls.ReleaseServiceClient, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	return nil, fmt.Errorf("helm: rpcGetReleaseStatus: not implemented")
+	req := &rls.GetReleaseStatusRequest{Name: rlsName}
+	return rlc.GetReleaseStatus(context.TODO(), req)
 }
 
-// TODO: Executes tiller.GetReleaseConent. See issue #828
+// Executes tiller.GetReleaseContent.
 func (o *options) rpcGetReleaseContent(rlsName string, rlc rls.ReleaseServiceClient, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
-	return nil, fmt.Errorf("helm: getReleaseContent: not implemented")
+	req := &rls.GetReleaseContentRequest{Name: rlsName}
+	return rlc.GetReleaseContent(context.TODO(), req)
 }
