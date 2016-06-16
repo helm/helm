@@ -12,8 +12,6 @@ import:
 - package: gopkg.in/yaml.v2
 - package: github.com/Masterminds/semver
   version: 1.1.0
-- package: github.com/BurntSushi/toml
-  version: bbd5bb678321a0d6e58f1099321dfa73391c1b6f
 - package: github.com/technosophos/moniker
 - package: github.com/golang/protobuf
   version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
@@ -38,5 +36,5 @@ import:
   - pkg/labels
 - package: github.com/gosuri/uitable
 - package: speter.net/go/exp/math/dec/inf
-  vcs: git
   repo: https://github.com/go-inf/inf.git
+  vcs: git
