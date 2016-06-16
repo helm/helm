@@ -1,4 +1,4 @@
-package helmx
+package helm
 
 import (
 	"fmt"
