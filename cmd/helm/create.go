@@ -17,6 +17,9 @@ For example, 'helm create foo' will create a directory structure that looks
 something like this:
 
 	foo/
+	  |
+	  |- .helmignore   # Contains patterns to ignore when packaging Helm charts.
+	  |
 	  |- Chart.yaml    # Information about your chart
 	  |
 	  |- values.yaml   # The default values for your templates

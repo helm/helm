@@ -42,7 +42,7 @@ func TestCreate(t *testing.T) {
 		}
 	}
 
-	for _, f := range []string{ChartfileName, ValuesfileName} {
+	for _, f := range []string{ChartfileName, ValuesfileName, IgnorefileName} {
 		if fi, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
 		} else if fi.IsDir() {

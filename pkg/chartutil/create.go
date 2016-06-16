@@ -18,12 +18,21 @@ const (
 	TemplatesDir = "templates"
 	// ChartsDir is the relative directory name for charts dependencies.
 	ChartsDir = "charts"
+	// IgnorefileName is the name of the Helm ignore file.
+	IgnorefileName = ".helmignore"
 )
 
 const defaultValues = `# Default values for %s.
 # This is a YAML-formatted file.
 # Declare name/value pairs to be passed into your templates.
 # name: value
+`
+
+const defaultIgnore = `# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and
+# negation (prefixed with !). Only one pattern per line.
+.DS_Store
+.git
 `
 
 // Create creates a new chart in a directory.
@@ -66,6 +75,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 
 	val := []byte(fmt.Sprintf(defaultValues, chartfile.Name))
 	if err := ioutil.WriteFile(filepath.Join(cdir, ValuesfileName), val, 0644); err != nil {
+		return cdir, err
+	}
+
+	val = []byte(defaultIgnore)
+	if err := ioutil.WriteFile(filepath.Join(cdir, IgnorefileName), val, 0644); err != nil {
 		return cdir, err
 	}
 
