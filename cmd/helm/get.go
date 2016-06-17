@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/timeconv"
 )
@@ -44,6 +45,8 @@ charts, those resources will also be included in the manifest.
 // If it is blank, output is sent to os.Stdout.
 var getOut = ""
 
+var allValues = false
+
 var errReleaseRequired = errors.New("release name is required")
 
 var getCommand = &cobra.Command{
@@ -69,7 +72,12 @@ var getManifestCommand = &cobra.Command{
 }
 
 func init() {
+	// 'get' command flags.
 	getCommand.PersistentFlags().StringVarP(&getOut, "file", "f", "", "output file")
+
+	// 'get values' flags.
+	getValuesCommand.PersistentFlags().BoolVarP(&allValues, "all", "a", false, "dump all (computed) values")
+
 	getCommand.AddCommand(getValuesCommand)
 	getCommand.AddCommand(getManifestCommand)
 	RootCommand.AddCommand(getCommand)
@@ -86,10 +94,21 @@ func getCmd(cmd *cobra.Command, args []string) error {
 		return prettyError(err)
 	}
 
+	cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config, nil)
+	if err != nil {
+		return err
+	}
+	cfgStr, err := cfg.YAML()
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("CHART: %s-%s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
 	fmt.Printf("RELEASED: %s\n", timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC))
-	fmt.Println("CONFIG:")
+	fmt.Println("USER-SUPPLIED VALUES:")
 	fmt.Println(res.Release.Config.Raw)
+	fmt.Println("COMPUTED VALUES:")
+	fmt.Println(cfgStr)
 	fmt.Println("MANIFEST:")
 	fmt.Println(res.Release.Manifest)
 	return nil
@@ -105,7 +124,21 @@ func getValues(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return prettyError(err)
 	}
-	return getToFile(res.Release.Config)
+
+	// If the user wants all values, compute the values and return.
+	if allValues {
+		cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config, nil)
+		if err != nil {
+			return err
+		}
+		cfgStr, err := cfg.YAML()
+		if err != nil {
+			return err
+		}
+		return getToFile(cfgStr)
+	}
+
+	return getToFile(res.Release.Config.Raw)
 }
 
 // getManifest implements 'helm get manifest'

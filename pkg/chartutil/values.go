@@ -20,6 +20,12 @@ const GlobalKey = "global"
 // Values represents a collection of chart values.
 type Values map[string]interface{}
 
+// YAML encodes the Values into a YAML string.
+func (v Values) YAML() (string, error) {
+	b, err := yaml.Marshal(v)
+	return string(b), err
+}
+
 // Table gets a table (YAML subsection) from a Values object.
 //
 // The table is returned as a Values.
@@ -113,7 +119,6 @@ func CoalesceValues(chrt *chart.Chart, vals *chart.Config, overrides map[string]
 	// Parse values if not nil. We merge these at the top level because
 	// the passed-in values are in the same namespace as the parent chart.
 	if vals != nil {
-		log.Printf("Merging overrides into config.")
 		evals, err := ReadValues([]byte(vals.Raw))
 		if err != nil {
 			return cvals, err
