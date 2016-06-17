@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
@@ -233,6 +235,11 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 
 	b := bytes.NewBuffer(nil)
 	for name, file := range files {
+		// Ignore templates that starts with underscore to handle them as partials
+		if strings.HasPrefix(path.Base(name), "_") {
+			continue
+		}
+
 		// Ignore empty documents because the Kubernetes library can't handle
 		// them.
 		if len(file) > 0 {
