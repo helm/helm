@@ -9,15 +9,15 @@ target  = go
 plugins = grpc
 
 chart_ias    = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(chart_pkg),$(addprefix M,$(chart_pbs))))
-chart_pbs    = $(wildcard hapi/chart/*.proto)
+chart_pbs    = $(sort $(wildcard hapi/chart/*.proto))
 chart_pkg    = chart
 
 release_ias  = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(release_pkg),$(addprefix M,$(release_pbs))))
-release_pbs  = $(wildcard hapi/release/*.proto)
+release_pbs  = $(sort $(wildcard hapi/release/*.proto))
 release_pkg  = release
 
 services_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(services_pkg),$(addprefix M,$(services_pbs))))
-services_pbs = $(wildcard hapi/services/*.proto)
+services_pbs = $(sort $(wildcard hapi/services/*.proto))
 services_pkg = services
 
 google_deps	 = Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any
