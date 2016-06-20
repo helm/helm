@@ -22,16 +22,18 @@ services_pkg = services
 
 google_deps	 = Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any
 
+.PHONY: all
 all: chart release services
 
 chart:
-	protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(chart_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(chart_pbs)
 
 release:
-	protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(release_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(release_pbs)
 
 services:
-	protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(release_ias):$(dst) $(services_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(release_ias):$(dst) $(services_pbs)
 
+.PHONY: clean
 clean:
 	@rm -rf $(dst)/hapi 2>/dev/null
