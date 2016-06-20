@@ -15,7 +15,7 @@ This command shows the status of a named release.
 
 var statusCommand = &cobra.Command{
 	Use:               "status [flags] RELEASE_NAME",
-	Short:             "Displays the status of the named release",
+	Short:             "displays the status of the named release",
 	Long:              statusHelp,
 	RunE:              status,
 	PersistentPreRunE: setupConnection,

@@ -30,7 +30,7 @@ func init() {
 
 var packageCmd = &cobra.Command{
 	Use:   "package [CHART_PATH]",
-	Short: "Package a chart directory into a chart archive.",
+	Short: "package a chart directory into a chart archive",
 	Long:  packageDesc,
 	RunE:  runPackage,
 }

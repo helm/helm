@@ -34,7 +34,7 @@ var (
 
 var installCmd = &cobra.Command{
 	Use:               "install [CHART]",
-	Short:             "install a chart archive.",
+	Short:             "install a chart archive",
 	Long:              installDesc,
 	RunE:              runInstall,
 	PersistentPreRunE: setupConnection,

@@ -22,7 +22,7 @@ or recommendation, it will emit [WARNING] messages.
 
 var lintCommand = &cobra.Command{
 	Use:   "lint [flags] PATH",
-	Short: "Examines a chart for possible issues",
+	Short: "examines a chart for possible issues",
 	Long:  longLintHelp,
 	RunE:  lintCmd,
 }

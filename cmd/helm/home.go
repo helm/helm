@@ -11,7 +11,7 @@ any helm configuration files live.
 
 var homeCommand = &cobra.Command{
 	Use:   "home",
-	Short: "Displays the location of HELM_HOME",
+	Short: "displays the location of HELM_HOME",
 	Long:  longHomeHelp,
 	Run:   home,
 }
