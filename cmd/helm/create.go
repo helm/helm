@@ -40,7 +40,7 @@ func init() {
 
 var createCmd = &cobra.Command{
 	Use:   "create NAME",
-	Short: "Create a new chart with the given name.",
+	Short: "create a new chart with the given name",
 	Long:  createDesc,
 	RunE:  runCreate,
 }

@@ -35,7 +35,7 @@ func init() {
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize Helm on both client and server.",
+	Short: "initialize Helm on both client and server",
 	Long:  initDesc,
 	RunE:  runInit,
 }

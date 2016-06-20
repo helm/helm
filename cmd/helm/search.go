@@ -18,7 +18,7 @@ func init() {
 
 var searchCmd = &cobra.Command{
 	Use:     "search [keyword]",
-	Short:   "Search for a keyword in charts",
+	Short:   "search for a keyword in charts",
 	Long:    "Searches the known repositories cache files for the specified search string, looks at name and keywords",
 	RunE:    search,
 	PreRunE: requireInit,

@@ -25,7 +25,7 @@ func init() {
 
 var fetchCmd = &cobra.Command{
 	Use:   "fetch [chart URL | repo/chartname]",
-	Short: "Download a chart from a repository and (optionally) unpack it in local directory.",
+	Short: "download a chart from a repository and (optionally) unpack it in local directory",
 	Long:  "",
 	RunE:  fetch,
 }

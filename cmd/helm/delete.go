@@ -22,7 +22,7 @@ var deleteCommand = &cobra.Command{
 	Use:               "delete [flags] RELEASE_NAME",
 	Aliases:           []string{"del"},
 	SuggestFor:        []string{"remove", "rm"},
-	Short:             "Given a release name, delete the release from Kubernetes",
+	Short:             "given a release name, delete the release from Kubernetes",
 	Long:              deleteDesc,
 	RunE:              delRelease,
 	PersistentPreRunE: setupConnection,

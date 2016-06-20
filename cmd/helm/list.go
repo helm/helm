@@ -38,7 +38,7 @@ flag with the '--offset' flag allows you to page through results.
 
 var listCommand = &cobra.Command{
 	Use:               "list [flags] [FILTER]",
-	Short:             "List releases",
+	Short:             "list releases",
 	Long:              listHelp,
 	RunE:              listCmd,
 	Aliases:           []string{"ls"},

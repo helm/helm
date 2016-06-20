@@ -15,7 +15,7 @@ var verboseUpdate bool
 var updateCommand = &cobra.Command{
 	Use:     "update",
 	Aliases: []string{"up"},
-	Short:   "Update information on available charts in the chart repositories.",
+	Short:   "update information on available charts in the chart repositories",
 	RunE:    runUpdate,
 }
 

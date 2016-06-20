@@ -17,7 +17,7 @@ func init() {
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start a local http web server",
+	Short: "start a local http web server",
 	Long:  serveDesc,
 	Run:   serve,
 }
