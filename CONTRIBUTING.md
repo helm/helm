@@ -21,6 +21,10 @@ Follow either of the two links above to access the appropriate CLA and instructi
 1. Fork the desired repo, develop and test your code changes.
 1. Submit a pull request.
 
+Coding conventions and standards are explained in the official
+developer docs:
+https://github.com/kubernetes/helm/blob/master/docs/developers.md
+
 ### Merge Approval
 
 Helm collaborators may add "LGTM" (Looks Good To Me) or an equivalent comment to indicate that a PR is acceptable. Any change requires at least one LGTM.  No pull requests can be merged until at least one Helm collaborator signs off with an LGTM.
