@@ -17,8 +17,11 @@ const (
 	hostEnvVar = "HELM_HOST"
 )
 
-var helmHome string
-var tillerHost string
+var (
+	helmHome        string
+	tillerHost      string
+	tillerNamespace string
+)
 
 // flagDebug is a signal that the user wants additional output.
 var flagDebug bool
@@ -61,6 +64,7 @@ func init() {
 	p := RootCommand.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
+	p.StringVarP(&tillerNamespace, "namespace", "n", "", "kubernetes namespace")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 }
 
@@ -72,8 +76,7 @@ func main() {
 
 func setupConnection(c *cobra.Command, args []string) error {
 	if tillerHost == "" {
-		// Should failure fall back to default host?
-		tunnel, err := newTillerPortForwarder()
+		tunnel, err := newTillerPortForwarder(tillerNamespace)
 		if err != nil {
 			return err
 		}

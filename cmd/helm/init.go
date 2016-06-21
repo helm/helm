@@ -17,7 +17,6 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 
 var (
 	tillerImg            string
-	tillerNamespace      string
 	clientOnly           bool
 	initSkipNamespace    bool
 	defaultRepository    = "kubernetes-charts"
@@ -29,7 +28,6 @@ func init() {
 	f.StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
 	f.BoolVarP(&clientOnly, "client-only", "c", false, "If set does not install tiller")
 	f.BoolVarP(&initSkipNamespace, "skip-namespace", "s", false, "Do not attempt to create a namespace. Assume the namespace is already there.")
-	f.StringVarP(&tillerNamespace, "namespace", "n", "helm", "set the tiller namespace")
 	RootCommand.AddCommand(initCmd)
 }
 

@@ -12,14 +12,14 @@ import (
 // TODO refactor out this global var
 var tunnel *kube.Tunnel
 
-func newTillerPortForwarder() (*kube.Tunnel, error) {
-	podName, err := getTillerPodName("helm")
+func newTillerPortForwarder(namespace string) (*kube.Tunnel, error) {
+	podName, err := getTillerPodName(namespace)
 	if err != nil {
 		return nil, err
 	}
 	// FIXME use a constain that is accessible on init
 	const tillerPort = 44134
-	return kube.New(nil).ForwardPort("helm", podName, tillerPort)
+	return kube.New(nil).ForwardPort(namespace, podName, tillerPort)
 }
 
 func getTillerPodName(namespace string) (string, error) {
