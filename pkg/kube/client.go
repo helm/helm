@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -28,6 +30,9 @@ type ResourceActorFunc func(*resource.Info) error
 //
 // Namespace will set the namespace
 func (c *Client) Create(namespace string, reader io.Reader) error {
+	if err := c.ensureNamespace(namespace); err != nil {
+		return err
+	}
 	return perform(c, namespace, reader, createResource)
 }
 
@@ -44,7 +49,7 @@ func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc
 	r := c.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
-		RequireNamespace().
+		DefaultNamespace().
 		Stream(reader, "").
 		Flatten().
 		Do()
@@ -82,4 +87,19 @@ func createResource(info *resource.Info) error {
 
 func deleteResource(info *resource.Info) error {
 	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+}
+
+func (c *Client) ensureNamespace(namespace string) error {
+	client, err := c.Client()
+	if err != nil {
+		return err
+	}
+
+	ns := &api.Namespace{}
+	ns.Name = namespace
+	_, err = client.Namespaces().Create(ns)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }

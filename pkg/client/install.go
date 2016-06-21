@@ -10,49 +10,33 @@ import (
 	"k8s.io/helm/pkg/kube"
 )
 
-// Installer installs tiller into Kubernetes
-//
-// See InstallYAML.
-type Installer struct {
-
-	// Metadata holds any global metadata attributes for the resources
-	Metadata map[string]interface{}
-
-	// Tiller specific metadata
-	Tiller map[string]interface{}
-}
-
-// NewInstaller creates a new Installer
-func NewInstaller() *Installer {
-	return &Installer{
-		Metadata: map[string]interface{}{},
-		Tiller:   map[string]interface{}{},
-	}
-}
-
 // Install uses kubernetes client to install tiller
 //
 // Returns the string output received from the operation, and an error if the
 // command failed.
 //
 // If verbose is true, this will print the manifest to stdout.
-//
-// If createNS is true, this will also create the namespace.
-func (i *Installer) Install(verbose, createNS bool) error {
+func Install(namespace, image string, verbose bool) error {
+	kc := kube.New(nil)
+
+	if namespace == "" {
+		ns, _, err := kc.DefaultNamespace()
+		if err != nil {
+			return err
+		}
+		namespace = ns
+	}
 
 	var b bytes.Buffer
 
-	// Add namespace
-	if createNS {
-		nstpl := template.New("namespace").Funcs(sprig.TxtFuncMap())
-		if err := template.Must(nstpl.Parse(NamespaceYAML)).Execute(&b, i); err != nil {
-			return err
-		}
-	}
-
 	// Add main install YAML
 	istpl := template.New("install").Funcs(sprig.TxtFuncMap())
-	if err := template.Must(istpl.Parse(InstallYAML)).Execute(&b, i); err != nil {
+
+	cfg := struct {
+		Namespace, Image string
+	}{namespace, image}
+
+	if err := template.Must(istpl.Parse(InstallYAML)).Execute(&b, cfg); err != nil {
 		return err
 	}
 
@@ -60,24 +44,12 @@ func (i *Installer) Install(verbose, createNS bool) error {
 		fmt.Println(b.String())
 	}
 
-	return kube.New(nil).Create(i.Tiller["Namespace"].(string), &b)
+	return kc.Create(namespace, &b)
 }
-
-// NamespaceYAML is the installation for a namespace.
-const NamespaceYAML = `
----{{$namespace := default "helm" .Tiller.Namespace}}
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    app: helm
-    name: helm-namespace
-  name: {{$namespace}}
-`
 
 // InstallYAML is the installation YAML for DM.
 const InstallYAML = `
----{{$namespace := default "helm" .Tiller.Namespace}}
+---
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -85,7 +57,7 @@ metadata:
     app: helm
     name: tiller
   name: tiller-rc
-  namespace: {{$namespace}}
+  namespace: {{ .Namespace }}
 spec:
   replicas: 1
   selector:
@@ -103,7 +75,7 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-        image: {{default "gcr.io/kubernetes-helm/tiller:canary" .Tiller.Image}}
+        image: {{default "gcr.io/kubernetes-helm/tiller:canary" .Image}}
         name: tiller
         ports:
         - containerPort: 44134
