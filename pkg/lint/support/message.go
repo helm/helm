@@ -52,8 +52,6 @@ type LintError interface {
 	error
 }
 
-type ValidationFunc func(*Linter) LintError
-
 // String prints a string representation of this Message.
 //
 // Implements fmt.Stringer.
@@ -63,6 +61,11 @@ func (m Message) String() string {
 
 // Returns true if the validation passed
 func (l *Linter) RunLinterRule(severity Severity, lintError LintError) bool {
+	// severity is out of bound
+	if severity < 0 || int(severity) >= len(sev) {
+		return false
+	}
+
 	if lintError != nil {
 		l.Messages = append(l.Messages, Message{Text: lintError.Error(), Severity: severity})
 	}

@@ -211,6 +211,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 	files := []*afile{}
 	topdir += string(filepath.Separator)
+
 	err = filepath.Walk(topdir, func(name string, fi os.FileInfo, err error) error {
 		n := strings.TrimPrefix(name, topdir)
 		if err != nil {
