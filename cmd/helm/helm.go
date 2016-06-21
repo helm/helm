@@ -64,7 +64,7 @@ func init() {
 	p := RootCommand.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
-	p.StringVarP(&tillerNamespace, "namespace", "n", "", "kubernetes namespace")
+	p.StringVarP(&tillerNamespace, "namespace", "", "", "kubernetes namespace")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 }
 
