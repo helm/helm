@@ -1,39 +1,44 @@
 package lint
 
 import (
+	"k8s.io/helm/pkg/lint/support"
 	"strings"
 
 	"testing"
 )
 
-const badChartDir = "testdata/badchartfile"
-const badValuesFileDir = "testdata/badvaluesfile"
-const badYamlFileDir = "testdata/albatross"
-const goodChartDir = "testdata/goodone"
+const badChartDir = "rules/testdata/badchartfile"
+const badValuesFileDir = "rules/testdata/badvaluesfile"
+const badYamlFileDir = "rules/testdata/albatross"
+const goodChartDir = "rules/testdata/goodone"
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir)
-	if len(m) != 3 {
+	if len(m) != 4 {
+		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
 	// There should be 2 WARNINGs and one ERROR messages, check for them
-	var w, e, e2 = false, false, false
+	var w, e, e2, e3 bool
 	for _, msg := range m {
-		if msg.Severity == WarningSev {
-			if strings.Contains(msg.Text, "No templates") {
+		if msg.Severity == support.WarningSev {
+			if strings.Contains(msg.Text, "Templates directory not found") {
 				w = true
 			}
 		}
-		if msg.Severity == ErrorSev {
-			if strings.Contains(msg.Text, "must be greater than 0.0.0") {
+		if msg.Severity == support.ErrorSev {
+			if strings.Contains(msg.Text, "'version' 0.0.0 is less than or equal to 0") {
 				e = true
 			}
 			if strings.Contains(msg.Text, "'name' is required") {
 				e2 = true
 			}
+			if strings.Contains(msg.Text, "'name' and directory do not match") {
+				e3 = true
+			}
 		}
 	}
-	if !e || !e2 || !w {
+	if !e || !e2 || !e3 || !w {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }

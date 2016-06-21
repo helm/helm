@@ -1,6 +1,7 @@
-package lint
+package rules
 
 import (
+	"k8s.io/helm/pkg/lint/support"
 	"strings"
 	"testing"
 )
@@ -8,10 +9,12 @@ import (
 const templateTestBasedir = "./testdata/albatross"
 
 func TestTemplate(t *testing.T) {
-	res := Templates(templateTestBasedir)
+	linter := support.Linter{ChartDir: templateTestBasedir}
+	Templates(&linter)
+	res := linter.Messages
 
 	if len(res) != 1 {
-		t.Fatalf("Expected one error, got %d", len(res))
+		t.Fatalf("Expected one error, got %d, %v", len(res), res)
 	}
 
 	if !strings.Contains(res[0].Text, "deliberateSyntaxError") {
