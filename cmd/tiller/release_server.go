@@ -271,6 +271,9 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	if err := s.env.KubeClient.Create(s.env.Namespace, b); err != nil {
 		r.Info.Status.Code = release.Status_FAILED
 		log.Printf("warning: Release %q failed: %s", name, err)
+		if err := s.env.Releases.Create(r); err != nil {
+			log.Printf("warning: Failed to record release %q: %s", name, err)
+		}
 		return res, fmt.Errorf("release %s failed: %s", name, err)
 	}
 
