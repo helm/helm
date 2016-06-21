@@ -286,7 +286,10 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	// this stored in the future.
 	if err := s.env.Releases.Create(r); err != nil {
 		log.Printf("warning: Failed to record release %q: %s", name, err)
+		return res, nil
 	}
+
+	r.Info.Status.Code = release.Status_DEPLOYED
 	return res, nil
 }
 
