@@ -1,5 +1,5 @@
-hash: c936008b9f7c5628e6c1bc442f64c7f858387eb2ce56337a33d6b5ef98a6b822
-updated: 2016-06-16T12:47:24.36415913-06:00
+hash: c19bb16fcd70221817024b5443840f8beefadc89ee2398b7341594efb9b5bf08
+updated: 2016-06-21T13:29:28.273164339-06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c
@@ -147,7 +147,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
-  version: e6494bc7e81206ba6db404d2fd96500ffc453407
+  version: abe09979bcb1ec0a50b2d7bbf67e6aaa11787417
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
