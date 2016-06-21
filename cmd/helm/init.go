@@ -18,7 +18,6 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 var (
 	tillerImg            string
 	clientOnly           bool
-	initSkipNamespace    bool
 	defaultRepository    = "kubernetes-charts"
 	defaultRepositoryURL = "http://storage.googleapis.com/kubernetes-charts"
 )
@@ -27,7 +26,6 @@ func init() {
 	f := initCmd.Flags()
 	f.StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
 	f.BoolVarP(&clientOnly, "client-only", "c", false, "If set does not install tiller")
-	f.BoolVarP(&initSkipNamespace, "skip-namespace", "s", false, "Do not attempt to create a namespace. Assume the namespace is already there.")
 	RootCommand.AddCommand(initCmd)
 }
 
@@ -61,12 +59,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 }
 
 func installTiller() error {
-	i := client.NewInstaller()
-	i.Tiller["Image"] = tillerImg
-	i.Tiller["Namespace"] = tillerNamespace
-	err := i.Install(flagDebug, !initSkipNamespace)
-
-	if err != nil {
+	if err := client.Install(tillerNamespace, tillerImg, flagDebug); err != nil {
 		return fmt.Errorf("error installing: %s", err)
 	}
 	fmt.Println("\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
