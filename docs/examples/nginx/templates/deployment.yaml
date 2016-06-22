@@ -6,8 +6,11 @@ metadata:
   # multiple times into the same namespace.
   name: {{template "fullname" .}}
   labels:
+    # This is a convention. It makes it possible for an admin to query a cluster
+    # using Kubectl and find out what packages are managed by Helm. Helm itself
+    # does not depend on this label, though.
     heritage: helm
-    # This makes it easy to search using kubectl
+    # This makes it easy to search for all components of a release using kubectl.
     release: {{.Release.Name}}
     # This makes it easy to audit chart usage.
     chart: {{.Chart.Name}}-{{.Chart.Version}}
