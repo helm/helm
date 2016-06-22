@@ -185,7 +185,6 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 	rules := ignore.Empty()
 	ifile := filepath.Join(topdir, ignore.HelmIgnore)
-	fmt.Println(ifile)
 	if _, err := os.Stat(ifile); err == nil {
 		r, err := ignore.ParseFile(ifile)
 		if err != nil {
