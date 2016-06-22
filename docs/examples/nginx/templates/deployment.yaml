@@ -1,0 +1,42 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  # This uses a "fullname" template (see _helpers)
+  # Basing names on .Release.Name means that the same chart can be installed
+  # multiple times into the same namespace.
+  name: {{template "fullname" .}}
+  labels:
+    # This is a convention. It makes it possible for an admin to query a cluster
+    # using Kubectl and find out what packages are managed by Helm. Helm itself
+    # does not depend on this label, though.
+    heritage: helm
+    # This makes it easy to search for all components of a release using kubectl.
+    release: {{.Release.Name}}
+    # This makes it easy to audit chart usage.
+    chart: {{.Chart.Name}}-{{.Chart.Version}}
+spec:
+  replicas: {{default 1 .replicaCount}}
+  template:
+    metadata:
+      labels:
+        app: {{template "fullname" .}}
+        release: {{.Release.Name}}
+    spec:
+      containers:
+      - name: {{template "fullname" .}}
+        # Making image configurable is not necessary. Making imageTag configurable
+        # is a nice option for the user. Especially in the strange cases like
+        # nginx where the base distro is determined by the tag. Using :latest
+        # is frowned upon, using :stable isn't that great either.
+        image: "{{default "nginx" .image}}:{{default "stable-alpine" .imageTag}}"
+        imagePullPolicy: {{default "IfNotPresent" .pullPolicy}}
+        ports:
+        - containerPort: 80
+        # This (and the volumes section below) mount the config map as a volume.
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: wwwdata-volume
+      volumes:
+        - name: wwwdata-volume
+          configMap:
+            name: {{template "fullname" .}}

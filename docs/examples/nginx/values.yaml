@@ -1,0 +1,16 @@
+# Default values for nginx.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+
+# See the list at https://hub.docker.com/r/library/nginx/tags/
+imageTag: "1.11.0"
+
+# The port (defined on the service) to access the HTTP server.
+httpPort: 8888
+
+# Number of nginx instances to run
+replicaCount: 1
+
+index: >-
+  <h1>Hello</h1>
+  <p>This is a test</p>
