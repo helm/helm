@@ -66,16 +66,17 @@ func (c *Client) ForwardPort(namespace, podName string, remote int) (*Tunnel, er
 		return nil, err
 	}
 
+	errChan := make(chan error)
 	go func() {
-		if err := pf.ForwardPorts(); err != nil {
-			fmt.Printf("Error forwarding ports: %v\n", err)
-		}
+		errChan <- pf.ForwardPorts()
 	}()
 
-	// wait for listeners to start
-	<-pf.Ready
-
-	return t, nil
+	select {
+	case err = <-errChan:
+		return t, fmt.Errorf("Error forwarding ports: %v\n", err)
+	case <-pf.Ready:
+		return t, nil
+	}
 }
 
 func getAvailablePort() (int, error) {
