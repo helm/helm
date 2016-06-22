@@ -117,5 +117,19 @@ func locateChartPath(name string) (string, error) {
 	if _, err := os.Stat(crepo); err == nil {
 		return filepath.Abs(crepo)
 	}
+
+	// Try fetching the chart from a remote repo into a tmpdir
+	if filepath.Ext(name) != ".tgz" {
+		name += ".tgz"
+	}
+	if err := fetchChart(name); err == nil {
+		lname, err := filepath.Abs(filepath.Base(name))
+		if err != nil {
+			return lname, err
+		}
+		fmt.Printf("Fetched %s to %s\n", name, lname)
+		return lname, nil
+	}
+
 	return name, fmt.Errorf("file %q not found", name)
 }

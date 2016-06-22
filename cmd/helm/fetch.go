@@ -39,6 +39,11 @@ func fetch(cmd *cobra.Command, args []string) error {
 	if filepath.Ext(pname) != ".tgz" {
 		pname += ".tgz"
 	}
+	return fetchChart(pname)
+
+}
+
+func fetchChart(pname string) error {
 
 	f, err := repo.LoadRepositoriesFile(repositoriesFile())
 	if err != nil {
