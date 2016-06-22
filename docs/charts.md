@@ -284,8 +284,8 @@ namespace prefix removed, so it will see the password field simply as
 
 #### Global Values
 
-As of 2.0.0-Alpha.2, Helm supports sspecial "global" value. Consider
-this modified version of the previous exampl:
+As of 2.0.0-Alpha.2, Helm supports special "global" value. Consider
+this modified version of the previous example:
 
 ```yaml
 title: "My Wordpress Site" # Sent to the Wordpress template
