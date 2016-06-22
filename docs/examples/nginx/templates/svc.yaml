@@ -5,7 +5,7 @@ kind: Service
 metadata:
   name: {{template "fullname" .}}
   labels:
-    heritage: helm
+    heritage: {{.Release.Service}}
     release: {{.Release.Name}}
     chart: {{.Chart.Name}}-{{.Chart.Version}}
 spec:

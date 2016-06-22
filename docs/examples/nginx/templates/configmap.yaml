@@ -7,6 +7,7 @@ metadata:
   labels:
     release: {{.Release.Name}}
     app: {{template "fullname" .}}
+    heritage: {{.Release.Service}}
 data:
   # When the config map is mounted as a volume, these will be created as
   # files.
