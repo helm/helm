@@ -26,7 +26,7 @@ var lintError LintError = fmt.Errorf("Foobar")
 
 func TestRunLinterRule(t *testing.T) {
 	var tests = []struct {
-		Severity         Severity
+		Severity         int
 		LintError        error
 		ExpectedMessages int
 		ExpectedReturn   bool

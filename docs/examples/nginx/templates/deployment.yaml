@@ -9,18 +9,18 @@ metadata:
     # The "heritage" label is used to track which tool deployed a given chart.
     # It is useful for admins who want to see what releases a particular tool
     # is responsible for.
-    heritage: {{.Release.Service}}
+    heritage: {{ .Release.Service | quote }}
     # This makes it easy to search for all components of a release using kubectl.
-    release: {{.Release.Name}}
+    release: {{ .Release.Name | quote }}
     # This makes it easy to audit chart usage.
-    chart: {{.Chart.Name}}-{{.Chart.Version}}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
 spec:
-  replicas: {{default 1 .replicaCount}}
+  replicas: {{ default 1 .replicaCount | quote }}
   template:
     metadata:
       labels:
         app: {{template "fullname" .}}
-        release: {{.Release.Name}}
+        release: {{.Release.Name | quote }}
     spec:
       containers:
       - name: {{template "fullname" .}}

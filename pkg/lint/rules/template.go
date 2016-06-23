@@ -35,7 +35,7 @@ import (
 func Templates(linter *support.Linter) {
 	templatesPath := filepath.Join(linter.ChartDir, "templates")
 
-	templatesDirExist := linter.RunLinterRule(support.WarningSev, validateTemplatesDir(linter, templatesPath))
+	templatesDirExist := linter.RunLinterRule(support.WarningSev, validateTemplatesDir(templatesPath))
 
 	// Templates directory is optional for now
 	if !templatesDirExist {
@@ -80,14 +80,15 @@ func Templates(linter *support.Linter) {
 	for _, template := range chart.Templates {
 		fileName, preExecutedTemplate := template.Name, template.Data
 
-		yamlFile := linter.RunLinterRule(support.ErrorSev, validateYamlExtension(linter, fileName))
+		linter.RunLinterRule(support.ErrorSev, validateAllowedExtension(fileName))
 
-		if !yamlFile {
-			return
+		// We only apply the following lint rules to yaml files
+		if filepath.Ext(fileName) != ".yaml" {
+			continue
 		}
 
 		// Check that all the templates have a matching value
-		linter.RunLinterRule(support.WarningSev, validateNonMissingValues(fileName, chartValues, preExecutedTemplate))
+		linter.RunLinterRule(support.WarningSev, validateNonMissingValues(fileName, templatesPath, chartValues, preExecutedTemplate))
 
 		linter.RunLinterRule(support.WarningSev, validateQuotes(fileName, string(preExecutedTemplate)))
 
@@ -100,7 +101,7 @@ func Templates(linter *support.Linter) {
 		validYaml := linter.RunLinterRule(support.ErrorSev, validateYamlContent(fileName, err))
 
 		if !validYaml {
-			return
+			continue
 		}
 
 		linter.RunLinterRule(support.ErrorSev, validateNoNamespace(fileName, yamlStruct))
@@ -108,7 +109,7 @@ func Templates(linter *support.Linter) {
 }
 
 // Validation functions
-func validateTemplatesDir(linter *support.Linter, templatesPath string) (lintError support.LintError) {
+func validateTemplatesDir(templatesPath string) (lintError support.LintError) {
 	if fi, err := os.Stat(templatesPath); err != nil {
 		lintError = fmt.Errorf("Templates directory not found")
 	} else if err == nil && !fi.IsDir() {
@@ -145,22 +146,42 @@ func validateQuotes(templateName string, templateContent string) (lintError supp
 	return
 }
 
-func validateYamlExtension(linter *support.Linter, fileName string) (lintError support.LintError) {
-	if filepath.Ext(fileName) != ".yaml" {
-		lintError = fmt.Errorf("templates: \"%s\" needs to use the .yaml extension", fileName)
+func validateAllowedExtension(fileName string) (lintError support.LintError) {
+	ext := filepath.Ext(fileName)
+	validExtensions := []string{".yaml", ".tpl"}
+
+	for _, b := range validExtensions {
+		if b == ext {
+			return
+		}
 	}
+
+	lintError = fmt.Errorf("templates: \"%s\" needs to use .yaml or .tpl extensions", fileName)
 	return
 }
 
 // validateNonMissingValues checks that all the {{}} functions returns a non empty value (<no value> or "")
 // and return an error otherwise.
-func validateNonMissingValues(fileName string, chartValues chartutil.Values, templateContent []byte) (lintError support.LintError) {
+func validateNonMissingValues(fileName string, templatesPath string, chartValues chartutil.Values, templateContent []byte) (lintError support.LintError) {
+	// 1 - Load Main and associated templates
+	// Main template that we will parse dynamically
 	tmpl := template.New("tpl").Funcs(sprig.TxtFuncMap())
+	// If the templatesPath includes any *.tpl files we will parse and import them as associated templates
+	associatedTemplates, err := filepath.Glob(filepath.Join(templatesPath, "*.tpl"))
+
+	if len(associatedTemplates) > 0 {
+		tmpl, err = tmpl.ParseFiles(associatedTemplates...)
+		if err != nil {
+			return err
+		}
+	}
+
 	var buf bytes.Buffer
 	var emptyValues []string
 
+	// 2 - Extract every function and execute them agains the loaded values
 	// Supported {{ .Chart.Name }}, {{ .Chart.Name | quote }}
-	r, _ := regexp.Compile(`{{([\w]|\.*|\s|\|)+}}`)
+	r, _ := regexp.Compile(`{{[\w|\.|\s|\|\"|\']+}}`)
 	functions := r.FindAllString(string(templateContent), -1)
 
 	// Iterate over the {{ FOO }} templates, executing them against the chartValues
@@ -172,7 +193,12 @@ func validateNonMissingValues(fileName string, chartValues chartutil.Values, tem
 			return
 		}
 
-		err = newtmpl.Execute(&buf, chartValues)
+		err = newtmpl.ExecuteTemplate(&buf, "tpl", chartValues)
+
+		if err != nil {
+			return err
+		}
+
 		renderedValue := buf.String()
 
 		if renderedValue == "<no value>" || renderedValue == "" {
@@ -182,7 +208,7 @@ func validateNonMissingValues(fileName string, chartValues chartutil.Values, tem
 	}
 
 	if len(emptyValues) > 0 {
-		lintError = fmt.Errorf("templates: %s: The following functions are not returning eny value %v", fileName, emptyValues)
+		lintError = fmt.Errorf("templates: %s: The following functions are not returning any value %v", fileName, emptyValues)
 	}
 	return
 }

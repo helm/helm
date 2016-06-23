@@ -24,6 +24,23 @@ import (
 
 const templateTestBasedir = "./testdata/albatross"
 
+func TestValidateAllowedExtension(t *testing.T) {
+	var failTest = []string{"/foo", "/test.yml", "/test.toml", "test.yml"}
+	for _, test := range failTest {
+		err := validateAllowedExtension(test)
+		if err == nil || !strings.Contains(err.Error(), "needs to use .yaml or .tpl extension") {
+			t.Errorf("validateAllowedExtension('%s') to return \"needs to use .yaml or .tpl extension\", got no error", test)
+		}
+	}
+	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml"}
+	for _, test := range successTest {
+		err := validateAllowedExtension(test)
+		if err != nil {
+			t.Errorf("validateAllowedExtension('%s') to return no error but got \"%s\"", test, err.Error())
+		}
+	}
+}
+
 func TestValidateQuotes(t *testing.T) {
 	// add `| quote` lint error
 	var failTest = []string{"foo: {{.Release.Service }}", "foo:  {{.Release.Service }}", "- {{.Release.Service }}", "foo: {{default 'Never' .restart_policy}}", "-  {{.Release.Service }} "}
