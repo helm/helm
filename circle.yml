@@ -5,9 +5,8 @@ machine:
     GOPATH: /usr/local/go_workspace
     HOME: /home/ubuntu
     IMPORT_PATH: "k8s.io/helm"
-    PATH: $HOME/go/bin:/opt/google-cloud-sdk/bin:$PATH
+    PATH: $HOME/go/bin:$PATH
     GOROOT: $HOME/go
-    GCLOUD_PROJECT: kubernetes-helm
 
   services:
     - docker
@@ -38,8 +37,7 @@ deployment:
     branch: master
     commands:
       - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
-      - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
-      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
-      - sudo /opt/google-cloud-sdk/bin/gcloud config set project $GCLOUD_PROJECT
+      - sudo docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
       - cd $GOPATH/src/$IMPORT_PATH
-      - make docker-build docker-mutable-push
+      - make docker-build
+      - sudo docker push gcr.io/kubernetes-helm/tiller:canary
