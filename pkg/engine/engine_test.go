@@ -215,11 +215,13 @@ func TestRenderNestedValues(t *testing.T) {
 	innerpath := "charts/inner/templates/inner.tpl"
 	outerpath := "templates/outer.tpl"
 	deepestpath := "charts/inner/charts/deepest/templates/deepest.tpl"
+	checkrelease := "charts/inner/charts/deepest/templates/release.tpl"
 
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
 		Templates: []*chart.Template{
 			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
+			{Name: checkrelease, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
 		Values: &chart.Config{Raw: `what: "milkshake"`},
 	}
@@ -267,7 +269,7 @@ global:
 		"Values": tmp,
 		"Chart":  outer.Metadata,
 		"Release": chartutil.Values{
-			"Name": "Robert",
+			"Name": "dyin",
 		},
 	}
 
@@ -288,5 +290,9 @@ global:
 
 	if out[deepestpath] != "And this same flower that smiles to-day" {
 		t.Errorf("Unexpected deepest: %q", out[deepestpath])
+	}
+
+	if out[checkrelease] != "Tomorrow will be dyin" {
+		t.Errorf("Unexpected release: %q", out[checkrelease])
 	}
 }
