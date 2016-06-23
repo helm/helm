@@ -19,6 +19,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -71,6 +72,7 @@ func New() *Engine {
 func (e *Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	// Render the charts
 	tmap := allTemplates(chrt, values)
+	fmt.Printf("%v", tmap)
 	return e.render(tmap)
 }
 
@@ -104,7 +106,7 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	rendered := make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
-		//	log.Printf("Exec %s with %v (%s)", file, tpls[file].vals, tpls[file].tpl)
+		log.Printf("Exec %s with %v (%s)", file, tpls[file].vals, tpls[file].tpl)
 		if err := t.ExecuteTemplate(&buf, file, tpls[file].vals); err != nil {
 			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
 		}
@@ -137,9 +139,23 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 	} else if c.Metadata != nil && c.Metadata.Name != "" {
 		// An error indicates that the table doesn't exist. So we leave it as
 		// an empty map.
-		tmp, err := parentVals.Table(c.Metadata.Name)
+
+		var tmp chartutil.Values
+		vs, err := parentVals.Table("Values")
 		if err == nil {
-			cvals = tmp
+			tmp, err = vs.Table(c.Metadata.Name)
+		} else {
+			log.Printf(" *** COULD NOT FIND Values; using %s *** %q %v", c.Metadata.Name, err, parentVals)
+			tmp, err = parentVals.Table(c.Metadata.Name)
+		}
+
+		//tmp, err := parentVals["Values"].(chartutil.Values).Table(c.Metadata.Name)
+		if err == nil {
+			cvals = map[string]interface{}{
+				"Values":  tmp,
+				"Release": parentVals["Release"],
+				"Chart":   c,
+			}
 		}
 	}
 

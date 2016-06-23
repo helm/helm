@@ -15,7 +15,7 @@ metadata:
     # This makes it easy to audit chart usage.
     chart: "{{.Chart.Name}}-{{.Chart.Version}}"
 spec:
-  replicas: {{ default 1 .replicaCount | quote }}
+  replicas: {{default 1 .Values.replicaCount | quote}}
   template:
     metadata:
       labels:
@@ -28,8 +28,8 @@ spec:
         # is a nice option for the user. Especially in the strange cases like
         # nginx where the base distro is determined by the tag. Using :latest
         # is frowned upon, using :stable isn't that great either.
-        image: "{{default "nginx" .image}}:{{default "stable-alpine" .imageTag}}"
-        imagePullPolicy: {{default "IfNotPresent" .pullPolicy}}
+        image: "{{default "nginx" .Values.image}}:{{default "stable-alpine" .Values.imageTag}}"
+        imagePullPolicy: {{default "IfNotPresent" .Values.pullPolicy}}
         ports:
         - containerPort: 80
         # This (and the volumes section below) mount the config map as a volume.

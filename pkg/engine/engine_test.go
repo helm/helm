@@ -219,7 +219,7 @@ func TestRenderNestedValues(t *testing.T) {
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
 		Templates: []*chart.Template{
-			{Name: deepestpath, Data: []byte(`And this same {{.what}} that smiles {{.global.when}}`)},
+			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 		},
 		Values: &chart.Config{Raw: `what: "milkshake"`},
 	}
@@ -227,7 +227,7 @@ func TestRenderNestedValues(t *testing.T) {
 	inner := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "herrick"},
 		Templates: []*chart.Template{
-			{Name: innerpath, Data: []byte(`Old {{.who}} is still a-flyin'`)},
+			{Name: innerpath, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
 		Values:       &chart.Config{Raw: `who: "Robert"`},
 		Dependencies: []*chart.Chart{deepest},
@@ -236,7 +236,7 @@ func TestRenderNestedValues(t *testing.T) {
 	outer := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "top"},
 		Templates: []*chart.Template{
-			{Name: outerpath, Data: []byte(`Gather ye {{.what}} while ye may`)},
+			{Name: outerpath, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
 		},
 		Values: &chart.Config{
 			Raw: `
@@ -258,9 +258,17 @@ global:
   when: to-day`,
 	}
 
-	inject, err := chartutil.CoalesceValues(outer, &injValues, map[string]interface{}{})
+	tmp, err := chartutil.CoalesceValues(outer, &injValues, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	inject := chartutil.Values{
+		"Values": tmp,
+		"Chart":  outer.Metadata,
+		"Release": chartutil.Values{
+			"Name": "Robert",
+		},
 	}
 
 	t.Logf("Calculated values: %v", inject)

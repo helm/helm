@@ -94,7 +94,8 @@ func tableLookup(v Values, simple string) (Values, error) {
 	if !ok {
 		return v, ErrNoTable
 	}
-	vv, ok := v2.(map[string]interface{})
+	//vv, ok := v2.(map[string]interface{})
+	vv, ok := v2.(Values)
 	if !ok {
 		return vv, ErrNoTable
 	}

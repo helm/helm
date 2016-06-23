@@ -238,13 +238,17 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 
 	// Render the templates
 	// TODO: Fix based on whether chart has `engine: SOMETHING` set.
-	vals, err := chartutil.CoalesceValues(req.Chart, req.Values, overrides)
+	//vals, err := chartutil.CoalesceValues(req.Chart, req.Values, overrides)
+	vals, err := chartutil.CoalesceValues(req.Chart, req.Values, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	overrides["Values"] = vals
+
 	renderer := s.engine(req.Chart)
-	files, err := renderer.Render(req.Chart, vals)
+	files, err := renderer.Render(req.Chart, overrides)
+	//files, err := renderer.Render(req.Chart, vals)
 	if err != nil {
 		return nil, err
 	}
