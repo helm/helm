@@ -19,7 +19,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -106,7 +105,6 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	rendered := make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
-		log.Printf("Exec %s with %v (%s)", file, tpls[file].vals, tpls[file].tpl)
 		if err := t.ExecuteTemplate(&buf, file, tpls[file].vals); err != nil {
 			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
 		}
@@ -145,7 +143,6 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 		if err == nil {
 			tmp, err = vs.Table(c.Metadata.Name)
 		} else {
-			log.Printf(" *** COULD NOT FIND Values; using %s *** %q %v", c.Metadata.Name, err, parentVals)
 			tmp, err = parentVals.Table(c.Metadata.Name)
 		}
 
@@ -159,7 +156,6 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 		}
 	}
 
-	//log.Printf("racAllTpls values: %v", cvals)
 	for _, child := range c.Dependencies {
 		recAllTpls(child, templates, cvals, false)
 	}
