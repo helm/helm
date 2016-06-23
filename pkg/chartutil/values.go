@@ -94,12 +94,18 @@ func tableLookup(v Values, simple string) (Values, error) {
 	if !ok {
 		return v, ErrNoTable
 	}
-	//vv, ok := v2.(map[string]interface{})
-	vv, ok := v2.(Values)
-	if !ok {
-		return vv, ErrNoTable
+	if vv, ok := v2.(map[string]interface{}); ok {
+		return vv, nil
 	}
-	return vv, nil
+
+	// This catches a case where a value is of type Values, but doesn't (for some
+	// reason) match the map[string]interface{}. This has been observed in the
+	// wild, and might be a result of a nil map of type Values.
+	if vv, ok := v2.(Values); ok {
+		return vv, nil
+	}
+
+	return map[string]interface{}{}, ErrNoTable
 }
 
 // ReadValues will parse YAML byte data into a Values.
