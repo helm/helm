@@ -69,7 +69,7 @@ For example, an `nginx` chart whose version field is set to `version:
 1.2.3` will be named:
 
 ```
-nginix-1.2.3.tgz
+nginx-1.2.3.tgz
 ```
 
 More complex SemVer 2 names are also supported, such as
