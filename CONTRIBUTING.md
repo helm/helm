@@ -2,6 +2,14 @@
 
 The Kubernetes Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
 
+## Reporting a Security Issue
+
+Most of the time, when you find a bug in Helm, it should be reported
+using [GitHub issues](github.com/kubernetes/helm/issues). However, if
+you are reporting a _security vulnerability_, please email a report to
+[helm-security@deis.com](mailto:helm-security@deis.com). This will give
+us a chance to try to fix the issue before it is exploited in the wild.
+
 ## Contributor License Agreements
 
 We'd love to accept your patches! Before we can take them, we have to jump a couple of legal hurdles.
