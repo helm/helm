@@ -19,6 +19,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -31,6 +32,9 @@ type Engine struct {
 	// FuncMap contains the template functions that will be passed to each
 	// render call. This may only be modified before the first call to Render.
 	FuncMap template.FuncMap
+	// If strict is enabled, template rendering will fail if a template references
+	// a value that was not passed in.
+	Strict bool
 }
 
 // New creates a new Go template Engine instance.
@@ -93,6 +97,13 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	// to share common blocks, but to make the entire thing feel like a file-based
 	// template engine.
 	t := template.New("gotpl")
+	if e.Strict {
+		t.Option("missingkey=error")
+	} else {
+		// Not that zero will attempt to add default values for types it knows,
+		// but will still emit <no value> for others. We mitigate that later.
+		t.Option("missingkey=zero")
+	}
 	files := []string{}
 	for fname, r := range tpls {
 		t = t.New(fname).Funcs(e.FuncMap)
@@ -108,7 +119,10 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 		if err := t.ExecuteTemplate(&buf, file, tpls[file].vals); err != nil {
 			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
 		}
-		rendered[file] = buf.String()
+		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
+		// is set. Since missing=error will never get here, we do not need to handle
+		// the Strict case.
+		rendered[file] = strings.Replace(buf.String(), "<no value>", "", -1)
 		buf.Reset()
 	}
 
