@@ -11,5 +11,5 @@ metadata:
 data:
   # When the config map is mounted as a volume, these will be created as
   # files.
-  index.html: {{ default "Hello" .index | quote }}
+  index.html: {{default "Hello" .Values.index | quote}}
   test.txt: test

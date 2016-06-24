@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{.Release.Name}}-{{.Chart.Name}}"
+  name: "{{.Release.Name}}-{{.Values.Name}}"
   labels:
     # The "heritage" label is used to track which tool deployed a given chart.
     # It is useful for admins who want to see what releases a particular tool
@@ -19,7 +19,7 @@ spec:
   # called restartPolicy. If it is not found, it will use the default value.
   # {{default "Never" .restartPolicy}} is a slightly optimized version of the
   # more conventional syntax: {{.restartPolicy | default "Never"}}
-  restartPolicy: {{default "Never" .restartPolicy}}
+  restartPolicy: {{default "Never" .Values.restartPolicy}}
   containers:
   - name: waiter
     image: "alpine:3.3"
