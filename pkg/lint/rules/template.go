@@ -129,7 +129,7 @@ func validateQuotes(templateName string, templateContent string) (lintError supp
 	for _, str := range functions {
 		if match, _ := regexp.MatchString("quote", str); !match {
 			result := strings.Replace(str, "}}", " | quote }}", -1)
-			lintError = fmt.Errorf("templates: \"%s\". add \"| quote\" to your substitution functions: %s -> %s", templateName, str, result)
+			lintError = fmt.Errorf("templates: \"%s\". Wrap your substitution functions in quotes or use the sprig \"quote\" function: %s -> %s", templateName, str, result)
 			return
 		}
 	}
@@ -140,7 +140,7 @@ func validateQuotes(templateName string, templateContent string) (lintError supp
 
 	for _, str := range functions {
 		result := strings.Replace(str, str, fmt.Sprintf("\"%s\"", str), -1)
-		lintError = fmt.Errorf("templates: \"%s\". wrap your substitution functions in double quotes: %s -> %s", templateName, str, result)
+		lintError = fmt.Errorf("templates: \"%s\". Wrap your substitution functions in quotes: %s -> %s", templateName, str, result)
 		return
 	}
 	return
