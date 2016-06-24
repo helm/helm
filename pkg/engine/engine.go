@@ -71,7 +71,6 @@ func New() *Engine {
 func (e *Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	// Render the charts
 	tmap := allTemplates(chrt, values)
-	fmt.Printf("%v", tmap)
 	return e.render(tmap)
 }
 
