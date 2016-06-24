@@ -5,11 +5,11 @@ kind: ConfigMap
 metadata:
   name: {{template "fullname" .}}
   labels:
-    release: {{.Release.Name}}
+    release: {{ .Release.Name | quote }}
     app: {{template "fullname" .}}
-    heritage: {{.Release.Service}}
+    heritage: {{.Release.Service | quote }}
 data:
   # When the config map is mounted as a volume, these will be created as
   # files.
-  index.html: {{default "Hello" .index | squote}}
+  index.html: {{ default "Hello" .index | quote }}
   test.txt: test

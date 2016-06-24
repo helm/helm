@@ -17,70 +17,226 @@ limitations under the License.
 package rules
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/Masterminds/sprig"
-	"io/ioutil"
+	"gopkg.in/yaml.v2"
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/lint/support"
+	"k8s.io/helm/pkg/timeconv"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"text/template"
 )
 
-// Templates lints a chart's templates.
 func Templates(linter *support.Linter) {
-	templatespath := filepath.Join(linter.ChartDir, "templates")
+	templatesPath := filepath.Join(linter.ChartDir, "templates")
 
-	templatesExist := linter.RunLinterRule(support.WarningSev, validateTemplatesExistence(linter, templatespath))
+	templatesDirExist := linter.RunLinterRule(support.WarningSev, validateTemplatesDir(templatesPath))
 
 	// Templates directory is optional for now
-	if !templatesExist {
+	if !templatesDirExist {
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, validateTemplatesDir(linter, templatespath))
-	linter.RunLinterRule(support.ErrorSev, validateTemplatesParseable(linter, templatespath))
-}
+	// Load chart and parse templates, based on tiller/release_server
+	chart, err := chartutil.Load(linter.ChartDir)
 
-func validateTemplatesExistence(linter *support.Linter, templatesPath string) (lintError support.LintError) {
-	if _, err := os.Stat(templatesPath); err != nil {
-		lintError = fmt.Errorf("Templates directory not found")
+	chartLoaded := linter.RunLinterRule(support.ErrorSev, validateNoError(err))
+
+	if !chartLoaded {
+		return
 	}
-	return
+
+	// Based on cmd/tiller/release_server.go
+	overrides := map[string]interface{}{
+		"Release": map[string]interface{}{
+			"Name":    "testRelease",
+			"Service": "Tiller",
+			"Time":    timeconv.Now(),
+		},
+		"Chart": chart.Metadata,
+	}
+
+	chartValues, _ := chartutil.CoalesceValues(chart, chart.Values, overrides)
+	renderedContentMap, err := engine.New().Render(chart, chartValues)
+
+	renderOk := linter.RunLinterRule(support.ErrorSev, validateNoError(err))
+
+	if !renderOk {
+		return
+	}
+
+	/* Iterate over all the templates to check:
+	   - It is a .yaml file
+		 - All the values in the template file is defined
+		 - {{}} include | quote
+		 - Generated content is a valid Yaml file
+		 - Metadata.Namespace is not set
+	*/
+	for _, template := range chart.Templates {
+		fileName, preExecutedTemplate := template.Name, template.Data
+
+		linter.RunLinterRule(support.ErrorSev, validateAllowedExtension(fileName))
+
+		// We only apply the following lint rules to yaml files
+		if filepath.Ext(fileName) != ".yaml" {
+			continue
+		}
+
+		// Check that all the templates have a matching value
+		linter.RunLinterRule(support.WarningSev, validateNonMissingValues(fileName, templatesPath, chartValues, preExecutedTemplate))
+
+		linter.RunLinterRule(support.WarningSev, validateQuotes(fileName, string(preExecutedTemplate)))
+
+		renderedContent := renderedContentMap[fileName]
+		var yamlStruct K8sYamlStruct
+		// Even though K8sYamlStruct only defines Metadata namespace, an error in any other
+		// key will be raised as well
+		err := yaml.Unmarshal([]byte(renderedContent), &yamlStruct)
+
+		validYaml := linter.RunLinterRule(support.ErrorSev, validateYamlContent(fileName, err))
+
+		if !validYaml {
+			continue
+		}
+
+		linter.RunLinterRule(support.ErrorSev, validateNoNamespace(fileName, yamlStruct))
+	}
 }
 
-func validateTemplatesDir(linter *support.Linter, templatesPath string) (lintError support.LintError) {
-	fi, err := os.Stat(templatesPath)
-	if err == nil && !fi.IsDir() {
+// Validation functions
+func validateTemplatesDir(templatesPath string) (lintError support.LintError) {
+	if fi, err := os.Stat(templatesPath); err != nil {
+		lintError = fmt.Errorf("Templates directory not found")
+	} else if err == nil && !fi.IsDir() {
 		lintError = fmt.Errorf("'templates' is not a directory")
 	}
 	return
 }
 
-func validateTemplatesParseable(linter *support.Linter, templatesPath string) (lintError support.LintError) {
-	tpl := template.New("tpl").Funcs(sprig.TxtFuncMap())
+// Validates that go template tags include the quote pipelined function
+// i.e {{ .Foo.bar }} -> {{ .Foo.bar | quote }}
+// {{ .Foo.bar }}-{{ .Foo.baz }} -> "{{ .Foo.bar }}-{{ .Foo.baz }}"
+func validateQuotes(templateName string, templateContent string) (lintError support.LintError) {
+	// {{ .Foo.bar }}
+	r, _ := regexp.Compile(`(?m)(:|-)\s+{{[\w|\.|\s|\']+}}\s*$`)
+	functions := r.FindAllString(templateContent, -1)
 
-	lintError = filepath.Walk(templatesPath, func(name string, fi os.FileInfo, e error) error {
-		if e != nil {
-			return e
+	for _, str := range functions {
+		if match, _ := regexp.MatchString("quote", str); !match {
+			result := strings.Replace(str, "}}", " | quote }}", -1)
+			lintError = fmt.Errorf("templates: \"%s\". add \"| quote\" to your substitution functions: %s -> %s", templateName, str, result)
+			return
 		}
-		if fi.IsDir() {
-			return nil
-		}
+	}
 
-		data, err := ioutil.ReadFile(name)
-		if err != nil {
-			lintError = fmt.Errorf("cannot read %s: %s", name, err)
-			return lintError
-		}
+	// {{ .Foo.bar }}-{{ .Foo.baz }} -> "{{ .Foo.bar }}-{{ .Foo.baz }}"
+	r, _ = regexp.Compile(`(?m)({{(\w|\.|\s|\')+}}(\s|-)*)+\s*$`)
+	functions = r.FindAllString(templateContent, -1)
 
-		newtpl, err := tpl.Parse(string(data))
-		if err != nil {
-			lintError = fmt.Errorf("error processing %s: %s", name, err)
-			return lintError
-		}
-		tpl = newtpl
-		return nil
-	})
-
+	for _, str := range functions {
+		result := strings.Replace(str, str, fmt.Sprintf("\"%s\"", str), -1)
+		lintError = fmt.Errorf("templates: \"%s\". wrap your substitution functions in double quotes: %s -> %s", templateName, str, result)
+		return
+	}
 	return
+}
+
+func validateAllowedExtension(fileName string) (lintError support.LintError) {
+	ext := filepath.Ext(fileName)
+	validExtensions := []string{".yaml", ".tpl"}
+
+	for _, b := range validExtensions {
+		if b == ext {
+			return
+		}
+	}
+
+	lintError = fmt.Errorf("templates: \"%s\" needs to use .yaml or .tpl extensions", fileName)
+	return
+}
+
+// validateNonMissingValues checks that all the {{}} functions returns a non empty value (<no value> or "")
+// and return an error otherwise.
+func validateNonMissingValues(fileName string, templatesPath string, chartValues chartutil.Values, templateContent []byte) (lintError support.LintError) {
+	// 1 - Load Main and associated templates
+	// Main template that we will parse dynamically
+	tmpl := template.New("tpl").Funcs(sprig.TxtFuncMap())
+	// If the templatesPath includes any *.tpl files we will parse and import them as associated templates
+	associatedTemplates, err := filepath.Glob(filepath.Join(templatesPath, "*.tpl"))
+
+	if len(associatedTemplates) > 0 {
+		tmpl, err = tmpl.ParseFiles(associatedTemplates...)
+		if err != nil {
+			return err
+		}
+	}
+
+	var buf bytes.Buffer
+	var emptyValues []string
+
+	// 2 - Extract every function and execute them agains the loaded values
+	// Supported {{ .Chart.Name }}, {{ .Chart.Name | quote }}
+	r, _ := regexp.Compile(`{{[\w|\.|\s|\|\"|\']+}}`)
+	functions := r.FindAllString(string(templateContent), -1)
+
+	// Iterate over the {{ FOO }} templates, executing them against the chartValues
+	// We do individual templates parsing so we keep the reference for the key (str) that we want it to be interpolated.
+	for _, str := range functions {
+		newtmpl, err := tmpl.Parse(str)
+		if err != nil {
+			lintError = fmt.Errorf("templates: %s", err.Error())
+			return
+		}
+
+		err = newtmpl.ExecuteTemplate(&buf, "tpl", chartValues)
+
+		if err != nil {
+			return err
+		}
+
+		renderedValue := buf.String()
+
+		if renderedValue == "<no value>" || renderedValue == "" {
+			emptyValues = append(emptyValues, str)
+		}
+		buf.Reset()
+	}
+
+	if len(emptyValues) > 0 {
+		lintError = fmt.Errorf("templates: %s: The following functions are not returning any value %v", fileName, emptyValues)
+	}
+	return
+}
+
+func validateNoError(readError error) (lintError support.LintError) {
+	if readError != nil {
+		lintError = fmt.Errorf("templates: %s", readError.Error())
+	}
+	return
+}
+
+func validateYamlContent(filePath string, err error) (lintError support.LintError) {
+	if err != nil {
+		lintError = fmt.Errorf("templates: \"%s\". Wrong YAML content.", filePath)
+	}
+	return
+}
+
+func validateNoNamespace(filePath string, yamlStruct K8sYamlStruct) (lintError support.LintError) {
+	if yamlStruct.Metadata.Namespace != "" {
+		lintError = fmt.Errorf("templates: \"%s\". namespace option is currently NOT supported.", filePath)
+	}
+	return
+}
+
+// Need to access for now to Namespace only
+type K8sYamlStruct struct {
+	Metadata struct {
+		Namespace string
+	}
 }

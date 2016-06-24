@@ -5,12 +5,12 @@ kind: Service
 metadata:
   name: {{template "fullname" .}}
   labels:
-    heritage: {{.Release.Service}}
-    release: {{.Release.Name}}
-    chart: {{.Chart.Name}}-{{.Chart.Version}}
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
 spec:
   ports:
-  - port: {{default 80 .httpPort}}
+  - port: {{ default 80 .httpPort | quote }}
     targetPort: 80
     protocol: TCP
     name: http

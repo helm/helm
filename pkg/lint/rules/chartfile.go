@@ -33,30 +33,30 @@ import (
 func Chartfile(linter *support.Linter) {
 	chartPath := filepath.Join(linter.ChartDir, "Chart.yaml")
 
-	linter.RunLinterRule(support.ErrorSev, validateChartYamlFileExistence(linter, chartPath))
-	linter.RunLinterRule(support.ErrorSev, validateChartYamlNotDirectory(linter, chartPath))
+	linter.RunLinterRule(support.ErrorSev, validateChartYamlFileExistence(chartPath))
+	linter.RunLinterRule(support.ErrorSev, validateChartYamlNotDirectory(chartPath))
 
 	chartFile, err := chartutil.LoadChartfile(chartPath)
-	validChartFile := linter.RunLinterRule(support.ErrorSev, validateChartYamlFormat(linter, err))
+	validChartFile := linter.RunLinterRule(support.ErrorSev, validateChartYamlFormat(err))
 
 	// Guard clause. Following linter rules require a parseable ChartFile
 	if !validChartFile {
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, validateChartName(linter, chartFile))
-	linter.RunLinterRule(support.ErrorSev, validateChartNameDirMatch(linter, chartFile))
+	linter.RunLinterRule(support.ErrorSev, validateChartName(chartFile))
+	linter.RunLinterRule(support.ErrorSev, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
-	linter.RunLinterRule(support.ErrorSev, validateChartVersion(linter, chartFile))
-	linter.RunLinterRule(support.ErrorSev, validateChartEngine(linter, chartFile))
-	linter.RunLinterRule(support.ErrorSev, validateChartMaintainer(linter, chartFile))
-	linter.RunLinterRule(support.ErrorSev, validateChartSources(linter, chartFile))
-	linter.RunLinterRule(support.ErrorSev, validateChartHome(linter, chartFile))
+	linter.RunLinterRule(support.ErrorSev, validateChartVersion(chartFile))
+	linter.RunLinterRule(support.ErrorSev, validateChartEngine(chartFile))
+	linter.RunLinterRule(support.ErrorSev, validateChartMaintainer(chartFile))
+	linter.RunLinterRule(support.ErrorSev, validateChartSources(chartFile))
+	linter.RunLinterRule(support.ErrorSev, validateChartHome(chartFile))
 }
 
 // Auxiliar validation methods
-func validateChartYamlFileExistence(linter *support.Linter, chartPath string) (lintError support.LintError) {
+func validateChartYamlFileExistence(chartPath string) (lintError support.LintError) {
 	_, err := os.Stat(chartPath)
 	if err != nil {
 		lintError = fmt.Errorf("Chart.yaml file does not exists")
@@ -64,7 +64,7 @@ func validateChartYamlFileExistence(linter *support.Linter, chartPath string) (l
 	return
 }
 
-func validateChartYamlNotDirectory(linter *support.Linter, chartPath string) (lintError support.LintError) {
+func validateChartYamlNotDirectory(chartPath string) (lintError support.LintError) {
 	fi, err := os.Stat(chartPath)
 
 	if err == nil && fi.IsDir() {
@@ -73,28 +73,28 @@ func validateChartYamlNotDirectory(linter *support.Linter, chartPath string) (li
 	return
 }
 
-func validateChartYamlFormat(linter *support.Linter, chartFileError error) (lintError support.LintError) {
+func validateChartYamlFormat(chartFileError error) (lintError support.LintError) {
 	if chartFileError != nil {
 		lintError = fmt.Errorf("Chart.yaml is malformed: %s", chartFileError.Error())
 	}
 	return
 }
 
-func validateChartName(linter *support.Linter, cf *chart.Metadata) (lintError support.LintError) {
+func validateChartName(cf *chart.Metadata) (lintError support.LintError) {
 	if cf.Name == "" {
 		lintError = fmt.Errorf("Chart.yaml: 'name' is required")
 	}
 	return
 }
 
-func validateChartNameDirMatch(linter *support.Linter, cf *chart.Metadata) (lintError support.LintError) {
-	if cf.Name != filepath.Base(linter.ChartDir) {
+func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) (lintError support.LintError) {
+	if cf.Name != filepath.Base(chartDir) {
 		lintError = fmt.Errorf("Chart.yaml: 'name' and directory do not match")
 	}
 	return
 }
 
-func validateChartVersion(linter *support.Linter, cf *chart.Metadata) (lintError support.LintError) {
+func validateChartVersion(cf *chart.Metadata) (lintError support.LintError) {
 	if cf.Version == "" {
 		lintError = fmt.Errorf("Chart.yaml: 'version' value is required")
 		return
@@ -117,7 +117,7 @@ func validateChartVersion(linter *support.Linter, cf *chart.Metadata) (lintError
 	return
 }
 
-func validateChartEngine(linter *support.Linter, cf *chart.Metadata) (lintError support.LintError) {
+func validateChartEngine(cf *chart.Metadata) (lintError support.LintError) {
 	if cf.Engine == "" {
 		return
 	}
@@ -141,7 +141,7 @@ func validateChartEngine(linter *support.Linter, cf *chart.Metadata) (lintError 
 	return
 }
 
-func validateChartMaintainer(linter *support.Linter, cf *chart.Metadata) (lintError support.LintError) {
+func validateChartMaintainer(cf *chart.Metadata) (lintError support.LintError) {
 	for _, maintainer := range cf.Maintainers {
 		if maintainer.Name == "" {
 			lintError = fmt.Errorf("Chart.yaml: maintainer requires a name")
@@ -152,7 +152,7 @@ func validateChartMaintainer(linter *support.Linter, cf *chart.Metadata) (lintEr
 	return
 }
 
-func validateChartSources(linter *support.Linter, cf *chart.Metadata) (lintError support.LintError) {
+func validateChartSources(cf *chart.Metadata) (lintError support.LintError) {
 	for _, source := range cf.Sources {
 		if source == "" || !govalidator.IsRequestURL(source) {
 			lintError = fmt.Errorf("Chart.yaml: 'source' invalid URL %s", source)
@@ -161,7 +161,7 @@ func validateChartSources(linter *support.Linter, cf *chart.Metadata) (lintError
 	return
 }
 
-func validateChartHome(linter *support.Linter, cf *chart.Metadata) (lintError support.LintError) {
+func validateChartHome(cf *chart.Metadata) (lintError support.LintError) {
 	if cf.Home != "" && !govalidator.IsRequestURL(cf.Home) {
 		lintError = fmt.Errorf("Chart.yaml: 'home' invalid URL %s", cf.Home)
 	}

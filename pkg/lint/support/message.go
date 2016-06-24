@@ -19,8 +19,6 @@ package support
 import "fmt"
 
 // Severity indicatest the severity of a Message.
-type Severity int
-
 const (
 	// UnknownSev indicates that the severity of the error is unknown, and should not stop processing.
 	UnknownSev = iota
@@ -38,7 +36,7 @@ var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 // Message is a linting output message
 type Message struct {
 	// Severity is one of the *Sev constants
-	Severity Severity
+	Severity int
 	// Text contains the message text
 	Text string
 }
@@ -52,8 +50,6 @@ type LintError interface {
 	error
 }
 
-type ValidationFunc func(*Linter) LintError
-
 // String prints a string representation of this Message.
 //
 // Implements fmt.Stringer.
@@ -62,7 +58,12 @@ func (m Message) String() string {
 }
 
 // Returns true if the validation passed
-func (l *Linter) RunLinterRule(severity Severity, lintError LintError) bool {
+func (l *Linter) RunLinterRule(severity int, lintError LintError) bool {
+	// severity is out of bound
+	if severity < 0 || severity >= len(sev) {
+		return false
+	}
+
 	if lintError != nil {
 		l.Messages = append(l.Messages, Message{Text: lintError.Error(), Severity: severity})
 	}
