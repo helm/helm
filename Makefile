@@ -12,13 +12,32 @@ LDFLAGS   :=
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
+HOSTARCH  := $(shell $(GO) env GOHOSTARCH)
+HOSTOS		:= $(shell $(GO) env GOHOSTOS)
+BUILDARCH := $${GOARCH:-$(HOSTARCH)}
+BUILDOS   := $${GOOS:-$(HOSTOS)}
 
 .PHONY: all
 all: build
 
 .PHONY: build
-build:
-	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+build: gobuild copy
+
+.PHONY: gobuild
+gobuild:
+	$(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+
+.PHONY: copy
+copy:
+	@if [ $(BUILDARCH) != $(HOSTARCH) ] || [ $(BUILDOS) != $(HOSTOS) ]; then \
+		for binary in ${BINARIES} ; do \
+			cp $(GOPATH)/bin/$(BUILDOS)_$(BUILDARCH)/$$binary $(BINDIR); \
+		done \
+	else \
+		for binary in ${BINARIES} ; do \
+			cp $(GOPATH)/bin/$$binary $(BINDIR); \
+		done \
+	fi
 
 .PHONY: check-docker
 check-docker:
