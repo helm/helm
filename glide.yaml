@@ -22,6 +22,7 @@ import:
 - package: google.golang.org/grpc
   version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
 - package: k8s.io/kubernetes
+  version: v1.3.0-beta.2
   subpackages:
   - pkg/api
   - pkg/api/meta
