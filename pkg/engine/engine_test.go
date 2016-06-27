@@ -46,6 +46,7 @@ func TestRender(t *testing.T) {
 		Templates: []*chart.Template{
 			{Name: "test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
 			{Name: "test2", Data: []byte("{{.global.callme | lower }}")},
+			{Name: "test3", Data: []byte("{{.noValue}}")},
 		},
 		Values: &chart.Config{
 			Raw: "outer: DEFAULT\ninner: DEFAULT",
@@ -81,6 +82,10 @@ func TestRender(t *testing.T) {
 	expect = "ishmael"
 	if out["test2"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test2"])
+	}
+	expect = ""
+	if out["test3"] != expect {
+		t.Errorf("Expected %q, got %q", expect, out["test3"])
 	}
 
 	if _, err := e.Render(c, v); err != nil {
