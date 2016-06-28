@@ -44,7 +44,9 @@ type Message struct {
 // Linter encapsulates a linting run of a particular chart.
 type Linter struct {
 	Messages []Message
-	ChartDir string
+	// The highest severity of all the failing lint rules
+	HighestSeverity int
+	ChartDir        string
 }
 
 // LintError describes an error encountered while linting.
@@ -68,6 +70,10 @@ func (l *Linter) RunLinterRule(severity int, lintError LintError) bool {
 
 	if lintError != nil {
 		l.Messages = append(l.Messages, Message{Text: lintError.Error(), Severity: severity})
+
+		if severity > l.HighestSeverity {
+			l.HighestSeverity = severity
+		}
 	}
 	return lintError == nil
 }

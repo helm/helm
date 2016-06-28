@@ -28,6 +28,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/lint"
+	"k8s.io/helm/pkg/lint/support"
 )
 
 var longLintHelp = `
@@ -51,6 +52,7 @@ func init() {
 }
 
 var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")
+var errLintFailed = errors.New("lint failed")
 
 func lintCmd(cmd *cobra.Command, args []string) error {
 	path := "."
@@ -92,14 +94,19 @@ func lintChart(path string) error {
 		return errLintNoChart
 	}
 
-	issues := lint.All(path)
+	linter := lint.All(path)
 
-	if len(issues) == 0 {
+	if len(linter.Messages) == 0 {
 		fmt.Println("Lint OK")
+		return nil
 	}
 
-	for _, i := range issues {
+	for _, i := range linter.Messages {
 		fmt.Printf("%s\n", i)
+	}
+
+	if linter.HighestSeverity == support.ErrorSev {
+		return errLintFailed
 	}
 
 	return nil
