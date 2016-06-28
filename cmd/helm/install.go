@@ -135,6 +135,7 @@ func locateChartPath(name string) (string, error) {
 	}
 
 	// Try fetching the chart from a remote repo into a tmpdir
+	origname := name
 	if filepath.Ext(name) != ".tgz" {
 		name += ".tgz"
 	}
@@ -143,9 +144,9 @@ func locateChartPath(name string) (string, error) {
 		if err != nil {
 			return lname, err
 		}
-		fmt.Printf("Fetched %s to %s\n", name, lname)
+		fmt.Printf("Fetched %s to %s\n", origname, lname)
 		return lname, nil
 	}
 
-	return name, fmt.Errorf("file %q not found", name)
+	return name, fmt.Errorf("file %q not found", origname)
 }
