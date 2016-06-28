@@ -41,11 +41,13 @@ type Message struct {
 	Text string
 }
 
+// Linter encapsulates a linting run of a particular chart.
 type Linter struct {
 	Messages []Message
 	ChartDir string
 }
 
+// LintError describes an error encountered while linting.
 type LintError interface {
 	error
 }
@@ -57,7 +59,7 @@ func (m Message) String() string {
 	return fmt.Sprintf("[%s] %s", sev[m.Severity], m.Text)
 }
 
-// Returns true if the validation passed
+// RunLinterRule returns true if the validation passed
 func (l *Linter) RunLinterRule(severity int, lintError LintError) bool {
 	// severity is out of bound
 	if severity < 0 || severity >= len(sev) {

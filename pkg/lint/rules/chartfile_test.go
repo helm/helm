@@ -28,12 +28,16 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
-const badChartDir = "testdata/badchartfile"
-const goodChartDir = "testdata/goodone"
+const (
+	badChartDir  = "testdata/badchartfile"
+	goodChartDir = "testdata/goodone"
+)
 
-var badChartFilePath string = filepath.Join(badChartDir, "Chart.yaml")
-var goodChartFilePath string = filepath.Join(goodChartDir, "Chart.yaml")
-var nonExistingChartFilePath string = filepath.Join(os.TempDir(), "Chart.yaml")
+var (
+	badChartFilePath         = filepath.Join(badChartDir, "Chart.yaml")
+	goodChartFilePath        = filepath.Join(goodChartDir, "Chart.yaml")
+	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
+)
 
 var badChart, chatLoadRrr = chartutil.LoadChartfile(badChartFilePath)
 var goodChart, _ = chartutil.LoadChartfile(goodChartFilePath)
