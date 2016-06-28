@@ -17,7 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
-	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -28,7 +28,7 @@ import (
 )
 
 // ErrNoTable indicates that a chart does not have a matching table.
-var ErrNoTable = errors.New("no table")
+type ErrNoTable error
 
 // GlobalKey is the name of the Values key that is used for storing global vars.
 const GlobalKey = "global"
@@ -92,7 +92,7 @@ func (v Values) Encode(w io.Writer) error {
 func tableLookup(v Values, simple string) (Values, error) {
 	v2, ok := v[simple]
 	if !ok {
-		return v, ErrNoTable
+		return v, ErrNoTable(fmt.Errorf("no table named %q (%v)", simple, v))
 	}
 	if vv, ok := v2.(map[string]interface{}); ok {
 		return vv, nil
@@ -105,7 +105,8 @@ func tableLookup(v Values, simple string) (Values, error) {
 		return vv, nil
 	}
 
-	return map[string]interface{}{}, ErrNoTable
+	var e ErrNoTable = fmt.Errorf("no table named %q", simple)
+	return map[string]interface{}{}, e
 }
 
 // ReadValues will parse YAML byte data into a Values.
@@ -138,7 +139,7 @@ func ReadValuesFile(filename string) (Values, error) {
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals *chart.Config, overrides map[string]interface{}) (Values, error) {
-	var cvals Values
+	cvals := Values{}
 	// Parse values if not nil. We merge these at the top level because
 	// the passed-in values are in the same namespace as the parent chart.
 	if vals != nil {
