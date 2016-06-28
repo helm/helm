@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/gosuri/uitable"
@@ -52,51 +54,59 @@ server's default, which may be much higher than 256. Pairing the '--max'
 flag with the '--offset' flag allows you to page through results.
 `
 
-var listCommand = &cobra.Command{
-	Use:               "list [flags] [FILTER]",
-	Short:             "list releases",
-	Long:              listHelp,
-	RunE:              listCmd,
-	Aliases:           []string{"ls"},
-	PersistentPreRunE: setupConnection,
+type lister struct {
+	long     bool
+	max      int
+	offset   string
+	byDate   bool
+	sortDesc bool
+	out      io.Writer
 }
 
-var (
-	listLong     bool
-	listMax      int
-	listOffset   string
-	listByDate   bool
-	listSortDesc bool
-)
+func newListCmd(out io.Writer) *cobra.Command {
+	list := &lister{
+		out: out,
+	}
+	cmd := &cobra.Command{
+		Use:               "list [flags] [FILTER]",
+		Short:             "list releases",
+		Long:              listHelp,
+		Aliases:           []string{"ls"},
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return list.run(args)
+		},
+	}
+	f := cmd.Flags()
+	f.BoolVarP(&list.long, "long", "l", false, "output long listing format")
+	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
+	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
+	f.IntVarP(&list.max, "max", "m", 256, "maximum number of releases to fetch")
+	f.StringVarP(&list.offset, "offset", "o", "", "the next release name in the list, used to offset from start value")
+	return cmd
+}
 
 func init() {
-	f := listCommand.Flags()
-	f.BoolVarP(&listLong, "long", "l", false, "output long listing format")
-	f.BoolVarP(&listByDate, "date", "d", false, "sort by release date")
-	f.BoolVarP(&listSortDesc, "reverse", "r", false, "reverse the sort order")
-	f.IntVarP(&listMax, "max", "m", 256, "maximum number of releases to fetch")
-	f.StringVarP(&listOffset, "offset", "o", "", "the next release name in the list, used to offset from start value")
-
-	RootCommand.AddCommand(listCommand)
+	RootCommand.AddCommand(newListCmd(os.Stdout))
 }
 
-func listCmd(cmd *cobra.Command, args []string) error {
+func (l *lister) run(args []string) error {
 	var filter string
 	if len(args) > 0 {
 		filter = strings.Join(args, " ")
 	}
 
 	sortBy := services.ListSort_NAME
-	if listByDate {
+	if l.byDate {
 		sortBy = services.ListSort_LAST_RELEASED
 	}
 
 	sortOrder := services.ListSort_ASC
-	if listSortDesc {
+	if l.sortDesc {
 		sortOrder = services.ListSort_DESC
 	}
 
-	res, err := helm.ListReleases(listMax, listOffset, sortBy, sortOrder, filter)
+	res, err := helm.ListReleases(l.max, l.offset, sortBy, sortOrder, filter)
 	if err != nil {
 		return prettyError(err)
 	}
@@ -106,21 +116,23 @@ func listCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if res.Next != "" {
-		fmt.Printf("\tnext: %s", res.Next)
+		fmt.Fprintf(l.out, "\tnext: %s", res.Next)
 	}
 
 	rels := res.Releases
-	if listLong {
-		return formatList(rels)
+
+	if l.long {
+		fmt.Fprintln(l.out, formatList(rels))
+		return nil
 	}
 	for _, r := range rels {
-		fmt.Println(r.Name)
+		fmt.Fprintln(l.out, r.Name)
 	}
 
 	return nil
 }
 
-func formatList(rels []*release.Release) error {
+func formatList(rels []*release.Release) string {
 	table := uitable.New()
 	table.MaxColWidth = 30
 	table.AddRow("NAME", "UPDATED", "STATUS", "CHART")
@@ -130,7 +142,5 @@ func formatList(rels []*release.Release) error {
 		s := r.Info.Status.Code.String()
 		table.AddRow(r.Name, t, s, c)
 	}
-	fmt.Println(table)
-
-	return nil
+	return table.String()
 }
