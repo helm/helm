@@ -14,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package lint
+package main
 
 import (
-	"path/filepath"
-
-	"k8s.io/helm/pkg/lint/rules"
-	"k8s.io/helm/pkg/lint/support"
+	"testing"
 )
 
-// All runs all of the available linters on the given base directory.
-func All(basedir string) []support.Message {
+var (
+	archivedChartPath = "testdata/testcharts/compressedchart-0.1.0.tgz"
+	chartDirPath      = "testdata/testcharts/decompressedchart/"
+)
 
-	// Using abs path to get directory context
-	chartDir, _ := filepath.Abs(basedir)
+func TestLintChart(t *testing.T) {
+	if err := lintChart(chartDirPath); err != nil {
+		t.Errorf("%s", err)
+	}
 
-	linter := support.Linter{ChartDir: chartDir}
-	rules.Chartfile(&linter)
-	rules.Values(&linter)
-	rules.Templates(&linter)
-	return linter.Messages
+	if err := lintChart(archivedChartPath); err != nil {
+		t.Errorf("%s", err)
+	}
+
 }
