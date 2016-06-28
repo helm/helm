@@ -69,6 +69,7 @@ var RootCommand = &cobra.Command{
 	Short:             "The Helm package manager for Kubernetes.",
 	Long:              globalUsage,
 	PersistentPostRun: teardown,
+	SilenceUsage:      true,
 }
 
 func init() {
