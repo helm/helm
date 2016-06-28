@@ -288,6 +288,27 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 	return dst
 }
 
+// ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
+func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options map[string]interface{}) (Values, error) {
+	overrides := map[string]interface{}{
+		"Release": map[string]interface{}{
+			"Name":      options["releaseName"],
+			"Time":      options["releaseTime"],
+			"Namespace": options["namespace"],
+			"Service":   "Tiller",
+		},
+		"Chart": chrt.Metadata,
+	}
+
+	vals, err := CoalesceValues(chrt, chrtVals, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	overrides["Values"] = vals
+	return overrides, nil
+}
+
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
 func istable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})

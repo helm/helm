@@ -17,9 +17,12 @@ limitations under the License.
 package rules
 
 import (
-	"k8s.io/helm/pkg/lint/support"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"k8s.io/helm/pkg/lint/support"
 )
 
 const templateTestBasedir = "./testdata/albatross"
@@ -73,7 +76,7 @@ func TestValidateQuotes(t *testing.T) {
 
 }
 
-func TestTemplate(t *testing.T) {
+func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
 	Templates(&linter)
 	res := linter.Messages
@@ -84,5 +87,24 @@ func TestTemplate(t *testing.T) {
 
 	if !strings.Contains(res[0].Text, "deliberateSyntaxError") {
 		t.Errorf("Unexpected error: %s", res[0])
+	}
+}
+
+var wrongTemplatePath string = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
+var ignoredTemplatePath string = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
+
+// Test a template with all the existing features:
+// namespaces, partial templates
+func TestTemplateIntegrationHappyPath(t *testing.T) {
+	// Rename file so it gets ignored by the linter
+	os.Rename(wrongTemplatePath, ignoredTemplatePath)
+	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
+
+	linter := support.Linter{ChartDir: templateTestBasedir}
+	Templates(&linter)
+	res := linter.Messages
+
+	if len(res) != 0 {
+		t.Fatalf("Expected no error, got %d, %v", len(res), res)
 	}
 }

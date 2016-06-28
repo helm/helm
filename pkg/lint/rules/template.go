@@ -19,17 +19,18 @@ package rules
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"text/template"
+
 	"github.com/Masterminds/sprig"
 	"gopkg.in/yaml.v2"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/lint/support"
 	"k8s.io/helm/pkg/timeconv"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"text/template"
 )
 
 func Templates(linter *support.Linter) {
@@ -51,18 +52,9 @@ func Templates(linter *support.Linter) {
 		return
 	}
 
-	// Based on cmd/tiller/release_server.go
-	overrides := map[string]interface{}{
-		"Release": map[string]interface{}{
-			"Name":    "testRelease",
-			"Service": "Tiller",
-			"Time":    timeconv.Now(),
-		},
-		"Chart": chart.Metadata,
-	}
-
-	chartValues, _ := chartutil.CoalesceValues(chart, chart.Values, overrides)
-	renderedContentMap, err := engine.New().Render(chart, chartValues)
+	options := map[string]interface{}{"namespace": "testNamespace", "releaseName": "testRelease", "releaseTime": timeconv.Now()}
+	valuesToRender, err := chartutil.ToRenderValues(chart, chart.Values, options)
+	renderedContentMap, err := engine.New().Render(chart, valuesToRender)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, validateNoError(err))
 
@@ -88,7 +80,7 @@ func Templates(linter *support.Linter) {
 		}
 
 		// Check that all the templates have a matching value
-		linter.RunLinterRule(support.WarningSev, validateNonMissingValues(fileName, templatesPath, chartValues, preExecutedTemplate))
+		linter.RunLinterRule(support.WarningSev, validateNonMissingValues(fileName, templatesPath, valuesToRender, preExecutedTemplate))
 
 		linter.RunLinterRule(support.WarningSev, validateQuotes(fileName, string(preExecutedTemplate)))
 
