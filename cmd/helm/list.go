@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/gosuri/uitable"
@@ -55,17 +54,20 @@ flag with the '--offset' flag allows you to page through results.
 `
 
 type lister struct {
+	filter   string
 	long     bool
-	max      int
+	limit    int
 	offset   string
 	byDate   bool
 	sortDesc bool
 	out      io.Writer
+	client   helm.Interface
 }
 
-func newListCmd(out io.Writer) *cobra.Command {
+func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	list := &lister{
-		out: out,
+		client: client,
+		out:    out,
 	}
 	cmd := &cobra.Command{
 		Use:               "list [flags] [FILTER]",
@@ -74,28 +76,22 @@ func newListCmd(out io.Writer) *cobra.Command {
 		Aliases:           []string{"ls"},
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return list.run(args)
+			if len(args) > 0 {
+				list.filter = strings.Join(args, " ")
+			}
+			return list.run()
 		},
 	}
 	f := cmd.Flags()
 	f.BoolVarP(&list.long, "long", "l", false, "output long listing format")
 	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
-	f.IntVarP(&list.max, "max", "m", 256, "maximum number of releases to fetch")
+	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.StringVarP(&list.offset, "offset", "o", "", "the next release name in the list, used to offset from start value")
 	return cmd
 }
 
-func init() {
-	RootCommand.AddCommand(newListCmd(os.Stdout))
-}
-
-func (l *lister) run(args []string) error {
-	var filter string
-	if len(args) > 0 {
-		filter = strings.Join(args, " ")
-	}
-
+func (l *lister) run() error {
 	sortBy := services.ListSort_NAME
 	if l.byDate {
 		sortBy = services.ListSort_LAST_RELEASED
@@ -106,7 +102,14 @@ func (l *lister) run(args []string) error {
 		sortOrder = services.ListSort_DESC
 	}
 
-	res, err := helm.ListReleases(l.max, l.offset, sortBy, sortOrder, filter)
+	res, err := l.client.ListReleases(
+		helm.ReleaseListLimit(l.limit),
+		helm.ReleaseListOffset(l.offset),
+		helm.ReleaseListFilter(l.filter),
+		helm.ReleaseListSort(int32(sortBy)),
+		helm.ReleaseListOrder(int32(sortOrder)),
+	)
+
 	if err != nil {
 		return prettyError(err)
 	}

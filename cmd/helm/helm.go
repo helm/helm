@@ -90,7 +90,11 @@ func newRootCmd() *cobra.Command {
 var RootCommand = newRootCmd()
 
 func main() {
+	out := os.Stdout
+	client := helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
+
 	cmd := RootCommand
+	cmd.AddCommand(newListCmd(client, out))
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
