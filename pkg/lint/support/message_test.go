@@ -37,10 +37,12 @@ func TestRunLinterRule(t *testing.T) {
 		{ErrorSev, lintError, 3, false, ErrorSev},
 		// No error so it returns true
 		{ErrorSev, nil, 3, true, ErrorSev},
+		// Retains highest severity
+		{InfoSev, lintError, 4, false, ErrorSev},
 		// Invalid severity values
-		{4, lintError, 3, false, ErrorSev},
-		{22, lintError, 3, false, ErrorSev},
-		{-1, lintError, 3, false, ErrorSev},
+		{4, lintError, 4, false, ErrorSev},
+		{22, lintError, 4, false, ErrorSev},
+		{-1, lintError, 4, false, ErrorSev},
 	}
 
 	for _, test := range tests {
