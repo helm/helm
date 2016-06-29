@@ -111,9 +111,9 @@ func tableLookup(v Values, simple string) (Values, error) {
 
 // ReadValues will parse YAML byte data into a Values.
 func ReadValues(data []byte) (vals Values, err error) {
-	vals = make(map[string]interface{})
-	if len(data) > 0 {
-		err = yaml.Unmarshal(data, &vals)
+	err = yaml.Unmarshal(data, &vals)
+	if len(vals) == 0 {
+		vals = Values{}
 	}
 	return
 }
