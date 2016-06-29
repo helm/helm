@@ -65,7 +65,10 @@ type listCmd struct {
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	list := &listCmd{out: out}
+	list := &listCmd{
+		out:    out,
+		client: client,
+	}
 	cmd := &cobra.Command{
 		Use:               "list [flags] [FILTER]",
 		Short:             "list releases",
