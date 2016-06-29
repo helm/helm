@@ -115,9 +115,13 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	rendered := make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
-		if err := t.ExecuteTemplate(&buf, file, tpls[file].vals); err != nil {
+		// At render time, add information about the template that is being rendered.
+		vals := tpls[file].vals
+		vals["Template"] = map[string]interface{}{"Name": file}
+		if err := t.ExecuteTemplate(&buf, file, vals); err != nil {
 			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
 		}
+
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
 		// the Strict case.
@@ -142,30 +146,27 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
 func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals chartutil.Values, top bool) {
-	var cvals chartutil.Values
+	// This should never evaluate to a nil map. That will cause problems when
+	// values are appended later.
+	cvals := chartutil.Values{}
 	if top {
 		// If this is the top of the rendering tree, assume that parentVals
 		// is already resolved to the authoritative values.
 		cvals = parentVals
 	} else if c.Metadata != nil && c.Metadata.Name != "" {
-		// An error indicates that the table doesn't exist. So we leave it as
-		// an empty map.
-
-		var tmp chartutil.Values
-		vs, err := parentVals.Table("Values")
-		if err == nil {
-			tmp, err = vs.Table(c.Metadata.Name)
-		} else {
-			tmp, err = parentVals.Table(c.Metadata.Name)
+		// If there is a {{.Values.ThisChart}} in the parent metadata,
+		// copy that into the {{.Values}} for this template.
+		newVals := chartutil.Values{}
+		if vs, err := parentVals.Table("Values"); err == nil {
+			if tmp, err := vs.Table(c.Metadata.Name); err == nil {
+				newVals = tmp
+			}
 		}
 
-		//tmp, err := parentVals["Values"].(chartutil.Values).Table(c.Metadata.Name)
-		if err == nil {
-			cvals = map[string]interface{}{
-				"Values":  tmp,
-				"Release": parentVals["Release"],
-				"Chart":   c,
-			}
+		cvals = map[string]interface{}{
+			"Values":  newVals,
+			"Release": parentVals["Release"],
+			"Chart":   c.Metadata,
 		}
 	}
 

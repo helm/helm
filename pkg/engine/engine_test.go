@@ -154,18 +154,21 @@ func TestParallelRenderInternals(t *testing.T) {
 
 func TestAllTemplates(t *testing.T) {
 	ch1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "ch1"},
 		Templates: []*chart.Template{
 			{Name: "foo", Data: []byte("foo")},
 			{Name: "bar", Data: []byte("bar")},
 		},
 		Dependencies: []*chart.Chart{
 			{
+				Metadata: &chart.Metadata{Name: "laboratory mice"},
 				Templates: []*chart.Template{
 					{Name: "pinky", Data: []byte("pinky")},
 					{Name: "brain", Data: []byte("brain")},
 				},
-				Dependencies: []*chart.Chart{
-					{Templates: []*chart.Template{
+				Dependencies: []*chart.Chart{{
+					Metadata: &chart.Metadata{Name: "same thing we do every night"},
+					Templates: []*chart.Template{
 						{Name: "innermost", Data: []byte("innermost")},
 					}},
 				},
@@ -300,4 +303,50 @@ global:
 	if out[checkrelease] != "Tomorrow will be dyin" {
 		t.Errorf("Unexpected release: %q", out[checkrelease])
 	}
+}
+
+func TestRenderBuiltinValues(t *testing.T) {
+	inner := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "Latium"},
+		Templates: []*chart.Template{
+			{Name: "Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{},
+	}
+
+	outer := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "Troy"},
+		Templates: []*chart.Template{
+			{Name: "Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{inner},
+	}
+
+	inject := chartutil.Values{
+		"Values": &chart.Config{Raw: ""},
+		"Chart":  outer.Metadata,
+		"Release": chartutil.Values{
+			"Name": "Aeneid",
+		},
+	}
+
+	t.Logf("Calculated values: %v", outer)
+
+	out, err := New().Render(outer, inject)
+	if err != nil {
+		t.Fatalf("failed to render templates: %s", err)
+	}
+
+	expects := map[string]string{
+		"Lavinia": "LaviniaLatiumAeneid",
+		"Aeneas":  "AeneasTroyAeneid",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+
 }
