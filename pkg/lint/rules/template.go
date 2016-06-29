@@ -52,7 +52,7 @@ func Templates(linter *support.Linter) {
 		return
 	}
 
-	options := map[string]interface{}{"namespace": "testNamespace", "releaseName": "testRelease", "releaseTime": timeconv.Now()}
+	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: "testNamespace"}
 	valuesToRender, err := chartutil.ToRenderValues(chart, chart.Values, options)
 	renderedContentMap, err := engine.New().Render(chart, valuesToRender)
 

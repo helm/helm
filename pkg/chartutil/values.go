@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -288,13 +289,21 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 	return dst
 }
 
+// ReleaseOptions represents the additional release options needed
+// for the composition of the final values struct
+type ReleaseOptions struct {
+	Name      string
+	Time      *timestamp.Timestamp
+	Namespace string
+}
+
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
-func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options map[string]interface{}) (Values, error) {
+func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOptions) (Values, error) {
 	overrides := map[string]interface{}{
 		"Release": map[string]interface{}{
-			"Name":      options["releaseName"],
-			"Time":      options["releaseTime"],
-			"Namespace": options["namespace"],
+			"Name":      options.Name,
+			"Time":      options.Time,
+			"Namespace": options.Namespace,
 			"Service":   "Tiller",
 		},
 		"Chart": chrt.Metadata,

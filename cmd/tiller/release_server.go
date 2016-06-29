@@ -226,7 +226,7 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	}
 
 	ts := timeconv.Now()
-	options := map[string]interface{}{"namespace": s.env.Namespace, "releaseName": name, "releaseTime": ts}
+	options := chartutil.ReleaseOptions{Name: name, Time: ts, Namespace: s.env.Namespace}
 	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
 	if err != nil {
 		return nil, err
