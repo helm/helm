@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -63,7 +64,7 @@ Environment:
   $HELM_HOST      Set an alternative Tiller host. The format is host:port (default ":44134").
 `
 
-func newRootCmd() *cobra.Command {
+func newRootCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -83,18 +84,17 @@ func newRootCmd() *cobra.Command {
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
 	p.StringVarP(&tillerNamespace, "namespace", "", "", "kubernetes namespace")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
+
+	cmd.AddCommand(newListCmd(nil, out))
+
 	return cmd
 }
 
 // RootCommand is the top-level command for Helm.
-var RootCommand = newRootCmd()
+var RootCommand = newRootCmd(os.Stdout)
 
 func main() {
-	out := os.Stdout
-	client := helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
-
 	cmd := RootCommand
-	cmd.AddCommand(newListCmd(client, out))
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}

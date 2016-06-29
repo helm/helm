@@ -65,10 +65,7 @@ type lister struct {
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	list := &lister{
-		client: client,
-		out:    out,
-	}
+	list := &lister{out: out}
 	cmd := &cobra.Command{
 		Use:               "list [flags] [FILTER]",
 		Short:             "list releases",
@@ -78,6 +75,9 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				list.filter = strings.Join(args, " ")
+			}
+			if list.client == nil {
+				list.client = helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
 			}
 			return list.run()
 		},
