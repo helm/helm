@@ -14,8 +14,15 @@ BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
 HOSTARCH  := $(shell $(GO) env GOHOSTARCH)
 HOSTOS		:= $(shell $(GO) env GOHOSTOS)
-BUILDARCH := $${GOARCH:-$(HOSTARCH)}
-BUILDOS   := $${GOOS:-$(HOSTOS)}
+BUILDARCH := $(shell echo $${GOARCH:-$(HOSTARCH)})
+BUILDOS   := $(shell echo $${GOOS:-$(HOSTOS)})
+GOBIN			:= $(BINDIR)
+ifneq ($(BUILDARCH),$(HOSTARCH))
+	GOBIN := 
+endif
+ifneq ($(BUILDOS),$(HOSTOS))
+	GOBIN :=
+endif
 
 .PHONY: all
 all: build
@@ -25,17 +32,13 @@ build: gobuild copy
 
 .PHONY: gobuild
 gobuild:
-	$(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+	GOBIN=$(GOBIN) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
 
 .PHONY: copy
 copy:
-	@if [ $(BUILDARCH) != $(HOSTARCH) ] || [ $(BUILDOS) != $(HOSTOS) ]; then \
+	@if [ "$(BINDIR)" != "$(GOBIN)" ]; then \
 		for binary in ${BINARIES} ; do \
 			cp $(GOPATH)/bin/$(BUILDOS)_$(BUILDARCH)/$$binary $(BINDIR); \
-		done \
-	else \
-		for binary in ${BINARIES} ; do \
-			cp $(GOPATH)/bin/$$binary $(BINDIR); \
 		done \
 	fi
 
