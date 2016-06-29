@@ -43,8 +43,6 @@ chart, the supplied values, and the generated manifest file.
 
 var getValuesHelp = `
 This command downloads a values file for a given release.
-
-To save the output to a file, use the -f flag.
 `
 
 var getManifestHelp = `
