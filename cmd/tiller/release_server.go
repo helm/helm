@@ -220,33 +220,20 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		return nil, errMissingChart
 	}
 
-	ts := timeconv.Now()
 	name, err := s.uniqName(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	overrides := map[string]interface{}{
-		"Release": map[string]interface{}{
-			"Name":      name,
-			"Time":      ts,
-			"Namespace": s.env.Namespace,
-			"Service":   "Tiller",
-		},
-		"Chart": req.Chart.Metadata,
-	}
-
-	// Render the templates
-	// TODO: Fix based on whether chart has `engine: SOMETHING` set.
-	vals, err := chartutil.CoalesceValues(req.Chart, req.Values, nil)
+	ts := timeconv.Now()
+	options := chartutil.ReleaseOptions{Name: name, Time: ts, Namespace: s.env.Namespace}
+	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
 	if err != nil {
 		return nil, err
 	}
 
-	overrides["Values"] = vals
-
 	renderer := s.engine(req.Chart)
-	files, err := renderer.Render(req.Chart, overrides)
+	files, err := renderer.Render(req.Chart, valuesToRender)
 	if err != nil {
 		return nil, err
 	}

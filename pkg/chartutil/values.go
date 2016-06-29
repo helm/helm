@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -287,6 +288,35 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 		dst[key] = val
 	}
 	return dst
+}
+
+// ReleaseOptions represents the additional release options needed
+// for the composition of the final values struct
+type ReleaseOptions struct {
+	Name      string
+	Time      *timestamp.Timestamp
+	Namespace string
+}
+
+// ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
+func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOptions) (Values, error) {
+	overrides := map[string]interface{}{
+		"Release": map[string]interface{}{
+			"Name":      options.Name,
+			"Time":      options.Time,
+			"Namespace": options.Namespace,
+			"Service":   "Tiller",
+		},
+		"Chart": chrt.Metadata,
+	}
+
+	vals, err := CoalesceValues(chrt, chrtVals, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	overrides["Values"] = vals
+	return overrides, nil
 }
 
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
