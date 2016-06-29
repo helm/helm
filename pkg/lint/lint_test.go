@@ -17,8 +17,9 @@ limitations under the License.
 package lint
 
 import (
-	"k8s.io/helm/pkg/lint/support"
 	"strings"
+
+	"k8s.io/helm/pkg/lint/support"
 
 	"testing"
 )
@@ -29,7 +30,7 @@ const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir)
+	m := All(badChartDir).Messages
 	if len(m) != 4 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -60,7 +61,7 @@ func TestBadChart(t *testing.T) {
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir)
+	m := All(badYamlFileDir).Messages
 	if len(m) != 1 {
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -70,7 +71,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir)
+	m := All(badValuesFileDir).Messages
 	if len(m) != 1 {
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -80,7 +81,7 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir)
+	m := All(goodChartDir).Messages
 	if len(m) != 0 {
 		t.Errorf("All failed but shouldn't have: %#v", m)
 	}

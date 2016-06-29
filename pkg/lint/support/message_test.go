@@ -26,26 +26,33 @@ var lintError LintError = fmt.Errorf("Foobar")
 
 func TestRunLinterRule(t *testing.T) {
 	var tests = []struct {
-		Severity         int
-		LintError        error
-		ExpectedMessages int
-		ExpectedReturn   bool
+		Severity                int
+		LintError               error
+		ExpectedMessages        int
+		ExpectedReturn          bool
+		ExpectedHighestSeverity int
 	}{
-		{ErrorSev, lintError, 1, false},
-		{WarningSev, lintError, 2, false},
-		{InfoSev, lintError, 3, false},
+		{InfoSev, lintError, 1, false, InfoSev},
+		{WarningSev, lintError, 2, false, WarningSev},
+		{ErrorSev, lintError, 3, false, ErrorSev},
 		// No error so it returns true
-		{ErrorSev, nil, 3, true},
+		{ErrorSev, nil, 3, true, ErrorSev},
+		// Retains highest severity
+		{InfoSev, lintError, 4, false, ErrorSev},
 		// Invalid severity values
-		{4, lintError, 3, false},
-		{22, lintError, 3, false},
-		{-1, lintError, 3, false},
+		{4, lintError, 4, false, ErrorSev},
+		{22, lintError, 4, false, ErrorSev},
+		{-1, lintError, 4, false, ErrorSev},
 	}
 
 	for _, test := range tests {
 		isValid := linter.RunLinterRule(test.Severity, test.LintError)
 		if len(linter.Messages) != test.ExpectedMessages {
-			t.Errorf("RunLinterRule(%d, %v), linter.Messages should have now %d message, we got %d", test.Severity, test.LintError, test.ExpectedMessages, len(linter.Messages))
+			t.Errorf("RunLinterRule(%d, %v), linter.Messages should now have %d message, we got %d", test.Severity, test.LintError, test.ExpectedMessages, len(linter.Messages))
+		}
+
+		if linter.HighestSeverity != test.ExpectedHighestSeverity {
+			t.Errorf("RunLinterRule(%d, %v), linter.HighestSeverity should be %d, we got %d", test.Severity, test.LintError, test.ExpectedHighestSeverity, linter.HighestSeverity)
 		}
 
 		if isValid != test.ExpectedReturn {
