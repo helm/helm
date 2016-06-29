@@ -27,4 +27,5 @@ type Interface interface {
 	DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error)
 	ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error)
 	UpdateRelease(rlsName string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)
+	ReleaseContent(rlsName string, opts ...ContentOption) (*rls.GetReleaseContentResponse, error)
 }
