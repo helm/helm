@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-var linter Linter = Linter{}
+var linter = Linter{}
 var lintError LintError = fmt.Errorf("Foobar")
 
 func TestRunLinterRule(t *testing.T) {

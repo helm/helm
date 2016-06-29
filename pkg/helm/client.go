@@ -24,29 +24,30 @@ import (
 )
 
 const (
-	// $HELM_HOST envvar
+	// HelmHostEnvVar is the $HELM_HOST envvar
 	HelmHostEnvVar = "HELM_HOST"
 
-	// $HELM_HOME envvar
+	// HelmHomeEnvVar is the $HELM_HOME envvar
 	HelmHomeEnvVar = "HELM_HOME"
 
-	// Default tiller server host address.
+	// DefaultHelmHost is the default tiller server host address.
 	DefaultHelmHost = ":44134"
 
-	// Default $HELM_HOME envvar value
+	// DefaultHelmHome is the default $HELM_HOME envvar value
 	DefaultHelmHome = "$HOME/.helm"
 )
 
-// Helm client manages client side of the helm-tiller protocol
+// Client manages client side of the helm-tiller protocol
 type Client struct {
 	opts options
 }
 
+// NewClient creates a new client.
 func NewClient(opts ...Option) *Client {
 	return new(Client).Init().Option(opts...)
 }
 
-// Configure the helm client with the provided options
+// Option configures the helm client with the provided options
 func (h *Client) Option(opts ...Option) *Client {
 	for _, opt := range opts {
 		opt(&h.opts)
@@ -54,7 +55,7 @@ func (h *Client) Option(opts ...Option) *Client {
 	return h
 }
 
-// Initializes the helm client with default options
+// Init initializes the helm client with default options
 func (h *Client) Init() *Client {
 	return h.Option(HelmHost(DefaultHelmHost)).
 		Option(HelmHome(os.ExpandEnv(DefaultHelmHome)))
@@ -87,7 +88,7 @@ func (h *Client) InstallRelease(chStr string, opts ...InstallOption) (*rls.Insta
 	return h.opts.rpcInstallRelease(chart, rls.NewReleaseServiceClient(c), opts...)
 }
 
-// UninstallRelease uninstalls a named release and returns the response.
+// DeleteRelease uninstalls a named release and returns the response.
 //
 // Note: there aren't currently any supported DeleteOptions, but they are
 // kept in the API signature as a placeholder for future additions.

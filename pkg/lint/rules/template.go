@@ -32,6 +32,7 @@ import (
 	"text/template"
 )
 
+// Templates lints the templates in the Linter.
 func Templates(linter *support.Linter) {
 	templatesPath := filepath.Join(linter.ChartDir, "templates")
 
@@ -222,18 +223,19 @@ func validateNoError(readError error) (lintError support.LintError) {
 
 func validateYamlContent(filePath string, err error) (lintError support.LintError) {
 	if err != nil {
-		lintError = fmt.Errorf("templates: \"%s\". Wrong YAML content.", filePath)
+		lintError = fmt.Errorf("templates: \"%s\". Wrong YAML content", filePath)
 	}
 	return
 }
 
 func validateNoNamespace(filePath string, yamlStruct K8sYamlStruct) (lintError support.LintError) {
 	if yamlStruct.Metadata.Namespace != "" {
-		lintError = fmt.Errorf("templates: \"%s\". namespace option is currently NOT supported.", filePath)
+		lintError = fmt.Errorf("templates: \"%s\". namespace option is currently NOT supported", filePath)
 	}
 	return
 }
 
+// K8sYamlStruct stubs a Kubernetes YAML file.
 // Need to access for now to Namespace only
 type K8sYamlStruct struct {
 	Metadata struct {
