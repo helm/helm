@@ -51,13 +51,13 @@ func (fl *fakeReleaseLister) ListReleases(opts ...helm.ReleaseListOption) (*rls.
 func TestListRun(t *testing.T) {
 	tests := []struct {
 		name     string
-		lister   *lister
+		listCmd  *listCmd
 		expected string
 		err      bool
 	}{
 		{
 			name: "with a release",
-			lister: &lister{
+			listCmd: &listCmd{
 				client: &fakeReleaseLister{
 					rels: []*release.Release{
 						releaseMock("thomas-guide"),
@@ -68,7 +68,7 @@ func TestListRun(t *testing.T) {
 		},
 		{
 			name: "list --long",
-			lister: &lister{
+			listCmd: &listCmd{
 				client: &fakeReleaseLister{
 					rels: []*release.Release{
 						releaseMock("atlas"),
@@ -82,8 +82,8 @@ func TestListRun(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		tt.lister.out = &buf
-		err := tt.lister.run()
+		tt.listCmd.out = &buf
+		err := tt.listCmd.run()
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}

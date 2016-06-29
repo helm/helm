@@ -53,7 +53,7 @@ server's default, which may be much higher than 256. Pairing the '--max'
 flag with the '--offset' flag allows you to page through results.
 `
 
-type lister struct {
+type listCmd struct {
 	filter   string
 	long     bool
 	limit    int
@@ -65,7 +65,7 @@ type lister struct {
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	list := &lister{out: out}
+	list := &listCmd{out: out}
 	cmd := &cobra.Command{
 		Use:               "list [flags] [FILTER]",
 		Short:             "list releases",
@@ -91,7 +91,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (l *lister) run() error {
+func (l *listCmd) run() error {
 	sortBy := services.ListSort_NAME
 	if l.byDate {
 		sortBy = services.ListSort_LAST_RELEASED
