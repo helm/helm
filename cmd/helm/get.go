@@ -19,7 +19,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -44,8 +43,6 @@ chart, the supplied values, and the generated manifest file.
 
 var getValuesHelp = `
 This command downloads a values file for a given release.
-
-To save the output to a file, use the -f flag.
 `
 
 var getManifestHelp = `
@@ -55,11 +52,6 @@ A manifest is a YAML-encoded representation of the Kubernetes resources that
 were generated from this release's chart(s). If a chart is dependent on other
 charts, those resources will also be included in the manifest.
 `
-
-// getOut is the filename to direct output.
-//
-// If it is blank, output is sent to os.Stdout.
-var getOut = ""
 
 var allValues = false
 
@@ -88,9 +80,6 @@ var getManifestCommand = &cobra.Command{
 }
 
 func init() {
-	// 'get' command flags.
-	getCommand.PersistentFlags().StringVarP(&getOut, "file", "f", "", "output file")
-
 	// 'get values' flags.
 	getValuesCommand.PersistentFlags().BoolVarP(&allValues, "all", "a", false, "dump all (computed) values")
 
@@ -151,10 +140,12 @@ func getValues(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		return getToFile(cfgStr)
+		fmt.Println(cfgStr)
+		return nil
 	}
 
-	return getToFile(res.Release.Config.Raw)
+	fmt.Println(res.Release.Config.Raw)
+	return nil
 }
 
 // getManifest implements 'helm get manifest'
@@ -167,19 +158,6 @@ func getManifest(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return prettyError(err)
 	}
-	return getToFile(res.Release.Manifest)
-}
-
-func getToFile(v interface{}) error {
-	out := os.Stdout
-	if len(getOut) > 0 {
-		t, err := os.Create(getOut)
-		if err != nil {
-			return fmt.Errorf("failed to create %s: %s", getOut, err)
-		}
-		defer t.Close()
-		out = t
-	}
-	fmt.Fprintln(out, v)
+	fmt.Println(res.Release.Manifest)
 	return nil
 }
