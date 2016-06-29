@@ -53,6 +53,18 @@ water:
 		t.Fatalf("Error parsing bytes: %s", err)
 	}
 	matchValues(t, data)
+
+	tests := []string{`poet: "Coleridge"`, "# Just a comment", ""}
+
+	for _, tt := range tests {
+		data, err = ReadValues([]byte(tt))
+		if err != nil {
+			t.Fatalf("Error parsing bytes: %s", err)
+		}
+		if data == nil {
+			t.Errorf(`YAML string "%s" gave a nil map`, tt)
+		}
+	}
 }
 
 func TestReadValuesFile(t *testing.T) {
