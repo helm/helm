@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{template "fullname" . }}"
+  labels:
+    heritage: {{.Release.Service | quote }}
+    release: {{.Release.Name | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+  annotations:
+    # This is what defines this resource as a hook. Without this line, the
+    # job is considered part of the release.
+    "helm.sh/hook": post-install
+spec:
+  template:
+    metadata:
+      name: "{{template "fullname" . }}"
+      labels:
+        heritage: {{.Release.Service | quote }}
+        release: {{.Release.Name | quote }}
+        chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    spec:
+      # This shows how to use a simple value. This will look for a passed-in value
+      # called restartPolicy. If it is not found, it will use the default value.
+      # {{default "Never" .restartPolicy}} is a slightly optimized version of the
+      # more conventional syntax: {{.restartPolicy | default "Never"}}
+      restartPolicy: Never
+      containers:
+      - name: {{template "fullname" .}}-job
+        image: "alpine:3.3"
+        # All we're going to do is sleep for a minute, then exit.
+        command: ["/bin/sleep","{{default "10" .Values.sleepyTime}}"]
