@@ -19,11 +19,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/lint"
 )
 
@@ -55,6 +58,35 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 		path = args[0]
 	}
 
+	if err := lintChart(path); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func lintChart(path string) error {
+	if strings.HasSuffix(path, ".tgz") {
+		tempDir, err := ioutil.TempDir("", "helm-lint")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(tempDir)
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		if err = chartutil.Expand(tempDir, file); err != nil {
+			return err
+		}
+
+		base := strings.Split(filepath.Base(path), "-")[0]
+		path = filepath.Join(tempDir, base)
+	}
+
 	// Guard: Error out of this is not a chart.
 	if _, err := os.Stat(filepath.Join(path, "Chart.yaml")); err != nil {
 		return errLintNoChart
@@ -69,5 +101,6 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 	for _, i := range issues {
 		fmt.Printf("%s\n", i)
 	}
+
 	return nil
 }

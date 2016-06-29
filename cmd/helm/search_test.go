@@ -22,8 +22,8 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-const testDir = "testdata/"
-const testFile = "testdata/local-index.yaml"
+const testDir = "testdata/testcache"
+const testFile = "testdata/testcache/local-index.yaml"
 
 type searchTestCase struct {
 	in          string
