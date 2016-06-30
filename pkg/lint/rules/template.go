@@ -110,7 +110,7 @@ func Templates(linter *support.Linter) {
 // Validation functions
 func validateTemplatesDir(templatesPath string) (lintError support.LintError) {
 	if fi, err := os.Stat(templatesPath); err != nil {
-		lintError = fmt.Errorf("Templates directory not found")
+		lintError = fmt.Errorf("Directory 'templates/' not found")
 	} else if err == nil && !fi.IsDir() {
 		lintError = fmt.Errorf("'templates' is not a directory")
 	}
