@@ -312,7 +312,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOp
 
 	vals, err := CoalesceValues(chrt, chrtVals, nil)
 	if err != nil {
-		return nil, err
+		return overrides, err
 	}
 
 	overrides["Values"] = vals

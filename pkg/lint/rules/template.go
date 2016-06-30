@@ -55,6 +55,12 @@ func Templates(linter *support.Linter) {
 
 	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: "testNamespace"}
 	valuesToRender, err := chartutil.ToRenderValues(chart, chart.Values, options)
+	if err != nil {
+		// FIXME: This seems to generate a duplicate, but I can't find where the first
+		// error is coming from.
+		//linter.RunLinterRule(support.ErrorSev, err)
+		return
+	}
 	renderedContentMap, err := engine.New().Render(chart, valuesToRender)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, validateNoError(err))
