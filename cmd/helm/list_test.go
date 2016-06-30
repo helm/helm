@@ -4,49 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
-
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
-
-func releaseMock(name string) *release.Release {
-	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
-	return &release.Release{
-		Name: name,
-		Info: &release.Info{
-			FirstDeployed: &date,
-			LastDeployed:  &date,
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
-		},
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{
-				Name:    "foo",
-				Version: "0.1.0-beta.1",
-			},
-			Templates: []*chart.Template{
-				{Name: "foo.tpl", Data: []byte("Hello")},
-			},
-		},
-		Config: &chart.Config{Raw: `name = "value"`},
-	}
-}
-
-type fakeReleaseLister struct {
-	helm.Interface
-	rels []*release.Release
-	err  error
-}
-
-func (fl *fakeReleaseLister) ListReleases(opts ...helm.ReleaseListOption) (*rls.ListReleasesResponse, error) {
-	resp := &rls.ListReleasesResponse{
-		Count:    int64(len(fl.rels)),
-		Releases: fl.rels,
-	}
-	return resp, fl.err
-}
 
 func TestListRun(t *testing.T) {
 	tests := []struct {
@@ -58,7 +18,7 @@ func TestListRun(t *testing.T) {
 		{
 			name: "with a release",
 			listCmd: &listCmd{
-				client: &fakeReleaseLister{
+				client: &fakeReleaseClient{
 					rels: []*release.Release{
 						releaseMock("thomas-guide"),
 					},
@@ -69,7 +29,7 @@ func TestListRun(t *testing.T) {
 		{
 			name: "list --long",
 			listCmd: &listCmd{
-				client: &fakeReleaseLister{
+				client: &fakeReleaseClient{
 					rels: []*release.Release{
 						releaseMock("atlas"),
 					},
@@ -106,7 +66,7 @@ func TestListCmd(t *testing.T) {
 	}{
 		{
 			name: "with a release",
-			client: &fakeReleaseLister{
+			client: &fakeReleaseClient{
 				rels: []*release.Release{
 					releaseMock("thomas-guide"),
 				},
@@ -116,7 +76,7 @@ func TestListCmd(t *testing.T) {
 		{
 			name:  "list --long",
 			flags: map[string]string{"long": "1"},
-			client: &fakeReleaseLister{
+			client: &fakeReleaseClient{
 				rels: []*release.Release{
 					releaseMock("atlas"),
 				},
