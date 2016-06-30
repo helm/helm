@@ -71,8 +71,8 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return get.run()
 		},
 	}
-	cmd.AddCommand(newGetValuesCmd(client, out))
-	cmd.AddCommand(newGetManifestCmd(client, out))
+	cmd.AddCommand(newGetValuesCmd(nil, out))
+	cmd.AddCommand(newGetManifestCmd(nil, out))
 	return cmd
 }
 
