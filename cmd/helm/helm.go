@@ -86,6 +86,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 
 	cmd.AddCommand(newListCmd(nil, out))
+	cmd.AddCommand(newGetCmd(nil, out))
 
 	return cmd
 }
