@@ -51,18 +51,32 @@ func init() {
 	RootCommand.AddCommand(lintCommand)
 }
 
-var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")
-var errLintFailed = errors.New("lint failed")
+var errLintNoChart = errors.New("No chart found for linting (missing Chart.yaml)")
+var errLintFailed = errors.New("Lint failed")
 
 func lintCmd(cmd *cobra.Command, args []string) error {
-	path := "."
+	paths := []string{"."}
 	if len(args) > 0 {
-		path = args[0]
+		paths = args
 	}
 
-	if err := lintChart(path); err != nil {
-		return err
+	var failures int
+	for _, path := range paths {
+		if err := lintChart(path); err != nil {
+			fmt.Println(err)
+			if err != errLintNoChart {
+				failures = failures + 1
+			}
+		}
+		fmt.Println("")
 	}
+
+	msg := fmt.Sprintf("%d chart(s) linted", len(paths))
+	if failures > 0 {
+		return fmt.Errorf("%s. %d chart(s) failed.", msg, failures)
+	}
+
+	fmt.Printf("%s. No failures.\n", msg)
 
 	return nil
 }
@@ -91,8 +105,11 @@ func lintChart(path string) error {
 
 	// Guard: Error out of this is not a chart.
 	if _, err := os.Stat(filepath.Join(path, "Chart.yaml")); err != nil {
+		fmt.Println("==> Skipping", path)
 		return errLintNoChart
 	}
+
+	fmt.Println("==> Linting", path)
 
 	linter := lint.All(path)
 
@@ -101,8 +118,8 @@ func lintChart(path string) error {
 		return nil
 	}
 
-	for _, i := range linter.Messages {
-		fmt.Printf("%s\n", i)
+	for _, msg := range linter.Messages {
+		fmt.Println(msg)
 	}
 
 	if linter.HighestSeverity == support.ErrorSev {

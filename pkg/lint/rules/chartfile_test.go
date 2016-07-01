@@ -43,18 +43,6 @@ var badChart, chatLoadRrr = chartutil.LoadChartfile(badChartFilePath)
 var goodChart, _ = chartutil.LoadChartfile(goodChartFilePath)
 
 // Validation functions Test
-func TestValidateChartYamlFileExistence(t *testing.T) {
-	err := validateChartYamlFileExistence(nonExistingChartFilePath)
-	if err == nil {
-		t.Errorf("validateChartYamlFileExistence to return a linter error, got no error")
-	}
-
-	err = validateChartYamlFileExistence(badChartFilePath)
-	if err != nil {
-		t.Errorf("validateChartYamlFileExistence to return no error, got a linter error")
-	}
-}
-
 func TestValidateChartYamlNotDirectory(t *testing.T) {
 	_ = os.Mkdir(nonExistingChartFilePath, os.ModePerm)
 	defer os.Remove(nonExistingChartFilePath)
@@ -107,10 +95,10 @@ func TestValidateChartVersion(t *testing.T) {
 		Version  string
 		ErrorMsg string
 	}{
-		{"", "'version' value is required"},
+		{"", "version is required"},
 		{"0", "0 is less than or equal to 0"},
-		{"waps", "is not a valid SemVer"},
-		{"-3", "is not a valid SemVer"},
+		{"waps", "'waps' is not a valid SemVer"},
+		{"-3", "'-3' is not a valid SemVer"},
 	}
 
 	var successTest = []string{"0.0.1", "0.0.1+build", "0.0.1-beta"}
@@ -156,9 +144,9 @@ func TestValidateChartMaintainer(t *testing.T) {
 		Email    string
 		ErrorMsg string
 	}{
-		{"", "", "maintainer requires a name"},
-		{"", "test@test.com", "maintainer requires a name"},
-		{"John Snow", "wrongFormatEmail.com", "maintainer invalid email"},
+		{"", "", "each maintainer requires a name"},
+		{"", "test@test.com", "each maintainer requires a name"},
+		{"John Snow", "wrongFormatEmail.com", "invalid email"},
 	}
 
 	var successTest = []struct {
@@ -192,8 +180,8 @@ func TestValidateChartSources(t *testing.T) {
 	for _, test := range failTest {
 		badChart.Sources = []string{test}
 		err := validateChartSources(badChart)
-		if err == nil || !strings.Contains(err.Error(), "invalid URL") {
-			t.Errorf("validateChartSources(%s) to return \"invalid URL\", got no error", test)
+		if err == nil || !strings.Contains(err.Error(), "invalid source URL") {
+			t.Errorf("validateChartSources(%s) to return \"invalid source URL\", got no error", test)
 		}
 	}
 
@@ -213,8 +201,8 @@ func TestValidateChartHome(t *testing.T) {
 	for _, test := range failTest {
 		badChart.Home = test
 		err := validateChartHome(badChart)
-		if err == nil || !strings.Contains(err.Error(), "invalid URL") {
-			t.Errorf("validateChartHome(%s) to return \"invalid URL\", got no error", test)
+		if err == nil || !strings.Contains(err.Error(), "invalid home URL") {
+			t.Errorf("validateChartHome(%s) to return \"invalid home URL\", got no error", test)
 		}
 	}
 
@@ -236,15 +224,15 @@ func TestChartfile(t *testing.T) {
 		t.Errorf("Expected 3 errors, got %d", len(msgs))
 	}
 
-	if !strings.Contains(msgs[0].Text, "'name' is required") {
-		t.Errorf("Unexpected message 0: %s", msgs[0].Text)
+	if !strings.Contains(msgs[0].Err.Error(), "name is required") {
+		t.Errorf("Unexpected message 0: %s", msgs[0].Err)
 	}
 
-	if !strings.Contains(msgs[1].Text, "'name' and directory do not match") {
-		t.Errorf("Unexpected message 1: %s", msgs[1].Text)
+	if !strings.Contains(msgs[1].Err.Error(), "directory name (badchartfile) and chart name () must be the same") {
+		t.Errorf("Unexpected message 1: %s", msgs[1].Err)
 	}
 
-	if !strings.Contains(msgs[2].Text, "'version' 0.0.0 is less than or equal to 0") {
-		t.Errorf("Unexpected message 2: %s", msgs[2].Text)
+	if !strings.Contains(msgs[2].Err.Error(), "version 0.0.0 is less than or equal to 0") {
+		t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 	}
 }
