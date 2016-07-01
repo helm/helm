@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"testing"
 
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -77,26 +76,22 @@ func TestListCmd(t *testing.T) {
 		name     string
 		args     []string
 		flags    map[string]string
-		client   helm.Interface
+		resp     []*release.Release
 		expected string
 		err      bool
 	}{
 		{
 			name: "with a release",
-			client: &fakeReleaseClient{
-				rels: []*release.Release{
-					releaseMock("thomas-guide"),
-				},
+			resp: []*release.Release{
+				releaseMock("thomas-guide"),
 			},
 			expected: "thomas-guide",
 		},
 		{
 			name:  "list --long",
 			flags: map[string]string{"long": "1"},
-			client: &fakeReleaseClient{
-				rels: []*release.Release{
-					releaseMock("atlas"),
-				},
+			resp: []*release.Release{
+				releaseMock("atlas"),
 			},
 			expected: "NAME \tUPDATED                 \tSTATUS  \tCHART           \natlas\t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1",
 		},
@@ -104,7 +99,10 @@ func TestListCmd(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		cmd := newListCmd(tt.client, &buf)
+		c := &fakeReleaseClient{
+			rels: tt.resp,
+		}
+		cmd := newListCmd(c, &buf)
 		for flag, value := range tt.flags {
 			cmd.Flags().Set(flag, value)
 		}

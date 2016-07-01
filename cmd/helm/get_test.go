@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"testing"
 
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -29,30 +28,28 @@ func TestGetCmd(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     []string
-		client   helm.Interface
+		resp     *release.Release
 		expected string
 		err      bool
 	}{
 		{
-			name: "with a release",
-			client: &fakeReleaseClient{
-				rels: []*release.Release{
-					releaseMock("thomas-guide"),
-				},
-			},
+			name:     "with a release",
+			resp:     releaseMock("thomas-guide"),
 			args:     []string{"thomas-guide"},
 			expected: "CHART: foo-0.1.0-beta.1\nRELEASED: (.*)\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nMANIFEST:",
 		},
 		{
-			name:   "requires release name arg",
-			client: &fakeReleaseClient{},
-			err:    true,
+			name: "requires release name arg",
+			err:  true,
 		},
 	}
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		cmd := newGetCmd(tt.client, &buf)
+		c := &fakeReleaseClient{
+			rels: []*release.Release{tt.resp},
+		}
+		cmd := newGetCmd(c, &buf)
 		err := cmd.RunE(cmd, tt.args)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
