@@ -59,7 +59,7 @@ func Chartfile(linter *support.Linter) {
 func validateChartYamlFileExistence(chartPath string) (lintError support.LintError) {
 	_, err := os.Stat(chartPath)
 	if err != nil {
-		lintError = fmt.Errorf("Chart.yaml file does not exists")
+		lintError = fmt.Errorf("Chart.yaml file does not exist")
 	}
 	return
 }
@@ -137,7 +137,7 @@ func validateChartEngine(cf *chart.Metadata) (lintError support.LintError) {
 		keys = append(keys, str)
 	}
 
-	lintError = fmt.Errorf("Chart.yaml: 'engine %v not valid. Valid options are %v", cf.Engine, keys)
+	lintError = fmt.Errorf("Chart.yaml: engine '%v' not valid. Valid options are %v", cf.Engine, keys)
 	return
 }
 

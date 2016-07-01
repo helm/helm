@@ -39,7 +39,7 @@ func TestBadChart(t *testing.T) {
 	var w, e, e2, e3 bool
 	for _, msg := range m {
 		if msg.Severity == support.WarningSev {
-			if strings.Contains(msg.Text, "Templates directory not found") {
+			if strings.Contains(msg.Text, "Directory 'templates/' not found") {
 				w = true
 			}
 		}
