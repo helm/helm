@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"regexp"
 	"testing"
 
 	"k8s.io/helm/pkg/helm"
@@ -52,7 +53,7 @@ func TestListRun(t *testing.T) {
 				},
 				long: true,
 			},
-			expected: "NAME \tUPDATED                 \tSTATUS  \tCHART           \natlas\tFri Sep  2 15:04:05 1977\tDEPLOYED\tfoo-0.1.0-beta.1",
+			expected: "NAME \tUPDATED                 \tSTATUS  \tCHART           \natlas\t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1",
 		},
 	}
 
@@ -63,9 +64,9 @@ func TestListRun(t *testing.T) {
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}
-		actual := string(bytes.TrimSpace(buf.Bytes()))
-		if actual != tt.expected {
-			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, actual)
+		re := regexp.MustCompile(tt.expected)
+		if !re.Match(buf.Bytes()) {
+			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, buf.String())
 		}
 		buf.Reset()
 	}
@@ -97,7 +98,7 @@ func TestListCmd(t *testing.T) {
 					releaseMock("atlas"),
 				},
 			},
-			expected: "NAME \tUPDATED                 \tSTATUS  \tCHART           \natlas\tFri Sep  2 15:04:05 1977\tDEPLOYED\tfoo-0.1.0-beta.1",
+			expected: "NAME \tUPDATED                 \tSTATUS  \tCHART           \natlas\t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1",
 		},
 	}
 
@@ -111,9 +112,9 @@ func TestListCmd(t *testing.T) {
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}
-		actual := string(bytes.TrimSpace(buf.Bytes()))
-		if actual != tt.expected {
-			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, actual)
+		re := regexp.MustCompile(tt.expected)
+		if !re.Match(buf.Bytes()) {
+			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, buf.String())
 		}
 		buf.Reset()
 	}

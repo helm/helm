@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"regexp"
 	"testing"
 
 	"k8s.io/helm/pkg/helm"
@@ -40,7 +41,7 @@ func TestGetCmd(t *testing.T) {
 				},
 			},
 			args:     []string{"thomas-guide"},
-			expected: "CHART: foo-0.1.0-beta.1\nRELEASED: Fri Sep  2 15:04:05 1977\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nMANIFEST:",
+			expected: "CHART: foo-0.1.0-beta.1\nRELEASED: (.*)\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nMANIFEST:",
 		},
 		{
 			name:   "requires release name arg",
@@ -56,9 +57,9 @@ func TestGetCmd(t *testing.T) {
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}
-		actual := string(bytes.TrimSpace(buf.Bytes()))
-		if actual != tt.expected {
-			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, actual)
+		re := regexp.MustCompile(tt.expected)
+		if !re.Match(buf.Bytes()) {
+			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, buf.String())
 		}
 		buf.Reset()
 	}
