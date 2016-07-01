@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -29,33 +30,46 @@ var statusHelp = `
 This command shows the status of a named release.
 `
 
-var statusCommand = &cobra.Command{
-	Use:               "status [flags] RELEASE_NAME",
-	Short:             "displays the status of the named release",
-	Long:              statusHelp,
-	RunE:              status,
-	PersistentPreRunE: setupConnection,
+type statusCmd struct {
+	release string
+	out     io.Writer
+	client  helm.Interface
 }
 
-func init() {
-	RootCommand.AddCommand(statusCommand)
-}
-
-func status(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errReleaseRequired
+func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
+	status := &statusCmd{
+		out:    out,
+		client: client,
 	}
+	cmd := &cobra.Command{
+		Use:               "status [flags] RELEASE_NAME",
+		Short:             "displays the status of the named release",
+		Long:              statusHelp,
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errReleaseRequired
+			}
+			status.release = args[0]
+			if status.client == nil {
+				status.client = helm.NewClient(helm.Host(helm.Config.ServAddr))
+			}
+			return status.run()
+		},
+	}
+	return cmd
+}
 
-	res, err := helm.GetReleaseStatus(args[0])
+func (s *statusCmd) run() error {
+	res, err := s.client.ReleaseStatus(s.release)
 	if err != nil {
 		return prettyError(err)
 	}
 
-	fmt.Printf("Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
-	fmt.Printf("Status: %s\n", res.Info.Status.Code)
+	fmt.Fprintf(s.out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
+	fmt.Fprintf(s.out, "Status: %s\n", res.Info.Status.Code)
 	if res.Info.Status.Details != nil {
-		fmt.Printf("Details: %s\n", res.Info.Status.Details)
+		fmt.Fprintf(s.out, "Details: %s\n", res.Info.Status.Details)
 	}
-
 	return nil
 }
