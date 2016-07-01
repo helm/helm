@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -63,30 +64,39 @@ Environment:
   $HELM_HOST      Set an alternative Tiller host. The format is host:port (default ":44134").
 `
 
-// RootCommand is the top-level command for Helm.
-var RootCommand = &cobra.Command{
-	Use:               "helm",
-	Short:             "The Helm package manager for Kubernetes.",
-	Long:              globalUsage,
-	PersistentPostRun: teardown,
-	SilenceUsage:      true,
-}
-
-func init() {
+func newRootCmd(out io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "helm",
+		Short:        "The Helm package manager for Kubernetes.",
+		Long:         globalUsage,
+		SilenceUsage: true,
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			teardown()
+		},
+	}
 	home := os.Getenv(homeEnvVar)
 	if home == "" {
 		home = "$HOME/.helm"
 	}
 	thost := os.Getenv(hostEnvVar)
-	p := RootCommand.PersistentFlags()
+	p := cmd.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
 	p.StringVarP(&tillerNamespace, "namespace", "", "", "kubernetes namespace")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
+
+	cmd.AddCommand(newListCmd(nil, out))
+	cmd.AddCommand(newGetCmd(nil, out))
+
+	return cmd
 }
 
+// RootCommand is the top-level command for Helm.
+var RootCommand = newRootCmd(os.Stdout)
+
 func main() {
-	if err := RootCommand.Execute(); err != nil {
+	cmd := RootCommand
+	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
@@ -112,7 +122,7 @@ func setupConnection(c *cobra.Command, args []string) error {
 	return nil
 }
 
-func teardown(c *cobra.Command, args []string) {
+func teardown() {
 	if tunnel != nil {
 		tunnel.Close()
 	}
