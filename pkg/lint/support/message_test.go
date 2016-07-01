@@ -22,7 +22,7 @@ import (
 )
 
 var linter = Linter{}
-var lintError = errors.New("lint failed")
+var errLint = errors.New("lint failed")
 
 func TestRunLinterRule(t *testing.T) {
 	var tests = []struct {
@@ -32,17 +32,17 @@ func TestRunLinterRule(t *testing.T) {
 		ExpectedReturn          bool
 		ExpectedHighestSeverity int
 	}{
-		{InfoSev, lintError, 1, false, InfoSev},
-		{WarningSev, lintError, 2, false, WarningSev},
-		{ErrorSev, lintError, 3, false, ErrorSev},
+		{InfoSev, errLint, 1, false, InfoSev},
+		{WarningSev, errLint, 2, false, WarningSev},
+		{ErrorSev, errLint, 3, false, ErrorSev},
 		// No error so it returns true
 		{ErrorSev, nil, 3, true, ErrorSev},
 		// Retains highest severity
-		{InfoSev, lintError, 4, false, ErrorSev},
+		{InfoSev, errLint, 4, false, ErrorSev},
 		// Invalid severity values
-		{4, lintError, 4, false, ErrorSev},
-		{22, lintError, 4, false, ErrorSev},
-		{-1, lintError, 4, false, ErrorSev},
+		{4, errLint, 4, false, ErrorSev},
+		{22, errLint, 4, false, ErrorSev},
+		{-1, errLint, 4, false, ErrorSev},
 	}
 
 	for _, test := range tests {

@@ -90,8 +90,8 @@ func TestTemplateParsing(t *testing.T) {
 	}
 }
 
-var wrongTemplatePath string = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
-var ignoredTemplatePath string = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
+var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
+var ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
 
 // Test a template with all the existing features:
 // namespaces, partial templates

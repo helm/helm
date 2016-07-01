@@ -53,6 +53,7 @@ func (m Message) Error() string {
 	return fmt.Sprintf("[%s] %s: %s", sev[m.Severity], m.Path, m.Err.Error())
 }
 
+// NewMessage creates a new Message struct
 func NewMessage(severity int, path string, err error) Message {
 	return Message{Severity: severity, Path: path, Err: err}
 }

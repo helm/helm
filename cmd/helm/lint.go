@@ -73,10 +73,10 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 
 	msg := fmt.Sprintf("%d chart(s) linted", len(paths))
 	if failures > 0 {
-		return fmt.Errorf("%s. %d chart(s) failed.", msg, failures)
+		return fmt.Errorf("%s, %d chart(s) failed", msg, failures)
 	}
 
-	fmt.Printf("%s. No failures.\n", msg)
+	fmt.Printf("%s, no failures\n", msg)
 
 	return nil
 }
