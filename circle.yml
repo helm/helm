@@ -13,12 +13,15 @@ dependencies:
     - rm -rf "$GOPATH"
 
   override:
+    # install go
     - wget "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
     - sudo tar -C /usr/local -xzf "go${GOVERSION}.linux-amd64.tar.gz"
 
+    # move repository to the canonical import path
     - mkdir -p "$(dirname ${WORKDIR})"
     - cp -R "${HOME}/helm" "${WORKDIR}"
 
+    # install dependencies
     - cd "${WORKDIR}" && make bootstrap
 
   post:
@@ -26,7 +29,8 @@ dependencies:
 
 test:
   override:
-    - cd "${WORKDIR}" && make test
+    - cd "${WORKDIR}" && make test-style
+    - cd "${WORKDIR}" && make test-unit
 
 deployment:
   gcr:
