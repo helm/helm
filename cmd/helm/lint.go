@@ -82,6 +82,7 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 }
 
 func lintChart(path string) error {
+	var chartPath string
 	if strings.HasSuffix(path, ".tgz") {
 		tempDir, err := ioutil.TempDir("", "helm-lint")
 		if err != nil {
@@ -100,18 +101,20 @@ func lintChart(path string) error {
 		}
 
 		base := strings.Split(filepath.Base(path), "-")[0]
-		path = filepath.Join(tempDir, base)
+		chartPath = filepath.Join(tempDir, base)
+	} else {
+		chartPath = path
 	}
 
 	// Guard: Error out of this is not a chart.
-	if _, err := os.Stat(filepath.Join(path, "Chart.yaml")); err != nil {
+	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
 		fmt.Println("==> Skipping", path)
 		return errLintNoChart
 	}
 
 	fmt.Println("==> Linting", path)
 
-	linter := lint.All(path)
+	linter := lint.All(chartPath)
 
 	if len(linter.Messages) == 0 {
 		fmt.Println("Lint OK")
