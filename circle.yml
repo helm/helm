@@ -32,8 +32,8 @@ dependencies:
 
 test:
   override:
-    - cd "${WORKDIR}" && make test-style
-    - cd "${WORKDIR}" && make test-unit
+    - cd "${WORKDIR}" && ./scripts/ci.sh:
+        parallel: true
 
 deployment:
   gcr:
@@ -41,5 +41,4 @@ deployment:
     commands:
       - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
       - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
-      - cd "${WORKDIR}" && make docker-build
       - docker push gcr.io/kubernetes-helm/tiller:canary
