@@ -302,9 +302,9 @@ apache:
 ```
 
 The above adds a `global` section with the value `app: MyWordpress`.
-This value is available to _all_ charts as `.global.app`.
+This value is available to _all_ charts as `.Values.global.app`.
 
-For example, the `mysql` templates may access `app` as `{{.global.app}}`, and
+For example, the `mysql` templates may access `app` as `{{.Values.global.app}}`, and
 so can the `apache` chart. Effectively, the values file above is
 regenerated like this:
 
