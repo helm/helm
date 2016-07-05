@@ -169,7 +169,7 @@ start_kubernetes() {
     --volume=/:/rootfs:ro \
     --volume=/sys:/sys:ro \
     --volume=/var/lib/docker/:/var/lib/docker:rw \
-    --volume=/var/lib/kubelet/:/var/lib/kubelet:rw \
+    --volume=/var/lib/kubelet/:/var/lib/kubelet:rw,rslave \
     --volume=/var/run:/var/run:rw \
     --net=host \
     --pid=host \
@@ -189,8 +189,10 @@ start_kubernetes() {
     sleep 1
   done
 
-  # Create kube-system namespace in kubernetes
-  $KUBECTL create namespace kube-system >/dev/null
+  if [[ $KUBE_VERSION == "1.2"* ]]; then
+    create_kube_system_namespace
+    create_kube_dns
+  fi
 
   # We expect to have at least 3 running pods - etcd, master and kube-proxy.
   local attempt=1
@@ -216,6 +218,11 @@ setup_firewall() {
   if ! docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo /usr/local/sbin/iptables -t nat -C ${iptables_rule}" &> /dev/null; then
     docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo /usr/local/sbin/iptables -t nat -I ${iptables_rule}"
   fi
+}
+
+# Create kube-system namespace in kubernetes
+create_kube_system_namespace() {
+  $KUBECTL create namespace kube-system >/dev/null
 }
 
 # Activate skydns in kubernetes and wait for pods to be ready.
@@ -321,7 +328,6 @@ kube_up() {
 
   generate_kubeconfig
   start_kubernetes
-  create_kube_dns
 
   $KUBECTL cluster-info
 }
