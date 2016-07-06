@@ -16,6 +16,7 @@ syntax = "proto3";
 
 package hapi.release;
 
+import "hapi/release/hook.proto";
 import "hapi/release/info.proto";
 import "hapi/chart/config.proto";
 import "hapi/chart/chart.proto";
@@ -40,4 +41,7 @@ message Release {
 
 	// Manifest is the string representation of the rendered template.
 	string manifest = 5;
+
+	// Hooks are all of the hooks declared for this release.
+	repeated hapi.release.Hook hooks = 6;
 }

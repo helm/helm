@@ -157,6 +157,13 @@ type KubeClient interface {
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
 	Delete(namespace string, reader io.Reader) error
+
+	// Watch the resource in reader until it is "ready".
+	//
+	// For Jobs, "ready" means the job ran to completion (excited without error).
+	// For all other kinds, it means the kind was created or modified without
+	// error.
+	WatchUntilReady(namespace string, reader io.Reader) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -175,6 +182,12 @@ func (p *PrintingKubeClient) Create(ns string, r io.Reader) error {
 //
 // It only prints out the content to be deleted.
 func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
+	_, err := io.Copy(p.Out, r)
+	return err
+}
+
+// WatchUntilReady implements KubeClient WatchUntilReady.
+func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }

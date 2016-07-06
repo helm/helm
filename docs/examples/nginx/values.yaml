@@ -11,6 +11,9 @@ httpPort: 8888
 # Number of nginx instances to run
 replicaCount: 1
 
+# Evaluated by the post-install hook
+sleepyTime: "10"
+
 index: >-
   <h1>Hello</h1>
   <p>This is a test</p>

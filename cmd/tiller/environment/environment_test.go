@@ -83,6 +83,9 @@ func (k *mockKubeClient) Create(ns string, r io.Reader) error {
 func (k *mockKubeClient) Delete(ns string, r io.Reader) error {
 	return nil
 }
+func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader) error {
+	return nil
+}
 
 var _ Engine = &mockEngine{}
 var _ ReleaseStorage = &mockReleaseStorage{}

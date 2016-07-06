@@ -216,6 +216,16 @@ func (s *releaseServer) engine(ch *chart.Chart) environment.Engine {
 }
 
 func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+	rel, err := s.prepareRelease(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.performRelease(rel, req)
+}
+
+// prepareRelease builds a release for an install operation.
+func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
 	if req.Chart == nil {
 		return nil, errMissingChart
 	}
@@ -237,9 +247,11 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	if err != nil {
 		return nil, err
 	}
+	hooks, manifests := sortHooks(files)
 
+	// Aggregate all non-hooks into one big doc.
 	b := bytes.NewBuffer(nil)
-	for name, file := range files {
+	for name, file := range manifests {
 		// Ignore templates that starts with underscore to handle them as partials
 		if strings.HasPrefix(path.Base(name), "_") {
 			continue
@@ -254,7 +266,7 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	}
 
 	// Store a release.
-	r := &release.Release{
+	rel := &release.Release{
 		Name:   name,
 		Chart:  req.Chart,
 		Config: req.Values,
@@ -264,22 +276,40 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
 		},
 		Manifest: b.String(),
+		Hooks:    hooks,
 	}
+	return rel, nil
+}
 
+// performRelease runs a release.
+func (s *releaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	res := &services.InstallReleaseResponse{Release: r}
 
 	if req.DryRun {
-		log.Printf("Dry run for %s", name)
+		log.Printf("Dry run for %s", r.Name)
 		return res, nil
 	}
 
-	if err := s.env.KubeClient.Create(s.env.Namespace, b); err != nil {
+	// pre-install hooks
+	if err := s.execHook(r.Hooks, r.Name, preInstall); err != nil {
+		return res, err
+	}
+
+	// regular manifests
+	kubeCli := s.env.KubeClient
+	b := bytes.NewBufferString(r.Manifest)
+	if err := kubeCli.Create(s.env.Namespace, b); err != nil {
 		r.Info.Status.Code = release.Status_FAILED
-		log.Printf("warning: Release %q failed: %s", name, err)
+		log.Printf("warning: Release %q failed: %s", r.Name, err)
 		if err := s.env.Releases.Create(r); err != nil {
-			log.Printf("warning: Failed to record release %q: %s", name, err)
+			log.Printf("warning: Failed to record release %q: %s", r.Name, err)
 		}
-		return res, fmt.Errorf("release %s failed: %s", name, err)
+		return res, fmt.Errorf("release %s failed: %s", r.Name, err)
+	}
+
+	// post-install hooks
+	if err := s.execHook(r.Hooks, r.Name, postInstall); err != nil {
+		return res, err
 	}
 
 	// This is a tricky case. The release has been created, but the result
@@ -289,13 +319,49 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	//
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
+	r.Info.Status.Code = release.Status_DEPLOYED
 	if err := s.env.Releases.Create(r); err != nil {
-		log.Printf("warning: Failed to record release %q: %s", name, err)
-		return res, nil
+		log.Printf("warning: Failed to record release %q: %s", r.Name, err)
+	}
+	return res, nil
+}
+
+func (s *releaseServer) execHook(hs []*release.Hook, name, hook string) error {
+	kubeCli := s.env.KubeClient
+	code, ok := events[hook]
+	if !ok {
+		return fmt.Errorf("unknown hook %q", hook)
 	}
 
-	r.Info.Status.Code = release.Status_DEPLOYED
-	return res, nil
+	log.Printf("Executing %s hooks for %s", hook, name)
+	for _, h := range hs {
+		found := false
+		for _, e := range h.Events {
+			if e == code {
+				found = true
+			}
+		}
+		// If this doesn't implement the hook, skip it.
+		if !found {
+			continue
+		}
+
+		b := bytes.NewBufferString(h.Manifest)
+		if err := kubeCli.Create(s.env.Namespace, b); err != nil {
+			log.Printf("wrning: Release %q pre-install %s failed: %s", name, h.Path, err)
+			return err
+		}
+		// No way to rewind a bytes.Buffer()?
+		b.Reset()
+		b.WriteString(h.Manifest)
+		if err := kubeCli.WatchUntilReady(s.env.Namespace, b); err != nil {
+			log.Printf("warning: Release %q pre-install %s could not complete: %s", name, h.Path, err)
+			return err
+		}
+		h.LastRun = timeconv.Now()
+	}
+	log.Printf("Hooks complete for %s %s", hook, name)
+	return nil
 }
 
 func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
@@ -313,20 +379,27 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	log.Printf("uninstall: Deleting %s", req.Name)
 	rel.Info.Status.Code = release.Status_DELETED
 	rel.Info.Deleted = timeconv.Now()
+	res := &services.UninstallReleaseResponse{Release: rel}
+
+	if err := s.execHook(rel.Hooks, rel.Name, preDelete); err != nil {
+		return res, err
+	}
 
 	b := bytes.NewBuffer([]byte(rel.Manifest))
-
 	if err := s.env.KubeClient.Delete(s.env.Namespace, b); err != nil {
 		log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
 		return nil, err
+	}
+
+	if err := s.execHook(rel.Hooks, rel.Name, postDelete); err != nil {
+		return res, err
 	}
 
 	if err := s.env.Releases.Update(rel); err != nil {
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
-	res := services.UninstallReleaseResponse{Release: rel}
-	return &res, nil
+	return res, nil
 }
 
 // byName implements the sort.Interface for []*release.Release.
