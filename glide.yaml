@@ -5,8 +5,8 @@ import:
   subpackages:
   - context
 - package: github.com/spf13/cobra
-  subpackages:
-  - cobra
+- package: github.com/spf13/pflag
+  version: 367864438f1b1a3c7db4da06a2f55b144e6784e0
 - package: github.com/Masterminds/sprig
   version: ^2.3
 - package: gopkg.in/yaml.v2
@@ -22,7 +22,7 @@ import:
 - package: google.golang.org/grpc
   version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
 - package: k8s.io/kubernetes
-  version: v1.3.0-beta.2
+  version: v1.3.0
   subpackages:
   - pkg/api
   - pkg/api/meta
