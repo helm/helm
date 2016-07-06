@@ -41,4 +41,5 @@ deployment:
     commands:
       - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
       - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
+      - make docker-build
       - docker push gcr.io/kubernetes-helm/tiller:canary

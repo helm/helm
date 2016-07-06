@@ -31,8 +31,4 @@ case "${CIRCLE_NODE_INDEX-0}" in
     echo "Running 'make test-style'"
     make test-style
     ;;
-  2)
-    echo "Running 'make docker-build'"
-    make docker-build
-    ;;
 esac
