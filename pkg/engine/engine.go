@@ -19,6 +19,8 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"path"
 	"strings"
 	"text/template"
 
@@ -105,6 +107,7 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	}
 	files := []string{}
 	for fname, r := range tpls {
+		log.Printf("Preparing template %s", fname)
 		t = t.New(fname).Funcs(e.FuncMap)
 		if _, err := t.Parse(r.tpl); err != nil {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
@@ -137,7 +140,7 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 // As it goes, it also prepares the values in a scope-sensitive manner.
 func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 	templates := map[string]renderable{}
-	recAllTpls(c, templates, vals, true)
+	recAllTpls(c, templates, vals, true, "")
 	return templates
 }
 
@@ -145,7 +148,7 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals chartutil.Values, top bool) {
+func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals chartutil.Values, top bool, parentID string) {
 	// This should never evaluate to a nil map. That will cause problems when
 	// values are appended later.
 	cvals := chartutil.Values{}
@@ -170,11 +173,19 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 		}
 	}
 
+	newParentID := c.Metadata.Name
+	if parentID != "" {
+		// We artificially reconstruct the chart path to child templates. This
+		// creates a namespaced filename that can be used to track down the source
+		// of a particular template declaration.
+		newParentID = path.Join(parentID, "charts", newParentID)
+	}
+
 	for _, child := range c.Dependencies {
-		recAllTpls(child, templates, cvals, false)
+		recAllTpls(child, templates, cvals, false, newParentID)
 	}
 	for _, t := range c.Templates {
-		templates[t.Name] = renderable{
+		templates[path.Join(newParentID, t.Name)] = renderable{
 			tpl:  string(t.Data),
 			vals: cvals,
 		}

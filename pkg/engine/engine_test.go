@@ -75,16 +75,16 @@ func TestRender(t *testing.T) {
 	}
 
 	expect := "Spouter Inn"
-	if out["test1"] != expect {
+	if out["moby/test1"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test1"])
 	}
 
 	expect = "ishmael"
-	if out["test2"] != expect {
+	if out["moby/test2"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test2"])
 	}
 	expect = ""
-	if out["test3"] != expect {
+	if out["moby/test3"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test3"])
 	}
 
@@ -188,11 +188,13 @@ func TestRenderDependency(t *testing.T) {
 	deptpl := `{{define "myblock"}}World{{end}}`
 	toptpl := `Hello {{template "myblock"}}`
 	ch := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "outerchart"},
 		Templates: []*chart.Template{
 			{Name: "outer", Data: []byte(toptpl)},
 		},
 		Dependencies: []*chart.Chart{
 			{
+				Metadata: &chart.Metadata{Name: "innerchart"},
 				Templates: []*chart.Template{
 					{Name: "inner", Data: []byte(deptpl)},
 				},
@@ -211,7 +213,7 @@ func TestRenderDependency(t *testing.T) {
 	}
 
 	expect := "Hello World"
-	if out["outer"] != expect {
+	if out["outerchart/outer"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["outer"])
 	}
 
@@ -220,10 +222,11 @@ func TestRenderDependency(t *testing.T) {
 func TestRenderNestedValues(t *testing.T) {
 	e := New()
 
-	innerpath := "charts/inner/templates/inner.tpl"
+	innerpath := "templates/inner.tpl"
 	outerpath := "templates/outer.tpl"
-	deepestpath := "charts/inner/charts/deepest/templates/deepest.tpl"
-	checkrelease := "charts/inner/charts/deepest/templates/release.tpl"
+	// Ensure namespacing rules are working.
+	deepestpath := "templates/inner.tpl"
+	checkrelease := "templates/release.tpl"
 
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
@@ -288,19 +291,19 @@ global:
 		t.Fatalf("failed to render templates: %s", err)
 	}
 
-	if out[outerpath] != "Gather ye rosebuds while ye may" {
+	if out["top/"+outerpath] != "Gather ye rosebuds while ye may" {
 		t.Errorf("Unexpected outer: %q", out[outerpath])
 	}
 
-	if out[innerpath] != "Old time is still a-flyin'" {
+	if out["top/charts/herrick/"+innerpath] != "Old time is still a-flyin'" {
 		t.Errorf("Unexpected inner: %q", out[innerpath])
 	}
 
-	if out[deepestpath] != "And this same flower that smiles to-day" {
+	if out["top/charts/herrick/charts/deepest/"+deepestpath] != "And this same flower that smiles to-day" {
 		t.Errorf("Unexpected deepest: %q", out[deepestpath])
 	}
 
-	if out[checkrelease] != "Tomorrow will be dyin" {
+	if out["top/charts/herrick/charts/deepest/"+checkrelease] != "Tomorrow will be dyin" {
 		t.Errorf("Unexpected release: %q", out[checkrelease])
 	}
 }
@@ -340,8 +343,8 @@ func TestRenderBuiltinValues(t *testing.T) {
 	}
 
 	expects := map[string]string{
-		"Lavinia": "LaviniaLatiumAeneid",
-		"Aeneas":  "AeneasTroyAeneid",
+		"Troy/charts/Latium/Lavinia": "Troy/charts/Latium/LaviniaLatiumAeneid",
+		"Troy/Aeneas":                "Troy/AeneasTroyAeneid",
 	}
 	for file, expect := range expects {
 		if out[file] != expect {
