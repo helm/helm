@@ -18,8 +18,8 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"io"
+	"text/template"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -73,8 +73,26 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 	cmd.AddCommand(newGetValuesCmd(nil, out))
 	cmd.AddCommand(newGetManifestCmd(nil, out))
+	cmd.AddCommand(newGetHooksCmd(nil, out))
 	return cmd
 }
+
+var getTemplate = `VERSION: {{.Release.Version}}
+RELEASED: {{.ReleaseDate}}
+CHART: {{.Release.Chart.Metadata.Name}}-{{.Release.Chart.Metadata.Version}}
+USER-SUPPLIED VALUES:
+{{.Release.Config.Raw}}
+COMPUTED VALUES:
+{{.ComputedValues}}
+HOOKS:
+{{- range .Release.Hooks }}
+---
+# {{.Name}}
+{{.Manifest}}
+{{- end }}
+MANIFEST:
+{{.Release.Manifest}}
+`
 
 // getCmd is the command that implements 'helm get'
 func (g *getCmd) run() error {
@@ -92,14 +110,25 @@ func (g *getCmd) run() error {
 		return err
 	}
 
-	fmt.Fprintf(g.out, "VERSION: %v\n", res.Release.Version)
-	fmt.Fprintf(g.out, "RELEASED: %s\n", timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC))
-	fmt.Fprintf(g.out, "CHART: %s-%s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
-	fmt.Fprintln(g.out, "USER-SUPPLIED VALUES:")
-	fmt.Fprintln(g.out, res.Release.Config.Raw)
-	fmt.Fprintln(g.out, "COMPUTED VALUES:")
-	fmt.Fprintln(g.out, cfgStr)
-	fmt.Fprintln(g.out, "MANIFEST:")
-	fmt.Fprintln(g.out, res.Release.Manifest)
-	return nil
+	data := map[string]interface{}{
+		"Release":        res.Release,
+		"ComputedValues": cfgStr,
+		"ReleaseDate":    timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC),
+	}
+	return tpl(getTemplate, data, g.out)
+}
+
+func tpl(t string, vals map[string]interface{}, out io.Writer) error {
+	tt, err := template.New("_").Parse(t)
+	if err != nil {
+		return err
+	}
+	return tt.Execute(out, vals)
+}
+
+func ensureHelmClient(h helm.Interface) helm.Interface {
+	if h != nil {
+		return h
+	}
+	return helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
 }

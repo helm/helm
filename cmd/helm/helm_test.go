@@ -17,13 +17,32 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"io"
+	"regexp"
+	"testing"
+
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
+
+var mockHookTemplate = `apiVersion: v1
+kind: Job
+metadata:
+  annotations:
+    "helm.sh/hooks": pre-install
+`
+
+var mockManifest = `apiVersion: v1
+kind: Secret
+metadata:
+  name: fixture
+`
 
 func releaseMock(name string) *release.Release {
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
@@ -40,11 +59,22 @@ func releaseMock(name string) *release.Release {
 				Version: "0.1.0-beta.1",
 			},
 			Templates: []*chart.Template{
-				{Name: "foo.tpl", Data: []byte("Hello")},
+				{Name: "foo.tpl", Data: []byte(mockManifest)},
 			},
 		},
 		Config:  &chart.Config{Raw: `name: "value"`},
 		Version: 1,
+		Hooks: []*release.Hook{
+			{
+				Name:     "pre-install-hook",
+				Kind:     "Job",
+				Path:     "pre-install-hook.yaml",
+				Manifest: mockHookTemplate,
+				LastRun:  &date,
+				Events:   []release.Hook_Event{release.Hook_PRE_INSTALL},
+			},
+		},
+		Manifest: mockManifest,
 	}
 }
 
@@ -84,4 +114,37 @@ func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentO
 		}
 	}
 	return resp, c.err
+}
+
+// releaseCmd is a command that works with a fakeReleaseClient
+type releaseCmd func(c *fakeReleaseClient, out io.Writer) *cobra.Command
+
+// runReleaseCases runs a set of release cases through the given releaseCmd.
+func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
+	var buf bytes.Buffer
+	for _, tt := range tests {
+		c := &fakeReleaseClient{
+			rels: []*release.Release{tt.resp},
+		}
+		cmd := rcmd(c, &buf)
+		err := cmd.RunE(cmd, tt.args)
+		if (err != nil) != tt.err {
+			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
+		}
+		re := regexp.MustCompile(tt.expected)
+		if !re.Match(buf.Bytes()) {
+			t.Errorf("%q. expected\n%q\ngot\n%q", tt.name, tt.expected, buf.String())
+		}
+		buf.Reset()
+	}
+}
+
+// releaseCase describes a test case that works with releases.
+type releaseCase struct {
+	name string
+	args []string
+	// expected is the string to be matched. This supports regular expressions.
+	expected string
+	err      bool
+	resp     *release.Release
 }
