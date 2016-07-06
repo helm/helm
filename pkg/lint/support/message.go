@@ -33,14 +33,6 @@ const (
 // sev matches the *Sev states.
 var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 
-// Message is a linting output message
-type Message struct {
-	// Severity is one of the *Sev constants
-	Severity int
-	// Text contains the message text
-	Text string
-}
-
 // Linter encapsulates a linting run of a particular chart.
 type Linter struct {
 	Messages []Message
@@ -49,31 +41,36 @@ type Linter struct {
 	ChartDir        string
 }
 
-// LintError describes an error encountered while linting.
-type LintError interface {
-	error
+// Message describes an error encountered while linting.
+type Message struct {
+	// Severity is one of the *Sev constants
+	Severity int
+	Path     string
+	Err      error
 }
 
-// String prints a string representation of this Message.
-//
-// Implements fmt.Stringer.
-func (m Message) String() string {
-	return fmt.Sprintf("[%s] %s", sev[m.Severity], m.Text)
+func (m Message) Error() string {
+	return fmt.Sprintf("[%s] %s: %s", sev[m.Severity], m.Path, m.Err.Error())
+}
+
+// NewMessage creates a new Message struct
+func NewMessage(severity int, path string, err error) Message {
+	return Message{Severity: severity, Path: path, Err: err}
 }
 
 // RunLinterRule returns true if the validation passed
-func (l *Linter) RunLinterRule(severity int, lintError LintError) bool {
+func (l *Linter) RunLinterRule(severity int, path string, err error) bool {
 	// severity is out of bound
 	if severity < 0 || severity >= len(sev) {
 		return false
 	}
 
-	if lintError != nil {
-		l.Messages = append(l.Messages, Message{Text: lintError.Error(), Severity: severity})
+	if err != nil {
+		l.Messages = append(l.Messages, NewMessage(severity, path, err))
 
 		if severity > l.HighestSeverity {
 			l.HighestSeverity = severity
 		}
 	}
-	return lintError == nil
+	return err == nil
 }

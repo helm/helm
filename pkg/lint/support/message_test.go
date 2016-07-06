@@ -17,12 +17,12 @@ limitations under the License.
 package support
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 )
 
 var linter = Linter{}
-var lintError LintError = fmt.Errorf("Foobar")
+var errLint = errors.New("lint failed")
 
 func TestRunLinterRule(t *testing.T) {
 	var tests = []struct {
@@ -32,48 +32,48 @@ func TestRunLinterRule(t *testing.T) {
 		ExpectedReturn          bool
 		ExpectedHighestSeverity int
 	}{
-		{InfoSev, lintError, 1, false, InfoSev},
-		{WarningSev, lintError, 2, false, WarningSev},
-		{ErrorSev, lintError, 3, false, ErrorSev},
+		{InfoSev, errLint, 1, false, InfoSev},
+		{WarningSev, errLint, 2, false, WarningSev},
+		{ErrorSev, errLint, 3, false, ErrorSev},
 		// No error so it returns true
 		{ErrorSev, nil, 3, true, ErrorSev},
 		// Retains highest severity
-		{InfoSev, lintError, 4, false, ErrorSev},
+		{InfoSev, errLint, 4, false, ErrorSev},
 		// Invalid severity values
-		{4, lintError, 4, false, ErrorSev},
-		{22, lintError, 4, false, ErrorSev},
-		{-1, lintError, 4, false, ErrorSev},
+		{4, errLint, 4, false, ErrorSev},
+		{22, errLint, 4, false, ErrorSev},
+		{-1, errLint, 4, false, ErrorSev},
 	}
 
 	for _, test := range tests {
-		isValid := linter.RunLinterRule(test.Severity, test.LintError)
+		isValid := linter.RunLinterRule(test.Severity, "chart", test.LintError)
 		if len(linter.Messages) != test.ExpectedMessages {
-			t.Errorf("RunLinterRule(%d, %v), linter.Messages should now have %d message, we got %d", test.Severity, test.LintError, test.ExpectedMessages, len(linter.Messages))
+			t.Errorf("RunLinterRule(%d, \"chart\", %v), linter.Messages should now have %d message, we got %d", test.Severity, test.LintError, test.ExpectedMessages, len(linter.Messages))
 		}
 
 		if linter.HighestSeverity != test.ExpectedHighestSeverity {
-			t.Errorf("RunLinterRule(%d, %v), linter.HighestSeverity should be %d, we got %d", test.Severity, test.LintError, test.ExpectedHighestSeverity, linter.HighestSeverity)
+			t.Errorf("RunLinterRule(%d, \"chart\", %v), linter.HighestSeverity should be %d, we got %d", test.Severity, test.LintError, test.ExpectedHighestSeverity, linter.HighestSeverity)
 		}
 
 		if isValid != test.ExpectedReturn {
-			t.Errorf("RunLinterRule(%d, %v), should have returned %t but returned %t", test.Severity, test.LintError, test.ExpectedReturn, isValid)
+			t.Errorf("RunLinterRule(%d, \"chart\", %v), should have returned %t but returned %t", test.Severity, test.LintError, test.ExpectedReturn, isValid)
 		}
 	}
 }
 
 func TestMessage(t *testing.T) {
-	m := Message{ErrorSev, "Foo"}
-	if m.String() != "[ERROR] Foo" {
-		t.Errorf("Unexpected output: %s", m.String())
+	m := Message{ErrorSev, "Chart.yaml", errors.New("Foo")}
+	if m.Error() != "[ERROR] Chart.yaml: Foo" {
+		t.Errorf("Unexpected output: %s", m.Error())
 	}
 
-	m = Message{WarningSev, "Bar"}
-	if m.String() != "[WARNING] Bar" {
-		t.Errorf("Unexpected output: %s", m.String())
+	m = Message{WarningSev, "templates/", errors.New("Bar")}
+	if m.Error() != "[WARNING] templates/: Bar" {
+		t.Errorf("Unexpected output: %s", m.Error())
 	}
 
-	m = Message{InfoSev, "FooBar"}
-	if m.String() != "[INFO] FooBar" {
-		t.Errorf("Unexpected output: %s", m.String())
+	m = Message{InfoSev, "templates/rc.yaml", errors.New("FooBar")}
+	if m.Error() != "[INFO] templates/rc.yaml: FooBar" {
+		t.Errorf("Unexpected output: %s", m.Error())
 	}
 }

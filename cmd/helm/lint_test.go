@@ -26,11 +26,11 @@ var (
 )
 
 func TestLintChart(t *testing.T) {
-	if err := lintChart(chartDirPath); err != nil {
+	if _, err := lintChart(chartDirPath); err != nil {
 		t.Errorf("%s", err)
 	}
 
-	if err := lintChart(archivedChartPath); err != nil {
+	if _, err := lintChart(archivedChartPath); err != nil {
 		t.Errorf("%s", err)
 	}
 

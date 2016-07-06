@@ -31,8 +31,8 @@ func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.yml", "/test.toml", "test.yml"}
 	for _, test := range failTest {
 		err := validateAllowedExtension(test)
-		if err == nil || !strings.Contains(err.Error(), "needs to use .yaml or .tpl extension") {
-			t.Errorf("validateAllowedExtension('%s') to return \"needs to use .yaml or .tpl extension\", got no error", test)
+		if err == nil || !strings.Contains(err.Error(), "Valid extensions are .yaml or .tpl") {
+			t.Errorf("validateAllowedExtension('%s') to return \"Valid extensions are .yaml or .tpl\", got no error", test)
 		}
 	}
 	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml"}
@@ -49,7 +49,7 @@ func TestValidateQuotes(t *testing.T) {
 	var failTest = []string{"foo: {{.Release.Service }}", "foo:  {{.Release.Service }}", "- {{.Release.Service }}", "foo: {{default 'Never' .restart_policy}}", "-  {{.Release.Service }} "}
 
 	for _, test := range failTest {
-		err := validateQuotes("testTemplate.yaml", test)
+		err := validateQuotes(test)
 		if err == nil || !strings.Contains(err.Error(), "use the sprig \"quote\" function") {
 			t.Errorf("validateQuotes('%s') to return \"use the sprig \"quote\" function:\", got no error.", test)
 		}
@@ -58,7 +58,7 @@ func TestValidateQuotes(t *testing.T) {
 	var successTest = []string{"foo: {{.Release.Service | quote }}", "foo:  {{.Release.Service | quote }}", "- {{.Release.Service | quote }}", "foo: {{default 'Never' .restart_policy | quote }}", "foo: \"{{ .Release.Service }}\"", "foo: \"{{ .Release.Service }} {{ .Foo.Bar }}\"", "foo: \"{{ default 'Never' .Release.Service }} {{ .Foo.Bar }}\"", "foo:  {{.Release.Service | squote }}"}
 
 	for _, test := range successTest {
-		err := validateQuotes("testTemplate.yaml", test)
+		err := validateQuotes(test)
 		if err != nil {
 			t.Errorf("validateQuotes('%s') to return not error and got \"%s\"", test, err.Error())
 		}
@@ -68,9 +68,9 @@ func TestValidateQuotes(t *testing.T) {
 	failTest = []string{"foo: {{.Release.Service }}-{{ .Release.Bar }}", "foo: {{.Release.Service }} {{ .Release.Bar }}", "- {{.Release.Service }}-{{ .Release.Bar }}", "- {{.Release.Service }}-{{ .Release.Bar }} {{ .Release.Baz }}", "foo: {{.Release.Service | default }}-{{ .Release.Bar }}"}
 
 	for _, test := range failTest {
-		err := validateQuotes("testTemplate.yaml", test)
-		if err == nil || !strings.Contains(err.Error(), "Wrap your substitution functions in quotes") {
-			t.Errorf("validateQuotes('%s') to return \"Wrap your substitution functions in quotes\", got no error", test)
+		err := validateQuotes(test)
+		if err == nil || !strings.Contains(err.Error(), "wrap substitution functions in quotes") {
+			t.Errorf("validateQuotes('%s') to return \"wrap substitution functions in quotes\", got no error", test)
 		}
 	}
 
@@ -85,13 +85,13 @@ func TestTemplateParsing(t *testing.T) {
 		t.Fatalf("Expected one error, got %d, %v", len(res), res)
 	}
 
-	if !strings.Contains(res[0].Text, "deliberateSyntaxError") {
+	if !strings.Contains(res[0].Err.Error(), "deliberateSyntaxError") {
 		t.Errorf("Unexpected error: %s", res[0])
 	}
 }
 
-var wrongTemplatePath string = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
-var ignoredTemplatePath string = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
+var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
+var ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
 
 // Test a template with all the existing features:
 // namespaces, partial templates
