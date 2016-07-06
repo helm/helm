@@ -33,6 +33,6 @@ case "${CIRCLE_NODE_INDEX-0}" in
     ;;
   2)
     echo "Running 'make docker-build'"
-    make test-style
+    make docker-build
     ;;
 esac
