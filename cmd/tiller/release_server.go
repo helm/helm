@@ -277,6 +277,7 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		},
 		Manifest: b.String(),
 		Hooks:    hooks,
+		Version:  1,
 	}
 	return rel, nil
 }

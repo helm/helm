@@ -141,12 +141,13 @@ func (l *listCmd) run() error {
 func formatList(rels []*release.Release) string {
 	table := uitable.New()
 	table.MaxColWidth = 30
-	table.AddRow("NAME", "UPDATED", "STATUS", "CHART")
+	table.AddRow("NAME", "VERSION", "UPDATED", "STATUS", "CHART")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
 		t := timeconv.String(r.Info.LastDeployed)
 		s := r.Info.Status.Code.String()
-		table.AddRow(r.Name, t, s, c)
+		v := r.Version
+		table.AddRow(r.Name, v, t, s, c)
 	}
 	return table.String()
 }

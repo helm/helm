@@ -92,8 +92,9 @@ func (g *getCmd) run() error {
 		return err
 	}
 
-	fmt.Fprintf(g.out, "CHART: %s-%s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
+	fmt.Fprintf(g.out, "VERSION: %v\n", res.Release.Version)
 	fmt.Fprintf(g.out, "RELEASED: %s\n", timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC))
+	fmt.Fprintf(g.out, "CHART: %s-%s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
 	fmt.Fprintln(g.out, "USER-SUPPLIED VALUES:")
 	fmt.Fprintln(g.out, res.Release.Config.Raw)
 	fmt.Fprintln(g.out, "COMPUTED VALUES:")

@@ -52,7 +52,7 @@ func TestListRun(t *testing.T) {
 				},
 				long: true,
 			},
-			expected: "NAME \tUPDATED                 \tSTATUS  \tCHART           \natlas\t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1",
+			expected: "NAME \tVERSION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1      \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
 		},
 	}
 
@@ -93,7 +93,7 @@ func TestListCmd(t *testing.T) {
 			resp: []*release.Release{
 				releaseMock("atlas"),
 			},
-			expected: "NAME \tUPDATED                 \tSTATUS  \tCHART           \natlas\t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1",
+			expected: "NAME \tVERSION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1      \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
 		},
 	}
 
