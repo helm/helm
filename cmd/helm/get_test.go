@@ -36,7 +36,7 @@ func TestGetCmd(t *testing.T) {
 			name:     "with a release",
 			resp:     releaseMock("thomas-guide"),
 			args:     []string{"thomas-guide"},
-			expected: "CHART: foo-0.1.0-beta.1\nRELEASED: (.*)\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nMANIFEST:",
+			expected: "VERSION: 1\nRELEASED: (.*)\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nMANIFEST:",
 		},
 		{
 			name: "requires release name arg",

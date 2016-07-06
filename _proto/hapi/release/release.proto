@@ -44,4 +44,8 @@ message Release {
 
 	// Hooks are all of the hooks declared for this release.
 	repeated hapi.release.Hook hooks = 6;
+
+	// Version is an int32 which represents the version of the release.
+	int32 version = 7;
+
 }

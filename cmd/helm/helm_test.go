@@ -43,7 +43,8 @@ func releaseMock(name string) *release.Release {
 				{Name: "foo.tpl", Data: []byte("Hello")},
 			},
 		},
-		Config: &chart.Config{Raw: `name: "value"`},
+		Config:  &chart.Config{Raw: `name: "value"`},
+		Version: 1,
 	}
 }
 
