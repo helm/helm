@@ -16,22 +16,35 @@
 
 set -euo pipefail
 
-COVERDIR=${COVERDIR:-.coverage}
-COVERMODE=${COVERMODE:-atomic}
-PACKAGES=($(go list $(glide novendor)))
+covermode=${COVERMODE:-atomic}
+coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
+profile="${coverdir}/cover.out"
 
-if [[ ! -d "$COVERDIR" ]]; then
-  mkdir -p "$COVERDIR"
-fi
+hash goveralls 2>/dev/null || go get github.com/mattn/goveralls
 
-echo "mode: ${COVERMODE}" > "${COVERDIR}/coverage.out"
+generate_cover_data() {
+  for d in $(godir) ; do
+    local output="${coverdir}/${d//\//-}.cover"
+    go test -coverprofile="${output}" -covermode="$covermode" "$d"
+  done
 
-for d in "${PACKAGES[@]}"; do
-  go test -coverprofile=profile.out -covermode="$COVERMODE" "$d"
-  if [ -f profile.out ]; then
-    sed "/mode: $COVERMODE/d" profile.out >> "${COVERDIR}/coverage.out"
-    rm profile.out
-  fi
-done
+  echo "mode: $covermode" >"$profile"
+  grep -h -v "^mode:" "$coverdir"/*.cover >>"$profile"
+}
 
-go tool cover -html "${COVERDIR}/coverage.out" -o "${COVERDIR}/coverage.html"
+push_to_coveralls() {
+  goveralls -coverprofile="${profile}" -service=circle-ci
+}
+
+generate_cover_data
+go tool cover -func "${profile}"
+
+case "$1" in
+  --html)
+    go tool cover -html "${profile}"
+    ;;
+  --coveralls)
+    push_to_coveralls
+    ;;
+esac
+

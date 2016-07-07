@@ -22,13 +22,22 @@ IFS=$'\n\t'
 HELM_ROOT="${BASH_SOURCE[0]%/*}/.."
 cd "$HELM_ROOT"
 
-case "${CIRCLE_NODE_INDEX-0}" in
-  0)
-    echo "Running 'make test-unit'"
+run_unit_test() {
+  if [[ "${CIRCLE_BRANCH-}" == "master" ]]; then
+    echo "Running unit tests with coverage'"
+    ./scripts/coverage.sh --coveralls
+  else
+    echo "Running unit tests'"
     make test-unit
-    ;;
-  1)
-    echo "Running 'make test-style'"
-    make test-style
-    ;;
+  fi
+}
+
+run_style_check() {
+  echo "Running 'make test-style'"
+  make test-style
+}
+
+case "${CIRCLE_NODE_INDEX-0}" in
+  0) run_unit_test   ;;
+  1) run_style_check ;;
 esac
