@@ -134,7 +134,7 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 }
@@ -150,8 +150,8 @@ func TestInstallReleaseDryRun(t *testing.T) {
 				{Name: "hello", Data: []byte("hello: world")},
 				{Name: "goodbye", Data: []byte("goodbye: world")},
 				{Name: "empty", Data: []byte("")},
-				{Name: "with-partials", Data: []byte("hello: {{ template \"partials/_planet\" . }}")},
-				{Name: "partials/_planet", Data: []byte("Earth")},
+				{Name: "with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
+				{Name: "partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 				{Name: "hooks", Data: []byte(manifestWithHook)},
 			},
 		},
@@ -165,11 +165,11 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Expected release name.")
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello\nhello: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: goodbye\ngoodbye: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/goodbye\ngoodbye: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 
@@ -177,7 +177,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Should contain partial content. %s", res.Release.Manifest)
 	}
 
-	if strings.Contains(res.Release.Manifest, "hello: {{ template \"partials/_planet\" . }}") {
+	if strings.Contains(res.Release.Manifest, "hello: {{ template \"_planet\" . }}") {
 		t.Errorf("Should not contain partial templates itself. %s", res.Release.Manifest)
 	}
 
