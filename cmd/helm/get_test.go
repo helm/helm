@@ -17,47 +17,28 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
-	"regexp"
+	"io"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
+	"github.com/spf13/cobra"
 )
 
 func TestGetCmd(t *testing.T) {
-	tests := []struct {
-		name     string
-		args     []string
-		resp     *release.Release
-		expected string
-		err      bool
-	}{
+	tests := []releaseCase{
 		{
-			name:     "with a release",
+			name:     "get with a release",
 			resp:     releaseMock("thomas-guide"),
 			args:     []string{"thomas-guide"},
-			expected: "VERSION: 1\nRELEASED: (.*)\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nMANIFEST:",
+			expected: "VERSION: 1\nRELEASED: (.*)\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nHOOKS:\n---\n# pre-install-hook\n" + mockHookTemplate + "\nMANIFEST:",
 		},
 		{
-			name: "requires release name arg",
+			name: "get requires release name arg",
 			err:  true,
 		},
 	}
 
-	var buf bytes.Buffer
-	for _, tt := range tests {
-		c := &fakeReleaseClient{
-			rels: []*release.Release{tt.resp},
-		}
-		cmd := newGetCmd(c, &buf)
-		err := cmd.RunE(cmd, tt.args)
-		if (err != nil) != tt.err {
-			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
-		}
-		re := regexp.MustCompile(tt.expected)
-		if !re.Match(buf.Bytes()) {
-			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, buf.String())
-		}
-		buf.Reset()
+	cmd := func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+		return newGetCmd(c, out)
 	}
+	runReleaseCases(t, tests, cmd)
 }

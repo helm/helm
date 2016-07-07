@@ -23,21 +23,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestGetValuesCmd(t *testing.T) {
+func TestGetHooks(t *testing.T) {
 	tests := []releaseCase{
 		{
-			name:     "get values with a release",
-			resp:     releaseMock("thomas-guide"),
-			args:     []string{"thomas-guide"},
-			expected: "name: \"value\"",
+			name:     "get hooks with release",
+			args:     []string{"aeneas"},
+			expected: mockHookTemplate,
+			resp:     releaseMock("aeneas"),
 		},
 		{
-			name: "get values requires release name arg",
+			name: "get hooks without args",
+			args: []string{},
 			err:  true,
 		},
 	}
-	cmd := func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
-		return newGetValuesCmd(c, out)
-	}
-	runReleaseCases(t, tests, cmd)
+	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+		return newGetHooksCmd(c, out)
+	})
 }
