@@ -70,12 +70,15 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = helm.UpdateRelease(args[0], chartPath, rawVals, upgradeDryRun)
+	res, err := helm.UpdateRelease(args[0], chartPath, rawVals, upgradeDryRun)
 	if err != nil {
 		return prettyError(err)
 	}
 
-	fmt.Println("Coming SOON to a Helm near YOU!")
+	newVersion := res.GetRelease().Version
+	fmt.Printf("I know you want to upgrade your release to version %v.\nHang tight. We're still working on the helm upgrade command.", newVersion)
+
+	fmt.Println("\nComing soon to a Helm near YOU!")
 
 	return nil
 }
