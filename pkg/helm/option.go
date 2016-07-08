@@ -17,7 +17,6 @@ limitations under the License.
 package helm
 
 import (
-	"fmt"
 	"golang.org/x/net/context"
 	cpb "k8s.io/helm/pkg/proto/hapi/chart"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
@@ -209,8 +208,10 @@ func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient,
 }
 
 // Executes tiller.UpdateRelease RPC.
-func (o *options) rpcUpdateRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, fmt.Errorf("helm: UpdateRelease: not implemented")
+func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	//TODO: handle dryRun
+
+	return rlc.UpdateRelease(context.TODO(), &rls.UpdateReleaseRequest{Name: rlsName, Chart: chr})
 }
 
 // Executes tiller.GetReleaseStatus RPC.
