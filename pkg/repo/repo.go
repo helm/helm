@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repo
+package repo // import "k8s.io/helm/pkg/repo"
 
 import (
 	"crypto/sha1"

@@ -19,4 +19,4 @@ limitations under the License.
 Linting is the process of testing charts for errors or warnings regarding
 formatting, compilation, or standards compliance.
 */
-package support
+package support // import "k8s.io/helm/pkg/lint/support"
