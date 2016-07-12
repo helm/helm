@@ -123,7 +123,8 @@ func (r *ChartRepository) Index() error {
 		r.IndexFile = &IndexFile{Entries: make(map[string]*ChartRef)}
 	}
 
-	var existCharts map[string]bool = make(map[string]bool)
+	var existCharts map[string]bool
+	existCharts = make(map[string]bool)
 
 	for _, path := range r.ChartPaths {
 		ch, err := chartutil.Load(path)
@@ -162,7 +163,7 @@ func (r *ChartRepository) Index() error {
 	}
 
 	// update deleted charts with Removed = true
-	for k, _ := range r.IndexFile.Entries {
+	for k := range r.IndexFile.Entries {
 		if _, ok := existCharts[k]; !ok {
 			r.IndexFile.Entries[k].Removed = true
 		}
