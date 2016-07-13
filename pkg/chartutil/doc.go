@@ -41,4 +41,4 @@ into a Chart.
 When creating charts in memory, use the 'k8s.io/helm/pkg/proto/happy/chart'
 package directly.
 */
-package chartutil
+package chartutil // import "k8s.io/helm/pkg/chartutil"
