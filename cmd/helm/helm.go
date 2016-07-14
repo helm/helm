@@ -85,9 +85,11 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p.StringVarP(&tillerNamespace, "namespace", "", "", "kubernetes namespace")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 
-	cmd.AddCommand(newListCmd(nil, out))
-	cmd.AddCommand(newGetCmd(nil, out))
-
+	cmd.AddCommand(
+		newCreateCmd(out),
+		newGetCmd(nil, out),
+		newListCmd(nil, out),
+	)
 	return cmd
 }
 
