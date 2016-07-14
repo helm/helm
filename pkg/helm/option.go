@@ -51,15 +51,15 @@ func DryRun() Option {
 	}
 }
 
-// HelmHome specifies the location of helm home, (default = "$HOME/.helm").
-func HelmHome(home string) Option {
+// Home specifies the location of helm home, (default = "$HOME/.helm").
+func Home(home string) Option {
 	return func(opts *options) {
 		opts.home = home
 	}
 }
 
-// HelmHost specifies the host address of the Tiller release server, (default = ":44134").
-func HelmHost(host string) Option {
+// Host specifies the host address of the Tiller release server, (default = ":44134").
+func Host(host string) Option {
 	return func(opts *options) {
 		opts.host = host
 	}
