@@ -57,8 +57,8 @@ func (h *Client) Option(opts ...Option) *Client {
 
 // Init initializes the helm client with default options
 func (h *Client) Init() *Client {
-	return h.Option(HelmHost(DefaultHelmHost)).
-		Option(HelmHome(os.ExpandEnv(DefaultHelmHome)))
+	return h.Option(Host(DefaultHelmHost)).
+		Option(Home(os.ExpandEnv(DefaultHelmHome)))
 }
 
 // ListReleases lists the current releases.

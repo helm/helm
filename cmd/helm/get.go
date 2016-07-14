@@ -66,7 +66,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 			get.release = args[0]
 			if get.client == nil {
-				get.client = helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
+				get.client = helm.NewClient(helm.Host(helm.Config.ServAddr))
 			}
 			return get.run()
 		},
@@ -130,5 +130,5 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 	if h != nil {
 		return h
 	}
-	return helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
+	return helm.NewClient(helm.Host(helm.Config.ServAddr))
 }

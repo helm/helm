@@ -80,7 +80,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				list.filter = strings.Join(args, " ")
 			}
 			if list.client == nil {
-				list.client = helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
+				list.client = helm.NewClient(helm.Host(helm.Config.ServAddr))
 			}
 			return list.run()
 		},
