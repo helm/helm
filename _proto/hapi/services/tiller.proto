@@ -175,6 +175,9 @@ message InstallReleaseRequest {
 	// namespace, otherwise the server will return an error. If it is not
 	// supplied, the server will autogenerate one.
 	string name = 4;
+
+	// DisableHooks causes the server to skip running any hooks for the install.
+	bool disable_hooks = 5;
 }
 
 // InstallReleaseResponse is the response from a release installation.
@@ -186,6 +189,8 @@ message InstallReleaseResponse {
 message UninstallReleaseRequest {
 	// Name is the name of the release to delete.
 	string name = 1;
+	// DisableHooks causes the server to skip running any hooks for the uninstall.
+	bool disable_hooks = 2;
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.

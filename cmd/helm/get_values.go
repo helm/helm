@@ -34,10 +34,10 @@ type getValuesCmd struct {
 	release   string
 	allValues bool
 	out       io.Writer
-	client    helm.Interface
+	client    helm.OptionalInterface
 }
 
-func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
+func newGetValuesCmd(client helm.OptionalInterface, out io.Writer) *cobra.Command {
 	get := &getValuesCmd{
 		out:    out,
 		client: client,

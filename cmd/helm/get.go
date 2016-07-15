@@ -126,7 +126,7 @@ func tpl(t string, vals map[string]interface{}, out io.Writer) error {
 	return tt.Execute(out, vals)
 }
 
-func ensureHelmClient(h helm.Interface) helm.Interface {
+func ensureHelmClient(h helm.OptionalInterface) helm.OptionalInterface {
 	if h != nil {
 		return h
 	}

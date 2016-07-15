@@ -38,6 +38,8 @@ type options struct {
 	chart string
 	// if set dry-run helm client calls
 	dryRun bool
+	// if set, skip running hooks
+	disableHooks bool
 	// release list options are applied directly to the list releases request
 	listReq rls.ListReleasesRequest
 	// release install options are applied directly to the install release request
@@ -48,6 +50,12 @@ type options struct {
 func DryRun() Option {
 	return func(opts *options) {
 		opts.dryRun = true
+	}
+}
+
+func DisableHooks() Option {
+	return func(opts *options) {
+		opts.disableHooks = true
 	}
 }
 
@@ -163,6 +171,7 @@ func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient
 	}
 	o.instReq.Chart = chr
 	o.instReq.DryRun = o.dryRun
+	o.instReq.DisableHooks = o.disableHooks
 
 	return rlc.InstallRelease(context.TODO(), &o.instReq)
 }

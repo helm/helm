@@ -63,10 +63,13 @@ func UpdateRelease(rlsName string) (*rls.UpdateReleaseResponse, error) {
 
 // InstallRelease runs an install for a release.
 // Soon to be deprecated helm InstallRelease API.
-func InstallRelease(vals []byte, rlsName, chStr string, dryRun bool) (*rls.InstallReleaseResponse, error) {
+func InstallRelease(vals []byte, rlsName, chStr string, dryRun, skipHooks bool) (*rls.InstallReleaseResponse, error) {
 	client := NewClient(Host(Config.ServAddr))
 	if dryRun {
 		client.Option(DryRun())
+	}
+	if skipHooks {
+		client.Option(DisableHooks())
 	}
 	return client.InstallRelease(chStr, ValueOverrides(vals), ReleaseName(rlsName))
 }
