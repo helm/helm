@@ -16,7 +16,7 @@ Helm and Tiller.
 We use Make to build our programs. The simplest way to get started is:
 
 ```console
-$ make boostrap build
+$ make bootstrap build
 ```
 
 This will build both Helm and Tiller. `make bootstrap` will attempt to

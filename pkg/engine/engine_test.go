@@ -46,6 +46,7 @@ func TestRender(t *testing.T) {
 		Templates: []*chart.Template{
 			{Name: "test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
 			{Name: "test2", Data: []byte("{{.global.callme | lower }}")},
+			{Name: "test3", Data: []byte("{{.noValue}}")},
 		},
 		Values: &chart.Config{
 			Raw: "outer: DEFAULT\ninner: DEFAULT",
@@ -74,13 +75,17 @@ func TestRender(t *testing.T) {
 	}
 
 	expect := "Spouter Inn"
-	if out["test1"] != expect {
+	if out["moby/test1"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test1"])
 	}
 
 	expect = "ishmael"
-	if out["test2"] != expect {
+	if out["moby/test2"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test2"])
+	}
+	expect = ""
+	if out["moby/test3"] != expect {
+		t.Errorf("Expected %q, got %q", expect, out["test3"])
 	}
 
 	if _, err := e.Render(c, v); err != nil {
@@ -149,18 +154,21 @@ func TestParallelRenderInternals(t *testing.T) {
 
 func TestAllTemplates(t *testing.T) {
 	ch1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "ch1"},
 		Templates: []*chart.Template{
 			{Name: "foo", Data: []byte("foo")},
 			{Name: "bar", Data: []byte("bar")},
 		},
 		Dependencies: []*chart.Chart{
 			{
+				Metadata: &chart.Metadata{Name: "laboratory mice"},
 				Templates: []*chart.Template{
 					{Name: "pinky", Data: []byte("pinky")},
 					{Name: "brain", Data: []byte("brain")},
 				},
-				Dependencies: []*chart.Chart{
-					{Templates: []*chart.Template{
+				Dependencies: []*chart.Chart{{
+					Metadata: &chart.Metadata{Name: "same thing we do every night"},
+					Templates: []*chart.Template{
 						{Name: "innermost", Data: []byte("innermost")},
 					}},
 				},
@@ -180,11 +188,13 @@ func TestRenderDependency(t *testing.T) {
 	deptpl := `{{define "myblock"}}World{{end}}`
 	toptpl := `Hello {{template "myblock"}}`
 	ch := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "outerchart"},
 		Templates: []*chart.Template{
 			{Name: "outer", Data: []byte(toptpl)},
 		},
 		Dependencies: []*chart.Chart{
 			{
+				Metadata: &chart.Metadata{Name: "innerchart"},
 				Templates: []*chart.Template{
 					{Name: "inner", Data: []byte(deptpl)},
 				},
@@ -203,7 +213,7 @@ func TestRenderDependency(t *testing.T) {
 	}
 
 	expect := "Hello World"
-	if out["outer"] != expect {
+	if out["outerchart/outer"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["outer"])
 	}
 
@@ -212,10 +222,11 @@ func TestRenderDependency(t *testing.T) {
 func TestRenderNestedValues(t *testing.T) {
 	e := New()
 
-	innerpath := "charts/inner/templates/inner.tpl"
+	innerpath := "templates/inner.tpl"
 	outerpath := "templates/outer.tpl"
-	deepestpath := "charts/inner/charts/deepest/templates/deepest.tpl"
-	checkrelease := "charts/inner/charts/deepest/templates/release.tpl"
+	// Ensure namespacing rules are working.
+	deepestpath := "templates/inner.tpl"
+	checkrelease := "templates/release.tpl"
 
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
@@ -280,19 +291,65 @@ global:
 		t.Fatalf("failed to render templates: %s", err)
 	}
 
-	if out[outerpath] != "Gather ye rosebuds while ye may" {
+	if out["top/"+outerpath] != "Gather ye rosebuds while ye may" {
 		t.Errorf("Unexpected outer: %q", out[outerpath])
 	}
 
-	if out[innerpath] != "Old time is still a-flyin'" {
+	if out["top/charts/herrick/"+innerpath] != "Old time is still a-flyin'" {
 		t.Errorf("Unexpected inner: %q", out[innerpath])
 	}
 
-	if out[deepestpath] != "And this same flower that smiles to-day" {
+	if out["top/charts/herrick/charts/deepest/"+deepestpath] != "And this same flower that smiles to-day" {
 		t.Errorf("Unexpected deepest: %q", out[deepestpath])
 	}
 
-	if out[checkrelease] != "Tomorrow will be dyin" {
+	if out["top/charts/herrick/charts/deepest/"+checkrelease] != "Tomorrow will be dyin" {
 		t.Errorf("Unexpected release: %q", out[checkrelease])
 	}
+}
+
+func TestRenderBuiltinValues(t *testing.T) {
+	inner := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "Latium"},
+		Templates: []*chart.Template{
+			{Name: "Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{},
+	}
+
+	outer := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "Troy"},
+		Templates: []*chart.Template{
+			{Name: "Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{inner},
+	}
+
+	inject := chartutil.Values{
+		"Values": &chart.Config{Raw: ""},
+		"Chart":  outer.Metadata,
+		"Release": chartutil.Values{
+			"Name": "Aeneid",
+		},
+	}
+
+	t.Logf("Calculated values: %v", outer)
+
+	out, err := New().Render(outer, inject)
+	if err != nil {
+		t.Fatalf("failed to render templates: %s", err)
+	}
+
+	expects := map[string]string{
+		"Troy/charts/Latium/Lavinia": "Troy/charts/Latium/LaviniaLatiumAeneid",
+		"Troy/Aeneas":                "Troy/AeneasTroyAeneid",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+
 }

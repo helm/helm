@@ -17,8 +17,9 @@ limitations under the License.
 package lint
 
 import (
-	"k8s.io/helm/pkg/lint/support"
 	"strings"
+
+	"k8s.io/helm/pkg/lint/support"
 
 	"testing"
 )
@@ -29,7 +30,7 @@ const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir)
+	m := All(badChartDir).Messages
 	if len(m) != 4 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -38,18 +39,18 @@ func TestBadChart(t *testing.T) {
 	var w, e, e2, e3 bool
 	for _, msg := range m {
 		if msg.Severity == support.WarningSev {
-			if strings.Contains(msg.Text, "Templates directory not found") {
+			if strings.Contains(msg.Err.Error(), "directory not found") {
 				w = true
 			}
 		}
 		if msg.Severity == support.ErrorSev {
-			if strings.Contains(msg.Text, "'version' 0.0.0 is less than or equal to 0") {
+			if strings.Contains(msg.Err.Error(), "version 0.0.0 is less than or equal to 0") {
 				e = true
 			}
-			if strings.Contains(msg.Text, "'name' is required") {
+			if strings.Contains(msg.Err.Error(), "name is required") {
 				e2 = true
 			}
-			if strings.Contains(msg.Text, "'name' and directory do not match") {
+			if strings.Contains(msg.Err.Error(), "directory name (badchartfile) and chart name () must be the same") {
 				e3 = true
 			}
 		}
@@ -60,27 +61,27 @@ func TestBadChart(t *testing.T) {
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir)
+	m := All(badYamlFileDir).Messages
 	if len(m) != 1 {
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	if !strings.Contains(m[0].Text, "deliberateSyntaxError") {
+	if !strings.Contains(m[0].Err.Error(), "deliberateSyntaxError") {
 		t.Errorf("All didn't have the error for deliberateSyntaxError")
 	}
 }
 
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir)
+	m := All(badValuesFileDir).Messages
 	if len(m) != 1 {
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	if !strings.Contains(m[0].Text, "cannot unmarshal") {
-		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Text)
+	if !strings.Contains(m[0].Err.Error(), "cannot unmarshal") {
+		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
 	}
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir)
+	m := All(goodChartDir).Messages
 	if len(m) != 0 {
 		t.Errorf("All failed but shouldn't have: %#v", m)
 	}

@@ -1,5 +1,5 @@
-hash: b84a1c02841aebb58710da5c7fe6865ab5d4e43d6c51fa8cd9ec68ceb1ebe37e
-updated: 2016-06-26T14:51:02.02536382-07:00
+hash: 141ef5b9c491c91b026ab4007e48502c9a6df9f173c40e1406233dd44f065190
+updated: 2016-07-05T16:51:52.631048739-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -133,7 +133,7 @@ imports:
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/cadvisor
-  version: 7d22cf63253c17bad8ab64b8eef679718d00342e
+  version: 4dbefc9b671b81257973a33211fb12370c1a526e
   subpackages:
   - api
   - cache/memory
@@ -238,8 +238,6 @@ imports:
   version: 490cc6eb5fa45bf8a8b7b73c8bc82a8160e8531d
 - name: github.com/spf13/cobra
   version: 6a8bd97bdb1fc0d08a83459940498ea49d3e8c93
-  subpackages:
-  - cobra
 - name: github.com/spf13/pflag
   version: 367864438f1b1a3c7db4da06a2f55b144e6784e0
 - name: github.com/technosophos/moniker
@@ -286,11 +284,11 @@ imports:
 - name: google.golang.org/grpc
   version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
   subpackages:
+  - metadata
   - codes
   - credentials
   - grpclog
   - internal
-  - metadata
   - naming
   - transport
   - peer
@@ -299,7 +297,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: caf9a4d87700ba034a7b39cced19bd5628ca6aa3
+  version: 283137936a498aed572ee22af6774b6fb6e9fd94
   subpackages:
   - pkg/api
   - pkg/api/meta
@@ -326,13 +324,13 @@ imports:
   - pkg/util/intstr
   - pkg/util/rand
   - pkg/util/sets
-  - pkg/util/validation
-  - pkg/util/validation/field
   - pkg/client/unversioned/auth
   - pkg/client/unversioned/clientcmd/api
   - pkg/client/unversioned/clientcmd/api/latest
   - pkg/util/errors
   - pkg/util/homedir
+  - pkg/util/validation
+  - pkg/util/validation/field
   - pkg/kubelet/server/portforward
   - pkg/util/httpstream
   - pkg/util/runtime
@@ -361,6 +359,7 @@ imports:
   - pkg/util/strategicpatch
   - pkg/watch
   - pkg/util/yaml
+  - pkg/api/testapi
   - third_party/forked/reflect
   - pkg/conversion/queryparams
   - pkg/util/json
@@ -425,7 +424,7 @@ imports:
   - pkg/util/framer
   - third_party/forked/json
   - pkg/util/parsers
-  - federation/apis/federation/v1alpha1
+  - federation/apis/federation/v1beta1
   - pkg/apis/apps/v1alpha1
   - pkg/apis/authentication.k8s.io
   - pkg/apis/authentication.k8s.io/v1beta1
@@ -452,4 +451,4 @@ imports:
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
   repo: https://github.com/go-inf/inf.git
   vcs: git
-devImports: []
+testImports: []

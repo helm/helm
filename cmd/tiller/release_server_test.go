@@ -34,6 +34,16 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 )
 
+var manifestWithHook = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    "helm.sh/hook": post-install,pre-delete
+data:
+  name: value
+`
+
 func rsFixture() *releaseServer {
 	return &releaseServer{
 		env: mockEnvironment(),
@@ -59,6 +69,18 @@ func releaseMock() *release.Release {
 			},
 		},
 		Config: &chart.Config{Raw: `name = "value"`},
+		Hooks: []*release.Hook{
+			{
+				Name:     "test-cm",
+				Kind:     "ConfigMap",
+				Path:     "test-cm",
+				Manifest: manifestWithHook,
+				Events: []release.Hook_Event{
+					release.Hook_POST_INSTALL,
+					release.Hook_PRE_DELETE,
+				},
+			},
+		},
 	}
 }
 
@@ -71,6 +93,7 @@ func TestInstallRelease(t *testing.T) {
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
 				{Name: "hello", Data: []byte("hello: world")},
+				{Name: "hooks", Data: []byte(manifestWithHook)},
 			},
 		},
 	}
@@ -89,6 +112,20 @@ func TestInstallRelease(t *testing.T) {
 
 	t.Logf("rel: %v", rel)
 
+	if len(rel.Hooks) != 1 {
+		t.Fatalf("Expected 1 hook, got %d", len(rel.Hooks))
+	}
+	if rel.Hooks[0].Manifest != manifestWithHook {
+		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
+	}
+
+	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {
+		t.Errorf("Expected event 0 is post install")
+	}
+	if rel.Hooks[0].Events[1] != release.Hook_PRE_DELETE {
+		t.Errorf("Expected event 0 is pre-delete")
+	}
+
 	if len(res.Release.Manifest) == 0 {
 		t.Errorf("No manifest returned: %v", res.Release)
 	}
@@ -97,7 +134,7 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 }
@@ -113,8 +150,9 @@ func TestInstallReleaseDryRun(t *testing.T) {
 				{Name: "hello", Data: []byte("hello: world")},
 				{Name: "goodbye", Data: []byte("goodbye: world")},
 				{Name: "empty", Data: []byte("")},
-				{Name: "with-partials", Data: []byte("hello: {{ template \"partials/_planet\" . }}")},
-				{Name: "partials/_planet", Data: []byte("Earth")},
+				{Name: "with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
+				{Name: "partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+				{Name: "hooks", Data: []byte(manifestWithHook)},
 			},
 		},
 		DryRun: true,
@@ -127,11 +165,11 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Expected release name.")
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello\nhello: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: goodbye\ngoodbye: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/goodbye\ngoodbye: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 
@@ -139,7 +177,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Should contain partial content. %s", res.Release.Manifest)
 	}
 
-	if strings.Contains(res.Release.Manifest, "hello: {{ template \"partials/_planet\" . }}") {
+	if strings.Contains(res.Release.Manifest, "hello: {{ template \"_planet\" . }}") {
 		t.Errorf("Should not contain partial templates itself. %s", res.Release.Manifest)
 	}
 
@@ -149,6 +187,14 @@ func TestInstallReleaseDryRun(t *testing.T) {
 
 	if _, err := rs.env.Releases.Read(res.Release.Name); err == nil {
 		t.Errorf("Expected no stored release.")
+	}
+
+	if l := len(res.Release.Hooks); l != 1 {
+		t.Fatalf("Expected 1 hook, got %d", l)
+	}
+
+	if res.Release.Hooks[0].LastRun != nil {
+		t.Error("Expected hook to not be marked as run.")
 	}
 }
 
@@ -161,6 +207,18 @@ func TestUninstallRelease(t *testing.T) {
 			FirstDeployed: timeconv.Now(),
 			Status: &release.Status{
 				Code: release.Status_DEPLOYED,
+			},
+		},
+		Hooks: []*release.Hook{
+			{
+				Name:     "test-cm",
+				Kind:     "ConfigMap",
+				Path:     "test-cm",
+				Manifest: manifestWithHook,
+				Events: []release.Hook_Event{
+					release.Hook_POST_INSTALL,
+					release.Hook_PRE_DELETE,
+				},
 			},
 		},
 	})
@@ -180,6 +238,10 @@ func TestUninstallRelease(t *testing.T) {
 
 	if res.Release.Info.Status.Code != release.Status_DELETED {
 		t.Errorf("Expected status code to be DELETED, got %d", res.Release.Info.Status.Code)
+	}
+
+	if res.Release.Hooks[0].LastRun.Seconds == 0 {
+		t.Error("Expected LastRun to be greater than zero.")
 	}
 
 	if res.Release.Info.Deleted.Seconds <= 0 {

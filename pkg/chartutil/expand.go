@@ -40,6 +40,16 @@ func Expand(dir string, r io.Reader) error {
 			return err
 		}
 
+		//split header name and create missing directories
+		d, _ := filepath.Split(header.Name)
+		fullDir := filepath.Join(dir, d)
+		_, err = os.Stat(fullDir)
+		if err != nil && d != "" {
+			if err := os.MkdirAll(fullDir, 0700); err != nil {
+				return err
+			}
+		}
+
 		path := filepath.Clean(filepath.Join(dir, header.Name))
 		info := header.FileInfo()
 		if info.IsDir() {

@@ -142,7 +142,9 @@ When a user supplies custom values, these values will override the
 values in the chart's `values.yaml` file.
 ### Template Files
 
-Template files follow the standard conventions for writing Go templates.
+Template files follow the standard conventions for writing Go templates
+(see [the text/template Go package documentation](https://golang.org/pkg/text/template/)
+for details).
 An example template file might look something like this:
 
 ```yaml
@@ -302,9 +304,9 @@ apache:
 ```
 
 The above adds a `global` section with the value `app: MyWordpress`.
-This value is available to _all_ charts as `.global.app`.
+This value is available to _all_ charts as `.Values.global.app`.
 
-For example, the `mysql` templates may access `app` as `{{.global.app}}`, and
+For example, the `mysql` templates may access `app` as `{{.Values.global.app}}`, and
 so can the `apache` chart. Effectively, the values file above is
 regenerated like this:
 

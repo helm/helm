@@ -2,19 +2,6 @@
 // source: hapi/release/info.proto
 // DO NOT EDIT!
 
-/*
-Package release is a generated protocol buffer package.
-
-It is generated from these files:
-	hapi/release/info.proto
-	hapi/release/release.proto
-	hapi/release/status.proto
-
-It has these top-level messages:
-	Info
-	Release
-	Status
-*/
 package release
 
 import proto "github.com/golang/protobuf/proto"
@@ -26,10 +13,6 @@ import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
 
 // Info describes release information.
 type Info struct {
@@ -43,7 +26,7 @@ type Info struct {
 func (m *Info) Reset()                    { *m = Info{} }
 func (m *Info) String() string            { return proto.CompactTextString(m) }
 func (*Info) ProtoMessage()               {}
-func (*Info) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*Info) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 func (m *Info) GetStatus() *Status {
 	if m != nil {
@@ -77,7 +60,7 @@ func init() {
 	proto.RegisterType((*Info)(nil), "hapi.release.Info")
 }
 
-var fileDescriptor0 = []byte{
+var fileDescriptor1 = []byte{
 	// 208 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0xcf, 0x48, 0x2c, 0xc8,
 	0xd4, 0x2f, 0x4a, 0xcd, 0x49, 0x4d, 0x2c, 0x4e, 0xd5, 0xcf, 0xcc, 0x4b, 0xcb, 0xd7, 0x2b, 0x28,

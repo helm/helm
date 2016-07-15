@@ -30,8 +30,8 @@ import fmt "fmt"
 import math "math"
 import hapi_chart3 "k8s.io/helm/pkg/proto/hapi/chart"
 import hapi_chart "k8s.io/helm/pkg/proto/hapi/chart"
+import hapi_release3 "k8s.io/helm/pkg/proto/hapi/release"
 import hapi_release2 "k8s.io/helm/pkg/proto/hapi/release"
-import hapi_release1 "k8s.io/helm/pkg/proto/hapi/release"
 
 import (
 	context "golang.org/x/net/context"
@@ -141,7 +141,7 @@ type ListReleasesResponse struct {
 	// Total is the total number of queryable releases.
 	Total int64 `protobuf:"varint,3,opt,name=total" json:"total,omitempty"`
 	// Releases is the list of found release objects.
-	Releases []*hapi_release2.Release `protobuf:"bytes,4,rep,name=releases" json:"releases,omitempty"`
+	Releases []*hapi_release3.Release `protobuf:"bytes,4,rep,name=releases" json:"releases,omitempty"`
 }
 
 func (m *ListReleasesResponse) Reset()                    { *m = ListReleasesResponse{} }
@@ -149,7 +149,7 @@ func (m *ListReleasesResponse) String() string            { return proto.Compact
 func (*ListReleasesResponse) ProtoMessage()               {}
 func (*ListReleasesResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-func (m *ListReleasesResponse) GetReleases() []*hapi_release2.Release {
+func (m *ListReleasesResponse) GetReleases() []*hapi_release3.Release {
 	if m != nil {
 		return m.Releases
 	}
@@ -172,7 +172,7 @@ type GetReleaseStatusResponse struct {
 	// Name is the name of the release.
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	// Info contains information about the release.
-	Info *hapi_release1.Info `protobuf:"bytes,2,opt,name=info" json:"info,omitempty"`
+	Info *hapi_release2.Info `protobuf:"bytes,2,opt,name=info" json:"info,omitempty"`
 }
 
 func (m *GetReleaseStatusResponse) Reset()                    { *m = GetReleaseStatusResponse{} }
@@ -180,7 +180,7 @@ func (m *GetReleaseStatusResponse) String() string            { return proto.Com
 func (*GetReleaseStatusResponse) ProtoMessage()               {}
 func (*GetReleaseStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
-func (m *GetReleaseStatusResponse) GetInfo() *hapi_release1.Info {
+func (m *GetReleaseStatusResponse) GetInfo() *hapi_release2.Info {
 	if m != nil {
 		return m.Info
 	}
@@ -201,7 +201,7 @@ func (*GetReleaseContentRequest) Descriptor() ([]byte, []int) { return fileDescr
 // GetReleaseContentResponse is a response containing the contents of a release.
 type GetReleaseContentResponse struct {
 	// The release content
-	Release *hapi_release2.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *GetReleaseContentResponse) Reset()                    { *m = GetReleaseContentResponse{} }
@@ -209,7 +209,7 @@ func (m *GetReleaseContentResponse) String() string            { return proto.Co
 func (*GetReleaseContentResponse) ProtoMessage()               {}
 func (*GetReleaseContentResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-func (m *GetReleaseContentResponse) GetRelease() *hapi_release2.Release {
+func (m *GetReleaseContentResponse) GetRelease() *hapi_release3.Release {
 	if m != nil {
 		return m.Release
 	}
@@ -271,7 +271,7 @@ func (m *InstallReleaseRequest) GetValues() *hapi_chart.Config {
 
 // InstallReleaseResponse is the response from a release installation.
 type InstallReleaseResponse struct {
-	Release *hapi_release2.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *InstallReleaseResponse) Reset()                    { *m = InstallReleaseResponse{} }
@@ -279,7 +279,7 @@ func (m *InstallReleaseResponse) String() string            { return proto.Compa
 func (*InstallReleaseResponse) ProtoMessage()               {}
 func (*InstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
-func (m *InstallReleaseResponse) GetRelease() *hapi_release2.Release {
+func (m *InstallReleaseResponse) GetRelease() *hapi_release3.Release {
 	if m != nil {
 		return m.Release
 	}
@@ -300,7 +300,7 @@ func (*UninstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescri
 // UninstallReleaseResponse represents a successful response to an uninstall request.
 type UninstallReleaseResponse struct {
 	// Release is the release that was marked deleted.
-	Release *hapi_release2.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *UninstallReleaseResponse) Reset()                    { *m = UninstallReleaseResponse{} }
@@ -308,7 +308,7 @@ func (m *UninstallReleaseResponse) String() string            { return proto.Com
 func (*UninstallReleaseResponse) ProtoMessage()               {}
 func (*UninstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
-func (m *UninstallReleaseResponse) GetRelease() *hapi_release2.Release {
+func (m *UninstallReleaseResponse) GetRelease() *hapi_release3.Release {
 	if m != nil {
 		return m.Release
 	}

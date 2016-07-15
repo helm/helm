@@ -19,6 +19,9 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"path"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -31,6 +34,9 @@ type Engine struct {
 	// FuncMap contains the template functions that will be passed to each
 	// render call. This may only be modified before the first call to Render.
 	FuncMap template.FuncMap
+	// If strict is enabled, template rendering will fail if a template references
+	// a value that was not passed in.
+	Strict bool
 }
 
 // New creates a new Go template Engine instance.
@@ -92,8 +98,16 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	// to share common blocks, but to make the entire thing feel like a file-based
 	// template engine.
 	t := template.New("gotpl")
+	if e.Strict {
+		t.Option("missingkey=error")
+	} else {
+		// Not that zero will attempt to add default values for types it knows,
+		// but will still emit <no value> for others. We mitigate that later.
+		t.Option("missingkey=zero")
+	}
 	files := []string{}
 	for fname, r := range tpls {
+		log.Printf("Preparing template %s", fname)
 		t = t.New(fname).Funcs(e.FuncMap)
 		if _, err := t.Parse(r.tpl); err != nil {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
@@ -104,10 +118,17 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	rendered := make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
-		if err := t.ExecuteTemplate(&buf, file, tpls[file].vals); err != nil {
+		// At render time, add information about the template that is being rendered.
+		vals := tpls[file].vals
+		vals["Template"] = map[string]interface{}{"Name": file}
+		if err := t.ExecuteTemplate(&buf, file, vals); err != nil {
 			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
 		}
-		rendered[file] = buf.String()
+
+		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
+		// is set. Since missing=error will never get here, we do not need to handle
+		// the Strict case.
+		rendered[file] = strings.Replace(buf.String(), "<no value>", "", -1)
 		buf.Reset()
 	}
 
@@ -119,7 +140,7 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 // As it goes, it also prepares the values in a scope-sensitive manner.
 func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 	templates := map[string]renderable{}
-	recAllTpls(c, templates, vals, true)
+	recAllTpls(c, templates, vals, true, "")
 	return templates
 }
 
@@ -127,39 +148,44 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals chartutil.Values, top bool) {
-	var cvals chartutil.Values
+func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals chartutil.Values, top bool, parentID string) {
+	// This should never evaluate to a nil map. That will cause problems when
+	// values are appended later.
+	cvals := chartutil.Values{}
 	if top {
 		// If this is the top of the rendering tree, assume that parentVals
 		// is already resolved to the authoritative values.
 		cvals = parentVals
 	} else if c.Metadata != nil && c.Metadata.Name != "" {
-		// An error indicates that the table doesn't exist. So we leave it as
-		// an empty map.
-
-		var tmp chartutil.Values
-		vs, err := parentVals.Table("Values")
-		if err == nil {
-			tmp, err = vs.Table(c.Metadata.Name)
-		} else {
-			tmp, err = parentVals.Table(c.Metadata.Name)
-		}
-
-		//tmp, err := parentVals["Values"].(chartutil.Values).Table(c.Metadata.Name)
-		if err == nil {
-			cvals = map[string]interface{}{
-				"Values":  tmp,
-				"Release": parentVals["Release"],
-				"Chart":   c,
+		// If there is a {{.Values.ThisChart}} in the parent metadata,
+		// copy that into the {{.Values}} for this template.
+		newVals := chartutil.Values{}
+		if vs, err := parentVals.Table("Values"); err == nil {
+			if tmp, err := vs.Table(c.Metadata.Name); err == nil {
+				newVals = tmp
 			}
 		}
+
+		cvals = map[string]interface{}{
+			"Values":  newVals,
+			"Release": parentVals["Release"],
+			"Chart":   c.Metadata,
+		}
+	}
+
+	newParentID := c.Metadata.Name
+	if parentID != "" {
+		// We artificially reconstruct the chart path to child templates. This
+		// creates a namespaced filename that can be used to track down the source
+		// of a particular template declaration.
+		newParentID = path.Join(parentID, "charts", newParentID)
 	}
 
 	for _, child := range c.Dependencies {
-		recAllTpls(child, templates, cvals, false)
+		recAllTpls(child, templates, cvals, false, newParentID)
 	}
 	for _, t := range c.Templates {
-		templates[t.Name] = renderable{
+		templates[path.Join(newParentID, t.Name)] = renderable{
 			tpl:  string(t.Data),
 			vals: cvals,
 		}

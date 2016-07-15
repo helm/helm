@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repo
+package repo // import "k8s.io/helm/pkg/repo"
 
 import (
 	"crypto/sha1"
@@ -118,6 +118,7 @@ func (r *ChartRepository) saveIndexFile() error {
 	return ioutil.WriteFile(filepath.Join(r.RootPath, indexPath), index, 0644)
 }
 
+// Index generates an index for the chart repository and writes an index.yaml file
 func (r *ChartRepository) Index() error {
 	if r.IndexFile == nil {
 		r.IndexFile = &IndexFile{Entries: make(map[string]*ChartRef)}

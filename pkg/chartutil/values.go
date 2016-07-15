@@ -17,18 +17,19 @@ limitations under the License.
 package chartutil
 
 import (
-	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 // ErrNoTable indicates that a chart does not have a matching table.
-var ErrNoTable = errors.New("no table")
+type ErrNoTable error
 
 // GlobalKey is the name of the Values key that is used for storing global vars.
 const GlobalKey = "global"
@@ -92,7 +93,7 @@ func (v Values) Encode(w io.Writer) error {
 func tableLookup(v Values, simple string) (Values, error) {
 	v2, ok := v[simple]
 	if !ok {
-		return v, ErrNoTable
+		return v, ErrNoTable(fmt.Errorf("no table named %q (%v)", simple, v))
 	}
 	if vv, ok := v2.(map[string]interface{}); ok {
 		return vv, nil
@@ -105,14 +106,15 @@ func tableLookup(v Values, simple string) (Values, error) {
 		return vv, nil
 	}
 
-	return map[string]interface{}{}, ErrNoTable
+	var e ErrNoTable = fmt.Errorf("no table named %q", simple)
+	return map[string]interface{}{}, e
 }
 
 // ReadValues will parse YAML byte data into a Values.
 func ReadValues(data []byte) (vals Values, err error) {
-	vals = make(map[string]interface{})
-	if len(data) > 0 {
-		err = yaml.Unmarshal(data, &vals)
+	err = yaml.Unmarshal(data, &vals)
+	if len(vals) == 0 {
+		vals = Values{}
 	}
 	return
 }
@@ -138,7 +140,7 @@ func ReadValuesFile(filename string) (Values, error) {
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals *chart.Config, overrides map[string]interface{}) (Values, error) {
-	var cvals Values
+	cvals := Values{}
 	// Parse values if not nil. We merge these at the top level because
 	// the passed-in values are in the same namespace as the parent chart.
 	if vals != nil {
@@ -286,6 +288,35 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 		dst[key] = val
 	}
 	return dst
+}
+
+// ReleaseOptions represents the additional release options needed
+// for the composition of the final values struct
+type ReleaseOptions struct {
+	Name      string
+	Time      *timestamp.Timestamp
+	Namespace string
+}
+
+// ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
+func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOptions) (Values, error) {
+	overrides := map[string]interface{}{
+		"Release": map[string]interface{}{
+			"Name":      options.Name,
+			"Time":      options.Time,
+			"Namespace": options.Namespace,
+			"Service":   "Tiller",
+		},
+		"Chart": chrt.Metadata,
+	}
+
+	vals, err := CoalesceValues(chrt, chrtVals, nil)
+	if err != nil {
+		return overrides, err
+	}
+
+	overrides["Values"] = vals
+	return overrides, nil
 }
 
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.

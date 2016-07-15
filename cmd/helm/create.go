@@ -18,9 +18,12 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -50,31 +53,40 @@ destination exists and there are files in that directory, conflicting files
 will be overwritten, but other files will be left alone.
 `
 
-func init() {
-	RootCommand.AddCommand(createCmd)
+type createCmd struct {
+	name string
+	out  io.Writer
 }
 
-var createCmd = &cobra.Command{
-	Use:   "create NAME",
-	Short: "create a new chart with the given name",
-	Long:  createDesc,
-	RunE:  runCreate,
-}
-
-func runCreate(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errors.New("the name of the new chart is required")
+func newCreateCmd(out io.Writer) *cobra.Command {
+	cc := &createCmd{
+		out: out,
 	}
-	cname := args[0]
-	cmd.Printf("Creating %s\n", cname)
+	cmd := &cobra.Command{
+		Use:   "create NAME",
+		Short: "create a new chart with the given name",
+		Long:  createDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("the name of the new chart is required")
+			}
+			cc.name = args[0]
+			return cc.run()
+		},
+	}
+	return cmd
+}
 
-	chartname := filepath.Base(cname)
+func (c *createCmd) run() error {
+	fmt.Fprintf(c.out, "Creating %s\n", c.name)
+
+	chartname := filepath.Base(c.name)
 	cfile := &chart.Metadata{
 		Name:        chartname,
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
 	}
 
-	_, err := chartutil.Create(cfile, filepath.Dir(cname))
+	_, err := chartutil.Create(cfile, filepath.Dir(c.name))
 	return err
 }

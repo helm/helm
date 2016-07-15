@@ -23,10 +23,13 @@ import (
 // These APIs are a temporary abstraction layer that captures the interaction between the current cmd/helm and old
 // pkg/helm implementations. Post refactor the cmd/helm package will use the APIs exposed on helm.Client directly.
 
+// Config is the base configuration
 var Config struct {
 	ServAddr string
 }
 
+// ListReleases lists releases. DEPRECATED.
+//
 // Soon to be deprecated helm ListReleases API.
 func ListReleases(limit int, offset string, sort rls.ListSort_SortBy, order rls.ListSort_SortOrder, filter string) (*rls.ListReleasesResponse, error) {
 	opts := []ReleaseListOption{
@@ -36,36 +39,42 @@ func ListReleases(limit int, offset string, sort rls.ListSort_SortBy, order rls.
 		ReleaseListSort(int32(sort)),
 		ReleaseListOrder(int32(order)),
 	}
-	return NewClient(HelmHost(Config.ServAddr)).ListReleases(opts...)
+	return NewClient(Host(Config.ServAddr)).ListReleases(opts...)
 }
 
+// GetReleaseStatus gets a release status. DEPRECATED
+//
 // Soon to be deprecated helm GetReleaseStatus API.
 func GetReleaseStatus(rlsName string) (*rls.GetReleaseStatusResponse, error) {
-	return NewClient(HelmHost(Config.ServAddr)).ReleaseStatus(rlsName)
+	return NewClient(Host(Config.ServAddr)).ReleaseStatus(rlsName)
 }
 
+// GetReleaseContent gets the content of a release.
 // Soon to be deprecated helm GetReleaseContent API.
 func GetReleaseContent(rlsName string) (*rls.GetReleaseContentResponse, error) {
-	return NewClient(HelmHost(Config.ServAddr)).ReleaseContent(rlsName)
+	return NewClient(Host(Config.ServAddr)).ReleaseContent(rlsName)
 }
 
+// UpdateRelease updates a release.
 // Soon to be deprecated helm UpdateRelease API.
 func UpdateRelease(rlsName string) (*rls.UpdateReleaseResponse, error) {
-	return NewClient(HelmHost(Config.ServAddr)).UpdateRelease(rlsName)
+	return NewClient(Host(Config.ServAddr)).UpdateRelease(rlsName)
 }
 
+// InstallRelease runs an install for a release.
 // Soon to be deprecated helm InstallRelease API.
 func InstallRelease(vals []byte, rlsName, chStr string, dryRun bool) (*rls.InstallReleaseResponse, error) {
-	client := NewClient(HelmHost(Config.ServAddr))
+	client := NewClient(Host(Config.ServAddr))
 	if dryRun {
 		client.Option(DryRun())
 	}
 	return client.InstallRelease(chStr, ValueOverrides(vals), ReleaseName(rlsName))
 }
 
+// UninstallRelease destroys an existing release.
 // Soon to be deprecated helm UninstallRelease API.
 func UninstallRelease(rlsName string, dryRun bool) (*rls.UninstallReleaseResponse, error) {
-	client := NewClient(HelmHost(Config.ServAddr))
+	client := NewClient(Host(Config.ServAddr))
 	if dryRun {
 		client.Option(DryRun())
 	}

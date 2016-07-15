@@ -1,43 +1,45 @@
 machine:
+  pre:
+    - curl -sSL https://s3.amazonaws.com/circle-downloads/install-circleci-docker.sh | bash -s -- 1.10.0
+
   environment:
-    GLIDE_VERSION: "0.10.1"
-    GO15VENDOREXPERIMENT: 1
-    GOPATH: /usr/local/go_workspace
-    HOME: /home/ubuntu
-    IMPORT_PATH: "k8s.io/helm"
-    PATH: $HOME/go/bin:$PATH
-    GOROOT: $HOME/go
+    GOVERSION: "1.6.2"
+    GOPATH:  "${HOME}/.go_workspace"
+    WORKDIR: "${GOPATH}/src/k8s.io/helm"
 
   services:
     - docker
 
 dependencies:
+  pre:
+    - sudo rm -rf /usr/local/go
+    - rm -rf "$GOPATH"
+
   override:
-    - mkdir -p $HOME/go
-    - wget "https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz"
-    - tar -C $HOME -xzf go1.6.linux-amd64.tar.gz
-    - go version
+    # install go
+    - wget "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
+    - sudo tar -C /usr/local -xzf "go${GOVERSION}.linux-amd64.tar.gz"
+
+    # move repository to the canonical import path
+    - mkdir -p "$(dirname ${WORKDIR})"
+    - cp -R "${HOME}/helm" "${WORKDIR}"
+
+    # install dependencies
+    - cd "${WORKDIR}" && make bootstrap
+
+  post:
     - go env
-    - sudo chown -R $(whoami):staff /usr/local
-    - cd $GOPATH
-    - mkdir -p $GOPATH/src/$IMPORT_PATH
-    - cd $HOME/helm
-    - rsync -az --delete ./ "$GOPATH/src/$IMPORT_PATH/"
-    - wget "https://github.com/Masterminds/glide/releases/download/$GLIDE_VERSION/glide-$GLIDE_VERSION-linux-amd64.tar.gz"
-    - mkdir -p $HOME/bin
-    - tar -vxz -C $HOME/bin --strip=1 -f glide-$GLIDE_VERSION-linux-amd64.tar.gz
-    - export PATH="$HOME/bin:$PATH" GLIDE_HOME="$HOME/.glide"
 
 test:
   override:
-    - cd $GOPATH/src/$IMPORT_PATH && make bootstrap test
+    - cd "${WORKDIR}" && ./scripts/ci.sh:
+        parallel: true
 
 deployment:
-  master-branch:
+  gcr:
     branch: master
     commands:
       - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
-      - sudo docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
-      - cd $GOPATH/src/$IMPORT_PATH
+      - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
       - make docker-build
-      - sudo docker push gcr.io/kubernetes-helm/tiller:canary
+      - docker push gcr.io/kubernetes-helm/tiller:canary

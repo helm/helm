@@ -18,8 +18,8 @@ package main
 
 import (
 	"errors"
-	"fmt"
-	"os"
+	"io"
+	"text/template"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -42,70 +42,61 @@ By default, this prints a human readable collection of information about the
 chart, the supplied values, and the generated manifest file.
 `
 
-var getValuesHelp = `
-This command downloads a values file for a given release.
-
-To save the output to a file, use the -f flag.
-`
-
-var getManifestHelp = `
-This command fetches the generated manifest for a given release.
-
-A manifest is a YAML-encoded representation of the Kubernetes resources that
-were generated from this release's chart(s). If a chart is dependent on other
-charts, those resources will also be included in the manifest.
-`
-
-// getOut is the filename to direct output.
-//
-// If it is blank, output is sent to os.Stdout.
-var getOut = ""
-
-var allValues = false
-
 var errReleaseRequired = errors.New("release name is required")
 
-var getCommand = &cobra.Command{
-	Use:               "get [flags] RELEASE_NAME",
-	Short:             "download a named release",
-	Long:              getHelp,
-	RunE:              getCmd,
-	PersistentPreRunE: setupConnection,
+type getCmd struct {
+	release string
+	out     io.Writer
+	client  helm.Interface
 }
 
-var getValuesCommand = &cobra.Command{
-	Use:   "values [flags] RELEASE_NAME",
-	Short: "download the values file for a named release",
-	Long:  getValuesHelp,
-	RunE:  getValues,
+func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
+	get := &getCmd{
+		out:    out,
+		client: client,
+	}
+	cmd := &cobra.Command{
+		Use:               "get [flags] RELEASE_NAME",
+		Short:             "download a named release",
+		Long:              getHelp,
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errReleaseRequired
+			}
+			get.release = args[0]
+			if get.client == nil {
+				get.client = helm.NewClient(helm.Host(helm.Config.ServAddr))
+			}
+			return get.run()
+		},
+	}
+	cmd.AddCommand(newGetValuesCmd(nil, out))
+	cmd.AddCommand(newGetManifestCmd(nil, out))
+	cmd.AddCommand(newGetHooksCmd(nil, out))
+	return cmd
 }
 
-var getManifestCommand = &cobra.Command{
-	Use:   "manifest [flags] RELEASE_NAME",
-	Short: "download the manifest for a named release",
-	Long:  getManifestHelp,
-	RunE:  getManifest,
-}
-
-func init() {
-	// 'get' command flags.
-	getCommand.PersistentFlags().StringVarP(&getOut, "file", "f", "", "output file")
-
-	// 'get values' flags.
-	getValuesCommand.PersistentFlags().BoolVarP(&allValues, "all", "a", false, "dump all (computed) values")
-
-	getCommand.AddCommand(getValuesCommand)
-	getCommand.AddCommand(getManifestCommand)
-	RootCommand.AddCommand(getCommand)
-}
+var getTemplate = `VERSION: {{.Release.Version}}
+RELEASED: {{.ReleaseDate}}
+CHART: {{.Release.Chart.Metadata.Name}}-{{.Release.Chart.Metadata.Version}}
+USER-SUPPLIED VALUES:
+{{.Release.Config.Raw}}
+COMPUTED VALUES:
+{{.ComputedValues}}
+HOOKS:
+{{- range .Release.Hooks }}
+---
+# {{.Name}}
+{{.Manifest}}
+{{- end }}
+MANIFEST:
+{{.Release.Manifest}}
+`
 
 // getCmd is the command that implements 'helm get'
-func getCmd(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errReleaseRequired
-	}
-
-	res, err := helm.GetReleaseContent(args[0])
+func (g *getCmd) run() error {
+	res, err := g.client.ReleaseContent(g.release)
 	if err != nil {
 		return prettyError(err)
 	}
@@ -119,67 +110,25 @@ func getCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("CHART: %s-%s\n", res.Release.Chart.Metadata.Name, res.Release.Chart.Metadata.Version)
-	fmt.Printf("RELEASED: %s\n", timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC))
-	fmt.Println("USER-SUPPLIED VALUES:")
-	fmt.Println(res.Release.Config.Raw)
-	fmt.Println("COMPUTED VALUES:")
-	fmt.Println(cfgStr)
-	fmt.Println("MANIFEST:")
-	fmt.Println(res.Release.Manifest)
-	return nil
+	data := map[string]interface{}{
+		"Release":        res.Release,
+		"ComputedValues": cfgStr,
+		"ReleaseDate":    timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC),
+	}
+	return tpl(getTemplate, data, g.out)
 }
 
-// getValues implements 'helm get values'
-func getValues(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errReleaseRequired
-	}
-
-	res, err := helm.GetReleaseContent(args[0])
+func tpl(t string, vals map[string]interface{}, out io.Writer) error {
+	tt, err := template.New("_").Parse(t)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
-
-	// If the user wants all values, compute the values and return.
-	if allValues {
-		cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config, nil)
-		if err != nil {
-			return err
-		}
-		cfgStr, err := cfg.YAML()
-		if err != nil {
-			return err
-		}
-		return getToFile(cfgStr)
-	}
-
-	return getToFile(res.Release.Config.Raw)
+	return tt.Execute(out, vals)
 }
 
-// getManifest implements 'helm get manifest'
-func getManifest(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errReleaseRequired
+func ensureHelmClient(h helm.Interface) helm.Interface {
+	if h != nil {
+		return h
 	}
-
-	res, err := helm.GetReleaseContent(args[0])
-	if err != nil {
-		return prettyError(err)
-	}
-	return getToFile(res.Release.Manifest)
-}
-
-func getToFile(v interface{}) error {
-	out := os.Stdout
-	if len(getOut) > 0 {
-		t, err := os.Create(getOut)
-		if err != nil {
-			return fmt.Errorf("failed to create %s: %s", getOut, err)
-		}
-		defer t.Close()
-		out = t
-	}
-	fmt.Fprintln(out, v)
-	return nil
+	return helm.NewClient(helm.Host(helm.Config.ServAddr))
 }
