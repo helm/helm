@@ -142,7 +142,9 @@ When a user supplies custom values, these values will override the
 values in the chart's `values.yaml` file.
 ### Template Files
 
-Template files follow the standard conventions for writing Go templates.
+Template files follow the standard conventions for writing Go templates
+(see [the text/template Go package documentation](https://golang.org/pkg/text/template/)
+for details).
 An example template file might look something like this:
 
 ```yaml
