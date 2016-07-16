@@ -123,8 +123,7 @@ func (r *ChartRepository) Index() error {
 		r.IndexFile = &IndexFile{Entries: make(map[string]*ChartRef)}
 	}
 
-	var existCharts map[string]bool
-	existCharts = make(map[string]bool)
+	existCharts := map[string]bool{}
 
 	for _, path := range r.ChartPaths {
 		ch, err := chartutil.Load(path)
