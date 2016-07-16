@@ -20,6 +20,10 @@ all: build
 build:
 	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
 
+.PHONY: build-cross
+build-cross:
+	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -os="darwin linux" -arch="amd64 386" $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+
 .PHONY: check-docker
 check-docker:
 	@if [ -z $$(which docker) ]; then \
@@ -66,6 +70,7 @@ coverage:
 	@scripts/coverage.sh
 
 HAS_GLIDE := $(shell command -v glide;)
+HAS_GOX := $(shell command -v gox;)
 HAS_HG := $(shell command -v hg;)
 HAS_GIT := $(shell command -v git;)
 
@@ -73,6 +78,9 @@ HAS_GIT := $(shell command -v git;)
 bootstrap:
 ifndef HAS_GLIDE
 	go get -u github.com/Masterminds/glide
+endif
+ifndef HAS_GOX
+	go get -u github.com/mitchellh/gox
 endif
 ifndef HAS_HG
 	$(error You must install Mercurial (hg))
