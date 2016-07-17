@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -31,14 +32,6 @@ The upgrade arguments must be a release and a chart. The chart
 argument can be a relative path to a packaged or unpackaged chart.
 `
 
-var upgradeCmd = &cobra.Command{
-	Use:               "upgrade [RELEASE] [CHART]",
-	Short:             "upgrade a release",
-	Long:              upgradeDesc,
-	RunE:              runUpgrade,
-	PersistentPreRunE: setupConnection,
-}
-
 // upgrade flags
 var (
 	// upgradeDryRun performs a dry-run upgrade
@@ -47,20 +40,49 @@ var (
 	upgradeValues string
 )
 
-func init() {
-	f := upgradeCmd.Flags()
+type upgradeCmd struct {
+	release string
+	chart   string
+	out     io.Writer
+	client  helm.Interface
+}
+
+func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
+
+	upgrade := &upgradeCmd{
+		out:    out,
+		client: client,
+	}
+
+	cmd := &cobra.Command{
+		Use:               "upgrade [RELEASE] [CHART]",
+		Short:             "upgrade a release",
+		Long:              upgradeDesc,
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkArgsLength(2, len(args), "release name, chart path"); err != nil {
+				return err
+			}
+
+			upgrade.release = args[0]
+			upgrade.chart = args[1]
+
+			if upgrade.client == nil {
+				upgrade.client = helm.NewClient(helm.HelmHost(helm.Config.ServAddr))
+			}
+			return upgrade.run()
+		},
+	}
+
+	f := cmd.Flags()
 	f.StringVarP(&upgradeValues, "values", "f", "", "path to a values YAML file")
 	f.BoolVar(&upgradeDryRun, "dry-run", false, "simulate an upgrade")
 
-	RootCommand.AddCommand(upgradeCmd)
+	return cmd
 }
 
-func runUpgrade(cmd *cobra.Command, args []string) error {
-	if err := checkArgsLength(2, len(args), "release name, chart path"); err != nil {
-		return err
-	}
-
-	chartPath, err := locateChartPath(args[1])
+func (u *upgradeCmd) run() error {
+	chartPath, err := locateChartPath(u.chart)
 	if err != nil {
 		return err
 	}
@@ -70,15 +92,14 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	res, err := helm.UpdateRelease(args[0], chartPath, rawVals, upgradeDryRun)
+	_, err = helm.UpdateRelease(u.release, chartPath, rawVals, upgradeDryRun)
 	if err != nil {
 		return prettyError(err)
 	}
 
-	newVersion := res.GetRelease().Version
-	fmt.Printf("I know you want to upgrade your release to version %v.\nHang tight. We're still working on the helm upgrade command.", newVersion)
-
-	fmt.Println("\nComing soon to a Helm near YOU!")
+	fmt.Println("\nIt's not you. It's me.")
+	fmt.Println("Your upgrade looks valid but this command is still in progress.\nHang tight.\n")
 
 	return nil
+
 }
