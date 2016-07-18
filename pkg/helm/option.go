@@ -46,19 +46,6 @@ type options struct {
 	instReq rls.InstallReleaseRequest
 }
 
-// DryRun returns an Option which instructs the helm client to dry-run tiller rpcs.
-func DryRun() Option {
-	return func(opts *options) {
-		opts.dryRun = true
-	}
-}
-
-func DisableHooks() Option {
-	return func(opts *options) {
-		opts.disableHooks = true
-	}
-}
-
 // Home specifies the location of helm home, (default = "$HOME/.helm").
 func Home(home string) Option {
 	return func(opts *options) {
@@ -132,6 +119,34 @@ func ReleaseName(name string) InstallOption {
 	}
 }
 
+// DeleteDisableHooks will disable hooks for a deletion operation.
+func DeleteDisableHooks(disable bool) DeleteOption {
+	return func(opts *options) {
+		opts.disableHooks = disable
+	}
+}
+
+// DeleteDryRun will (if true) execute a deletion as a dry run.
+func DeleteDryRun(dry bool) DeleteOption {
+	return func(opts *options) {
+		opts.dryRun = dry
+	}
+}
+
+// InstallDisableHooks disables hooks during installation.
+func InstallDisableHooks(disable bool) InstallOption {
+	return func(opts *options) {
+		opts.disableHooks = disable
+	}
+}
+
+// InstallDryRun will (if true) execute an installation as a dry run.
+func InstallDryRun(dry bool) InstallOption {
+	return func(opts *options) {
+		opts.dryRun = dry
+	}
+}
+
 // ContentOption -- TODO
 type ContentOption func(*options)
 
@@ -178,6 +193,9 @@ func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient
 
 // Executes tiller.UninstallRelease RPC.
 func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+	for _, opt := range opts {
+		opt(o)
+	}
 	if o.dryRun {
 		// In the dry run case, just see if the release exists
 		r, err := o.rpcGetReleaseContent(rlsName, rlc)
@@ -186,8 +204,7 @@ func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient,
 		}
 		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
 	}
-
-	return rlc.UninstallRelease(context.TODO(), &rls.UninstallReleaseRequest{Name: rlsName})
+	return rlc.UninstallRelease(context.TODO(), &rls.UninstallReleaseRequest{Name: rlsName, DisableHooks: o.disableHooks})
 }
 
 // Executes tiller.UpdateRelease RPC.

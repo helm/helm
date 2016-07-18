@@ -66,7 +66,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 			get.release = args[0]
 			if get.client == nil {
-				get.client = helm.NewClient(helm.Host(helm.Config.ServAddr))
+				get.client = helm.NewClient(helm.Host(tillerHost))
 			}
 			return get.run()
 		},
@@ -126,9 +126,9 @@ func tpl(t string, vals map[string]interface{}, out io.Writer) error {
 	return tt.Execute(out, vals)
 }
 
-func ensureHelmClient(h helm.OptionalInterface) helm.OptionalInterface {
+func ensureHelmClient(h helm.Interface) helm.Interface {
 	if h != nil {
 		return h
 	}
-	return helm.NewClient(helm.Host(helm.Config.ServAddr))
+	return helm.NewClient(helm.Host(tillerHost))
 }

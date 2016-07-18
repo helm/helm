@@ -25,8 +25,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-
-	"k8s.io/helm/pkg/helm"
 )
 
 const (
@@ -91,6 +89,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newListCmd(nil, out),
 		newStatusCmd(nil, out),
 		newInstallCmd(nil, out),
+		newDeleteCmd(nil, out),
 	)
 	return cmd
 }
@@ -119,9 +118,8 @@ func setupConnection(c *cobra.Command, args []string) error {
 	}
 
 	// Set up the gRPC config.
-	helm.Config.ServAddr = tillerHost
 	if flagDebug {
-		fmt.Printf("Server: %q\n", helm.Config.ServAddr)
+		fmt.Printf("Server: %q\n", tillerHost)
 	}
 	return nil
 }
@@ -154,6 +152,9 @@ func requireInit(cmd *cobra.Command, args []string) error {
 
 // prettyError unwraps or rewrites certain errors to make them more user-friendly.
 func prettyError(err error) error {
+	if err == nil {
+		return nil
+	}
 	// This is ridiculous. Why is 'grpc.rpcError' not exported? The least they
 	// could do is throw an interface on the lib that would let us get back
 	// the desc. Instead, we have to pass ALL errors through this.

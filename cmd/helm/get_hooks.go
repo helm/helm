@@ -34,10 +34,10 @@ Hooks are formatted in YAML and separated by the YAML '---\n' separator.
 type getHooksCmd struct {
 	release string
 	out     io.Writer
-	client  helm.OptionalInterface
+	client  helm.Interface
 }
 
-func newGetHooksCmd(client helm.OptionalInterface, out io.Writer) *cobra.Command {
+func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	ghc := &getHooksCmd{
 		out:    out,
 		client: client,

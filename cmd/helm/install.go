@@ -39,18 +39,6 @@ path to a chart directory or the name of a
 chart in the current working directory.
 `
 
-// install flags & args
-var (
-	// installDryRun performs a dry-run install
-	installDryRun bool
-	// installValues is the filename of supplied values.
-	installValues string
-	// installRelName is the user-supplied release name.
-	installRelName string
-	// installNoHooks is the flag for controlling hook execution.
-	installNoHooks bool
-)
-
 type installCmd struct {
 	name         string
 	valuesFile   string
@@ -59,10 +47,10 @@ type installCmd struct {
 	disableHooks bool
 
 	out    io.Writer
-	client helm.OptionalInterface
+	client helm.Interface
 }
 
-func newInstallCmd(c helm.OptionalInterface, out io.Writer) *cobra.Command {
+func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	inst := &installCmd{
 		out:    out,
 		client: c,
@@ -74,7 +62,6 @@ func newInstallCmd(c helm.OptionalInterface, out io.Writer) *cobra.Command {
 		Long:              installDesc,
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("%v", args)
 			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
 				return err
 			}
@@ -107,14 +94,7 @@ func (i *installCmd) run() error {
 		return err
 	}
 
-	if i.dryRun {
-		i.client.Option(helm.DryRun())
-	}
-	if i.disableHooks {
-		i.client.Option(helm.DisableHooks())
-	}
-
-	res, err := i.client.InstallRelease(i.chartPath, helm.ValueOverrides(rawVals), helm.ReleaseName(i.name))
+	res, err := i.client.InstallRelease(i.chartPath, helm.ValueOverrides(rawVals), helm.ReleaseName(i.name), helm.InstallDryRun(i.dryRun), helm.InstallDisableHooks(i.disableHooks))
 	if err != nil {
 		return prettyError(err)
 	}

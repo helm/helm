@@ -44,11 +44,11 @@ type Client struct {
 
 // NewClient creates a new client.
 func NewClient(opts ...Option) *Client {
-	return new(Client).Init().Option(opts...).(*Client)
+	return new(Client).Init().Option(opts...)
 }
 
 // Option configures the helm client with the provided options
-func (h *Client) Option(opts ...Option) OptionalInterface {
+func (h *Client) Option(opts ...Option) *Client {
 	for _, opt := range opts {
 		opt(&h.opts)
 	}
@@ -58,7 +58,7 @@ func (h *Client) Option(opts ...Option) OptionalInterface {
 // Init initializes the helm client with default options
 func (h *Client) Init() *Client {
 	return h.Option(Host(DefaultHelmHost)).
-		Option(Home(os.ExpandEnv(DefaultHelmHome))).(*Client)
+		Option(Home(os.ExpandEnv(DefaultHelmHome)))
 }
 
 // ListReleases lists the current releases.

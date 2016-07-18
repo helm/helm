@@ -31,7 +31,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
-	//"k8s.io/helm/pkg/timeconv"
 )
 
 var manifestWithHook = `apiVersion: v1

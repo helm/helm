@@ -118,7 +118,7 @@ func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentO
 	return resp, c.err
 }
 
-func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.OptionalInterface {
+func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {
 	return c
 }
 
@@ -134,10 +134,9 @@ func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 		}
 		cmd := rcmd(c, &buf)
 		cmd.ParseFlags(tt.flags)
-		println("parsed flags")
 		err := cmd.RunE(cmd, tt.args)
 		if (err != nil) != tt.err {
-			t.Errorf("%q. expected error: %v, got '%v'", tt.name, tt.err, err)
+			t.Errorf("%q. expected error, got '%v'", tt.name, err)
 		}
 		re := regexp.MustCompile(tt.expected)
 		if !re.Match(buf.Bytes()) {

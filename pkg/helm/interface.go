@@ -29,9 +29,3 @@ type Interface interface {
 	UpdateRelease(rlsName string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)
 	ReleaseContent(rlsName string, opts ...ContentOption) (*rls.GetReleaseContentResponse, error)
 }
-
-// OptionalInterface is an Interface that also supports Option().
-type OptionalInterface interface {
-	Interface
-	Option(opts ...Option) OptionalInterface
-}
