@@ -60,7 +60,7 @@ func search(cmd *cobra.Command, args []string) error {
 func searchChartRefsForPattern(search string, chartRefs map[string]*repo.ChartRef) []string {
 	matches := []string{}
 	for k, c := range chartRefs {
-		if strings.Contains(c.Name, search) {
+		if strings.Contains(c.Name, search) && !c.Removed {
 			matches = append(matches, k)
 			continue
 		}
