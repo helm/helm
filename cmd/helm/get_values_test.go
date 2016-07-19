@@ -27,7 +27,7 @@ func TestGetValuesCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
 			name:     "get values with a release",
-			resp:     releaseMock("thomas-guide"),
+			resp:     releaseMock(&releaseOptions{name: "thomas-guide"}),
 			args:     []string{"thomas-guide"},
 			expected: "name: \"value\"",
 		},

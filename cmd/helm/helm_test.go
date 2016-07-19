@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"math/rand"
 	"regexp"
 	"testing"
 
@@ -44,16 +45,28 @@ metadata:
   name: fixture
 `
 
-func releaseMock(name string) *release.Release {
+type releaseOptions struct {
+	name    string
+	version int32
+	chart   *chart.Chart
+}
+
+func releaseMock(opts *releaseOptions) *release.Release {
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
-	return &release.Release{
-		Name: name,
-		Info: &release.Info{
-			FirstDeployed: &date,
-			LastDeployed:  &date,
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
-		},
-		Chart: &chart.Chart{
+
+	name := opts.name
+	if name == "" {
+		name = "testrelease-" + string(rand.Intn(100))
+	}
+
+	var version int32 = 1
+	if opts.version != 0 {
+		version = opts.version
+	}
+
+	ch := opts.chart
+	if opts.chart == nil {
+		ch = &chart.Chart{
 			Metadata: &chart.Metadata{
 				Name:    "foo",
 				Version: "0.1.0-beta.1",
@@ -61,9 +74,19 @@ func releaseMock(name string) *release.Release {
 			Templates: []*chart.Template{
 				{Name: "foo.tpl", Data: []byte(mockManifest)},
 			},
+		}
+	}
+
+	return &release.Release{
+		Name: name,
+		Info: &release.Info{
+			FirstDeployed: &date,
+			LastDeployed:  &date,
+			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
+		Chart:   ch,
 		Config:  &chart.Config{Raw: `name: "value"`},
-		Version: 1,
+		Version: version,
 		Hooks: []*release.Hook{
 			{
 				Name:     "pre-install-hook",
@@ -108,7 +131,7 @@ func (c *fakeReleaseClient) ReleaseStatus(rlsName string, opts ...helm.StatusOpt
 	return nil, nil
 }
 
-func (c *fakeReleaseClient) UpdateRelease(rlsName string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	return nil, nil
 }
 

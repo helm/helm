@@ -36,7 +36,7 @@ func TestListCmd(t *testing.T) {
 		{
 			name: "with a release",
 			resp: []*release.Release{
-				releaseMock("thomas-guide"),
+				releaseMock(&releaseOptions{name: "thomas-guide"}),
 			},
 			expected: "thomas-guide",
 		},
@@ -44,7 +44,7 @@ func TestListCmd(t *testing.T) {
 			name:  "list --long",
 			flags: map[string]string{"long": "1"},
 			resp: []*release.Release{
-				releaseMock("atlas"),
+				releaseMock(&releaseOptions{name: "atlas"}),
 			},
 			expected: "NAME \tVERSION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1      \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
 		},

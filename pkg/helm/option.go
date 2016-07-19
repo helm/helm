@@ -43,6 +43,8 @@ type options struct {
 	listReq rls.ListReleasesRequest
 	// release install options are applied directly to the install release request
 	instReq rls.InstallReleaseRequest
+	// release update options are applied directly to the update release request
+	updateReq rls.UpdateReleaseRequest
 }
 
 // Home specifies the location of helm home, (default = "$HOME/.helm").
@@ -111,6 +113,13 @@ func ValueOverrides(raw []byte) InstallOption {
 	}
 }
 
+// UpdateValueOverrides specifies a list of values to include when upgrading
+func UpdateValueOverrides(raw []byte) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Values = &cpb.Config{Raw: string(raw)}
+	}
+}
+
 // ReleaseName specifies the name of the release when installing.
 func ReleaseName(name string) InstallOption {
 	return func(opts *options) {
@@ -127,6 +136,13 @@ func DeleteDisableHooks(disable bool) DeleteOption {
 
 // DeleteDryRun will (if true) execute a deletion as a dry run.
 func DeleteDryRun(dry bool) DeleteOption {
+	return func(opts *options) {
+		opts.dryRun = dry
+	}
+}
+
+// UpgradeDryRun will (if true) execute an upgrade as a dry run.
+func UpgradeDryRun(dry bool) UpdateOption {
 	return func(opts *options) {
 		opts.dryRun = dry
 	}
@@ -155,7 +171,9 @@ type StatusOption func(*options)
 // DeleteOption -- TODO
 type DeleteOption func(*options)
 
-// UpdateOption -- TODO
+// UpdateOption allows specifying various settings
+// configurable by the helm client user for overriding
+// the defaults used when running the `helm upgrade` command.
 type UpdateOption func(*options)
 
 // RPC helpers defined on `options` type. Note: These actually execute the

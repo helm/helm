@@ -31,14 +31,14 @@ func TestDelete(t *testing.T) {
 			args:     []string{"aeneas"},
 			flags:    []string{},
 			expected: "", // Output of a delete is an empty string and exit 0.
-			resp:     releaseMock("aeneas"),
+			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
 		{
 			name:     "delete without hooks",
 			args:     []string{"aeneas"},
 			flags:    []string{"--no-hooks"},
 			expected: "",
-			resp:     releaseMock("aeneas"),
+			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
 		{
 			name: "delete without release",
