@@ -73,7 +73,7 @@ func (h *Client) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesRespo
 }
 
 // InstallRelease installs a new chart and returns the release response.
-func (h *Client) InstallRelease(chStr string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+func (h *Client) InstallRelease(chStr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (h *Client) InstallRelease(chStr string, opts ...InstallOption) (*rls.Insta
 		return nil, err
 	}
 
-	return h.opts.rpcInstallRelease(chart, rls.NewReleaseServiceClient(c), opts...)
+	return h.opts.rpcInstallRelease(chart, rls.NewReleaseServiceClient(c), ns, opts...)
 }
 
 // DeleteRelease uninstalls a named release and returns the response.

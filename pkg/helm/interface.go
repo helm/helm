@@ -23,7 +23,7 @@ import (
 // Interface for helm client for mocking in tests
 type Interface interface {
 	ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error)
-	InstallRelease(chStr string, opts ...InstallOption) (*rls.InstallReleaseResponse, error)
+	InstallRelease(chStr, namespace string, opts ...InstallOption) (*rls.InstallReleaseResponse, error)
 	DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error)
 	ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error)
 	UpdateRelease(rlsName string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)

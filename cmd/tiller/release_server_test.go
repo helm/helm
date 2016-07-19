@@ -101,7 +101,14 @@ func TestInstallRelease(t *testing.T) {
 
 	// TODO: Refactor this into a mock.
 	req := &services.InstallReleaseRequest{
-		Chart: chartStub(),
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "hello", Data: []byte("hello: world")},
+				{Name: "hooks", Data: []byte(manifestWithHook)},
+			},
+		},
 	}
 	res, err := rs.InstallRelease(c, req)
 	if err != nil {
@@ -109,6 +116,9 @@ func TestInstallRelease(t *testing.T) {
 	}
 	if res.Release.Name == "" {
 		t.Errorf("Expected release name.")
+	}
+	if res.Release.Namespace != "spaced" {
+		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Release.Namespace)
 	}
 
 	rel, err := rs.env.Releases.Read(res.Release.Name)

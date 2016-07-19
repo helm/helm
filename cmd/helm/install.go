@@ -41,13 +41,13 @@ chart in the current working directory.
 
 type installCmd struct {
 	name         string
+	namespace    string
 	valuesFile   string
 	chartPath    string
 	dryRun       bool
 	disableHooks bool
-
-	out    io.Writer
-	client helm.Interface
+	out          io.Writer
+	client       helm.Interface
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -78,9 +78,10 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVarP(&inst.valuesFile, "values", "f", "", "path to a values YAML file")
 	f.StringVarP(&inst.name, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you.")
+	// TODO use kubeconfig default
+	f.StringVar(&inst.namespace, "namespace", "default", "the namespace to install the release into")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
-
 	return cmd
 }
 
@@ -94,7 +95,7 @@ func (i *installCmd) run() error {
 		return err
 	}
 
-	res, err := i.client.InstallRelease(i.chartPath, helm.ValueOverrides(rawVals), helm.ReleaseName(i.name), helm.InstallDryRun(i.dryRun), helm.InstallDisableHooks(i.disableHooks))
+	res, err := i.client.InstallRelease(i.chartPath, i.namespace, helm.ValueOverrides(rawVals), helm.ReleaseName(i.name), helm.InstallDryRun(i.dryRun), helm.InstallDisableHooks(i.disableHooks))
 	if err != nil {
 		return prettyError(err)
 	}
@@ -118,6 +119,7 @@ func (i *installCmd) printRelease(rel *release.Release) {
 	// TODO: Switch to text/template like everything else.
 	if flagDebug {
 		fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
+		fmt.Fprintf(i.out, "NAMESPACE:   %s\n", rel.Namespace)
 		fmt.Fprintf(i.out, "INFO:   %s %s\n", timeconv.String(rel.Info.LastDeployed), rel.Info.Status)
 		fmt.Fprintf(i.out, "CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
 		fmt.Fprintf(i.out, "MANIFEST: %s\n", rel.Manifest)

@@ -36,9 +36,6 @@ import (
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"
 
-// DefaultNamespace is the default namespace for Tiller.
-const DefaultNamespace = "helm"
-
 // DefaultEngine points to the engine that the EngineYard should treat as the
 // default. A chart that does not specify an engine may be run through the
 // default engine.
@@ -196,8 +193,6 @@ func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
 //
 // All services in a context are concurrency safe.
 type Environment struct {
-	// The default namespace
-	Namespace string
 	// EngineYard provides access to the known template engines.
 	EngineYard EngineYard
 	// Releases stores records of releases.
@@ -215,7 +210,6 @@ func New() *Environment {
 		GoTplEngine: e,
 	}
 	return &Environment{
-		Namespace:  DefaultNamespace,
 		EngineYard: ey,
 		Releases:   storage.NewMemory(),
 		KubeClient: kube.New(nil), //&PrintingKubeClient{Out: os.Stdout},

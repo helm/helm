@@ -48,4 +48,6 @@ message Release {
 	// Version is an int32 which represents the version of the release.
 	int32 version = 7;
 
+	// Namespace is the kubernetes namespace of the release.
+	string namespace = 8;
 }

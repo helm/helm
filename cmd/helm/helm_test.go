@@ -83,6 +83,9 @@ type fakeReleaseClient struct {
 	err  error
 }
 
+var _ helm.Interface = &fakeReleaseClient{}
+var _ helm.Interface = &helm.Client{}
+
 func (c *fakeReleaseClient) ListReleases(opts ...helm.ReleaseListOption) (*rls.ListReleasesResponse, error) {
 	resp := &rls.ListReleasesResponse{
 		Count:    int64(len(c.rels)),
@@ -91,7 +94,7 @@ func (c *fakeReleaseClient) ListReleases(opts ...helm.ReleaseListOption) (*rls.L
 	return resp, c.err
 }
 
-func (c *fakeReleaseClient) InstallRelease(chStr string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
+func (c *fakeReleaseClient) InstallRelease(chStr, ns string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
 	return &rls.InstallReleaseResponse{
 		Release: c.rels[0],
 	}, nil
