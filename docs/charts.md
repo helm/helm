@@ -433,6 +433,17 @@ For all other kinds, as soon as Kubernetes marks the resource as loaded
 resources are declared in a hook, the resources are executed serially,
 but the order of their execution is not guaranteed.
 
+#### Hook resources are unmanaged
+
+The resources that a hook creates are not tracked or managed as part of the
+release. Once Tiller verifies that the hook has reached its ready state, it
+will leave the hook resource alone.
+
+Practically speaking, this means that if you create resources in a hook, you
+cannot rely upon `helm delete` to remove the resources. To destroy such
+resources, you need to write code to perform this operation in a `pre-delete`
+or `post-delete` hook.
+
 ### Writing a Hook
 
 Hooks are just Kubernetes manfiest files with special annotations in the
