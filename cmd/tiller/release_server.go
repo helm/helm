@@ -292,8 +292,10 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	}
 
 	// pre-install hooks
-	if err := s.execHook(r.Hooks, r.Name, preInstall); err != nil {
-		return res, err
+	if !req.DisableHooks {
+		if err := s.execHook(r.Hooks, r.Name, preInstall); err != nil {
+			return res, err
+		}
 	}
 
 	// regular manifests
@@ -309,8 +311,10 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	}
 
 	// post-install hooks
-	if err := s.execHook(r.Hooks, r.Name, postInstall); err != nil {
-		return res, err
+	if !req.DisableHooks {
+		if err := s.execHook(r.Hooks, r.Name, postInstall); err != nil {
+			return res, err
+		}
 	}
 
 	// This is a tricky case. The release has been created, but the result
@@ -382,8 +386,10 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	rel.Info.Deleted = timeconv.Now()
 	res := &services.UninstallReleaseResponse{Release: rel}
 
-	if err := s.execHook(rel.Hooks, rel.Name, preDelete); err != nil {
-		return res, err
+	if !req.DisableHooks {
+		if err := s.execHook(rel.Hooks, rel.Name, preDelete); err != nil {
+			return res, err
+		}
 	}
 
 	b := bytes.NewBuffer([]byte(rel.Manifest))
@@ -392,8 +398,10 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, err
 	}
 
-	if err := s.execHook(rel.Hooks, rel.Name, postDelete); err != nil {
-		return res, err
+	if !req.DisableHooks {
+		if err := s.execHook(rel.Hooks, rel.Name, postDelete); err != nil {
+			return res, err
+		}
 	}
 
 	if err := s.env.Releases.Update(rel); err != nil {

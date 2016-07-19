@@ -92,7 +92,9 @@ func (c *fakeReleaseClient) ListReleases(opts ...helm.ReleaseListOption) (*rls.L
 }
 
 func (c *fakeReleaseClient) InstallRelease(chStr string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
-	return nil, nil
+	return &rls.InstallReleaseResponse{
+		Release: c.rels[0],
+	}, nil
 }
 
 func (c *fakeReleaseClient) DeleteRelease(rlsName string, opts ...helm.DeleteOption) (*rls.UninstallReleaseResponse, error) {
@@ -116,6 +118,10 @@ func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentO
 	return resp, c.err
 }
 
+func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {
+	return c
+}
+
 // releaseCmd is a command that works with a fakeReleaseClient
 type releaseCmd func(c *fakeReleaseClient, out io.Writer) *cobra.Command
 
@@ -127,9 +133,10 @@ func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 			rels: []*release.Release{tt.resp},
 		}
 		cmd := rcmd(c, &buf)
+		cmd.ParseFlags(tt.flags)
 		err := cmd.RunE(cmd, tt.args)
 		if (err != nil) != tt.err {
-			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
+			t.Errorf("%q. expected error, got '%v'", tt.name, err)
 		}
 		re := regexp.MustCompile(tt.expected)
 		if !re.Match(buf.Bytes()) {
@@ -141,8 +148,9 @@ func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 
 // releaseCase describes a test case that works with releases.
 type releaseCase struct {
-	name string
-	args []string
+	name  string
+	args  []string
+	flags []string
 	// expected is the string to be matched. This supports regular expressions.
 	expected string
 	err      bool

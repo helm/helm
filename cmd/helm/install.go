@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -38,78 +39,90 @@ path to a chart directory or the name of a
 chart in the current working directory.
 `
 
-// install flags & args
-var (
-	// installDryRun performs a dry-run install
-	installDryRun bool
-	// installValues is the filename of supplied values.
-	installValues string
-	// installRelName is the user-supplied release name.
-	installRelName string
-)
+type installCmd struct {
+	name         string
+	valuesFile   string
+	chartPath    string
+	dryRun       bool
+	disableHooks bool
 
-var installCmd = &cobra.Command{
-	Use:               "install [CHART]",
-	Short:             "install a chart archive",
-	Long:              installDesc,
-	RunE:              runInstall,
-	PersistentPreRunE: setupConnection,
+	out    io.Writer
+	client helm.Interface
 }
 
-func init() {
-	f := installCmd.Flags()
-	f.StringVarP(&installValues, "values", "f", "", "path to a values YAML file")
-	f.StringVarP(&installRelName, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you.")
-	f.BoolVar(&installDryRun, "dry-run", false, "simulate an install")
+func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
+	inst := &installCmd{
+		out:    out,
+		client: c,
+	}
 
-	RootCommand.AddCommand(installCmd)
+	cmd := &cobra.Command{
+		Use:               "install [CHART]",
+		Short:             "install a chart archive",
+		Long:              installDesc,
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
+				return err
+			}
+			cp, err := locateChartPath(args[0])
+			if err != nil {
+				return err
+			}
+			inst.chartPath = cp
+			inst.client = ensureHelmClient(inst.client)
+			return inst.run()
+		},
+	}
+
+	f := cmd.Flags()
+	f.StringVarP(&inst.valuesFile, "values", "f", "", "path to a values YAML file")
+	f.StringVarP(&inst.name, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you.")
+	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
+	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
+
+	return cmd
 }
 
-func runInstall(cmd *cobra.Command, args []string) error {
-	if err := checkArgsLength(1, len(args), "chart name"); err != nil {
-		return err
-	}
-	chartpath, err := locateChartPath(args[0])
-	if err != nil {
-		return err
-	}
+func (i *installCmd) run() error {
 	if flagDebug {
-		fmt.Printf("Chart path: %s\n", chartpath)
+		fmt.Printf("Chart path: %s\n", i.chartPath)
 	}
 
-	rawVals, err := vals()
+	rawVals, err := i.vals()
 	if err != nil {
 		return err
 	}
 
-	res, err := helm.InstallRelease(rawVals, installRelName, chartpath, installDryRun)
+	res, err := i.client.InstallRelease(i.chartPath, helm.ValueOverrides(rawVals), helm.ReleaseName(i.name), helm.InstallDryRun(i.dryRun), helm.InstallDisableHooks(i.disableHooks))
 	if err != nil {
 		return prettyError(err)
 	}
 
-	printRelease(res.GetRelease())
+	i.printRelease(res.GetRelease())
 
 	return nil
 }
 
-func vals() ([]byte, error) {
-	if installValues == "" {
+func (i *installCmd) vals() ([]byte, error) {
+	if i.valuesFile == "" {
 		return []byte{}, nil
 	}
-	return ioutil.ReadFile(installValues)
+	return ioutil.ReadFile(i.valuesFile)
 }
 
-func printRelease(rel *release.Release) {
+func (i *installCmd) printRelease(rel *release.Release) {
 	if rel == nil {
 		return
 	}
+	// TODO: Switch to text/template like everything else.
 	if flagDebug {
-		fmt.Printf("NAME:   %s\n", rel.Name)
-		fmt.Printf("INFO:   %s %s\n", timeconv.String(rel.Info.LastDeployed), rel.Info.Status)
-		fmt.Printf("CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
-		fmt.Printf("MANIFEST: %s\n", rel.Manifest)
+		fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
+		fmt.Fprintf(i.out, "INFO:   %s %s\n", timeconv.String(rel.Info.LastDeployed), rel.Info.Status)
+		fmt.Fprintf(i.out, "CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
+		fmt.Fprintf(i.out, "MANIFEST: %s\n", rel.Manifest)
 	} else {
-		fmt.Println(rel.Name)
+		fmt.Fprintln(i.out, rel.Name)
 	}
 }
 

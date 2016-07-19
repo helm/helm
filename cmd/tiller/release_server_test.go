@@ -31,7 +31,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 var manifestWithHook = `apiVersion: v1
@@ -50,7 +49,27 @@ func rsFixture() *releaseServer {
 	}
 }
 
-func releaseMock() *release.Release {
+// chartStub creates a fully stubbed out chart.
+func chartStub() *chart.Chart {
+	return &chart.Chart{
+		// TODO: This should be more complete.
+		Metadata: &chart.Metadata{
+			Name: "hello",
+		},
+		// This adds basic templates, partials, and hooks.
+		Templates: []*chart.Template{
+			{Name: "hello", Data: []byte("hello: world")},
+			{Name: "goodbye", Data: []byte("goodbye: world")},
+			{Name: "empty", Data: []byte("")},
+			{Name: "with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "hooks", Data: []byte(manifestWithHook)},
+		},
+	}
+}
+
+// releaseStub creates a release stub, complete with the chartStub as its chart.
+func releaseStub() *release.Release {
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
 	return &release.Release{
 		Name: "angry-panda",
@@ -59,15 +78,7 @@ func releaseMock() *release.Release {
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{
-				Name:    "foo",
-				Version: "0.1.0-beta.1",
-			},
-			Templates: []*chart.Template{
-				{Name: "foo.tpl", Data: []byte("Hello")},
-			},
-		},
+		Chart:  chartStub(),
 		Config: &chart.Config{Raw: `name = "value"`},
 		Hooks: []*release.Hook{
 			{
@@ -88,14 +99,9 @@ func TestInstallRelease(t *testing.T) {
 	c := context.Background()
 	rs := rsFixture()
 
+	// TODO: Refactor this into a mock.
 	req := &services.InstallReleaseRequest{
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "hooks", Data: []byte(manifestWithHook)},
-			},
-		},
+		Chart: chartStub(),
 	}
 	res, err := rs.InstallRelease(c, req)
 	if err != nil {
@@ -144,17 +150,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 	rs := rsFixture()
 
 	req := &services.InstallReleaseRequest{
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "goodbye", Data: []byte("goodbye: world")},
-				{Name: "empty", Data: []byte("")},
-				{Name: "with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-				{Name: "partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
-				{Name: "hooks", Data: []byte(manifestWithHook)},
-			},
-		},
+		Chart:  chartStub(),
 		DryRun: true,
 	}
 	res, err := rs.InstallRelease(c, req)
@@ -198,30 +194,29 @@ func TestInstallReleaseDryRun(t *testing.T) {
 	}
 }
 
+func TestInstallReleaseNoHooks(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	req := &services.InstallReleaseRequest{
+		Chart:        chartStub(),
+		DisableHooks: true,
+	}
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+
+	if hl := res.Release.Hooks[0].LastRun; hl != nil {
+		t.Errorf("Expected that no hooks were run. Got %d", hl)
+	}
+}
+
 func TestUninstallRelease(t *testing.T) {
 	c := context.Background()
 	rs := rsFixture()
-	rs.env.Releases.Create(&release.Release{
-		Name: "angry-panda",
-		Info: &release.Info{
-			FirstDeployed: timeconv.Now(),
-			Status: &release.Status{
-				Code: release.Status_DEPLOYED,
-			},
-		},
-		Hooks: []*release.Hook{
-			{
-				Name:     "test-cm",
-				Kind:     "ConfigMap",
-				Path:     "test-cm",
-				Manifest: manifestWithHook,
-				Events: []release.Hook_Event{
-					release.Hook_POST_INSTALL,
-					release.Hook_PRE_DELETE,
-				},
-			},
-		},
-	})
+	rs.env.Releases.Create(releaseStub())
 
 	req := &services.UninstallReleaseRequest{
 		Name: "angry-panda",
@@ -249,10 +244,31 @@ func TestUninstallRelease(t *testing.T) {
 	}
 }
 
+func TestUninstallReleaseNoHooks(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	req := &services.UninstallReleaseRequest{
+		Name:         "angry-panda",
+		DisableHooks: true,
+	}
+
+	res, err := rs.UninstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed uninstall: %s", err)
+	}
+
+	// The default value for a protobuf timestamp is nil.
+	if res.Release.Hooks[0].LastRun != nil {
+		t.Errorf("Expected LastRun to be zero, got %d.", res.Release.Hooks[0].LastRun.Seconds)
+	}
+}
+
 func TestGetReleaseContent(t *testing.T) {
 	c := context.Background()
 	rs := rsFixture()
-	rel := releaseMock()
+	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
@@ -270,7 +286,7 @@ func TestGetReleaseContent(t *testing.T) {
 func TestGetReleaseStatus(t *testing.T) {
 	c := context.Background()
 	rs := rsFixture()
-	rel := releaseMock()
+	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
@@ -289,7 +305,7 @@ func TestListReleases(t *testing.T) {
 	rs := rsFixture()
 	num := 7
 	for i := 0; i < num; i++ {
-		rel := releaseMock()
+		rel := releaseStub()
 		rel.Name = fmt.Sprintf("rel-%d", i)
 		if err := rs.env.Releases.Create(rel); err != nil {
 			t.Fatalf("Could not store mock release: %s", err)
@@ -313,7 +329,7 @@ func TestListReleasesSort(t *testing.T) {
 	// sort.
 	num := 7
 	for i := num; i > 0; i-- {
-		rel := releaseMock()
+		rel := releaseStub()
 		rel.Name = fmt.Sprintf("rel-%d", i)
 		if err := rs.env.Releases.Create(rel); err != nil {
 			t.Fatalf("Could not store mock release: %s", err)
@@ -356,7 +372,7 @@ func TestListReleasesFilter(t *testing.T) {
 	}
 	num := 7
 	for i := 0; i < num; i++ {
-		rel := releaseMock()
+		rel := releaseStub()
 		rel.Name = names[i]
 		if err := rs.env.Releases.Create(rel); err != nil {
 			t.Fatalf("Could not store mock release: %s", err)
