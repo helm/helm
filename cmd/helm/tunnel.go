@@ -29,23 +29,13 @@ import (
 var tunnel *kube.Tunnel
 
 func newTillerPortForwarder(namespace string) (*kube.Tunnel, error) {
-	kc := kube.New(nil)
-
-	if namespace == "" {
-		ns, _, err := kc.DefaultNamespace()
-		if err != nil {
-			return nil, err
-		}
-		namespace = ns
-	}
-
 	podName, err := getTillerPodName(namespace)
 	if err != nil {
 		return nil, err
 	}
 	// FIXME use a constain that is accessible on init
 	const tillerPort = 44134
-	return kc.ForwardPort(namespace, podName, tillerPort)
+	return kube.New(nil).ForwardPort(namespace, podName, tillerPort)
 }
 
 func getTillerPodName(namespace string) (string, error) {

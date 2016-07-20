@@ -179,12 +179,13 @@ func (o *options) rpcListReleases(rlc rls.ReleaseServiceClient, opts ...ReleaseL
 }
 
 // Executes tiller.InstallRelease RPC.
-func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	// apply the install options
 	for _, opt := range opts {
 		opt(o)
 	}
 	o.instReq.Chart = chr
+	o.instReq.Namespace = ns
 	o.instReq.DryRun = o.dryRun
 	o.instReq.DisableHooks = o.disableHooks
 

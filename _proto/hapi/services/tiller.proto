@@ -178,6 +178,9 @@ message InstallReleaseRequest {
 
 	// DisableHooks causes the server to skip running any hooks for the install.
 	bool disable_hooks = 5;
+
+	// Namepace is the kubernetes namespace of the release.
+	string namespace = 6;
 }
 
 // InstallReleaseResponse is the response from a release installation.

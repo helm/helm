@@ -28,14 +28,14 @@ import (
 )
 
 const (
-	homeEnvVar = "HELM_HOME"
-	hostEnvVar = "HELM_HOST"
+	homeEnvVar      = "HELM_HOME"
+	hostEnvVar      = "HELM_HOST"
+	tillerNamespace = "kube-system"
 )
 
 var (
-	helmHome        string
-	tillerHost      string
-	tillerNamespace string
+	helmHome   string
+	tillerHost string
 )
 
 // flagDebug is a signal that the user wants additional output.
@@ -80,7 +80,6 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p := cmd.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
-	p.StringVarP(&tillerNamespace, "namespace", "", "", "kubernetes namespace")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 
 	cmd.AddCommand(

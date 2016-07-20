@@ -44,7 +44,6 @@ func init() {
 	srv = &releaseServer{
 		env: env,
 	}
-	srv.env.Namespace = namespace
 	services.RegisterReleaseServiceServer(rootServer, srv)
 }
 
@@ -236,7 +235,7 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	}
 
 	ts := timeconv.Now()
-	options := chartutil.ReleaseOptions{Name: name, Time: ts, Namespace: s.env.Namespace}
+	options := chartutil.ReleaseOptions{Name: name, Time: ts, Namespace: req.Namespace}
 	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
 	if err != nil {
 		return nil, err
@@ -267,9 +266,10 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 
 	// Store a release.
 	rel := &release.Release{
-		Name:   name,
-		Chart:  req.Chart,
-		Config: req.Values,
+		Name:      name,
+		Namespace: req.Namespace,
+		Chart:     req.Chart,
+		Config:    req.Values,
 		Info: &release.Info{
 			FirstDeployed: ts,
 			LastDeployed:  ts,
@@ -293,7 +293,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 
 	// pre-install hooks
 	if !req.DisableHooks {
-		if err := s.execHook(r.Hooks, r.Name, preInstall); err != nil {
+		if err := s.execHook(r.Hooks, r.Name, r.Namespace, preInstall); err != nil {
 			return res, err
 		}
 	}
@@ -301,7 +301,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// regular manifests
 	kubeCli := s.env.KubeClient
 	b := bytes.NewBufferString(r.Manifest)
-	if err := kubeCli.Create(s.env.Namespace, b); err != nil {
+	if err := kubeCli.Create(r.Namespace, b); err != nil {
 		r.Info.Status.Code = release.Status_FAILED
 		log.Printf("warning: Release %q failed: %s", r.Name, err)
 		if err := s.env.Releases.Create(r); err != nil {
@@ -312,7 +312,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 
 	// post-install hooks
 	if !req.DisableHooks {
-		if err := s.execHook(r.Hooks, r.Name, postInstall); err != nil {
+		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall); err != nil {
 			return res, err
 		}
 	}
@@ -331,7 +331,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	return res, nil
 }
 
-func (s *releaseServer) execHook(hs []*release.Hook, name, hook string) error {
+func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook string) error {
 	kubeCli := s.env.KubeClient
 	code, ok := events[hook]
 	if !ok {
@@ -352,14 +352,14 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, hook string) error {
 		}
 
 		b := bytes.NewBufferString(h.Manifest)
-		if err := kubeCli.Create(s.env.Namespace, b); err != nil {
+		if err := kubeCli.Create(namespace, b); err != nil {
 			log.Printf("wrning: Release %q pre-install %s failed: %s", name, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
 		b.WriteString(h.Manifest)
-		if err := kubeCli.WatchUntilReady(s.env.Namespace, b); err != nil {
+		if err := kubeCli.WatchUntilReady(namespace, b); err != nil {
 			log.Printf("warning: Release %q pre-install %s could not complete: %s", name, h.Path, err)
 			return err
 		}
@@ -387,19 +387,19 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	res := &services.UninstallReleaseResponse{Release: rel}
 
 	if !req.DisableHooks {
-		if err := s.execHook(rel.Hooks, rel.Name, preDelete); err != nil {
+		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, preDelete); err != nil {
 			return res, err
 		}
 	}
 
 	b := bytes.NewBuffer([]byte(rel.Manifest))
-	if err := s.env.KubeClient.Delete(s.env.Namespace, b); err != nil {
+	if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
 		log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
 		return nil, err
 	}
 
 	if !req.DisableHooks {
-		if err := s.execHook(rel.Hooks, rel.Name, postDelete); err != nil {
+		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, postDelete); err != nil {
 			return res, err
 		}
 	}
