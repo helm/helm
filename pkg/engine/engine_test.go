@@ -54,18 +54,15 @@ func TestRender(t *testing.T) {
 	}
 
 	vals := &chart.Config{
-		Raw: "outer: BAD\ninner: inn",
-	}
-
-	overrides := map[string]interface{}{
-		"outer": "spouter",
-		"global": map[string]interface{}{
-			"callme": "Ishmael",
-		},
-	}
+		Raw: `
+outer: spouter
+inner: inn
+global:
+  callme: Ishmael
+`}
 
 	e := New()
-	v, err := chartutil.CoalesceValues(c, vals, overrides)
+	v, err := chartutil.CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
@@ -271,7 +268,7 @@ global:
   when: to-day`,
 	}
 
-	tmp, err := chartutil.CoalesceValues(outer, &injValues, map[string]interface{}{})
+	tmp, err := chartutil.CoalesceValues(outer, &injValues)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
