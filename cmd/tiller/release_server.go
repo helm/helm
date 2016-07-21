@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
 
@@ -217,10 +218,15 @@ func (s *releaseServer) engine(ch *chart.Chart) environment.Engine {
 func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	rel, err := s.prepareRelease(req)
 	if err != nil {
+		log.Printf("Failed install prepare step: %s", err)
 		return nil, err
 	}
 
-	return s.performRelease(rel, req)
+	res, err := s.performRelease(rel, req)
+	if err != nil {
+		log.Printf("Failed install perform step: %s", err)
+	}
+	return res, err
 }
 
 // prepareRelease builds a release for an install operation.
@@ -246,7 +252,12 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	if err != nil {
 		return nil, err
 	}
-	hooks, manifests := sortHooks(files)
+	hooks, manifests, err := sortHooks(files)
+	if err != nil {
+		// By catching parse errors here, we can prevent bogus releases from going
+		// to Kubernetes.
+		return nil, err
+	}
 
 	// Aggregate all non-hooks into one big doc.
 	b := bytes.NewBuffer(nil)
@@ -280,6 +291,12 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		Version:  1,
 	}
 	return rel, nil
+}
+
+// validateYAML checks to see if YAML is well-formed.
+func validateYAML(data string) error {
+	b := map[string]interface{}{}
+	return yaml.Unmarshal([]byte(data), b)
 }
 
 // performRelease runs a release.

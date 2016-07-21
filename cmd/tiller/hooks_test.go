@@ -82,7 +82,10 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic := sortHooks(manifests)
+	hs, generic, err := sortHooks(manifests)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
 
 	if len(generic) != 1 {
 		t.Errorf("Expected 1 generic manifest, got %d", len(generic))

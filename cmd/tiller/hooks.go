@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -57,16 +58,17 @@ type simpleHead struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortHooks(files map[string]string) (hs []*release.Hook, generic map[string]string) {
-	hs = []*release.Hook{}
-	generic = map[string]string{}
+func sortHooks(files map[string]string) ([]*release.Hook, map[string]string, error) {
+	hs := []*release.Hook{}
+	generic := map[string]string{}
 
 	for n, c := range files {
 		var sh simpleHead
 		err := yaml.Unmarshal([]byte(c), &sh)
 
 		if err != nil {
-			log.Printf("YAML parse error on %s: %s (skipping)", n, err)
+			e := fmt.Errorf("YAML parse error on %s: %s", n, err)
+			return hs, generic, e
 		}
 
 		if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
@@ -103,5 +105,5 @@ func sortHooks(files map[string]string) (hs []*release.Hook, generic map[string]
 		}
 		hs = append(hs, h)
 	}
-	return
+	return hs, generic, nil
 }
