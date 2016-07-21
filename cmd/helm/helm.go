@@ -89,6 +89,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newStatusCmd(nil, out),
 		newInstallCmd(nil, out),
 		newDeleteCmd(nil, out),
+		newInspectCmd(nil, out),
 	)
 	return cmd
 }
