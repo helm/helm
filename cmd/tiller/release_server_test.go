@@ -252,6 +252,13 @@ func TestUninstallRelease(t *testing.T) {
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
 	}
+
+	// Test that after deletion, we get an error that it is already deleted.
+	if _, err = rs.UninstallRelease(c, req); err == nil {
+		t.Error("Expected error when deleting already deleted resource.")
+	} else if err.Error() != "the release named \"angry-panda\" is already deleted" {
+		t.Errorf("Unexpected error message: %q", err)
+	}
 }
 
 func TestUninstallReleaseNoHooks(t *testing.T) {
