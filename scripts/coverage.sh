@@ -25,9 +25,21 @@ hash godir 2>/dev/null || go get github.com/Masterminds/godir
 
 generate_cover_data() {
   for d in $(godir) ; do
-    local output="${coverdir}/${d//\//-}.cover"
-    go test -coverprofile="${output}" -covermode="$covermode" "$d"
+    (
+      local output="${coverdir}/${d//\//-}.cover"
+      go test -coverprofile="${output}" -covermode="$covermode" "$d"
+    ) &
   done
+
+  local fails
+  fails=0
+  for job in $(jobs -p); do
+    wait "${job}" || let "fails+=1"
+  done
+  if (( fails != 0 )); then
+    echo "FAILED"
+    exit ${fails}
+  fi
 
   echo "mode: $covermode" >"$profile"
   grep -h -v "^mode:" "$coverdir"/*.cover >>"$profile"
@@ -40,7 +52,7 @@ push_to_coveralls() {
 generate_cover_data
 go tool cover -func "${profile}"
 
-case "$1" in
+case "${1-}" in
   --html)
     go tool cover -html "${profile}"
     ;;
