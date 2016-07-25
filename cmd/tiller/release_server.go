@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
@@ -49,8 +50,6 @@ func init() {
 }
 
 var (
-	// errNotImplemented is a temporary error for uninmplemented callbacks.
-	errNotImplemented = errors.New("not implemented")
 	// errMissingChart indicates that a chart was not provided.
 	errMissingChart = errors.New("no chart provided")
 	// errMissingRelease indicates that a release (name) was not provided.
@@ -208,9 +207,20 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	// validate new chart version is higher than old
+
 	givenChartVersion := req.Chart.Metadata.Version
 	releasedChartVersion := rel.Chart.Metadata.Version
-	if givenChartVersion <= releasedChartVersion {
+	c, err := semver.NewConstraint("> " + releasedChartVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := semver.NewVersion(givenChartVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	if a := c.Check(v); !a {
 		return nil, fmt.Errorf("Given chart (%s-%v) must be a higher version than released chart (%s-%v)", givenChart, givenChartVersion, releasedChart, releasedChartVersion)
 	}
 

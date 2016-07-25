@@ -53,6 +53,9 @@ func TestUpgradeCmd(t *testing.T) {
 		Version:     "0.1.2",
 	}
 	chartPath, err = chartutil.Create(cfile, tmpChart)
+	if err != nil {
+		t.Errorf("Error creating chart: %v", err)
+	}
 	ch, _ = chartutil.Load(chartPath)
 
 	tests := []releaseCase{
