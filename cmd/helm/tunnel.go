@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 
 	"k8s.io/helm/pkg/kube"
@@ -29,30 +30,43 @@ import (
 var tunnel *kube.Tunnel
 
 func newTillerPortForwarder(namespace string) (*kube.Tunnel, error) {
-	podName, err := getTillerPodName(namespace)
+	kc := kube.New(nil)
+	client, err := kc.Client()
 	if err != nil {
 		return nil, err
 	}
-	// FIXME use a constain that is accessible on init
+
+	podName, err := getTillerPodName(client, namespace)
+	if err != nil {
+		return nil, err
+	}
 	const tillerPort = 44134
-	return kube.New(nil).ForwardPort(namespace, podName, tillerPort)
+	return kc.ForwardPort(namespace, podName, tillerPort)
 }
 
-func getTillerPodName(namespace string) (string, error) {
-	client, err := kube.New(nil).Client()
+func getTillerPodName(client unversioned.PodsNamespacer, namespace string) (string, error) {
+	// TODO use a const for labels
+	selector := labels.Set{"app": "helm", "name": "tiller"}.AsSelector()
+	pod, err := getFirstRunningPod(client, namespace, selector)
 	if err != nil {
 		return "", err
 	}
+	return pod.ObjectMeta.GetName(), nil
+}
 
-	// TODO use a const for labels
-	selector := labels.Set{"app": "helm", "name": "tiller"}.AsSelector()
+func getFirstRunningPod(client unversioned.PodsNamespacer, namespace string, selector labels.Selector) (*api.Pod, error) {
 	options := api.ListOptions{LabelSelector: selector}
 	pods, err := client.Pods(namespace).List(options)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(pods.Items) < 1 {
-		return "", fmt.Errorf("I could not find tiller")
+		return nil, fmt.Errorf("could not find tiller")
 	}
-	return pods.Items[0].ObjectMeta.GetName(), nil
+	for _, p := range pods.Items {
+		if api.IsPodReady(&p) {
+			return &p, nil
+		}
+	}
+	return nil, fmt.Errorf("could not find a ready pod")
 }
