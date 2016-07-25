@@ -1,5 +1,5 @@
-hash: 410e784360a10f716d4bf4d22decf81f75b327d051b3f2d23f55aa9049c09676
-updated: 2016-08-19T12:19:48.074620307-06:00
+hash: 05c56f2ae4c8bcbaf2c428e2e070ec00f865b284ea61dd671e2c4e117f2d6528
+updated: 2016-08-19T17:30:32.462379907-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -247,6 +247,17 @@ imports:
   subpackages:
   - codec
   - codec/codecgen
+- name: golang.org/x/crypto
+  version: c84e1f8e3a7e322d497cd16c0e8a13c7e127baf3
+  subpackages:
+  - cast5
+  - openpgp
+  - openpgp/armor
+  - openpgp/clearsign
+  - openpgp/elgamal
+  - openpgp/errors
+  - openpgp/packet
+  - openpgp/s2k
 - name: golang.org/x/net
   version: fb93926129b8ec0056f2f458b1f519654814edf0
   subpackages:
