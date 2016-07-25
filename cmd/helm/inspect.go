@@ -33,23 +33,40 @@ This command inspects a chart (directory, file, or URL) and displays information
 Inspect prints the contents of the Chart.yaml file and the values.yaml file.
 `
 
+const inspectValuesDesc = `
+This command inspects a chart (directory, file, or URL) and displays the contents
+of the values.yaml file
+`
+
+const inspectChartDesc = `
+This command inspects a chart (directory, file, or URL) and displays the contents
+of the Charts.yaml file
+`
+
 type inspectCmd struct {
 	chartpath string
-
-	out    io.Writer
-	client helm.Interface
+	output    string
+	out       io.Writer
+	client    helm.Interface
 }
+
+const (
+	chartOnly  = "chart"
+	valuesOnly = "values"
+	both       = "both"
+)
 
 func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	insp := &inspectCmd{
 		client: c,
 		out:    out,
+		output: both,
 	}
 
-	cc := &cobra.Command{
+	inspectCommand := &cobra.Command{
 		Use:   "inspect [CHART]",
 		Short: "inspect a chart",
-		Long:  installDesc,
+		Long:  inspectDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
 				return err
@@ -62,7 +79,41 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			return insp.run()
 		},
 	}
-	return cc
+
+	valuesSubCmd := &cobra.Command{
+		Use:   "values",
+		Short: "shows inspect values",
+		Long:  inspectValuesDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			insp.output = valuesOnly
+			cp, err := locateChartPath(args[0])
+			if err != nil {
+				return err
+			}
+			insp.chartpath = cp
+			return insp.run()
+		},
+	}
+
+	chartSubCmd := &cobra.Command{
+		Use:   "chart",
+		Short: "shows inspect chart",
+		Long:  inspectChartDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			insp.output = chartOnly
+			cp, err := locateChartPath(args[0])
+			if err != nil {
+				return err
+			}
+			insp.chartpath = cp
+			return insp.run()
+		},
+	}
+
+	inspectCommand.AddCommand(valuesSubCmd)
+	inspectCommand.AddCommand(chartSubCmd)
+
+	return inspectCommand
 }
 
 func (i *inspectCmd) run() error {
@@ -74,8 +125,18 @@ func (i *inspectCmd) run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(i.out, string(cf))
-	fmt.Fprintln(i.out, "---")
-	fmt.Fprintln(i.out, chrt.Values.Raw)
+
+	if i.output == chartOnly || i.output == both {
+		fmt.Fprintln(i.out, string(cf))
+	}
+
+	if i.output == both {
+		fmt.Fprintln(i.out, "---")
+	}
+
+	if i.output == valuesOnly || i.output == both {
+		fmt.Fprintln(i.out, chrt.Values.Raw)
+	}
+
 	return nil
 }
