@@ -101,7 +101,7 @@ func (g *getCmd) run() error {
 		return prettyError(err)
 	}
 
-	cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config, nil)
+	cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config)
 	if err != nil {
 		return err
 	}

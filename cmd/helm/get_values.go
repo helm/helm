@@ -68,7 +68,7 @@ func (g *getValuesCmd) run() error {
 
 	// If the user wants all values, compute the values and return.
 	if g.allValues {
-		cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config, nil)
+		cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config)
 		if err != nil {
 			return err
 		}

@@ -24,6 +24,7 @@ import (
 	"text/template"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 func TestReadValues(t *testing.T) {
@@ -63,6 +64,63 @@ water:
 		}
 		if data == nil {
 			t.Errorf(`YAML string "%s" gave a nil map`, tt)
+		}
+	}
+}
+
+func TestToRenderValues(t *testing.T) {
+
+	chartValues := `
+name: al Rashid
+where:
+  city: Basrah
+  title: caliph
+`
+	overideValues := `
+name: Haroun
+where:
+  city: Baghdad
+  date: 809 CE
+`
+
+	c := &chart.Chart{
+		Metadata:  &chart.Metadata{Name: "test"},
+		Templates: []*chart.Template{},
+		Values:    &chart.Config{Raw: chartValues},
+		Dependencies: []*chart.Chart{
+			{
+				Metadata: &chart.Metadata{Name: "where"},
+				Values:   &chart.Config{Raw: ""},
+			},
+		},
+	}
+	v := &chart.Config{Raw: overideValues}
+
+	o := ReleaseOptions{
+		Name:      "Seven Voyages",
+		Time:      timeconv.Now(),
+		Namespace: "al Basrah",
+	}
+
+	res, err := ToRenderValues(c, v, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vals Values
+	vals = res["Values"].(Values)
+
+	if vals["name"] != "Haroun" {
+		t.Errorf("Expected 'Haroun', got %q (%v)", vals["name"], vals)
+	}
+	where := vals["where"].(map[string]interface{})
+	expects := map[string]string{
+		"city":  "Baghdad",
+		"date":  "809 CE",
+		"title": "caliph",
+	}
+	for field, expect := range expects {
+		if got := where[field]; got != expect {
+			t.Errorf("Expected %q, got %q (%v)", expect, got, where)
 		}
 	}
 }
@@ -188,9 +246,6 @@ pequod:
 
 func TestCoalesceValues(t *testing.T) {
 	tchart := "testdata/moby"
-	overrides := map[string]interface{}{
-		"override": "good",
-	}
 	c, err := LoadDir(tchart)
 	if err != nil {
 		t.Fatal(err)
@@ -198,7 +253,7 @@ func TestCoalesceValues(t *testing.T) {
 
 	tvals := &chart.Config{Raw: testCoalesceValuesYaml}
 
-	v, err := CoalesceValues(c, tvals, overrides)
+	v, err := CoalesceValues(c, tvals)
 	j, _ := json.MarshalIndent(v, "", "  ")
 	t.Logf("Coalesced Values: %s", string(j))
 
@@ -207,7 +262,6 @@ func TestCoalesceValues(t *testing.T) {
 		expect string
 	}{
 		{"{{.top}}", "yup"},
-		{"{{.override}}", "good"},
 		{"{{.name}}", "moby"},
 		{"{{.global.name}}", "Ishmael"},
 		{"{{.global.subject}}", "Queequeg"},
@@ -254,6 +308,9 @@ func TestCoalesceTables(t *testing.T) {
 			"mast": true,
 		},
 	}
+
+	// What we expect is that anything in dst overrides anything in src, but that
+	// otherwise the values are coalesced.
 	coalesceTables(dst, src)
 
 	if dst["name"] != "Ishmael" {
@@ -268,7 +325,7 @@ func TestCoalesceTables(t *testing.T) {
 		t.Fatal("Address went away.")
 	}
 
-	if addr["street"].(string) != "234 Spouter Inn Ct." {
+	if addr["street"].(string) != "123 Spouter Inn Ct." {
 		t.Errorf("Unexpected address: %v", addr["street"])
 	}
 
