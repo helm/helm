@@ -49,7 +49,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	cc := &cobra.Command{
 		Use:   "inspect [CHART]",
 		Short: "inspect a chart",
-		Long:  installDesc,
+		Long:  inspectDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
 				return err
