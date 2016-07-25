@@ -55,6 +55,7 @@ test-unit:
 .PHONY: test-style
 test-style:
 	@scripts/validate-go.sh
+	@scripts/validate-license.sh
 
 .PHONY: protoc
 protoc:
