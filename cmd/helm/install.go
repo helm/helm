@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
@@ -34,9 +35,21 @@ import (
 const installDesc = `
 This command installs a chart archive.
 
-The install argument must be either a relative
-path to a chart directory or the name of a
-chart in the current working directory.
+The install argument must be either a relative path to a chart directory or the
+name of a chart in the current working directory.
+
+To override values in a chart, use either the '--values' flag and pass in a file
+or use the '--set' flag and pass configuration from the command line.
+
+	$ helm install -f myvalues.yaml redis
+
+or
+
+	$ helm install --set name=prod redis
+
+To check the generated manifests of a release without installing the chart,
+the '--debug' and '--dry-run' flags can be combined. This will still require a
+round-trip to the Tiller server.
 `
 
 type installCmd struct {
@@ -48,12 +61,14 @@ type installCmd struct {
 	disableHooks bool
 	out          io.Writer
 	client       helm.Interface
+	values       *values
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	inst := &installCmd{
 		out:    out,
 		client: c,
+		values: new(values),
 	}
 
 	cmd := &cobra.Command{
@@ -76,12 +91,13 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&inst.valuesFile, "values", "f", "", "path to a values YAML file")
-	f.StringVarP(&inst.name, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you.")
+	f.StringVarP(&inst.valuesFile, "values", "f", "", "specify values in a YAML file")
+	f.StringVarP(&inst.name, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you")
 	// TODO use kubeconfig default
 	f.StringVar(&inst.namespace, "namespace", "default", "the namespace to install the release into")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
+	f.Var(inst.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	return cmd
 }
 
@@ -106,6 +122,9 @@ func (i *installCmd) run() error {
 }
 
 func (i *installCmd) vals() ([]byte, error) {
+	if len(i.values.pairs) > 0 {
+		return i.values.yaml()
+	}
 	if i.valuesFile == "" {
 		return []byte{}, nil
 	}
@@ -126,6 +145,62 @@ func (i *installCmd) printRelease(rel *release.Release) {
 	} else {
 		fmt.Fprintln(i.out, rel.Name)
 	}
+}
+
+// values represents the command-line value pairs
+type values struct {
+	pairs map[string]interface{}
+}
+
+func (v *values) yaml() ([]byte, error) {
+	return yaml.Marshal(v.pairs)
+}
+
+func (v *values) String() string {
+	out, _ := v.yaml()
+	return string(out)
+}
+
+func (v *values) Type() string {
+	// Added to pflags.Value interface, but not documented there.
+	return "struct"
+}
+
+func (v *values) Set(data string) error {
+	v.pairs = map[string]interface{}{}
+
+	items := strings.Split(data, ",")
+	for _, item := range items {
+		n, val := splitPair(item)
+		names := strings.Split(n, ".")
+		ln := len(names)
+		current := &v.pairs
+		for i := 0; i < ln; i++ {
+			if i+1 == ln {
+				// We're at the last element. Set it.
+				(*current)[names[i]] = val
+			} else {
+				//
+				if e, ok := (*current)[names[i]]; !ok {
+					m := map[string]interface{}{}
+					(*current)[names[i]] = m
+					current = &m
+				} else if m, ok := e.(map[string]interface{}); ok {
+					current = &m
+				}
+			}
+		}
+	}
+	fmt.Print(v.pairs)
+	return nil
+}
+
+func splitPair(item string) (name string, value interface{}) {
+	pair := strings.SplitN(item, "=", 2)
+	if len(pair) == 1 {
+		return pair[0], true
+	}
+	return pair[0], pair[1]
 }
 
 // locateChartPath looks for a chart directory in known places, and returns either the full path or an error.
