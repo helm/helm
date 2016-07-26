@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -79,6 +80,17 @@ func sortHooks(files map[string]string) ([]*release.Hook, map[string]string, err
 	generic := map[string]string{}
 
 	for n, c := range files {
+		// Skip partials. We could return these as a separate map, but there doesn't
+		// seem to be any need for that at this time.
+		if strings.HasPrefix(path.Base(n), "_") {
+			continue
+		}
+		// Skip empty files, and log this.
+		if len(strings.TrimSpace(c)) == 0 {
+			log.Printf("info: manifest %q is empty. Skipping.", n)
+			continue
+		}
+
 		var sh simpleHead
 		err := yaml.Unmarshal([]byte(c), &sh)
 

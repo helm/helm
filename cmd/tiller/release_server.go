@@ -21,10 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"path"
 	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
@@ -309,6 +307,10 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	if err != nil {
 		return nil, err
 	}
+
+	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
+	// as partials are not used after renderer.Render. Empty manifests are also
+	// removed here.
 	hooks, manifests, err := sortHooks(files)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
@@ -316,20 +318,11 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, err
 	}
 
-	// Aggregate all non-hooks into one big doc.
+	// Aggregate all valid manifests into one big doc.
 	b := bytes.NewBuffer(nil)
 	for name, file := range manifests {
-		// Ignore templates that starts with underscore to handle them as partials
-		if strings.HasPrefix(path.Base(name), "_") {
-			continue
-		}
-
-		// Ignore empty documents because the Kubernetes library can't handle
-		// them.
-		if len(file) > 0 {
-			b.WriteString("\n---\n# Source: " + name + "\n")
-			b.WriteString(file)
-		}
+		b.WriteString("\n---\n# Source: " + name + "\n")
+		b.WriteString(file)
 	}
 
 	// Store a release.
