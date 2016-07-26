@@ -27,7 +27,7 @@ func TestGetCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
 			name:     "get with a release",
-			resp:     releaseMock("thomas-guide"),
+			resp:     releaseMock(&releaseOptions{name: "thomas-guide"}),
 			args:     []string{"thomas-guide"},
 			expected: "VERSION: 1\nRELEASED: (.*)\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nHOOKS:\n---\n# pre-install-hook\n" + mockHookTemplate + "\nMANIFEST:",
 		},

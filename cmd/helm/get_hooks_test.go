@@ -29,7 +29,7 @@ func TestGetHooks(t *testing.T) {
 			name:     "get hooks with release",
 			args:     []string{"aeneas"},
 			expected: mockHookTemplate,
-			resp:     releaseMock("aeneas"),
+			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
 		{
 			name: "get hooks without args",

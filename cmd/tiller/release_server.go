@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
@@ -49,8 +50,6 @@ func init() {
 }
 
 var (
-	// errNotImplemented is a temporary error for uninmplemented callbacks.
-	errNotImplemented = errors.New("not implemented")
 	// errMissingChart indicates that a chart was not provided.
 	errMissingChart = errors.New("no chart provided")
 	// errMissingRelease indicates that a release (name) was not provided.
@@ -174,7 +173,65 @@ func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 }
 
 func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
-	return nil, errNotImplemented
+	rel, err := s.prepareUpdate(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: perform update
+
+	return &services.UpdateReleaseResponse{Release: rel}, nil
+}
+
+// prepareUpdate builds a release for an update operation.
+func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, error) {
+	if req.Name == "" {
+		return nil, errMissingRelease
+	}
+
+	if req.Chart == nil {
+		return nil, errMissingChart
+	}
+
+	// finds the non-deleted release with the given name
+	rel, err := s.env.Releases.Read(req.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	//validate chart name is same as previous release
+	givenChart := req.Chart.Metadata.Name
+	releasedChart := rel.Chart.Metadata.Name
+	if givenChart != releasedChart {
+		return nil, fmt.Errorf("Given chart, %s, does not match chart originally released, %s", givenChart, releasedChart)
+	}
+
+	// validate new chart version is higher than old
+
+	givenChartVersion := req.Chart.Metadata.Version
+	releasedChartVersion := rel.Chart.Metadata.Version
+	c, err := semver.NewConstraint("> " + releasedChartVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := semver.NewVersion(givenChartVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	if a := c.Check(v); !a {
+		return nil, fmt.Errorf("Given chart (%s-%v) must be a higher version than released chart (%s-%v)", givenChart, givenChartVersion, releasedChart, releasedChartVersion)
+	}
+
+	// Store an updated release.
+	updatedRelease := &release.Release{
+		Name:    req.Name,
+		Chart:   req.Chart,
+		Config:  req.Values,
+		Version: rel.Version + 1,
+	}
+	return updatedRelease, nil
 }
 
 func (s *releaseServer) uniqName(start string) (string, error) {

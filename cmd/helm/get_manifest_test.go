@@ -29,7 +29,7 @@ func TestGetManifest(t *testing.T) {
 			name:     "get manifest with release",
 			args:     []string{"juno"},
 			expected: mockManifest,
-			resp:     releaseMock("juno"),
+			resp:     releaseMock(&releaseOptions{name: "juno"}),
 		},
 		{
 			name: "get manifest without args",

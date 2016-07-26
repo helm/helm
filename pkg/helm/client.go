@@ -17,10 +17,12 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"os"
+
 	"google.golang.org/grpc"
+
 	"k8s.io/helm/pkg/chartutil"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
-	"os"
 )
 
 const (
@@ -102,18 +104,20 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 	return h.opts.rpcDeleteRelease(rlsName, rls.NewReleaseServiceClient(c), opts...)
 }
 
-// UpdateRelease updates a release to a new/different chart.
-//
-// Note: there aren't currently any supported UpdateOptions, but they
-// are kept in the API signature as a placeholder for future additions.
-func (h *Client) UpdateRelease(rlsName string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+// UpdateRelease updates a release to a new/different chart
+func (h *Client) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer c.Close()
 
-	return h.opts.rpcUpdateRelease(rlsName, rls.NewReleaseServiceClient(c), opts...)
+	chart, err := chartutil.Load(chStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.opts.rpcUpdateRelease(rlsName, chart, rls.NewReleaseServiceClient(c), opts...)
 }
 
 // ReleaseStatus returns the given release's status.

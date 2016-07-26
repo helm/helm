@@ -154,10 +154,19 @@ message GetReleaseContentResponse {
 
 // UpdateReleaseRequest updates a release.
 message UpdateReleaseRequest {
+	// The name of the release
+	string name = 1;
+	// Chart is the protobuf representation of a chart.
+	hapi.chart.Chart chart = 2;
+	// Values is a string containing (unparsed) YAML values.
+	hapi.chart.Config values = 3;
+	// dry_run, if true, will run through the release logic, but neither create
+	bool dry_run = 4;
 }
 
 // UpdateReleaseResponse is the response to an update request.
 message UpdateReleaseResponse {
+	hapi.release.Release release = 1;
 }
 
 // InstallReleaseRequest is the request for an installation of a chart.

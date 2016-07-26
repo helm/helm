@@ -218,6 +218,14 @@ func (m *GetReleaseContentResponse) GetRelease() *hapi_release3.Release {
 
 // UpdateReleaseRequest updates a release.
 type UpdateReleaseRequest struct {
+	// The name of the release
+	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	// Chart is the protobuf representation of a chart.
+	Chart *hapi_chart3.Chart `protobuf:"bytes,2,opt,name=chart" json:"chart,omitempty"`
+	// Values is a string containing (unparsed) YAML values.
+	Values *hapi_chart.Config `protobuf:"bytes,3,opt,name=values" json:"values,omitempty"`
+	// dry_run, if true, will run through the release logic, but neither create
+	DryRun bool `protobuf:"varint,4,opt,name=dry_run,json=dryRun" json:"dry_run,omitempty"`
 }
 
 func (m *UpdateReleaseRequest) Reset()                    { *m = UpdateReleaseRequest{} }
@@ -225,14 +233,36 @@ func (m *UpdateReleaseRequest) String() string            { return proto.Compact
 func (*UpdateReleaseRequest) ProtoMessage()               {}
 func (*UpdateReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
+func (m *UpdateReleaseRequest) GetChart() *hapi_chart3.Chart {
+	if m != nil {
+		return m.Chart
+	}
+	return nil
+}
+
+func (m *UpdateReleaseRequest) GetValues() *hapi_chart.Config {
+	if m != nil {
+		return m.Values
+	}
+	return nil
+}
+
 // UpdateReleaseResponse is the response to an update request.
 type UpdateReleaseResponse struct {
+	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *UpdateReleaseResponse) Reset()                    { *m = UpdateReleaseResponse{} }
 func (m *UpdateReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateReleaseResponse) ProtoMessage()               {}
 func (*UpdateReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+
+func (m *UpdateReleaseResponse) GetRelease() *hapi_release3.Release {
+	if m != nil {
+		return m.Release
+	}
+	return nil
+}
 
 // InstallReleaseRequest is the request for an installation of a chart.
 type InstallReleaseRequest struct {

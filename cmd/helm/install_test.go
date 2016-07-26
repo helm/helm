@@ -33,7 +33,7 @@ func TestInstall(t *testing.T) {
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name aeneas", " "),
 			expected: "aeneas",
-			resp:     releaseMock("aeneas"),
+			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
 		// Install, no hooks
 		{
@@ -41,14 +41,14 @@ func TestInstall(t *testing.T) {
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name aeneas --no-hooks", " "),
 			expected: "juno",
-			resp:     releaseMock("juno"),
+			resp:     releaseMock(&releaseOptions{name: "juno"}),
 		},
 		// Install, values from cli
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--set foo=bar", " "),
-			resp:     releaseMock("virgil"),
+			resp:     releaseMock(&releaseOptions{name: "virgil"}),
 			expected: "virgil",
 		},
 		// Install, no charts
