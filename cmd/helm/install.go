@@ -59,6 +59,7 @@ type installCmd struct {
 	chartPath    string
 	dryRun       bool
 	disableHooks bool
+	reuseName    bool
 	out          io.Writer
 	client       helm.Interface
 	values       *values
@@ -97,6 +98,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.namespace, "namespace", "default", "the namespace to install the release into")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
+	f.BoolVar(&inst.reuseName, "reuse-name", false, "force Tiller to re-use the given name, even if that name is already used. This is unsafe in production")
 	f.Var(inst.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	return cmd
 }
@@ -111,7 +113,14 @@ func (i *installCmd) run() error {
 		return err
 	}
 
-	res, err := i.client.InstallRelease(i.chartPath, i.namespace, helm.ValueOverrides(rawVals), helm.ReleaseName(i.name), helm.InstallDryRun(i.dryRun), helm.InstallDisableHooks(i.disableHooks))
+	res, err := i.client.InstallRelease(
+		i.chartPath,
+		i.namespace,
+		helm.ValueOverrides(rawVals),
+		helm.ReleaseName(i.name),
+		helm.InstallDryRun(i.dryRun),
+		helm.InstallReuseName(i.reuseName),
+		helm.InstallDisableHooks(i.disableHooks))
 	if err != nil {
 		return prettyError(err)
 	}

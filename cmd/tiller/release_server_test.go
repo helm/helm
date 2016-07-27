@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -92,6 +93,49 @@ func releaseStub() *release.Release {
 				},
 			},
 		},
+	}
+}
+
+func TestUniqName(t *testing.T) {
+	rs := rsFixture()
+
+	rel1 := releaseStub()
+	rel2 := releaseStub()
+	rel2.Name = "happy-panda"
+	rel2.Info.Status.Code = release.Status_DELETED
+
+	rs.env.Releases.Create(rel1)
+	rs.env.Releases.Create(rel2)
+
+	tests := []struct {
+		name   string
+		expect string
+		reuse  bool
+		err    bool
+	}{
+		{"first", "first", false, false},
+		{"", "[a-z]+-[a-z]+", false, false},
+		{"angry-panda", "", false, true},
+		{"happy-panda", "", false, true},
+		{"happy-panda", "happy-panda", true, false},
+	}
+
+	for _, tt := range tests {
+		u, err := rs.uniqName(tt.name, tt.reuse)
+		if err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatal(err)
+		}
+		if tt.err {
+			t.Errorf("Expected an error for %q", tt.name)
+		}
+		if match, err := regexp.MatchString(tt.expect, u); err != nil {
+			t.Fatal(err)
+		} else if !match {
+			t.Errorf("Expected %q to match %q", u, tt.expect)
+		}
 	}
 }
 
@@ -220,6 +264,28 @@ func TestInstallReleaseNoHooks(t *testing.T) {
 
 	if hl := res.Release.Hooks[0].LastRun; hl != nil {
 		t.Errorf("Expected that no hooks were run. Got %d", hl)
+	}
+}
+
+func TestInstallReleaseReuseName(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rel := releaseStub()
+	rel.Info.Status.Code = release.Status_DELETED
+	rs.env.Releases.Create(rel)
+
+	req := &services.InstallReleaseRequest{
+		Chart:     chartStub(),
+		ReuseName: true,
+		Name:      rel.Name,
+	}
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+
+	if res.Release.Name != rel.Name {
+		t.Errorf("expected %q, got %q", rel.Name, res.Release.Name)
 	}
 }
 

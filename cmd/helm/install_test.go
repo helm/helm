@@ -57,6 +57,14 @@ func TestInstall(t *testing.T) {
 			args: []string{},
 			err:  true,
 		},
+		// Install, re-use name
+		{
+			name:     "install and reuse name",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name aeneas --reuse-name", " "),
+			expected: "aeneas",
+			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
+		},
 	}
 
 	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
