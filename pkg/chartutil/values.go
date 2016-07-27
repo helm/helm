@@ -299,6 +299,7 @@ type ReleaseOptions struct {
 
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOptions) (Values, error) {
+
 	top := map[string]interface{}{
 		"Release": map[string]interface{}{
 			"Name":      options.Name,
@@ -307,6 +308,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOp
 			"Service":   "Tiller",
 		},
 		"Chart": chrt.Metadata,
+		"Files": NewFiles(chrt.Files),
 	}
 
 	vals, err := CoalesceValues(chrt, chrtVals)

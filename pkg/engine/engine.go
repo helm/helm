@@ -170,6 +170,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 			"Values":  newVals,
 			"Release": parentVals["Release"],
 			"Chart":   c.Metadata,
+			"Files":   chartutil.NewFiles(c.Files),
 		}
 	}
 

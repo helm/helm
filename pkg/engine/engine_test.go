@@ -23,6 +23,8 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
+
+	"github.com/golang/protobuf/ptypes/any"
 )
 
 func TestEngine(t *testing.T) {
@@ -310,9 +312,14 @@ func TestRenderBuiltinValues(t *testing.T) {
 		Metadata: &chart.Metadata{Name: "Latium"},
 		Templates: []*chart.Template{
 			{Name: "Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+			{Name: "From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.GetString "book/title.txt"}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
 		Dependencies: []*chart.Chart{},
+		Files: []*any.Any{
+			{TypeUrl: "author", Value: []byte("Virgil")},
+			{TypeUrl: "book/title.txt", Value: []byte("Aeneid")},
+		},
 	}
 
 	outer := &chart.Chart{
@@ -342,6 +349,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 	expects := map[string]string{
 		"Troy/charts/Latium/Lavinia": "Troy/charts/Latium/LaviniaLatiumAeneid",
 		"Troy/Aeneas":                "Troy/AeneasTroyAeneid",
+		"Troy/charts/Latium/From":    "Virgil Aeneid",
 	}
 	for file, expect := range expects {
 		if out[file] != expect {
