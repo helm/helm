@@ -17,12 +17,18 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -37,30 +43,56 @@ Chart.yaml file, and (if found) build the current directory into a chart.
 Versioned chart archives are used by Helm package repositories.
 `
 
-var save bool
+const (
+	envSigningKey = "HELM_SIGNING_KEY"
+	envKeyring    = "HELM_KEYRING"
+)
 
-func init() {
-	packageCmd.Flags().BoolVar(&save, "save", true, "save packaged chart to local chart repository")
-	RootCommand.AddCommand(packageCmd)
+type packageCmd struct {
+	save    bool
+	sign    bool
+	path    string
+	key     string
+	keyring string
+	out     io.Writer
 }
 
-var packageCmd = &cobra.Command{
-	Use:   "package [CHART_PATH]",
-	Short: "package a chart directory into a chart archive",
-	Long:  packageDesc,
-	RunE:  runPackage,
-}
-
-func runPackage(cmd *cobra.Command, args []string) error {
-	path := "."
-
-	if len(args) > 0 {
-		path = args[0]
-	} else {
-		return fmt.Errorf("This command needs at least one argument, the path to the chart.")
+func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
+	pkg := &packageCmd{
+		out: out,
+	}
+	cmd := &cobra.Command{
+		Use:   "package [CHART_PATH]",
+		Short: "package a chart directory into a chart archive",
+		Long:  packageDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return fmt.Errorf("This command needs at least one argument, the path to the chart.")
+			}
+			pkg.path = args[0]
+			if pkg.sign {
+				if pkg.key == "" {
+					return errors.New("--key is required for signing a package")
+				}
+				if pkg.keyring == "" {
+					return errors.New("--keyring is required for signing a package")
+				}
+			}
+			return pkg.run(cmd, args)
+		},
 	}
 
-	path, err := filepath.Abs(path)
+	f := cmd.Flags()
+	f.BoolVar(&pkg.save, "save", true, "save packaged chart to local chart repository")
+	f.BoolVar(&pkg.sign, "sign", false, "use a PGP private key to sign this package")
+	f.StringVar(&pkg.key, "key", "", "the name of the key to use when signing. Used if --sign is true.")
+	f.StringVar(&pkg.keyring, "keyring", os.ExpandEnv("$HOME/.gnupg/pubring.gpg"), "the location of a public keyring")
+
+	return cmd
+}
+
+func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
+	path, err := filepath.Abs(p.path)
 	if err != nil {
 		return err
 	}
@@ -86,7 +118,7 @@ func runPackage(cmd *cobra.Command, args []string) error {
 
 	// Save to $HELM_HOME/local directory. This is second, because we don't want
 	// the case where we saved here, but didn't save to the default destination.
-	if save {
+	if p.save {
 		if err := repo.AddChartToLocalRepo(ch, localRepoDirectory()); err != nil {
 			return err
 		} else if flagDebug {
@@ -94,5 +126,28 @@ func runPackage(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if p.sign {
+		err = p.clearsign(name)
+	}
+
 	return err
+}
+
+func (p *packageCmd) clearsign(filename string) error {
+	// Load keyring
+	signer, err := provenance.NewFromKeyring(p.keyring, p.key)
+	if err != nil {
+		return err
+	}
+
+	sig, err := signer.ClearSign(filename)
+	if err != nil {
+		return err
+	}
+
+	if flagDebug {
+		fmt.Fprintln(p.out, sig)
+	}
+
+	return ioutil.WriteFile(filename+".prov", []byte(sig), 0755)
 }

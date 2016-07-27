@@ -26,6 +26,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ghodss/yaml"
 
@@ -94,7 +95,51 @@ func NewFromFiles(keyfile, keyringfile string) (*Signatory, error) {
 	}, nil
 }
 
-// Sign signs a chart with the given key.
+// NewFromKeyring reads a keyring file and creates a Signatory.
+//
+// If id is not the empty string, this will also try to find an Entity in the
+// keyring whose name matches, and set that as the signing entity. It will return
+// an error if the id is not empty and also not found.
+func NewFromKeyring(keyringfile, id string) (*Signatory, error) {
+	ring, err := loadKeyRing(keyringfile)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &Signatory{KeyRing: ring}
+
+	// If the ID is empty, we can return now.
+	if id == "" {
+		return s, nil
+	}
+
+	// We're gonna go all GnuPG on this and look for a string that _contains_. If
+	// two or more keys contain the string and none are a direct match, we error
+	// out.
+	var candidate *openpgp.Entity
+	vague := false
+	for _, e := range ring {
+		for n := range e.Identities {
+			if n == id {
+				s.Entity = e
+				return s, nil
+			}
+			if strings.Contains(n, id) {
+				if candidate != nil {
+					vague = true
+				}
+				candidate = e
+			}
+		}
+	}
+	if vague {
+		return s, fmt.Errorf("more than one key contain the id %q", id)
+	}
+	s.Entity = candidate
+	return s, nil
+}
+
+// ClearSign signs a chart with the given key.
 //
 // This takes the path to a chart archive file and a key, and it returns a clear signature.
 //
@@ -128,6 +173,7 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 	return out.String(), err
 }
 
+// Verify checks a signature and verifies that it is legit for a chart.
 func (s *Signatory) Verify(chartpath, sigpath string) (bool, error) {
 	for _, fname := range []string{chartpath, sigpath} {
 		if fi, err := os.Stat(fname); err != nil {

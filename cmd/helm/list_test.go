@@ -56,9 +56,7 @@ func TestListCmd(t *testing.T) {
 			rels: tt.resp,
 		}
 		cmd := newListCmd(c, &buf)
-		for flag, value := range tt.flags {
-			cmd.Flags().Set(flag, value)
-		}
+		setFlags(cmd, tt.flags)
 		err := cmd.RunE(cmd, tt.args)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
