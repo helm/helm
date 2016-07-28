@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/watch"
@@ -60,7 +61,19 @@ func (c *Client) Create(namespace string, reader io.Reader) error {
 //
 // Namespace will set the namespace
 func (c *Client) Delete(namespace string, reader io.Reader) error {
-	return perform(c, namespace, reader, deleteResource)
+	return perform(c, namespace, reader, func(info *resource.Info) error {
+		log.Printf("Starting delete for %s", info.Name)
+		reaper, err := c.Reaper(info.Mapping)
+		if err != nil {
+			// If there is no reaper for this resources, delete it.
+			if kubectl.IsNoSuchReaperError(err) {
+				return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+			}
+			return err
+		}
+		log.Printf("Using reaper for deleting %s", info.Name)
+		return reaper.Stop(info.Namespace, info.Name, 0, nil)
+	})
 }
 
 // WatchUntilReady watches the resource given in the reader, and waits until it is ready.
@@ -121,10 +134,6 @@ func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc
 func createResource(info *resource.Info) error {
 	_, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
 	return err
-}
-
-func deleteResource(info *resource.Info) error {
-	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 }
 
 func watchUntilReady(info *resource.Info) error {
