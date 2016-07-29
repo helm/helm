@@ -232,16 +232,20 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	return updatedRelease, nil
 }
 
-func (s *releaseServer) uniqName(start string) (string, error) {
+func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 
-	// If a name is supplied, we check to see if that name is taken. Right now,
-	// we fail if it is already taken. We could instead fall-thru and allow
-	// an automatically generated name, but this seems to violate the principle
-	// of least surprise.
+	// If a name is supplied, we check to see if that name is taken. If not, it
+	// is granted. If reuse is true and a deleted release with that name exists,
+	// we re-grant it. Otherwise, an error is returned.
 	if start != "" {
-		if _, err := s.env.Releases.Read(start); err == storage.ErrNotFound {
+		if rel, err := s.env.Releases.Read(start); err == storage.ErrNotFound {
+			return start, nil
+		} else if reuse && rel.Info.Status.Code == release.Status_DELETED {
+			// Allowe re-use of names if the previous release is marked deleted.
+			log.Printf("reusing name %q", start)
 			return start, nil
 		}
+
 		return "", fmt.Errorf("a release named %q already exists", start)
 	}
 
@@ -290,7 +294,7 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, errMissingChart
 	}
 
-	name, err := s.uniqName(req.Name)
+	name, err := s.uniqName(req.Name, req.ReuseName)
 	if err != nil {
 		return nil, err
 	}

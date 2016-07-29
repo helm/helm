@@ -37,6 +37,8 @@ type options struct {
 	chart string
 	// if set dry-run helm client calls
 	dryRun bool
+	// if set, re-use an existing name
+	reuseName bool
 	// if set, skip running hooks
 	disableHooks bool
 	// release list options are applied directly to the list releases request
@@ -162,6 +164,13 @@ func InstallDryRun(dry bool) InstallOption {
 	}
 }
 
+// InstallReuseName will (if true) instruct Tiller to re-use an existing name.
+func InstallReuseName(reuse bool) InstallOption {
+	return func(opts *options) {
+		opts.reuseName = reuse
+	}
+}
+
 // ContentOption -- TODO
 type ContentOption func(*options)
 
@@ -205,6 +214,7 @@ func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient
 	o.instReq.Namespace = ns
 	o.instReq.DryRun = o.dryRun
 	o.instReq.DisableHooks = o.disableHooks
+	o.instReq.ReuseName = o.reuseName
 
 	return rlc.InstallRelease(context.TODO(), &o.instReq)
 }

@@ -190,6 +190,9 @@ message InstallReleaseRequest {
 
 	// Namepace is the kubernetes namespace of the release.
 	string namespace = 6;
+
+	// ReuseName requests that Tiller re-uses a name, instead of erroring out.
+	bool reuse_name = 7;
 }
 
 // InstallReleaseResponse is the response from a release installation.
