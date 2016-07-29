@@ -23,6 +23,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/golang/protobuf/ptypes/any"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/timeconv"
 )
@@ -93,6 +94,9 @@ where:
 				Values:   &chart.Config{Raw: ""},
 			},
 		},
+		Files: []*any.Any{
+			{TypeUrl: "scheherazade/shahryar.txt", Value: []byte("1,001 Nights")},
+		},
 	}
 	v := &chart.Config{Raw: overideValues}
 
@@ -106,6 +110,18 @@ where:
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Ensure that the top-level values are all set.
+	if name := res["Chart"].(*chart.Metadata).Name; name != "test" {
+		t.Errorf("Expected chart name 'test', got %q", name)
+	}
+	if name := res["Release"].(map[string]interface{})["Name"]; fmt.Sprint(name) != "Seven Voyages" {
+		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
+	}
+	if data := res["Files"].(Files)["scheherazade/shahryar.txt"]; string(data) != "1,001 Nights" {
+		t.Errorf("Expected file '1,001 Nights', got %q", string(data))
+	}
+
 	var vals Values
 	vals = res["Values"].(Values)
 
