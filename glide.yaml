@@ -22,21 +22,28 @@ import:
 - package: google.golang.org/grpc
   version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
 - package: k8s.io/kubernetes
-  version: v1.3.0
+  version: ~1.3
   subpackages:
   - pkg/api
   - pkg/api/meta
+  - pkg/api/error
   - pkg/client/restclient
   - pkg/client/unversioned
+  - pkg/apis/batch
   - pkg/client/unversioned/clientcmd
   - pkg/client/unversioned/fake
   - pkg/client/unversioned/portforward
   - pkg/client/unversioned/remotecommand
+  - pkg/kubectl
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
   - pkg/labels
+  - pkg/runtime
+  - pkg/watch
 - package: github.com/gosuri/uitable
 - package: speter.net/go/exp/math/dec/inf
+  version: ^0.9.0
   repo: https://github.com/go-inf/inf.git
   vcs: git
 - package: github.com/asaskevich/govalidator
+  version: ^4.0.0
