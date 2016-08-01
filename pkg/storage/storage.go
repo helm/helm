@@ -91,6 +91,8 @@ func (s *Storage) ListFilterAny(filters ...FilterFunc) ([]*rspb.Release, error) 
 }
 
 func Init(d driver.Driver) *Storage {
-	if d == nil { d = driver.NewMemory() }
+	if d == nil {
+		d = driver.NewMemory()
+	}
 	return &Storage{Driver: d}
 }

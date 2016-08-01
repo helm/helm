@@ -11,7 +11,7 @@ func (fn FilterFunc) Check(rls *rspb.Release) bool {
 	if rls == nil {
 		return false
 	}
-	return fn(rls) 
+	return fn(rls)
 }
 
 // Any returns a FilterFunc that filters a list of releases

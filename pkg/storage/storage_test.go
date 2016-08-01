@@ -47,7 +47,7 @@ func TestStorageUpdate(t *testing.T) {
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// modify the release
-	rls.Version  = 2
+	rls.Version = 2
 	rls.Manifest = "new-manifest"
 	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
 
@@ -81,12 +81,12 @@ func TestStorageList(t *testing.T) {
 	setup := func() {
 		// release records
 		rls0 := ReleaseTestData{Name: "happy-catdog", Status: rspb.Status_SUPERSEDED}.ToRelease()
-		rls1 := ReleaseTestData{Name: "livid-human",  Status: rspb.Status_SUPERSEDED}.ToRelease()
-		rls2 := ReleaseTestData{Name: "relaxed-cat",  Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls1 := ReleaseTestData{Name: "livid-human", Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls2 := ReleaseTestData{Name: "relaxed-cat", Status: rspb.Status_SUPERSEDED}.ToRelease()
 		rls3 := ReleaseTestData{Name: "hungry-hippo", Status: rspb.Status_DEPLOYED}.ToRelease()
 		rls4 := ReleaseTestData{Name: "angry-beaver", Status: rspb.Status_DEPLOYED}.ToRelease()
 		rls5 := ReleaseTestData{Name: "opulent-frog", Status: rspb.Status_DELETED}.ToRelease()
-		rls6 := ReleaseTestData{Name: "happy-liger",  Status: rspb.Status_DELETED}.ToRelease()
+		rls6 := ReleaseTestData{Name: "happy-liger", Status: rspb.Status_DELETED}.ToRelease()
 
 		// create the release records in the storage
 		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'rls0'")
@@ -98,12 +98,12 @@ func TestStorageList(t *testing.T) {
 		assertErrNil(t.Fatal, storage.Create(rls6), "Storing release 'rls6'")
 	}
 
-	var listTests = []struct{
+	var listTests = []struct {
 		Description string
 		NumExpected int
-		ListFunc 	func() ([]*rspb.Release,error)
+		ListFunc    func() ([]*rspb.Release, error)
 	}{
-		{"ListDeleted",  2, storage.ListDeleted},
+		{"ListDeleted", 2, storage.ListDeleted},
 		{"ListDeployed", 2, storage.ListDeployed},
 		{"ListReleases", 7, storage.ListReleases},
 	}
@@ -124,20 +124,20 @@ func TestStorageList(t *testing.T) {
 }
 
 type ReleaseTestData struct {
-	Name 	  string
+	Name      string
 	Version   int32
 	Manifest  string
 	Namespace string
-	Status 	  rspb.Status_Code
+	Status    rspb.Status_Code
 }
 
 func (test ReleaseTestData) ToRelease() *rspb.Release {
 	return &rspb.Release{
-		Name: 	   test.Name,
+		Name:      test.Name,
 		Version:   test.Version,
 		Manifest:  test.Manifest,
 		Namespace: test.Namespace,
-		Info: 	   &rspb.Info{Status: &rspb.Status{Code: test.Status}},
+		Info:      &rspb.Info{Status: &rspb.Status{Code: test.Status}},
 	}
 }
 
@@ -146,7 +146,6 @@ func assertErrNil(eh func(args ...interface{}), err error, message string) {
 		eh(fmt.Sprintf("%s: %q", message, err))
 	}
 }
-
 
 /*
 func releaseData() *rspb.Release {
