@@ -202,6 +202,11 @@ sensitive_.
 - `Chart`: The contents of the `Chart.yaml`. Thus, the chart version is
   obtainable as `Chart.Version` and the maintainers are in
   `Chart.Maintainers`.
+- `Files`: A map-like object containing all non-special files in the chart. This
+  will not give you access to templates, but will give you access to additional
+  files that are present. Files can be accessed using `{{index .Files "file.name"}}`
+  or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. Note that
+  file data is returned as a `[]byte` unless `{{.Files.GetString}}` is used.
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not
 be accessible inside of the `Chart` object. Thus, Chart.yaml cannot be
