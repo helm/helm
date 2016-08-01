@@ -41,14 +41,14 @@ func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	return nil, ErrReleaseNotFound
 }
 
-// All returns all releases whose status is not Status_DELETED.
-func (mem *Memory) All(key string, opts ...interface{}) ([]*rspb.Release, error) {
+// List returns all releases whose status is not Status_DELETED.
+func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	defer unlock(mem.rlock())
-
+	
 	var releases []*rspb.Release
-	for _, rls := range mem.cache {
-		if rls.Info.Status.Code != rspb.Status_DELETED {
-			releases = append(releases, rls)
+	for k := range mem.cache {
+		if filter(mem.cache[k]) {
+			releases = append(releases, mem.cache[k])
 		}
 	}
 	return releases, nil
@@ -57,7 +57,6 @@ func (mem *Memory) All(key string, opts ...interface{}) ([]*rspb.Release, error)
 // Create creates a new release or error.
 func (mem *Memory) Create(rls *rspb.Release) error {
 	defer unlock(mem.wlock())
-
 	mem.cache[rls.Name] = rls
 	return nil
 }

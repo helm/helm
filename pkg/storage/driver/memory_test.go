@@ -36,10 +36,6 @@ func TestMemoryGet(t *testing.T) {
 	}
 }
 
-func TestMemoryAll(t *testing.T) {
-	t.Skip("MemoryAll")
-}
-
 func TestMemoryCreate(t *testing.T) {
 	key := "test-1"
 	rls := &rspb.Release{Name: key}

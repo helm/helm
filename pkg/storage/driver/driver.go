@@ -27,24 +27,34 @@ var (
 	ErrNotImplemented = errors.New("not implemented")
 )
 
+// Creator stores a release.
 type Creator interface {
-	Create(*rspb.Release) error
+	Create(rls *rspb.Release) error
 }
 
+// Updator updates an existing release or returns
+// ErrReleaseNotFound if the release does not exist.
 type Updator interface {
-	Update(*rspb.Release) error
+	Update(rls *rspb.Release) error
 }
 
+// Deletor deletes the release named by key or returns
+// ErrReleaseNotFound if the release does not exist.
 type Deletor interface {
-	Delete(string) (*rspb.Release, error)
+	Delete(key string) (*rspb.Release, error)
 }
 
+// Queryor defines the behavior on accessing a release from storage.
 type Queryor interface {
-	Get(string) (*rspb.Release, error)
-
-	All(string, ...interface{}) ([]*rspb.Release, error)
+	// Get returns the release named by key or returns ErrReleaseNotFound
+	// if the release does not exist.
+	Get(key string) (*rspb.Release, error)
+	// List returns the set of all releases that satisfy the filter predicate.
+	List(filter func(*rspb.Release) bool) ([]*rspb.Release, error)
 }
 
+// Driver defines the behavior for storing, updating, deleted, and retrieving
+// tiller releases from some underlying storage mechanism, e.g. memory, configmaps.
 type Driver interface {
 	Creator
 	Updator
