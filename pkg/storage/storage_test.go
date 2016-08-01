@@ -19,16 +19,136 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	"time"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
-
-	tspb "github.com/golang/protobuf/ptypes"
 )
 
 var storage = Init(driver.NewMemory())
 
+func TestStorageCreate(t *testing.T) {
+	// create fake release
+	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+
+	// fetch the release
+	res, err := storage.Get(rls.Name)
+	assertErrNil(t.Fatal, err, "QueryRelease")
+
+	// verify the fetched and created release are the same
+	if !reflect.DeepEqual(rls, res) {
+		t.Fatalf("Expected %q, got %q", rls, res)
+	}
+}
+
+func TestStorageUpdate(t *testing.T) {
+	// create fake release
+	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+
+	// modify the release
+	rls.Version  = 2
+	rls.Manifest = "new-manifest"
+	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
+
+	// retrieve the updated release
+	res, err := storage.Get(rls.Name)
+	assertErrNil(t.Fatal, err, "QueryRelease")
+
+	// verify updated and fetched releases are the same.
+	if !reflect.DeepEqual(rls, res) {
+		t.Fatalf("Expected %q, got %q", rls, res)
+	}
+}
+
+func TestStorageDelete(t *testing.T) {
+	// create fake release
+	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+
+	// delete the release
+	res, err := storage.Delete(rls.Name)
+	assertErrNil(t.Fatal, err, "DeleteRelease")
+
+	// verify updated and fetched releases are the same.
+	if !reflect.DeepEqual(rls, res) {
+		t.Fatalf("Expected %q, got %q", rls, res)
+	}
+}
+
+func TestStorageList(t *testing.T) {
+	// setup storage with test releases
+	setup := func() {
+		// release records
+		rls0 := ReleaseTestData{Name: "happy-catdog", Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls1 := ReleaseTestData{Name: "livid-human",  Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls2 := ReleaseTestData{Name: "relaxed-cat",  Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls3 := ReleaseTestData{Name: "hungry-hippo", Status: rspb.Status_DEPLOYED}.ToRelease()
+		rls4 := ReleaseTestData{Name: "angry-beaver", Status: rspb.Status_DEPLOYED}.ToRelease()
+		rls5 := ReleaseTestData{Name: "opulent-frog", Status: rspb.Status_DELETED}.ToRelease()
+		rls6 := ReleaseTestData{Name: "happy-liger",  Status: rspb.Status_DELETED}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'rls0'")
+		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'rls1'")
+		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'rls2'")
+		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'rls3'")
+		assertErrNil(t.Fatal, storage.Create(rls4), "Storing release 'rls4'")
+		assertErrNil(t.Fatal, storage.Create(rls5), "Storing release 'rls5'")
+		assertErrNil(t.Fatal, storage.Create(rls6), "Storing release 'rls6'")
+	}
+
+	var listTests = []struct{
+		Description string
+		NumExpected int
+		ListFunc 	func() ([]*rspb.Release,error)
+	}{
+		{"ListDeleted",  2, storage.ListDeleted},
+		{"ListDeployed", 2, storage.ListDeployed},
+		{"ListReleases", 7, storage.ListReleases},
+	}
+
+	setup()
+
+	for _, tt := range listTests {
+		list, err := tt.ListFunc()
+		assertErrNil(t.Fatal, err, tt.Description)
+		// verify the count of releases returned
+		if len(list) != tt.NumExpected {
+			t.Errorf("ListReleases(%s): expected %d, actual %d",
+				tt.Description,
+				tt.NumExpected,
+				len(list))
+		}
+	}
+}
+
+type ReleaseTestData struct {
+	Name 	  string
+	Version   int32
+	Manifest  string
+	Namespace string
+	Status 	  rspb.Status_Code
+}
+
+func (test ReleaseTestData) ToRelease() *rspb.Release {
+	return &rspb.Release{
+		Name: 	   test.Name,
+		Version:   test.Version,
+		Manifest:  test.Manifest,
+		Namespace: test.Namespace,
+		Info: 	   &rspb.Info{Status: &rspb.Status{Code: test.Status}},
+	}
+}
+
+func assertErrNil(eh func(args ...interface{}), err error, message string) {
+	if err != nil {
+		eh(fmt.Sprintf("%s: %q", message, err))
+	}
+}
+
+
+/*
 func releaseData() *rspb.Release {
 	var manifest = `apiVersion: v1
 	kind: ConfigMap
@@ -54,88 +174,4 @@ func releaseData() *rspb.Release {
 		Namespace: "kube-system",
 	}
 }
-
-func TestStoreRelease(t *testing.T) {
-	ckerr := func(err error, msg string) {
-		if err != nil {
-			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
-		}
-	}
-
-	rls := releaseData()
-	ckerr(storage.StoreRelease(rls), "StoreRelease")
-
-	res, err := storage.QueryRelease(rls.Name)
-	ckerr(err, "QueryRelease")
-
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
-	}
-}
-
-func TestQueryRelease(t *testing.T) {
-	ckerr := func(err error, msg string) {
-		if err != nil {
-			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
-		}
-	}
-
-	rls := releaseData()
-	ckerr(storage.StoreRelease(rls), "StoreRelease")
-
-	res, err := storage.QueryRelease(rls.Name)
-	ckerr(err, "QueryRelease")
-
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
-	}
-}
-
-func TestDeleteRelease(t *testing.T) {
-	ckerr := func(err error, msg string) {
-		if err != nil {
-			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
-		}
-	}
-
-	rls := releaseData()
-	ckerr(storage.StoreRelease(rls), "StoreRelease")
-
-	res, err := storage.DeleteRelease(rls.Name)
-	ckerr(err, "DeleteRelease")
-
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
-	}
-}
-
-func TestUpdateRelease(t *testing.T) {
-	ckeql := func(got, want interface{}, msg string) {
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf(fmt.Sprintf("%s: got %T, want %T", msg, got, want))
-		}
-	}
-
-	ckerr := func(err error, msg string) {
-		if err != nil {
-			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
-		}
-	}
-
-	rls := releaseData()
-	ckerr(storage.StoreRelease(rls), "StoreRelease")
-
-	rls.Name = "hungry-hippo"
-	rls.Version = 2
-	rls.Manifest = "old-manifest"
-
-	err := storage.UpdateRelease(rls)
-	ckerr(err, "UpdateRelease")
-
-	res, err := storage.QueryRelease(rls.Name)
-	ckerr(err, "QueryRelease")
-	ckeql(res, rls, "Expected Release")
-	ckeql(res.Name, rls.Name, "Expected Name")
-	ckeql(res.Version, rls.Version, "Expected Version")
-	ckeql(res.Manifest, rls.Manifest, "Expected Manifest")
-}
+*/
