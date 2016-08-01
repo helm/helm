@@ -73,7 +73,12 @@ func TestMemoryUpdate(t *testing.T) {
 
 func TestMemoryDelete(t *testing.T) {
 	key := "test-1"
-	rls := &rspb.Release{Name: key}
+	rls := &rspb.Release{
+		Name: key,
+		Info: &rspb.Info{
+			Status: &rspb.Status{Code: rspb.Status_DEPLOYED},
+		},
+	}
 
 	mem := NewMemory()
 	if err := mem.Create(rls); err != nil {
@@ -86,7 +91,7 @@ func TestMemoryDelete(t *testing.T) {
 		t.Fatalf("Failed delete: %s", err)
 	case mem.cache[key] != nil:
 		t.Errorf("Expected nil, got %s", mem.cache[key])
-	case res.Info.Status.Code != release.Status_DELETED:
+	case res.Info.Status.Code != rspb.Status_DELETED:
 		t.Errorf("Expected Status_DELETED, got %s", res.Info.Status.Code)
 	}
 }
