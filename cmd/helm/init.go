@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -32,58 +33,54 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 `
 
 var (
-	tillerImg            string
-	clientOnly           bool
 	defaultRepository    = "kubernetes-charts"
 	defaultRepositoryURL = "http://storage.googleapis.com/kubernetes-charts"
 )
 
-func init() {
-	f := initCmd.Flags()
-	f.StringVarP(&tillerImg, "tiller-image", "i", "", "override tiller image")
-	f.BoolVarP(&clientOnly, "client-only", "c", false, "If set does not install tiller")
-	RootCommand.AddCommand(initCmd)
+type initCmd struct {
+	image      string
+	clientOnly bool
+	out        io.Writer
 }
 
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "initialize Helm on both client and server",
-	Long:  initDesc,
-	RunE:  runInit,
+func newInitCmd(out io.Writer) *cobra.Command {
+	i := &initCmd{
+		out: out,
+	}
+	cmd := &cobra.Command{
+		Use:   "init",
+		Short: "initialize Helm on both client and server",
+		Long:  initDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return errors.New("This command does not accept arguments")
+			}
+			return i.run()
+		},
+	}
+	cmd.Flags().StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
+	cmd.Flags().BoolVarP(&i.clientOnly, "client-only", "c", false, "If set does not install tiller")
+	return cmd
 }
 
 // runInit initializes local config and installs tiller to Kubernetes Cluster
-func runInit(cmd *cobra.Command, args []string) error {
-	if len(args) != 0 {
-		return errors.New("This command does not accept arguments. \n")
-	}
-
+func (i *initCmd) run() error {
 	if err := ensureHome(); err != nil {
 		return err
 	}
 
-	if !clientOnly {
-		if err := installTiller(); err != nil {
-			return err
+	if !i.clientOnly {
+		if err := client.Install(tillerNamespace, i.image, flagDebug); err != nil {
+			return fmt.Errorf("error installing: %s", err)
 		}
+		fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 	} else {
-		fmt.Println("Not installing tiller due to 'client-only' flag having been set")
+		fmt.Fprintln(i.out, "Not installing tiller due to 'client-only' flag having been set")
 	}
-
-	fmt.Println("Happy Helming!")
+	fmt.Fprintln(i.out, "Happy Helming!")
 	return nil
 }
 
-func installTiller() error {
-	if err := client.Install(tillerNamespace, tillerImg, flagDebug); err != nil {
-		return fmt.Errorf("error installing: %s", err)
-	}
-	fmt.Println("\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
-
-	return nil
-}
-
-// requireHome checks to see if $HELM_HOME exists, and returns an error if it does not.
 func requireHome() error {
 	dirs := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
 	for _, d := range dirs {

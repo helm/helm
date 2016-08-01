@@ -84,12 +84,13 @@ func newRootCmd(out io.Writer) *cobra.Command {
 
 	cmd.AddCommand(
 		newCreateCmd(out),
+		newDeleteCmd(nil, out),
 		newGetCmd(nil, out),
+		newInitCmd(out),
+		newInspectCmd(nil, out),
+		newInstallCmd(nil, out),
 		newListCmd(nil, out),
 		newStatusCmd(nil, out),
-		newInstallCmd(nil, out),
-		newDeleteCmd(nil, out),
-		newInspectCmd(nil, out),
 		newUpgradeCmd(nil, out),
 	)
 	return cmd
