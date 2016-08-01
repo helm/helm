@@ -17,12 +17,12 @@ package storage // import "k8s.io/helm/pkg/storage"
 
 import (
 	"fmt"
-	"time"
 	"reflect"
 	"testing"
+	"time"
 
-	"k8s.io/helm/pkg/storage/driver"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/storage/driver"
 
 	tspb "github.com/golang/protobuf/ptypes"
 )
@@ -61,10 +61,10 @@ func TestStoreRelease(t *testing.T) {
 			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
 		}
 	}
-	
+
 	rls := releaseData()
 	ckerr(storage.StoreRelease(rls), "StoreRelease")
-	
+
 	res, err := storage.QueryRelease(rls.Name)
 	ckerr(err, "QueryRelease")
 
@@ -79,10 +79,10 @@ func TestQueryRelease(t *testing.T) {
 			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
 		}
 	}
-	
+
 	rls := releaseData()
 	ckerr(storage.StoreRelease(rls), "StoreRelease")
-	
+
 	res, err := storage.QueryRelease(rls.Name)
 	ckerr(err, "QueryRelease")
 
@@ -97,10 +97,10 @@ func TestDeleteRelease(t *testing.T) {
 			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
 		}
 	}
-	
+
 	rls := releaseData()
 	ckerr(storage.StoreRelease(rls), "StoreRelease")
-	
+
 	res, err := storage.DeleteRelease(rls.Name)
 	ckerr(err, "DeleteRelease")
 
@@ -121,12 +121,12 @@ func TestUpdateRelease(t *testing.T) {
 			t.Fatalf(fmt.Sprintf("Failed to %s: %q", msg, err))
 		}
 	}
-	
+
 	rls := releaseData()
 	ckerr(storage.StoreRelease(rls), "StoreRelease")
 
-	rls.Name     = "hungry-hippo"
-	rls.Version  = 2
+	rls.Name = "hungry-hippo"
+	rls.Version = 2
 	rls.Manifest = "old-manifest"
 
 	err := storage.UpdateRelease(rls)

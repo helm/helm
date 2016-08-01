@@ -16,8 +16,8 @@ limitations under the License.
 package storage // import "k8s.io/helm/pkg/storage"
 
 import (
-	"k8s.io/helm/pkg/storage/driver"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/storage/driver"
 )
 
 type Storage struct {

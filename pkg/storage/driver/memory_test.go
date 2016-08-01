@@ -16,8 +16,8 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	"testing"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	"testing"
 )
 
 func TestMemoryGet(t *testing.T) {
@@ -79,7 +79,7 @@ func TestMemoryDelete(t *testing.T) {
 	if err := mem.Create(rls); err != nil {
 		t.Fatalf("Failed create: %s", err)
 	}
-	
+
 	res, err := mem.Delete(key)
 	switch {
 	case err != nil:

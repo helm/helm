@@ -24,7 +24,7 @@ var (
 	// ErrReleaseNotFound indicates that a release is not found.
 	ErrReleaseNotFound = errors.New("release not found")
 	// Temporary error while WIP.
-	ErrNotImplemented  = errors.New("not implemented")
+	ErrNotImplemented = errors.New("not implemented")
 )
 
 type Creator interface {
