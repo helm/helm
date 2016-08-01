@@ -59,9 +59,9 @@ func TestInstall(t *testing.T) {
 		},
 		// Install, re-use name
 		{
-			name:     "install and reuse name",
+			name:     "install and replace release",
 			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name aeneas --reuse-name", " "),
+			flags:    strings.Split("--name aeneas --replace", " "),
 			expected: "aeneas",
 			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
