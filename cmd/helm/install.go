@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,6 +25,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"html/template"
+
+	"github.com/Masterminds/sprig"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
@@ -63,6 +67,7 @@ type installCmd struct {
 	out          io.Writer
 	client       helm.Interface
 	values       *values
+	nameTemplate string
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -100,6 +105,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.reuseName, "reuse-name", false, "force Tiller to re-use the given name, even if that name is already used. This is unsafe in production")
 	f.Var(inst.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
+	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	return cmd
 }
 
@@ -111,6 +117,16 @@ func (i *installCmd) run() error {
 	rawVals, err := i.vals()
 	if err != nil {
 		return err
+	}
+
+	// If template is specified, try to run the template.
+	if i.nameTemplate != "" {
+		i.name, err = generateName(i.nameTemplate)
+		if err != nil {
+			return err
+		}
+		// Print the final name so the user knows what the final name of the release is.
+		fmt.Printf("final name: %s\n", i.name)
 	}
 
 	res, err := i.client.InstallRelease(
@@ -248,4 +264,17 @@ func locateChartPath(name string) (string, error) {
 	}
 
 	return name, fmt.Errorf("file %q not found", origname)
+}
+
+func generateName(nameTemplate string) (string, error) {
+	t, err := template.New("name-template").Funcs(sprig.FuncMap()).Parse(nameTemplate)
+	if err != nil {
+		return "", err
+	}
+	var b bytes.Buffer
+	err = t.Execute(&b, nil)
+	if err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }
