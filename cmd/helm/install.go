@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"html/template"
+	"text/template"
 
 	"github.com/Masterminds/sprig"
 	"github.com/ghodss/yaml"
@@ -267,7 +267,7 @@ func locateChartPath(name string) (string, error) {
 }
 
 func generateName(nameTemplate string) (string, error) {
-	t, err := template.New("name-template").Funcs(sprig.FuncMap()).Parse(nameTemplate)
+	t, err := template.New("name-template").Funcs(sprig.TxtFuncMap()).Parse(nameTemplate)
 	if err != nil {
 		return "", err
 	}
