@@ -358,3 +358,33 @@ func TestRenderBuiltinValues(t *testing.T) {
 	}
 
 }
+
+func TestAlterFuncMap(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "conrad"},
+		Templates: []*chart.Template{
+			{Name: "quote", Data: []byte(`{{include "conrad/_partial" . | indent 2}} dead.`)},
+			{Name: "_partial", Data: []byte(`{{.Release.Name}} - he`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{},
+	}
+
+	v := chartutil.Values{
+		"Values": &chart.Config{Raw: ""},
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "Mistah Kurtz",
+		},
+	}
+
+	out, err := New().Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := "  Mistah Kurtz - he dead."
+	if got := out["conrad/quote"]; got != expect {
+		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
+	}
+}

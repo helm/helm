@@ -88,6 +88,28 @@ type renderable struct {
 	vals chartutil.Values
 }
 
+// alterFuncMap takes the Engine's FuncMap and adds context-specific functions.
+//
+// The resulting FuncMap is only valid for the passed-in template.
+func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
+	// Clone the func map because we are adding context-specific functions.
+	var funcMap template.FuncMap = map[string]interface{}{}
+	for k, v := range e.FuncMap {
+		funcMap[k] = v
+	}
+
+	// Add the 'include' function here so we can close over t.
+	funcMap["include"] = func(name string, data interface{}) string {
+		buf := bytes.NewBuffer(nil)
+		if err := t.ExecuteTemplate(buf, name, data); err != nil {
+			buf.WriteString(err.Error())
+		}
+		return buf.String()
+	}
+
+	return funcMap
+}
+
 // render takes a map of templates/values and renders them.
 func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	// Basically, what we do here is start with an empty parent template and then
@@ -105,10 +127,13 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 		// but will still emit <no value> for others. We mitigate that later.
 		t.Option("missingkey=zero")
 	}
+
+	funcMap := e.alterFuncMap(t)
+
 	files := []string{}
 	for fname, r := range tpls {
 		log.Printf("Preparing template %s", fname)
-		t = t.New(fname).Funcs(e.FuncMap)
+		t = t.New(fname).Funcs(funcMap)
 		if _, err := t.Parse(r.tpl); err != nil {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
 		}
