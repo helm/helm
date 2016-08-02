@@ -240,10 +240,12 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 	if start != "" {
 		if rel, err := s.env.Releases.Read(start); err == storage.ErrNotFound {
 			return start, nil
-		} else if reuse && rel.Info.Status.Code == release.Status_DELETED {
+		} else if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
 			// Allowe re-use of names if the previous release is marked deleted.
 			log.Printf("reusing name %q", start)
 			return start, nil
+		} else if reuse {
+			return "", errors.New("cannot re-use a name that is still in use")
 		}
 
 		return "", fmt.Errorf("a release named %q already exists", start)
