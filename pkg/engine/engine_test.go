@@ -312,7 +312,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 		Metadata: &chart.Metadata{Name: "Latium"},
 		Templates: []*chart.Template{
 			{Name: "Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
-			{Name: "From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.GetString "book/title.txt"}}`)},
+			{Name: "From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.Get "book/title.txt"}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
 		Dependencies: []*chart.Chart{},

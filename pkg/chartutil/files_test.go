@@ -43,10 +43,10 @@ func TestNewFiles(t *testing.T) {
 	}
 
 	for i, f := range cases {
-		if got := string(files.Get(f.path)); got != f.data {
+		if got := string(files.GetBytes(f.path)); got != f.data {
 			t.Errorf("%d: expected %q, got %q", i, f.data, got)
 		}
-		if got := files.GetString(f.path); got != f.data {
+		if got := files.Get(f.path); got != f.data {
 			t.Errorf("%d: expected %q, got %q", i, f.data, got)
 		}
 	}
