@@ -22,9 +22,11 @@ import (
 
 var (
 	// ErrReleaseNotFound indicates that a release is not found.
-	ErrReleaseNotFound = errors.New("release not found")
-	// Temporary error while WIP.
-	ErrNotImplemented = errors.New("not implemented")
+	ErrReleaseNotFound = errors.New("release: not found")
+	// ErrReleaseExists indicates that a release already exists.
+	ErrReleaseExists   = errors.New("release: already exists")
+	// ErrDriverAction indicates the storage driver failed to execute the requested action.
+	ErrDriverAction    = errors.New("driver: failed to perform action")
 )
 
 // Creator stores a release.
