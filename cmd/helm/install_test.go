@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -64,6 +65,14 @@ func TestInstall(t *testing.T) {
 			flags:    strings.Split("--name aeneas --replace", " "),
 			expected: "aeneas",
 			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
+		},
+		// Install, using the name-template
+		{
+			name:     "install with name-template",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    []string{"--name-template", "{{upper \"foobar\"}}"},
+			expected: "FOOBAR",
+			resp:     releaseMock(&releaseOptions{name: "FOOBAR"}),
 		},
 	}
 
@@ -111,5 +120,80 @@ sailor: sinbad
 
 	if vobj.String() != y {
 		t.Errorf("Expected String() to be \n%s\nGot\n%s\n", y, out)
+	}
+}
+
+type nameTemplateTestCase struct {
+	tpl              string
+	expected         string
+	expectedErrorStr string
+}
+
+func TestNameTemplate(t *testing.T) {
+	testCases := []nameTemplateTestCase{
+		// Just a straight up nop please
+		{
+			tpl:              "foobar",
+			expected:         "foobar",
+			expectedErrorStr: "",
+		},
+		// Random numbers at the end for fun & profit
+		{
+			tpl:              "foobar-{{randNumeric 6}}",
+			expected:         "foobar-[0-9]{6}$",
+			expectedErrorStr: "",
+		},
+		// Random numbers in the middle for fun & profit
+		{
+			tpl:              "foobar-{{randNumeric 4}}-baz",
+			expected:         "foobar-[0-9]{4}-baz$",
+			expectedErrorStr: "",
+		},
+		// No such function
+		{
+			tpl:              "foobar-{{randInt}}",
+			expected:         "",
+			expectedErrorStr: "function \"randInt\" not defined",
+		},
+		// Invalid template
+		{
+			tpl:              "foobar-{{",
+			expected:         "",
+			expectedErrorStr: "unexpected unclosed action",
+		},
+	}
+
+	for _, tc := range testCases {
+
+		n, err := generateName(tc.tpl)
+		if err != nil {
+			if tc.expectedErrorStr == "" {
+				t.Errorf("Was not expecting error, but got: %v", err)
+				continue
+			}
+			re, compErr := regexp.Compile(tc.expectedErrorStr)
+			if compErr != nil {
+				t.Errorf("Expected error string failed to compile: %v", compErr)
+				continue
+			}
+			if !re.MatchString(err.Error()) {
+				t.Errorf("Error didn't match for %s expected %s but got %v", tc.tpl, tc.expectedErrorStr, err)
+				continue
+			}
+		}
+		if err == nil && tc.expectedErrorStr != "" {
+			t.Errorf("Was expecting error %s but didn't get an error back", tc.expectedErrorStr)
+		}
+
+		if tc.expected != "" {
+			re, err := regexp.Compile(tc.expected)
+			if err != nil {
+				t.Errorf("Expected string failed to compile: %v", err)
+				continue
+			}
+			if !re.MatchString(n) {
+				t.Errorf("Returned name didn't match for %s expected %s but got %s", tc.tpl, tc.expected, n)
+			}
+		}
 	}
 }
