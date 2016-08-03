@@ -31,6 +31,17 @@ func NewMemory() *Memory {
 	return &Memory{cache: map[string]*rspb.Release{}}
 }
 
+// Create creates a new release or error.
+func (mem *Memory) Create(rls *rspb.Release) error {
+	defer unlock(mem.wlock())
+
+	if _, ok := mem.cache[rls.Name]; ok {
+		return ErrReleaseExists
+	}
+	mem.cache[rls.Name] = rls
+	return nil
+}
+
 // Get returns the release named by key.
 func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	defer unlock(mem.rlock())
@@ -52,13 +63,6 @@ func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error
 		}
 	}
 	return releases, nil
-}
-
-// Create creates a new release or error.
-func (mem *Memory) Create(rls *rspb.Release) error {
-	defer unlock(mem.wlock())
-	mem.cache[rls.Name] = rls
-	return nil
 }
 
 // Update updates a release or error.
