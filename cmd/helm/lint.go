@@ -47,7 +47,10 @@ var lintCommand = &cobra.Command{
 	RunE:  lintCmd,
 }
 
+var flagStrict bool
+
 func init() {
+	lintCommand.Flags().BoolVarP(&flagStrict, "strict", "", false, "fail on lint warnings")
 	RootCommand.AddCommand(lintCommand)
 }
 
@@ -57,6 +60,13 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 	paths := []string{"."}
 	if len(args) > 0 {
 		paths = args
+	}
+
+	var lowestTolerance int
+	if flagStrict {
+		lowestTolerance = support.WarningSev
+	} else {
+		lowestTolerance = support.ErrorSev
 	}
 
 	var total int
@@ -77,7 +87,7 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 			}
 
 			total = total + 1
-			if linter.HighestSeverity >= support.ErrorSev {
+			if linter.HighestSeverity >= lowestTolerance {
 				failures = failures + 1
 			}
 		}
