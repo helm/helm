@@ -98,8 +98,7 @@ func LoadChartRepository(dir, url string) (*ChartRepository, error) {
 					return nil
 				}
 				r.IndexFile = i
-			} else {
-				// TODO: check for tgz extension
+			} else if strings.HasSuffix(f.Name(), ".tgz") {
 				r.ChartPaths = append(r.ChartPaths, path)
 			}
 		}
