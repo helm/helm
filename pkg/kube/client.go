@@ -251,8 +251,7 @@ func updateResource(modified *resource.Info, currentObj runtime.Object) error {
 
 	// send patch to server
 	helper := resource.NewHelper(modified.Client, modified.Mapping)
-	_, err = helper.Patch(modified.Namespace, modified.Name, api.StrategicMergePatchType, patch)
-	if err != nil {
+	if _, err = helper.Patch(modified.Namespace, modified.Name, api.StrategicMergePatchType, patch); err != nil {
 		return err
 	}
 

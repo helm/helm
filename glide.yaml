@@ -27,6 +27,8 @@ import:
   - pkg/api
   - pkg/api/meta
   - pkg/api/error
+  - pkg/api/unversioned
+  - pkg/apimachinery/registered
   - pkg/client/restclient
   - pkg/client/unversioned
   - pkg/apis/batch
@@ -40,6 +42,8 @@ import:
   - pkg/labels
   - pkg/runtime
   - pkg/watch
+  - pkg/util/strategicpatch
+  - pkg/util/yaml
 - package: github.com/gosuri/uitable
 - package: speter.net/go/exp/math/dec/inf
   version: ^0.9.0
