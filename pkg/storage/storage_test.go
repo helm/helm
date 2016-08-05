@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package storage // import "k8s.io/helm/pkg/storage"
 
 import (
@@ -146,31 +147,3 @@ func assertErrNil(eh func(args ...interface{}), err error, message string) {
 		eh(fmt.Sprintf("%s: %q", message, err))
 	}
 }
-
-/*
-func releaseData() *rspb.Release {
-	var manifest = `apiVersion: v1
-	kind: ConfigMap
-	metadata:
-	  name: configmap-storage-test
-	data:
-	  count: "100"
-	  limit: "200"
-	  state: "new"
-	  token: "abc"
-	`
-
-	tm, _ := tspb.TimestampProto(time.Now())
-	return &rspb.Release{
-		Name: "hungry-hippo",
-		Info: &rspb.Info{
-			FirstDeployed: tm,
-			LastDeployed:  tm,
-			Status:        &rspb.Status{Code: rspb.Status_DEPLOYED},
-		},
-		Version:   2,
-		Manifest:  manifest,
-		Namespace: "kube-system",
-	}
-}
-*/
