@@ -20,15 +20,21 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"reflect"
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/kubernetes/pkg/util/strategicpatch"
+	"k8s.io/kubernetes/pkg/util/yaml"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -55,6 +61,77 @@ func (c *Client) Create(namespace string, reader io.Reader) error {
 		return err
 	}
 	return perform(c, namespace, reader, createResource)
+}
+
+// Update reads in the current configuration and a modified configuration from io.reader
+//  and creates resources that don't already exists, updates resources that have been modified
+//  and deletes resources from the current configuration that are not present in the
+//  modified configuration
+//
+// Namespace will set the namespaces
+func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reader) error {
+	current := c.NewBuilder(includeThirdPartyAPIs).
+		ContinueOnError().
+		NamespaceParam(namespace).
+		DefaultNamespace().
+		Stream(currentReader, "").
+		Flatten().
+		Do()
+
+	modified := c.NewBuilder(includeThirdPartyAPIs).
+		ContinueOnError().
+		NamespaceParam(namespace).
+		DefaultNamespace().
+		Stream(modifiedReader, "").
+		Flatten().
+		Do()
+
+	currentInfos, err := current.Infos()
+	if err != nil {
+		return err
+	}
+
+	modifiedInfos := []*resource.Info{}
+
+	modified.Visit(func(info *resource.Info, err error) error {
+		modifiedInfos = append(modifiedInfos, info)
+		if err != nil {
+			return err
+		}
+		resourceName := info.Name
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		if _, err := helper.Get(info.Namespace, resourceName, info.Export); err != nil {
+			if !errors.IsNotFound(err) {
+				return fmt.Errorf("Could not get information about the resource: err: %s", err)
+			}
+
+			// Since the resource does not exist, create it.
+			if err := createResource(info); err != nil {
+				return err
+			}
+
+			kind := info.Mapping.GroupVersionKind.Kind
+			log.Printf("Created a new %s called %s\n", kind, resourceName)
+			return nil
+		}
+
+		currentObj, err := getCurrentObject(resourceName, currentInfos)
+		if err != nil {
+			return err
+		}
+
+		if err := updateResource(info, currentObj); err != nil {
+			log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
+			return err
+		}
+
+		return err
+	})
+
+	deleteUnwantedResources(currentInfos, modifiedInfos)
+
+	return nil
 }
 
 // Delete deletes kubernetes resources from an io.reader
@@ -136,6 +213,52 @@ func createResource(info *resource.Info) error {
 	return err
 }
 
+func deleteResource(info *resource.Info) error {
+	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+}
+
+func updateResource(modified *resource.Info, currentObj runtime.Object) error {
+
+	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
+	originalSerialization, err := runtime.Encode(encoder, currentObj)
+	if err != nil {
+		return err
+	}
+
+	editedSerialization, err := runtime.Encode(encoder, modified.Object)
+	if err != nil {
+		return err
+	}
+
+	originalJS, err := yaml.ToJSON(originalSerialization)
+	if err != nil {
+		return err
+	}
+
+	editedJS, err := yaml.ToJSON(editedSerialization)
+	if err != nil {
+		return err
+	}
+
+	if reflect.DeepEqual(originalJS, editedJS) {
+		return fmt.Errorf("Looks like there are no changes for %s", modified.Name)
+	}
+
+	patch, err := strategicpatch.CreateStrategicMergePatch(originalJS, editedJS, currentObj)
+	if err != nil {
+		return err
+	}
+
+	// send patch to server
+	helper := resource.NewHelper(modified.Client, modified.Mapping)
+	_, err = helper.Patch(modified.Namespace, modified.Name, api.StrategicMergePatchType, patch)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func watchUntilReady(info *resource.Info) error {
 	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
 	if err != nil {
@@ -212,4 +335,38 @@ func (c *Client) ensureNamespace(namespace string) error {
 		return err
 	}
 	return nil
+}
+
+func deleteUnwantedResources(currentInfos, modifiedInfos []*resource.Info) {
+	for _, cInfo := range currentInfos {
+		found := false
+		for _, m := range modifiedInfos {
+			if m.Name == cInfo.Name {
+				found = true
+			}
+		}
+		if !found {
+			log.Printf("Deleting %s...", cInfo.Name)
+			if err := deleteResource(cInfo); err != nil {
+				log.Printf("Failed to delete %s, err: %s", cInfo.Name, err)
+			}
+		}
+	}
+}
+
+func getCurrentObject(targetName string, infos []*resource.Info) (runtime.Object, error) {
+	var curr *resource.Info
+	for _, currInfo := range infos {
+		if currInfo.Name == targetName {
+			curr = currInfo
+		}
+	}
+
+	if curr == nil {
+		return nil, fmt.Errorf("No resource with the name %s found.", targetName)
+	}
+
+	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
+	defaultVersion := unversioned.GroupVersion{}
+	return resource.AsVersionedObject([]*resource.Info{curr}, false, defaultVersion, encoder)
 }

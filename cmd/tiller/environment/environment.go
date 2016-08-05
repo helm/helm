@@ -161,6 +161,15 @@ type KubeClient interface {
 	// For all other kinds, it means the kind was created or modified without
 	// error.
 	WatchUntilReady(namespace string, reader io.Reader) error
+
+	// Update updates one or more resources or creates the resource
+	// if it doesn't exist
+	//
+	// namespace must contain a valid existing namespace
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n").
+	Update(namespace string, originalReader, modifiedReader io.Reader) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -186,6 +195,12 @@ func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
 // WatchUntilReady implements KubeClient WatchUntilReady.
 func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
 	_, err := io.Copy(p.Out, r)
+	return err
+}
+
+// Update implements KubeClient Update.
+func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader) error {
+	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }
 
