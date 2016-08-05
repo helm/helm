@@ -65,7 +65,6 @@ func Parse(file io.Reader) (*Rules, error) {
 	if err := s.Err(); err != nil {
 		return r, err
 	}
-
 	return r, nil
 }
 
@@ -97,8 +96,10 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 			continue
 		}
 
+		// If the rule is looking for directories, and this is not a directory,
+		// skip it.
 		if p.mustDir && !fi.IsDir() {
-			return false
+			continue
 		}
 		if p.match(path, fi) {
 			return true

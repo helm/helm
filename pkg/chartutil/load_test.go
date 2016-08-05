@@ -49,8 +49,9 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 		t.Errorf("Expected 1 template, got %d", len(c.Templates))
 	}
 
-	if len(c.Files) != 5 {
-		t.Errorf("Expected 5 extra files, got %d", len(c.Files))
+	numfiles := 6
+	if len(c.Files) != numfiles {
+		t.Errorf("Expected %d extra files, got %d", numfiles, len(c.Files))
 		for _, n := range c.Files {
 			t.Logf("\t%s", n.TypeUrl)
 		}
