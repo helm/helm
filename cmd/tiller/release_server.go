@@ -24,7 +24,6 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
@@ -171,65 +170,107 @@ func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 }
 
 func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
-	rel, err := s.prepareUpdate(req)
+	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: perform update
+	res, err := s.performUpdate(currentRelease, updatedRelease, req)
+	if err != nil {
+		return nil, err
+	}
 
-	return &services.UpdateReleaseResponse{Release: rel}, nil
+	if err := s.env.Releases.Update(updatedRelease); err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
-// prepareUpdate builds a release for an update operation.
-func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, error) {
+func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+	res := &services.UpdateReleaseResponse{Release: updatedRelease}
+
+	if req.DryRun {
+		log.Printf("Dry run for %s", updatedRelease.Name)
+		return res, nil
+	}
+
+	// pre-ugrade hooks
+	//if !req.DisableHooks {
+	//if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, preUpgrade); err != nil {
+	//return res, err
+	//}
+	//}
+
+	kubeCli := s.env.KubeClient
+	original := bytes.NewBufferString(originalRelease.Manifest)
+	modified := bytes.NewBufferString(updatedRelease.Manifest)
+	if err := kubeCli.Update(updatedRelease.Namespace, original, modified); err != nil {
+		return nil, fmt.Errorf("Update of %s failed: %s", updatedRelease.Name, err)
+	}
+
+	// post-upgrade hooks
+	//if !req.DisableHooks {
+	//if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, postUpgrade); err != nil {
+	//return res, err
+	//}
+	//}
+
+	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
+
+	return res, nil
+}
+
+// prepareUpdate builds an updated release for an update operation.
+func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
 	if req.Name == "" {
-		return nil, errMissingRelease
+		return nil, nil, errMissingRelease
 	}
 
 	if req.Chart == nil {
-		return nil, errMissingChart
+		return nil, nil, errMissingChart
 	}
 
 	// finds the non-deleted release with the given name
-	rel, err := s.env.Releases.Read(req.Name)
+	currentRelease, err := s.env.Releases.Read(req.Name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	//validate chart name is same as previous release
-	givenChart := req.Chart.Metadata.Name
-	releasedChart := rel.Chart.Metadata.Name
-	if givenChart != releasedChart {
-		return nil, fmt.Errorf("Given chart, %s, does not match chart originally released, %s", givenChart, releasedChart)
+	ts := timeconv.Now()
+	options := chartutil.ReleaseOptions{
+		Name:      req.Name,
+		Time:      ts,
+		Namespace: currentRelease.Namespace,
 	}
 
-	// validate new chart version is higher than old
-
-	givenChartVersion := req.Chart.Metadata.Version
-	releasedChartVersion := rel.Chart.Metadata.Version
-	c, err := semver.NewConstraint("> " + releasedChartVersion)
+	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	v, err := semver.NewVersion(givenChartVersion)
+	hooks, manifestDoc, err := s.renderResources(req.Chart, valuesToRender)
 	if err != nil {
-		return nil, err
-	}
-
-	if a := c.Check(v); !a {
-		return nil, fmt.Errorf("Given chart (%s-%v) must be a higher version than released chart (%s-%v)", givenChart, givenChartVersion, releasedChart, releasedChartVersion)
+		return nil, nil, err
 	}
 
 	// Store an updated release.
 	updatedRelease := &release.Release{
-		Name:    req.Name,
-		Chart:   req.Chart,
-		Config:  req.Values,
-		Version: rel.Version + 1,
+		Name:      req.Name,
+		Namespace: currentRelease.Namespace,
+		Chart:     req.Chart,
+		Config:    req.Values,
+		Info: &release.Info{
+			FirstDeployed: currentRelease.Info.FirstDeployed,
+			LastDeployed:  ts,
+			Status:        &release.Status{Code: release.Status_UNKNOWN},
+		},
+		Version:  currentRelease.Version + 1,
+		Manifest: manifestDoc.String(),
+		Hooks:    hooks,
 	}
-	return updatedRelease, nil
+
+	return currentRelease, updatedRelease, nil
 }
 
 func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
@@ -308,27 +349,9 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, err
 	}
 
-	renderer := s.engine(req.Chart)
-	files, err := renderer.Render(req.Chart, valuesToRender)
+	hooks, manifestDoc, err := s.renderResources(req.Chart, valuesToRender)
 	if err != nil {
 		return nil, err
-	}
-
-	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
-	// as partials are not used after renderer.Render. Empty manifests are also
-	// removed here.
-	hooks, manifests, err := sortHooks(files)
-	if err != nil {
-		// By catching parse errors here, we can prevent bogus releases from going
-		// to Kubernetes.
-		return nil, err
-	}
-
-	// Aggregate all valid manifests into one big doc.
-	b := bytes.NewBuffer(nil)
-	for name, file := range manifests {
-		b.WriteString("\n---\n# Source: " + name + "\n")
-		b.WriteString(file)
 	}
 
 	// Store a release.
@@ -342,11 +365,38 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 			LastDeployed:  ts,
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
 		},
-		Manifest: b.String(),
+		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
 		Version:  1,
 	}
 	return rel, nil
+}
+
+func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, error) {
+	renderer := s.engine(ch)
+	files, err := renderer.Render(ch, values)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
+	// as partials are not used after renderer.Render. Empty manifests are also
+	// removed here.
+	hooks, manifests, err := sortHooks(files)
+	if err != nil {
+		// By catching parse errors here, we can prevent bogus releases from going
+		// to Kubernetes.
+		return nil, nil, err
+	}
+
+	// Aggregate all valid manifests into one big doc.
+	b := bytes.NewBuffer(nil)
+	for name, file := range manifests {
+		b.WriteString("\n---\n# Source: " + name + "\n")
+		b.WriteString(file)
+	}
+
+	return hooks, b, nil
 }
 
 // validateYAML checks to see if YAML is well-formed.
