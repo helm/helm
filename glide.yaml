@@ -40,3 +40,4 @@ import:
   repo: https://github.com/go-inf/inf.git
   vcs: git
 - package: github.com/asaskevich/govalidator
+- package: github.com/satori/go.uuid
