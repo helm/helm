@@ -27,9 +27,9 @@ import (
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/labels"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 var b64 = base64.StdEncoding
@@ -65,7 +65,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		logerrf(err, "get: failed to decode data %q", key)
 		return nil, err
 	}
-	 
+
 	// return the release object
 	return r, nil
 }
@@ -105,7 +105,7 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 		if kberrs.IsAlreadyExists(err) {
 			return ErrReleaseExists
 		}
-		
+
 		logerrf(err, "create: failed to create")
 		return err
 	}
@@ -174,7 +174,7 @@ func newConfigMapsObject(rls *rspb.Release) (*api.ConfigMap, error) {
 	// create and return configmap object
 	return &api.ConfigMap{
 		ObjectMeta: api.ObjectMeta{Name: rls.Name},
-		Data: 	   map[string]string{"release": s},
+		Data:       map[string]string{"release": s},
 	}, nil
 }
 

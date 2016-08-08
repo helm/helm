@@ -17,19 +17,19 @@ limitations under the License.
 package driver
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 
-	"k8s.io/kubernetes/pkg/runtime"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
+	"k8s.io/kubernetes/pkg/runtime"
 )
 
 func TestConfigMapGet(t *testing.T) {
 	// test release
 	key := "key-1"
 	rls := &rspb.Release{Name: key, Version: 1}
-	
+
 	// create test fixture
 	cfgmaps := newTestFixture(t, rls)
 
@@ -65,7 +65,7 @@ func TestConfigMapCreate(t *testing.T) {
 	if err := cfgmaps.Create(rls); err != nil {
 		t.Fatalf("failed to create release: %s", key, err)
 	}
-	
+
 	// get the release back
 	got, err := cfgmaps.Get(key)
 	if err != nil {
