@@ -165,7 +165,7 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Release.Namespace)
 	}
 
-	rel, err := rs.env.Releases.Read(res.Release.Name)
+	rel, err := rs.env.Releases.Get(res.Release.Name)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
@@ -235,7 +235,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Should not contain template data for an empty file. %s", res.Release.Manifest)
 	}
 
-	if _, err := rs.env.Releases.Read(res.Release.Name); err == nil {
+	if _, err := rs.env.Releases.Get(res.Release.Name); err == nil {
 		t.Errorf("Expected no stored release.")
 	}
 
