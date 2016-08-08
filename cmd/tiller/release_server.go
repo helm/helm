@@ -196,11 +196,11 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	}
 
 	// pre-ugrade hooks
-	//if !req.DisableHooks {
-	//if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, preUpgrade); err != nil {
-	//return res, err
-	//}
-	//}
+	if !req.DisableHooks {
+		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, preUpgrade); err != nil {
+			return res, err
+		}
+	}
 
 	kubeCli := s.env.KubeClient
 	original := bytes.NewBufferString(originalRelease.Manifest)
@@ -210,11 +210,11 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	}
 
 	// post-upgrade hooks
-	//if !req.DisableHooks {
-	//if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, postUpgrade); err != nil {
-	//return res, err
-	//}
-	//}
+	if !req.DisableHooks {
+		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, postUpgrade); err != nil {
+			return res, err
+		}
+	}
 
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
 

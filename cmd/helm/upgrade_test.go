@@ -52,18 +52,22 @@ func TestUpgradeCmd(t *testing.T) {
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.2",
 	}
+
 	chartPath, err = chartutil.Create(cfile, tmpChart)
 	if err != nil {
 		t.Errorf("Error creating chart: %v", err)
 	}
-	ch, _ = chartutil.Load(chartPath)
+	ch, err = chartutil.Load(chartPath)
+	if err != nil {
+		t.Errorf("Error loading updated chart: %v", err)
+	}
 
 	tests := []releaseCase{
 		{
 			name:     "upgrade a release",
 			args:     []string{"funny-bunny", chartPath},
 			resp:     releaseMock(&releaseOptions{name: "funny-bunny", version: 2, chart: ch}),
-			expected: "It's not you. It's me\nYour upgrade looks valid but this command is still under active development.\nHang tight.\n",
+			expected: "funny-bunny has been upgraded. Happy Helming!\n",
 		},
 	}
 

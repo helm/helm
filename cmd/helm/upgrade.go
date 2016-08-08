@@ -95,7 +95,8 @@ func (u *upgradeCmd) run() error {
 		return prettyError(err)
 	}
 
-	fmt.Fprintf(u.out, "It's not you. It's me\nYour upgrade looks valid but this command is still under active development.\nHang tight.\n")
+	success := u.release + " has been upgraded. Happy Helming!\n"
+	fmt.Fprintf(u.out, success)
 
 	return nil
 
