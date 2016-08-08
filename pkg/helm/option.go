@@ -238,8 +238,15 @@ func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient,
 // Executes tiller.UpdateRelease RPC.
 func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	//TODO: handle dryRun
+	for _, opt := range opts {
+		opt(o)
+	}
 
-	return rlc.UpdateRelease(context.TODO(), &rls.UpdateReleaseRequest{Name: rlsName, Chart: chr})
+	o.updateReq.Chart = chr
+	o.updateReq.DryRun = o.dryRun
+	o.updateReq.Name = rlsName
+
+	return rlc.UpdateRelease(context.TODO(), &o.updateReq)
 }
 
 // Executes tiller.GetReleaseStatus RPC.
