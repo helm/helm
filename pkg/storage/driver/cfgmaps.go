@@ -17,10 +17,11 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
-	//"strconv"
-	"encoding/base64"
+	"strconv"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -29,10 +30,16 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
 )
 
 var b64 = base64.StdEncoding
+
+type labels map[string]string
+
+func (lbs *labels) init()                   { *lbs = labels(make(map[string]string)) }
+func (lbs labels) get(key string) string    { return lbs[key] }
+func (lbs labels) set(key, val string)      { lbs[key] = val }
+func (lbs labels) toMap() map[string]string { return lbs }
 
 // ConfigMaps is a wrapper around an implementation of a kubernetes
 // ConfigMapsInterface.
@@ -70,32 +77,42 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 	return r, nil
 }
 
-// List fetches all releases and returns a list for all releases
+// List fetches all releases and returns a list of all releases
 // where filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
-//
-// TODO: revisit List and use labels correctly.
 func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	// initialize list options to return all configmaps. TODO: Apply appropriate labels
-	var lbls labels.Set
-
-	objs, err := cfgmaps.impl.List(api.ListOptions{
-		LabelSelector: lbls.AsSelector(),
-	})
+	list, err := cfgmaps.impl.List(api.ListOptions{})
 	if err != nil {
 		logerrf(err, "list: failed to list")
 		return nil, err
 	}
-	// TODO: apply filter here
-	var list []*rspb.Release
-	_ = objs
 
-	return list, nil
+	var results []*rspb.Release
+
+	for _, item := range list.Items {
+		rls, err := decodeRelease(item.Data["release"])
+		if err != nil {
+			logerrf(err, "list: failed to decode release: %s", rls)
+			continue
+		}
+		if filter(rls) {
+			results = append(results, rls)
+		}
+	}
+
+	return results, nil
 }
 
 func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
+	var lbs labels
+
+	// set labels for configmaps object meta data
+	lbs.init()
+	lbs.set("STATE", "CREATED")
+	lbs.set("CREATED_AT", time.Now().String())
+
 	// create a new configmap object from the release
-	obj, err := newConfigMapsObject(rls)
+	obj, err := newConfigMapsObject(rls, lbs)
 	if err != nil {
 		logerrf(err, "create: failed to encode release %q", rls.Name)
 		return err
@@ -117,7 +134,7 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 // the ConfigMap is created to hold the release.
 func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
 	// create a new configmap object from the release
-	obj, err := newConfigMapsObject(rls)
+	obj, err := newConfigMapsObject(rls, labels{"MODIFIED_AT": time.Now().String()})
 	if err != nil {
 		logerrf(err, "update: failed to encode release %q", rls.Name)
 		return err
@@ -156,13 +173,13 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //
 // The following labels are used within each configmap:
 //
-//    "LAST_MODIFIED" - timestamp indicating when this configmap was last modified.
-//    "CREATED_AT"    - timestamp indicating when this configmap was created.
+//    "LAST_MODIFIED" - timestamp indicating when this configmap was last modified. (set in Update)
+//    "CREATED_AT"    - timestamp indicating when this configmap was created. 	   (set in Create)
 //    "VERSION"        - version of the release.
 //    "OWNER"          - owner of the configmap, currently "TILLER".
 //    "NAME"           - name of the release.
 //
-func newConfigMapsObject(rls *rspb.Release) (*api.ConfigMap, error) {
+func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) {
 	const owner = "TILLER"
 
 	// encode the release
@@ -171,10 +188,21 @@ func newConfigMapsObject(rls *rspb.Release) (*api.ConfigMap, error) {
 		return nil, err
 	}
 
+	if lbs == nil {
+		lbs = labels{}
+	}
+
+	lbs.set("NAME", rls.Name)
+	lbs.set("OWNER", owner)
+	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
+
 	// create and return configmap object
 	return &api.ConfigMap{
-		ObjectMeta: api.ObjectMeta{Name: rls.Name},
-		Data:       map[string]string{"release": s},
+		ObjectMeta: api.ObjectMeta{
+			Name:   rls.Name,
+			Labels: lbs.toMap(),
+		},
+		Data: map[string]string{"release": s},
 	}, nil
 }
 
