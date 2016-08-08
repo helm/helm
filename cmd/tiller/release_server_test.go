@@ -31,6 +31,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/storage"
 )
 
@@ -487,7 +488,7 @@ func TestListReleasesFilter(t *testing.T) {
 
 func mockEnvironment() *environment.Environment {
 	e := environment.New()
-	e.Releases = storage.NewMemory()
+	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
 	return e
 }

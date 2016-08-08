@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -38,12 +40,14 @@ type mockReleaseStorage struct {
 	rel *release.Release
 }
 
+var _ driver.Driver = (*mockReleaseStorage)(nil)
+
 func (r *mockReleaseStorage) Create(v *release.Release) error {
 	r.rel = v
 	return nil
 }
 
-func (r *mockReleaseStorage) Read(k string) (*release.Release, error) {
+func (r *mockReleaseStorage) Get(k string) (*release.Release, error) {
 	return r.rel, nil
 }
 
@@ -56,7 +60,7 @@ func (r *mockReleaseStorage) Delete(k string) (*release.Release, error) {
 	return r.rel, nil
 }
 
-func (r *mockReleaseStorage) List() ([]*release.Release, error) {
+func (r *mockReleaseStorage) List(func(*release.Release) bool) ([]*release.Release, error) {
 	return []*release.Release{}, nil
 }
 
@@ -66,7 +70,7 @@ func (r *mockReleaseStorage) Query(labels map[string]string) ([]*release.Release
 
 func (r *mockReleaseStorage) History(n string) ([]*release.Release, error) {
 	res := []*release.Release{}
-	rel, err := r.Read(n)
+	rel, err := r.Get(n)
 	if err != nil {
 		return res, err
 	}
@@ -88,7 +92,6 @@ func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader) error {
 }
 
 var _ Engine = &mockEngine{}
-var _ ReleaseStorage = &mockReleaseStorage{}
 var _ KubeClient = &mockKubeClient{}
 var _ KubeClient = &PrintingKubeClient{}
 
@@ -110,7 +113,7 @@ func TestEngine(t *testing.T) {
 func TestReleaseStorage(t *testing.T) {
 	rs := &mockReleaseStorage{}
 	env := New()
-	env.Releases = rs
+	env.Releases = storage.Init(rs)
 
 	release := &release.Release{Name: "mariner"}
 
@@ -122,7 +125,7 @@ func TestReleaseStorage(t *testing.T) {
 		t.Fatalf("failed to update release: %s", err)
 	}
 
-	if v, err := env.Releases.Read("albatross"); err != nil {
+	if v, err := env.Releases.Get("albatross"); err != nil {
 		t.Errorf("Error fetching release: %s", err)
 	} else if v.Name != "mariner" {
 		t.Errorf("Expected mariner, got %q", v.Name)
