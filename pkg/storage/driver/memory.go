@@ -22,28 +22,18 @@ import (
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
-// Memory is an in-memory storage driver implementation.
+// Memory is the in-memory storage driver implementation.
 type Memory struct {
 	sync.RWMutex
 	cache map[string]*rspb.Release
 }
 
+// NewMemory initializes a new memory driver.
 func NewMemory() *Memory {
 	return &Memory{cache: map[string]*rspb.Release{}}
 }
 
-// Create creates a new release or error.
-func (mem *Memory) Create(rls *rspb.Release) error {
-	defer unlock(mem.wlock())
-
-	if _, ok := mem.cache[rls.Name]; ok {
-		return ErrReleaseExists
-	}
-	mem.cache[rls.Name] = rls
-	return nil
-}
-
-// Get returns the release named by key.
+// Get returns the release named by key or returns ErrReleaseNotFound.
 func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	defer unlock(mem.rlock())
 
@@ -66,33 +56,40 @@ func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error
 	return releases, nil
 }
 
-// Update updates a release or error.
+// Create creates a new release or returns ErrReleaseExists.
+func (mem *Memory) Create(rls *rspb.Release) error {
+	defer unlock(mem.wlock())
+
+	if _, ok := mem.cache[rls.Name]; ok {
+		return ErrReleaseExists
+	}
+	mem.cache[rls.Name] = rls
+	return nil
+}
+
+// Update updates a release or returns ErrReleaseNotFound.
 func (mem *Memory) Update(rls *rspb.Release) error {
 	defer unlock(mem.wlock())
 
-	if old, ok := mem.cache[rls.Name]; ok {
-		// FIXME: when release update is complete, old release should
-		// be marked as superseded, creating the new release.
-		_ = old
-
+	if _, ok := mem.cache[rls.Name]; ok {
 		mem.cache[rls.Name] = rls
 		return nil
 	}
 	return ErrReleaseNotFound
 }
 
-// Delete deletes a release or error.
+// Delete deletes a release or returns ErrReleaseNotFound.
 func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	defer unlock(mem.wlock())
 
 	if old, ok := mem.cache[key]; ok {
-		old.Info.Status.Code = rspb.Status_DELETED
 		delete(mem.cache, key)
 		return old, nil
 	}
 	return nil, ErrReleaseNotFound
 }
 
+// wlock locks mem for writing
 func (mem *Memory) wlock() func() {
 	mem.Lock()
 	return func() {
@@ -100,6 +97,7 @@ func (mem *Memory) wlock() func() {
 	}
 }
 
+// rlock locks mem for reading
 func (mem *Memory) rlock() func() {
 	mem.RLock()
 	return func() {
@@ -107,4 +105,7 @@ func (mem *Memory) rlock() func() {
 	}
 }
 
+// unlock calls fn which reverses a mem.rlock or mem.wlock. e.g:
+// ```defer unlock(mem.rlock())```, locks mem for reading at the
+// call point of defer and unlocks upon exiting the block.
 func unlock(fn func()) { fn() }

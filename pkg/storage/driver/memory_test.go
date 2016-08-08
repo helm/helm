@@ -73,7 +73,7 @@ func TestMemoryDelete(t *testing.T) {
 	rls := &rspb.Release{
 		Name: key,
 		Info: &rspb.Info{
-			Status: &rspb.Status{Code: rspb.Status_DEPLOYED},
+			Status: &rspb.Status{Code: rspb.Status_DELETED},
 		},
 	}
 
