@@ -1,7 +1,8 @@
+.DS_Store
 .coverage/
+.vimrc
+_dist/
+_proto/*.pb.go
 bin/
 rootfs/tiller
 vendor/
-_proto/*.pb.go
-.vimrc
-.DS_Store
