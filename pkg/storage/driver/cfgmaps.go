@@ -17,21 +17,19 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
-	"strconv"
-	"time"
+	//"strconv"
+	"encoding/base64"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/satori/go.uuid"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/labels"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/labels"
 )
 
 var b64 = base64.StdEncoding
@@ -54,15 +52,20 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 	// fetch the configmap holding the release named by key
 	obj, err := cfgmaps.impl.Get(key)
 	if err != nil {
-		logerrf(err, "configmaps: failed to get %q", key)
+		if kberrs.IsNotFound(err) {
+			return nil, ErrReleaseNotFound
+		}
+
+		logerrf(err, "get: failed to get %q", key)
 		return nil, err
 	}
 	// found the configmap, decode the base64 data string
-	r, err := decodeRelease(obj.Data[key])
+	r, err := decodeRelease(obj.Data["release"])
 	if err != nil {
-		logerrf(err, "configmaps: failed to decode data %q", key)
+		logerrf(err, "get: failed to decode data %q", key)
 		return nil, err
 	}
+	 
 	// return the release object
 	return r, nil
 }
@@ -76,12 +79,13 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	// initialize list options to return all configmaps. TODO: Apply appropriate labels
 	var lbls labels.Set
 
-	objs, err := cfgmaps.impl.List(api.ListOptions{LabelSelector: lbls.AsSelector()})
+	objs, err := cfgmaps.impl.List(api.ListOptions{
+		LabelSelector: lbls.AsSelector(),
+	})
 	if err != nil {
-		logerrf(err, "configmaps: failed to list")
+		logerrf(err, "list: failed to list")
 		return nil, err
 	}
-
 	// TODO: apply filter here
 	var list []*rspb.Release
 	_ = objs
@@ -89,20 +93,23 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	return list, nil
 }
 
-// Create creates a ConfigMap and stores the release. An error
-// is returned if the rls already exists.
 func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 	// create a new configmap object from the release
 	obj, err := newConfigMapsObject(rls)
 	if err != nil {
-		logerrf(err, "configmaps: failed to encode release %q", rls.Name)
+		logerrf(err, "create: failed to encode release %q", rls.Name)
 		return err
 	}
 	// push the configmap object out into the kubiverse
 	if _, err := cfgmaps.impl.Create(obj); err != nil {
-		logerrf(err, "configmaps: failed to create")
+		if kberrs.IsAlreadyExists(err) {
+			return ErrReleaseExists
+		}
+		
+		logerrf(err, "create: failed to create")
 		return err
 	}
+
 	return nil
 }
 
@@ -112,25 +119,28 @@ func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
 	// create a new configmap object from the release
 	obj, err := newConfigMapsObject(rls)
 	if err != nil {
-		logerrf(err, "configmaps: update failed to encode release %q", rls.Name)
+		logerrf(err, "update: failed to encode release %q", rls.Name)
 		return err
 	}
 	// push the configmap object out into the kubiverse
-	if _, err = cfgmaps.impl.Create(obj); err != nil {
-		if !kberrs.IsAlreadyExists(err) {
-			logerrf(err, "configmaps: update failed to create")
-			return err
-		}
-	}
-	// try update
 	_, err = cfgmaps.impl.Update(obj)
-	return err
+	if err != nil {
+		logerrf(err, "update: failed to update")
+		return err
+	}
+
+	return nil
 }
 
 // Delete deletes the ConfigMap holding the release named by key.
 func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
-	// fetch the release
+	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
+		if kberrs.IsNotFound(err) {
+			return nil, ErrReleaseNotFound
+		}
+
+		logerrf(err, "delete: failed to get release %q", rls.Name)
 		return nil, err
 	}
 	// delete the release
@@ -161,22 +171,10 @@ func newConfigMapsObject(rls *rspb.Release) (*api.ConfigMap, error) {
 		return nil, err
 	}
 
-	// default labels applied to the configmap
-	var labels = map[string]string{
-		"MODIFIED_AT": time.Now().String(),
-		"CREATED_AT":  time.Now().String(),
-		"VERSION":     strconv.Itoa(int(rls.Version)), // release version
-		"OWNER":       owner,                          // release owner
-		"NAME":        rls.Name,                       // release name
-	}
-
 	// create and return configmap object
 	return &api.ConfigMap{
-		ObjectMeta: api.ObjectMeta{
-			Name:   genObjKey(rls.Name, rls.Namespace),
-			Labels: labels,
-		},
-		Data: map[string]string{rls.Name: s},
+		ObjectMeta: api.ObjectMeta{Name: rls.Name},
+		Data: 	   map[string]string{"release": s},
 	}, nil
 }
 
@@ -210,14 +208,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	return &rls, nil
 }
 
-// genObjKey generates a key to identify a configmap.
-// The resulting key is a composition of the release name,
-// the namespace of the release, and a v4 uuid.
-func genObjKey(rls string, ns string) string {
-	return fmt.Sprintf("%s.%s.%s", rls, ns, uuid.NewV4())
-}
-
 // for debugging
 func logerrf(err error, format string, args ...interface{}) {
-	log.Println("%s: %s", fmt.Sprintf(format, args...), err)
+	log.Printf("configmaps: %s: %s\n", fmt.Sprintf(format, args...), err)
 }
