@@ -143,6 +143,13 @@ func DeleteDryRun(dry bool) DeleteOption {
 	}
 }
 
+// UpgradeDisableHooks will disable hooks for an upgrade operation.
+func UpgradeDisableHooks(disable bool) UpdateOption {
+	return func(opts *options) {
+		opts.disableHooks = disable
+	}
+}
+
 // UpgradeDryRun will (if true) execute an upgrade as a dry run.
 func UpgradeDryRun(dry bool) UpdateOption {
 	return func(opts *options) {
