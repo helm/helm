@@ -33,6 +33,12 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
+// Feature flags for configmaps storage driver
+const UseConfigMaps = false
+
+// Tiller's namespace
+const TillerNamespace = "kube-system"
+
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"
 
@@ -159,9 +165,24 @@ func New() *Environment {
 		// we can easily add some here.
 		GoTplEngine: e,
 	}
+
+	kbc := kube.New(nil)
+
+	var sd *storage.Storage
+	if UseConfigMaps {
+		c, err := kbc.Client()
+		if err != nil {
+			// panic because we cant initliaze driver with no client
+			panic(err)
+		}
+		sd = storage.Init(driver.NewConfigMaps(c.ConfigMaps(TillerNamespace)))
+	} else {
+		sd = storage.Init(driver.NewMemory())
+	}
+
 	return &Environment{
 		EngineYard: ey,
-		Releases:   storage.Init(driver.NewMemory()),
-		KubeClient: kube.New(nil), //&PrintingKubeClient{Out: os.Stdout},
+		Releases:   sd,  //storage.Init(driver.NewMemory()),
+		KubeClient: kbc, //kube.New(nil), //&PrintingKubeClient{Out: os.Stdout},
 	}
 }
