@@ -44,6 +44,16 @@ data:
   name: value
 `
 
+var manifestWithUpgradeHooks = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    "helm.sh/hook": post-upgrade,pre-upgrade
+data:
+  name: value
+`
+
 func rsFixture() *releaseServer {
 	return &releaseServer{
 		env: mockEnvironment(),
@@ -79,8 +89,9 @@ func releaseStub() *release.Release {
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
-		Chart:  chartStub(),
-		Config: &chart.Config{Raw: `name = "value"`},
+		Chart:   chartStub(),
+		Config:  &chart.Config{Raw: `name = "value"`},
+		Version: 1,
 		Hooks: []*release.Hook{
 			{
 				Name:     "test-cm",
@@ -287,6 +298,105 @@ func TestInstallReleaseReuseName(t *testing.T) {
 	if res.Release.Name != rel.Name {
 		t.Errorf("expected %q, got %q", rel.Name, res.Release.Name)
 	}
+}
+
+func TestUpdateRelease(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "hello", Data: []byte("hello: world")},
+				{Name: "hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+		},
+	}
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed updated: %s", err)
+	}
+
+	if res.Release.Name == "" {
+		t.Errorf("Expected release name.")
+	}
+
+	if res.Release.Name != rel.Name {
+		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
+	}
+
+	if res.Release.Namespace != rel.Namespace {
+		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Release.Namespace)
+	}
+
+	updated, err := rs.env.Releases.Read(res.Release.Name)
+	if err != nil {
+		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+	}
+
+	if len(updated.Hooks) != 1 {
+		t.Fatalf("Expected 1 hook, got %d", len(updated.Hooks))
+	}
+	if updated.Hooks[0].Manifest != manifestWithUpgradeHooks {
+		t.Errorf("Unexpected manifest: %v", updated.Hooks[0].Manifest)
+	}
+
+	if updated.Hooks[0].Events[0] != release.Hook_POST_UPGRADE {
+		t.Errorf("Expected event 0 to be post upgrade")
+	}
+
+	if updated.Hooks[0].Events[1] != release.Hook_PRE_UPGRADE {
+		t.Errorf("Expected event 0 to be pre upgrade")
+	}
+
+	if len(res.Release.Manifest) == 0 {
+		t.Errorf("No manifest returned: %v", res.Release)
+	}
+
+	if len(updated.Manifest) == 0 {
+		t.Errorf("Expected manifest in %v", res)
+	}
+
+	if !strings.Contains(updated.Manifest, "---\n# Source: hello/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", rel.Manifest)
+	}
+
+	if res.Release.Version != 2 {
+		t.Errorf("Expected release version to be %v, got %v", 2, res.Release.Version)
+	}
+}
+
+func TestUpdateReleaseNoHooks(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "hello", Data: []byte("hello: world")},
+				{Name: "hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+		},
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed updated: %s", err)
+	}
+
+	if hl := res.Release.Hooks[0].LastRun; hl != nil {
+		t.Errorf("Expected that no hooks were run. Got %d", hl)
+	}
+
 }
 
 func TestUninstallRelease(t *testing.T) {
