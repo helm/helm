@@ -38,4 +38,5 @@ message Status {
 	Code code = 1;
 
 	google.protobuf.Any details = 2;
+        string cluster_status = 3;
 }

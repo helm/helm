@@ -147,6 +147,14 @@ type KubeClient interface {
 	// by "\n---\n").
 	Create(namespace string, reader io.Reader) error
 
+	// Get gets one or more resources.
+	//
+	// namespace must contain a valid existing namespace.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n").
+	Get(namespace string, reader io.Reader) (string, error)
+
 	// Delete destroys one or more resources.
 	//
 	// namespace must contain a valid existing namespace.

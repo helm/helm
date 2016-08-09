@@ -68,6 +68,7 @@ func (s *statusCmd) run() error {
 
 	fmt.Fprintf(s.out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
 	fmt.Fprintf(s.out, "Status: %s\n", res.Info.Status.Code)
+	fmt.Fprintf(s.out, "Cluster Status:\n%s\n", res.Info.Status.ClusterStatus)
 	if res.Info.Status.Details != nil {
 		fmt.Fprintf(s.out, "Details: %s\n", res.Info.Status.Details)
 	}
