@@ -34,6 +34,7 @@ import (
 
 var b64 = base64.StdEncoding
 
+// labels is a map of key value pairs to be included as metadata in a configmap object.
 type labels map[string]string
 
 func (lbs *labels) init()                   { *lbs = labels(make(map[string]string)) }
@@ -72,13 +73,12 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		logerrf(err, "get: failed to decode data %q", key)
 		return nil, err
 	}
-
 	// return the release object
 	return r, nil
 }
 
-// List fetches all releases and returns a list of all releases
-// where filter(release) == true. An error is returned if the
+// List fetches all releases and returns the list releases such
+// that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
 func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	list, err := cfgmaps.impl.List(api.ListOptions{})
@@ -89,6 +89,8 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 
 	var results []*rspb.Release
 
+	// iterate over the configmaps object list
+	// and decode each release
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
@@ -99,19 +101,20 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			results = append(results, rls)
 		}
 	}
-
 	return results, nil
 }
 
+// Create creates a new ConfigMap holding the release. If the
+// ConfigMap already exists, ErrReleaseExists is returned.
 func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
+	// set labels for configmaps object meta data
 	var lbs labels
 
-	// set labels for configmaps object meta data
 	lbs.init()
 	lbs.set("STATE", "CREATED")
 	lbs.set("CREATED_AT", time.Now().String())
 
-	// create a new configmap object from the release
+	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(rls, lbs)
 	if err != nil {
 		logerrf(err, "create: failed to encode release %q", rls.Name)
@@ -126,15 +129,21 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 		logerrf(err, "create: failed to create")
 		return err
 	}
-
 	return nil
 }
 
 // Update updates the ConfigMap holding the release. If not found
 // the ConfigMap is created to hold the release.
 func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
-	// create a new configmap object from the release
-	obj, err := newConfigMapsObject(rls, labels{"MODIFIED_AT": time.Now().String()})
+	// set labels for configmaps object meta data
+	var lbs labels
+
+	lbs.init()
+	lbs.set("STATE", "UPDATED")
+	lbs.set("MODIFIED_AT", time.Now().String())
+
+	// create a new configmap object to hold the release
+	obj, err := newConfigMapsObject(rls, lbs)
 	if err != nil {
 		logerrf(err, "update: failed to encode release %q", rls.Name)
 		return err
@@ -145,12 +154,18 @@ func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
 		logerrf(err, "update: failed to update")
 		return err
 	}
-
 	return nil
 }
 
 // Delete deletes the ConfigMap holding the release named by key.
 func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
+	// set labels for configmaps object meta data
+	var lbs labels
+
+	lbs.init()
+	lbs.set("STATE", "DELETED")
+	lbs.set("MODIFIED_AT", time.Now().String())
+
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
 		if kberrs.IsNotFound(err) {
@@ -164,17 +179,17 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 	if err = cfgmaps.impl.Delete(key); err != nil {
 		return rls, err
 	}
-	return
+	return rls, nil
 }
 
 // newConfigMapsObject constructs a kubernetes ConfigMap object
-// from a release. Each configmap data entry is the base64 encoded
-// string of a release's binary protobuf encoding.
+// to store a release. Each configmap data entry is the base64
+// encoded string of a release's binary protobuf encoding.
 //
 // The following labels are used within each configmap:
 //
-//    "LAST_MODIFIED" - timestamp indicating when this configmap was last modified. (set in Update)
-//    "CREATED_AT"    - timestamp indicating when this configmap was created. 	   (set in Create)
+//    "MODIFIED_AT"    - timestamp indicating when this configmap was last modified. (set in Update)
+//    "CREATED_AT"     - timestamp indicating when this configmap was created. 	   (set in Create)
 //    "VERSION"        - version of the release.
 //    "OWNER"          - owner of the configmap, currently "TILLER".
 //    "NAME"           - name of the release.
@@ -189,9 +204,10 @@ func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) 
 	}
 
 	if lbs == nil {
-		lbs = labels{}
+		lbs.init()
 	}
 
+	// apply labels
 	lbs.set("NAME", rls.Name)
 	lbs.set("OWNER", owner)
 	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
@@ -206,8 +222,8 @@ func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) 
 	}, nil
 }
 
-// encodeRelease encodes a release returning a base64 encoded binary protobuf
-// encoding representation, or error.
+// encodeRelease encodes a release returning a base64 encoded
+// binary protobuf encoding representation, or error.
 func encodeRelease(rls *rspb.Release) (string, error) {
 	b, err := proto.Marshal(rls)
 	if err != nil {
@@ -217,8 +233,8 @@ func encodeRelease(rls *rspb.Release) (string, error) {
 }
 
 // decodeRelease decodes the bytes in data into a release
-// type. Data must contain a valid base64 encoded string
-// of a valid protobuf encoding of a release, otherwise
+// type. Data must contain a base64 encoded string of a
+// valid protobuf encoding of a release, otherwise
 // an error is returned.
 func decodeRelease(data string) (*rspb.Release, error) {
 	// base64 decode string
@@ -232,11 +248,10 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	if err := proto.Unmarshal(b, &rls); err != nil {
 		return nil, err
 	}
-
 	return &rls, nil
 }
 
-// for debugging
+// logerrf wraps an error with the a formatted string (used for debugging)
 func logerrf(err error, format string, args ...interface{}) {
 	log.Printf("configmaps: %s: %s\n", fmt.Sprintf(format, args...), err)
 }

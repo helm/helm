@@ -17,8 +17,10 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	"reflect"
 	"testing"
+
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestMemoryGet(t *testing.T) {
@@ -26,13 +28,15 @@ func TestMemoryGet(t *testing.T) {
 	rls := &rspb.Release{Name: key}
 
 	mem := NewMemory()
-	mem.Create(rls)
+	if err := mem.Create(rls); err != nil {
+		t.Fatalf("Failed create: %s", err)
+	}
 
 	res, err := mem.Get(key)
-	switch {
-	case err != nil:
+	if err != nil {
 		t.Errorf("Could not get %s: %s", key, err)
-	case res.Name != key:
+	}
+	if res.Name != key {
 		t.Errorf("Expected %s, got %s", key, res.Name)
 	}
 }
@@ -42,12 +46,10 @@ func TestMemoryCreate(t *testing.T) {
 	rls := &rspb.Release{Name: key}
 
 	mem := NewMemory()
-	err := mem.Create(rls)
-
-	switch {
-	case err != nil:
-		t.Fatalf("Failed create: %s", err)
-	case mem.cache[key].Name != key:
+	if err := mem.Create(rls); err != nil {
+		t.Fatalf("Failed created: %s", err)
+	}
+	if mem.cache[key].Name != key {
 		t.Errorf("Unexpected release name: %s", mem.cache[key].Name)
 	}
 }
@@ -70,12 +72,7 @@ func TestMemoryUpdate(t *testing.T) {
 
 func TestMemoryDelete(t *testing.T) {
 	key := "test-1"
-	rls := &rspb.Release{
-		Name: key,
-		Info: &rspb.Info{
-			Status: &rspb.Status{Code: rspb.Status_DELETED},
-		},
-	}
+	rls := &rspb.Release{Name: key}
 
 	mem := NewMemory()
 	if err := mem.Create(rls); err != nil {
@@ -83,12 +80,13 @@ func TestMemoryDelete(t *testing.T) {
 	}
 
 	res, err := mem.Delete(key)
-	switch {
-	case err != nil:
+	if err != nil {
 		t.Fatalf("Failed delete: %s", err)
-	case mem.cache[key] != nil:
+	}
+	if mem.cache[key] != nil {
 		t.Errorf("Expected nil, got %s", mem.cache[key])
-	case res.Info.Status.Code != rspb.Status_DELETED:
-		t.Errorf("Expected Status_DELETED, got %s", res.Info.Status.Code)
+	}
+	if !reflect.DeepEqual(rls, res) {
+		t.Errorf("Expected %s, got %s", rls, res)
 	}
 }

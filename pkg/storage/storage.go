@@ -17,9 +17,10 @@ limitations under the License.
 package storage // import "k8s.io/helm/pkg/storage"
 
 import (
+	"log"
+
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
-	"log"
 )
 
 // Storage represents a storage engine for a Release.

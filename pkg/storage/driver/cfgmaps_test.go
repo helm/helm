@@ -59,11 +59,11 @@ func TestConfigMapCreate(t *testing.T) {
 
 	// store the release in a configmap
 	if err := cfgmaps.Create(rls); err != nil {
-		t.Fatalf("failed to create release: %s", key, err)
+		t.Fatalf("failed to create release with key %q: %s", key, err)
 	}
 
 	if err := cfgmaps.Create(rls); err != nil {
-		t.Fatalf("failed to create release: %s", key, err)
+		t.Fatalf("failed to create release with key %q: %s", key, err)
 	}
 
 	// get the release back

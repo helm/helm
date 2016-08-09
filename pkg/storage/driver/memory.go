@@ -43,7 +43,7 @@ func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	return nil, ErrReleaseNotFound
 }
 
-// List returns all releases whose status is not Status_DELETED.
+// List returns the list of all releases such that filter(release) == true
 func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	defer unlock(mem.rlock())
 

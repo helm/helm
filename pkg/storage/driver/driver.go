@@ -18,6 +18,7 @@ package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
 	"errors"
+
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -26,8 +27,6 @@ var (
 	ErrReleaseNotFound = errors.New("release: not found")
 	// ErrReleaseExists indicates that a release already exists.
 	ErrReleaseExists = errors.New("release: already exists")
-	// ErrDriverAction indicates the storage driver failed to execute the requested action.
-	ErrDriverAction = errors.New("driver: failed to perform action")
 )
 
 // Creator is the interface that wraps the Create method.

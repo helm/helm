@@ -33,10 +33,10 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-// Feature flags for configmaps storage driver
+// UseConfigMaps is a feature flags to toggle use of configmaps storage driver.
 const UseConfigMaps = false
 
-// Tiller's namespace
+// TillerNamespace is the namespace tiller is running in.
 const TillerNamespace = "kube-system"
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
