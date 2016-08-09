@@ -180,8 +180,9 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 // The following labels are used within each configmap:
 //
 //    "MODIFIED_AT"    - timestamp indicating when this configmap was last modified. (set in Update)
-//    "CREATED_AT"     - timestamp indicating when this configmap was created. 	   (set in Create)
+//    "CREATED_AT"     - timestamp indicating when this configmap was created. (set in Create)
 //    "VERSION"        - version of the release.
+//    "STATUS"         - status of the release (see proto/hapi/release.status.pb.go for variants)
 //    "OWNER"          - owner of the configmap, currently "TILLER".
 //    "NAME"           - name of the release.
 //
