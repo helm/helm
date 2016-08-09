@@ -111,8 +111,7 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("STATE", "CREATED")
-	lbs.set("CREATED_AT", time.Now().String())
+	lbs.set("CREATED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(rls, lbs)
@@ -139,8 +138,7 @@ func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("STATE", "UPDATED")
-	lbs.set("MODIFIED_AT", time.Now().String())
+	lbs.set("MODIFIED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(rls, lbs)
@@ -159,13 +157,6 @@ func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
 
 // Delete deletes the ConfigMap holding the release named by key.
 func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
-	// set labels for configmaps object meta data
-	var lbs labels
-
-	lbs.init()
-	lbs.set("STATE", "DELETED")
-	lbs.set("MODIFIED_AT", time.Now().String())
-
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
 		if kberrs.IsNotFound(err) {
@@ -210,6 +201,7 @@ func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) 
 	// apply labels
 	lbs.set("NAME", rls.Name)
 	lbs.set("OWNER", owner)
+	lbs.set("STATUS", rspb.Status_Code_name[int32(rls.Info.Status.Code)])
 	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
 
 	// create and return configmap object

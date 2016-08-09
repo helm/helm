@@ -28,7 +28,7 @@ import (
 func TestConfigMapGet(t *testing.T) {
 	// test release
 	key := "key-1"
-	rls := &rspb.Release{Name: key, Version: 1}
+	rls := newTestRelease(key, 1, rspb.Status_DEPLOYED)
 
 	// create test fixture
 	cfgmaps := newTestFixture(t, rls)
@@ -52,16 +52,12 @@ func TestConfigMapList(t *testing.T) {
 func TestConfigMapCreate(t *testing.T) {
 	// setup
 	key := "key-1"
-	rls := &rspb.Release{Name: "key-1", Version: 1}
+	rls := newTestRelease(key, 1, rspb.Status_DEPLOYED)
 
 	// create test fixture
 	cfgmaps := newTestFixture(t, rls)
 
 	// store the release in a configmap
-	if err := cfgmaps.Create(rls); err != nil {
-		t.Fatalf("failed to create release with key %q: %s", key, err)
-	}
-
 	if err := cfgmaps.Create(rls); err != nil {
 		t.Fatalf("failed to create release with key %q: %s", key, err)
 	}
@@ -81,7 +77,7 @@ func TestConfigMapCreate(t *testing.T) {
 func TestConfigMapDelete(t *testing.T) {
 	// setup
 	key := "key-1"
-	rls := &rspb.Release{Name: "key-1", Version: 1}
+	rls := newTestRelease(key, 1, rspb.Status_DELETED)
 
 	// create test fixture
 	cfgmaps := newTestFixture(t, rls)
@@ -101,7 +97,7 @@ func TestConfigMapDelete(t *testing.T) {
 func TestConfigMapUpdate(t *testing.T) {
 	// setup
 	key := "key-1"
-	rls := &rspb.Release{Name: "key-1", Version: 1}
+	rls := newTestRelease(key, 1, rspb.Status_SUPERSEDED)
 
 	// create test fixture
 	cfgmaps := newTestFixture(t, rls)
@@ -143,4 +139,9 @@ func newTestFixture(t *testing.T, list ...*rspb.Release) *ConfigMaps {
 	return NewConfigMaps(&testclient.FakeConfigMaps{
 		Fake: testclient.NewSimpleFake(objs...),
 	})
+}
+
+// newTestRelease creates a release object for testing
+func newTestRelease(key string, version int32, status rspb.Status_Code) *rspb.Release {
+	return &rspb.Release{Name: key, Info: &rspb.Info{Status: &rspb.Status{Code: status}}, Version: version}
 }
