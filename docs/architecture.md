@@ -75,9 +75,8 @@ The Go files generated from the `proto` definitions are stored in
 Docker images are built by cross-compiling Linux binaries and then
 building a Docker image from the files in `rootfs`.
 
-The `scripts/` directory contains a number of utility scripts, including
-`local-cluster.sh`, which can start a full Kubernetes instance inside of
-a Docker container.
+The `scripts/` directory contains a number of utility scripts. Most of these
+are used by the CI/CD pipeline.
 
 Go dependencies are managed with
 [Glide](https://github.com/Masterminds/glide) and stored in the
