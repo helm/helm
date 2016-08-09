@@ -25,9 +25,10 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-var storage = Init(driver.NewMemory())
-
 func TestStorageCreate(t *testing.T) {
+	// initialize storage
+	storage := Init(driver.NewMemory())
+
 	// create fake release
 	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
@@ -43,6 +44,9 @@ func TestStorageCreate(t *testing.T) {
 }
 
 func TestStorageUpdate(t *testing.T) {
+	// initialize storage
+	storage := Init(driver.NewMemory())
+
 	// create fake release
 	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
@@ -63,6 +67,9 @@ func TestStorageUpdate(t *testing.T) {
 }
 
 func TestStorageDelete(t *testing.T) {
+	// initialize storage
+	storage := Init(driver.NewMemory())
+
 	// create fake release
 	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
@@ -78,6 +85,9 @@ func TestStorageDelete(t *testing.T) {
 }
 
 func TestStorageList(t *testing.T) {
+	// initialize storage
+	storage := Init(driver.NewMemory())
+
 	// setup storage with test releases
 	setup := func() {
 		// release records

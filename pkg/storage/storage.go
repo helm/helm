@@ -107,6 +107,7 @@ func (s *Storage) ListFilterAny(filters ...FilterFunc) ([]*rspb.Release, error) 
 // Init initializes a new storage backend with the driver d.
 // If d is nil, the default in-memory driver is used.
 func Init(d driver.Driver) *Storage {
+	// default driver is in memory
 	if d == nil {
 		d = driver.NewMemory()
 	}
