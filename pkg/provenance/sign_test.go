@@ -218,13 +218,15 @@ func TestVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	passed, err := signer.Verify(testChartfile, testSigBlock)
-	if !passed {
+	if ver, err := signer.Verify(testChartfile, testSigBlock); err != nil {
 		t.Errorf("Failed to pass verify. Err: %s", err)
+	} else if len(ver.FileHash) == 0 {
+		t.Error("Verification is missing hash.")
+	} else if ver.SignedBy == nil {
+		t.Error("No SignedBy field")
 	}
 
-	passed, err = signer.Verify(testChartfile, testTamperedSigBlock)
-	if passed {
+	if _, err = signer.Verify(testChartfile, testTamperedSigBlock); err == nil {
 		t.Errorf("Expected %s to fail.", testTamperedSigBlock)
 	}
 

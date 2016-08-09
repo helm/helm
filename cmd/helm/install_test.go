@@ -74,6 +74,24 @@ func TestInstall(t *testing.T) {
 			expected: "FOOBAR",
 			resp:     releaseMock(&releaseOptions{name: "FOOBAR"}),
 		},
+		// Install, perform chart verification along the way.
+		{
+			name:  "install with verification, missing provenance",
+			args:  []string{"testdata/testcharts/compressedchart-0.1.0.tgz"},
+			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
+			err:   true,
+		},
+		{
+			name:  "install with verification, directory instead of file",
+			args:  []string{"testdata/testcharts/signtest"},
+			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
+			err:   true,
+		},
+		{
+			name:  "install with verification, valid",
+			args:  []string{"testdata/testcharts/signtest-0.1.0.tgz"},
+			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
+		},
 	}
 
 	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {

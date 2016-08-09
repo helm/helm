@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +41,7 @@ var defaultPGPConfig = packet.Config{
 	DefaultHash: crypto.SHA512,
 }
 
-// SumCollection represents a collecton of file and image checksums.
+// SumCollection represents a collection of file and image checksums.
 //
 // Files are of the form:
 //	FILENAME: "sha256:SUM"
@@ -53,6 +52,14 @@ var defaultPGPConfig = packet.Config{
 type SumCollection struct {
 	Files  map[string]string `json:"files"`
 	Images map[string]string `json:"images,omitempty"`
+}
+
+// Verification contains information about a verification operation.
+type Verification struct {
+	// SignedBy contains the entity that signed a chart.
+	SignedBy *openpgp.Entity
+	// FileHash is the hash, prepended with the scheme, for the file that was verified.
+	FileHash string
 }
 
 // Signatory signs things.
@@ -174,32 +181,50 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 }
 
 // Verify checks a signature and verifies that it is legit for a chart.
-func (s *Signatory) Verify(chartpath, sigpath string) (bool, error) {
+func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
+	ver := &Verification{}
 	for _, fname := range []string{chartpath, sigpath} {
 		if fi, err := os.Stat(fname); err != nil {
-			return false, err
+			return ver, err
 		} else if fi.IsDir() {
-			return false, fmt.Errorf("%s cannot be a directory", fname)
+			return ver, fmt.Errorf("%s cannot be a directory", fname)
 		}
 	}
 
 	// First verify the signature
 	sig, err := s.decodeSignature(sigpath)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode signature: %s", err)
+		return ver, fmt.Errorf("failed to decode signature: %s", err)
 	}
 
 	by, err := s.verifySignature(sig)
 	if err != nil {
-		return false, err
+		return ver, err
 	}
-	for n := range by.Identities {
-		log.Printf("info: %s signed by %q", sigpath, n)
-	}
+	ver.SignedBy = by
 
 	// Second, verify the hash of the tarball.
+	sum, err := sumArchive(chartpath)
+	if err != nil {
+		return ver, err
+	}
+	_, sums, err := parseMessageBlock(sig.Plaintext)
+	if err != nil {
+		return ver, err
+	}
 
-	return true, nil
+	sum = "sha256:" + sum
+	basename := filepath.Base(chartpath)
+	if sha, ok := sums.Files[basename]; !ok {
+		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", basename)
+	} else if sha != sum {
+		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
+	}
+	ver.FileHash = sum
+
+	// TODO: when image signing is added, verify that here.
+
+	return ver, nil
 }
 
 func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {

@@ -46,6 +46,8 @@ of the Charts.yaml file
 type inspectCmd struct {
 	chartpath string
 	output    string
+	verify    bool
+	keyring   string
 	out       io.Writer
 	client    helm.Interface
 }
@@ -71,7 +73,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0])
+			cp, err := locateChartPath(args[0], insp.verify, insp.keyring)
 			if err != nil {
 				return err
 			}
@@ -86,7 +88,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:  inspectValuesDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			insp.output = valuesOnly
-			cp, err := locateChartPath(args[0])
+			cp, err := locateChartPath(args[0], insp.verify, insp.keyring)
 			if err != nil {
 				return err
 			}
@@ -101,7 +103,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:  inspectChartDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			insp.output = chartOnly
-			cp, err := locateChartPath(args[0])
+			cp, err := locateChartPath(args[0], insp.verify, insp.keyring)
 			if err != nil {
 				return err
 			}
@@ -109,6 +111,19 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			return insp.run()
 		},
 	}
+
+	vflag := "verify"
+	vdesc := "verify the provenance data for this chart"
+	inspectCommand.Flags().BoolVar(&insp.verify, vflag, false, vdesc)
+	valuesSubCmd.Flags().BoolVar(&insp.verify, vflag, false, vdesc)
+	chartSubCmd.Flags().BoolVar(&insp.verify, vflag, false, vdesc)
+
+	kflag := "keyring"
+	kdesc := "the path to the keyring containing public verification keys"
+	kdefault := defaultKeyring()
+	inspectCommand.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
+	valuesSubCmd.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
+	chartSubCmd.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
 
 	inspectCommand.AddCommand(valuesSubCmd)
 	inspectCommand.AddCommand(chartSubCmd)

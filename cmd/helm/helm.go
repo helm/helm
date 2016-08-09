@@ -95,6 +95,8 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newUpgradeCmd(nil, out),
 		newRollbackCmd(nil, out),
 		newPackageCmd(nil, out),
+		newFetchCmd(out),
+		newVerifyCmd(out),
 	)
 	return cmd
 }

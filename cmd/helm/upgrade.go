@@ -46,6 +46,8 @@ type upgradeCmd struct {
 	disableHooks bool
 	valuesFile   string
 	values       *values
+	verify       bool
+	keyring      string
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -79,6 +81,8 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
 	f.Var(upgrade.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks")
+	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
+	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "the path to the keyring that contains public singing keys")
 
 	return cmd
 }
@@ -109,7 +113,7 @@ func (u *upgradeCmd) vals() ([]byte, error) {
 }
 
 func (u *upgradeCmd) run() error {
-	chartPath, err := locateChartPath(u.chart)
+	chartPath, err := locateChartPath(u.chart, u.verify, u.keyring)
 	if err != nil {
 		return err
 	}
