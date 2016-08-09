@@ -62,7 +62,7 @@ type releaseServer struct {
 }
 
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
-	rels, err := s.env.Releases.ListReleases()
+	rels, err := s.env.Releases.ListDeployed()
 	if err != nil {
 		return err
 	}
