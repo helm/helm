@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -71,9 +72,13 @@ func (i *initCmd) run() error {
 
 	if !i.clientOnly {
 		if err := client.Install(tillerNamespace, i.image, flagDebug); err != nil {
-			return fmt.Errorf("error installing: %s", err)
+			if !strings.Contains(err.Error(), `"tiller-deploy" already exists`) {
+				return fmt.Errorf("error installing: %s", err)
+			}
+			fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster. (Use --client-only to supress this message.)")
+		} else {
+			fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 		}
-		fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 	} else {
 		fmt.Fprintln(i.out, "Not installing tiller due to 'client-only' flag having been set")
 	}
