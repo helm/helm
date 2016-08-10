@@ -23,4 +23,4 @@ package version // import "k8s.io/helm/pkg/version"
 // Increment major number for new feature additions and behavioral changes.
 // Increment minor number for bug fixes and performance enhancements.
 // Increment patch number for critical fixes to existing releases.
-var Version = "v2.0.0-alpha.2"
+var Version = "v2.0.0-alpha.3"
