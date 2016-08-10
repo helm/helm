@@ -51,3 +51,6 @@ import:
   vcs: git
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
+- package: google.golang.org/cloud
+  vcs: git
+  repo: https://code.googlesource.com/gocloud
