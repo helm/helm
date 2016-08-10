@@ -158,6 +158,17 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	if rel.Info == nil {
 		return nil, errors.New("release info is missing")
 	}
+
+	// Ok, we got the status of the release as we had jotted down, now we need to match the
+	// manifest we stashed away with reality from the cluster.
+	kubeCli := s.env.KubeClient
+	resp, err := kubeCli.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
+	if err != nil {
+		log.Printf("warning: Get for %s failed: %v", rel.Name, err)
+		return nil, err
+	}
+	rel.Info.Status.Resources = resp
+
 	return &services.GetReleaseStatusResponse{Info: rel.Info}, nil
 }
 

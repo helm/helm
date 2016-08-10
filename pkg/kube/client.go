@@ -17,6 +17,7 @@ limitations under the License.
 package kube // import "k8s.io/helm/pkg/kube"
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -50,7 +51,7 @@ func New(config clientcmd.ClientConfig) *Client {
 	}
 }
 
-// ResourceActorFunc performs an action on a signle resource.
+// ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
 
 // Create creates kubernetes resources from an io.reader
@@ -61,6 +62,59 @@ func (c *Client) Create(namespace string, reader io.Reader) error {
 		return err
 	}
 	return perform(c, namespace, reader, createResource)
+}
+
+// Get gets kubernetes resources as pretty printed string
+//
+// Namespace will set the namespace
+func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
+	// Since we don't know what order the objects come in, let's group them by the types, so
+	// that when we print them, they come looking good (headers apply to subgroups, etc.)
+	objs := make(map[string][]runtime.Object)
+	err := perform(c, namespace, reader, func(info *resource.Info) error {
+		log.Printf("Doing get for: '%s'", info.Name)
+		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
+		if err != nil {
+			return err
+		}
+		// We need to grab the ObjectReference so we can correctly group the objects.
+		or, err := api.GetReference(obj)
+		if err != nil {
+			log.Printf("FAILED GetReference for: %#v\n%v", obj, err)
+			return err
+		}
+
+		// Use APIVersion/Kind as grouping mechanism. I'm not sure if you can have multiple
+		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
+		objType := or.APIVersion + "/" + or.Kind
+		objs[objType] = append(objs[objType], obj)
+		return nil
+	})
+
+	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
+	// spin through them and print them. Printer is cool since it prints the header only when
+	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
+	// track of tab widths
+	buf := new(bytes.Buffer)
+	p := kubectl.NewHumanReadablePrinter(false, false, false, false, false, false, []string{})
+	for t, ot := range objs {
+		_, err = buf.WriteString("==> " + t + "\n")
+		if err != nil {
+			return "", err
+		}
+		for _, o := range ot {
+			err = p.PrintObj(o, buf)
+			if err != nil {
+				log.Printf("failed to print object type '%s', object: '%s' :\n %v", t, o, err)
+				return "", err
+			}
+		}
+		_, err := buf.WriteString("\n")
+		if err != nil {
+			return "", err
+		}
+	}
+	return buf.String(), err
 }
 
 // Update reads in the current configuration and a modified configuration from io.reader
