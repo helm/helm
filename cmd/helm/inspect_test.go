@@ -61,4 +61,17 @@ func TestInspect(t *testing.T) {
 			t.Errorf("Expected\n%q\nGot\n%q\n", expect[i], got)
 		}
 	}
+
+	// Regression tests for missing values. See issue #1024.
+	b.Reset()
+	insp = &inspectCmd{
+		chartpath: "testdata/testcharts/novals",
+		output:    "values",
+		out:       b,
+	}
+	insp.run()
+	if b.Len() != 0 {
+		t.Errorf("expected empty values buffer, got %q", b.String())
+	}
+
 }

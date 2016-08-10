@@ -66,11 +66,31 @@ GCR registry.
 
 ## Running a Local Cluster
 
-You can run tests locally using the `scripts/local-cluster.sh` script to
-start Kubernetes inside of a Docker container. For OS X, you will need
-to be running `docker-machine`.
+For development, we highly recommend using the
+[Kubernetes Minikube](https://github.com/kubernetes/minikube)
+developer-oriented distribution. Once this is installed, you can use 
+`helm init` to install into the cluster.
 
-Tiller should run on any >= 1.2 Kubernetes cluster with beta extensions.
+For developing on Tiller, it is sometimes more expedient to run Tiller locally
+instead of packaging it into an image and running it in-cluster. You can do
+this by telling the Helm client to us a local instance.
+
+```console
+$ make build
+$ bin/tiller
+```
+
+And to configure the Helm client, use the `--host` flag or export the `HELM_HOST`
+environment variable:
+
+```console
+$ export HELM_HOST=localhost:44134
+$ helm install foo
+```
+
+(Note that you do not need to use `helm init` when you are running Tiller directly)
+
+Tiller should run on any >= 1.3 Kubernetes cluster.
 
 ## Contribution Guidelines
 

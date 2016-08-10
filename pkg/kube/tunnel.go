@@ -51,7 +51,7 @@ func (c *Client) ForwardPort(namespace, podName string, remote int) (*Tunnel, er
 	}
 
 	// Build a url to the portforward endpoing
-	// example: http://localhost:8080/api/v1/namespaces/helm/pods/tiller-rc-9itlq/portforward
+	// example: http://localhost:8080/api/v1/namespaces/helm/pods/tiller-deploy-9itlq/portforward
 	u := client.RESTClient.Post().
 		Resource("pods").
 		Namespace(namespace).

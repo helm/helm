@@ -130,11 +130,10 @@ func (i *inspectCmd) run() error {
 		fmt.Fprintln(i.out, string(cf))
 	}
 
-	if i.output == both {
-		fmt.Fprintln(i.out, "---")
-	}
-
-	if i.output == valuesOnly || i.output == both {
+	if (i.output == valuesOnly || i.output == both) && chrt.Values != nil {
+		if i.output == both {
+			fmt.Fprintln(i.out, "---")
+		}
 		fmt.Fprintln(i.out, chrt.Values.Raw)
 	}
 

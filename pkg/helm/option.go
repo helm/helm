@@ -143,6 +143,13 @@ func DeleteDryRun(dry bool) DeleteOption {
 	}
 }
 
+// UpgradeDisableHooks will disable hooks for an upgrade operation.
+func UpgradeDisableHooks(disable bool) UpdateOption {
+	return func(opts *options) {
+		opts.disableHooks = disable
+	}
+}
+
 // UpgradeDryRun will (if true) execute an upgrade as a dry run.
 func UpgradeDryRun(dry bool) UpdateOption {
 	return func(opts *options) {
@@ -237,9 +244,15 @@ func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient,
 
 // Executes tiller.UpdateRelease RPC.
 func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	//TODO: handle dryRun
+	for _, opt := range opts {
+		opt(o)
+	}
 
-	return rlc.UpdateRelease(context.TODO(), &rls.UpdateReleaseRequest{Name: rlsName, Chart: chr})
+	o.updateReq.Chart = chr
+	o.updateReq.DryRun = o.dryRun
+	o.updateReq.Name = rlsName
+
+	return rlc.UpdateRelease(context.TODO(), &o.updateReq)
 }
 
 // Executes tiller.GetReleaseStatus RPC.

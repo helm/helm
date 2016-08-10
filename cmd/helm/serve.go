@@ -17,17 +17,19 @@ limitations under the License.
 package main
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/repo"
 )
 
-var serveDesc = `This command starts a local chart repository server that serves the charts saved in your $HELM_HOME/local/ directory.`
-
-//TODO: add repoPath flag to be passed in in case you want
-//  to serve charts from a different local dir
+var serveDesc = `This command starts a local chart repository server that serves charts from a local directory.`
+var repoPath string
 
 func init() {
+	serveCmd.Flags().StringVar(&repoPath, "repo-path", localRepoDirectory(), "The local directory path from which to serve charts.")
 	RootCommand.AddCommand(serveCmd)
 }
 
@@ -35,9 +37,19 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "start a local http web server",
 	Long:  serveDesc,
-	Run:   serve,
+	RunE:  serve,
 }
 
-func serve(cmd *cobra.Command, args []string) {
-	repo.StartLocalRepo(localRepoDirectory())
+func serve(cmd *cobra.Command, args []string) error {
+
+	repoPath, err := filepath.Abs(repoPath)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
+		return err
+	}
+
+	repo.StartLocalRepo(repoPath)
+	return nil
 }

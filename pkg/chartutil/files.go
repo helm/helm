@@ -32,11 +32,14 @@ func NewFiles(from []*any.Any) Files {
 	return files
 }
 
-// Get a file by path.
+// GetBytes gets a file by path.
+//
+// The returned data is raw. In a template context, this is identical to calling
+// {{index .Files $path}}.
 //
 // This is intended to be accessed from within a template, so a missed key returns
 // an empty []byte.
-func (f Files) Get(name string) []byte {
+func (f Files) GetBytes(name string) []byte {
 	v, ok := f[name]
 	if !ok {
 		return []byte{}
@@ -44,10 +47,12 @@ func (f Files) Get(name string) []byte {
 	return v
 }
 
-// GetString returns a string representation of the given file.
+// Get returns a string representation of the given file.
 //
-// This is a convenience for the otherwise cumbersome template logic
-// for '{{.Files.Get "foo" | printf "%s"}}'.
-func (f Files) GetString(name string) string {
-	return string(f.Get(name))
+// Fetch the contents of a file as a string. It is designed to be called in a
+// template.
+//
+//	{{.Files.Get "foo"}}
+func (f Files) Get(name string) string {
+	return string(f.GetBytes(name))
 }

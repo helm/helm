@@ -218,6 +218,11 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return err
 		}
 		if fi.IsDir() {
+			// Directory-based ignore rules should involve skipping the entire
+			// contents of that directory.
+			if rules.Ignore(n, fi) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 

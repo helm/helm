@@ -17,14 +17,54 @@ limitations under the License.
 package kube
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"strings"
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api/meta"
+	"k8s.io/kubernetes/pkg/api/testapi"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	api "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/unversioned/fake"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/runtime"
 )
+
+func TestUpdateResource(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		namespace  string
+		modified   *resource.Info
+		currentObj runtime.Object
+		err        bool
+		errMessage string
+	}{
+		{
+			name:       "no changes when updating resources",
+			modified:   createFakeInfo("nginx", nil),
+			currentObj: createFakePod("nginx", nil),
+			err:        true,
+			errMessage: "Looks like there are no changes for nginx",
+		},
+		//{
+		//name:       "valid update input",
+		//modified:   createFakeInfo("nginx", map[string]string{"app": "nginx"}),
+		//currentObj: createFakePod("nginx", nil),
+		//},
+	}
+
+	for _, tt := range tests {
+		err := updateResource(tt.modified, tt.currentObj)
+		if err != nil && err.Error() != tt.errMessage {
+			t.Errorf("%q. expected error message: %v, got %v", tt.name, tt.errMessage, err)
+		}
+	}
+}
 
 func TestPerform(t *testing.T) {
 	tests := []struct {
@@ -214,3 +254,53 @@ spec:
         ports:
         - containerPort: 80
 `
+
+func createFakePod(name string, labels map[string]string) runtime.Object {
+	objectMeta := createObjectMeta(name, labels)
+
+	object := &api.Pod{
+		ObjectMeta: objectMeta,
+	}
+
+	return object
+}
+
+func createFakeInfo(name string, labels map[string]string) *resource.Info {
+	pod := createFakePod(name, labels)
+	marshaledObj, _ := json.Marshal(pod)
+
+	mapping := &meta.RESTMapping{
+		Resource: name,
+		Scope:    meta.RESTScopeNamespace,
+		GroupVersionKind: unversioned.GroupVersionKind{
+			Kind:    "Pod",
+			Version: "v1",
+		}}
+
+	client := &fake.RESTClient{
+		Codec: testapi.Default.Codec(),
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			header := http.Header{}
+			header.Set("Content-Type", runtime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: 200,
+				Header:     header,
+				Body:       ioutil.NopCloser(bytes.NewReader(marshaledObj)),
+			}, nil
+		})}
+	info := resource.NewInfo(client, mapping, "default", "nginx", false)
+
+	info.Object = pod
+
+	return info
+}
+
+func createObjectMeta(name string, labels map[string]string) api.ObjectMeta {
+	objectMeta := api.ObjectMeta{Name: name, Namespace: "default"}
+
+	if labels != nil {
+		objectMeta.Labels = labels
+	}
+
+	return objectMeta
+}

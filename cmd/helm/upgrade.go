@@ -34,12 +34,13 @@ argument can be a relative path to a packaged or unpackaged chart.
 `
 
 type upgradeCmd struct {
-	release    string
-	chart      string
-	out        io.Writer
-	client     helm.Interface
-	dryRun     bool
-	valuesFile string
+	release      string
+	chart        string
+	out          io.Writer
+	client       helm.Interface
+	dryRun       bool
+	disableHooks bool
+	valuesFile   string
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -70,6 +71,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVarP(&upgrade.valuesFile, "values", "f", "", "path to a values YAML file")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
+	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks")
 
 	return cmd
 }
@@ -88,12 +90,13 @@ func (u *upgradeCmd) run() error {
 		}
 	}
 
-	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun))
+	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
 	if err != nil {
 		return prettyError(err)
 	}
 
-	fmt.Fprintf(u.out, "It's not you. It's me\nYour upgrade looks valid but this command is still under active development.\nHang tight.\n")
+	success := u.release + " has been upgraded. Happy Helming!\n"
+	fmt.Fprintf(u.out, success)
 
 	return nil
 

@@ -1,0 +1,6 @@
+description: Deploy a basic Alpine Linux pod
+home: https://k8s.io/helm
+name: novals
+sources:
+- https://github.com/kubernetes/helm
+version: 0.2.0

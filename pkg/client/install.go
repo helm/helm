@@ -66,19 +66,13 @@ func Install(namespace, image string, verbose bool) error {
 // InstallYAML is the installation YAML for DM.
 const InstallYAML = `
 ---
-apiVersion: v1
-kind: ReplicationController
+apiVersion: extensions/v1beta1
+kind: Deployment
 metadata:
-  labels:
-    app: helm
-    name: tiller
-  name: tiller-rc
+  name: tiller-deploy
   namespace: {{ .Namespace }}
 spec:
   replicas: 1
-  selector:
-    app: helm
-    name: tiller
   template:
     metadata:
       labels:

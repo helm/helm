@@ -9,4 +9,4 @@ tar -zcvf frobnitz/charts/mariner-4.3.2.tgz mariner
 
 # Pack the frobnitz chart.
 echo "Packing frobnitz"
-tar -zcvf frobnitz-1.2.3.tgz frobnitz
+tar --exclude=ignore/* -zcvf frobnitz-1.2.3.tgz frobnitz
