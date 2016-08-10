@@ -147,7 +147,8 @@ type KubeClient interface {
 	// by "\n---\n").
 	Create(namespace string, reader io.Reader) error
 
-	// Get gets one or more resources.
+	// Get gets one or more resources. Returned string hsa the format like kubectl
+	// provides with the column headers separating the resource types.
 	//
 	// namespace must contain a valid existing namespace.
 	//
@@ -190,6 +191,12 @@ type PrintingKubeClient struct {
 func (p *PrintingKubeClient) Create(ns string, r io.Reader) error {
 	_, err := io.Copy(p.Out, r)
 	return err
+}
+
+// Get prints the values of what would be created with a real KubeClient.
+func (p *PrintingKubeClient) Get(ns string, r io.Reader) (string, error) {
+	_, err := io.Copy(p.Out, r)
+	return "", err
 }
 
 // Delete implements KubeClient delete.

@@ -77,14 +77,15 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		if err != nil {
 			return err
 		}
-		// We need to fetch the
+		// We need to grab the ObjectReference so we can correctly group the objects.
 		or, err := api.GetReference(obj)
 		if err != nil {
 			log.Printf("FAILED GetReference for: %#v\n%v", obj, err)
 			return err
 		}
 
-		// Use APIVersion/Kind as grouping mechanism
+		// Use APIVersion/Kind as grouping mechanism. I'm not sure if you can have multiple
+		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		objType := or.APIVersion + "/" + or.Kind
 		objs[objType] = append(objs[objType], obj)
 		return nil
@@ -97,6 +98,10 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	buf := new(bytes.Buffer)
 	p := kubectl.NewHumanReadablePrinter(false, false, false, false, false, false, []string{})
 	for t, ot := range objs {
+		_, err = buf.WriteString("==> " + t + "\n")
+		if err != nil {
+			return "", err
+		}
 		for _, o := range ot {
 			err = p.PrintObj(o, buf)
 			if err != nil {

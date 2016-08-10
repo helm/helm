@@ -165,10 +165,10 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	kubeCli := s.env.KubeClient
 	resp, err := kubeCli.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
 	if err != nil {
-		log.Printf("warning: COULDN'T FETCH %q failed: %s", rel.Name, err)
+		log.Printf("warning: Get for %s failed: %v", rel.Name, err)
 		return nil, err
 	}
-	rel.Info.Status.ClusterStatus = resp
+	rel.Info.Status.Resources = resp
 
 	return &services.GetReleaseStatusResponse{Info: rel.Info}, nil
 }
