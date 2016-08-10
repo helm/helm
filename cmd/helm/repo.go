@@ -167,7 +167,7 @@ func insertRepoLine(name, url string) error {
 	}
 	_, ok := f.Repositories[name]
 	if ok {
-		return fmt.Errorf("The repository name you provided (%s) already exists. Please specifiy a different name.", name)
+		return fmt.Errorf("The repository name you provided (%s) already exists. Please specify a different name.", name)
 	}
 
 	if f.Repositories == nil {
