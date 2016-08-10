@@ -21,13 +21,11 @@ import (
 
 	"k8s.io/helm/cmd/tiller/environment"
 	"k8s.io/helm/pkg/engine"
-	"k8s.io/helm/pkg/storage"
 )
 
 // These are canary tests to make sure that the default server actually
 // fulfills its requirements.
 var _ environment.Engine = &engine.Engine{}
-var _ environment.ReleaseStorage = storage.NewMemory()
 
 func TestInit(t *testing.T) {
 	defer func() {

@@ -29,9 +29,15 @@ import (
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/storage/driver"
 )
+
+// UseConfigMaps is a feature flags to toggle use of configmaps storage driver.
+const UseConfigMaps = false
+
+// TillerNamespace is the namespace tiller is running in.
+const TillerNamespace = "kube-system"
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"
@@ -83,56 +89,6 @@ type Engine interface {
 	// It receives a chart, a config, and a map of overrides to the config.
 	// Overrides are assumed to be passed from the system, not the user.
 	Render(*chart.Chart, chartutil.Values) (map[string]string, error)
-}
-
-// ReleaseStorage represents a storage engine for a Release.
-//
-// Release storage must be concurrency safe.
-type ReleaseStorage interface {
-
-	// Create stores a release in the storage.
-	//
-	// If a release with the same name exists, this returns an error.
-	//
-	// It may return other errors in cases where it cannot write to storage.
-	Create(*release.Release) error
-	// Read takes a name and returns a release that has that name.
-	//
-	// It will only return releases that are not deleted and not superseded.
-	//
-	// It will return an error if no relevant release can be found, or if storage
-	// is not properly functioning.
-	Read(name string) (*release.Release, error)
-
-	// Update looks for a release with the same name and updates it with the
-	// present release contents.
-	//
-	// For immutable storage backends, this may result in a new release record
-	// being created, and the previous release being marked as superseded.
-	//
-	// It will return an error if a previous release is not found. It may also
-	// return an error if the storage backend encounters an error.
-	Update(*release.Release) error
-
-	// Delete marks a Release as deleted.
-	//
-	// It returns the deleted record. If the record is not found or if the
-	// underlying storage encounters an error, this will return an error.
-	Delete(name string) (*release.Release, error)
-
-	// List lists all active (non-deleted, non-superseded) releases.
-	//
-	// To get deleted or superseded releases, use Query.
-	List() ([]*release.Release, error)
-
-	// Query takes a map of labels and returns any releases that match.
-	//
-	// Query will search all releases, including deleted and superseded ones.
-	// The provided map will be used to filter results.
-	Query(map[string]string) ([]*release.Release, error)
-
-	// History takes a release name and returns the history of releases.
-	History(name string) ([]*release.Release, error)
 }
 
 // KubeClient represents a client capable of communicating with the Kubernetes API.
@@ -211,7 +167,7 @@ type Environment struct {
 	// EngineYard provides access to the known template engines.
 	EngineYard EngineYard
 	// Releases stores records of releases.
-	Releases ReleaseStorage
+	Releases *storage.Storage
 	// KubeClient is a Kubernetes API client.
 	KubeClient KubeClient
 }
@@ -224,9 +180,24 @@ func New() *Environment {
 		// we can easily add some here.
 		GoTplEngine: e,
 	}
+
+	kbc := kube.New(nil)
+
+	var sd *storage.Storage
+	if UseConfigMaps {
+		c, err := kbc.Client()
+		if err != nil {
+			// panic because we cant initliaze driver with no client
+			panic(err)
+		}
+		sd = storage.Init(driver.NewConfigMaps(c.ConfigMaps(TillerNamespace)))
+	} else {
+		sd = storage.Init(driver.NewMemory())
+	}
+
 	return &Environment{
 		EngineYard: ey,
-		Releases:   storage.NewMemory(),
-		KubeClient: kube.New(nil), //&PrintingKubeClient{Out: os.Stdout},
+		Releases:   sd,  //storage.Init(driver.NewMemory()),
+		KubeClient: kbc, //kube.New(nil), //&PrintingKubeClient{Out: os.Stdout},
 	}
 }

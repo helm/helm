@@ -14,10 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package storage implements storage for Tiller objects.
-
-Tiller stores releases (see 'cmd/tiller/environment'.Environment). The backend
-storage mechanism may be implemented with different backends. This package
-and its subpackages provide storage layers for Tiller objects.
+/*
+Package storage implements storage for Tiller objects.The backend storage
+mechanism may be implemented with different backends. This package and its
+subpackages provide storage layers for Tiller objects.
 */
 package storage // import "k8s.io/helm/pkg/storage"

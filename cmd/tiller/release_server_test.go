@@ -32,6 +32,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/storage/driver"
 )
 
 var manifestWithHook = `apiVersion: v1
@@ -176,7 +177,7 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Release.Namespace)
 	}
 
-	rel, err := rs.env.Releases.Read(res.Release.Name)
+	rel, err := rs.env.Releases.Get(res.Release.Name)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
@@ -246,7 +247,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Should not contain template data for an empty file. %s", res.Release.Manifest)
 	}
 
-	if _, err := rs.env.Releases.Read(res.Release.Name); err == nil {
+	if _, err := rs.env.Releases.Get(res.Release.Name); err == nil {
 		t.Errorf("Expected no stored release.")
 	}
 
@@ -333,7 +334,7 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Release.Namespace)
 	}
 
-	updated, err := rs.env.Releases.Read(res.Release.Name)
+	updated, err := rs.env.Releases.Get(res.Release.Name)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
@@ -597,7 +598,7 @@ func TestListReleasesFilter(t *testing.T) {
 
 func mockEnvironment() *environment.Environment {
 	e := environment.New()
-	e.Releases = storage.NewMemory()
+	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
 	return e
 }
