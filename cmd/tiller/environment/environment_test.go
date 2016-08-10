@@ -81,7 +81,7 @@ func (k *mockKubeClient) Create(ns string, r io.Reader) error {
 	return nil
 }
 func (k *mockKubeClient) Get(ns string, r io.Reader) (string, error) {
-	return nil
+	return "", nil
 }
 func (k *mockKubeClient) Delete(ns string, r io.Reader) error {
 	return nil
