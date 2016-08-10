@@ -28,18 +28,8 @@ generate_cover_data() {
     (
       local output="${coverdir}/${d//\//-}.cover"
       go test -coverprofile="${output}" -covermode="$covermode" "$d"
-    ) &
+    )
   done
-
-  local fails
-  fails=0
-  for job in $(jobs -p); do
-    wait "${job}" || let "fails+=1"
-  done
-  if (( fails != 0 )); then
-    echo "FAILED"
-    exit ${fails}
-  fi
 
   echo "mode: $covermode" >"$profile"
   grep -h -v "^mode:" "$coverdir"/*.cover >>"$profile"
