@@ -41,8 +41,9 @@ quiet-kitten
 
 ## Install
 
-Helm is in its early stages of development. At this time there are no binary
-releases.
+Download a [release tarball of helm and tiller for your platform](https://github.com/kubernetes/helm/releases). Unpack the `helm` and `tiller` binaries and add them to your PATH and you are good to go!
+
+### Install from source
 
 To install Helm from source, follow this process:
 
