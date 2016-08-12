@@ -45,10 +45,6 @@ import:
   - pkg/util/strategicpatch
   - pkg/util/yaml
 - package: github.com/gosuri/uitable
-- package: speter.net/go/exp/math/dec/inf
-  version: ^0.9.0
-  repo: https://github.com/go-inf/inf.git
-  vcs: git
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
 - package: google.golang.org/cloud

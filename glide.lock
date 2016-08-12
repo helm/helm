@@ -1,5 +1,5 @@
-hash: b2a8d0f3f558b4c1026e519c7bdcb5dd675e66424edcf1440ec10706afd6b345
-updated: 2016-08-10T15:23:57.611441314-06:00
+hash: ae516306cd7ec28920ecd9e6edf1767336ccdfad7846bcb5111fb085d8848bbd
+updated: 2016-08-12T10:41:12.543890279-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -251,12 +251,12 @@ imports:
   version: fb93926129b8ec0056f2f458b1f519654814edf0
   subpackages:
   - context
-  - context/ctxhttp
   - http2
+  - trace
   - http2/hpack
   - internal/timeseries
-  - trace
   - websocket
+  - context/ctxhttp
 - name: golang.org/x/oauth2
   version: b5adcc2dcdf009d0391547edc6ecbaff889f5bb9
   subpackages:
@@ -274,8 +274,8 @@ imports:
   - internal/log
   - internal/modules
   - internal/remote_api
-  - internal/urlfetch
   - urlfetch
+  - internal/urlfetch
 - name: google.golang.org/cloud
   version: eb47ba841d53d93506cfbfbc03927daf9cc48f88
   repo: https://code.googlesource.com/gocloud
@@ -286,173 +286,169 @@ imports:
 - name: google.golang.org/grpc
   version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
   subpackages:
+  - metadata
   - codes
   - credentials
   - grpclog
   - internal
-  - metadata
   - naming
-  - peer
   - transport
+  - peer
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: a0bfee0d3899d2b91530552a536405c1fe1a1d2a
+  version: a570a0fef12408f1c0a7214952055bad39c160d7
   subpackages:
-  - federation/apis/federation
-  - federation/apis/federation/install
-  - federation/apis/federation/v1beta1
-  - federation/client/clientset_generated/federation_internalclientset
-  - federation/client/clientset_generated/federation_internalclientset/typed/core/unversioned
-  - federation/client/clientset_generated/federation_internalclientset/typed/federation/unversioned
   - pkg/api
-  - pkg/api/annotations
-  - pkg/api/endpoints
-  - pkg/api/error
-  - pkg/api/errors
-  - pkg/api/install
   - pkg/api/meta
-  - pkg/api/meta/metatypes
-  - pkg/api/pod
-  - pkg/api/resource
-  - pkg/api/rest
-  - pkg/api/service
-  - pkg/api/testapi
+  - pkg/api/error
   - pkg/api/unversioned
-  - pkg/api/unversioned/validation
-  - pkg/api/util
-  - pkg/api/v1
-  - pkg/api/validation
-  - pkg/apimachinery
   - pkg/apimachinery/registered
+  - pkg/client/restclient
+  - pkg/client/unversioned
+  - pkg/apis/batch
+  - pkg/client/unversioned/clientcmd
+  - pkg/client/unversioned/fake
+  - pkg/client/unversioned/portforward
+  - pkg/client/unversioned/remotecommand
+  - pkg/kubectl
+  - pkg/kubectl/cmd/util
+  - pkg/kubectl/resource
+  - pkg/labels
+  - pkg/runtime
+  - pkg/watch
+  - pkg/util/strategicpatch
+  - pkg/util/yaml
+  - pkg/api/errors
+  - pkg/client/unversioned/testclient
+  - pkg/api/testapi
+  - pkg/api/v1
+  - pkg/api/meta/metatypes
+  - pkg/api/resource
+  - pkg/auth/user
+  - pkg/conversion
+  - pkg/fields
+  - pkg/runtime/serializer
+  - pkg/types
+  - pkg/util
+  - pkg/util/intstr
+  - pkg/util/rand
+  - pkg/util/sets
+  - pkg/api/install
   - pkg/apis/apps
   - pkg/apis/apps/install
-  - pkg/apis/apps/v1alpha1
-  - pkg/apis/authentication.k8s.io
   - pkg/apis/authentication.k8s.io/install
-  - pkg/apis/authentication.k8s.io/v1beta1
-  - pkg/apis/authorization
   - pkg/apis/authorization/install
-  - pkg/apis/authorization/v1beta1
   - pkg/apis/autoscaling
   - pkg/apis/autoscaling/install
-  - pkg/apis/autoscaling/v1
-  - pkg/apis/batch
   - pkg/apis/batch/install
-  - pkg/apis/batch/v1
   - pkg/apis/batch/v2alpha1
-  - pkg/apis/componentconfig
   - pkg/apis/componentconfig/install
-  - pkg/apis/componentconfig/v1alpha1
   - pkg/apis/extensions
   - pkg/apis/extensions/install
-  - pkg/apis/extensions/v1beta1
-  - pkg/apis/extensions/validation
   - pkg/apis/policy
   - pkg/apis/policy/install
-  - pkg/apis/policy/v1alpha1
   - pkg/apis/rbac
   - pkg/apis/rbac/install
-  - pkg/apis/rbac/v1alpha1
-  - pkg/auth/user
-  - pkg/capabilities
-  - pkg/client/cache
+  - pkg/client/typed/discovery
+  - pkg/util/net
+  - pkg/util/wait
+  - pkg/version
+  - plugin/pkg/client/auth
+  - pkg/util/validation
+  - pkg/util/validation/field
+  - pkg/apimachinery
+  - pkg/client/unversioned/auth
+  - pkg/client/unversioned/clientcmd/api
+  - pkg/client/unversioned/clientcmd/api/latest
+  - pkg/util/errors
+  - pkg/util/homedir
+  - pkg/kubelet/server/portforward
+  - pkg/util/httpstream
+  - pkg/util/runtime
+  - pkg/client/transport
+  - pkg/kubelet/server/remotecommand
+  - pkg/util/httpstream/spdy
+  - federation/apis/federation
+  - federation/client/clientset_generated/federation_internalclientset
+  - pkg/api/annotations
+  - pkg/api/util
+  - pkg/api/validation
+  - pkg/apis/batch/v1
   - pkg/client/clientset_generated/internalclientset
+  - pkg/client/unversioned/adapters/internalclientset
+  - pkg/credentialprovider
+  - pkg/fieldpath
+  - pkg/kubelet/qos/util
+  - pkg/util/deployment
+  - pkg/util/integer
+  - pkg/util/jsonpath
+  - pkg/util/slice
+  - pkg/api/service
+  - pkg/controller
+  - pkg/registry/thirdpartyresourcedata
+  - pkg/runtime/serializer/json
+  - pkg/util/flag
+  - pkg/conversion/queryparams
+  - pkg/util/json
+  - third_party/forked/json
+  - federation/apis/federation/install
+  - pkg/runtime/serializer/recognizer
+  - pkg/util/parsers
+  - pkg/watch/versioned
+  - third_party/forked/reflect
+  - pkg/runtime/serializer/protobuf
+  - pkg/runtime/serializer/versioning
+  - pkg/apis/apps/v1alpha1
+  - pkg/apis/authentication.k8s.io
+  - pkg/apis/authentication.k8s.io/v1beta1
+  - pkg/apis/authorization
+  - pkg/apis/authorization/v1beta1
+  - pkg/apis/autoscaling/v1
+  - pkg/apis/componentconfig
+  - pkg/apis/componentconfig/v1alpha1
+  - pkg/apis/extensions/v1beta1
+  - pkg/apis/policy/v1alpha1
+  - pkg/apis/rbac/v1alpha1
+  - pkg/client/metrics
+  - pkg/runtime/serializer/streaming
+  - pkg/util/crypto
+  - pkg/util/flowcontrol
+  - plugin/pkg/client/auth/gcp
+  - plugin/pkg/client/auth/oidc
+  - pkg/client/unversioned/clientcmd/api/v1
+  - pkg/httplog
+  - pkg/util/wsstream
+  - third_party/golang/netutil
+  - federation/client/clientset_generated/federation_internalclientset/typed/core/unversioned
+  - federation/client/clientset_generated/federation_internalclientset/typed/federation/unversioned
+  - pkg/api/endpoints
+  - pkg/api/pod
+  - pkg/api/unversioned/validation
+  - pkg/capabilities
   - pkg/client/clientset_generated/internalclientset/typed/autoscaling/unversioned
   - pkg/client/clientset_generated/internalclientset/typed/batch/unversioned
   - pkg/client/clientset_generated/internalclientset/typed/core/unversioned
   - pkg/client/clientset_generated/internalclientset/typed/extensions/unversioned
   - pkg/client/clientset_generated/internalclientset/typed/rbac/unversioned
-  - pkg/client/metrics
+  - pkg/util/labels
+  - pkg/util/pod
+  - pkg/util/replicaset
+  - third_party/golang/template
+  - pkg/util/net/sets
+  - pkg/client/cache
   - pkg/client/record
-  - pkg/client/restclient
-  - pkg/client/transport
-  - pkg/client/typed/discovery
-  - pkg/client/unversioned
-  - pkg/client/unversioned/adapters/internalclientset
-  - pkg/client/unversioned/auth
-  - pkg/client/unversioned/clientcmd
-  - pkg/client/unversioned/clientcmd/api
-  - pkg/client/unversioned/clientcmd/api/latest
-  - pkg/client/unversioned/clientcmd/api/v1
-  - pkg/client/unversioned/fake
-  - pkg/client/unversioned/portforward
-  - pkg/client/unversioned/remotecommand
-  - pkg/client/unversioned/testclient
-  - pkg/controller
   - pkg/controller/framework
-  - pkg/conversion
-  - pkg/conversion/queryparams
-  - pkg/credentialprovider
-  - pkg/fieldpath
-  - pkg/fields
-  - pkg/httplog
-  - pkg/kubectl
-  - pkg/kubectl/cmd/util
-  - pkg/kubectl/resource
-  - pkg/kubelet/qos
-  - pkg/kubelet/qos/util
-  - pkg/kubelet/server/portforward
-  - pkg/kubelet/server/remotecommand
-  - pkg/labels
-  - pkg/master/ports
+  - pkg/util/hash
+  - pkg/api/rest
+  - pkg/apis/extensions/validation
   - pkg/registry/generic
-  - pkg/registry/thirdpartyresourcedata
-  - pkg/runtime
-  - pkg/runtime/serializer
-  - pkg/runtime/serializer/json
-  - pkg/runtime/serializer/protobuf
-  - pkg/runtime/serializer/recognizer
-  - pkg/runtime/serializer/streaming
-  - pkg/runtime/serializer/versioning
+  - pkg/util/framer
+  - federation/apis/federation/v1beta1
+  - pkg/kubelet/qos
+  - pkg/master/ports
   - pkg/security/podsecuritypolicy/util
   - pkg/storage
-  - pkg/types
-  - pkg/util
-  - pkg/util/crypto
-  - pkg/util/deployment
-  - pkg/util/errors
-  - pkg/util/flag
-  - pkg/util/flowcontrol
-  - pkg/util/framer
-  - pkg/util/hash
-  - pkg/util/homedir
-  - pkg/util/httpstream
-  - pkg/util/httpstream/spdy
-  - pkg/util/integer
-  - pkg/util/intstr
-  - pkg/util/json
-  - pkg/util/jsonpath
-  - pkg/util/labels
-  - pkg/util/net
-  - pkg/util/net/sets
-  - pkg/util/parsers
-  - pkg/util/pod
-  - pkg/util/rand
-  - pkg/util/replicaset
-  - pkg/util/runtime
-  - pkg/util/sets
-  - pkg/util/slice
-  - pkg/util/strategicpatch
-  - pkg/util/validation
-  - pkg/util/validation/field
-  - pkg/util/wait
-  - pkg/util/wsstream
-  - pkg/util/yaml
-  - pkg/version
-  - pkg/watch
-  - pkg/watch/versioned
-  - plugin/pkg/client/auth
-  - plugin/pkg/client/auth/gcp
-  - plugin/pkg/client/auth/oidc
-  - third_party/forked/json
-  - third_party/forked/reflect
-  - third_party/golang/netutil
-  - third_party/golang/template
-- name: speter.net/go/exp/math/dec/inf
-  version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
-  repo: https://github.com/go-inf/inf.git
-  vcs: git
 testImports: []
