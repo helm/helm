@@ -12,6 +12,7 @@ LDFLAGS   :=
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
+DIST_DIRS := find * -type d -exec
 
 .PHONY: all
 all: build
@@ -22,7 +23,18 @@ build:
 
 .PHONY: build-cross
 build-cross:
-	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -os="darwin linux" -arch="amd64 386" $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -os="darwin linux windows" -arch="amd64 386" $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+
+# usage: make dist VERSION=v2.0.0-alpha.3
+.PHONY: dist
+dist: build-cross
+	( \
+		cd _dist && \
+		$(DIST_DIRS) cp ../LICENSE {} \; && \
+		$(DIST_DIRS) cp ../README.md {} \; && \
+		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
+		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
+	)
 
 .PHONY: check-docker
 check-docker:
