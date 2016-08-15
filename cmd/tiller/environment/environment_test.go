@@ -26,6 +26,8 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	unversionedclient "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 )
 
 type mockEngine struct {
@@ -45,6 +47,10 @@ var _ driver.Driver = (*mockReleaseStorage)(nil)
 func (r *mockReleaseStorage) Create(v *release.Release) error {
 	r.rel = v
 	return nil
+}
+
+func (r *mockReleaseStorage) Name() string {
+	return "mockReleaseStorage"
 }
 
 func (r *mockReleaseStorage) Get(k string) (*release.Release, error) {
@@ -79,6 +85,10 @@ func (r *mockReleaseStorage) History(n string) ([]*release.Release, error) {
 }
 
 type mockKubeClient struct {
+}
+
+func (k *mockKubeClient) APIClient() (unversionedclient.Interface, error) {
+	return testclient.NewSimpleFake(), nil
 }
 
 func (k *mockKubeClient) Create(ns string, r io.Reader) error {

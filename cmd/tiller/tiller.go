@@ -26,6 +26,13 @@ import (
 	"google.golang.org/grpc"
 
 	"k8s.io/helm/cmd/tiller/environment"
+	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/storage/driver"
+)
+
+const (
+	storageMemory    = "memory"
+	storageConfigMap = "configmap"
 )
 
 // rootServer is the root gRPC server.
@@ -38,8 +45,11 @@ var rootServer = grpc.NewServer()
 // Any changes to env should be done before rootServer.Serve() is called.
 var env = environment.New()
 
-var addr = ":44134"
-var probe = ":44135"
+var (
+	addr  = ":44134"
+	probe = ":44135"
+	store = storageConfigMap
+)
 
 const globalUsage = `The Kubernetes Helm server.
 
@@ -58,10 +68,22 @@ var rootCommand = &cobra.Command{
 func main() {
 	pf := rootCommand.PersistentFlags()
 	pf.StringVarP(&addr, "listen", "l", ":44134", "The address:port to listen on")
+	pf.StringVar(&store, "storage", storageConfigMap, "The storage driver to use. One of 'configmap' or 'memory'")
 	rootCommand.Execute()
 }
 
 func start(c *cobra.Command, args []string) {
+	switch store {
+	case storageMemory:
+		env.Releases = storage.Init(driver.NewMemory())
+	case storageConfigMap:
+		c, err := env.KubeClient.APIClient()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s", err)
+		}
+		env.Releases = storage.Init(driver.NewConfigMaps(c.ConfigMaps(environment.TillerNamespace)))
+	}
+
 	lstn, err := net.Listen("tcp", addr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
@@ -70,6 +92,7 @@ func start(c *cobra.Command, args []string) {
 
 	fmt.Printf("Tiller is running on %s\n", addr)
 	fmt.Printf("Tiller probes server is running on %s\n", probe)
+	fmt.Printf("Storage driver is %s\n", env.Releases.Name())
 
 	srvErrCh := make(chan error)
 	probeErrCh := make(chan error)

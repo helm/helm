@@ -23,6 +23,7 @@ These dependencies are expressed as interfaces so that alternate implementations
 package environment
 
 import (
+	"errors"
 	"io"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -31,10 +32,8 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
-
-// UseConfigMaps is a feature flags to toggle use of configmaps storage driver.
-const UseConfigMaps = false
 
 // TillerNamespace is the namespace tiller is running in.
 const TillerNamespace = "kube-system"
@@ -135,12 +134,23 @@ type KubeClient interface {
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
 	Update(namespace string, originalReader, modifiedReader io.Reader) error
+
+	// APIClient gets a raw API client for Kubernetes.
+	APIClient() (unversioned.Interface, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
 // the given output.
 type PrintingKubeClient struct {
 	Out io.Writer
+}
+
+// APIClient always returns an error.
+//
+// The printing client does not have access to a Kubernetes client at all. So it
+// will always return an error if the client is accessed.
+func (p *PrintingKubeClient) APIClient() (unversioned.Interface, error) {
+	return nil, errors.New("no API client found")
 }
 
 // Create prints the values of what would be created with a real KubeClient.
@@ -196,23 +206,9 @@ func New() *Environment {
 		GoTplEngine: e,
 	}
 
-	kbc := kube.New(nil)
-
-	var sd *storage.Storage
-	if UseConfigMaps {
-		c, err := kbc.Client()
-		if err != nil {
-			// panic because we cant initliaze driver with no client
-			panic(err)
-		}
-		sd = storage.Init(driver.NewConfigMaps(c.ConfigMaps(TillerNamespace)))
-	} else {
-		sd = storage.Init(driver.NewMemory())
-	}
-
 	return &Environment{
 		EngineYard: ey,
-		Releases:   sd,  //storage.Init(driver.NewMemory()),
-		KubeClient: kbc, //kube.New(nil), //&PrintingKubeClient{Out: os.Stdout},
+		Releases:   storage.Init(driver.NewMemory()),
+		KubeClient: kube.New(nil),
 	}
 }

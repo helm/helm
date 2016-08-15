@@ -29,6 +29,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	unversionedclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -53,6 +54,16 @@ func New(config clientcmd.ClientConfig) *Client {
 
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
+
+// APIClient returns a Kubernetes API client.
+//
+// This is necessary because cmdutil.Client is a field, not a method, which
+// means it can't satisfy an interface's method requirement. In order to ensure
+// that an implementation of environment.KubeClient can access the raw API client,
+// it is necessary to add this method.
+func (c *Client) APIClient() (unversionedclient.Interface, error) {
+	return c.Client()
+}
 
 // Create creates kubernetes resources from an io.reader
 //

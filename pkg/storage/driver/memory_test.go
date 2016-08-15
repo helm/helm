@@ -23,6 +23,15 @@ import (
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
+var _ Driver = &Memory{}
+
+func TestMemoryName(t *testing.T) {
+	mem := NewMemory()
+	if mem.Name() != MemoryDriverName {
+		t.Errorf("Expected name to be %q, got %q", MemoryDriverName, mem.Name())
+	}
+}
+
 func TestMemoryGet(t *testing.T) {
 	key := "test-1"
 	rls := &rspb.Release{Name: key}
