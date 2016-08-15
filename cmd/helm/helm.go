@@ -60,6 +60,7 @@ Common actions from this point include:
 Environment:
   $HELM_HOME      Set an alternative location for Helm files. By default, these are stored in ~/.helm
   $HELM_HOST      Set an alternative Tiller host. The format is host:port (default ":44134").
+  $KUBECONFIG     Set an alternate Kubernetes configuration file (default: "~/.kube/config").
 `
 
 func newRootCmd(out io.Writer) *cobra.Command {
