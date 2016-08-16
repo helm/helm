@@ -73,4 +73,5 @@ type Driver interface {
 	Updator
 	Deletor
 	Queryor
+	Name() string
 }

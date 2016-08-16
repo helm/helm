@@ -32,6 +32,9 @@ import (
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
+// ConfigMapsDriverName is the string name of the driver.
+const ConfigMapsDriverName = "ConfigMap"
+
 var b64 = base64.StdEncoding
 
 // labels is a map of key value pairs to be included as metadata in a configmap object.
@@ -52,6 +55,11 @@ type ConfigMaps struct {
 // the kubernetes ConfigMapsInterface.
 func NewConfigMaps(impl client.ConfigMapsInterface) *ConfigMaps {
 	return &ConfigMaps{impl: impl}
+}
+
+// Name returns the name of the driver.
+func (cfgmaps *ConfigMaps) Name() string {
+	return ConfigMapsDriverName
 }
 
 // Get fetches the release named by key. The corresponding release is returned

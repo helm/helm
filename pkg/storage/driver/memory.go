@@ -22,6 +22,9 @@ import (
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
+// MemoryDriverName is the string name of this driver.
+const MemoryDriverName = "Memory"
+
 // Memory is the in-memory storage driver implementation.
 type Memory struct {
 	sync.RWMutex
@@ -31,6 +34,11 @@ type Memory struct {
 // NewMemory initializes a new memory driver.
 func NewMemory() *Memory {
 	return &Memory{cache: map[string]*rspb.Release{}}
+}
+
+// Name returns the name of the driver.
+func (mem *Memory) Name() string {
+	return MemoryDriverName
 }
 
 // Get returns the release named by key or returns ErrReleaseNotFound.

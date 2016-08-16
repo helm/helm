@@ -27,6 +27,15 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
+var _ Driver = &ConfigMaps{}
+
+func TestConfigMapName(t *testing.T) {
+	c := newTestFixture(t)
+	if c.Name() != ConfigMapsDriverName {
+		t.Errorf("Expected name to be %q, got %q", ConfigMapsDriverName, c.Name())
+	}
+}
+
 func TestConfigMapGet(t *testing.T) {
 	key := "key-1"
 	rel := newTestRelease(key, 1, rspb.Status_DEPLOYED)
