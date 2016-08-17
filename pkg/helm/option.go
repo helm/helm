@@ -47,6 +47,8 @@ type options struct {
 	instReq rls.InstallReleaseRequest
 	// release update options are applied directly to the update release request
 	updateReq rls.UpdateReleaseRequest
+	// release uninstall options are applied directly to the uninstall release request
+	uninstallReq rls.UninstallReleaseRequest
 }
 
 // Home specifies the location of helm home, (default = "$HOME/.helm").
@@ -140,6 +142,13 @@ func DeleteDisableHooks(disable bool) DeleteOption {
 func DeleteDryRun(dry bool) DeleteOption {
 	return func(opts *options) {
 		opts.dryRun = dry
+	}
+}
+
+// DeletePurge removes the release from the store and make its name free for later use.
+func DeletePurge(purge bool) DeleteOption {
+	return func(opts *options) {
+		opts.uninstallReq.Purge = purge
 	}
 }
 
@@ -239,7 +248,11 @@ func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient,
 		}
 		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
 	}
-	return rlc.UninstallRelease(context.TODO(), &rls.UninstallReleaseRequest{Name: rlsName, DisableHooks: o.disableHooks})
+
+	o.uninstallReq.Name = rlsName
+	o.uninstallReq.DisableHooks = o.disableHooks
+
+	return rlc.UninstallRelease(context.TODO(), &o.uninstallReq)
 }
 
 // Executes tiller.UpdateRelease RPC.
