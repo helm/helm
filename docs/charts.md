@@ -25,6 +25,7 @@ wordpress/
   Chart.yaml        # A YAML file containing information about the chart
   LICENSE           # OPTIONAL: A plain text file containing the license for the chart
   README.md         # OPTIONAL: A human-readable README file
+  NOTES.txt         # OPTIONAL: A plain text file containing short usage notes
   values.yaml       # The default configuration values for this chart
   charts/           # OPTIONAL: A directory containing any charts upon which this chart depends.
   templates/        # OPTIONAL: A directory of templates that, when combined with values,
@@ -87,6 +88,25 @@ package, the `helm package` command will use the version that it finds
 in the `Chart.yaml` as a token in the package name. The system assumes
 that the version number in the chart package name matches the version number in
 the `Chart.yaml`. Failure to meet this assumption will cause an error.
+
+## Chart LICENSE, README and NOTES
+
+Charts can also contain files that describe the installation, configuration, usage and license of a
+chart. A README for a chart should be formatted in Markdown (README.md), and should generally
+contain:
+
+- A description of the application or service the chart provides
+- Any prerequisites or requirements to run the chart
+- Descriptions of options in `values.yaml` and default values
+- Any other information that may be relevant to the installation or configuration of the chart
+
+The chart can also contain a short plain text NOTES.txt file that will be printed out after
+installation, and when viewing the status of a release. This file is evaluated as a
+[template](#templates-and-values), and can be used to display usage notes, next steps, or any other
+information relevant to a release of the chart. For example, instructions could be provided for
+connecting to a database, or accessing a web UI. Since this file is printed to STDOUT when running
+`helm install` or `helm status`, it is recommended to keep the content brief and point to the README
+for greater detail.
 
 ## Chart Dependencies
 
