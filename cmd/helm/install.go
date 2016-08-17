@@ -147,13 +147,28 @@ func (i *installCmd) run() error {
 }
 
 func (i *installCmd) vals() ([]byte, error) {
+	var buffer bytes.Buffer
+
+	// User specified a values file via -f/--values
+	if i.valuesFile != "" {
+		bytes, err := ioutil.ReadFile(i.valuesFile)
+		if err != nil {
+			return []byte{}, err
+		}
+		buffer.Write(bytes)
+	}
+
+	// User specified value pairs via --set
+	// These override any values in the specified file
 	if len(i.values.pairs) > 0 {
-		return i.values.yaml()
+		bytes, err := i.values.yaml()
+		if err != nil {
+			return []byte{}, err
+		}
+		buffer.Write(bytes)
 	}
-	if i.valuesFile == "" {
-		return []byte{}, nil
-	}
-	return ioutil.ReadFile(i.valuesFile)
+
+	return buffer.Bytes(), nil
 }
 
 func (i *installCmd) printRelease(rel *release.Release) {
