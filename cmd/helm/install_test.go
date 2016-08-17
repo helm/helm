@@ -121,6 +121,23 @@ sailor: sinbad
 	if vobj.String() != y {
 		t.Errorf("Expected String() to be \n%s\nGot\n%s\n", y, out)
 	}
+
+	// Combined case, overriding a property
+	vals["sailor"] = "pisti"
+	updated_yaml := `good: true
+port:
+  destination: basrah
+  source: baghdad
+sailor: pisti
+`
+	new_out, err := vobj.yaml()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(new_out) != updated_yaml {
+		t.Errorf("Expected YAML to be \n%s\nGot\n%s\n", updated_yaml, new_out)
+	}
+
 }
 
 type nameTemplateTestCase struct {
