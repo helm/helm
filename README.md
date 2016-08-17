@@ -32,8 +32,12 @@ Using Helm is as easy as this:
 
 ```console
 $ helm init                            # Initialize Helm as well as the Tiller server
+
+# From the root of this repository run the following to install an example from
+the docs
 $ helm install docs/examples/alpine    # Install the example Alpine chart
 happy-panda                            # <-- That's the name of your release
+
 $ helm list                            # List all releases
 happy-panda
 quiet-kitten
