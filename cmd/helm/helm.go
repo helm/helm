@@ -93,6 +93,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newListCmd(nil, out),
 		newStatusCmd(nil, out),
 		newUpgradeCmd(nil, out),
+		newRollbackCmd(nil, out),
 	)
 	return cmd
 }
