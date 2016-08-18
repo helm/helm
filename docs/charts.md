@@ -483,7 +483,7 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: {{template "fullname" .}}-job
+      - name: post-install-job
         image: "alpine:3.3"
         command: ["/bin/sleep","{{default "10" .Values.sleepyTime}}"]
 

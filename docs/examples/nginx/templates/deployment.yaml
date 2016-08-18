@@ -23,7 +23,7 @@ spec:
         release: {{.Release.Name | quote }}
     spec:
       containers:
-      - name: {{template "fullname" .}}
+      - name: nginx
         # Making image configurable is not necessary. Making imageTag configurable
         # is a nice option for the user. Especially in the strange cases like
         # nginx where the base distro is determined by the tag. Using :latest
