@@ -92,7 +92,8 @@ func Templates(linter *support.Linter) {
 		// Check that all the templates have a matching value
 		linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
 
-		linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
+		// NOTE, disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
+		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
 		renderedContent := renderedContentMap[fileName]
 		var yamlStruct K8sYamlStruct
