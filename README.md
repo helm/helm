@@ -45,7 +45,7 @@ quiet-kitten
 
 ## Install
 
-Download a [release tarball of helm and tiller for your platform](https://github.com/kubernetes/helm/releases). Unpack the `helm` and `tiller` binaries and add them to your PATH and you are good to go!
+Download a [release tarball of helm and tiller for your platform](https://github.com/kubernetes/helm/releases). Unpack the `helm` and `tiller` binaries and add them to your PATH and you are good to go! OS X/[Cask](https://caskroom.github.io/) users can `brew cask install helm`.
 
 ### Install from source
 
