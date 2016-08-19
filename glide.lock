@@ -1,5 +1,5 @@
-hash: 294741f7c5011d1558519802e282dcbb49b94578397611b3aa2506182a2585cc
-updated: 2016-08-16T16:13:10.682420831-06:00
+hash: 410e784360a10f716d4bf4d22decf81f75b327d051b3f2d23f55aa9049c09676
+updated: 2016-08-19T12:19:48.074620307-06:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -193,7 +193,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
-  version: bfc1db6cb1f1bab7d9fe2f317fca26a1e95fa54a
+  version: 89eb6984259918bffe1ddff9647b9ed06061e688
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
