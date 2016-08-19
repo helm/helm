@@ -39,6 +39,13 @@ import (
 
 var srv *releaseServer
 
+// releaseNameMaxLen is the maximum length of a release name.
+//
+// This is designed to accomodate the usage of release name in the 'name:'
+// field of Kubernetes resources. Many of those fields are limited to 24
+// characters in length. See https://github.com/kubernetes/helm/issues/1071
+const releaseNameMaxLen = 14
+
 func init() {
 	srv = &releaseServer{
 		env: env,
@@ -290,6 +297,11 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 	// is granted. If reuse is true and a deleted release with that name exists,
 	// we re-grant it. Otherwise, an error is returned.
 	if start != "" {
+
+		if len(start) > releaseNameMaxLen {
+			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
+		}
+
 		if rel, err := s.env.Releases.Get(start); err == driver.ErrReleaseNotFound {
 			return start, nil
 		} else if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
@@ -307,6 +319,10 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 	for i := 0; i < maxTries; i++ {
 		namer := moniker.New()
 		name := namer.NameSep("-")
+		if len(name) > releaseNameMaxLen {
+			log.Printf("info: Candidate name %q exceeds maximum length %d. Skipping.", name, releaseNameMaxLen)
+			continue
+		}
 		if _, err := s.env.Releases.Get(name); err == driver.ErrReleaseNotFound {
 			return name, nil
 		}
