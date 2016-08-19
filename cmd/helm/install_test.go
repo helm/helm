@@ -124,18 +124,18 @@ sailor: sinbad
 
 	// Combined case, overriding a property
 	vals["sailor"] = "pisti"
-	updated_yaml := `good: true
+	updatedYAML := `good: true
 port:
   destination: basrah
   source: baghdad
 sailor: pisti
 `
-	new_out, err := vobj.yaml()
+	newOut, err := vobj.yaml()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(new_out) != updated_yaml {
-		t.Errorf("Expected YAML to be \n%s\nGot\n%s\n", updated_yaml, new_out)
+	if string(newOut) != updatedYAML {
+		t.Errorf("Expected YAML to be \n%s\nGot\n%s\n", updatedYAML, newOut)
 	}
 
 }
