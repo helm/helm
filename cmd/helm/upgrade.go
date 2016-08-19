@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,6 +32,9 @@ This command upgrades a release to a new version of a chart.
 
 The upgrade arguments must be a release and a chart. The chart
 argument can be a relative path to a packaged or unpackaged chart.
+
+To override values in a chart, use either the '--values' flag and pass in a file
+or use the '--set' flag and pass configuration from the command line.
 `
 
 type upgradeCmd struct {
@@ -41,6 +45,7 @@ type upgradeCmd struct {
 	dryRun       bool
 	disableHooks bool
 	valuesFile   string
+	values       *values
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -48,6 +53,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	upgrade := &upgradeCmd{
 		out:    out,
 		client: client,
+		values: new(values),
 	}
 
 	cmd := &cobra.Command{
@@ -71,9 +77,35 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVarP(&upgrade.valuesFile, "values", "f", "", "path to a values YAML file")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
+	f.Var(upgrade.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks")
 
 	return cmd
+}
+
+func (u *upgradeCmd) vals() ([]byte, error) {
+	var buffer bytes.Buffer
+
+	// User specified a values file via -f/--values
+	if u.valuesFile != "" {
+		bytes, err := ioutil.ReadFile(u.valuesFile)
+		if err != nil {
+			return []byte{}, err
+		}
+		buffer.Write(bytes)
+	}
+
+	// User specified value pairs via --set
+	// These override any values in the specified file
+	if len(u.values.pairs) > 0 {
+		bytes, err := u.values.yaml()
+		if err != nil {
+			return []byte{}, err
+		}
+		buffer.Write(bytes)
+	}
+
+	return buffer.Bytes(), nil
 }
 
 func (u *upgradeCmd) run() error {
@@ -82,12 +114,9 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
-	rawVals := []byte{}
-	if u.valuesFile != "" {
-		rawVals, err = ioutil.ReadFile(u.valuesFile)
-		if err != nil {
-			return err
-		}
+	rawVals, err := u.vals()
+	if err != nil {
+		return err
 	}
 
 	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
