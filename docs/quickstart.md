@@ -9,8 +9,8 @@ This guide covers how you can quickly get started using Helm.
 
 ## Install Helm
 
-Download a binary release of the Helm client from the official project
-page.
+Download a binary release of the Helm client from 
+[the official project page](https://github.com/kubernetes/helm/releases).
 
 Alternately, you can clone the GitHub project and build your own
 client from source. The quickest route to installing from source is to
@@ -25,19 +25,36 @@ install Tiller into your Kubernetes cluster in one step:
 $ helm init
 ```
 
-## Install an Existing Chart
+## Install an Example Chart
 
-To install an existing chart, you can run the `helm install` command:
+To install a chart, you can run the `helm install` command. 
+Let's use an example chart from this repository. 
+Make sure you are in the root directory of this repo.
 
-_TODO:_ Might need instructions about repos.
 
 ```console
-$ helm install nginx-1.0.0
+$ helm install docs/examples/alpine
 Released smiling-penguin
 ```
 
-In the example above, the `nginx` chart was released, and the name of
-our new release is `smiling-penguin`
+In the example above, the `alpine` chart was released, and the name of
+our new release is `smiling-penguin`. You can view the details of the chart we just 
+installed by taking a look at the nginx chart in 
+[docs/examples/alpine/Chart.yaml](docs/examples/alpine/Chart.yaml).
+
+## Change a Default Chart Value
+
+A nice feature of helm is the ability to change certain values of the package for the install.
+Let's install the `nginx` example from this repository but change the `replicaCount` to 7.
+
+```console
+$ helm install --set replicaCount=7 docs/examples/nginx
+happy-panda
+```
+
+You can view the chart for this example in 
+[docs/examples/nginx/Chart.yaml](docs/examples/nginx/Chart.yaml) and the default values in
+[docs/examples/nginx/values.yaml](docs/examples/nginx/values.yaml).
 
 ## Learn About The Release
 
