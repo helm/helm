@@ -130,6 +130,7 @@ func TestUniqName(t *testing.T) {
 		{"angry-panda", "", false, true},
 		{"happy-panda", "", false, true},
 		{"happy-panda", "happy-panda", true, false},
+		{"hungry-hungry-hippos", "", true, true}, // Exceeds max name length
 	}
 
 	for _, tt := range tests {
