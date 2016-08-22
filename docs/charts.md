@@ -51,6 +51,7 @@ maintainers: # (optional)
   - name: The maintainer's name (required for each maintainer)
     email: The maintainer's email (optional for each maintainer)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
+icon: A URL to an SVG or PNG image to be used as an icon (optional).
 ```
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will

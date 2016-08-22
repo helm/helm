@@ -58,4 +58,7 @@ message Metadata {
 
 	// The name of the template engine to use. Defaults to 'gotpl'.
 	string engine = 8;
+
+	// The URL to an icon file.
+	string icon = 9;
 }
