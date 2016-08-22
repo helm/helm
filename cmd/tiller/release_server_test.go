@@ -35,6 +35,8 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
+const NOTES_TEXT = "my notes here"
+
 var manifestWithHook = `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -208,6 +210,137 @@ func TestInstallRelease(t *testing.T) {
 	}
 	if rel.Hooks[0].Manifest != manifestWithHook {
 		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
+	}
+
+	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {
+		t.Errorf("Expected event 0 is post install")
+	}
+	if rel.Hooks[0].Events[1] != release.Hook_PRE_DELETE {
+		t.Errorf("Expected event 0 is pre-delete")
+	}
+
+	if len(res.Release.Manifest) == 0 {
+		t.Errorf("No manifest returned: %v", res.Release)
+	}
+
+	if len(rel.Manifest) == 0 {
+		t.Errorf("Expected manifest in %v", res)
+	}
+
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", rel.Manifest)
+	}
+}
+
+func TestInstallReleaseWithNotes(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "hello", Data: []byte("hello: world")},
+				{Name: "hooks", Data: []byte(manifestWithHook)},
+				{Name: "NOTES.txt", Data: []byte(NOTES_TEXT)},
+			},
+		},
+	}
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+	if res.Release.Name == "" {
+		t.Errorf("Expected release name.")
+	}
+	if res.Release.Namespace != "spaced" {
+		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Release.Namespace)
+	}
+
+	rel, err := rs.env.Releases.Get(res.Release.Name)
+	if err != nil {
+		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+	}
+
+	t.Logf("rel: %v", rel)
+
+	if len(rel.Hooks) != 1 {
+		t.Fatalf("Expected 1 hook, got %d", len(rel.Hooks))
+	}
+	if rel.Hooks[0].Manifest != manifestWithHook {
+		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
+	}
+
+	if rel.Info.Status.Notes != NOTES_TEXT {
+		t.Fatalf("Expected '%s', got '%s'", NOTES_TEXT, rel.Info.Status.Notes)
+	}
+
+	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {
+		t.Errorf("Expected event 0 is post install")
+	}
+	if rel.Hooks[0].Events[1] != release.Hook_PRE_DELETE {
+		t.Errorf("Expected event 0 is pre-delete")
+	}
+
+	if len(res.Release.Manifest) == 0 {
+		t.Errorf("No manifest returned: %v", res.Release)
+	}
+
+	if len(rel.Manifest) == 0 {
+		t.Errorf("Expected manifest in %v", res)
+	}
+
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", rel.Manifest)
+	}
+}
+
+func TestInstallReleaseWithNotesRendered(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "hello", Data: []byte("hello: world")},
+				{Name: "hooks", Data: []byte(manifestWithHook)},
+				{Name: "NOTES.txt", Data: []byte(NOTES_TEXT + " {{.Release.Name}}")},
+			},
+		},
+	}
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+	if res.Release.Name == "" {
+		t.Errorf("Expected release name.")
+	}
+	if res.Release.Namespace != "spaced" {
+		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Release.Namespace)
+	}
+
+	rel, err := rs.env.Releases.Get(res.Release.Name)
+	if err != nil {
+		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+	}
+
+	t.Logf("rel: %v", rel)
+
+	if len(rel.Hooks) != 1 {
+		t.Fatalf("Expected 1 hook, got %d", len(rel.Hooks))
+	}
+	if rel.Hooks[0].Manifest != manifestWithHook {
+		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
+	}
+
+	expectedNotes := fmt.Sprintf("%s %s", NOTES_TEXT, res.Release.Name)
+	if rel.Info.Status.Notes != expectedNotes {
+		t.Fatalf("Expected '%s', got '%s'", expectedNotes, rel.Info.Status.Notes)
 	}
 
 	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {

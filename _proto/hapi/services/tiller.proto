@@ -142,6 +142,9 @@ message GetReleaseStatusResponse {
 
 	// Info contains information about the release.
 	hapi.release.Info info = 2;
+
+  // Namesapce the release was released into
+  string namespace = 3;
 }
 
 // GetReleaseContentRequest is a request to get the contents of a release.
