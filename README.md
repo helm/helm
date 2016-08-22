@@ -28,20 +28,15 @@ Think of it like apt/yum/homebrew for Kubernetes.
 - Charts can be stored on disk, or fetched from remote chart repositories
   (like Debian or RedHat packages)
 
-Using Helm is as easy as this:
+## Docs
 
-```console
-$ helm init                            # Initialize Helm as well as the Tiller server
+- [Quick Start](docs/quickstart.md)
+- [Architechture](docs/architecture.md)
+- [Charts](docs/charts.md)
+	- [Chart Repository Guide](docs/chart_repository.md)
+	- [Syncing your Chart Repository](docs/chart_repository_sync_example.md)
+- [Developers](docs/developers.md)
 
-# From the root of this repository run the following to install an example from
-the docs
-$ helm install docs/examples/alpine    # Install the example Alpine chart
-happy-panda                            # <-- That's the name of your release
-
-$ helm list                            # List all releases
-happy-panda
-quiet-kitten
-```
 
 ## Install
 
