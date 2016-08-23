@@ -75,6 +75,10 @@ func verifyChartfile(t *testing.T, f *chart.Metadata) {
 		t.Error("Unexpected home.")
 	}
 
+	if f.Icon != "https://example.com/64x64.png" {
+		t.Errorf("Unexpected icon: %q", f.Icon)
+	}
+
 	if len(f.Keywords) != 3 {
 		t.Error("Unexpected keywords")
 	}
