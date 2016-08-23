@@ -34,7 +34,7 @@ var (
 // Create stores the release or returns ErrReleaseExists
 // if an identical release already exists.
 type Creator interface {
-	Create(rls *rspb.Release) error
+	Create(key string, rls *rspb.Release) error
 }
 
 // Updator is the interface that wraps the Update method.
@@ -42,7 +42,7 @@ type Creator interface {
 // Update updates an existing release or returns
 // ErrReleaseNotFound if the release does not exist.
 type Updator interface {
-	Update(rls *rspb.Release) error
+	Update(key string, rls *rspb.Release) error
 }
 
 // Deletor is the interface that wraps the Delete method.

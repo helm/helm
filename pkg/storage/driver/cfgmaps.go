@@ -114,7 +114,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 
 // Create creates a new ConfigMap holding the release. If the
 // ConfigMap already exists, ErrReleaseExists is returned.
-func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
+func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	// set labels for configmaps object meta data
 	var lbs labels
 
@@ -122,9 +122,9 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 	lbs.set("CREATED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap to hold the release
-	obj, err := newConfigMapsObject(rls, lbs)
+	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		logerrf(err, "create: failed to encode release %q", rls.Name)
+		logerrf(err, "create: failed to encode release %q", key)
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -141,7 +141,7 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 
 // Update updates the ConfigMap holding the release. If not found
 // the ConfigMap is created to hold the release.
-func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
+func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	// set labels for configmaps object meta data
 	var lbs labels
 
@@ -149,9 +149,9 @@ func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
 	lbs.set("MODIFIED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap object to hold the release
-	obj, err := newConfigMapsObject(rls, lbs)
+	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		logerrf(err, "update: failed to encode release %q", rls.Name)
+		logerrf(err, "update: failed to encode release %q", key)
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -194,7 +194,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //    "OWNER"          - owner of the configmap, currently "TILLER".
 //    "NAME"           - name of the release.
 //
-func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) {
+func newConfigMapsObject(objkey string, rls *rspb.Release, lbs labels) (*api.ConfigMap, error) {
 	const owner = "TILLER"
 
 	// encode the release
@@ -216,7 +216,7 @@ func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) 
 	// create and return configmap object
 	return &api.ConfigMap{
 		ObjectMeta: api.ObjectMeta{
-			Name:   rls.Name,
+			Name:   objkey,
 			Labels: lbs.toMap(),
 		},
 		Data: map[string]string{"release": s},

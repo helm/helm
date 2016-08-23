@@ -30,11 +30,12 @@ func TestStorageCreate(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	rls := ReleaseTestData{Name: "angry-beaver", Version: 1}.ToRelease()
+	
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// fetch the release
-	res, err := storage.Get(rls.Name)
+	res, err := storage.Get(rls.Name, rls.Version)
 	assertErrNil(t.Fatal, err, "QueryRelease")
 
 	// verify the fetched and created release are the same
@@ -48,7 +49,8 @@ func TestStorageUpdate(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	rls := ReleaseTestData{Name: "angry-beaver", Version: 1}.ToRelease()
+
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// modify the release
@@ -57,7 +59,7 @@ func TestStorageUpdate(t *testing.T) {
 	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
 
 	// retrieve the updated release
-	res, err := storage.Get(rls.Name)
+	res, err := storage.Get(rls.Name, rls.Version)
 	assertErrNil(t.Fatal, err, "QueryRelease")
 
 	// verify updated and fetched releases are the same.
@@ -71,11 +73,11 @@ func TestStorageDelete(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	rls := ReleaseTestData{Name: "angry-beaver", Version: 1}.ToRelease()
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// delete the release
-	res, err := storage.Delete(rls.Name)
+	res, err := storage.Delete(rls.Name, rls.Version)
 	assertErrNil(t.Fatal, err, "DeleteRelease")
 
 	// verify updated and fetched releases are the same.
