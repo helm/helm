@@ -158,7 +158,7 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	if req.Name == "" {
 		return nil, errMissingRelease
 	}
-	rel, err := s.env.Releases.Get(req.Name)
+	rel, err := s.env.Releases.Get(req.Name, req.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 	if req.Name == "" {
 		return nil, errMissingRelease
 	}
-	rel, err := s.env.Releases.Get(req.Name)
+	rel, err := s.env.Releases.Get(req.Name, req.Version)
 	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
@@ -250,7 +250,7 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	// finds the non-deleted release with the given name
-	currentRelease, err := s.env.Releases.Get(req.Name)
+	currentRelease, err := s.env.Releases.Get(req.Name, req.Version)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -302,7 +302,7 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
 		}
 
-		if rel, err := s.env.Releases.Get(start); err == driver.ErrReleaseNotFound {
+		if rel, err := s.env.Releases.Get(start, 0); err == driver.ErrReleaseNotFound {
 			return start, nil
 		} else if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
 			// Allowe re-use of names if the previous release is marked deleted.
@@ -323,7 +323,7 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 			log.Printf("info: Candidate name %q exceeds maximum length %d. Skipping.", name, releaseNameMaxLen)
 			continue
 		}
-		if _, err := s.env.Releases.Get(name); err == driver.ErrReleaseNotFound {
+		if _, err := s.env.Releases.Get(name, 0); err == driver.ErrReleaseNotFound {
 			return name, nil
 		}
 		log.Printf("info: Name %q is taken. Searching again.", name)
@@ -525,7 +525,7 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, errMissingRelease
 	}
 
-	rel, err := s.env.Releases.Get(req.Name)
+	rel, err := s.env.Releases.Get(req.Name, 0)
 	if err != nil {
 		log.Printf("uninstall: Release not loaded: %s", req.Name)
 		return nil, err
