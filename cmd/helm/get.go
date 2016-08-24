@@ -100,7 +100,7 @@ MANIFEST:
 
 // getCmd is the command that implements 'helm get'
 func (g *getCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release)
+	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
 	if err != nil {
 		return prettyError(err)
 	}

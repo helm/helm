@@ -65,7 +65,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release)
+	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version))
 	if err != nil {
 		return prettyError(err)
 	}
