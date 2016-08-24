@@ -30,6 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
+	kblabels "k8s.io/kubernetes/pkg/labels"
 )
 
 // ConfigMapsDriverName is the string name of the driver.
@@ -95,6 +96,10 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 		return nil, err
 	}
 
+	if len(list.Items) == 0 {
+		return nil, ErrReleaseNotFound
+	}
+
 	var results []*rspb.Release
 
 	// iterate over the configmaps object list
@@ -108,6 +113,38 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 		if filter(rls) {
 			results = append(results, rls)
 		}
+	}
+	return results, nil
+}
+
+// Query fetches all releases that match the provided map of labels.
+// An error is returned if the configmap fails to retrieve the releases.
+func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, error) {
+	ls := kblabels.Set{}
+	for k, v := range labels {
+		ls[k] = v
+	}
+
+	opts := api.ListOptions{LabelSelector: ls.AsSelector()}
+
+	list, err := cfgmaps.impl.List(opts)
+	if err != nil {
+		logerrf(err, "query: failed to query with labels")
+		return nil, err
+	}
+
+	if len(list.Items) == 0 {
+		return nil, ErrReleaseNotFound
+	}
+
+	var results []*rspb.Release
+	for _, item := range list.Items {
+		rls, err := decodeRelease(item.Data["release"])
+		if err != nil {
+			logerrf(err, "query: failed to decode release: %s", err)
+			continue
+		}
+		results = append(results, rls)
 	}
 	return results, nil
 }

@@ -135,5 +135,5 @@ func TestMemoryDelete(t *testing.T) {
 }
 
 func testKey(name string, version int32) string {
-	return fmt.Sprintf("%s#v%d", name, version)
+	return fmt.Sprintf("%s.v%d", name, version)
 }

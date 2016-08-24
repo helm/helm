@@ -17,6 +17,7 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
+	"fmt"
 	"sync"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -62,6 +63,11 @@ func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error
 		}
 	}
 	return releases, nil
+}
+
+// Query does not apply to in-memory storage.
+func (mem *Memory) Query(_ map[string]string) ([]*rspb.Release, error) {
+	return nil, fmt.Errorf("memory: cannot apply query by labels to in-memory storage")
 }
 
 // Create creates a new release or returns ErrReleaseExists.

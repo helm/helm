@@ -53,15 +53,18 @@ type Deletor interface {
 	Delete(key string) (*rspb.Release, error)
 }
 
-// Queryor is the interface that wraps the Get and List methods.
+// Queryor is the interface that wraps the Get, List, and Query methods.
 //
 // Get returns the release named by key or returns ErrReleaseNotFound
 // if the release does not exist.
 //
 // List returns the set of all releases that satisfy the filter predicate.
+//
+// Query returns the set of all releases that match the provided set of labels.
 type Queryor interface {
 	Get(key string) (*rspb.Release, error)
 	List(filter func(*rspb.Release) bool) ([]*rspb.Release, error)
+	Query(labels map[string]string) ([]*rspb.Release, error)
 }
 
 // Driver is the interface composed of Creator, Updator, Deletor, Queryor

@@ -34,6 +34,23 @@ type Storage struct {
 // release identified by the key, version pair does not exist.
 func (s *Storage) Get(name string, version int32) (*rspb.Release, error) {
 	log.Printf("Getting release %q (v%d) from storage\n", name, version)
+	// an unspecified version implies latest so we need to select from the
+	// set of releases any such that NAME == "name" and STATUS == "DEPLOYED"
+	if version == 0 {
+		ls, err := s.Driver.Query(map[string]string{
+			"NAME":   name,
+			"STATUS": "DEPLOYED",
+		})
+		switch {
+		case err != nil:
+			return nil, err
+		case len(ls) == 0:
+			return nil, fmt.Errorf("bad query")
+		default:
+			return ls[0], nil
+		}
+	}
+
 	return s.Driver.Get(makeKey(name, version))
 }
 
@@ -117,8 +134,8 @@ func Init(d driver.Driver) *Storage {
 }
 
 // makeKey concatenates a release name and version into
-// a string with format ```<release_name>#v<version>```.
+// a string with format ```<release_name>.v<version>```.
 // This key is used to uniquely identify storage objects.
 func makeKey(rlsname string, version int32) string {
-	return fmt.Sprintf("%s#v%d", rlsname, version)
+	return fmt.Sprintf("%s.v%d", rlsname, version)
 }

@@ -102,6 +102,10 @@ func TestConfigMapList(t *testing.T) {
 	}
 }
 
+func TestConfigMapQuery(t *testing.T) {
+	t.Skip("TestConfigMapQuery")
+}
+
 func TestConfigMapCreate(t *testing.T) {
 	cfgmaps := newTestFixture(t)
 
