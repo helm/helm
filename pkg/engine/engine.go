@@ -19,7 +19,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"path"
 	"strings"
 	"text/template"
@@ -132,7 +131,6 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 
 	files := []string{}
 	for fname, r := range tpls {
-		log.Printf("Preparing template %s", fname)
 		t = t.New(fname).Funcs(funcMap)
 		if _, err := t.Parse(r.tpl); err != nil {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
