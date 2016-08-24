@@ -23,7 +23,6 @@ These dependencies are expressed as interfaces so that alternate implementations
 package environment
 
 import (
-	"errors"
 	"io"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -33,6 +32,7 @@ import (
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 )
 
 // TillerNamespace is the namespace tiller is running in.
@@ -150,7 +150,7 @@ type PrintingKubeClient struct {
 // The printing client does not have access to a Kubernetes client at all. So it
 // will always return an error if the client is accessed.
 func (p *PrintingKubeClient) APIClient() (unversioned.Interface, error) {
-	return nil, errors.New("no API client found")
+	return testclient.NewSimpleFake(), nil
 }
 
 // Create prints the values of what would be created with a real KubeClient.

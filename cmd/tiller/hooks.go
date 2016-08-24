@@ -48,11 +48,27 @@ var events = map[string]release.Hook_Event{
 }
 
 type simpleHead struct {
+	Version  string `json:"apiVersion"`
 	Kind     string `json:"kind,omitempty"`
 	Metadata *struct {
 		Name        string            `json:"name"`
 		Annotations map[string]string `json:"annotations"`
 	} `json:"metadata,omitempty"`
+}
+
+type versionSet map[string]struct{}
+
+func newVersionSet(apiVersions ...string) versionSet {
+	vs := versionSet{}
+	for _, v := range apiVersions {
+		vs[v] = struct{}{}
+	}
+	return vs
+}
+
+func (v versionSet) Has(apiVersion string) bool {
+	_, ok := v[apiVersion]
+	return ok
 }
 
 // sortHooks takes a map of filename/YAML contents and sorts them into hook types.
@@ -63,7 +79,7 @@ type simpleHead struct {
 //
 // To determine hook type, this looks for a YAML structure like this:
 //
-//  kind: SomeKind
+//  kindse_serv	: SomeKind
 // 	metadata:
 //		annotations:
 //			helm.sh/hook: pre-install
@@ -75,7 +91,7 @@ type simpleHead struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortHooks(files map[string]string) ([]*release.Hook, map[string]string, error) {
+func sortHooks(files map[string]string, apis versionSet) ([]*release.Hook, map[string]string, error) {
 	hs := []*release.Hook{}
 	generic := map[string]string{}
 
@@ -97,6 +113,10 @@ func sortHooks(files map[string]string) ([]*release.Hook, map[string]string, err
 		if err != nil {
 			e := fmt.Errorf("YAML parse error on %s: %s", n, err)
 			return hs, generic, e
+		}
+
+		if sh.Version != "" && !apis.Has(sh.Version) {
+			return hs, generic, fmt.Errorf("apiVersion %q is not available", sh.Version)
 		}
 
 		if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
