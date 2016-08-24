@@ -35,6 +35,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/timeconv"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 var srv *releaseServer
@@ -399,6 +400,31 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, nil
 }
 
+func (s *releaseServer) getVersionSet() (versionSet, error) {
+	defVersions := newVersionSet("v1")
+	cli, err := s.env.KubeClient.APIClient()
+	if err != nil {
+		log.Printf("API Client for Kubernetes is missing: %s.", err)
+		return defVersions, err
+	}
+
+	groups, err := cli.Discovery().ServerGroups()
+	if err != nil {
+		return defVersions, err
+	}
+
+	// FIXME: The Kubernetes test fixture for cli appears to always return nil
+	// for calls to Discovery().ServerGroups(). So in this case, we return
+	// the default API list. This is also a safe value to return in any other
+	// odd-ball case.
+	if groups == nil {
+		return defVersions, nil
+	}
+
+	versions := unversioned.ExtractGroupVersions(groups)
+	return newVersionSet(versions...), nil
+}
+
 func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, error) {
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
@@ -409,7 +435,11 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hooks, manifests, err := sortHooks(files)
+	vs, err := s.getVersionSet()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+	}
+	hooks, manifests, err := sortManifests(files, vs)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.

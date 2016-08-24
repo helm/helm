@@ -22,7 +22,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
-func TestSortHooks(t *testing.T) {
+func TestSortManifests(t *testing.T) {
 
 	data := []struct {
 		name     string
@@ -52,6 +52,7 @@ metadata:
 			kind:  "ReplicaSet",
 			hooks: []release.Hook_Event{release.Hook_POST_INSTALL},
 			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
 metadata:
   name: second
   annotations:
@@ -63,6 +64,7 @@ metadata:
 			kind:  "ReplicaSet",
 			hooks: []release.Hook_Event{},
 			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
 metadata:
   name: third
   annotations:
@@ -74,6 +76,7 @@ metadata:
 			kind:  "Pod",
 			hooks: []release.Hook_Event{},
 			manifest: `kind: Pod
+apiVersion: v1
 metadata:
   name: fourth
   annotations:
@@ -85,6 +88,7 @@ metadata:
 			kind:  "ReplicaSet",
 			hooks: []release.Hook_Event{release.Hook_POST_DELETE, release.Hook_POST_INSTALL},
 			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
 metadata:
   name: fifth
   annotations:
@@ -112,7 +116,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := sortHooks(manifests)
+	hs, generic, err := sortManifests(manifests, newVersionSet("v1", "v1beta1"))
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -152,4 +156,20 @@ metadata:
 		}
 	}
 
+}
+
+func TestVersionSet(t *testing.T) {
+	vs := newVersionSet("v1", "v1beta1", "extensions/alpha5", "batch/v1")
+
+	if l := len(vs); l != 4 {
+		t.Errorf("Expected 4, got %d", l)
+	}
+
+	if !vs.Has("extensions/alpha5") {
+		t.Error("No match for alpha5")
+	}
+
+	if vs.Has("nosuch/extension") {
+		t.Error("Found nonexistent extension")
+	}
 }
