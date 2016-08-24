@@ -198,7 +198,7 @@ func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 		return nil, err
 	}
 
-	if err := s.env.Releases.Update(updatedRelease); err != nil {
+	if err := s.env.Releases.Create(updatedRelease); err != nil {
 		return nil, err
 	}
 
@@ -232,6 +232,11 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, postUpgrade); err != nil {
 			return res, err
 		}
+	}
+
+	originalRelease.Info.Status.Code = release.Status_SUPERSEDED
+	if err := env.Releases.Update(originalRelease); err != nil {
+		return nil, fmt.Errorf("Update of %s failed: %s", originalRelease.Name, err)
 	}
 
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
