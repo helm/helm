@@ -50,3 +50,6 @@ import:
 - package: google.golang.org/cloud
   vcs: git
   repo: https://code.googlesource.com/gocloud
+- package: golang.org/x/crypto
+  subpackages:
+  - openpgp

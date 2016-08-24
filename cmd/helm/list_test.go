@@ -28,7 +28,6 @@ func TestListCmd(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     []string
-		flags    map[string]string
 		resp     []*release.Release
 		expected string
 		err      bool
@@ -41,8 +40,9 @@ func TestListCmd(t *testing.T) {
 			expected: "thomas-guide",
 		},
 		{
-			name:  "list --long",
-			flags: map[string]string{"long": "1"},
+			name: "list --long",
+			//flags: map[string]string{"long": "1"},
+			args: []string{"--long"},
 			resp: []*release.Release{
 				releaseMock(&releaseOptions{name: "atlas"}),
 			},
@@ -56,9 +56,7 @@ func TestListCmd(t *testing.T) {
 			rels: tt.resp,
 		}
 		cmd := newListCmd(c, &buf)
-		for flag, value := range tt.flags {
-			cmd.Flags().Set(flag, value)
-		}
+		cmd.ParseFlags(tt.args)
 		err := cmd.RunE(cmd, tt.args)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)

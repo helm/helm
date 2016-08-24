@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -54,6 +55,9 @@ or
 To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined. This will still require a
 round-trip to the Tiller server.
+
+If --verify is set, the chart MUST have a provenance file, and the provenenace
+fall MUST pass all verification steps.
 `
 
 type installCmd struct {
@@ -64,6 +68,8 @@ type installCmd struct {
 	dryRun       bool
 	disableHooks bool
 	replace      bool
+	verify       bool
+	keyring      string
 	out          io.Writer
 	client       helm.Interface
 	values       *values
@@ -86,7 +92,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0])
+			cp, err := locateChartPath(args[0], inst.verify, inst.keyring)
 			if err != nil {
 				return err
 			}
@@ -106,6 +112,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
 	f.Var(inst.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
+	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
+	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	return cmd
 }
 
@@ -171,6 +179,7 @@ func (i *installCmd) vals() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+// printRelease prints info about a release if the flagDebug is true.
 func (i *installCmd) printRelease(rel *release.Release) {
 	if rel == nil {
 		return
@@ -251,9 +260,23 @@ func splitPair(item string) (name string, value interface{}) {
 // - current working directory
 // - if path is absolute or begins with '.', error out here
 // - chart repos in $HELM_HOME
-func locateChartPath(name string) (string, error) {
-	if _, err := os.Stat(name); err == nil {
-		return filepath.Abs(name)
+//
+// If 'verify' is true, this will attempt to also verify the chart.
+func locateChartPath(name string, verify bool, keyring string) (string, error) {
+	if fi, err := os.Stat(name); err == nil {
+		abs, err := filepath.Abs(name)
+		if err != nil {
+			return abs, err
+		}
+		if verify {
+			if fi.IsDir() {
+				return "", errors.New("cannot verify a directory")
+			}
+			if err := verifyChart(abs, keyring); err != nil {
+				return "", err
+			}
+		}
+		return abs, nil
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
 		return name, fmt.Errorf("path %q not found", name)
@@ -269,7 +292,7 @@ func locateChartPath(name string) (string, error) {
 	if filepath.Ext(name) != ".tgz" {
 		name += ".tgz"
 	}
-	if err := fetchChart(name); err == nil {
+	if err := downloadChart(name, false, ".", verify, keyring); err == nil {
 		lname, err := filepath.Abs(filepath.Base(name))
 		if err != nil {
 			return lname, err
