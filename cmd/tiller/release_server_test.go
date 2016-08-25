@@ -178,7 +178,7 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Release.Namespace)
 	}
 
-	rel, err := rs.env.Releases.Get(res.Release.Name)
+	rel, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
@@ -248,7 +248,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Should not contain template data for an empty file. %s", res.Release.Manifest)
 	}
 
-	if _, err := rs.env.Releases.Get(res.Release.Name); err == nil {
+	if _, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version); err == nil {
 		t.Errorf("Expected no stored release.")
 	}
 
@@ -317,10 +317,11 @@ func TestUpdateRelease(t *testing.T) {
 				{Name: "hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
 		},
+		Version: 1,
 	}
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
-		t.Errorf("Failed updated: %s", err)
+		t.Fatalf("Failed updated: %s", err)
 	}
 
 	if res.Release.Name == "" {
@@ -335,7 +336,7 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Release.Namespace)
 	}
 
-	updated, err := rs.env.Releases.Get(res.Release.Name)
+	updated, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
@@ -392,7 +393,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
-		t.Errorf("Failed updated: %s", err)
+		t.Fatalf("Failed updated: %s", err)
 	}
 
 	if hl := res.Release.Hooks[0].LastRun; hl != nil {
@@ -412,7 +413,7 @@ func TestUninstallRelease(t *testing.T) {
 
 	res, err := rs.UninstallRelease(c, req)
 	if err != nil {
-		t.Errorf("Failed uninstall: %s", err)
+		t.Fatalf("Failed uninstall: %s", err)
 	}
 
 	if res.Release.Name != "angry-panda" {
@@ -451,7 +452,7 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 
 	res, err := rs.UninstallRelease(c, req)
 	if err != nil {
-		t.Errorf("Failed uninstall: %s", err)
+		t.Fatalf("Failed uninstall: %s", err)
 	}
 
 	// The default value for a protobuf timestamp is nil.
@@ -470,7 +471,7 @@ func TestGetReleaseContent(t *testing.T) {
 
 	res, err := rs.GetReleaseContent(c, &services.GetReleaseContentRequest{Name: rel.Name})
 	if err != nil {
-		t.Errorf("Error getting release content: %s", err)
+		t.Fatalf("Error getting release content: %s", err)
 	}
 
 	if res.Release.Chart.Metadata.Name != rel.Chart.Metadata.Name {
@@ -488,7 +489,7 @@ func TestGetReleaseStatus(t *testing.T) {
 
 	res, err := rs.GetReleaseStatus(c, &services.GetReleaseStatusRequest{Name: rel.Name})
 	if err != nil {
-		t.Errorf("Error getting release content: %s", err)
+		t.Fatalf("Error getting release content: %s", err)
 	}
 
 	if res.Info.Status.Code != release.Status_DEPLOYED {

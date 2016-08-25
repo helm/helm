@@ -37,8 +37,10 @@ func TestConfigMapName(t *testing.T) {
 }
 
 func TestConfigMapGet(t *testing.T) {
-	key := "key-1"
-	rel := newTestRelease(key, 1, rspb.Status_DEPLOYED)
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+	rel := newTestRelease(name, vers, rspb.Status_DEPLOYED)
 
 	cfgmaps := newTestFixture(t, []*rspb.Release{rel}...)
 
@@ -100,14 +102,20 @@ func TestConfigMapList(t *testing.T) {
 	}
 }
 
+func TestConfigMapQuery(t *testing.T) {
+	t.Skip("TestConfigMapQuery")
+}
+
 func TestConfigMapCreate(t *testing.T) {
 	cfgmaps := newTestFixture(t)
 
-	key := "key-1"
-	rel := newTestRelease(key, 1, rspb.Status_DEPLOYED)
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+	rel := newTestRelease(name, vers, rspb.Status_DEPLOYED)
 
 	// store the release in a configmap
-	if err := cfgmaps.Create(rel); err != nil {
+	if err := cfgmaps.Create(key, rel); err != nil {
 		t.Fatalf("Failed to create release with key %q: %s", key, err)
 	}
 
@@ -124,16 +132,18 @@ func TestConfigMapCreate(t *testing.T) {
 }
 
 func TestConfigMapUpdate(t *testing.T) {
-	key := "key-1"
-	rel := newTestRelease(key, 1, rspb.Status_DEPLOYED)
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+	rel := newTestRelease(name, vers, rspb.Status_DEPLOYED)
 
 	cfgmaps := newTestFixture(t, []*rspb.Release{rel}...)
 
-	// modify release status code & version
-	rel = newTestRelease(key, 2, rspb.Status_SUPERSEDED)
+	// modify release status code
+	rel.Info.Status.Code = rspb.Status_SUPERSEDED
 
 	// perform the update
-	if err := cfgmaps.Update(rel); err != nil {
+	if err := cfgmaps.Update(key, rel); err != nil {
 		t.Fatalf("Failed to update release: %s", err)
 	}
 
@@ -144,11 +154,8 @@ func TestConfigMapUpdate(t *testing.T) {
 	}
 
 	// check release has actually been updated by comparing modified fields
-	switch {
-	case rel.Info.Status.Code != got.Info.Status.Code:
+	if rel.Info.Status.Code != got.Info.Status.Code {
 		t.Errorf("Expected status %s, got status %s", rel.Info.Status.Code, got.Info.Status.Code)
-	case rel.Version != got.Version:
-		t.Errorf("Expected version %d, got version %d", rel.Version, got.Version)
 	}
 }
 
@@ -177,11 +184,13 @@ func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Releas
 	mock.objects = map[string]*api.ConfigMap{}
 
 	for _, rls := range releases {
-		cfgmap, err := newConfigMapsObject(rls, nil)
+		objkey := testKey(rls.Name, rls.Version)
+
+		cfgmap, err := newConfigMapsObject(objkey, rls, nil)
 		if err != nil {
 			t.Fatalf("Failed to create configmap: %s", err)
 		}
-		mock.objects[rls.Name] = cfgmap
+		mock.objects[objkey] = cfgmap
 	}
 }
 

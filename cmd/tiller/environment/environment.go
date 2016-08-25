@@ -31,7 +31,6 @@ import (
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
@@ -208,7 +207,7 @@ func New() *Environment {
 
 	return &Environment{
 		EngineYard: ey,
-		Releases:   storage.Init(driver.NewMemory()),
+		Releases:   storage.Init(nil),
 		KubeClient: kube.New(nil),
 	}
 }

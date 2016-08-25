@@ -17,6 +17,7 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
+	"fmt"
 	"sync"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -64,23 +65,28 @@ func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error
 	return releases, nil
 }
 
+// Query does not apply to in-memory storage.
+func (mem *Memory) Query(_ map[string]string) ([]*rspb.Release, error) {
+	return nil, fmt.Errorf("memory: cannot apply query by labels to in-memory storage")
+}
+
 // Create creates a new release or returns ErrReleaseExists.
-func (mem *Memory) Create(rls *rspb.Release) error {
+func (mem *Memory) Create(key string, rls *rspb.Release) error {
 	defer unlock(mem.wlock())
 
-	if _, ok := mem.cache[rls.Name]; ok {
+	if _, ok := mem.cache[key]; ok {
 		return ErrReleaseExists
 	}
-	mem.cache[rls.Name] = rls
+	mem.cache[key] = rls
 	return nil
 }
 
 // Update updates a release or returns ErrReleaseNotFound.
-func (mem *Memory) Update(rls *rspb.Release) error {
+func (mem *Memory) Update(key string, rls *rspb.Release) error {
 	defer unlock(mem.wlock())
 
-	if _, ok := mem.cache[rls.Name]; ok {
-		mem.cache[rls.Name] = rls
+	if _, ok := mem.cache[key]; ok {
+		mem.cache[key] = rls
 		return nil
 	}
 	return ErrReleaseNotFound

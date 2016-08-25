@@ -129,6 +129,8 @@ message ListReleasesResponse {
 message GetReleaseStatusRequest {
 	// Name is the name of the release
 	string name = 1;
+	// Version is the version of the release
+	int32 version = 2;
 }
 
 // GetReleaseStatusResponse is the response indicating the status of the named release.
@@ -144,6 +146,8 @@ message GetReleaseStatusResponse {
 message GetReleaseContentRequest {
 	// The name of the release
 	string name = 1;
+	// Version is the version of the release
+	int32 version = 2;
 }
 
 // GetReleaseContentResponse is a response containing the contents of a release.
@@ -165,6 +169,9 @@ message UpdateReleaseRequest {
 
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
 	bool disable_hooks = 5;
+
+	// Version is the version of the release to be updated
+	int32 version = 6;
 }
 
 // UpdateReleaseResponse is the response to an update request.

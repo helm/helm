@@ -17,6 +17,7 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -33,11 +34,14 @@ func TestMemoryName(t *testing.T) {
 }
 
 func TestMemoryGet(t *testing.T) {
-	key := "test-1"
-	rls := &rspb.Release{Name: key}
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+
+	rls := &rspb.Release{Name: name, Version: vers}
 
 	mem := NewMemory()
-	if err := mem.Create(rls); err != nil {
+	if err := mem.Create(key, rls); err != nil {
 		t.Fatalf("Failed create: %s", err)
 	}
 
@@ -45,46 +49,76 @@ func TestMemoryGet(t *testing.T) {
 	if err != nil {
 		t.Errorf("Could not get %s: %s", key, err)
 	}
-	if res.Name != key {
-		t.Errorf("Expected %s, got %s", key, res.Name)
+	if res.Name != name {
+		t.Errorf("Expected name %s, got name %s", key, res.Name)
+	}
+	if res.Version != vers {
+		t.Errorf("Expected version %d, got version %d", vers, res.Version)
 	}
 }
 
 func TestMemoryCreate(t *testing.T) {
-	key := "test-1"
-	rls := &rspb.Release{Name: key}
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+
+	rls := &rspb.Release{Name: name, Version: vers}
 
 	mem := NewMemory()
-	if err := mem.Create(rls); err != nil {
+	if err := mem.Create(key, rls); err != nil {
 		t.Fatalf("Failed created: %s", err)
 	}
-	if mem.cache[key].Name != key {
+	if mem.cache[key].Name != name {
 		t.Errorf("Unexpected release name: %s", mem.cache[key].Name)
+	}
+	if mem.cache[key].Version != vers {
+		t.Errorf("Unexpected release version: %d", mem.cache[key].Version)
 	}
 }
 
 func TestMemoryUpdate(t *testing.T) {
-	key := "test-1"
-	rls := &rspb.Release{Name: key}
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+
+	rls := &rspb.Release{
+		Name:    name,
+		Version: vers,
+		Info:    &rspb.Info{Status: &rspb.Status{Code: rspb.Status_DEPLOYED}},
+	}
 
 	mem := NewMemory()
-	if err := mem.Create(rls); err != nil {
+	if err := mem.Create(key, rls); err != nil {
 		t.Fatalf("Failed create: %s", err)
 	}
-	if err := mem.Update(rls); err != nil {
+
+	// make an update to the release
+	rls.Info.Status.Code = rspb.Status_DELETED
+
+	if err := mem.Update(key, rls); err != nil {
 		t.Fatalf("Failed update: %s", err)
 	}
-	if mem.cache[key].Name != key {
+
+	if mem.cache[key].Name != name {
 		t.Errorf("Unexpected release name: %s", mem.cache[key].Name)
+	}
+	if mem.cache[key].Version != vers {
+		t.Errorf("Unexpected release version: %d", mem.cache[key].Version)
+	}
+	if mem.cache[key].Info.Status.Code != rspb.Status_DELETED {
+		t.Errorf("Unexpected status code: %s", mem.cache[key].Info.Status.Code)
 	}
 }
 
 func TestMemoryDelete(t *testing.T) {
-	key := "test-1"
-	rls := &rspb.Release{Name: key}
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+
+	rls := &rspb.Release{Name: key, Version: vers}
 
 	mem := NewMemory()
-	if err := mem.Create(rls); err != nil {
+	if err := mem.Create(key, rls); err != nil {
 		t.Fatalf("Failed create: %s", err)
 	}
 
@@ -98,4 +132,8 @@ func TestMemoryDelete(t *testing.T) {
 	if !reflect.DeepEqual(rls, res) {
 		t.Errorf("Expected %s, got %s", rls, res)
 	}
+}
+
+func testKey(name string, version int32) string {
+	return fmt.Sprintf("%s.v%d", name, version)
 }

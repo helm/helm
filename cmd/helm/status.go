@@ -34,6 +34,7 @@ type statusCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
+	version int32
 }
 
 func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -57,11 +58,14 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return status.run()
 		},
 	}
+
+	cmd.PersistentFlags().Int32Var(&status.version, "version", 0, "version of release")
+
 	return cmd
 }
 
 func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release)
+	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version))
 	if err != nil {
 		return prettyError(err)
 	}
