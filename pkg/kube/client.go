@@ -22,6 +22,7 @@ import (
 	"io"
 	"log"
 	"reflect"
+	"strings"
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -157,8 +158,9 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 	}
 
 	modifiedInfos := []*resource.Info{}
+	updateErrors := []string{}
 
-	modified.Visit(func(info *resource.Info, err error) error {
+	err = modified.Visit(func(info *resource.Info, err error) error {
 		modifiedInfos = append(modifiedInfos, info)
 		if err != nil {
 			return err
@@ -188,15 +190,23 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 
 		if err := updateResource(info, currentObj); err != nil {
 			log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
-			return err
+			updateErrors = append(updateErrors, err.Error())
 		}
 
-		return err
+		return nil
 	})
 
 	deleteUnwantedResources(currentInfos, modifiedInfos)
 
+	if err != nil {
+		return err
+	} else if len(updateErrors) != 0 {
+		return fmt.Errorf(strings.Join(updateErrors, " && "))
+
+	}
+
 	return nil
+
 }
 
 // Delete deletes kubernetes resources from an io.reader
