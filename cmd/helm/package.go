@@ -57,14 +57,13 @@ func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		out: out,
 	}
 	cmd := &cobra.Command{
-		Use:   "package [CHART_PATH]",
+		Use:   "package [flags] [CHART_PATH] [...]",
 		Short: "package a chart directory into a chart archive",
 		Long:  packageDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("This command needs at least one argument, the path to the chart.")
 			}
-			pkg.path = args[0]
 			if pkg.sign {
 				if pkg.key == "" {
 					return errors.New("--key is required for signing a package")
@@ -73,7 +72,13 @@ func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
 					return errors.New("--keyring is required for signing a package")
 				}
 			}
-			return pkg.run(cmd, args)
+			for i := 0; i < len(args); i++ {
+				pkg.path = args[i]
+				if err := pkg.run(cmd, args); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 

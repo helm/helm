@@ -64,15 +64,20 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	fch := &fetchCmd{out: out}
 
 	cmd := &cobra.Command{
-		Use:   "fetch [chart URL | repo/chartname]",
+		Use:   "fetch [flags] [chart URL | repo/chartname] [...]",
 		Short: "download a chart from a repository and (optionally) unpack it in local directory",
 		Long:  fetchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("This command needs at least one argument, url or repo/name of the chart.")
 			}
-			fch.chartRef = args[0]
-			return fch.run()
+			for i := 0; i < len(args); i++ {
+				fch.chartRef = args[i]
+				if err := fch.run(); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 
