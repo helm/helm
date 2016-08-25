@@ -41,12 +41,32 @@ func TestListCmd(t *testing.T) {
 		},
 		{
 			name: "list --long",
-			//flags: map[string]string{"long": "1"},
 			args: []string{"--long"},
 			resp: []*release.Release{
 				releaseMock(&releaseOptions{name: "atlas"}),
 			},
 			expected: "NAME \tVERSION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1      \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
+		},
+		{
+			name: "with a release, multiple flags",
+			args: []string{"--deleted", "--deployed", "--failed"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_DELETED}),
+				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
+			},
+			// Note: We're really only testing that the flags parsed correctly. Which results are returned
+			// depends on the backend. And until pkg/helm is done, we can't mock this.
+			expected: "thomas-guide\natlas-guide",
+		},
+		{
+			name: "with a release, multiple flags",
+			args: []string{"--all"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_DELETED}),
+				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
+			},
+			// See note on previous test.
+			expected: "thomas-guide\natlas-guide",
 		},
 	}
 
