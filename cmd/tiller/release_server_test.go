@@ -82,13 +82,17 @@ func chartStub() *chart.Chart {
 
 // releaseStub creates a release stub, complete with the chartStub as its chart.
 func releaseStub() *release.Release {
+	return namedReleaseStub("angry-panda", release.Status_DEPLOYED)
+}
+
+func namedReleaseStub(name string, status release.Status_Code) *release.Release {
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
 	return &release.Release{
-		Name: "angry-panda",
+		Name: name,
 		Info: &release.Info{
 			FirstDeployed: &date,
 			LastDeployed:  &date,
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
+			Status:        &release.Status{Code: status},
 		},
 		Chart:   chartStub(),
 		Config:  &chart.Config{Raw: `name = "value"`},
@@ -578,6 +582,71 @@ func TestListReleases(t *testing.T) {
 
 	if len(mrs.val.Releases) != num {
 		t.Errorf("Expected %d releases, got %d", num, len(mrs.val.Releases))
+	}
+}
+
+func TestListReleasesByStatus(t *testing.T) {
+	rs := rsFixture()
+	stubs := []*release.Release{
+		namedReleaseStub("kamal", release.Status_DEPLOYED),
+		namedReleaseStub("astrolabe", release.Status_DELETED),
+		namedReleaseStub("octant", release.Status_FAILED),
+		namedReleaseStub("sextant", release.Status_UNKNOWN),
+	}
+	for _, stub := range stubs {
+		if err := rs.env.Releases.Create(stub); err != nil {
+			t.Fatalf("Could not create stub: %s", err)
+		}
+	}
+
+	tests := []struct {
+		statusCodes []release.Status_Code
+		names       []string
+	}{
+		{
+			names:       []string{"kamal"},
+			statusCodes: []release.Status_Code{release.Status_DEPLOYED},
+		},
+		{
+			names:       []string{"astrolabe"},
+			statusCodes: []release.Status_Code{release.Status_DELETED},
+		},
+		{
+			names:       []string{"kamal", "octant"},
+			statusCodes: []release.Status_Code{release.Status_DEPLOYED, release.Status_FAILED},
+		},
+		{
+			names: []string{"kamal", "astrolabe", "octant", "sextant"},
+			statusCodes: []release.Status_Code{
+				release.Status_DEPLOYED,
+				release.Status_DELETED,
+				release.Status_FAILED,
+				release.Status_UNKNOWN,
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		mrs := &mockListServer{}
+		if err := rs.ListReleases(&services.ListReleasesRequest{StatusCodes: tt.statusCodes, Offset: "", Limit: 64}, mrs); err != nil {
+			t.Fatalf("Failed listing %d: %s", i, err)
+		}
+
+		if len(tt.names) != len(mrs.val.Releases) {
+			t.Fatalf("Expected %d releases, got %d", len(tt.names), len(mrs.val.Releases))
+		}
+
+		for _, name := range tt.names {
+			found := false
+			for _, rel := range mrs.val.Releases {
+				if rel.Name == name {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("%d: Did not find name %q", i, name)
+			}
+		}
 	}
 }
 

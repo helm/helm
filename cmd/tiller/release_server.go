@@ -68,7 +68,20 @@ type releaseServer struct {
 }
 
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
-	rels, err := s.env.Releases.ListDeployed()
+
+	if len(req.StatusCodes) == 0 {
+		req.StatusCodes = []release.Status_Code{release.Status_DEPLOYED}
+	}
+
+	//rels, err := s.env.Releases.ListDeployed()
+	rels, err := s.env.Releases.ListFilterAll(func(r *release.Release) bool {
+		for _, sc := range req.StatusCodes {
+			if sc == r.Info.Status.Code {
+				return true
+			}
+		}
+		return false
+	})
 	if err != nil {
 		return err
 	}

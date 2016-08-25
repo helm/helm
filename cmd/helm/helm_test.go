@@ -46,9 +46,10 @@ metadata:
 `
 
 type releaseOptions struct {
-	name    string
-	version int32
-	chart   *chart.Chart
+	name       string
+	version    int32
+	chart      *chart.Chart
+	statusCode release.Status_Code
 }
 
 func releaseMock(opts *releaseOptions) *release.Release {
@@ -77,12 +78,17 @@ func releaseMock(opts *releaseOptions) *release.Release {
 		}
 	}
 
+	scode := release.Status_DEPLOYED
+	if opts.statusCode > 0 {
+		scode = opts.statusCode
+	}
+
 	return &release.Release{
 		Name: name,
 		Info: &release.Info{
 			FirstDeployed: &date,
 			LastDeployed:  &date,
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
+			Status:        &release.Status{Code: scode},
 		},
 		Chart:   ch,
 		Config:  &chart.Config{Raw: `name: "value"`},
