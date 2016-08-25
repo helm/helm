@@ -209,6 +209,8 @@ message UninstallReleaseRequest {
 	string name = 1;
 	// DisableHooks causes the server to skip running any hooks for the uninstall.
 	bool disable_hooks = 2;
+	// Purge removes the release from the store and make its name free for later use.
+	bool purge = 3;
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.

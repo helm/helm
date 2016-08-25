@@ -41,6 +41,13 @@ func TestDelete(t *testing.T) {
 			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
 		{
+			name:     "purge",
+			args:     []string{"aeneas"},
+			flags:    []string{"--purge"},
+			expected: "",
+			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
+		},
+		{
 			name: "delete without release",
 			args: []string{},
 			err:  true,

@@ -534,6 +534,13 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
 	if rel.Info.Status.Code == release.Status_DELETED {
+		if req.Purge {
+			if _, err := s.env.Releases.Delete(rel.Name); err != nil {
+				log.Printf("uninstall: Failed to purge the release: %s", err)
+				return nil, err
+			}
+			return &services.UninstallReleaseResponse{Release: rel}, nil
+		}
 		return nil, fmt.Errorf("the release named %q is already deleted", req.Name)
 	}
 
@@ -560,8 +567,14 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	if err := s.env.Releases.Update(rel); err != nil {
-		log.Printf("uninstall: Failed to store updated release: %s", err)
+	if !req.Purge {
+		if err := s.env.Releases.Update(rel); err != nil {
+			log.Printf("uninstall: Failed to store updated release: %s", err)
+		}
+	} else {
+		if _, err := s.env.Releases.Delete(rel.Name); err != nil {
+			log.Printf("uninstall: Failed to purge the release: %s", err)
+		}
 	}
 
 	return res, nil
