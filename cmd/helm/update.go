@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -26,23 +27,37 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-var verboseUpdate bool
+const updateDesc = `
+Update gets the latest information about charts from the respective chart repositories.
+Information is cached locally, where it is used by commands like 'helm search'.
+`
 
-var updateCommand = &cobra.Command{
-	Use:     "update",
-	Aliases: []string{"up"},
-	Short:   "update information on available charts in the chart repositories",
-	RunE:    runUpdate,
+type updateCmd struct {
+	repoFile string
+	update   func(map[string]string, bool, io.Writer)
+	out      io.Writer
 }
 
-func init() {
-	updateCommand.Flags().BoolVar(&verboseUpdate, "verbose", false, "verbose error messages")
-	RootCommand.AddCommand(updateCommand)
+func newUpdateCmd(out io.Writer) *cobra.Command {
+	u := &updateCmd{
+		out:      out,
+		update:   updateCharts,
+		repoFile: repositoriesFile(),
+	}
+	cmd := &cobra.Command{
+		Use:     "update",
+		Aliases: []string{"up"},
+		Short:   "update information on available charts in the chart repositories",
+		Long:    updateDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return u.run()
+		},
+	}
+	return cmd
 }
 
-func runUpdate(cmd *cobra.Command, args []string) error {
-
-	f, err := repo.LoadRepositoriesFile(repositoriesFile())
+func (u *updateCmd) run() error {
+	f, err := repo.LoadRepositoriesFile(u.repoFile)
 	if err != nil {
 		return err
 	}
@@ -51,12 +66,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return errors.New("no repositories found. You must add one before updating")
 	}
 
-	updateCharts(f.Repositories, verboseUpdate)
+	u.update(f.Repositories, flagDebug, u.out)
 	return nil
 }
 
-func updateCharts(repos map[string]string, verbose bool) {
-	fmt.Println("Hang tight while we grab the latest from your chart repositories...")
+func updateCharts(repos map[string]string, verbose bool, out io.Writer) {
+	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	for name, url := range repos {
 		wg.Add(1)
@@ -65,16 +80,16 @@ func updateCharts(repos map[string]string, verbose bool) {
 			indexFileName := cacheDirectory(n + "-index.yaml")
 			err := repo.DownloadIndexFile(n, u, indexFileName)
 			if err != nil {
-				updateErr := "...Unable to get an update from the " + n + " chart repository"
+				updateErr := fmt.Sprintf("...Unable to get an update from the %q chart repository", n)
 				if verbose {
 					updateErr = updateErr + ": " + err.Error()
 				}
-				fmt.Println(updateErr)
+				fmt.Fprintln(out, updateErr)
 			} else {
-				fmt.Println("...Successfully got an update from the " + n + " chart repository")
+				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", n)
 			}
 		}(name, url)
 	}
 	wg.Wait()
-	fmt.Println("Update Complete. Happy Helming!")
+	fmt.Fprintln(out, "Update Complete. Happy Helming!")
 }
