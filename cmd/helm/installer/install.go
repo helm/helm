@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package client // import "k8s.io/helm/pkg/client"
+package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
 	"bytes"

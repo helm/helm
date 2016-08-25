@@ -25,7 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/client"
+	"k8s.io/helm/cmd/helm/installer"
 )
 
 const initDesc = `
@@ -71,7 +71,7 @@ func (i *initCmd) run() error {
 	}
 
 	if !i.clientOnly {
-		if err := client.Install(tillerNamespace, i.image, flagDebug); err != nil {
+		if err := installer.Install(tillerNamespace, i.image, flagDebug); err != nil {
 			if !strings.Contains(err.Error(), `"tiller-deploy" already exists`) {
 				return fmt.Errorf("error installing: %s", err)
 			}
