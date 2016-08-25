@@ -41,7 +41,7 @@ var srv *releaseServer
 
 // releaseNameMaxLen is the maximum length of a release name.
 //
-// This is designed to accomodate the usage of release name in the 'name:'
+// This is designed to accommodate the usage of release name in the 'name:'
 // field of Kubernetes resources. Many of those fields are limited to 24
 // characters in length. See https://github.com/kubernetes/helm/issues/1071
 const releaseNameMaxLen = 14
