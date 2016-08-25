@@ -221,10 +221,16 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 			if kubectl.IsNoSuchReaperError(err) {
 				return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 			}
+
 			return err
 		}
 		log.Printf("Using reaper for deleting %s", info.Name)
-		return reaper.Stop(info.Namespace, info.Name, 0, nil)
+		err = reaper.Stop(info.Namespace, info.Name, 0, nil)
+		if err != nil && errors.IsNotFound(err) {
+			log.Printf("%v", err)
+			return nil
+		}
+		return err
 	})
 }
 
