@@ -125,7 +125,7 @@ func (u *upgradeCmd) run() error {
 
 	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
 	if err != nil {
-		return prettyError(err)
+		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
 
 	success := u.release + " has been upgraded. Happy Helming!\n"

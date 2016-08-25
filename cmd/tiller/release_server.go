@@ -224,7 +224,7 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	original := bytes.NewBufferString(originalRelease.Manifest)
 	modified := bytes.NewBufferString(updatedRelease.Manifest)
 	if err := kubeCli.Update(updatedRelease.Namespace, original, modified); err != nil {
-		return nil, fmt.Errorf("Update of %s failed: %s", updatedRelease.Name, err)
+		return nil, err
 	}
 
 	// post-upgrade hooks

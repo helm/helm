@@ -22,6 +22,7 @@ import (
 	"io"
 	"log"
 	"reflect"
+	"strings"
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -128,13 +129,13 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	return buf.String(), err
 }
 
-// Update reads in the current configuration and a modified configuration from io.reader
+// Update reads in the current configuration and a target configuration from io.reader
 //  and creates resources that don't already exists, updates resources that have been modified
-//  and deletes resources from the current configuration that are not present in the
-//  modified configuration
+//  in the target configuration and deletes resources from the current configuration that are
+//  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reader) error {
+func (c *Client) Update(namespace string, currentReader, targetReader io.Reader) error {
 	current := c.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
@@ -143,11 +144,11 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 		Flatten().
 		Do()
 
-	modified := c.NewBuilder(includeThirdPartyAPIs).
+	target := c.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
-		Stream(modifiedReader, "").
+		Stream(targetReader, "").
 		Flatten().
 		Do()
 
@@ -156,10 +157,11 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 		return err
 	}
 
-	modifiedInfos := []*resource.Info{}
+	targetInfos := []*resource.Info{}
+	updateErrors := []string{}
 
-	modified.Visit(func(info *resource.Info, err error) error {
-		modifiedInfos = append(modifiedInfos, info)
+	err = target.Visit(func(info *resource.Info, err error) error {
+		targetInfos = append(targetInfos, info)
 		if err != nil {
 			return err
 		}
@@ -188,15 +190,23 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 
 		if err := updateResource(info, currentObj); err != nil {
 			log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
-			return err
+			updateErrors = append(updateErrors, err.Error())
 		}
 
-		return err
+		return nil
 	})
 
-	deleteUnwantedResources(currentInfos, modifiedInfos)
+	deleteUnwantedResources(currentInfos, targetInfos)
+
+	if err != nil {
+		return err
+	} else if len(updateErrors) != 0 {
+		return fmt.Errorf(strings.Join(updateErrors, " && "))
+
+	}
 
 	return nil
+
 }
 
 // Delete deletes kubernetes resources from an io.reader
@@ -282,7 +292,7 @@ func deleteResource(info *resource.Info) error {
 	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 }
 
-func updateResource(modified *resource.Info, currentObj runtime.Object) error {
+func updateResource(target *resource.Info, currentObj runtime.Object) error {
 
 	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
 	originalSerialization, err := runtime.Encode(encoder, currentObj)
@@ -290,7 +300,7 @@ func updateResource(modified *resource.Info, currentObj runtime.Object) error {
 		return err
 	}
 
-	editedSerialization, err := runtime.Encode(encoder, modified.Object)
+	editedSerialization, err := runtime.Encode(encoder, target.Object)
 	if err != nil {
 		return err
 	}
@@ -306,7 +316,7 @@ func updateResource(modified *resource.Info, currentObj runtime.Object) error {
 	}
 
 	if reflect.DeepEqual(originalJS, editedJS) {
-		return fmt.Errorf("Looks like there are no changes for %s", modified.Name)
+		return fmt.Errorf("Looks like there are no changes for %s", target.Name)
 	}
 
 	patch, err := strategicpatch.CreateStrategicMergePatch(originalJS, editedJS, currentObj)
@@ -315,8 +325,8 @@ func updateResource(modified *resource.Info, currentObj runtime.Object) error {
 	}
 
 	// send patch to server
-	helper := resource.NewHelper(modified.Client, modified.Mapping)
-	if _, err = helper.Patch(modified.Namespace, modified.Name, api.StrategicMergePatchType, patch); err != nil {
+	helper := resource.NewHelper(target.Client, target.Mapping)
+	if _, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch); err != nil {
 		return err
 	}
 
@@ -401,10 +411,10 @@ func (c *Client) ensureNamespace(namespace string) error {
 	return nil
 }
 
-func deleteUnwantedResources(currentInfos, modifiedInfos []*resource.Info) {
+func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
 	for _, cInfo := range currentInfos {
 		found := false
-		for _, m := range modifiedInfos {
+		for _, m := range targetInfos {
 			if m.Name == cInfo.Name {
 				found = true
 			}
