@@ -19,6 +19,7 @@ package helm
 import (
 	"golang.org/x/net/context"
 	cpb "k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
@@ -102,6 +103,16 @@ func ReleaseListOrder(order int32) ReleaseListOption {
 func ReleaseListSort(sort int32) ReleaseListOption {
 	return func(opts *options) {
 		opts.listReq.SortBy = rls.ListSort_SortBy(sort)
+	}
+}
+
+// ReleaseListStatuses specifies which status codes should be returned.
+func ReleaseListStatuses(statuses []release.Status_Code) ReleaseListOption {
+	return func(opts *options) {
+		if len(statuses) == 0 {
+			statuses = []release.Status_Code{release.Status_DEPLOYED}
+		}
+		opts.listReq.StatusCodes = statuses
 	}
 }
 

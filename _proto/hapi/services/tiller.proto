@@ -20,6 +20,7 @@ import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
 import "hapi/release/info.proto";
+import "hapi/release/status.proto";
 
 option go_package = "services";
 
@@ -90,7 +91,10 @@ message ListReleasesRequest {
 	// Anything that matches the regexp will be included in the results.
 	string filter = 4;
 
+	// SortOrder is the ordering directive used for sorting.
 	ListSort.SortOrder sort_order = 5;
+
+	repeated hapi.release.Status.Code status_codes = 6;
 }
 
 // ListSort defines sorting fields on a release list.

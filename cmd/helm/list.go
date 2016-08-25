@@ -31,7 +31,10 @@ import (
 )
 
 var listHelp = `
-This command lists all of the currently deployed releases.
+This command lists all of the releases.
+
+By default, it lists only releases that are deployed. Flags like '--delete' and
+'--all' will alter this behavior. Such flags can be combined: '--deleted --failed'.
 
 By default, items are sorted alphabetically. Use the '-d' flag to sort by
 release date.
@@ -54,14 +57,19 @@ flag with the '--offset' flag allows you to page through results.
 `
 
 type listCmd struct {
-	filter   string
-	long     bool
-	limit    int
-	offset   string
-	byDate   bool
-	sortDesc bool
-	out      io.Writer
-	client   helm.Interface
+	filter     string
+	long       bool
+	limit      int
+	offset     string
+	byDate     bool
+	sortDesc   bool
+	out        io.Writer
+	all        bool
+	deleted    bool
+	deployed   bool
+	failed     bool
+	superseded bool
+	client     helm.Interface
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -91,6 +99,12 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.StringVarP(&list.offset, "offset", "o", "", "the next release name in the list, used to offset from start value")
+	f.BoolVar(&list.all, "all", false, "show all releases, not just the ones marked DEPLOYED")
+	f.BoolVar(&list.deleted, "deleted", false, "show deleted releases")
+	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
+	f.BoolVar(&list.failed, "failed", false, "show failed releases")
+	// TODO: Do we want this as a feature of 'helm list'?
+	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
 	return cmd
 }
 
@@ -105,12 +119,15 @@ func (l *listCmd) run() error {
 		sortOrder = services.ListSort_DESC
 	}
 
+	stats := l.statusCodes()
+
 	res, err := l.client.ListReleases(
 		helm.ReleaseListLimit(l.limit),
 		helm.ReleaseListOffset(l.offset),
 		helm.ReleaseListFilter(l.filter),
 		helm.ReleaseListSort(int32(sortBy)),
 		helm.ReleaseListOrder(int32(sortOrder)),
+		helm.ReleaseListStatuses(stats),
 	)
 
 	if err != nil {
@@ -136,6 +153,40 @@ func (l *listCmd) run() error {
 	}
 
 	return nil
+}
+
+// statusCodes gets the list of status codes that are to be included in the results.
+func (l *listCmd) statusCodes() []release.Status_Code {
+	if l.all {
+		return []release.Status_Code{
+			release.Status_UNKNOWN,
+			release.Status_DEPLOYED,
+			release.Status_DELETED,
+			// TODO: Should we return superseded records? These are records
+			// that were replaced by an upgrade.
+			//release.Status_SUPERSEDED,
+			release.Status_FAILED,
+		}
+	}
+	status := []release.Status_Code{}
+	if l.deployed {
+		status = append(status, release.Status_DEPLOYED)
+	}
+	if l.deleted {
+		status = append(status, release.Status_DELETED)
+	}
+	if l.failed {
+		status = append(status, release.Status_FAILED)
+	}
+	if l.superseded {
+		status = append(status, release.Status_SUPERSEDED)
+	}
+
+	// Default case.
+	if len(status) == 0 {
+		status = append(status, release.Status_DEPLOYED)
+	}
+	return status
 }
 
 func formatList(rels []*release.Release) string {
