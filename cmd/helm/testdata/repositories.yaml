@@ -1,0 +1,2 @@
+charts: http://storage.googleapis.com/kubernetes-charts
+local: http://localhost:8879/charts
