@@ -40,7 +40,7 @@ Released smiling-penguin
 In the example above, the `alpine` chart was released, and the name of
 our new release is `smiling-penguin`. You can view the details of the chart we just 
 installed by taking a look at the nginx chart in 
-[docs/examples/alpine/Chart.yaml](docs/examples/alpine/Chart.yaml).
+[docs/examples/alpine/Chart.yaml](examples/alpine/Chart.yaml).
 
 ## Change a Default Chart Value
 
@@ -53,8 +53,8 @@ happy-panda
 ```
 
 You can view the chart for this example in 
-[docs/examples/nginx/Chart.yaml](docs/examples/nginx/Chart.yaml) and the default values in
-[docs/examples/nginx/values.yaml](docs/examples/nginx/values.yaml).
+[docs/examples/nginx/Chart.yaml](examples/nginx/Chart.yaml) and the default values in
+[docs/examples/nginx/values.yaml](examples/nginx/values.yaml).
 
 ## Learn About The Release
 
