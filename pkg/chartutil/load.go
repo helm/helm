@@ -208,6 +208,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		}
 		rules = r
 	}
+	rules.AddDefaults()
 
 	files := []*afile{}
 	topdir += string(filepath.Separator)
