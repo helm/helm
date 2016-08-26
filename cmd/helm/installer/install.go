@@ -17,21 +17,19 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
+	"strings"
 
-	"github.com/Masterminds/sprig"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/util/intstr"
 
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/version"
 )
 
-// Install uses kubernetes client to install tiller
-//
-// Returns the string output received from the operation, and an error if the
-// command failed.
-//
-// If verbose is true, this will print the manifest to stdout.
+const defaultImage = "gcr.io/kubernetes-helm/tiller"
+
 func Install(namespace, image string, verbose bool) error {
 	kc := kube.New(nil)
 
@@ -43,59 +41,91 @@ func Install(namespace, image string, verbose bool) error {
 		namespace = ns
 	}
 
-	var b bytes.Buffer
-
-	// Add main install YAML
-	istpl := template.New("install").Funcs(sprig.TxtFuncMap())
-
-	cfg := struct {
-		Namespace, Image string
-	}{namespace, image}
-
-	if err := template.Must(istpl.Parse(InstallYAML)).Execute(&b, cfg); err != nil {
+	c, err := kc.Client()
+	if err != nil {
 		return err
 	}
 
-	if verbose {
-		fmt.Println(b.String())
+	ns := generateNamespace(namespace)
+	if _, err := c.Namespaces().Create(ns); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			return err
+		}
 	}
 
-	return kc.Create(namespace, &b)
+	if image == "" {
+		// strip git sha off version
+		tag := strings.Split(version.Version, "+")[0]
+		image = fmt.Sprintf("%s:%s", defaultImage, tag)
+	}
+
+	rc := generateReplicationController(image)
+
+	_, err = c.ReplicationControllers(namespace).Create(rc)
+	return err
 }
 
-// InstallYAML is the installation YAML for DM.
-const InstallYAML = `
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: tiller-deploy
-  namespace: {{ .Namespace }}
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: helm
-        name: tiller
-    spec:
-      containers:
-      - image: {{default "gcr.io/kubernetes-helm/tiller:canary" .Image}}
-        name: tiller
-        ports:
-        - containerPort: 44134
-          name: tiller
-        imagePullPolicy: Always
-        livenessProbe:
-          httpGet:
-            path: /liveness
-            port: 44135
-          initialDelaySeconds: 1
-          timeoutSeconds: 1
-        readinessProbe:
-          httpGet:
-            path: /readiness
-            port: 44135
-          initialDelaySeconds: 1
-          timeoutSeconds: 1
-`
+func generateLabeles(labels map[string]string) map[string]string {
+	labels["app"] = "helm"
+	return labels
+}
+
+func generateReplicationController(image string) *api.ReplicationController {
+	labels := generateLabeles(map[string]string{"name": "tiller"})
+
+	rc := &api.ReplicationController{
+		ObjectMeta: api.ObjectMeta{
+			Name:   "tiller-rc",
+			Labels: labels,
+		},
+		Spec: api.ReplicationControllerSpec{
+			Replicas: 1,
+			Selector: labels,
+			Template: &api.PodTemplateSpec{
+				ObjectMeta: api.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Name:            "tiller",
+							Image:           image,
+							ImagePullPolicy: "Always",
+							Ports:           []api.ContainerPort{{ContainerPort: 44134, Name: "tiller"}},
+							LivenessProbe: &api.Probe{
+								Handler: api.Handler{
+									HTTPGet: &api.HTTPGetAction{
+										Path: "/liveness",
+										Port: intstr.FromInt(44135),
+									},
+								},
+								InitialDelaySeconds: 1,
+								TimeoutSeconds:      1,
+							},
+							ReadinessProbe: &api.Probe{
+								Handler: api.Handler{
+									HTTPGet: &api.HTTPGetAction{
+										Path: "/readiness",
+										Port: intstr.FromInt(44135),
+									},
+								},
+								InitialDelaySeconds: 1,
+								TimeoutSeconds:      1,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return rc
+}
+
+func generateNamespace(namespace string) *api.Namespace {
+	return &api.Namespace{
+		ObjectMeta: api.ObjectMeta{
+			Name:   namespace,
+			Labels: generateLabeles(map[string]string{"name": "helm-namespace"}),
+		},
+	}
+}
