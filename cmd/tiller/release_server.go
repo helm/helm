@@ -333,8 +333,7 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 		namer := moniker.New()
 		name := namer.NameSep("-")
 		if len(name) > releaseNameMaxLen {
-			log.Printf("info: Candidate name %q exceeds maximum length %d. Skipping.", name, releaseNameMaxLen)
-			continue
+			name = name[:releaseNameMaxLen]
 		}
 		if _, err := s.env.Releases.Get(name); err == driver.ErrReleaseNotFound {
 			return name, nil
