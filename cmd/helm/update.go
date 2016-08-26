@@ -62,8 +62,7 @@ func updateCharts(repos map[string]string, verbose bool) {
 		wg.Add(1)
 		go func(n, u string) {
 			defer wg.Done()
-			indexFileName := cacheDirectory(n + "-index.yaml")
-			err := repo.DownloadIndexFile(n, u, indexFileName)
+			err := repo.DownloadIndexFile(n, u, cacheIndexFile(n))
 			if err != nil {
 				updateErr := "...Unable to get an update from the " + n + " chart repository"
 				if verbose {

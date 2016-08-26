@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/gosuri/uitable"
@@ -129,7 +130,7 @@ func index(dir, url string) error {
 }
 
 func addRepository(name, url string) error {
-	if err := repo.DownloadIndexFile(name, url, cacheDirectory(name+"-index.yaml")); err != nil {
+	if err := repo.DownloadIndexFile(name, url, cacheIndexFile(name)); err != nil {
 		return errors.New("Looks like " + url + " is not a valid chart repository or cannot be reached: " + err.Error())
 	}
 
@@ -152,11 +153,24 @@ func removeRepoLine(name string) error {
 		if err := ioutil.WriteFile(repositoriesFile(), b, 0666); err != nil {
 			return err
 		}
+		if err := removeRepoCache(name); err != nil {
+			return err
+		}
 
 	} else {
 		return fmt.Errorf("The repository, %s, does not exist in your repositories list", name)
 	}
 
+	return nil
+}
+
+func removeRepoCache(name string) error {
+	if _, err := os.Stat(cacheIndexFile(name)); err == nil {
+		err = os.Remove(cacheIndexFile(name))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
