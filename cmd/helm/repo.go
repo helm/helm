@@ -107,7 +107,7 @@ func runRepoRemove(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoIndex(cmd *cobra.Command, args []string) error {
-	if err := checkArgsLength(2, len(args), "path to a directory", "url of chart repository"); err != nil {
+	if err := checkArgsLength(1, len(args), "path to a directory"); err != nil {
 		return err
 	}
 
@@ -115,8 +115,12 @@ func runRepoIndex(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	url := ""
+	if len(args) == 2 {
+		url = args[1]
+	}
 
-	return index(path, args[1])
+	return index(path, url)
 }
 
 func index(dir, url string) error {
