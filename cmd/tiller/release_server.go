@@ -48,11 +48,11 @@ var srv *releaseServer
 // characters in length. See https://github.com/kubernetes/helm/issues/1071
 const releaseNameMaxLen = 14
 
-// NOTES.txt suffix that we want to treat special. It goes through the templating engine
+// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
 // but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
-const NOTES_FILE_SUFFIX = "NOTES.txt"
+const notesFileSuffix = "NOTES.txt"
 
 func init() {
 	srv = &releaseServer{
@@ -467,7 +467,7 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// it in the sortHooks.
 	notes := ""
 	for k, v := range files {
-		if strings.HasSuffix(k, NOTES_FILE_SUFFIX) {
+		if strings.HasSuffix(k, notesFileSuffix) {
 			notes = v
 			delete(files, k)
 		}

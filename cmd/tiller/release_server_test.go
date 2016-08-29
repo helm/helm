@@ -35,7 +35,7 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-const NOTES_TEXT = "my notes here"
+const notesText = "my notes here"
 
 var manifestWithHook = `apiVersion: v1
 kind: ConfigMap
@@ -244,7 +244,7 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 			Templates: []*chart.Template{
 				{Name: "hello", Data: []byte("hello: world")},
 				{Name: "hooks", Data: []byte(manifestWithHook)},
-				{Name: "NOTES.txt", Data: []byte(NOTES_TEXT)},
+				{Name: "NOTES.txt", Data: []byte(notesText)},
 			},
 		},
 	}
@@ -273,8 +273,8 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
 	}
 
-	if rel.Info.Status.Notes != NOTES_TEXT {
-		t.Fatalf("Expected '%s', got '%s'", NOTES_TEXT, rel.Info.Status.Notes)
+	if rel.Info.Status.Notes != notesText {
+		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
 	}
 
 	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {
@@ -309,7 +309,7 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 			Templates: []*chart.Template{
 				{Name: "hello", Data: []byte("hello: world")},
 				{Name: "hooks", Data: []byte(manifestWithHook)},
-				{Name: "NOTES.txt", Data: []byte(NOTES_TEXT + " {{.Release.Name}}")},
+				{Name: "NOTES.txt", Data: []byte(notesText + " {{.Release.Name}}")},
 			},
 		},
 	}
@@ -338,7 +338,7 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
 	}
 
-	expectedNotes := fmt.Sprintf("%s %s", NOTES_TEXT, res.Release.Name)
+	expectedNotes := fmt.Sprintf("%s %s", notesText, res.Release.Name)
 	if rel.Info.Status.Notes != expectedNotes {
 		t.Fatalf("Expected '%s', got '%s'", expectedNotes, rel.Info.Status.Notes)
 	}
