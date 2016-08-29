@@ -67,10 +67,15 @@ func (s *statusCmd) run() error {
 	}
 
 	fmt.Fprintf(s.out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
+	fmt.Fprintf(s.out, "Namespace: %s\n", res.Namespace)
 	fmt.Fprintf(s.out, "Status: %s\n", res.Info.Status.Code)
-	fmt.Fprintf(s.out, "Resources:\n%s\n", res.Info.Status.Resources)
 	if res.Info.Status.Details != nil {
 		fmt.Fprintf(s.out, "Details: %s\n", res.Info.Status.Details)
+	}
+	fmt.Fprintf(s.out, "\n")
+	fmt.Fprintf(s.out, "Resources:\n%s\n", res.Info.Status.Resources)
+	if len(res.Info.Status.Notes) > 0 {
+		fmt.Fprintf(s.out, "Notes:\n%s\n", res.Info.Status.Notes)
 	}
 	return nil
 }

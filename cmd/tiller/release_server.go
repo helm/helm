@@ -23,6 +23,7 @@ import (
 	"log"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
@@ -46,6 +47,12 @@ var srv *releaseServer
 // field of Kubernetes resources. Many of those fields are limited to 24
 // characters in length. See https://github.com/kubernetes/helm/issues/1071
 const releaseNameMaxLen = 14
+
+// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+// wants to see this file after rendering in the status command. However, it must be a suffix
+// since there can be filepath in front of it.
+const notesFileSuffix = "NOTES.txt"
 
 func init() {
 	srv = &releaseServer{
@@ -179,6 +186,9 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	if rel.Info == nil {
 		return nil, errors.New("release info is missing")
 	}
+	if rel.Chart == nil {
+		return nil, errors.New("release chart is missing")
+	}
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
@@ -190,7 +200,7 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	}
 	rel.Info.Status.Resources = resp
 
-	return &services.GetReleaseStatusResponse{Info: rel.Info}, nil
+	return &services.GetReleaseStatusResponse{Info: rel.Info, Namespace: rel.Namespace}, nil
 }
 
 func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
@@ -281,7 +291,7 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, err := s.renderResources(req.Chart, valuesToRender)
+	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -302,6 +312,9 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		Hooks:    hooks,
 	}
 
+	if len(notesTxt) > 0 {
+		updatedRelease.Info.Status.Notes = notesTxt
+	}
 	return currentRelease, updatedRelease, nil
 }
 
@@ -389,7 +402,7 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, err
 	}
 
-	hooks, manifestDoc, err := s.renderResources(req.Chart, valuesToRender)
+	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender)
 	if err != nil {
 		return nil, err
 	}
@@ -408,6 +421,9 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
 		Version:  1,
+	}
+	if len(notesTxt) > 0 {
+		rel.Info.Status.Notes = notesTxt
 	}
 	return rel, nil
 }
@@ -437,11 +453,24 @@ func (s *releaseServer) getVersionSet() (versionSet, error) {
 	return newVersionSet(versions...), nil
 }
 
-func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, error) {
+func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
+	}
+
+	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
+	// pull it out of here into a separate file so that we can actually use the output of the rendered
+	// text file. We have to spin through this map because the file contains path information, so we
+	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
+	// it in the sortHooks.
+	notes := ""
+	for k, v := range files {
+		if strings.HasSuffix(k, notesFileSuffix) {
+			notes = v
+			delete(files, k)
+		}
 	}
 
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
@@ -449,13 +478,13 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// removed here.
 	vs, err := s.getVersionSet()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+		return nil, nil, "", fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
 	hooks, manifests, err := sortManifests(files, vs)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	// Aggregate all valid manifests into one big doc.
@@ -465,7 +494,7 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		b.WriteString(file)
 	}
 
-	return hooks, b, nil
+	return hooks, b, notes, nil
 }
 
 // validateYAML checks to see if YAML is well-formed.

@@ -54,7 +54,7 @@ func New() *Engine {
 	}
 }
 
-// Render takes a chart, optional values, and value overrids, and attempts to render the Go templates.
+// Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
 //
 // Render can be called repeatedly on the same engine.
 //
