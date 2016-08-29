@@ -478,7 +478,7 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// removed here.
 	vs, err := s.getVersionSet()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+		return nil, nil, "", fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
 	hooks, manifests, err := sortManifests(files, vs)
 	if err != nil {
