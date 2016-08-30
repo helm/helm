@@ -149,8 +149,18 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 
-	i.printRelease(res.GetRelease())
+	rel := res.GetRelease()
+	if rel == nil {
+		return nil
+	}
+	i.printRelease(rel)
 
+	// Print the status like status command does
+	status, err := i.client.ReleaseStatus(rel.Name)
+	if err != nil {
+		return prettyError(err)
+	}
+	PrintStatus(i.out, status)
 	return nil
 }
 

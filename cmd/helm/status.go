@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
 
@@ -66,16 +67,24 @@ func (s *statusCmd) run() error {
 		return prettyError(err)
 	}
 
-	fmt.Fprintf(s.out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
-	fmt.Fprintf(s.out, "Namespace: %s\n", res.Namespace)
-	fmt.Fprintf(s.out, "Status: %s\n", res.Info.Status.Code)
-	if res.Info.Status.Details != nil {
-		fmt.Fprintf(s.out, "Details: %s\n", res.Info.Status.Details)
-	}
-	fmt.Fprintf(s.out, "\n")
-	fmt.Fprintf(s.out, "Resources:\n%s\n", res.Info.Status.Resources)
-	if len(res.Info.Status.Notes) > 0 {
-		fmt.Fprintf(s.out, "Notes:\n%s\n", res.Info.Status.Notes)
-	}
+	PrintStatus(s.out, res)
 	return nil
+}
+
+// PrintStatus prints out the status of a release. Shared because also used by
+// install / upgrade
+func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
+	if res.Info.LastDeployed != nil {
+		fmt.Fprintf(out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
+	}
+	fmt.Fprintf(out, "Namespace: %s\n", res.Namespace)
+	fmt.Fprintf(out, "Status: %s\n", res.Info.Status.Code)
+	if res.Info.Status.Details != nil {
+		fmt.Fprintf(out, "Details: %s\n", res.Info.Status.Details)
+	}
+	fmt.Fprintf(out, "\n")
+	fmt.Fprintf(out, "Resources:\n%s\n", res.Info.Status.Resources)
+	if len(res.Info.Status.Notes) > 0 {
+		fmt.Fprintf(out, "Notes:\n%s\n", res.Info.Status.Notes)
+	}
 }

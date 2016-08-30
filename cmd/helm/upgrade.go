@@ -131,6 +131,13 @@ func (u *upgradeCmd) run() error {
 	success := u.release + " has been upgraded. Happy Helming!\n"
 	fmt.Fprintf(u.out, success)
 
+	// Print the status like status command does
+	status, err := u.client.ReleaseStatus(u.release)
+	if err != nil {
+		return prettyError(err)
+	}
+	PrintStatus(u.out, status)
+
 	return nil
 
 }

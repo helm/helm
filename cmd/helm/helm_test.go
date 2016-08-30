@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math/rand"
 	"regexp"
@@ -134,7 +135,14 @@ func (c *fakeReleaseClient) DeleteRelease(rlsName string, opts ...helm.DeleteOpt
 }
 
 func (c *fakeReleaseClient) ReleaseStatus(rlsName string, opts ...helm.StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	return nil, nil
+	if c.rels[0] != nil {
+		return &rls.GetReleaseStatusResponse{
+			Name:      c.rels[0].Name,
+			Info:      c.rels[0].Info,
+			Namespace: c.rels[0].Namespace,
+		}, nil
+	}
+	return nil, fmt.Errorf("No such release: %s", rlsName)
 }
 
 func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
