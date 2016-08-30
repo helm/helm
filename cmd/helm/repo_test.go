@@ -82,8 +82,15 @@ func TestRepoRemove(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
+	mf, _ := os.Create(cacheIndexFile(testName))
+	mf.Close()
+
 	if err := removeRepoLine(testName); err != nil {
 		t.Errorf("Error removing %s from repositories", testName)
+	}
+
+	if _, err := os.Stat(cacheIndexFile(testName)); err == nil {
+		t.Errorf("Error cache file was not removed for repository %s", testName)
 	}
 
 	f, err := repo.LoadRepositoriesFile(repositoriesFile())

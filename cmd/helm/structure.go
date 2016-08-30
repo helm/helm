@@ -43,6 +43,10 @@ func cacheDirectory(paths ...string) string {
 	return filepath.Join(fragments...)
 }
 
+func cacheIndexFile(repoName string) string {
+	return cacheDirectory(repoName + "-index.yaml")
+}
+
 func localRepoDirectory(paths ...string) string {
 	fragments := append([]string{repositoryDirectory(), localRepoPath}, paths...)
 	return filepath.Join(fragments...)
