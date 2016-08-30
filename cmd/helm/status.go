@@ -71,8 +71,12 @@ func (s *statusCmd) run() error {
 	return nil
 }
 
+// PrintStatus prints out the status of a release. Shared because also used by
+// install / upgrade
 func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
-	fmt.Fprintf(out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
+	if res.Info.LastDeployed != nil {
+		fmt.Fprintf(out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
+	}
 	fmt.Fprintf(out, "Namespace: %s\n", res.Namespace)
 	fmt.Fprintf(out, "Status: %s\n", res.Info.Status.Code)
 	if res.Info.Status.Details != nil {
