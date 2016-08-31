@@ -219,7 +219,7 @@ func ContentReleaseVersion(version int32) ContentOption {
 type StatusOption func(*options)
 
 // StatusReleaseVersion will instruct Tiller to retrieve the status
-// of a paritcular version of a release.
+// of a particular version of a release.
 func StatusReleaseVersion(version int32) StatusOption {
 	return func(opts *options) {
 		opts.statusReq.Version = version
@@ -229,6 +229,9 @@ func StatusReleaseVersion(version int32) StatusOption {
 // DeleteOption allows setting optional attributes when
 // performing a UninstallRelease tiller rpc.
 type DeleteOption func(*options)
+
+// VersionOption -- TODO
+type VersionOption func(*options)
 
 // UpdateOption allows specifying various settings
 // configurable by the helm client user for overriding
@@ -318,4 +321,10 @@ func (o *options) rpcGetReleaseContent(rlsName string, rlc rls.ReleaseServiceCli
 	}
 	o.contentReq.Name = rlsName
 	return rlc.GetReleaseContent(context.TODO(), &o.contentReq)
+}
+
+// Executes tiller.GetVersion RPC.
+func (o *options) rpcGetVersion(rlc rls.ReleaseServiceClient, opts ...VersionOption) (*rls.GetVersionResponse, error) {
+	req := &rls.GetVersionRequest{}
+	return rlc.GetVersion(context.TODO(), req)
 }
