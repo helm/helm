@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	//	version "k8s.io/helm/pkg/proto/hapi/version"
 )
 
 const (
@@ -118,6 +119,20 @@ func (h *Client) UpdateRelease(rlsName string, chStr string, opts ...UpdateOptio
 	}
 
 	return h.opts.rpcUpdateRelease(rlsName, chart, rls.NewReleaseServiceClient(c), opts...)
+}
+
+// Version returns the server version
+//
+// Note: there aren't currently any  supported StatusOptions,
+// but they are kept in the API signature as a placeholder for future additions.
+func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	return h.opts.rpcGetVersion(rls.NewReleaseServiceClient(c), opts...)
 }
 
 // ReleaseStatus returns the given release's status.

@@ -21,6 +21,7 @@ import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
 import "hapi/release/info.proto";
 import "hapi/release/status.proto";
+import "hapi/version/version.proto";
 
 option go_package = "services";
 
@@ -65,6 +66,10 @@ service ReleaseService {
 	// UninstallRelease requests deletion of a named release.
 	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
 	}
+
+  // GetVersion returns the current version of the server.
+  rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
+}
 }
 
 // ListReleasesRequest requests a list of releases.
@@ -228,4 +233,12 @@ message UninstallReleaseRequest {
 message UninstallReleaseResponse {
 	// Release is the release that was marked deleted.
 	hapi.release.Release release = 1;
+}
+
+// GetVersionRequest requests for version information.
+message GetVersionRequest {
+}
+
+message GetVersionResponse {
+  hapi.version.Version Version = 1;
 }

@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/timeconv"
+	"k8s.io/helm/pkg/version"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
@@ -173,6 +174,11 @@ func filterReleases(filter string, rels []*release.Release) ([]*release.Release,
 		}
 	}
 	return matches, nil
+}
+
+func (s *releaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
+	v := version.GetVersionProto()
+	return &services.GetVersionResponse{Version: &v}, nil
 }
 
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {

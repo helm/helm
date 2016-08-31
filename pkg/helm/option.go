@@ -204,6 +204,9 @@ type ContentOption func(*options)
 // StatusOption -- TODO
 type StatusOption func(*options)
 
+// VersionOption -- TODO
+type VersionOption func(*options)
+
 // DeleteOption -- TODO
 type DeleteOption func(*options)
 
@@ -289,4 +292,10 @@ func (o *options) rpcGetReleaseStatus(rlsName string, rlc rls.ReleaseServiceClie
 func (o *options) rpcGetReleaseContent(rlsName string, rlc rls.ReleaseServiceClient, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
 	req := &rls.GetReleaseContentRequest{Name: rlsName}
 	return rlc.GetReleaseContent(context.TODO(), req)
+}
+
+// Executes tiller.GetVersion RPC.
+func (o *options) rpcGetVersion(rlc rls.ReleaseServiceClient, opts ...VersionOption) (*rls.GetVersionResponse, error) {
+	req := &rls.GetVersionRequest{}
+	return rlc.GetVersion(context.TODO(), req)
 }

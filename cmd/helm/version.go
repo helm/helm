@@ -18,20 +18,45 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/version"
 )
 
-func init() {
-	RootCommand.AddCommand(versionCmd)
+type versionCmd struct {
+	out    io.Writer
+	client helm.Interface
 }
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "print the client version information",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version.Version)
-	},
+func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
+	version := &versionCmd{
+		client: c,
+		out:    out,
+	}
+	cmd := &cobra.Command{
+		Use:               "version",
+		Short:             "print the client/server version information",
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			version.client = ensureHelmClient(version.client)
+			return version.run()
+		},
+	}
+	return cmd
+}
+
+func (v *versionCmd) run() error {
+	// Regardless of whether we can talk to server or not, just print the client
+	// version.
+	fmt.Printf("%+v\n", version.GetVersionProto())
+
+	resp, err := v.client.GetVersion()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%+v\n", resp.Version)
+	return nil
 }
