@@ -451,6 +451,15 @@ func TestInstallReleaseReuseName(t *testing.T) {
 	if res.Release.Name != rel.Name {
 		t.Errorf("expected %q, got %q", rel.Name, res.Release.Name)
 	}
+
+	getreq := &services.GetReleaseStatusRequest{Name: rel.Name}
+	getres, err := rs.GetReleaseStatus(c, getreq)
+	if err != nil {
+		t.Errorf("Failed to retrieve release: %s", err)
+	}
+	if getres.Info.Status.Code != release.Status_DEPLOYED {
+		t.Errorf("Release status is %q", getres.Info.Status.Code)
+	}
 }
 
 func TestUpdateRelease(t *testing.T) {
