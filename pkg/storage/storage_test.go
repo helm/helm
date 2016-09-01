@@ -17,143 +17,195 @@ limitations under the License.
 package storage // import "k8s.io/helm/pkg/storage"
 
 import (
-	"fmt"
-	"reflect"
-	"testing"
+    "fmt"
+    "reflect"
+    "testing"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/storage/driver"
+    rspb "k8s.io/helm/pkg/proto/hapi/release"
+    "k8s.io/helm/pkg/storage/driver"
 )
 
 func TestStorageCreate(t *testing.T) {
-	// initialize storage
-	storage := Init(driver.NewMemory())
+    // initialize storage
+    storage := Init(driver.NewMemory())
 
-	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
-	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+    // create fake release
+    rls := ReleaseTestData{
+        Name:    "angry-beaver",
+        Version: 1,
+    }.ToRelease()
 
-	// fetch the release
-	res, err := storage.Get(rls.Name)
-	assertErrNil(t.Fatal, err, "QueryRelease")
+    assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
-	// verify the fetched and created release are the same
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
-	}
+    // fetch the release
+    res, err := storage.Get(rls.Name, rls.Version)
+    assertErrNil(t.Fatal, err, "QueryRelease")
+
+    // verify the fetched and created release are the same
+    if !reflect.DeepEqual(rls, res) {
+        t.Fatalf("Expected %q, got %q", rls, res)
+    }
 }
 
 func TestStorageUpdate(t *testing.T) {
-	// initialize storage
-	storage := Init(driver.NewMemory())
+    // initialize storage
+    storage := Init(driver.NewMemory())
 
-	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
-	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+    // create fake release
+    rls := ReleaseTestData{
+        Name:    "angry-beaver",
+        Version: 1,
+        Status:  rspb.Status_DEPLOYED,
+    }.ToRelease()
 
-	// modify the release
-	rls.Version = 2
-	rls.Manifest = "new-manifest"
-	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
+    assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
-	// retrieve the updated release
-	res, err := storage.Get(rls.Name)
-	assertErrNil(t.Fatal, err, "QueryRelease")
+    // modify the release
+    rls.Info.Status.Code = rspb.Status_DELETED
+    assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
 
-	// verify updated and fetched releases are the same.
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
-	}
+    // retrieve the updated release
+    res, err := storage.Get(rls.Name, rls.Version)
+    assertErrNil(t.Fatal, err, "QueryRelease")
+
+    // verify updated and fetched releases are the same.
+    if !reflect.DeepEqual(rls, res) {
+        t.Fatalf("Expected %q, got %q", rls, res)
+    }
 }
 
 func TestStorageDelete(t *testing.T) {
-	// initialize storage
-	storage := Init(driver.NewMemory())
+    // initialize storage
+    storage := Init(driver.NewMemory())
 
-	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
-	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
+    // create fake release
+    rls := ReleaseTestData{
+        Name:    "angry-beaver",
+        Version: 1,
+    }.ToRelease()
 
-	// delete the release
-	res, err := storage.Delete(rls.Name)
-	assertErrNil(t.Fatal, err, "DeleteRelease")
+    assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
-	// verify updated and fetched releases are the same.
-	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
-	}
+    // delete the release
+    res, err := storage.Delete(rls.Name, rls.Version)
+    assertErrNil(t.Fatal, err, "DeleteRelease")
+
+    // verify updated and fetched releases are the same.
+    if !reflect.DeepEqual(rls, res) {
+        t.Fatalf("Expected %q, got %q", rls, res)
+    }
 }
 
 func TestStorageList(t *testing.T) {
-	// initialize storage
-	storage := Init(driver.NewMemory())
+    // initialize storage
+    storage := Init(driver.NewMemory())
 
-	// setup storage with test releases
-	setup := func() {
-		// release records
-		rls0 := ReleaseTestData{Name: "happy-catdog", Status: rspb.Status_SUPERSEDED}.ToRelease()
-		rls1 := ReleaseTestData{Name: "livid-human", Status: rspb.Status_SUPERSEDED}.ToRelease()
-		rls2 := ReleaseTestData{Name: "relaxed-cat", Status: rspb.Status_SUPERSEDED}.ToRelease()
-		rls3 := ReleaseTestData{Name: "hungry-hippo", Status: rspb.Status_DEPLOYED}.ToRelease()
-		rls4 := ReleaseTestData{Name: "angry-beaver", Status: rspb.Status_DEPLOYED}.ToRelease()
-		rls5 := ReleaseTestData{Name: "opulent-frog", Status: rspb.Status_DELETED}.ToRelease()
-		rls6 := ReleaseTestData{Name: "happy-liger", Status: rspb.Status_DELETED}.ToRelease()
+    // setup storage with test releases
+    setup := func() {
+        // release records
+        rls0 := ReleaseTestData{Name: "happy-catdog", Status: rspb.Status_SUPERSEDED}.ToRelease()
+        rls1 := ReleaseTestData{Name: "livid-human", Status: rspb.Status_SUPERSEDED}.ToRelease()
+        rls2 := ReleaseTestData{Name: "relaxed-cat", Status: rspb.Status_SUPERSEDED}.ToRelease()
+        rls3 := ReleaseTestData{Name: "hungry-hippo", Status: rspb.Status_DEPLOYED}.ToRelease()
+        rls4 := ReleaseTestData{Name: "angry-beaver", Status: rspb.Status_DEPLOYED}.ToRelease()
+        rls5 := ReleaseTestData{Name: "opulent-frog", Status: rspb.Status_DELETED}.ToRelease()
+        rls6 := ReleaseTestData{Name: "happy-liger", Status: rspb.Status_DELETED}.ToRelease()
 
-		// create the release records in the storage
-		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'rls0'")
-		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'rls1'")
-		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'rls2'")
-		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'rls3'")
-		assertErrNil(t.Fatal, storage.Create(rls4), "Storing release 'rls4'")
-		assertErrNil(t.Fatal, storage.Create(rls5), "Storing release 'rls5'")
-		assertErrNil(t.Fatal, storage.Create(rls6), "Storing release 'rls6'")
-	}
+        // create the release records in the storage
+        assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'rls0'")
+        assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'rls1'")
+        assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'rls2'")
+        assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'rls3'")
+        assertErrNil(t.Fatal, storage.Create(rls4), "Storing release 'rls4'")
+        assertErrNil(t.Fatal, storage.Create(rls5), "Storing release 'rls5'")
+        assertErrNil(t.Fatal, storage.Create(rls6), "Storing release 'rls6'")
+    }
 
-	var listTests = []struct {
-		Description string
-		NumExpected int
-		ListFunc    func() ([]*rspb.Release, error)
-	}{
-		{"ListDeleted", 2, storage.ListDeleted},
-		{"ListDeployed", 2, storage.ListDeployed},
-		{"ListReleases", 7, storage.ListReleases},
-	}
+    var listTests = []struct {
+        Description string
+        NumExpected int
+        ListFunc    func() ([]*rspb.Release, error)
+    }{
+        {"ListDeleted", 2, storage.ListDeleted},
+        {"ListDeployed", 2, storage.ListDeployed},
+        {"ListReleases", 7, storage.ListReleases},
+    }
 
-	setup()
+    setup()
 
-	for _, tt := range listTests {
-		list, err := tt.ListFunc()
-		assertErrNil(t.Fatal, err, tt.Description)
-		// verify the count of releases returned
-		if len(list) != tt.NumExpected {
-			t.Errorf("ListReleases(%s): expected %d, actual %d",
-				tt.Description,
-				tt.NumExpected,
-				len(list))
-		}
-	}
+    for _, tt := range listTests {
+        list, err := tt.ListFunc()
+        assertErrNil(t.Fatal, err, tt.Description)
+        // verify the count of releases returned
+        if len(list) != tt.NumExpected {
+            t.Errorf("ListReleases(%s): expected %d, actual %d",
+                tt.Description,
+                tt.NumExpected,
+                len(list))
+        }
+    }
+}
+
+func TestStorageDeployed(t *testing.T) {
+    storage := Init(driver.NewMemory())
+
+    const name = "angry-bird"
+    const vers = int32(4)
+
+    // setup storage with test releases
+    setup := func() {
+        // release records
+        rls0 := ReleaseTestData{Name: name, Version: 1, Status: rspb.Status_SUPERSEDED}.ToRelease()
+        rls1 := ReleaseTestData{Name: name, Version: 2, Status: rspb.Status_SUPERSEDED}.ToRelease()
+        rls2 := ReleaseTestData{Name: name, Version: 3, Status: rspb.Status_SUPERSEDED}.ToRelease()
+        rls3 := ReleaseTestData{Name: name, Version: 4, Status: rspb.Status_DEPLOYED}.ToRelease()
+
+        // create the release records in the storage
+        assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+        assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+        assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+        assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+    }
+
+    setup()
+
+    rls, err := storage.Deployed(name)
+    if err != nil {
+        t.Fatalf("Failed to query for deployed release: %s\n", err)
+    }
+
+    switch {
+    case rls == nil:
+        t.Fatalf("Release is nil")
+    case rls.Name != name:
+        t.Fatalf("Expected release name %q, actual %q\n", name, rls.Name)
+    case rls.Version != vers:
+        t.Fatalf("Expected release version %d, actual %d\n", vers, rls.Version)
+    case rls.Info.Status.Code != rspb.Status_DEPLOYED:
+        t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rls.Info.Status.Code)
+    }
 }
 
 type ReleaseTestData struct {
-	Name      string
-	Version   int32
-	Manifest  string
-	Namespace string
-	Status    rspb.Status_Code
+    Name      string
+    Version   int32
+    Manifest  string
+    Namespace string
+    Status    rspb.Status_Code
 }
 
 func (test ReleaseTestData) ToRelease() *rspb.Release {
-	return &rspb.Release{
-		Name:      test.Name,
-		Version:   test.Version,
-		Manifest:  test.Manifest,
-		Namespace: test.Namespace,
-		Info:      &rspb.Info{Status: &rspb.Status{Code: test.Status}},
-	}
+    return &rspb.Release{
+        Name:      test.Name,
+        Version:   test.Version,
+        Manifest:  test.Manifest,
+        Namespace: test.Namespace,
+        Info:      &rspb.Info{Status: &rspb.Status{Code: test.Status}},
+    }
 }
 
 func assertErrNil(eh func(args ...interface{}), err error, message string) {
-	if err != nil {
-		eh(fmt.Sprintf("%s: %q", message, err))
-	}
+    if err != nil {
+        eh(fmt.Sprintf("%s: %q", message, err))
+    }
 }

@@ -17,16 +17,18 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	"errors"
+    "errors"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+    rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 var (
-	// ErrReleaseNotFound indicates that a release is not found.
-	ErrReleaseNotFound = errors.New("release: not found")
-	// ErrReleaseExists indicates that a release already exists.
-	ErrReleaseExists = errors.New("release: already exists")
+    // ErrReleaseNotFound indicates that a release is not found.
+    ErrReleaseNotFound = errors.New("release: not found")
+    // ErrReleaseExists indicates that a release already exists.
+    ErrReleaseExists = errors.New("release: already exists")
+    // ErrInvalidKey indicates that a release key could not be parsed.
+    ErrInvalidKey = errors.New("release: invalid key")
 )
 
 // Creator is the interface that wraps the Create method.
@@ -34,7 +36,7 @@ var (
 // Create stores the release or returns ErrReleaseExists
 // if an identical release already exists.
 type Creator interface {
-	Create(rls *rspb.Release) error
+    Create(key string, rls *rspb.Release) error
 }
 
 // Updator is the interface that wraps the Update method.
@@ -42,7 +44,7 @@ type Creator interface {
 // Update updates an existing release or returns
 // ErrReleaseNotFound if the release does not exist.
 type Updator interface {
-	Update(rls *rspb.Release) error
+    Update(key string, rls *rspb.Release) error
 }
 
 // Deletor is the interface that wraps the Delete method.
@@ -50,7 +52,7 @@ type Updator interface {
 // Delete deletes the release named by key or returns
 // ErrReleaseNotFound if the release does not exist.
 type Deletor interface {
-	Delete(key string) (*rspb.Release, error)
+    Delete(key string) (*rspb.Release, error)
 }
 
 // Queryor is the interface that wraps the Get and List methods.
@@ -59,9 +61,12 @@ type Deletor interface {
 // if the release does not exist.
 //
 // List returns the set of all releases that satisfy the filter predicate.
+//
+// Query returns the set of all releases that match the provided label set.
 type Queryor interface {
-	Get(key string) (*rspb.Release, error)
-	List(filter func(*rspb.Release) bool) ([]*rspb.Release, error)
+    Get(key string) (*rspb.Release, error)
+    List(filter func(*rspb.Release) bool) ([]*rspb.Release, error)
+    Query(labels map[string]string) ([]*rspb.Release, error)
 }
 
 // Driver is the interface composed of Creator, Updator, Deletor, Queryor
@@ -69,9 +74,9 @@ type Queryor interface {
 // and retrieving tiller releases from some underlying storage mechanism,
 // e.g. memory, configmaps.
 type Driver interface {
-	Creator
-	Updator
-	Deletor
-	Queryor
-	Name() string
+    Creator
+    Updator
+    Deletor
+    Queryor
+    Name() string
 }
