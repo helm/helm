@@ -83,7 +83,9 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 		fmt.Fprintf(out, "Details: %s\n", res.Info.Status.Details)
 	}
 	fmt.Fprintf(out, "\n")
-	fmt.Fprintf(out, "Resources:\n%s\n", res.Info.Status.Resources)
+	if len(res.Info.Status.Resources) > 0 {
+		fmt.Fprintf(out, "Resources:\n%s\n", res.Info.Status.Resources)
+	}
 	if len(res.Info.Status.Notes) > 0 {
 		fmt.Fprintf(out, "Notes:\n%s\n", res.Info.Status.Notes)
 	}

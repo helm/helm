@@ -711,6 +711,25 @@ func TestGetReleaseStatus(t *testing.T) {
 	}
 }
 
+func TestGetReleaseStatusDeleted(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rel := releaseStub()
+	rel.Info.Status.Code = release.Status_DELETED
+	if err := rs.env.Releases.Create(rel); err != nil {
+		t.Fatalf("Could not store mock release: %s", err)
+	}
+
+	res, err := rs.GetReleaseStatus(c, &services.GetReleaseStatusRequest{Name: rel.Name})
+	if err != nil {
+		t.Errorf("Error getting release content: %s", err)
+	}
+
+	if res.Info.Status.Code != release.Status_DELETED {
+		t.Errorf("Expected %d, got %d", release.Status_DELETED, res.Info.Status.Code)
+	}
+}
+
 func TestListReleases(t *testing.T) {
 	rs := rsFixture()
 	num := 7

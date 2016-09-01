@@ -190,17 +190,22 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		return nil, errors.New("release chart is missing")
 	}
 
+	sc := rel.Info.Status.Code
+	statusResp := &services.GetReleaseStatusResponse{Info: rel.Info, Namespace: rel.Namespace}
+
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
 	kubeCli := s.env.KubeClient
 	resp, err := kubeCli.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
-	if err != nil {
+	if sc == release.Status_DELETED || sc == release.Status_FAILED {
+		// Skip errors if this is already deleted or failed.
+		return statusResp, nil
+	} else if err != nil {
 		log.Printf("warning: Get for %s failed: %v", rel.Name, err)
 		return nil, err
 	}
 	rel.Info.Status.Resources = resp
-
-	return &services.GetReleaseStatusResponse{Info: rel.Info, Namespace: rel.Namespace}, nil
+	return statusResp, nil
 }
 
 func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
