@@ -508,6 +508,16 @@ func validateYAML(data string) error {
 	return yaml.Unmarshal([]byte(data), b)
 }
 
+func (s *releaseServer) recordRelease(r *release.Release, reuse bool) {
+	if reuse {
+		if err := s.env.Releases.Update(r); err != nil {
+			log.Printf("warning: Failed to update release %q: %s", r.Name, err)
+		}
+	} else if err := s.env.Releases.Create(r); err != nil {
+		log.Printf("warning: Failed to record release %q: %s", r.Name, err)
+	}
+}
+
 // performRelease runs a release.
 func (s *releaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	res := &services.InstallReleaseResponse{Release: r}
@@ -530,9 +540,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	if err := kubeCli.Create(r.Namespace, b); err != nil {
 		r.Info.Status.Code = release.Status_FAILED
 		log.Printf("warning: Release %q failed: %s", r.Name, err)
-		if err := s.env.Releases.Create(r); err != nil {
-			log.Printf("warning: Failed to record release %q: %s", r.Name, err)
-		}
+		s.recordRelease(r, req.ReuseName)
 		return res, fmt.Errorf("release %s failed: %s", r.Name, err)
 	}
 
@@ -551,9 +559,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
 	r.Info.Status.Code = release.Status_DEPLOYED
-	if err := s.env.Releases.Create(r); err != nil {
-		log.Printf("warning: Failed to record release %q: %s", r.Name, err)
-	}
+	s.recordRelease(r, req.ReuseName)
 	return res, nil
 }
 
