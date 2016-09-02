@@ -538,8 +538,8 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	kubeCli := s.env.KubeClient
 	b := bytes.NewBufferString(r.Manifest)
 	if err := kubeCli.Create(r.Namespace, b); err != nil {
-		r.Info.Status.Code = release.Status_FAILED
 		log.Printf("warning: Release %q failed: %s", r.Name, err)
+		r.Info.Status.Code = release.Status_FAILED
 		s.recordRelease(r, req.ReuseName)
 		return res, fmt.Errorf("release %s failed: %s", r.Name, err)
 	}
@@ -547,6 +547,9 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// post-install hooks
 	if !req.DisableHooks {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall); err != nil {
+			log.Printf("warning: Release %q failed post-install: %s", r.Name, err)
+			r.Info.Status.Code = release.Status_FAILED
+			s.recordRelease(r, req.ReuseName)
 			return res, err
 		}
 	}
