@@ -31,7 +31,7 @@ import (
 )
 
 func init() {
-	repoCmd.AddCommand(repoAddCmd)
+	repoCmd.AddCommand(repoAddCmd())
 	repoCmd.AddCommand(repoListCmd)
 	repoCmd.AddCommand(repoRemoveCmd)
 	repoCmd.AddCommand(repoIndexCmd)
@@ -43,10 +43,42 @@ var repoCmd = &cobra.Command{
 	Short: "add, list, or remove chart repositories",
 }
 
-var repoAddCmd = &cobra.Command{
-	Use:   "add [flags] [NAME] [URL]",
-	Short: "add a chart repository",
-	RunE:  runRepoAdd,
+type addCmd struct {
+	update bool
+}
+
+func repoAddCmd() *cobra.Command {
+	add := &addCmd{}
+	cmd := &cobra.Command{
+		Use:   "add [flags] [NAME] [URL]",
+		Short: "add a chart repository",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkArgsLength(2, len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
+				return err
+			}
+			name, url := args[0], args[1]
+
+			var err error
+			if add.update {
+				err = updateRepository(name, url)
+			} else {
+				err = addRepository(name, url)
+			}
+			if err != nil {
+				return err
+			}
+
+			if add.update {
+				fmt.Println(name + " has been updated")
+			} else {
+				fmt.Println(name + " has been added to your repositories")
+			}
+			return nil
+		},
+	}
+	f := cmd.Flags()
+	f.BoolVarP(&add.update, "update", "u", false, "update old url if it exists")
+	return cmd
 }
 
 var repoListCmd = &cobra.Command{
@@ -66,20 +98,6 @@ var repoIndexCmd = &cobra.Command{
 	Use:   "index [flags] [DIR] [REPO_URL]",
 	Short: "generate an index file for a chart repository given a directory",
 	RunE:  runRepoIndex,
-}
-
-func runRepoAdd(cmd *cobra.Command, args []string) error {
-	if err := checkArgsLength(2, len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
-		return err
-	}
-	name, url := args[0], args[1]
-
-	if err := addRepository(name, url); err != nil {
-		return err
-	}
-
-	fmt.Println(name + " has been added to your repositories")
-	return nil
 }
 
 func runRepoList(cmd *cobra.Command, args []string) error {
@@ -141,6 +159,14 @@ func addRepository(name, url string) error {
 	return insertRepoLine(name, url)
 }
 
+func updateRepository(name, url string) error {
+	if err := repo.DownloadIndexFile(name, url, cacheIndexFile(name)); err != nil {
+		return errors.New("Looks like " + url + " is not a valid chart repository or cannot be reached: " + err.Error())
+	}
+
+	return updateRepoLine(name, url)
+}
+
 func removeRepoLine(name string) error {
 	r, err := repo.LoadRepositoriesFile(repositoriesFile())
 	if err != nil {
@@ -186,6 +212,22 @@ func insertRepoLine(name, url string) error {
 	_, ok := f.Repositories[name]
 	if ok {
 		return fmt.Errorf("The repository name you provided (%s) already exists. Please specify a different name.", name)
+	}
+
+	if f.Repositories == nil {
+		f.Repositories = make(map[string]string)
+	}
+
+	f.Repositories[name] = url
+
+	b, _ := yaml.Marshal(&f.Repositories)
+	return ioutil.WriteFile(repositoriesFile(), b, 0666)
+}
+
+func updateRepoLine(name, url string) error {
+	f, err := repo.LoadRepositoriesFile(repositoriesFile())
+	if err != nil {
+		return err
 	}
 
 	if f.Repositories == nil {
