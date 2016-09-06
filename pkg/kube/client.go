@@ -215,23 +215,31 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 func (c *Client) Delete(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, func(info *resource.Info) error {
 		log.Printf("Starting delete for %s", info.Name)
+
 		reaper, err := c.Reaper(info.Mapping)
 		if err != nil {
 			// If there is no reaper for this resources, delete it.
 			if kubectl.IsNoSuchReaperError(err) {
-				return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+				err := resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+				return skipIfNotFound(err)
 			}
 
 			return err
 		}
+
 		log.Printf("Using reaper for deleting %s", info.Name)
 		err = reaper.Stop(info.Namespace, info.Name, 0, nil)
-		if err != nil && errors.IsNotFound(err) {
-			log.Printf("%v", err)
-			return nil
-		}
-		return err
+		return skipIfNotFound(err)
 	})
+}
+
+func skipIfNotFound(err error) error {
+	if err != nil && errors.IsNotFound(err) {
+		log.Printf("%v", err)
+		return nil
+	}
+
+	return err
 }
 
 // WatchUntilReady watches the resource given in the reader, and waits until it is ready.
