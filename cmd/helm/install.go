@@ -119,7 +119,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 func (i *installCmd) run() error {
 	if flagDebug {
-		fmt.Printf("Chart path: %s\n", i.chartPath)
+		fmt.Fprintf(i.out, "Chart path: %s\n", i.chartPath)
 	}
 
 	rawVals, err := i.vals()
@@ -134,7 +134,7 @@ func (i *installCmd) run() error {
 			return err
 		}
 		// Print the final name so the user knows what the final name of the release is.
-		fmt.Printf("final name: %s\n", i.name)
+		fmt.Printf("Final name: %s\n", i.name)
 	}
 
 	res, err := i.client.InstallRelease(
@@ -154,6 +154,11 @@ func (i *installCmd) run() error {
 		return nil
 	}
 	i.printRelease(rel)
+
+	// If this is a dry run, we can't display status.
+	if i.dryRun {
+		return nil
+	}
 
 	// Print the status like status command does
 	status, err := i.client.ReleaseStatus(rel.Name)
@@ -250,7 +255,6 @@ func (v *values) Set(data string) error {
 			}
 		}
 	}
-	fmt.Print(v.pairs)
 	return nil
 }
 
