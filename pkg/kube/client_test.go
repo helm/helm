@@ -126,10 +126,47 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := New(nil).Delete("test", strings.NewReader(guestbookManifest)); err != nil {
+	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
+	c := New(nil)
+	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.Delete("test-delete", strings.NewReader(testEndpointManifest)); err != nil {
+		t.Fatal(err)
+	}
+
+	// ensures that delete does not fail if a resource is not found
+	if err := c.Delete("test-delete", strings.NewReader(testSvcEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}
 }
+
+const testServiceManifest = `
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: myapp
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 9376
+`
+
+const testEndpointManifest = `
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: my-service
+subsets:
+  - addresses:
+      - ip: "1.2.3.4"
+    ports:
+      - port: 9376
+`
 
 const guestbookManifest = `
 apiVersion: v1
