@@ -588,7 +588,7 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b); err != nil {
-			log.Printf("wrning: Release %q pre-install %s failed: %s", name, h.Path, err)
+			log.Printf("warning: Release %q pre-install %s failed: %s", name, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?

@@ -17,7 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -428,6 +430,25 @@ func TestInstallReleaseNoHooks(t *testing.T) {
 
 	if hl := res.Release.Hooks[0].LastRun; hl != nil {
 		t.Errorf("Expected that no hooks were run. Got %d", hl)
+	}
+}
+
+func TestInstallReleaseFailedHooks(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+	rs.env.KubeClient = newHookFailingKubeClient()
+
+	req := &services.InstallReleaseRequest{
+		Chart: chartStub(),
+	}
+	res, err := rs.InstallRelease(c, req)
+	if err == nil {
+		t.Error("Expected failed install")
+	}
+
+	if hl := res.Release.Info.Status.Code; hl != release.Status_FAILED {
+		t.Errorf("Expected FAILED release. Got %d", hl)
 	}
 }
 
@@ -910,6 +931,20 @@ func mockEnvironment() *environment.Environment {
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
 	return e
+}
+
+func newHookFailingKubeClient() *hookFailingKubeClient {
+	return &hookFailingKubeClient{
+		PrintingKubeClient: environment.PrintingKubeClient{Out: os.Stdout},
+	}
+}
+
+type hookFailingKubeClient struct {
+	environment.PrintingKubeClient
+}
+
+func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
+	return errors.New("Failed watch")
 }
 
 type mockListServer struct {
