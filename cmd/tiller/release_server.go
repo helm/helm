@@ -538,8 +538,8 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	kubeCli := s.env.KubeClient
 	b := bytes.NewBufferString(r.Manifest)
 	if err := kubeCli.Create(r.Namespace, b); err != nil {
-		r.Info.Status.Code = release.Status_FAILED
 		log.Printf("warning: Release %q failed: %s", r.Name, err)
+		r.Info.Status.Code = release.Status_FAILED
 		s.recordRelease(r, req.ReuseName)
 		return res, fmt.Errorf("release %s failed: %s", r.Name, err)
 	}
@@ -547,6 +547,9 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// post-install hooks
 	if !req.DisableHooks {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall); err != nil {
+			log.Printf("warning: Release %q failed post-install: %s", r.Name, err)
+			r.Info.Status.Code = release.Status_FAILED
+			s.recordRelease(r, req.ReuseName)
 			return res, err
 		}
 	}
@@ -585,7 +588,7 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b); err != nil {
-			log.Printf("wrning: Release %q pre-install %s failed: %s", name, h.Path, err)
+			log.Printf("warning: Release %q pre-install %s failed: %s", name, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?
