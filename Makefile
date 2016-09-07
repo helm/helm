@@ -23,7 +23,7 @@ build:
 
 .PHONY: build-cross
 build-cross:
-	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -os="darwin linux windows" -arch="amd64 386" $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -os="darwin linux windows" -arch="amd64 386" $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
 
 # usage: make dist VERSION=v2.0.0-alpha.3
 .PHONY: dist
