@@ -16,6 +16,7 @@ It has these top-level messages:
 	Config
 	Value
 	Maintainer
+	Dependency
 	Metadata
 	Template
 */
