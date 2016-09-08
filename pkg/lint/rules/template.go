@@ -149,7 +149,7 @@ func validateQuotes(templateContent string) error {
 
 func validateAllowedExtension(fileName string) error {
 	ext := filepath.Ext(fileName)
-	validExtensions := []string{".yaml", ".tpl"}
+	validExtensions := []string{".yaml", ".tpl", ".txt"}
 
 	for _, b := range validExtensions {
 		if b == ext {
@@ -157,7 +157,7 @@ func validateAllowedExtension(fileName string) error {
 		}
 	}
 
-	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml or .tpl", ext)
+	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .tpl, or .txt", ext)
 }
 
 // validateNoMissingValues checks that all the {{}} functions returns a non empty value (<no value> or "")
