@@ -17,152 +17,152 @@ limitations under the License.
 package driver
 
 import (
-    "reflect"
-    "testing"
+	"reflect"
+	"testing"
 
-    rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestMemoryName(t *testing.T) {
-    if mem := NewMemory(); mem.Name() != MemoryDriverName {
-        t.Errorf("Expected name to be %q, got %q", MemoryDriverName, mem.Name())
-    }
+	if mem := NewMemory(); mem.Name() != MemoryDriverName {
+		t.Errorf("Expected name to be %q, got %q", MemoryDriverName, mem.Name())
+	}
 }
 
 func TestMemoryCreate(t *testing.T) {
-    var tests = []struct {
-        desc string
-        rls  *rspb.Release
-        err  bool
-    }{
-        {
-            "create should success",
-            releaseStub("rls-c", 1, rspb.Status_DEPLOYED),
-            false,
-        },
-        {
-            "create should fail (release already exists)",
-            releaseStub("rls-a", 1, rspb.Status_DEPLOYED),
-            true,
-        },
-    }
+	var tests = []struct {
+		desc string
+		rls  *rspb.Release
+		err  bool
+	}{
+		{
+			"create should success",
+			releaseStub("rls-c", 1, rspb.Status_DEPLOYED),
+			false,
+		},
+		{
+			"create should fail (release already exists)",
+			releaseStub("rls-a", 1, rspb.Status_DEPLOYED),
+			true,
+		},
+	}
 
-    ts := tsFixtureMemory(t)
-    for _, tt := range tests {
-        key := testKey(tt.rls.Name, tt.rls.Version)
-        rls := tt.rls
+	ts := tsFixtureMemory(t)
+	for _, tt := range tests {
+		key := testKey(tt.rls.Name, tt.rls.Version)
+		rls := tt.rls
 
-        if err := ts.Create(key, rls); err != nil {
-            if !tt.err {
-                t.Fatalf("failed to create %q: %s", tt.desc, err)
-            }
-        }
-    }
+		if err := ts.Create(key, rls); err != nil {
+			if !tt.err {
+				t.Fatalf("failed to create %q: %s", tt.desc, err)
+			}
+		}
+	}
 }
 
 func TestMemoryGet(t *testing.T) {
-    var tests = []struct {
-        desc string
-        key  string
-        err  bool
-    }{
-        {"release key should exist", "rls-a.v1", false},
-        {"release key should not exist", "rls-a.v5", true},
-    }
+	var tests = []struct {
+		desc string
+		key  string
+		err  bool
+	}{
+		{"release key should exist", "rls-a.v1", false},
+		{"release key should not exist", "rls-a.v5", true},
+	}
 
-    ts := tsFixtureMemory(t)
-    for _, tt := range tests {
-        if _, err := ts.Get(tt.key); err != nil {
-            if !tt.err {
-                t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
-            }
-        }
-    }
+	ts := tsFixtureMemory(t)
+	for _, tt := range tests {
+		if _, err := ts.Get(tt.key); err != nil {
+			if !tt.err {
+				t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
+			}
+		}
+	}
 }
 
 func TestMemoryQuery(t *testing.T) {
-    var tests = []struct {
-        desc string
-        xlen int
-        lbs  map[string]string
-    }{
-        {
-            "should be 2 query results",
-            2,
-            map[string]string{"STATUS": "DEPLOYED"},
-        },
-    }
+	var tests = []struct {
+		desc string
+		xlen int
+		lbs  map[string]string
+	}{
+		{
+			"should be 2 query results",
+			2,
+			map[string]string{"STATUS": "DEPLOYED"},
+		},
+	}
 
-    ts := tsFixtureMemory(t)
-    for _, tt := range tests {
-        l, err := ts.Query(tt.lbs)
-        if err != nil {
-            t.Fatalf("Failed to query: %s\n", err)
-        }
+	ts := tsFixtureMemory(t)
+	for _, tt := range tests {
+		l, err := ts.Query(tt.lbs)
+		if err != nil {
+			t.Fatalf("Failed to query: %s\n", err)
+		}
 
-        if tt.xlen != len(l) {
-            t.Fatalf("Expected %d results, actual %d\n", tt.xlen, len(l))
-        }
-    }
+		if tt.xlen != len(l) {
+			t.Fatalf("Expected %d results, actual %d\n", tt.xlen, len(l))
+		}
+	}
 }
 
 func TestMemoryUpdate(t *testing.T) {
-    var tests = []struct {
-        desc string
-        key  string
-        rls  *rspb.Release
-        err  bool
-    }{
-        {
-            "update release status",
-            "rls-a.v4",
-            releaseStub("rls-a", 4, rspb.Status_SUPERSEDED),
-            false,
-        },
-        {
-            "update release does not exist",
-            "rls-z.v1",
-            releaseStub("rls-z", 1, rspb.Status_DELETED),
-            true,
-        },
-    }
+	var tests = []struct {
+		desc string
+		key  string
+		rls  *rspb.Release
+		err  bool
+	}{
+		{
+			"update release status",
+			"rls-a.v4",
+			releaseStub("rls-a", 4, rspb.Status_SUPERSEDED),
+			false,
+		},
+		{
+			"update release does not exist",
+			"rls-z.v1",
+			releaseStub("rls-z", 1, rspb.Status_DELETED),
+			true,
+		},
+	}
 
-    ts := tsFixtureMemory(t)
-    for _, tt := range tests {
-        if err := ts.Update(tt.key, tt.rls); err != nil {
-            if !tt.err {
-                t.Fatalf("Failed %q: %s\n", tt.desc, err)
-            }
-            continue
-        }
+	ts := tsFixtureMemory(t)
+	for _, tt := range tests {
+		if err := ts.Update(tt.key, tt.rls); err != nil {
+			if !tt.err {
+				t.Fatalf("Failed %q: %s\n", tt.desc, err)
+			}
+			continue
+		}
 
-        r, err := ts.Get(tt.key)
-        if err != nil {
-            t.Fatalf("Failed to get: %s\n", err)
-        }
+		r, err := ts.Get(tt.key)
+		if err != nil {
+			t.Fatalf("Failed to get: %s\n", err)
+		}
 
-        if !reflect.DeepEqual(r, tt.rls) {
-            t.Fatalf("Expected %s, actual %s\n", tt.rls, r)
-        }
-    }
+		if !reflect.DeepEqual(r, tt.rls) {
+			t.Fatalf("Expected %s, actual %s\n", tt.rls, r)
+		}
+	}
 }
 
 func TestMemoryDelete(t *testing.T) {
-    var tests = []struct {
-        desc string
-        key  string
-        err  bool
-    }{
-        {"release key should exist", "rls-a.v1", false},
-        {"release key should not exist", "rls-a.v5", true},
-    }
+	var tests = []struct {
+		desc string
+		key  string
+		err  bool
+	}{
+		{"release key should exist", "rls-a.v1", false},
+		{"release key should not exist", "rls-a.v5", true},
+	}
 
-    ts := tsFixtureMemory(t)
-    for _, tt := range tests {
-        if _, err := ts.Delete(tt.key); err != nil {
-            if !tt.err {
-                t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
-            }
-        }
-    }
+	ts := tsFixtureMemory(t)
+	for _, tt := range tests {
+		if _, err := ts.Delete(tt.key); err != nil {
+			if !tt.err {
+				t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
+			}
+		}
+	}
 }

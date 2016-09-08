@@ -17,14 +17,14 @@ limitations under the License.
 package driver
 
 import (
-    "bytes"
-    "fmt"
-    "io"
-    "strconv"
-    "strings"
-    "sync"
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+	"sync"
 
-    rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 var _ Driver = (*Memory)(nil)
@@ -34,158 +34,158 @@ const MemoryDriverName = "Memory"
 
 // Memory is the in-memory storage driver implementation.
 type Memory struct {
-    sync.RWMutex
-    cache map[string]records
+	sync.RWMutex
+	cache map[string]records
 }
 
 // NewMemory initializes a new memory driver.
 func NewMemory() *Memory {
-    return &Memory{cache: map[string]records{}}
+	return &Memory{cache: map[string]records{}}
 }
 
 // Name returns the name of the driver.
 func (mem *Memory) Name() string {
-    return MemoryDriverName
+	return MemoryDriverName
 }
 
 // Get returns the release named by key or returns ErrReleaseNotFound.
 func (mem *Memory) Get(key string) (*rspb.Release, error) {
-    defer unlock(mem.rlock())
+	defer unlock(mem.rlock())
 
-    switch elems := strings.Split(key, ".v"); len(elems) {
-    case 2:
-        name, ver := elems[0], elems[1]
-        if _, err := strconv.Atoi(ver); err != nil {
-            return nil, ErrInvalidKey
-        }
-        if recs, ok := mem.cache[name]; ok {
-            if r := recs.Get(key); r != nil {
-                return r.rls, nil
-            }
-        }
-        return nil, ErrReleaseNotFound
-    default:
-        return nil, ErrInvalidKey
-    }
+	switch elems := strings.Split(key, ".v"); len(elems) {
+	case 2:
+		name, ver := elems[0], elems[1]
+		if _, err := strconv.Atoi(ver); err != nil {
+			return nil, ErrInvalidKey
+		}
+		if recs, ok := mem.cache[name]; ok {
+			if r := recs.Get(key); r != nil {
+				return r.rls, nil
+			}
+		}
+		return nil, ErrReleaseNotFound
+	default:
+		return nil, ErrInvalidKey
+	}
 }
 
 // List returns the list of all releases such that filter(release) == true
 func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-    defer unlock(mem.rlock())
+	defer unlock(mem.rlock())
 
-    var ls []*rspb.Release
-    for _, recs := range mem.cache {
-        recs.Iter(func(_ int, rec *record) bool {
-            if filter(rec.rls) {
-                ls = append(ls, rec.rls)
-            }
-            return true
-        })
-    }
-    return ls, nil
+	var ls []*rspb.Release
+	for _, recs := range mem.cache {
+		recs.Iter(func(_ int, rec *record) bool {
+			if filter(rec.rls) {
+				ls = append(ls, rec.rls)
+			}
+			return true
+		})
+	}
+	return ls, nil
 }
 
 // Query returns the set of releases that match the provided set of labels
 func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
-    defer unlock(mem.rlock())
+	defer unlock(mem.rlock())
 
-    var lbs labels
+	var lbs labels
 
-    lbs.init()
-    lbs.fromMap(keyvals)
+	lbs.init()
+	lbs.fromMap(keyvals)
 
-    var ls []*rspb.Release
-    for _, recs := range mem.cache {
-        recs.Iter(func(_ int, rec *record) bool {
-            if rec.lbs.match(lbs) {
-                ls = append(ls, rec.rls)
-            }
-            return true
-        })
-    }
-    return ls, nil
+	var ls []*rspb.Release
+	for _, recs := range mem.cache {
+		recs.Iter(func(_ int, rec *record) bool {
+			if rec.lbs.match(lbs) {
+				ls = append(ls, rec.rls)
+			}
+			return true
+		})
+	}
+	return ls, nil
 }
 
 // Create creates a new release or returns ErrReleaseExists.
 func (mem *Memory) Create(key string, rls *rspb.Release) error {
-    defer unlock(mem.wlock())
+	defer unlock(mem.wlock())
 
-    if recs, ok := mem.cache[rls.Name]; ok {
-        if err := recs.Add(newRecord(key, rls)); err != nil {
-            return err
-        }
-        mem.cache[rls.Name] = recs
-        return nil
-    }
-    mem.cache[rls.Name] = records{newRecord(key, rls)}
-    return nil
+	if recs, ok := mem.cache[rls.Name]; ok {
+		if err := recs.Add(newRecord(key, rls)); err != nil {
+			return err
+		}
+		mem.cache[rls.Name] = recs
+		return nil
+	}
+	mem.cache[rls.Name] = records{newRecord(key, rls)}
+	return nil
 }
 
 // Update updates a release or returns ErrReleaseNotFound.
 func (mem *Memory) Update(key string, rls *rspb.Release) error {
-    defer unlock(mem.wlock())
+	defer unlock(mem.wlock())
 
-    if rs, ok := mem.cache[rls.Name]; ok && rs.Exists(key) {
-        rs.Replace(key, newRecord(key, rls))
-        return nil
-    }
-    return ErrReleaseNotFound
+	if rs, ok := mem.cache[rls.Name]; ok && rs.Exists(key) {
+		rs.Replace(key, newRecord(key, rls))
+		return nil
+	}
+	return ErrReleaseNotFound
 }
 
 // Delete deletes a release or returns ErrReleaseNotFound.
 func (mem *Memory) Delete(key string) (*rspb.Release, error) {
-    defer unlock(mem.wlock())
+	defer unlock(mem.wlock())
 
-    switch elems := strings.Split(key, ".v"); len(elems) {
-    case 2:
-        name, ver := elems[0], elems[1]
-        if _, err := strconv.Atoi(ver); err != nil {
-            return nil, ErrInvalidKey
-        }
-        if recs, ok := mem.cache[name]; ok {
-            if r := recs.Remove(key); r != nil {
-                return r.rls, nil
-            }
-        }
-        return nil, ErrReleaseNotFound
-    default:
-        return nil, ErrInvalidKey
-    }
-    return nil, ErrReleaseNotFound
+	switch elems := strings.Split(key, ".v"); len(elems) {
+	case 2:
+		name, ver := elems[0], elems[1]
+		if _, err := strconv.Atoi(ver); err != nil {
+			return nil, ErrInvalidKey
+		}
+		if recs, ok := mem.cache[name]; ok {
+			if r := recs.Remove(key); r != nil {
+				return r.rls, nil
+			}
+		}
+		return nil, ErrReleaseNotFound
+	default:
+		return nil, ErrInvalidKey
+	}
+	return nil, ErrReleaseNotFound
 }
 
 func (mem *Memory) dump(w io.Writer) error {
-    var b bytes.Buffer
+	var b bytes.Buffer
 
-    fmt.Fprintln(&b, "memory:")
-    for key, recs := range mem.cache {
-        fmt.Fprintf(&b, "\t# %q\n", key)
+	fmt.Fprintln(&b, "memory:")
+	for key, recs := range mem.cache {
+		fmt.Fprintf(&b, "\t# %q\n", key)
 
-        recs.Iter(func(index int, r *record) bool {
-            fmt.Fprintf(&b, "\t\t- [%d] v%d (status = %s)\n",
-                index,
-                r.rls.Version,
-                r.rls.Info.Status.Code,
-            )
+		recs.Iter(func(index int, r *record) bool {
+			fmt.Fprintf(&b, "\t\t- [%d] v%d (status = %s)\n",
+				index,
+				r.rls.Version,
+				r.rls.Info.Status.Code,
+			)
 
-            return true
-        })
-    }
+			return true
+		})
+	}
 
-    _, err := w.Write(b.Bytes())
-    return err
+	_, err := w.Write(b.Bytes())
+	return err
 }
 
 // wlock locks mem for writing
 func (mem *Memory) wlock() func() {
-    mem.Lock()
-    return func() { mem.Unlock() }
+	mem.Lock()
+	return func() { mem.Unlock() }
 }
 
 // rlock locks mem for reading
 func (mem *Memory) rlock() func() {
-    mem.RLock()
-    return func() { mem.RUnlock() }
+	mem.RLock()
+	return func() { mem.RUnlock() }
 }
 
 // unlock calls fn which reverses a mem.rlock or mem.wlock. e.g:

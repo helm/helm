@@ -1,71 +1,87 @@
-package driver
+/*
+Copyright 2016 The Kubernetes Authors All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-    "testing"
+	"testing"
 
-    rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestRecordsAdd(t *testing.T) {
-    rs := records([]*record{
-        newRecord("rls-a.v1", releaseStub("rls-a", 1, rspb.Status_SUPERSEDED)),
-        newRecord("rls-a.v2", releaseStub("rls-a", 2, rspb.Status_DEPLOYED)),
-    })
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, rspb.Status_SUPERSEDED)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, rspb.Status_DEPLOYED)),
+	})
 
-    var tests = []struct {
-        desc string
-        key  string
-        ok   bool
-        rec  *record
-    }{
-        {
-            "add valid key",
-            "rls-a.v3",
-            false,
-            newRecord("rls-a.v3", releaseStub("rls-a", 3, rspb.Status_SUPERSEDED)),
-        },
-        {
-            "add already existing key",
-            "rls-a.v1",
-            true,
-            newRecord("rls-a.v1", releaseStub("rls-a", 1, rspb.Status_DEPLOYED)),
-        },
-    }
+	var tests = []struct {
+		desc string
+		key  string
+		ok   bool
+		rec  *record
+	}{
+		{
+			"add valid key",
+			"rls-a.v3",
+			false,
+			newRecord("rls-a.v3", releaseStub("rls-a", 3, rspb.Status_SUPERSEDED)),
+		},
+		{
+			"add already existing key",
+			"rls-a.v1",
+			true,
+			newRecord("rls-a.v1", releaseStub("rls-a", 1, rspb.Status_DEPLOYED)),
+		},
+	}
 
-    for _, tt := range tests {
-        if err := rs.Add(tt.rec); err != nil {
-            if !tt.ok {
-                t.Fatalf("failed: %q: %s\n", tt.desc, err)
-            }
-        }
-    }
+	for _, tt := range tests {
+		if err := rs.Add(tt.rec); err != nil {
+			if !tt.ok {
+				t.Fatalf("failed: %q: %s\n", tt.desc, err)
+			}
+		}
+	}
 }
 
 func TestRecordsRemove(t *testing.T) {
-    var tests = []struct {
-        desc string
-        key  string
-        ok   bool
-    }{
-        {"remove valid key", "rls-a.v1", false},
-        {"remove invalid key", "rls-a.v", true},
-        {"remove non-existant key", "rls-z.v1", true},
-    }
+	var tests = []struct {
+		desc string
+		key  string
+		ok   bool
+	}{
+		{"remove valid key", "rls-a.v1", false},
+		{"remove invalid key", "rls-a.v", true},
+		{"remove non-existant key", "rls-z.v1", true},
+	}
 
-    rs := records([]*record{
-        newRecord("rls-a.v1", releaseStub("rls-a", 1, rspb.Status_SUPERSEDED)),
-        newRecord("rls-a.v2", releaseStub("rls-a", 2, rspb.Status_DEPLOYED)),
-    })
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, rspb.Status_SUPERSEDED)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, rspb.Status_DEPLOYED)),
+	})
 
-    for _, tt := range tests {
-        if r := rs.Remove(tt.key); r == nil {
-            if !tt.ok {
-                t.Fatalf("Failed to %q (key = %s). Expected nil, got %s",
-                    tt.desc,
-                    tt.key,
-                    r,
-                )
-            }
-        }
-    }
+	for _, tt := range tests {
+		if r := rs.Remove(tt.key); r == nil {
+			if !tt.ok {
+				t.Fatalf("Failed to %q (key = %s). Expected nil, got %s",
+					tt.desc,
+					tt.key,
+					r,
+				)
+			}
+		}
+	}
 }
