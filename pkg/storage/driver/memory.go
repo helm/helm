@@ -151,7 +151,6 @@ func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	default:
 		return nil, ErrInvalidKey
 	}
-	return nil, ErrReleaseNotFound
 }
 
 func (mem *Memory) dump(w io.Writer) error {
