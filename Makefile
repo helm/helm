@@ -75,8 +75,7 @@ protoc:
 
 .PHONY: clean
 clean:
-	@rm -rf $(BINDIR)
-	@rm -f ./rootfs/tiller
+	@rm -rf $(BINDIR) ./rootfs/tiller ./_dist
 
 .PHONY: coverage
 coverage:
