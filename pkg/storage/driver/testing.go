@@ -78,6 +78,7 @@ type MockConfigMapsInterface struct {
 	objects map[string]*api.ConfigMap
 }
 
+// Init initializes the MockConfigMapsInterface with the set of releases.
 func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Release) {
 	mock.objects = map[string]*api.ConfigMap{}
 
@@ -92,6 +93,7 @@ func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Releas
 	}
 }
 
+// Get returns the ConfigMap by name.
 func (mock *MockConfigMapsInterface) Get(name string) (*api.ConfigMap, error) {
 	object, ok := mock.objects[name]
 	if !ok {
@@ -100,6 +102,7 @@ func (mock *MockConfigMapsInterface) Get(name string) (*api.ConfigMap, error) {
 	return object, nil
 }
 
+// List returns the a of ConfigMaps.
 func (mock *MockConfigMapsInterface) List(opts api.ListOptions) (*api.ConfigMapList, error) {
 	var list api.ConfigMapList
 	for _, cfgmap := range mock.objects {
@@ -108,6 +111,7 @@ func (mock *MockConfigMapsInterface) List(opts api.ListOptions) (*api.ConfigMapL
 	return &list, nil
 }
 
+// Create creates a new ConfigMap.
 func (mock *MockConfigMapsInterface) Create(cfgmap *api.ConfigMap) (*api.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if object, ok := mock.objects[name]; ok {
@@ -117,6 +121,7 @@ func (mock *MockConfigMapsInterface) Create(cfgmap *api.ConfigMap) (*api.ConfigM
 	return cfgmap, nil
 }
 
+// Update updates a ConfigMap.
 func (mock *MockConfigMapsInterface) Update(cfgmap *api.ConfigMap) (*api.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
@@ -126,6 +131,7 @@ func (mock *MockConfigMapsInterface) Update(cfgmap *api.ConfigMap) (*api.ConfigM
 	return cfgmap, nil
 }
 
+// Delete deletes a ConfigMap by name.
 func (mock *MockConfigMapsInterface) Delete(name string) error {
 	if _, ok := mock.objects[name]; !ok {
 		return kberrs.NewNotFound(api.Resource("tests"), name)
