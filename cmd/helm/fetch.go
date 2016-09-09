@@ -115,7 +115,7 @@ func downloadChart(pname string, untar bool, untardir string, verify bool, keyri
 		return err
 	}
 	if u == nil {
-		// lets default the URL from the repository URL
+		// lets assume the URL is relative to the repository URL
 		u, err = mapRepoArg(pname, r.Repositories)
 		if err != nil {
 			return err
