@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -108,11 +109,19 @@ func downloadChart(pname string, untar bool, untardir string, verify bool, keyri
 		return err
 	}
 
-	// get download url
-	u, err := mapRepoArg(pname, r.Repositories)
+	// get chart download url
+	u, err := findChartURL(pname)
 	if err != nil {
 		return err
 	}
+	if u == nil {
+		// lets default the URL from the repository URL
+		u, err = mapRepoArg(pname, r.Repositories)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("Downloading chart from: %s\n", u)
 
 	href := u.String()
 	buf, err := fetchChart(href)
@@ -136,6 +145,43 @@ func downloadChart(pname string, untar bool, untardir string, verify bool, keyri
 	}
 
 	return saveChart(pname, buf, untar, untardir)
+}
+
+// findChartUrl finds the download URL for a chart in an index
+//
+// Lets assume pnane is of the form 'repo/chartname-version' or 'repo/chartname-version.tgz'
+// if there is no 'repo/' prefix we will search all repositories
+func findChartURL(pnane string) (*url.URL, error) {
+	dir := cacheDirectory()
+	fileList := []string{}
+	key := strings.TrimSuffix(pnane, ".tgz")
+	i := strings.Index(key, "/")
+	if i > 0 {
+		r := key[0:i]
+		key = key[i+1:]
+		fileList = append(fileList, path.Join(dir, r+"-index.yaml"))
+	} else {
+		filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+			if !f.IsDir() {
+				fileList = append(fileList, path)
+			}
+			return nil
+		})
+	}
+	for _, f := range fileList {
+		index, err := repo.LoadIndexFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("index %s corrupted: %s", f, err)
+		}
+		c := index.Entries[key]
+		if c != nil {
+			if len(c.URL) == 0 {
+				return nil, nil
+			}
+			return url.ParseRequestURI(c.URL)
+		}
+	}
+	return nil, nil
 }
 
 // verifyChart takes a path to a chart archive and a keyring, and verifies the chart.
