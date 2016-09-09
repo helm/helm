@@ -153,7 +153,7 @@ func NewFromKeyring(keyringfile, id string) (*Signatory, error) {
 // The Signatory must have a valid Entity.PrivateKey for this to work. If it does
 // not, an error will be returned.
 func (s *Signatory) ClearSign(chartpath string) (string, error) {
-	if s.Entity.PrivateKey == nil {
+	if s.Entity == nil || s.Entity.PrivateKey == nil {
 		return "", errors.New("private key not found")
 	}
 
