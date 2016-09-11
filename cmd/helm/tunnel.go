@@ -68,5 +68,5 @@ func getFirstRunningPod(client unversioned.PodsNamespacer, namespace string, sel
 			return &p, nil
 		}
 	}
-	return nil, fmt.Errorf("could not find a ready pod")
+	return nil, fmt.Errorf("could not find a ready tiller pod")
 }
