@@ -6,12 +6,14 @@ machine:
     GOVERSION: "1.7"
     GOPATH:  "${HOME}/.go_workspace"
     WORKDIR: "${GOPATH}/src/k8s.io/helm"
+    PROJECT_NAME: "kubernetes-helm"
 
   services:
     - docker
 
 dependencies:
   pre:
+    # remove old go files
     - sudo rm -rf /usr/local/go
     - rm -rf "$GOPATH"
 
@@ -39,7 +41,18 @@ deployment:
   gcr:
     branch: master
     commands:
-      - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
+      # setup gcloud tools
+      - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
+      - echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/glcoud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
       - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
+
+      # build canary tiller image and push
       - make docker-build
       - docker push gcr.io/kubernetes-helm/tiller:canary
+
+      # build canary helm binaries and push
+      - make build-cross
+      - make dist VERSION=canary
+      - sudo /opt/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
