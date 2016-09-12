@@ -73,7 +73,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().Int32Var(&get.version, "version", 0, "version of release")
+	cmd.PersistentFlags().Int32Var(&get.version, "version", 0, "get the named release with version")
 
 	cmd.AddCommand(newGetValuesCmd(nil, out))
 	cmd.AddCommand(newGetManifestCmd(nil, out))

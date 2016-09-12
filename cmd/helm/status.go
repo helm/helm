@@ -60,7 +60,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().Int32Var(&status.version, "version", 0, "version of release")
+	cmd.PersistentFlags().Int32Var(&status.version, "version", 0, "If set, display the status of the named release with version")
 
 	return cmd
 }
