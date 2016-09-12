@@ -225,10 +225,10 @@ func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 	if req.Version <= 0 {
 		rel, err := s.env.Releases.Deployed(req.Name)
 		return &services.GetReleaseContentResponse{Release: rel}, err
-	} else {
-		rel, err := s.env.Releases.Get(req.Name, req.Version)
-		return &services.GetReleaseContentResponse{Release: rel}, err
 	}
+
+	rel, err := s.env.Releases.Get(req.Name, req.Version)
+	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
 func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
