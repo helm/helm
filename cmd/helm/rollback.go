@@ -52,7 +52,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:              rollbackDesc,
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(1, len(args), "release name"); err != nil {
+			if err := checkArgsLength(len(args), "release name"); err != nil {
 				return err
 			}
 			rollback.client = ensureHelmClient(rollback.client)

@@ -69,7 +69,7 @@ var repoIndexCmd = &cobra.Command{
 }
 
 func runRepoAdd(cmd *cobra.Command, args []string) error {
-	if err := checkArgsLength(2, len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
+	if err := checkArgsLength(len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
 		return err
 	}
 	name, url := args[0], args[1]
@@ -101,7 +101,7 @@ func runRepoList(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoRemove(cmd *cobra.Command, args []string) error {
-	if err := checkArgsLength(1, len(args), "name of chart repository"); err != nil {
+	if err := checkArgsLength(len(args), "name of chart repository"); err != nil {
 		return err
 	}
 	return removeRepoLine(args[0])

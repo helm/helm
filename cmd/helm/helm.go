@@ -138,8 +138,9 @@ func teardown() {
 	}
 }
 
-func checkArgsLength(expectedNum, actualNum int, requiredArgs ...string) error {
-	if actualNum != expectedNum {
+func checkArgsLength(argsReceived int, requiredArgs ...string) error {
+	expectedNum := len(requiredArgs)
+	if argsReceived != expectedNum {
 		arg := "arguments"
 		if expectedNum == 1 {
 			arg = "argument"

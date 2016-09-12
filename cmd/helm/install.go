@@ -89,7 +89,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:              installDesc,
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
+			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
 			cp, err := locateChartPath(args[0], inst.verify, inst.keyring)
