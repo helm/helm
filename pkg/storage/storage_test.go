@@ -30,11 +30,15 @@ func TestStorageCreate(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	rls := ReleaseTestData{
+		Name:    "angry-beaver",
+		Version: 1,
+	}.ToRelease()
+
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// fetch the release
-	res, err := storage.Get(rls.Name)
+	res, err := storage.Get(rls.Name, rls.Version)
 	assertErrNil(t.Fatal, err, "QueryRelease")
 
 	// verify the fetched and created release are the same
@@ -48,16 +52,20 @@ func TestStorageUpdate(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	rls := ReleaseTestData{
+		Name:    "angry-beaver",
+		Version: 1,
+		Status:  rspb.Status_DEPLOYED,
+	}.ToRelease()
+
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// modify the release
-	rls.Version = 2
-	rls.Manifest = "new-manifest"
+	rls.Info.Status.Code = rspb.Status_DELETED
 	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
 
 	// retrieve the updated release
-	res, err := storage.Get(rls.Name)
+	res, err := storage.Get(rls.Name, rls.Version)
 	assertErrNil(t.Fatal, err, "QueryRelease")
 
 	// verify updated and fetched releases are the same.
@@ -71,11 +79,15 @@ func TestStorageDelete(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	// create fake release
-	rls := ReleaseTestData{Name: "angry-beaver"}.ToRelease()
+	rls := ReleaseTestData{
+		Name:    "angry-beaver",
+		Version: 1,
+	}.ToRelease()
+
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// delete the release
-	res, err := storage.Delete(rls.Name)
+	res, err := storage.Delete(rls.Name, rls.Version)
 	assertErrNil(t.Fatal, err, "DeleteRelease")
 
 	// verify updated and fetched releases are the same.
@@ -131,6 +143,46 @@ func TestStorageList(t *testing.T) {
 				tt.NumExpected,
 				len(list))
 		}
+	}
+}
+
+func TestStorageDeployed(t *testing.T) {
+	storage := Init(driver.NewMemory())
+
+	const name = "angry-bird"
+	const vers = int32(4)
+
+	// setup storage with test releases
+	setup := func() {
+		// release records
+		rls0 := ReleaseTestData{Name: name, Version: 1, Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls1 := ReleaseTestData{Name: name, Version: 2, Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls2 := ReleaseTestData{Name: name, Version: 3, Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls3 := ReleaseTestData{Name: name, Version: 4, Status: rspb.Status_DEPLOYED}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+	}
+
+	setup()
+
+	rls, err := storage.Deployed(name)
+	if err != nil {
+		t.Fatalf("Failed to query for deployed release: %s\n", err)
+	}
+
+	switch {
+	case rls == nil:
+		t.Fatalf("Release is nil")
+	case rls.Name != name:
+		t.Fatalf("Expected release name %q, actual %q\n", name, rls.Name)
+	case rls.Version != vers:
+		t.Fatalf("Expected release version %d, actual %d\n", vers, rls.Version)
+	case rls.Info.Status.Code != rspb.Status_DEPLOYED:
+		t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rls.Info.Status.Code)
 	}
 }
 

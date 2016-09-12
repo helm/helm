@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage
+package storage // import "k8s.io/helm/pkg/storage"
 
 import rspb "k8s.io/helm/pkg/proto/hapi/release"
 

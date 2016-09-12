@@ -27,6 +27,8 @@ var (
 	ErrReleaseNotFound = errors.New("release: not found")
 	// ErrReleaseExists indicates that a release already exists.
 	ErrReleaseExists = errors.New("release: already exists")
+	// ErrInvalidKey indicates that a release key could not be parsed.
+	ErrInvalidKey = errors.New("release: invalid key")
 )
 
 // Creator is the interface that wraps the Create method.
@@ -34,7 +36,7 @@ var (
 // Create stores the release or returns ErrReleaseExists
 // if an identical release already exists.
 type Creator interface {
-	Create(rls *rspb.Release) error
+	Create(key string, rls *rspb.Release) error
 }
 
 // Updator is the interface that wraps the Update method.
@@ -42,7 +44,7 @@ type Creator interface {
 // Update updates an existing release or returns
 // ErrReleaseNotFound if the release does not exist.
 type Updator interface {
-	Update(rls *rspb.Release) error
+	Update(key string, rls *rspb.Release) error
 }
 
 // Deletor is the interface that wraps the Delete method.
@@ -59,9 +61,12 @@ type Deletor interface {
 // if the release does not exist.
 //
 // List returns the set of all releases that satisfy the filter predicate.
+//
+// Query returns the set of all releases that match the provided label set.
 type Queryor interface {
 	Get(key string) (*rspb.Release, error)
 	List(filter func(*rspb.Release) bool) ([]*rspb.Release, error)
+	Query(labels map[string]string) ([]*rspb.Release, error)
 }
 
 // Driver is the interface composed of Creator, Updator, Deletor, Queryor
