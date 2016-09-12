@@ -646,8 +646,6 @@ func TestUninstallPurgeRelease(t *testing.T) {
 }
 
 func TestUninstallPurgeDeleteRelease(t *testing.T) {
-	t.Skip("TestUninstallPurgeDeleteRelease")
-
 	c := context.Background()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
@@ -667,7 +665,7 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 	}
 
 	_, err2 := rs.UninstallRelease(c, req2)
-	if err2 != nil {
+	if err2 != nil && err2.Error() != "'angry-panda' has no deployed releases" {
 		t.Errorf("Failed uninstall: %s", err2)
 	}
 }
