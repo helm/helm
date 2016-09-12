@@ -181,16 +181,16 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	}
 
 	var rel *release.Release
+	var err error
+
 	if req.Version <= 0 {
-		var err error
 		if rel, err = s.env.Releases.Deployed(req.Name); err != nil {
 			return nil, err
 		}
-	} else {
-		var err error
-		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
-			return nil, err
-		}
+	}
+
+	if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
+		return nil, err
 	}
 
 	if rel.Info == nil {

@@ -65,7 +65,7 @@ func TestRecordsRemove(t *testing.T) {
 	}{
 		{"remove valid key", "rls-a.v1", false},
 		{"remove invalid key", "rls-a.v", true},
-		{"remove non-existant key", "rls-z.v1", true},
+		{"remove non-existent key", "rls-z.v1", true},
 	}
 
 	rs := records([]*record{
