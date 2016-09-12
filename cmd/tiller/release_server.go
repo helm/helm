@@ -187,10 +187,10 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		if rel, err = s.env.Releases.Deployed(req.Name); err != nil {
 			return nil, fmt.Errorf("getting deployed release '%s': %s", req.Name, err)
 		}
-	}
-
-	if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
-		return nil, fmt.Errorf("getting release '%s' (v%d): %s", req.Name, req.Version, err)
+	} else {
+		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
+			return nil, fmt.Errorf("getting release '%s' (v%d): %s", req.Name, req.Version, err)
+		}
 	}
 
 	if rel.Info == nil {
