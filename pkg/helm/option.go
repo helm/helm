@@ -50,6 +50,10 @@ type options struct {
 	updateReq rls.UpdateReleaseRequest
 	// release uninstall options are applied directly to the uninstall release request
 	uninstallReq rls.UninstallReleaseRequest
+	// release get status options are applied directly to the get release status request
+	statusReq rls.GetReleaseStatusRequest
+	// release get content options are applied directly to the get release content request
+	contentReq rls.GetReleaseContentRequest
 }
 
 // Home specifies the location of helm home, (default = "$HOME/.helm").
@@ -198,13 +202,32 @@ func InstallReuseName(reuse bool) InstallOption {
 	}
 }
 
-// ContentOption -- TODO
+// ContentOption allows setting optional attributes when
+// performing a GetReleaseContent tiller rpc.
 type ContentOption func(*options)
 
-// StatusOption -- TODO
+// ContentReleaseVersion will instruct Tiller to retrieve the content
+// of a paritcular version of a release.
+func ContentReleaseVersion(version int32) ContentOption {
+	return func(opts *options) {
+		opts.contentReq.Version = version
+	}
+}
+
+// StatusOption allows setting optional attributes when
+// performing a GetReleaseStatus tiller rpc.
 type StatusOption func(*options)
 
-// DeleteOption -- TODO
+// StatusReleaseVersion will instruct Tiller to retrieve the status
+// of a paritcular version of a release.
+func StatusReleaseVersion(version int32) StatusOption {
+	return func(opts *options) {
+		opts.statusReq.Version = version
+	}
+}
+
+// DeleteOption allows setting optional attributes when
+// performing a UninstallRelease tiller rpc.
 type DeleteOption func(*options)
 
 // UpdateOption allows specifying various settings
@@ -281,12 +304,18 @@ func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.Relea
 
 // Executes tiller.GetReleaseStatus RPC.
 func (o *options) rpcGetReleaseStatus(rlsName string, rlc rls.ReleaseServiceClient, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	req := &rls.GetReleaseStatusRequest{Name: rlsName}
-	return rlc.GetReleaseStatus(context.TODO(), req)
+	for _, opt := range opts {
+		opt(o)
+	}
+	o.statusReq.Name = rlsName
+	return rlc.GetReleaseStatus(context.TODO(), &o.statusReq)
 }
 
 // Executes tiller.GetReleaseContent.
 func (o *options) rpcGetReleaseContent(rlsName string, rlc rls.ReleaseServiceClient, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
-	req := &rls.GetReleaseContentRequest{Name: rlsName}
-	return rlc.GetReleaseContent(context.TODO(), req)
+	for _, opt := range opts {
+		opt(o)
+	}
+	o.contentReq.Name = rlsName
+	return rlc.GetReleaseContent(context.TODO(), &o.contentReq)
 }
