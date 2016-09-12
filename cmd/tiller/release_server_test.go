@@ -466,14 +466,14 @@ func TestInstallReleaseReuseName(t *testing.T) {
 	}
 	res, err := rs.InstallRelease(c, req)
 	if err != nil {
-		t.Errorf("Failed install: %s", err)
+		t.Fatalf("Failed install: %s", err)
 	}
 
 	if res.Release.Name != rel.Name {
 		t.Errorf("expected %q, got %q", rel.Name, res.Release.Name)
 	}
 
-	getreq := &services.GetReleaseStatusRequest{Name: rel.Name}
+	getreq := &services.GetReleaseStatusRequest{Name: rel.Name, Version: 1}
 	getres, err := rs.GetReleaseStatus(c, getreq)
 	if err != nil {
 		t.Errorf("Failed to retrieve release: %s", err)
@@ -701,7 +701,7 @@ func TestGetReleaseContent(t *testing.T) {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 
-	res, err := rs.GetReleaseContent(c, &services.GetReleaseContentRequest{Name: rel.Name})
+	res, err := rs.GetReleaseContent(c, &services.GetReleaseContentRequest{Name: rel.Name, Version: 1})
 	if err != nil {
 		t.Errorf("Error getting release content: %s", err)
 	}
@@ -719,7 +719,7 @@ func TestGetReleaseStatus(t *testing.T) {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 
-	res, err := rs.GetReleaseStatus(c, &services.GetReleaseStatusRequest{Name: rel.Name})
+	res, err := rs.GetReleaseStatus(c, &services.GetReleaseStatusRequest{Name: rel.Name, Version: 1})
 	if err != nil {
 		t.Errorf("Error getting release content: %s", err)
 	}
