@@ -48,3 +48,7 @@ You can reach the Helm community and developers via the following channels:
 - [Kubernetes Slack](https://slack.k8s.io): #helm
 - Mailing List: https://groups.google.com/forum/#!forum/kubernetes-sig-apps
 - Developer Call: Thursdays at 9:30-10:00 Pacific. https://engineyard.zoom.us/j/366425549
+
+### Code of conduct
+
+Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct](code-of-conduct.md).
