@@ -45,6 +45,7 @@ func search(cmd *cobra.Command, args []string) error {
 		return errors.New("This command needs at least one argument (search string)")
 	}
 
+	// TODO: This needs to be refactored to use loadChartRepositories
 	results, err := searchCacheForPattern(cacheDirectory(), args[0])
 	if err != nil {
 		return err

@@ -127,6 +127,28 @@ func TestLoadKeyRing(t *testing.T) {
 	}
 }
 
+func TestDigest(t *testing.T) {
+	f, err := os.Open(testChartfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	hash, err := Digest(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig, err := readSumFile(testSumfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(sig, hash) {
+		t.Errorf("Expected %s to be in %s", hash, sig)
+	}
+}
+
 func TestNewFromFiles(t *testing.T) {
 	s, err := NewFromFiles(testKeyfile, testPubfile)
 	if err != nil {
@@ -138,8 +160,8 @@ func TestNewFromFiles(t *testing.T) {
 	}
 }
 
-func TestSumArchive(t *testing.T) {
-	hash, err := sumArchive(testChartfile)
+func TestDigestFile(t *testing.T) {
+	hash, err := DigestFile(testChartfile)
 	if err != nil {
 		t.Fatal(err)
 	}

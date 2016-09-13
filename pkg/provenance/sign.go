@@ -204,7 +204,7 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 	ver.SignedBy = by
 
 	// Second, verify the hash of the tarball.
-	sum, err := sumArchive(chartpath)
+	sum, err := DigestFile(chartpath)
 	if err != nil {
 		return ver, err
 	}
@@ -254,7 +254,7 @@ func (s *Signatory) verifySignature(block *clearsign.Block) (*openpgp.Entity, er
 func messageBlock(chartpath string) (*bytes.Buffer, error) {
 	var b *bytes.Buffer
 	// Checksum the archive
-	chash, err := sumArchive(chartpath)
+	chash, err := DigestFile(chartpath)
 	if err != nil {
 		return b, err
 	}
@@ -332,20 +332,26 @@ func loadKeyRing(ringpath string) (openpgp.EntityList, error) {
 	return openpgp.ReadKeyRing(f)
 }
 
-// sumArchive calculates a SHA256 hash (like Docker) for a given file.
+// DigestFile calculates a SHA256 hash (like Docker) for a given file.
 //
 // It takes the path to the archive file, and returns a string representation of
 // the SHA256 sum.
 //
 // The intended use of this function is to generate a sum of a chart TGZ file.
-func sumArchive(filename string) (string, error) {
+func DigestFile(filename string) (string, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
+	return Digest(f)
+}
 
+// Digest hashes a reader and returns a SHA256 digest.
+//
+// Helm uses SHA256 as its default hash for all non-cryptographic applications.
+func Digest(in io.Reader) (string, error) {
 	hash := crypto.SHA256.New()
-	io.Copy(hash, f)
+	io.Copy(hash, in)
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
