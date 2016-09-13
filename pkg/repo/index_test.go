@@ -110,3 +110,35 @@ func TestLoadIndexFile(t *testing.T) {
 		t.Errorf("alpine entry was not decoded properly")
 	}
 }
+
+func TestIndexDirectory(t *testing.T) {
+	dir := "testdata/repository"
+	index, err := IndexDirectory(dir, "http://localhost:8080")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l := len(index.Entries); l != 2 {
+		t.Fatalf("Expected 2 entries, got %d", l)
+	}
+
+	// Other things test the entry generation more thoroughly. We just test a
+	// few fields.
+	cname := "frobnitz-1.2.3"
+	frob, ok := index.Entries[cname]
+	if !ok {
+		t.Fatalf("Could not read chart %s", cname)
+	}
+	if len(frob.Digest) == 0 {
+		t.Errorf("Missing digest of file %s.", frob.Name)
+	}
+	if frob.Chartfile == nil {
+		t.Fatalf("Chartfile %s not added to index.", cname)
+	}
+	if frob.URL != "http://localhost:8080/frobnitz-1.2.3.tgz" {
+		t.Errorf("Unexpected URL: %s", frob.URL)
+	}
+	if frob.Chartfile.Name != "frobnitz" {
+		t.Errorf("Expected frobnitz, got %q", frob.Chartfile.Name)
+	}
+}

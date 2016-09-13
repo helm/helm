@@ -96,28 +96,36 @@ func (f *fetchCmd) run() error {
 		pname += ".tgz"
 	}
 
-	return downloadChart(pname, f.untar, f.untardir, f.verify, f.keyring)
+	return downloadAndSaveChart(pname, f.untar, f.untardir, f.verify, f.keyring)
 }
 
-// downloadChart fetches a chart over HTTP, and then (if verify is true) verifies it.
+// downloadAndSaveChart fetches a chart over HTTP, and then (if verify is true) verifies it.
 //
 // If untar is true, it also unpacks the file into untardir.
-func downloadChart(pname string, untar bool, untardir string, verify bool, keyring string) error {
-	r, err := repo.LoadRepositoriesFile(repositoriesFile())
+func downloadAndSaveChart(pname string, untar bool, untardir string, verify bool, keyring string) error {
+	buf, err := downloadChart(pname, verify, keyring)
 	if err != nil {
 		return err
+	}
+	return saveChart(pname, buf, untar, untardir)
+}
+
+func downloadChart(pname string, verify bool, keyring string) (*bytes.Buffer, error) {
+	r, err := repo.LoadRepositoriesFile(repositoriesFile())
+	if err != nil {
+		return bytes.NewBuffer(nil), err
 	}
 
 	// get download url
 	u, err := mapRepoArg(pname, r.Repositories)
 	if err != nil {
-		return err
+		return bytes.NewBuffer(nil), err
 	}
 
 	href := u.String()
 	buf, err := fetchChart(href)
 	if err != nil {
-		return err
+		return buf, err
 	}
 
 	if verify {
@@ -125,17 +133,17 @@ func downloadChart(pname string, untar bool, untardir string, verify bool, keyri
 		sigref := href + ".prov"
 		sig, err := fetchChart(sigref)
 		if err != nil {
-			return fmt.Errorf("provenance data not downloaded from %s: %s", sigref, err)
+			return buf, fmt.Errorf("provenance data not downloaded from %s: %s", sigref, err)
 		}
 		if err := ioutil.WriteFile(basename+".prov", sig.Bytes(), 0755); err != nil {
-			return fmt.Errorf("provenance data not saved: %s", err)
+			return buf, fmt.Errorf("provenance data not saved: %s", err)
 		}
 		if err := verifyChart(basename, keyring); err != nil {
-			return err
+			return buf, err
 		}
 	}
 
-	return saveChart(pname, buf, untar, untardir)
+	return buf, nil
 }
 
 // verifyChart takes a path to a chart archive and a keyring, and verifies the chart.
