@@ -28,6 +28,8 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/lint"
+	"k8s.io/helm/pkg/lint/support"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 )
@@ -46,6 +48,7 @@ Versioned chart archives are used by Helm package repositories.
 type packageCmd struct {
 	save    bool
 	sign    bool
+	nolint  bool
 	path    string
 	key     string
 	keyring string
@@ -87,6 +90,7 @@ func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&pkg.sign, "sign", false, "use a PGP private key to sign this package")
 	f.StringVar(&pkg.key, "key", "", "the name of the key to use when signing. Used if --sign is true.")
 	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "the location of a public keyring")
+	f.BoolVar(&pkg.nolint, "no-lint", false, "not lint a chart before packaging it")
 
 	return cmd
 }
@@ -95,6 +99,18 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	path, err := filepath.Abs(p.path)
 	if err != nil {
 		return err
+	}
+
+	if p.nolint != true {
+		linter := lint.All(path)
+		if linter.HighestSeverity == support.ErrorSev {
+			for _, msg := range linter.Messages {
+				if msg.Severity == support.ErrorSev {
+					cmd.Println(msg)
+				}
+			}
+			return fmt.Errorf("chart lint failed")
+		}
 	}
 
 	ch, err := chartutil.LoadDir(path)

@@ -64,6 +64,13 @@ func TestPackage(t *testing.T) {
 			hasfile: "alpine-0.1.0.tgz",
 		},
 		{
+			name:    "package testdata/testcharts/alpine --no-lint",
+			args:    []string{"testdata/testcharts/alpine"},
+			flags:   map[string]string{"nolint": "1"},
+			expect:  "",
+			hasfile: "alpine-0.1.0.tgz",
+		},
+		{
 			name:    "package --sign --key=KEY --keyring=KEYRING testdata/testcharts/alpine",
 			args:    []string{"testdata/testcharts/alpine"},
 			flags:   map[string]string{"sign": "1", "keyring": "testdata/helm-test-key.secret", "key": "helm-test"},
