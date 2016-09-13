@@ -70,7 +70,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Short: "inspect a chart",
 		Long:  inspectDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
+			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
 			cp, err := locateChartPath(args[0], insp.verify, insp.keyring)
