@@ -44,7 +44,7 @@ deployment:
       # setup gcloud tools
       - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
       - echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
-      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/glcoud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
       - sudo /opt/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
       - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
 
