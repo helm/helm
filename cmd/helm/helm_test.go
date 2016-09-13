@@ -149,11 +149,7 @@ func (c *fakeReleaseClient) ReleaseStatus(rlsName string, opts ...helm.StatusOpt
 func (c *fakeReleaseClient) GetVersion(opts ...helm.VersionOption) (*rls.GetVersionResponse, error) {
 	return &rls.GetVersionResponse{
 		Version: &version.Version{
-			Major:         1,
-			Minor:         2,
-			Patch:         3,
-			PreRelease:    "fakeclient",
-			BuildMetadata: "testonly",
+			SemVer: "1.2.3-fakeclient+testonly",
 		},
 	}, nil
 }

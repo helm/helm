@@ -19,11 +19,8 @@ package hapi.version;
 option go_package = "version";
 
 message Version {
-  uint32 major = 1;
-  uint32 minor = 2;
-  uint32 patch = 3;
-  string pre_release = 4;
-  string build_metadata = 5;
+  // Sem ver string for the version
+  string sem_ver = 1;
   string git_version = 6;
   string git_commit = 7;
   string git_tree_state = 8;

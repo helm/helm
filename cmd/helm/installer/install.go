@@ -62,7 +62,7 @@ func Install(namespace, image string, verbose bool) error {
 
 	if image == "" {
 		// strip git sha off version
-		tag := strings.Split(version.GetVersion(), "+")[0]
+		tag := strings.Split(version.Version, "+")[0]
 		image = fmt.Sprintf("%s:%s", defaultImage, tag)
 	}
 

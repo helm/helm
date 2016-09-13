@@ -15,7 +15,7 @@ BINARY_VERSION ?= ${GIT_TAG}-${GIT_SHA}
 IMAGE := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${DOCKER_VERSION}
 MUTABLE_IMAGE := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
 
-LDFLAGS += -X k8s.io/helm/pkg/version.BuildMetadata=${BINARY_VERSION}
+LDFLAGS += -X k8s.io/helm/pkg/version.BuildMetadata=${GIT_SHA}
 LDFLAGS += -X k8s.io/helm/pkg/version.GitCommit=${GIT_COMMIT}
 
 DOCKER_PUSH = docker push

@@ -18,8 +18,6 @@ limitations under the License.
 package version // import "k8s.io/helm/pkg/version"
 
 import (
-	"fmt"
-
 	"k8s.io/helm/pkg/proto/hapi/version"
 )
 
@@ -33,35 +31,23 @@ import (
 //
 // BuildMetadata gets filled in during build, do not touch
 // GitCommit gets filled in during build, do not touch
-var (
-	Major         uint32 = 2
-	Minor         uint32 = 0
-	Patch         uint32 = 0
-	PreRelease           = "alpha.4"
-	BuildMetadata        = ""
-	GitCommit            = ""
-)
+var Version = "v2.0.0-alpha.4"
+var BuildMetadata = ""
+var GitCommit = ""
 
 // GetVersion returns the semver string of the version
+
 func GetVersion() string {
-	version := fmt.Sprintf("v%d.%d.%d", Major, Minor, Patch)
-	if PreRelease != "" {
-		version = version + "-" + PreRelease
+	if BuildMetadata == "" {
+		return Version
 	}
-	if BuildMetadata != "" {
-		version = version + "+" + BuildMetadata
-	}
-	return version
+	return Version + "+" + BuildMetadata
 }
 
 // GetVersionProto returns protobuf representing the version
 func GetVersionProto() version.Version {
 	return version.Version{
-		Major:         Major,
-		Minor:         Minor,
-		Patch:         Patch,
-		PreRelease:    PreRelease,
-		BuildMetadata: BuildMetadata,
-		GitCommit:     GitCommit,
+		SemVer:    GetVersion(),
+		GitCommit: GitCommit,
 	}
 }
