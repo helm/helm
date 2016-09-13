@@ -28,7 +28,7 @@ import (
 func TestEnsureHome(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintln(w, "OK")
+		fmt.Fprintln(w, "")
 	}))
 	defaultRepositoryURL = ts.URL
 
