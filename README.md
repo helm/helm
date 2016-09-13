@@ -35,7 +35,7 @@ Download a [release tarball of helm for your platform](https://github.com/kubern
 ## Docs
 
 - [Quick Start](docs/quickstart.md)
-- [Architechture](docs/architecture.md)
+- [Architecture](docs/architecture.md)
 - [Charts](docs/charts.md)
 	- [Chart Repository Guide](docs/chart_repository.md)
 	- [Syncing your Chart Repository](docs/chart_repository_sync_example.md)
