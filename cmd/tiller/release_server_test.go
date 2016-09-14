@@ -582,6 +582,24 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 
 }
 
+func TestUpdateReleaseNoChanges(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Chart:        rel.GetChart(),
+	}
+
+	_, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+}
+
 func TestUninstallRelease(t *testing.T) {
 	c := context.Background()
 	rs := rsFixture()
