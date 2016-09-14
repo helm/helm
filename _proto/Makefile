@@ -20,19 +20,26 @@ services_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(services_
 services_pbs = $(sort $(wildcard hapi/services/*.proto))
 services_pkg = services
 
+version_ias    = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(version_pkg),$(addprefix M,$(version_pbs))))
+version_pbs    = $(sort $(wildcard hapi/version/*.proto))
+version_pkg    = version
+
 google_deps	 = Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any
 
 .PHONY: all
-all: chart release services
+all: chart release services version
 
 chart:
 	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(chart_pbs)
 
 release:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(release_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(version_ias):$(dst) $(release_pbs)
 
 services:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(release_ias):$(dst) $(services_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(version_ias),$(release_ias):$(dst) $(services_pbs)
+
+version:
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps):$(dst) $(version_pbs)
 
 .PHONY: clean
 clean:

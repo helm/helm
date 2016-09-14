@@ -17,10 +17,37 @@ limitations under the License.
 // Package version represents the current version of the project.
 package version // import "k8s.io/helm/pkg/version"
 
+import (
+	"k8s.io/helm/pkg/proto/hapi/version"
+)
+
 // Version is the current version of the Helm.
 // Update this whenever making a new release.
-// The version is of the format Major.Minor.Patch
+// The version is of the format Major.Minor.Patch[-Prerelease][+BuildMetadata]
+//
 // Increment major number for new feature additions and behavioral changes.
 // Increment minor number for bug fixes and performance enhancements.
 // Increment patch number for critical fixes to existing releases.
+//
+// BuildMetadata gets filled in during build, do not touch
+// GitCommit gets filled in during build, do not touch
 var Version = "v2.0.0-alpha.4"
+var BuildMetadata = ""
+var GitCommit = ""
+
+// GetVersion returns the semver string of the version
+
+func GetVersion() string {
+	if BuildMetadata == "" {
+		return Version
+	}
+	return Version + "+" + BuildMetadata
+}
+
+// GetVersionProto returns protobuf representing the version
+func GetVersionProto() version.Version {
+	return version.Version{
+		SemVer:    GetVersion(),
+		GitCommit: GitCommit,
+	}
+}

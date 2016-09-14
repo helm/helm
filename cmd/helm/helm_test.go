@@ -31,6 +31,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/proto/hapi/version"
 )
 
 var mockHookTemplate = `apiVersion: v1
@@ -143,6 +144,14 @@ func (c *fakeReleaseClient) ReleaseStatus(rlsName string, opts ...helm.StatusOpt
 		}, nil
 	}
 	return nil, fmt.Errorf("No such release: %s", rlsName)
+}
+
+func (c *fakeReleaseClient) GetVersion(opts ...helm.VersionOption) (*rls.GetVersionResponse, error) {
+	return &rls.GetVersionResponse{
+		Version: &version.Version{
+			SemVer: "1.2.3-fakeclient+testonly",
+		},
+	}, nil
 }
 
 func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
