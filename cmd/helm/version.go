@@ -51,12 +51,13 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 func (v *versionCmd) run() error {
 	// Regardless of whether we can talk to server or not, just print the client
 	// version.
-	fmt.Printf("%+v\n", version.GetVersionProto())
+	cv := version.GetVersionProto()
+	fmt.Fprintf(v.out, "Client: {SemVer: %s GitCommit: %s}\n", cv.SemVer, cv.GitCommit)
 
 	resp, err := v.client.GetVersion()
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%+v\n", resp.Version)
+	fmt.Fprintf(v.out, "Server: {SemVer: %s GitCommit: %s}\n", resp.Version.SemVer, resp.Version.GitCommit)
 	return nil
 }

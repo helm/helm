@@ -21,7 +21,6 @@ option go_package = "version";
 message Version {
   // Sem ver string for the version
   string sem_ver = 1;
-  string git_version = 2;
-  string git_commit = 3;
-  string git_tree_state = 4;
+  string git_commit = 2;
+  string git_tree_state = 3;
 }
