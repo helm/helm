@@ -56,6 +56,15 @@ func New(config clientcmd.ClientConfig) *Client {
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
 
+// ErrAlreadyExists can be returned where there are no changes
+type ErrAlreadyExists struct {
+	errorMsg string
+}
+
+func (e ErrAlreadyExists) Error() string {
+	return fmt.Sprintf("Looks like there are no changes for %s", e.errorMsg)
+}
+
 // APIClient returns a Kubernetes API client.
 //
 // This is necessary because cmdutil.Client is a field, not a method, which
@@ -189,8 +198,12 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 		}
 
 		if err := updateResource(info, currentObj); err != nil {
-			log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
-			updateErrors = append(updateErrors, err.Error())
+			if alreadyExistErr, ok := err.(ErrAlreadyExists); ok {
+				log.Printf(alreadyExistErr.errorMsg)
+			} else {
+				log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
+				updateErrors = append(updateErrors, err.Error())
+			}
 		}
 
 		return nil
@@ -330,7 +343,7 @@ func updateResource(target *resource.Info, currentObj runtime.Object) error {
 	}
 
 	if reflect.DeepEqual(originalJS, editedJS) {
-		return fmt.Errorf("Looks like there are no changes for %s", target.Name)
+		return ErrAlreadyExists{target.Name}
 	}
 
 	patch, err := strategicpatch.CreateStrategicMergePatch(originalJS, editedJS, currentObj)
