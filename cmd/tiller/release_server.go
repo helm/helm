@@ -178,7 +178,7 @@ func filterReleases(filter string, rels []*release.Release) ([]*release.Release,
 
 func (s *releaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
 	v := version.GetVersionProto()
-	return &services.GetVersionResponse{Version: &v}, nil
+	return &services.GetVersionResponse{Version: v}, nil
 }
 
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {

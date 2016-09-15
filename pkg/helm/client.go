@@ -120,7 +120,7 @@ func (h *Client) UpdateRelease(rlsName string, chStr string, opts ...UpdateOptio
 	return h.opts.rpcUpdateRelease(rlsName, chart, rls.NewReleaseServiceClient(c), opts...)
 }
 
-// Version returns the server version
+// GetVersion returns the server version
 //
 // Note: there aren't currently any supported StatusOptions,
 // but they are kept in the API signature as a placeholder for future additions.
