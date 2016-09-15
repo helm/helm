@@ -40,6 +40,7 @@ Download a [release tarball of helm for your platform](https://github.com/kubern
 	- [Chart Repository Guide](docs/chart_repository.md)
 	- [Syncing your Chart Repository](docs/chart_repository_sync_example.md)
 - [Developers](docs/developers.md)
+- [History](docs/history.md)
 
 ## Community, discussion, contribution, and support
 
@@ -48,3 +49,7 @@ You can reach the Helm community and developers via the following channels:
 - [Kubernetes Slack](https://slack.k8s.io): #helm
 - Mailing List: https://groups.google.com/forum/#!forum/kubernetes-sig-apps
 - Developer Call: Thursdays at 9:30-10:00 Pacific. https://engineyard.zoom.us/j/366425549
+
+### Code of conduct
+
+Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct](code-of-conduct.md).
