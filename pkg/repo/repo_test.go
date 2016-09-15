@@ -85,8 +85,8 @@ func TestIndex(t *testing.T) {
 		}
 		timestamps[chartName] = details.Created
 
-		if details.Checksum == "" {
-			t.Errorf("Checksum was not set for %s", chartName)
+		if details.Digest == "" {
+			t.Errorf("Digest was not set for %s", chartName)
 		}
 	}
 
