@@ -52,12 +52,12 @@ func (v *versionCmd) run() error {
 	// Regardless of whether we can talk to server or not, just print the client
 	// version.
 	cv := version.GetVersionProto()
-	fmt.Fprintf(v.out, "Client: {SemVer: %s GitCommit: %s}\n", cv.SemVer, cv.GitCommit)
+	fmt.Fprintf(v.out, "Client: %#v\n", cv)
 
 	resp, err := v.client.GetVersion()
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(v.out, "Server: {SemVer: %s GitCommit: %s}\n", resp.Version.SemVer, resp.Version.GitCommit)
+	fmt.Fprintf(v.out, "Server: %#v\n", resp.Version)
 	return nil
 }
