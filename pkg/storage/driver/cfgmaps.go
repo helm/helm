@@ -84,7 +84,10 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
 func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	list, err := cfgmaps.impl.List(api.ListOptions{})
+	lsel := kblabels.Set{"OWNER": "TILLER"}.AsSelector()
+	opts := api.ListOptions{LabelSelector: lsel}
+
+	list, err := cfgmaps.impl.List(opts)
 	if err != nil {
 		logerrf(err, "list: failed to list")
 		return nil, err

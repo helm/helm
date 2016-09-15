@@ -113,6 +113,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 
 	ls, err := s.Driver.Query(map[string]string{
 		"NAME":   name,
+		"OWNER":  "TILLER",
 		"STATUS": "DEPLOYED",
 	})
 	switch {

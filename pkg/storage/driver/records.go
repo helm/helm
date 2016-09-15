@@ -125,6 +125,7 @@ func newRecord(key string, rls *rspb.Release) *record {
 
 	lbs.init()
 	lbs.set("NAME", rls.Name)
+	lbs.set("OWNER", "TILLER")
 	lbs.set("STATUS", rspb.Status_Code_name[int32(rls.Info.Status.Code)])
 	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
 
