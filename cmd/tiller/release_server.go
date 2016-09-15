@@ -76,14 +76,27 @@ type releaseServer struct {
 	env *environment.Environment
 }
 
-func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
+func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("recovered in ListReleases", r)
+			switch v := r.(type) {
+			case string:
+				err = errors.New(v)
+			case error:
+				err = v
+			default:
+				err = fmt.Errorf("internal error: %v", v)
+			}
+		}
+	}()
 
 	if len(req.StatusCodes) == 0 {
 		req.StatusCodes = []release.Status_Code{release.Status_DEPLOYED}
 	}
 
-	//rels, err := s.env.Releases.ListDeployed()
-	rels, err := s.env.Releases.ListFilterAll(func(r *release.Release) bool {
+	var rels []*release.Release
+	rels, err = s.env.Releases.ListFilterAll(func(r *release.Release) bool {
 		for _, sc := range req.StatusCodes {
 			if sc == r.Info.Status.Code {
 				return true
