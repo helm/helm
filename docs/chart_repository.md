@@ -23,7 +23,7 @@ alpine-0.1.0:
   name: alpine
   url: https://storage.googleapis.com/kubernetes-charts/alpine-0.1.0.tgz
   created: 2016-05-26 11:23:44.086354411 +0000 UTC
-  checksum: a61575c2d3160e5e39abf2a5ec984d6119404b18
+  digest: sha256:78e9a4282295184e8ce1496d23987993673f38e33e203c8bc18bc838a73e5864
   chartfile:
     name: alpine
     description: Deploy a basic Alpine Linux pod
@@ -33,7 +33,7 @@ redis-2.0.0:
   name: redis
   url: https://storage.googleapis.com/kubernetes-charts/redis-2.0.0.tgz
   created: 2016-05-26 11:23:44.087939192 +0000 UTC
-  checksum: 2cea3048cf85d588204e1b1cc0674472b4517919
+  digest: sha256:bde9c2949e64d059c18d8f93566a64dafc6d2e8e259a70322fb804831dfd0b5b
   chartfile:
     name: redis
     description: Port of the replicatedservice template from kubernetes/charts

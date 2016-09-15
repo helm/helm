@@ -17,9 +17,10 @@ limitations under the License.
 package repo // import "k8s.io/helm/pkg/repo"
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -131,7 +132,7 @@ func (r *ChartRepository) Index() error {
 		}
 
 		chartfile := ch.Metadata
-		hash, err := generateChecksum(path)
+		digest, err := generateDigest(path)
 		if err != nil {
 			return err
 		}
@@ -152,7 +153,7 @@ func (r *ChartRepository) Index() error {
 		url, _ := url.Parse(r.URL)
 		url.Path = filepath.Join(url.Path, key+".tgz")
 
-		entry := &ChartRef{Chartfile: chartfile, Name: chartfile.Name, URL: url.String(), Created: created, Checksum: hash, Removed: false}
+		entry := &ChartRef{Chartfile: chartfile, Name: chartfile.Name, URL: url.String(), Created: created, Digest: digest, Removed: false}
 
 		r.IndexFile.Entries[key] = entry
 
@@ -170,18 +171,15 @@ func (r *ChartRepository) Index() error {
 	return r.saveIndexFile()
 }
 
-func generateChecksum(path string) (string, error) {
+func generateDigest(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		return "", err
-	}
+	h := sha256.New()
+	io.Copy(h, f)
 
-	result := sha1.Sum(b)
-
-	return fmt.Sprintf("%x", result), nil
+	digest := h.Sum([]byte{})
+	return "sha256:" + hex.EncodeToString(digest[:]), nil
 }
