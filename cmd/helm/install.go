@@ -306,7 +306,7 @@ func locateChartPath(name string, verify bool, keyring string) (string, error) {
 	if filepath.Ext(name) != ".tgz" {
 		name += ".tgz"
 	}
-	if err := downloadChart(name, false, ".", verify, keyring); err == nil {
+	if err := downloadAndSaveChart(name, false, ".", verify, keyring); err == nil {
 		lname, err := filepath.Abs(filepath.Base(name))
 		if err != nil {
 			return lname, err

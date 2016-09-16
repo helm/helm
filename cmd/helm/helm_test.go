@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"regexp"
 	"testing"
@@ -204,4 +205,23 @@ type releaseCase struct {
 	expected string
 	err      bool
 	resp     *release.Release
+}
+
+// tmpHelmHome sets up a Helm Home in a temp dir.
+//
+// This does not clean up the directory. You must do that yourself.
+// You  must also set helmHome yourself.
+func tempHelmHome() (string, error) {
+	oldhome := helmHome
+	dir, err := ioutil.TempDir("", "helm_home-")
+	if err != nil {
+		return "n/", err
+	}
+
+	helmHome = dir
+	if err := ensureHome(); err != nil {
+		return "n/", err
+	}
+	helmHome = oldhome
+	return dir, nil
 }
