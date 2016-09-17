@@ -12,24 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package chartutil
+
+package helmpath
 
 import (
 	"testing"
 )
 
-func TestLoadRequirements(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+func TestHelmHome(t *testing.T) {
+	hh := Home("/r")
+	isEq := func(t *testing.T, a, b string) {
+		if a != b {
+			t.Errorf("Expected %q, got %q", a, b)
+		}
 	}
-	verifyRequirements(t, c)
-}
 
-func TestLoadRequirementsLock(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	verifyRequirementsLock(t, c)
+	isEq(t, hh.String(), "/r")
+	isEq(t, hh.Repository(), "/r/repository")
+	isEq(t, hh.RepositoryFile(), "/r/repository/repositories.yaml")
+	isEq(t, hh.LocalRepository(), "/r/repository/local")
+	isEq(t, hh.Cache(), "/r/repository/cache")
+	isEq(t, hh.CacheIndex("t"), "/r/repository/cache/t-index.yaml")
 }

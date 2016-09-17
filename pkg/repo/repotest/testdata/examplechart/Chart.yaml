@@ -1,0 +1,3 @@
+description: A Helm chart for Kubernetes
+name: examplechart
+version: 0.1.0

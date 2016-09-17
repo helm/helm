@@ -120,6 +120,10 @@ func loadFiles(files []*afile) (*chart.Chart, error) {
 		} else if strings.HasPrefix(f.name, "templates/") {
 			c.Templates = append(c.Templates, &chart.Template{Name: f.name, Data: f.data})
 		} else if strings.HasPrefix(f.name, "charts/") {
+			if filepath.Ext(f.name) == ".prov" {
+				c.Files = append(c.Files, &any.Any{TypeUrl: f.name, Value: f.data})
+				continue
+			}
 			cname := strings.TrimPrefix(f.name, "charts/")
 			parts := strings.SplitN(cname, "/", 2)
 			scname := parts[0]
