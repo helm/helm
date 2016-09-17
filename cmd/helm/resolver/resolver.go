@@ -23,6 +23,7 @@ import (
 
 	"github.com/Masterminds/semver"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/provenance"
 )
@@ -30,11 +31,11 @@ import (
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
 	chartpath string
-	helmhome  string
+	helmhome  helmpath.HelmHome
 }
 
 // New creates a new resolver for a given chart and a given helm home.
-func New(chartpath string, helmhome string) *Resolver {
+func New(chartpath string, helmhome helmpath.HelmHome) *Resolver {
 	return &Resolver{
 		chartpath: chartpath,
 		helmhome:  helmhome,

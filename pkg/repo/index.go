@@ -93,7 +93,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 	return index, nil
 }
 
-// DownloadIndexFile uses
+// DownloadIndexFile fetches the index from a repository.
 func DownloadIndexFile(repoName, url, indexFilePath string) error {
 	var indexURL string
 

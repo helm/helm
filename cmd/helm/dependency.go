@@ -27,6 +27,11 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 )
 
+const (
+	reqLock = "requirements.lock"
+	reqYaml = "requirements.yaml"
+)
+
 const dependencyDesc = `
 Manage the dependencies of a chart.
 
@@ -82,6 +87,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 
 	cmd.AddCommand(newDependencyListCmd(out))
 	cmd.AddCommand(newDependencyUpdateCmd(out))
+	cmd.AddCommand(newDependencyBuildCmd(out))
 
 	return cmd
 }
@@ -213,4 +219,11 @@ func (l *dependencyListCmd) printMissing(reqs *chartutil.Requirements, out io.Wr
 		}
 	}
 
+}
+
+func lockpath(chartpath string) string {
+	return filepath.Join(chartpath, reqLock)
+}
+func reqpath(chartpath string) string {
+	return filepath.Join(chartpath, reqYaml)
 }
