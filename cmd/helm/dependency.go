@@ -27,6 +27,11 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 )
 
+const (
+	reqLock = "requirements.lock"
+	reqYaml = "requirements.yaml"
+)
+
 const dependencyDesc = `
 Manage the dependencies of a chart.
 
@@ -74,7 +79,7 @@ if it cannot find a requirements.yaml.
 
 func newDependencyCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dependency update|list",
+		Use:     "dependency update|build|list",
 		Aliases: []string{"dep", "dependencies"},
 		Short:   "manage a chart's dependencies",
 		Long:    dependencyDesc,
@@ -82,6 +87,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 
 	cmd.AddCommand(newDependencyListCmd(out))
 	cmd.AddCommand(newDependencyUpdateCmd(out))
+	cmd.AddCommand(newDependencyBuildCmd(out))
 
 	return cmd
 }
@@ -146,10 +152,14 @@ func (l *dependencyListCmd) dependencyStatus(dep *chartutil.Dependency) string {
 		if err != nil {
 			return "corrupt"
 		}
-		if c.Metadata.Name == dep.Name && c.Metadata.Version == dep.Version {
-			return "ok"
+		if c.Metadata.Name != dep.Name {
+			return "misnamed"
 		}
-		return "mismatch"
+
+		if c.Metadata.Version != dep.Version {
+			return "wrong version"
+		}
+		return "ok"
 	}
 
 	folder := filepath.Join(l.chartpath, "charts", dep.Name)
@@ -196,6 +206,14 @@ func (l *dependencyListCmd) printMissing(reqs *chartutil.Requirements, out io.Wr
 	}
 
 	for _, f := range files {
+		fi, err := os.Stat(f)
+		if err != nil {
+			fmt.Fprintf(l.out, "Warning: %s\n", err)
+		}
+		// Skip anything that is not a directory and not a tgz file.
+		if !fi.IsDir() && filepath.Ext(f) != ".tgz" {
+			continue
+		}
 		c, err := chartutil.Load(f)
 		if err != nil {
 			fmt.Fprintf(l.out, "WARNING: %q is not a chart.\n", f)

@@ -49,7 +49,7 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 		URL:       baseURL + "/" + filename,
 		Chartfile: md,
 		Digest:    digest,
-		// FIXME: Need to add Created
+		Created:   nowString(),
 	}
 	i.Entries[name] = cr
 }
@@ -93,7 +93,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 	return index, nil
 }
 
-// DownloadIndexFile uses
+// DownloadIndexFile fetches the index from a repository.
 func DownloadIndexFile(repoName, url, indexFilePath string) error {
 	var indexURL string
 
