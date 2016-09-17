@@ -12,24 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package chartutil
 
-import (
-	"testing"
-)
+/*Package repotest provides utilities for testing.
 
-func TestLoadRequirements(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	verifyRequirements(t, c)
-}
-
-func TestLoadRequirementsLock(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	verifyRequirementsLock(t, c)
-}
+The server provides a testing server that can be set up and torn down quickly.
+*/
+package repotest

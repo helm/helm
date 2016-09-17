@@ -24,6 +24,18 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
+const (
+	requirementsName = "requirements.yaml"
+	lockfileName     = "requirements.lock"
+)
+
+var (
+	// ErrRequirementsNotFound indicates that a requirements.yaml is not found.
+	ErrRequirementsNotFound = errors.New(requirementsName + " not found")
+	// ErrLockfileNotFound indicates that a requirements.lock is not found.
+	ErrLockfileNotFound = errors.New(lockfileName + " not found")
+)
+
 // Dependency describes a chart upon which another chart depends.
 //
 // Dependencies can be used to express developer intent, or to capture the state
@@ -65,14 +77,11 @@ type RequirementsLock struct {
 	Dependencies []*Dependency `json:"dependencies"`
 }
 
-// ErrRequirementsNotFound indicates that a requirements.yaml is not found.
-var ErrRequirementsNotFound = errors.New("requirements.yaml not found")
-
 // LoadRequirements loads a requirements file from an in-memory chart.
 func LoadRequirements(c *chart.Chart) (*Requirements, error) {
 	var data []byte
 	for _, f := range c.Files {
-		if f.TypeUrl == "requirements.yaml" {
+		if f.TypeUrl == requirementsName {
 			data = f.Value
 		}
 	}
@@ -80,5 +89,20 @@ func LoadRequirements(c *chart.Chart) (*Requirements, error) {
 		return nil, ErrRequirementsNotFound
 	}
 	r := &Requirements{}
+	return r, yaml.Unmarshal(data, r)
+}
+
+// LoadRequirementsLock loads a requirements lock file.
+func LoadRequirementsLock(c *chart.Chart) (*RequirementsLock, error) {
+	var data []byte
+	for _, f := range c.Files {
+		if f.TypeUrl == lockfileName {
+			data = f.Value
+		}
+	}
+	if len(data) == 0 {
+		return nil, ErrLockfileNotFound
+	}
+	r := &RequirementsLock{}
 	return r, yaml.Unmarshal(data, r)
 }

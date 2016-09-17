@@ -17,24 +17,18 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/ghodss/yaml"
-
 	"k8s.io/helm/cmd/helm/helmpath"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
-func TestDependencyUpdateCmd(t *testing.T) {
-	// Set up a testing helm home
+func TestDependencyBuildCmd(t *testing.T) {
 	oldhome := helmHome
 	hh, err := tempHelmHome()
 	if err != nil {
@@ -48,28 +42,29 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	srv := repotest.NewServer(hh)
 	defer srv.Stop()
-	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
-	t.Logf("Copied charts:\n%s", strings.Join(copied, "\n"))
-	t.Logf("Listening on directory %s", srv.Root())
+	_, err = srv.CopyCharts("testdata/testcharts/*.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	chartname := "depup"
+	chartname := "depbuild"
 	if err := createTestingChart(hh, chartname, srv.URL()); err != nil {
 		t.Fatal(err)
 	}
 
 	out := bytes.NewBuffer(nil)
-	duc := &dependencyUpdateCmd{out: out}
-	duc.helmhome = helmpath.Home(hh)
-	duc.chartpath = filepath.Join(hh, chartname)
+	dbc := &dependencyBuildCmd{out: out}
+	dbc.helmhome = helmpath.Home(hh)
+	dbc.chartpath = filepath.Join(hh, chartname)
 
-	if err := duc.run(); err != nil {
+	// In the first pass, we basically want the same results as an update.
+	if err := dbc.run(); err != nil {
 		output := out.String()
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
 	}
 
 	output := out.String()
-	// This is written directly to stdout, so we have to capture as is.
 	if !strings.Contains(output, `update from the "test" chart repository`) {
 		t.Errorf("Repo did not get updated\n%s", output)
 	}
@@ -80,6 +75,29 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// In the second pass, we want to remove the chart's request dependency,
+	// then see if it restores from the lock.
+	lockfile := filepath.Join(hh, chartname, "requirements.lock")
+	if _, err := os.Stat(lockfile); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(expect); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dbc.run(); err != nil {
+		output := out.String()
+		t.Logf("Output: %s", output)
+		t.Fatal(err)
+	}
+
+	// Now repeat the test that the dependency exists.
+	expect = filepath.Join(hh, chartname, "charts/reqtest-0.1.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make sure that build is also fetching the correct version.
 	hash, err := provenance.DigestFile(expect)
 	if err != nil {
 		t.Fatal(err)
@@ -94,31 +112,4 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Errorf("Failed hash match: expected %s, got %s", hash, h)
 	}
 
-	t.Logf("Results: %s", out.String())
-}
-
-// createTestingChart creates a basic chart that depends on reqtest-0.1.0
-//
-// The baseURL can be used to point to a particular repository server.
-func createTestingChart(dest, name, baseURL string) error {
-	cfile := &chart.Metadata{
-		Name:    name,
-		Version: "1.2.3",
-	}
-	dir := filepath.Join(dest, name)
-	_, err := chartutil.Create(cfile, dest)
-	if err != nil {
-		return err
-	}
-	req := &chartutil.Requirements{
-		Dependencies: []*chartutil.Dependency{
-			{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
-		},
-	}
-	data, err := yaml.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(filepath.Join(dir, "requirements.yaml"), data, 0655)
 }

@@ -66,7 +66,7 @@ func TestResolve(t *testing.T) {
 			t.Fatalf("Expected error in test %q", tt.name)
 		}
 
-		if h, err := hashReq(tt.req); err != nil {
+		if h, err := HashReq(tt.req); err != nil {
 			t.Fatal(err)
 		} else if h != l.Digest {
 			t.Errorf("%q: hashes don't match.", tt.name)
@@ -97,7 +97,7 @@ func TestHashReq(t *testing.T) {
 			{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
 		},
 	}
-	h, err := hashReq(req)
+	h, err := HashReq(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestHashReq(t *testing.T) {
 	}
 
 	req = &chartutil.Requirements{Dependencies: []*chartutil.Dependency{}}
-	h, err = hashReq(req)
+	h, err = HashReq(req)
 	if err != nil {
 		t.Fatal(err)
 	}

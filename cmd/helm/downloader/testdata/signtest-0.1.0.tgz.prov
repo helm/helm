@@ -1,0 +1,20 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+description: A Helm chart for Kubernetes
+name: signtest
+version: 0.1.0
+
+...
+files:
+  signtest-0.1.0.tgz: sha256:dee72947753628425b82814516bdaa37aef49f25e8820dd2a6e15a33a007823b
+-----BEGIN PGP SIGNATURE-----
+
+wsBcBAEBCgAQBQJXomNHCRCEO7+YH8GHYgAALywIAG1Me852Fpn1GYu8Q1GCcw4g
+l2k7vOFchdDwDhdSVbkh4YyvTaIO3iE2Jtk1rxw+RIJiUr0eLO/rnIJuxZS8WKki
+DR1LI9J1VD4dxN3uDETtWDWq7ScoPsRY5mJvYZXC8whrWEt/H2kfqmoA9LloRPWp
+flOE0iktA4UciZOblTj6nAk3iDyjh/4HYL4a6tT0LjjKI7OTw4YyHfjHad1ywVCz
+9dMUc1rPgTnl+fnRiSPSrlZIWKOt1mcQ4fVrU3nwtRUwTId2k8FtygL0G6M+Y6t0
+S6yaU7qfk9uTxkdkUF7Bf1X3ukxfe+cNBC32vf4m8LY4NkcYfSqK2fGtQsnVr6s=
+=NyOM
+-----END PGP SIGNATURE-----
