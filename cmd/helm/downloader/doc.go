@@ -12,24 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package chartutil
 
-import (
-	"testing"
-)
+/*Package downloader provides a library for downloading charts.
 
-func TestLoadRequirements(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	verifyRequirements(t, c)
-}
-
-func TestLoadRequirementsLock(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	verifyRequirementsLock(t, c)
-}
+This package contains various tools for downloading charts from repository
+servers, and then storing them in Helm-specific directory structures (like
+HELM_HOME). This library contains many functions that depend on a specific
+filesystem layout.
+*/
+package downloader

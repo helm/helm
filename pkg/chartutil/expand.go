@@ -71,3 +71,13 @@ func Expand(dir string, r io.Reader) error {
 	}
 	return nil
 }
+
+// ExpandFile expands the src file into the dest directroy.
+func ExpandFile(dest, src string) error {
+	h, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer h.Close()
+	return Expand(dest, h)
+}
