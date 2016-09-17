@@ -32,6 +32,8 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/downloader"
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
@@ -286,7 +288,7 @@ func locateChartPath(name string, verify bool, keyring string) (string, error) {
 			if fi.IsDir() {
 				return "", errors.New("cannot verify a directory")
 			}
-			if err := verifyChart(abs, keyring); err != nil {
+			if _, err := downloader.VerifyChart(abs, keyring); err != nil {
 				return "", err
 			}
 		}
@@ -306,7 +308,17 @@ func locateChartPath(name string, verify bool, keyring string) (string, error) {
 	if filepath.Ext(name) != ".tgz" {
 		name += ".tgz"
 	}
-	if err := downloadAndSaveChart(name, false, ".", verify, keyring); err == nil {
+
+	dl := downloader.ChartDownloader{
+		HelmHome: helmpath.Home(homePath()),
+		Out:      os.Stdout,
+		Keyring:  keyring,
+	}
+	if verify {
+		dl.Verify = downloader.VerifyAlways
+	}
+
+	if _, err := dl.DownloadTo(name, "."); err == nil {
 		lname, err := filepath.Abs(filepath.Base(name))
 		if err != nil {
 			return lname, err
