@@ -29,7 +29,7 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-var testName string = "test-name"
+var testName = "test-name"
 
 func TestRepoAddCmd(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

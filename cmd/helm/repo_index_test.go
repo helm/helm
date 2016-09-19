@@ -28,9 +28,14 @@ import (
 
 func TestRepoIndexCmd(t *testing.T) {
 
-	dir, _ := ioutil.TempDir("", "charts")
+	dir, err := ioutil.TempDir("", "helm-")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(dir)
-	os.Link("testdata/testcharts/compressedChart-0.1.0.tgz", filepath.Join(dir, "compressedChart-0.1.0.tgz"))
+	if err := os.Link("testdata/testcharts/compressedchart-0.1.0.tgz", filepath.Join(dir, "compressedchart-0.1.0.tgz")); err != nil {
+		t.Fatal(err)
+	}
 
 	buf := bytes.NewBuffer(nil)
 	c := newRepoIndexCmd(buf)
@@ -45,7 +50,7 @@ func TestRepoIndexCmd(t *testing.T) {
 	}
 
 	if len(index.Entries) != 1 {
-		t.Errorf("expected 1 entires, got %v", len(index.Entries))
+		t.Errorf("expected 1 entry, got %v: %#v", len(index.Entries), index.Entries)
 	}
 
 }

@@ -83,6 +83,8 @@ func removeRepoLine(name string) error {
 		return fmt.Errorf("The repository, %s, does not exist in your repositories list", name)
 	}
 
+	fmt.Println(name + " has been removed from your repositories")
+
 	return nil
 }
 
