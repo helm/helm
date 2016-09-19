@@ -24,6 +24,7 @@ import (
 )
 
 func TestRepoRemove(t *testing.T) {
+	testURL := "https://test-url.com"
 	home := createTmpHome()
 	helmHome = home
 	if err := ensureHome(); err != nil {

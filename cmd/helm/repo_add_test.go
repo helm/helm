@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -28,10 +29,30 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-var (
-	testName = "test-name"
-	testURL  = "test-url"
-)
+var testName string = "test-name"
+
+func TestRepoAddCmd(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, "OK")
+	}))
+
+	tests := []releaseCase{
+		{
+			name:     "add a repository",
+			args:     []string{testName, ts.URL},
+			expected: testName + " has been added to your repositories",
+		},
+	}
+
+	for _, tt := range tests {
+		buf := bytes.NewBuffer(nil)
+		c := newRepoAddCmd(buf)
+		if err := c.RunE(c, tt.args); err != nil {
+			t.Errorf("%q: expected '%q', got '%q'", tt.name, tt.expected, err)
+		}
+	}
+}
 
 func TestRepoAdd(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
