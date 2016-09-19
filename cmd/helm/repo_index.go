@@ -38,7 +38,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "index [flags] [DIR]",
-		Short: "generate an index file for a chart repository given a directory",
+		Short: "generate an index file given a directory containing packaged charts",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "path to a directory"); err != nil {
 				return err
