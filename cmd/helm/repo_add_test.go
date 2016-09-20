@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -28,10 +29,30 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-var (
-	testName = "test-name"
-	testURL  = "test-url"
-)
+var testName = "test-name"
+
+func TestRepoAddCmd(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, "OK")
+	}))
+
+	tests := []releaseCase{
+		{
+			name:     "add a repository",
+			args:     []string{testName, ts.URL},
+			expected: testName + " has been added to your repositories",
+		},
+	}
+
+	for _, tt := range tests {
+		buf := bytes.NewBuffer(nil)
+		c := newRepoAddCmd(buf)
+		if err := c.RunE(c, tt.args); err != nil {
+			t.Errorf("%q: expected '%q', got '%q'", tt.name, tt.expected, err)
+		}
+	}
+}
 
 func TestRepoAdd(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,40 +86,4 @@ func TestRepoAdd(t *testing.T) {
 		t.Errorf("Duplicate repository name was added")
 	}
 
-}
-
-func TestRepoRemove(t *testing.T) {
-	home := createTmpHome()
-	helmHome = home
-	if err := ensureHome(); err != nil {
-		t.Errorf("%s", err)
-	}
-
-	if err := removeRepoLine(testName); err == nil {
-		t.Errorf("Expected error removing %s, but did not get one.", testName)
-	}
-
-	if err := insertRepoLine(testName, testURL); err != nil {
-		t.Errorf("%s", err)
-	}
-
-	mf, _ := os.Create(cacheIndexFile(testName))
-	mf.Close()
-
-	if err := removeRepoLine(testName); err != nil {
-		t.Errorf("Error removing %s from repositories", testName)
-	}
-
-	if _, err := os.Stat(cacheIndexFile(testName)); err == nil {
-		t.Errorf("Error cache file was not removed for repository %s", testName)
-	}
-
-	f, err := repo.LoadRepositoriesFile(repositoriesFile())
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	if _, ok := f.Repositories[testName]; ok {
-		t.Errorf("%s was not successfully removed from repositories list", testName)
-	}
 }

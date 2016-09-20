@@ -99,6 +99,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newVerifyCmd(out),
 		newUpdateCmd(out),
 		newVersionCmd(nil, out),
+		newRepoCmd(out),
 	)
 	return cmd
 }
