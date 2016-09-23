@@ -47,6 +47,7 @@ type upgradeCmd struct {
 	valuesFile   string
 	values       *values
 	verify       bool
+	validate     bool
 	keyring      string
 }
 
@@ -82,6 +83,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.Var(upgrade.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
+	f.BoolVar(&upgrade.validate, "validate", false, "validate manifest before reifying it")
 	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "the path to the keyring that contains public singing keys")
 
 	return cmd
@@ -123,7 +125,7 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
-	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
+	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks), helm.UpgradeValidate(u.validate))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
