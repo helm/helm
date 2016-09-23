@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"regexp"
 	"strings"
 
@@ -315,7 +314,7 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 
 	// Validate the manifest
 	if req.Validate {
-		err := validateResources(updatedRelease.Namespace, modified)
+		err := validateResources(updatedRelease.Namespace, s.env.SchemaDir, modified)
 		if err != nil {
 			return nil, err
 		}
@@ -755,7 +754,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 
 	// Validate the manifest
 	if req.Validate {
-		err := validateResources(r.Namespace, b)
+		err := validateResources(r.Namespace, s.env.SchemaDir, b)
 		if err != nil {
 			return res, err
 		}
@@ -915,9 +914,9 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 // validateResources takes a namespace and a manifest (fully expanded set of templates) and
 // validates resources.
-func validateResources(namespace string, manifest *bytes.Buffer) error {
+func validateResources(namespace string, schemaDir string, manifest *bytes.Buffer) error {
 	f := cmdutil.NewFactory(nil)
-	schema, err := f.Validator(true, os.TempDir())
+	schema, err := f.Validator(true, schemaDir)
 	if err != nil {
 		return err
 	}
