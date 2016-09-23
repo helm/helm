@@ -90,6 +90,7 @@ type installCmd struct {
 	disableHooks bool
 	replace      bool
 	verify       bool
+	validate     bool
 	keyring      string
 	out          io.Writer
 	client       helm.Interface
@@ -135,6 +136,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Var(inst.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
+	f.BoolVar(&inst.validate, "validate", false, "validate manifest before reifying it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed.")
 	return cmd
@@ -167,6 +169,7 @@ func (i *installCmd) run() error {
 		helm.ReleaseName(i.name),
 		helm.InstallDryRun(i.dryRun),
 		helm.InstallReuseName(i.replace),
+		helm.InstallValidate(i.validate),
 		helm.InstallDisableHooks(i.disableHooks))
 	if err != nil {
 		return prettyError(err)

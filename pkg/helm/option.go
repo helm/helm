@@ -38,6 +38,8 @@ type options struct {
 	host string
 	// if set dry-run helm client calls
 	dryRun bool
+	// if set validate manifest
+	validate bool
 	// if set, re-use an existing name
 	reuseName bool
 	// if set, skip running hooks
@@ -219,6 +221,22 @@ func RollbackVersion(ver int32) RollbackOption {
 	}
 }
 
+// UpgradeValidate will (if true) instruct Tiller to validate manifest before
+// reifying
+func UpgradeValidate(validate bool) UpdateOption {
+	return func(opts *options) {
+		opts.validate = validate
+	}
+}
+
+// InstallValidate will (if true) instruct Tiller to validate manifest before
+// reifying
+func InstallValidate(validate bool) InstallOption {
+	return func(opts *options) {
+		opts.validate = validate
+	}
+}
+
 // UpgradeDisableHooks will disable hooks for an upgrade operation.
 func UpgradeDisableHooks(disable bool) UpdateOption {
 	return func(opts *options) {
@@ -277,6 +295,75 @@ type RollbackOption func(*options)
 // HistoryOption allows configuring optional request data for
 // issuing a GetHistory rpc.
 type HistoryOption func(*options)
+
+// RPC helpers defined on `options` type. Note: These actually execute the
+// the corresponding tiller RPC. There is no particular reason why these
+// are APIs are hung off `options`, they are internal to pkg/helm to remain
+// malleable.
+
+// Executes tiller.ListReleases RPC.
+func (o *options) rpcListReleases(rlc rls.ReleaseServiceClient, opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
+	// apply release list options
+	for _, opt := range opts {
+		opt(o)
+	}
+	s, err := rlc.ListReleases(context.TODO(), &o.listReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.Recv()
+}
+
+// Executes tiller.InstallRelease RPC.
+func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+	// apply the install options
+	for _, opt := range opts {
+		opt(o)
+	}
+	o.instReq.Chart = chr
+	o.instReq.Namespace = ns
+	o.instReq.DryRun = o.dryRun
+	o.instReq.DisableHooks = o.disableHooks
+	o.instReq.ReuseName = o.reuseName
+	o.instReq.Validate = o.validate
+
+	return rlc.InstallRelease(context.TODO(), &o.instReq)
+}
+
+// Executes tiller.UninstallRelease RPC.
+func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+	for _, opt := range opts {
+		opt(o)
+	}
+	if o.dryRun {
+		// In the dry run case, just see if the release exists
+		r, err := o.rpcGetReleaseContent(rlsName, rlc)
+		if err != nil {
+			return &rls.UninstallReleaseResponse{}, err
+		}
+		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
+	}
+
+	o.uninstallReq.Name = rlsName
+	o.uninstallReq.DisableHooks = o.disableHooks
+
+	return rlc.UninstallRelease(context.TODO(), &o.uninstallReq)
+}
+
+// Executes tiller.UpdateRelease RPC.
+func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	o.updateReq.Chart = chr
+	o.updateReq.DryRun = o.dryRun
+	o.updateReq.Name = rlsName
+	o.updateReq.Validate = o.validate
+
+	return rlc.UpdateRelease(context.TODO(), &o.updateReq)
+}
 
 // WithMaxHistory sets the max number of releases to return
 // in a release history query.

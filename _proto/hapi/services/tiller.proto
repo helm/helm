@@ -188,6 +188,10 @@ message UpdateReleaseRequest {
 	bool dry_run = 4;
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
 	bool disable_hooks = 5;
+
+	// Validate requests that Tiller uses kubernetes validation logic on the
+	// manifest before handing it off for reification
+	bool validate = 6;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -235,6 +239,10 @@ message InstallReleaseRequest {
 
 	// ReuseName requests that Tiller re-uses a name, instead of erroring out.
 	bool reuse_name = 7;
+
+	// Validate requests that Tiller uses kubernetes validation logic on the
+	// manifest before handing it off for reification
+	bool validate = 8;
 }
 
 // InstallReleaseResponse is the response from a release installation.

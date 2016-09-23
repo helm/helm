@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 
@@ -39,6 +40,9 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 var srv *releaseServer
@@ -302,6 +306,19 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	if !req.DisableHooks {
 		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, preUpgrade); err != nil {
 			return res, err
+		}
+	}
+
+	kubeCli := s.env.KubeClient
+	original := bytes.NewBufferString(originalRelease.Manifest)
+	modified := bytes.NewBufferString(updatedRelease.Manifest)
+
+	// Validate the manifest
+	if req.Validate {
+		log.Printf("Validating manifest: %s\n", modified)
+		err := validateResources(updatedRelease.Namespace, modified)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -736,6 +753,16 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// regular manifests
 	kubeCli := s.env.KubeClient
 	b := bytes.NewBufferString(r.Manifest)
+
+	// Validate the manifest
+	if req.Validate {
+		log.Printf("Validating manifest: %s\n", b)
+		err := validateResources(r.Namespace, b)
+		if err != nil {
+			return res, err
+		}
+	}
+
 	if err := kubeCli.Create(r.Namespace, b); err != nil {
 		log.Printf("warning: Release %q failed: %s", r.Name, err)
 		r.Info.Status.Code = release.Status_FAILED
@@ -885,8 +912,40 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	if len(es) > 0 {
 		errs = fmt.Errorf("deletion error count %d: %s", len(es), strings.Join(es, "; "))
 	}
+	return res, nil
+}
 
-	return res, errs
+// validateResources takes a namespace and a manifest (fully expanded set of templates) and
+// validates resources.
+func validateResources(namespace string, manifest *bytes.Buffer) error {
+	f := cmdutil.NewFactory(nil)
+	schema, err := f.Validator(true, os.TempDir())
+	if err != nil {
+		return err
+	}
+
+	mapper, typer := f.Object(true)
+	r := resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true)).
+		Schema(schema).
+		NamespaceParam(namespace).DefaultNamespace().
+		Stream(manifest, "release").
+		Flatten().
+		Do()
+	err = r.Err()
+	if err != nil {
+		return err
+	}
+
+	err = r.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func splitManifests(bigfile string) map[string]string {
