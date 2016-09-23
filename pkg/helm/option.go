@@ -53,6 +53,8 @@ type options struct {
 	statusReq rls.GetReleaseStatusRequest
 	// release get content options are applied directly to the get release content request
 	contentReq rls.GetReleaseContentRequest
+	// release rollback options are applied directly to the rollback release request
+	rollbackReq rls.RollbackReleaseRequest
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -124,17 +126,17 @@ func ValueOverrides(raw []byte) InstallOption {
 	}
 }
 
-// UpdateValueOverrides specifies a list of values to include when upgrading
-func UpdateValueOverrides(raw []byte) UpdateOption {
-	return func(opts *options) {
-		opts.updateReq.Values = &cpb.Config{Raw: string(raw)}
-	}
-}
-
 // ReleaseName specifies the name of the release when installing.
 func ReleaseName(name string) InstallOption {
 	return func(opts *options) {
 		opts.instReq.Name = name
+	}
+}
+
+// UpdateValueOverrides specifies a list of values to include when upgrading
+func UpdateValueOverrides(raw []byte) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Values = &cpb.Config{Raw: string(raw)}
 	}
 }
 
@@ -159,15 +161,8 @@ func DeletePurge(purge bool) DeleteOption {
 	}
 }
 
-// UpgradeDisableHooks will disable hooks for an upgrade operation.
-func UpgradeDisableHooks(disable bool) UpdateOption {
-	return func(opts *options) {
-		opts.disableHooks = disable
-	}
-}
-
-// UpgradeDryRun will (if true) execute an upgrade as a dry run.
-func UpgradeDryRun(dry bool) UpdateOption {
+// InstallDryRun will (if true) execute an installation as a dry run.
+func InstallDryRun(dry bool) InstallOption {
 	return func(opts *options) {
 		opts.dryRun = dry
 	}
@@ -180,17 +175,38 @@ func InstallDisableHooks(disable bool) InstallOption {
 	}
 }
 
-// InstallDryRun will (if true) execute an installation as a dry run.
-func InstallDryRun(dry bool) InstallOption {
+// InstallReuseName will (if true) instruct Tiller to re-use an existing name.
+func InstallReuseName(reuse bool) InstallOption {
+	return func(opts *options) {
+		opts.reuseName = reuse
+	}
+}
+
+// RollbackDisableHooks will disable hooks for a rollback operation
+func RollbackDisableHooks(disable bool) RollbackOption {
+	return func(opts *options) {
+		opts.disableHooks = disable
+	}
+}
+
+// RollbackDryRun will (if true) execute a rollback as a dry run.
+func RollbackDryRun(dry bool) RollbackOption {
 	return func(opts *options) {
 		opts.dryRun = dry
 	}
 }
 
-// InstallReuseName will (if true) instruct Tiller to re-use an existing name.
-func InstallReuseName(reuse bool) InstallOption {
+// UpgradeDisableHooks will disable hooks for an upgrade operation.
+func UpgradeDisableHooks(disable bool) UpdateOption {
 	return func(opts *options) {
-		opts.reuseName = reuse
+		opts.disableHooks = disable
+	}
+}
+
+// UpgradeDryRun will (if true) execute an upgrade as a dry run.
+func UpgradeDryRun(dry bool) UpdateOption {
+	return func(opts *options) {
+		opts.dryRun = dry
 	}
 }
 
@@ -229,6 +245,11 @@ type VersionOption func(*options)
 // configurable by the helm client user for overriding
 // the defaults used when running the `helm upgrade` command.
 type UpdateOption func(*options)
+
+// RollbackOption allows specififying various settings configurable
+// by the helm client user for overriding the defaults used when
+// running the `helm rollback` command.
+type RollbackOption func(*options)
 
 // RPC helpers defined on `options` type. Note: These actually execute the
 // the corresponding tiller RPC. There is no particular reason why these
@@ -301,6 +322,18 @@ func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.Relea
 	o.updateReq.Name = rlsName
 
 	return rlc.UpdateRelease(NewContext(), &o.updateReq)
+}
+
+// Executes tiller.UpdateRelease RPC.
+func (o *options) rpcRollbackRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	o.rollbackReq.DryRun = o.dryRun
+	o.rollbackReq.Name = rlsName
+
+	return rlc.RollbackRelease(context.TODO(), &o.rollbackReq)
 }
 
 // Executes tiller.GetReleaseStatus RPC.

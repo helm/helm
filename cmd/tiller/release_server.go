@@ -30,6 +30,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 
 	"k8s.io/helm/cmd/tiller/environment"
 	"k8s.io/helm/pkg/chartutil"
@@ -39,7 +40,6 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 var srv *releaseServer
@@ -303,10 +303,7 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		}
 	}
 
-	kubeCli := s.env.KubeClient
-	original := bytes.NewBufferString(originalRelease.Manifest)
-	modified := bytes.NewBufferString(updatedRelease.Manifest)
-	if err := kubeCli.Update(updatedRelease.Namespace, original, modified); err != nil {
+	if err := s.performKubeUpdate(originalRelease, updatedRelease); err != nil {
 		return nil, err
 	}
 
@@ -380,6 +377,114 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		updatedRelease.Info.Status.Notes = notesTxt
 	}
 	return currentRelease, updatedRelease, nil
+}
+
+func (s *releaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+
+	currentRelease, targetRelease, err := s.prepareRollback(req)
+	if err != nil {
+		return nil, err
+	}
+
+	rel, err := s.performRollback(currentRelease, targetRelease, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.env.Releases.Create(targetRelease); err != nil {
+		return nil, err
+	}
+
+	return rel, nil
+}
+
+func (s *releaseServer) performRollback(currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+	res := &services.RollbackReleaseResponse{Release: targetRelease}
+
+	if req.DryRun {
+		log.Printf("Dry run for %s", targetRelease.Name)
+		return res, nil
+	}
+
+	// pre-rollback hooks
+	if !req.DisableHooks {
+		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, preRollback); err != nil {
+			return res, err
+		}
+	}
+
+	if err := s.performKubeUpdate(currentRelease, targetRelease); err != nil {
+		return nil, err
+	}
+
+	// post-rollback hooks
+	if !req.DisableHooks {
+		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, postRollback); err != nil {
+			return res, err
+		}
+	}
+
+	currentRelease.Info.Status.Code = release.Status_SUPERSEDED
+	if err := s.env.Releases.Update(currentRelease); err != nil {
+		return nil, fmt.Errorf("Update of %s failed: %s", currentRelease.Name, err)
+	}
+
+	targetRelease.Info.Status.Code = release.Status_DEPLOYED
+
+	return res, nil
+}
+
+func (s *releaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release) error {
+	kubeCli := s.env.KubeClient
+	current := bytes.NewBufferString(currentRelease.Manifest)
+	target := bytes.NewBufferString(targetRelease.Manifest)
+	if err := kubeCli.Update(targetRelease.Namespace, current, target); err != nil {
+		return err
+	}
+	return nil
+}
+
+// prepareRollback finds the previous release and prepares a new release object with
+//  the previous release's configuration
+func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
+
+	if req.Name == "" {
+		return nil, nil, errMissingRelease
+	}
+
+	// finds the non-deleted release with the given name
+	currentRelease, err := s.env.Releases.Deployed(req.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	previousRelease, err := s.env.Releases.Get(req.Name, currentRelease.Version-1)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ts := timeconv.Now()
+
+	// Store a new release object with previous release's configuration
+	targetRelease := &release.Release{
+		Name:      req.Name,
+		Namespace: currentRelease.Namespace,
+		Chart:     previousRelease.Chart,
+		Config:    previousRelease.Config,
+		Info: &release.Info{
+			FirstDeployed: currentRelease.Info.FirstDeployed,
+			LastDeployed:  ts,
+			Status: &release.Status{
+				Code:  release.Status_UNKNOWN,
+				Notes: previousRelease.Info.Status.Notes,
+			},
+		},
+		Version:  currentRelease.Version + 1,
+		Manifest: previousRelease.Manifest,
+		Hooks:    previousRelease.Hooks,
+	}
+
+	return currentRelease, targetRelease, nil
 }
 
 func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
