@@ -1091,13 +1091,14 @@ func TestListReleasesFilter(t *testing.T) {
 
 func testValidateResources(t *testing.T) {
 	b := bytes.NewBufferString("")
-	validateResources("default", b)
+	validateResources("default", "", b)
 }
 
 func mockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
+	e.SchemaDir = "./testdata"
 	return e
 }
 
