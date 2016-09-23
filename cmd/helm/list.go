@@ -58,7 +58,7 @@ flag with the '--offset' flag allows you to page through results.
 
 type listCmd struct {
 	filter     string
-	long       bool
+	short      bool
 	limit      int
 	offset     string
 	byDate     bool
@@ -94,7 +94,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.BoolVarP(&list.long, "long", "l", false, "output long listing format")
+	f.BoolVarP(&list.short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
@@ -144,14 +144,13 @@ func (l *listCmd) run() error {
 
 	rels := res.Releases
 
-	if l.long {
-		fmt.Fprintln(l.out, formatList(rels))
+	if l.short {
+		for _, r := range rels {
+			fmt.Fprintln(l.out, r.Name)
+		}
 		return nil
 	}
-	for _, r := range rels {
-		fmt.Fprintln(l.out, r.Name)
-	}
-
+	fmt.Fprintln(l.out, formatList(rels))
 	return nil
 }
 
