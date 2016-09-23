@@ -1367,7 +1367,7 @@ func mockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
-	e.SchemaDir = "./testdata"
+	e.SchemaDir = "cmd/tiller/testdata"
 	return e
 }
 
