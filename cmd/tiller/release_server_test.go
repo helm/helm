@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"k8s.io/helm/cmd/tiller/environment"
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -175,7 +176,7 @@ func TestUniqName(t *testing.T) {
 }
 
 func TestInstallRelease(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -235,7 +236,7 @@ func TestInstallRelease(t *testing.T) {
 }
 
 func TestInstallReleaseWithNotes(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -300,7 +301,7 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 }
 
 func TestInstallReleaseWithNotesRendered(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -366,7 +367,7 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 }
 
 func TestInstallReleaseDryRun(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 
 	req := &services.InstallReleaseRequest{
@@ -415,7 +416,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 }
 
 func TestInstallReleaseNoHooks(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -434,7 +435,7 @@ func TestInstallReleaseNoHooks(t *testing.T) {
 }
 
 func TestInstallReleaseFailedHooks(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 	rs.env.KubeClient = newHookFailingKubeClient()
@@ -453,7 +454,7 @@ func TestInstallReleaseFailedHooks(t *testing.T) {
 }
 
 func TestInstallReleaseReuseName(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Info.Status.Code = release.Status_DELETED
@@ -484,7 +485,7 @@ func TestInstallReleaseReuseName(t *testing.T) {
 }
 
 func TestUpdateRelease(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -554,7 +555,7 @@ func TestUpdateRelease(t *testing.T) {
 }
 
 func TestUpdateReleaseNoHooks(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -583,7 +584,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 }
 
 func TestUpdateReleaseNoChanges(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -601,7 +602,7 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 }
 
 func TestUninstallRelease(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -632,7 +633,7 @@ func TestUninstallRelease(t *testing.T) {
 }
 
 func TestUninstallPurgeRelease(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -664,7 +665,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 }
 
 func TestUninstallPurgeDeleteRelease(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -689,7 +690,7 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 }
 
 func TestUninstallReleaseNoHooks(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -710,7 +711,7 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 }
 
 func TestGetReleaseContent(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {
@@ -728,7 +729,7 @@ func TestGetReleaseContent(t *testing.T) {
 }
 
 func TestGetReleaseStatus(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {
@@ -746,7 +747,7 @@ func TestGetReleaseStatus(t *testing.T) {
 }
 
 func TestGetReleaseStatusDeleted(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Info.Status.Code = release.Status_DELETED
@@ -960,7 +961,7 @@ func (l *mockListServer) Send(res *services.ListReleasesResponse) error {
 	return nil
 }
 
-func (l *mockListServer) Context() context.Context       { return context.TODO() }
+func (l *mockListServer) Context() context.Context       { return helm.NewContext() }
 func (l *mockListServer) SendMsg(v interface{}) error    { return nil }
 func (l *mockListServer) RecvMsg(v interface{}) error    { return nil }
 func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }

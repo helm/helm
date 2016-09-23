@@ -18,9 +18,12 @@ package helm
 
 import (
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
+
 	cpb "k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/version"
 )
 
 // Option allows specifying various settings configurable by
@@ -30,12 +33,8 @@ type Option func(*options)
 
 // options specify optional settings used by the helm client.
 type options struct {
-	// value of helm host override
-	home string
 	// value of helm home override
 	host string
-	// name of chart
-	chart string
 	// if set dry-run helm client calls
 	dryRun bool
 	// if set, re-use an existing name
@@ -54,13 +53,6 @@ type options struct {
 	statusReq rls.GetReleaseStatusRequest
 	// release get content options are applied directly to the get release content request
 	contentReq rls.GetReleaseContentRequest
-}
-
-// Home specifies the location of helm home, (default = "$HOME/.helm").
-func Home(home string) Option {
-	return func(opts *options) {
-		opts.home = home
-	}
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -249,12 +241,18 @@ func (o *options) rpcListReleases(rlc rls.ReleaseServiceClient, opts ...ReleaseL
 	for _, opt := range opts {
 		opt(o)
 	}
-	s, err := rlc.ListReleases(context.TODO(), &o.listReq)
+	s, err := rlc.ListReleases(NewContext(), &o.listReq)
 	if err != nil {
 		return nil, err
 	}
 
 	return s.Recv()
+}
+
+// NewContext creates a versioned context.
+func NewContext() context.Context {
+	md := metadata.Pairs("x-helm-api-client", version.Version)
+	return metadata.NewContext(context.TODO(), md)
 }
 
 // Executes tiller.InstallRelease RPC.
@@ -269,7 +267,7 @@ func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient
 	o.instReq.DisableHooks = o.disableHooks
 	o.instReq.ReuseName = o.reuseName
 
-	return rlc.InstallRelease(context.TODO(), &o.instReq)
+	return rlc.InstallRelease(NewContext(), &o.instReq)
 }
 
 // Executes tiller.UninstallRelease RPC.
@@ -289,7 +287,7 @@ func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient,
 	o.uninstallReq.Name = rlsName
 	o.uninstallReq.DisableHooks = o.disableHooks
 
-	return rlc.UninstallRelease(context.TODO(), &o.uninstallReq)
+	return rlc.UninstallRelease(NewContext(), &o.uninstallReq)
 }
 
 // Executes tiller.UpdateRelease RPC.
@@ -302,7 +300,7 @@ func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.Relea
 	o.updateReq.DryRun = o.dryRun
 	o.updateReq.Name = rlsName
 
-	return rlc.UpdateRelease(context.TODO(), &o.updateReq)
+	return rlc.UpdateRelease(NewContext(), &o.updateReq)
 }
 
 // Executes tiller.GetReleaseStatus RPC.
@@ -311,7 +309,7 @@ func (o *options) rpcGetReleaseStatus(rlsName string, rlc rls.ReleaseServiceClie
 		opt(o)
 	}
 	o.statusReq.Name = rlsName
-	return rlc.GetReleaseStatus(context.TODO(), &o.statusReq)
+	return rlc.GetReleaseStatus(NewContext(), &o.statusReq)
 }
 
 // Executes tiller.GetReleaseContent.
@@ -320,11 +318,11 @@ func (o *options) rpcGetReleaseContent(rlsName string, rlc rls.ReleaseServiceCli
 		opt(o)
 	}
 	o.contentReq.Name = rlsName
-	return rlc.GetReleaseContent(context.TODO(), &o.contentReq)
+	return rlc.GetReleaseContent(NewContext(), &o.contentReq)
 }
 
 // Executes tiller.GetVersion RPC.
 func (o *options) rpcGetVersion(rlc rls.ReleaseServiceClient, opts ...VersionOption) (*rls.GetVersionResponse, error) {
 	req := &rls.GetVersionRequest{}
-	return rlc.GetVersion(context.TODO(), req)
+	return rlc.GetVersion(NewContext(), req)
 }
