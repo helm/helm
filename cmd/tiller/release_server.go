@@ -279,7 +279,6 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 
 	// Validate the manifest
 	if req.Validate {
-		log.Printf("Validating manifest: %s\n", modified)
 		err := validateResources(updatedRelease.Namespace, modified)
 		if err != nil {
 			return nil, err
@@ -579,7 +578,6 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 
 	// Validate the manifest
 	if req.Validate {
-		log.Printf("Validating manifest: %s\n", b)
 		err := validateResources(r.Namespace, b)
 		if err != nil {
 			return res, err
