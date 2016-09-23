@@ -40,8 +40,8 @@ func TestListCmd(t *testing.T) {
 			expected: "thomas-guide",
 		},
 		{
-			name: "list --long",
-			args: []string{"--long"},
+			name: "list",
+			args: []string{},
 			resp: []*release.Release{
 				releaseMock(&releaseOptions{name: "atlas"}),
 			},
@@ -49,7 +49,7 @@ func TestListCmd(t *testing.T) {
 		},
 		{
 			name: "with a release, multiple flags",
-			args: []string{"--deleted", "--deployed", "--failed"},
+			args: []string{"--deleted", "--deployed", "--failed", "-q"},
 			resp: []*release.Release{
 				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_DELETED}),
 				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
@@ -60,7 +60,7 @@ func TestListCmd(t *testing.T) {
 		},
 		{
 			name: "with a release, multiple flags",
-			args: []string{"--all"},
+			args: []string{"--all", "-q"},
 			resp: []*release.Release{
 				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_DELETED}),
 				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
