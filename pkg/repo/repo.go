@@ -147,7 +147,7 @@ func (r *ChartRepository) Index() error {
 		if ok && ref.Created != "" {
 			created = ref.Created
 		} else {
-			created = time.Now().UTC().String()
+			created = nowString()
 		}
 
 		url, _ := url.Parse(r.URL)
@@ -169,6 +169,11 @@ func (r *ChartRepository) Index() error {
 	}
 
 	return r.saveIndexFile()
+}
+
+func nowString() string {
+	// FIXME: This is a different date format than we use elsewhere.
+	return time.Now().UTC().String()
 }
 
 func generateDigest(path string) (string, error) {

@@ -20,6 +20,8 @@ import (
 	"io"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/cmd/helm/downloader"
 )
 
 const verifyDesc = `
@@ -63,5 +65,6 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 }
 
 func (v *verifyCmd) run() error {
-	return verifyChart(v.chartfile, v.keyring)
+	_, err := downloader.VerifyChart(v.chartfile, v.keyring)
+	return err
 }
