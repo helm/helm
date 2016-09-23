@@ -27,9 +27,7 @@ import (
 
 const rollbackDesc = `
 This command rolls back a release to the previous version.
-
-The rollback argument is the name of a release.
-
+The argument of the rollback command is the name of a release.
 `
 
 type rollbackCmd struct {
@@ -55,22 +53,25 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "release name"); err != nil {
 				return err
 			}
+			rollback.name = args[0]
 			rollback.client = ensureHelmClient(rollback.client)
 			return rollback.run()
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate an install")
+	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 	return cmd
 }
 
 func (r *rollbackCmd) run() error {
+	_, err := r.client.RollbackRelease(r.name, helm.RollbackDryRun(r.dryRun), helm.RollbackDisableHooks(r.disableHooks))
+	if err != nil {
+		return prettyError(err)
+	}
 
-	msg := "This command is under construction. Coming soon to a Helm near you!"
-
-	fmt.Fprintf(r.out, msg)
+	fmt.Fprintf(r.out, "Rollback was a success! Happy Helming!\n")
 
 	return nil
 }

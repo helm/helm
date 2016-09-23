@@ -159,6 +159,10 @@ func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...
 	return nil, nil
 }
 
+func (c *fakeReleaseClient) RollbackRelease(rlsName string, opts ...helm.RollbackOption) (*rls.RollbackReleaseResponse, error) {
+	return nil, nil
+}
+
 func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
 	if len(c.rels) > 0 {
 		resp = &rls.GetReleaseContentResponse{

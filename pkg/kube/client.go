@@ -170,6 +170,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 	updateErrors := []string{}
 
 	err = target.Visit(func(info *resource.Info, err error) error {
+
 		targetInfos = append(targetInfos, info)
 		if err != nil {
 			return err
