@@ -25,6 +25,8 @@ import (
 	"sort"
 	"strings"
 
+	"google.golang.org/grpc/metadata"
+
 	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
@@ -67,6 +69,8 @@ var (
 	errMissingChart = errors.New("no chart provided")
 	// errMissingRelease indicates that a release (name) was not provided.
 	errMissingRelease = errors.New("no release provided")
+	// errIncompatibleVersion indicates incompatible client/server versions.
+	errIncompatibleVersion = errors.New("client version is incompatible")
 )
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
@@ -76,7 +80,19 @@ type releaseServer struct {
 	env *environment.Environment
 }
 
+func getVersion(c ctx.Context) string {
+	if md, ok := metadata.FromContext(c); ok {
+		if v, ok := md["x-helm-api-client"]; ok {
+			return v[0]
+		}
+	}
+	return ""
+}
+
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
+	if !checkClientVersion(stream.Context()) {
+		return errIncompatibleVersion
+	}
 
 	if len(req.StatusCodes) == 0 {
 		req.StatusCodes = []release.Status_Code{release.Status_DEPLOYED}
@@ -181,7 +197,16 @@ func (s *releaseServer) GetVersion(c ctx.Context, req *services.GetVersionReques
 	return &services.GetVersionResponse{Version: v}, nil
 }
 
+func checkClientVersion(c ctx.Context) bool {
+	v := getVersion(c)
+	return version.IsCompatible(v, version.Version)
+}
+
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	if req.Name == "" {
 		return nil, errMissingRelease
 	}
@@ -225,6 +250,10 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 }
 
 func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	if req.Name == "" {
 		return nil, errMissingRelease
 	}
@@ -238,6 +267,10 @@ func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 }
 
 func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
 		return nil, err
@@ -402,6 +435,10 @@ func (s *releaseServer) engine(ch *chart.Chart) environment.Engine {
 }
 
 func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	rel, err := s.prepareRelease(req)
 	if err != nil {
 		log.Printf("Failed install prepare step: %s", err)
@@ -631,6 +668,10 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 }
 
 func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	if req.Name == "" {
 		log.Printf("uninstall: Release not found: %s", req.Name)
 		return nil, errMissingRelease

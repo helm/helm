@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package version represents the current version of the project.
 package version // import "k8s.io/helm/pkg/version"
 
 import "k8s.io/helm/pkg/proto/hapi/version"

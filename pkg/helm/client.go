@@ -17,8 +17,6 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
-	"os"
-
 	"google.golang.org/grpc"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -59,8 +57,7 @@ func (h *Client) Option(opts ...Option) *Client {
 
 // Init initializes the helm client with default options
 func (h *Client) Init() *Client {
-	return h.Option(Host(DefaultHelmHost)).
-		Option(Home(os.ExpandEnv(DefaultHelmHome)))
+	return h
 }
 
 // ListReleases lists the current releases.
