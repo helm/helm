@@ -17,79 +17,68 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"strings"
 	"testing"
-
-	"k8s.io/helm/pkg/repo"
 )
 
-const testDir = "testdata/testcache"
-const testFile = "testdata/testcache/local-index.yaml"
-
-type searchTestCase struct {
-	in          string
-	expectedOut []string
-}
-
-var searchTestCases = []searchTestCase{
-	{"foo", []string{}},
-	{"alpine", []string{"alpine-1.0.0"}},
-	{"sumtin", []string{"alpine-1.0.0"}},
-	{"web", []string{"nginx-0.1.0"}},
-}
-
-var searchCacheTestCases = []searchTestCase{
-	{"notthere", []string{}},
-	{"odd", []string{"foobar/oddness-1.2.3.tgz"}},
-	{"sumtin", []string{"local/alpine-1.0.0.tgz", "foobar/oddness-1.2.3.tgz"}},
-	{"foobar", []string{"foobar/foobar-0.1.0.tgz"}},
-	{"web", []string{"local/nginx-0.1.0.tgz"}},
-}
-
-func validateEntries(t *testing.T, in string, found []string, expected []string) {
-	if len(found) != len(expected) {
-		t.Errorf("Failed to search %s: Expected: %#v got: %#v", in, expected, found)
+func TestSearchCmd(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		flags  []string
+		expect string
+		regexp bool
+		fail   bool
+	}{
+		{
+			name:   "search for 'maria', expect one match",
+			args:   []string{"maria"},
+			expect: "testing/mariadb-0.3.0",
+		},
+		{
+			name:   "search for 'alpine', expect two matches",
+			args:   []string{"alpine"},
+			expect: "testing/alpine-0.1.0\ntesting/alpine-0.2.0",
+		},
+		{
+			name:   "search for 'syzygy', expect no matches",
+			args:   []string{"syzygy"},
+			expect: "",
+		},
+		{
+			name:   "search for 'alp[a-z]+', expect two matches",
+			args:   []string{"alp[a-z]+"},
+			flags:  []string{"--regexp"},
+			expect: "testing/alpine-0.1.0\ntesting/alpine-0.2.0",
+			regexp: true,
+		},
+		{
+			name:   "search for 'alp[', expect failure to compile regexp",
+			args:   []string{"alp["},
+			flags:  []string{"--regexp"},
+			regexp: true,
+			fail:   true,
+		},
 	}
-	foundCount := 0
-	for _, exp := range expected {
-		for _, f := range found {
-			if exp == f {
-				foundCount = foundCount + 1
+
+	oldhome := helmHome
+	helmHome = "testdata/helmhome"
+	defer func() { helmHome = oldhome }()
+
+	for _, tt := range tests {
+		buf := bytes.NewBuffer(nil)
+		cmd := newSearchCmd(buf)
+		cmd.ParseFlags(tt.flags)
+		if err := cmd.RunE(cmd, tt.args); err != nil {
+			if tt.fail {
 				continue
 			}
+			t.Fatalf("%s: unexpected error %s", tt.name, err)
 		}
-	}
-	if foundCount != len(expected) {
-		t.Errorf("Failed to find expected items for %s: Expected: %#v got: %#v", in, expected, found)
-	}
-
-}
-
-func searchTestRunner(t *testing.T, tc searchTestCase) {
-	cf, err := repo.LoadIndexFile(testFile)
-	if err != nil {
-		t.Errorf("Failed to load index file : %s : %s", testFile, err)
-	}
-
-	u := searchChartRefsForPattern(tc.in, cf.Entries)
-	validateEntries(t, tc.in, u, tc.expectedOut)
-}
-
-func searchCacheTestRunner(t *testing.T, tc searchTestCase) {
-	u, err := searchCacheForPattern(testDir, tc.in)
-	if err != nil {
-		t.Errorf("searchCacheForPattern failed: %#v", err)
-	}
-	validateEntries(t, tc.in, u, tc.expectedOut)
-}
-
-func TestSearches(t *testing.T) {
-	for _, tc := range searchTestCases {
-		searchTestRunner(t, tc)
-	}
-}
-
-func TestCacheSearches(t *testing.T) {
-	for _, tc := range searchCacheTestCases {
-		searchCacheTestRunner(t, tc)
+		got := strings.TrimSpace(buf.String())
+		if got != tt.expect {
+			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
+		}
 	}
 }
