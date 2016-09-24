@@ -101,6 +101,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newVersionCmd(nil, out),
 		newRepoCmd(out),
 		newDependencyCmd(out),
+		newSearchCmd(out),
 	)
 	return cmd
 }
