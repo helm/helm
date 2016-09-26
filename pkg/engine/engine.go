@@ -24,6 +24,8 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -49,9 +51,21 @@ func New() *Engine {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
 	delete(f, "expandenv")
+
+	// Add a function to convert to YAML:
+	f["toYaml"] = toYaml
 	return &Engine{
 		FuncMap: f,
 	}
+}
+
+func toYaml(v interface{}) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return string(data)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
