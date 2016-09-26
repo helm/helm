@@ -21,10 +21,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/storage/driver"
 )
 
 const upgradeDesc = `
@@ -48,6 +50,8 @@ type upgradeCmd struct {
 	values       *values
 	verify       bool
 	keyring      string
+	install      bool
+	namespace    string
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -83,8 +87,66 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
 	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "the path to the keyring that contains public singing keys")
+	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
+	f.StringVar(&upgrade.namespace, "namespace", "default", "the namespace to install the release into (only used if --install is set)")
 
 	return cmd
+}
+
+func (u *upgradeCmd) run() error {
+	chartPath, err := locateChartPath(u.chart, u.verify, u.keyring)
+	if err != nil {
+		return err
+	}
+
+	if u.install {
+		// If a release does not exist, install it. If another error occurs during
+		// the check, ignore the error and continue with the upgrade.
+		//
+		// The returned error is a grpc.rpcError that wraps the message from the original error.
+		// So we're stuck doing string matching against the wrapped error, which is nested somewhere
+		// inside of the grpc.rpcError message.
+		_, err := u.client.ReleaseContent(u.release, helm.ContentReleaseVersion(1))
+		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound.Error()) {
+			fmt.Fprintf(u.out, "Release %q does not exist. Installing it now.\n", u.release)
+			ic := &installCmd{
+				chartPath:    chartPath,
+				client:       u.client,
+				out:          u.out,
+				name:         u.release,
+				valuesFile:   u.valuesFile,
+				dryRun:       u.dryRun,
+				verify:       u.verify,
+				disableHooks: u.disableHooks,
+				keyring:      u.keyring,
+				values:       u.values,
+				namespace:    u.namespace,
+			}
+			return ic.run()
+		}
+	}
+
+	rawVals, err := u.vals()
+	if err != nil {
+		return err
+	}
+
+	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
+	if err != nil {
+		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
+	}
+
+	success := u.release + " has been upgraded. Happy Helming!\n"
+	fmt.Fprintf(u.out, success)
+
+	// Print the status like status command does
+	status, err := u.client.ReleaseStatus(u.release)
+	if err != nil {
+		return prettyError(err)
+	}
+	PrintStatus(u.out, status)
+
+	return nil
 }
 
 func (u *upgradeCmd) vals() ([]byte, error) {
@@ -110,34 +172,4 @@ func (u *upgradeCmd) vals() ([]byte, error) {
 	}
 
 	return buffer.Bytes(), nil
-}
-
-func (u *upgradeCmd) run() error {
-	chartPath, err := locateChartPath(u.chart, u.verify, u.keyring)
-	if err != nil {
-		return err
-	}
-
-	rawVals, err := u.vals()
-	if err != nil {
-		return err
-	}
-
-	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
-	if err != nil {
-		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
-	}
-
-	success := u.release + " has been upgraded. Happy Helming!\n"
-	fmt.Fprintf(u.out, success)
-
-	// Print the status like status command does
-	status, err := u.client.ReleaseStatus(u.release)
-	if err != nil {
-		return prettyError(err)
-	}
-	PrintStatus(u.out, status)
-
-	return nil
-
 }
