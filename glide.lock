@@ -1,5 +1,5 @@
-hash: 05c56f2ae4c8bcbaf2c428e2e070ec00f865b284ea61dd671e2c4e117f2d6528
-updated: 2016-08-19T17:30:32.462379907-06:00
+hash: 45eadf6012afd2293f9e82032dba0d4bcff712bf56f8b6cb875c4bdf02d1b08c
+updated: 2016-09-26T12:02:34.264796591-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -127,13 +127,13 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
+  version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
   subpackages:
   - proto
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/cadvisor
-  version: c2ea32971ae033041f0fb0f309b1dee94fd1d55f
+  version: 404f31ff971a5d5d9595f1a7ca6a07881ac37fed
   subpackages:
   - api
   - cache/memory
@@ -295,7 +295,7 @@ imports:
   - compute/metadata
   - internal
 - name: google.golang.org/grpc
-  version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
+  version: 0032a855ba5c8a3c8e0d71c2deef354b70af1584
   subpackages:
   - codes
   - credentials
@@ -310,7 +310,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: a570a0fef12408f1c0a7214952055bad39c160d7
+  version: 17d4cf1af43a03a5997ea9142b19e5b1ac2d8747
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install

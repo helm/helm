@@ -14,13 +14,13 @@ import:
   version: 1.1.0
 - package: github.com/technosophos/moniker
 - package: github.com/golang/protobuf
-  version: f0a097ddac24fb00e07d2ac17f8671423f3ea47c
+  version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
   subpackages:
   - proto
   - ptypes/any
   - ptypes/timestamp
 - package: google.golang.org/grpc
-  version: dec33edc378cf4971a2741cfd86ed70a644d6ba3
+  version: v1.0.1-GA
 - package: k8s.io/kubernetes
   version: ~1.3
   subpackages:
