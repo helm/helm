@@ -69,6 +69,13 @@ func TestUpgradeCmd(t *testing.T) {
 			resp:     releaseMock(&releaseOptions{name: "funny-bunny", version: 2, chart: ch}),
 			expected: "funny-bunny has been upgraded. Happy Helming!\n",
 		},
+		{
+			name:     "install a release with 'upgrade --install'",
+			args:     []string{"zany-bunny", chartPath},
+			flags:    []string{"-i"},
+			resp:     releaseMock(&releaseOptions{name: "zany-bunny", version: 1, chart: ch}),
+			expected: "zany-bunny has been upgraded. Happy Helming!\n",
+		},
 	}
 
 	cmd := func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
