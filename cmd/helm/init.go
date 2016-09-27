@@ -34,7 +34,7 @@ Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.he
 `
 
 var (
-	defaultRepository    = "kubernetes-charts"
+	defaultRepository    = "stable"
 	defaultRepositoryURL = "http://storage.googleapis.com/kubernetes-charts"
 )
 
