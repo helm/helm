@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
 )

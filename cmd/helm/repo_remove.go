@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/repo"
 )

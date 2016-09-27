@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 )
 
 const testfile = "testdata/local-index.yaml"
