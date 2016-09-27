@@ -37,6 +37,8 @@ type options struct {
 	host string
 	// if set dry-run helm client calls
 	dryRun bool
+	// if set validate manifest
+	validate bool
 	// if set, re-use an existing name
 	reuseName bool
 	// if set, skip running hooks
@@ -173,6 +175,14 @@ func UpgradeDryRun(dry bool) UpdateOption {
 	}
 }
 
+// UpgradeValidate will (if true) instruct Tiller to validate manifest before
+// reifying
+func UpgradeValidate(validate bool) UpdateOption {
+	return func(opts *options) {
+		opts.validate = validate
+	}
+}
+
 // InstallDisableHooks disables hooks during installation.
 func InstallDisableHooks(disable bool) InstallOption {
 	return func(opts *options) {
@@ -184,6 +194,14 @@ func InstallDisableHooks(disable bool) InstallOption {
 func InstallDryRun(dry bool) InstallOption {
 	return func(opts *options) {
 		opts.dryRun = dry
+	}
+}
+
+// InstallValidate will (if true) instruct Tiller to validate manifest before
+// reifying
+func InstallValidate(validate bool) InstallOption {
+	return func(opts *options) {
+		opts.validate = validate
 	}
 }
 
@@ -266,6 +284,7 @@ func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient
 	o.instReq.DryRun = o.dryRun
 	o.instReq.DisableHooks = o.disableHooks
 	o.instReq.ReuseName = o.reuseName
+	o.instReq.Validate = o.validate
 
 	return rlc.InstallRelease(NewContext(), &o.instReq)
 }
@@ -299,6 +318,7 @@ func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.Relea
 	o.updateReq.Chart = chr
 	o.updateReq.DryRun = o.dryRun
 	o.updateReq.Name = rlsName
+	o.updateReq.Validate = o.validate
 
 	return rlc.UpdateRelease(NewContext(), &o.updateReq)
 }

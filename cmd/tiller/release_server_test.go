@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -56,6 +57,22 @@ metadata:
   name: test-cm
   annotations:
     "helm.sh/hook": post-upgrade,pre-upgrade
+data:
+  name: value
+`
+
+var invalidResource = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  naaame: test-cm
+data:
+  name: value
+`
+
+var validResource = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
 data:
   name: value
 `
@@ -481,6 +498,148 @@ func TestInstallReleaseReuseName(t *testing.T) {
 	}
 	if getres.Info.Status.Code != release.Status_DEPLOYED {
 		t.Errorf("Release status is %q", getres.Info.Status.Code)
+	}
+}
+
+func TestInstallReleaseWithValidationFailsForInvalid(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Validate:  true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "invalid", Data: []byte(invalidResource)},
+			},
+		},
+	}
+	_, err := rs.InstallRelease(c, req)
+	if err == nil {
+		t.Fatalf("Install succeeded but was expected to fail")
+	}
+	if !strings.Contains(err.Error(), "naaame") {
+		t.Errorf("didn't fail with expected error")
+	}
+
+}
+
+func TestInstallReleaseWithValidationWorksForValid(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Validate:  true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "invalid", Data: []byte(validResource)},
+			},
+		},
+	}
+	res, err := rs.InstallRelease(c, req)
+
+	if err != nil {
+		t.Fatalf("Failed install: %s %s", err, req.Chart)
+	}
+	if res.Release.Name == "" {
+		t.Errorf("Expected release name.")
+	}
+	if res.Release.Namespace != "spaced" {
+		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Release.Namespace)
+	}
+
+	rel, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	if err != nil {
+		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+	}
+	if len(rel.Manifest) == 0 {
+		t.Errorf("Expected manifest in %v", res)
+	}
+
+}
+
+func TestUpdateReleaseWithValidationFailsForInvalid(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+
+	req := &services.InstallReleaseRequest{
+		Name:      "myspecialone",
+		Namespace: "spaced",
+		Validate:  true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "invalid", Data: []byte(validResource)},
+			},
+		},
+	}
+	_, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+
+	uReq := &services.UpdateReleaseRequest{
+		Name:         "myspecialone",
+		Validate:     true,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "invalid", Data: []byte(invalidResource)},
+			},
+		},
+	}
+
+	_, err = rs.UpdateRelease(c, uReq)
+	if err == nil {
+		t.Fatalf("Install succeeded but was expected to fail")
+	}
+
+	if !strings.Contains(err.Error(), "naaame") {
+		t.Errorf("didn't fail with expected error")
+	}
+
+}
+
+func TestUpdateReleaseWithValidationWorksForValid(t *testing.T) {
+	c := context.Background()
+	rs := rsFixture()
+
+	req := &services.InstallReleaseRequest{
+		Name:      "myspecialone",
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "invalid", Data: []byte(invalidResource)},
+			},
+		},
+	}
+	_, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+
+	uReq := &services.UpdateReleaseRequest{
+		Name:         "myspecialone",
+		Validate:     true,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "invalid", Data: []byte(validResource)},
+			},
+		},
+	}
+
+	_, err = rs.UpdateRelease(c, uReq)
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
 	}
 }
 
@@ -931,10 +1090,16 @@ func TestListReleasesFilter(t *testing.T) {
 	}
 }
 
+func testValidateResources(t *testing.T) {
+	b := bytes.NewBufferString("")
+	validateResources("default", "", b)
+}
+
 func mockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
+	e.SchemaDir = "cmd/tiller/testdata"
 	return e
 }
 

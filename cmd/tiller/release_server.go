@@ -40,6 +40,8 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 var srv *releaseServer
@@ -306,6 +308,15 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	kubeCli := s.env.KubeClient
 	original := bytes.NewBufferString(originalRelease.Manifest)
 	modified := bytes.NewBufferString(updatedRelease.Manifest)
+
+	// Validate the manifest
+	if req.Validate {
+		err := validateResources(updatedRelease.Namespace, s.env.SchemaDir, modified)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if err := kubeCli.Update(updatedRelease.Namespace, original, modified); err != nil {
 		return nil, err
 	}
@@ -600,6 +611,15 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// regular manifests
 	kubeCli := s.env.KubeClient
 	b := bytes.NewBufferString(r.Manifest)
+
+	// Validate the manifest
+	if req.Validate {
+		err := validateResources(r.Namespace, s.env.SchemaDir, b)
+		if err != nil {
+			return res, err
+		}
+	}
+
 	if err := kubeCli.Create(r.Namespace, b); err != nil {
 		log.Printf("warning: Release %q failed: %s", r.Name, err)
 		r.Info.Status.Code = release.Status_FAILED
@@ -730,6 +750,39 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	return res, nil
+}
+
+// validateResources takes a namespace and a manifest (fully expanded set of templates) and
+// validates resources.
+func validateResources(namespace string, schemaDir string, manifest *bytes.Buffer) error {
+	f := cmdutil.NewFactory(nil)
+	schema, err := f.Validator(true, schemaDir)
+	if err != nil {
+		return err
+	}
+
+	mapper, typer := f.Object(true)
+	r := resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(f.ClientForMapping), f.Decoder(true)).
+		Schema(schema).
+		NamespaceParam(namespace).DefaultNamespace().
+		Stream(manifest, "release").
+		Flatten().
+		Do()
+	err = r.Err()
+	if err != nil {
+		return err
+	}
+
+	err = r.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // byName implements the sort.Interface for []*release.Release.

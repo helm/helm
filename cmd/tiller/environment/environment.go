@@ -24,6 +24,7 @@ package environment
 
 import (
 	"io"
+	"os"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
@@ -195,6 +196,8 @@ type Environment struct {
 	Releases *storage.Storage
 	// KubeClient is a Kubernetes API client.
 	KubeClient KubeClient
+	// Validation schema directory.
+	SchemaDir string
 }
 
 // New returns an environment initialized with the defaults.
@@ -210,5 +213,6 @@ func New() *Environment {
 		EngineYard: ey,
 		Releases:   storage.Init(driver.NewMemory()),
 		KubeClient: kube.New(nil),
+		SchemaDir:  os.TempDir(),
 	}
 }
