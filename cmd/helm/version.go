@@ -17,10 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/version"
@@ -56,6 +59,9 @@ func (v *versionCmd) run() error {
 
 	resp, err := v.client.GetVersion()
 	if err != nil {
+		if grpc.Code(err) == codes.Unimplemented {
+			return errors.New("server is too old to know its version")
+		}
 		return err
 	}
 	fmt.Fprintf(v.out, "Server: %#v\n", resp.Version)
