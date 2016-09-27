@@ -71,6 +71,13 @@ func (v versionSet) Has(apiVersion string) bool {
 	return ok
 }
 
+// manifest represents a manifest file, which has a name and some content.
+type manifest struct {
+	name    string
+	content string
+	head    *simpleHead
+}
+
 // sortManifests takes a map of filename/YAML contents and sorts them into hook types.
 //
 // The resulting hooks struct will be populated with all of the generated hooks.
@@ -92,9 +99,9 @@ func (v versionSet) Has(apiVersion string) bool {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortManifests(files map[string]string, apis versionSet) ([]*release.Hook, map[string]string, error) {
+func sortManifests(files map[string]string, apis versionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
 	hs := []*release.Hook{}
-	generic := map[string]string{}
+	generic := []manifest{}
 
 	for n, c := range files {
 		// Skip partials. We could return these as a separate map, but there doesn't
@@ -121,13 +128,13 @@ func sortManifests(files map[string]string, apis versionSet) ([]*release.Hook, m
 		}
 
 		if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
-			generic[n] = c
+			generic = append(generic, manifest{name: n, content: c, head: &sh})
 			continue
 		}
 
 		hookTypes, ok := sh.Metadata.Annotations[hookAnno]
 		if !ok {
-			generic[n] = c
+			generic = append(generic, manifest{name: n, content: c, head: &sh})
 			continue
 		}
 		h := &release.Hook{

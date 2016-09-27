@@ -548,7 +548,7 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
-	hooks, manifests, err := sortManifests(files, vs)
+	hooks, manifests, err := sortManifests(files, vs, InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
@@ -557,9 +557,9 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 
 	// Aggregate all valid manifests into one big doc.
 	b := bytes.NewBuffer(nil)
-	for name, file := range manifests {
-		b.WriteString("\n---\n# Source: " + name + "\n")
-		b.WriteString(file)
+	for _, m := range manifests {
+		b.WriteString("\n---\n# Source: " + m.name + "\n")
+		b.WriteString(m.content)
 	}
 
 	return hooks, b, notes, nil
@@ -707,10 +707,26 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	b := bytes.NewBuffer([]byte(rel.Manifest))
-	if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
-		log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
+	vs, err := s.getVersionSet()
+	if err != nil {
+		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+	}
+
+	manifests := splitManifests(rel.Manifest)
+	_, files, err := sortManifests(manifests, vs, UninstallOrder)
+	if err != nil {
+		// We could instead just delete everything in no particular order.
 		return nil, err
+	}
+	// Note: We could re-join these into one file and delete just that one. Or
+	// we could collect errors (instead of bailing on the first error) and try
+	// to delete as much as possible instead of failing at the first error.
+	for _, file := range files {
+		b := bytes.NewBufferString(file.content)
+		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
+			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
+			return nil, err
+		}
 	}
 
 	if !req.DisableHooks {
@@ -753,4 +769,19 @@ func (r byDate) Swap(p, q int) {
 }
 func (r byDate) Less(p, q int) bool {
 	return r[p].Info.LastDeployed.Seconds < r[q].Info.LastDeployed.Seconds
+}
+
+func splitManifests(bigfile string) map[string]string {
+	// This is not the best way of doing things, but it's how k8s itself does it.
+	// Basically, we're quickly splitting a stream of YAML documents into an
+	// array of YAML docs. In the current implementation, the file name is just
+	// a place holder, and doesn't have any further meaning.
+	sep := "\n---\n"
+	tpl := "manifest-%d"
+	res := map[string]string{}
+	tmp := strings.Split(bigfile, sep)
+	for i, d := range tmp {
+		res[fmt.Sprintf(tpl, i)] = d
+	}
+	return res
 }
