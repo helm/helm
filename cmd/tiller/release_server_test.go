@@ -629,7 +629,7 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 }
 
 func TestRollbackReleaseNoHooks(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Hooks = []*release.Hook{
@@ -665,7 +665,7 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 }
 
 func TestRollbackRelease(t *testing.T) {
-	c := context.Background()
+	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)

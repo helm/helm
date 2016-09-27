@@ -174,8 +174,7 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		Total:    total,
 		Releases: rels,
 	}
-	stream.Send(res)
-	return nil
+	return stream.Send(res)
 }
 
 func filterReleases(filter string, rels []*release.Release) ([]*release.Release, error) {
@@ -281,8 +280,10 @@ func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 		return nil, err
 	}
 
-	if err := s.env.Releases.Create(updatedRelease); err != nil {
-		return nil, err
+	if !req.DryRun {
+		if err := s.env.Releases.Create(updatedRelease); err != nil {
+			return nil, err
+		}
 	}
 
 	return res, nil
@@ -380,6 +381,9 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 }
 
 func (s *releaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
 
 	currentRelease, targetRelease, err := s.prepareRollback(req)
 	if err != nil {
@@ -391,8 +395,10 @@ func (s *releaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 		return nil, err
 	}
 
-	if err := s.env.Releases.Create(targetRelease); err != nil {
-		return nil, err
+	if !req.DryRun {
+		if err := s.env.Releases.Create(targetRelease); err != nil {
+			return nil, err
+		}
 	}
 
 	return rel, nil
@@ -438,10 +444,7 @@ func (s *releaseServer) performKubeUpdate(currentRelease, targetRelease *release
 	kubeCli := s.env.KubeClient
 	current := bytes.NewBufferString(currentRelease.Manifest)
 	target := bytes.NewBufferString(targetRelease.Manifest)
-	if err := kubeCli.Update(targetRelease.Namespace, current, target); err != nil {
-		return err
-	}
-	return nil
+	return kubeCli.Update(targetRelease.Namespace, current, target)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
