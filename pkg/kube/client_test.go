@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api/meta"
-	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	api "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/unversioned/fake"
@@ -315,7 +314,6 @@ func createFakeInfo(name string, labels map[string]string) *resource.Info {
 		}}
 
 	client := &fake.RESTClient{
-		Codec: testapi.Default.Codec(),
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			header := http.Header{}
 			header.Set("Content-Type", runtime.ContentTypeJSON)
