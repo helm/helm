@@ -41,7 +41,7 @@ redis-2.0.0:
     home: https://github.com/example-charts/redis
 ```
 
-We will go through a detailed GCS and Github Pages examples here, but feel free to skip to the next section if you've already created a chart repository.
+We will go through detailed GCS and Github Pages examples here, but feel free to skip to the next section if you've already created a chart repository.
 
 ##### GCS bucket example
 
