@@ -45,7 +45,7 @@ func TestListCmd(t *testing.T) {
 			resp: []*release.Release{
 				releaseMock(&releaseOptions{name: "atlas"}),
 			},
-			expected: "NAME \tVERSION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1      \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
+			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
 		},
 		{
 			name: "with a release, multiple flags",
