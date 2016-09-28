@@ -664,6 +664,27 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 	}
 }
 
+func TestRollbackWithReleaseVersion(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+	upgradedRel := upgradeReleaseVersion(rel)
+	rs.env.Releases.Update(rel)
+	rs.env.Releases.Create(upgradedRel)
+
+	req := &services.RollbackReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Version:      1,
+	}
+
+	_, err := rs.RollbackRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed rollback: %s", err)
+	}
+}
+
 func TestRollbackRelease(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
