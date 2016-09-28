@@ -89,26 +89,4 @@ func verifyChartfile(t *testing.T, f *chart.Metadata) {
 			t.Errorf("Expected %q, got %q", kk[i], k)
 		}
 	}
-
-	if len(f.Dependencies) != 2 {
-		t.Fatalf("Expected 2 dependencies, got %d", len(f.Dependencies))
-	}
-
-	deps := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
-		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
-	}
-	for i, tt := range deps {
-		c := f.Dependencies[i]
-		if c.Name != tt.Name {
-			t.Errorf("Expected name %q, got %q", tt.Name, c.Name)
-		}
-		if c.Version != tt.Version {
-			t.Errorf("Expected version %q, got %q", tt.Version, c.Version)
-		}
-		if c.Repository != tt.Repository {
-			t.Errorf("Expected repository %q, got %q", tt.Repository, c.Repository)
-		}
-	}
-
 }
