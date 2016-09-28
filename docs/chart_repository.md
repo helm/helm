@@ -7,7 +7,7 @@
 ## Create a chart repository
 A _chart repository_ is an HTTP server that houses one or more packaged charts. When you're ready to share your charts, the preferred mechanism is a chart repository. You can contribute to the official helm chart repository or create your own. Here we'll talk about creating your own chart repository.
 
-Because a chart repository can be any HTTP server that can serve YAML and tar files and can answer GET requests, you have a plethora of options when it comes down to hosting your own chart repository. For example, you can use a Google Cloud Storage(GCS) bucket, Amazon S3 bucket, or even create your own web server.
+Because a chart repository can be any HTTP server that can serve YAML and tar files and can answer GET requests, you have a plethora of options when it comes down to hosting your own chart repository. For example, you can use a Google Cloud Storage (GCS) bucket, Amazon S3 bucket, Github Pages, or even create your own web server.
 
 ### The chart repository structure
 A chart repository consists of packaged charts and a special file called `index.yaml` which contains an index of all of the charts in the repository. A chart repository has a flat structure. Given a repository URL, you should be able to download a chart via a GET request to `URL/chartname-version.tgz`.
@@ -41,7 +41,9 @@ redis-2.0.0:
     home: https://github.com/example-charts/redis
 ```
 
-We will go through a detailed GCS example here, but feel free to skip to the next section if you've already created a chart repository.
+We will go through detailed GCS and Github Pages examples here, but feel free to skip to the next section if you've already created a chart repository.
+
+##### GCS bucket example
 
 The first step will be to **create your GCS bucket**. We'll call ours `fantastic-charts`.
 
@@ -56,6 +58,34 @@ Insert this line item to **make your bucket public**:
 ![Make Bucket Public](images/make-bucket-public.png)
 
 Congratulations, now you have an empty GCS bucket ready to serve charts!
+
+##### Github Pages example
+
+In a similar way you can create charts repository using Github Pages.
+
+The first step will be to **create your gh-pages branch**.
+You can do that localy as.
+
+```
+$ git checkout -b [name_of_your_new_branch]
+```
+
+Or via web browser using **Branch** button on your Github repository:
+
+![Create Github Pages branch](images/create-a-gh-page-button.png)
+
+Next, you'll want to make sure your **gh-pages branch** is set as Github Pages, click on your repo **Settings** and scroll down to **Github pages** section and set as per below:
+
+![Create Github Pages branch](images/set-a-gh-page.png)
+
+By default **Source** usually gets set to **gh-pages branch**, if not do so select it.
+
+You can use a **custom domain** there if you wish so.
+
+And check that **Enforce HTTPS** is ticked, so the **HTTPS** will be used when charts are served.
+
+In such setup you can use **master branch** to store your charts code, and **gh-pages branch** as charts repository, e.g.: `https://my-repo-name.github.io/charts`.
+
 
 ## Store charts in your chart repository
 Now that you have a chart repository, let's upload a chart and an index file to the repository.
