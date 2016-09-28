@@ -23,13 +23,15 @@ option go_package = "release";
 // Hook defines a hook object.
 message Hook {
 	enum Event {
-		UNKNOWN = 0;
-		PRE_INSTALL = 1;
-		POST_INSTALL = 2;
-		PRE_DELETE = 3;
-		POST_DELETE = 4;
-		PRE_UPGRADE = 5;
-		POST_UPGRADE = 6;
+        UNKNOWN = 0;
+        PRE_INSTALL = 1;
+        POST_INSTALL = 2;
+        PRE_DELETE = 3;
+        POST_DELETE = 4;
+        PRE_UPGRADE = 5;
+        POST_UPGRADE = 6;
+        PRE_ROLLBACK = 7;
+        POST_ROLLBACK = 8;
 	}
 	string name = 1;
 	// Kind is the Kubernetes kind.

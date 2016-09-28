@@ -67,9 +67,14 @@ service ReleaseService {
 	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
 	}
 
-  // GetVersion returns the current version of the server.
-  rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
-}
+    // GetVersion returns the current version of the server.
+    rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
+    }
+
+    // RollbackRelease rolls back a release to a previous version.
+    rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
+    }
+
 }
 
 // ListReleasesRequest requests a list of releases.
@@ -185,6 +190,20 @@ message UpdateReleaseRequest {
 
 // UpdateReleaseResponse is the response to an update request.
 message UpdateReleaseResponse {
+	hapi.release.Release release = 1;
+}
+
+message RollbackReleaseRequest {
+	// The name of the release
+	string name = 1;
+	// dry_run, if true, will run through the release logic but no create
+	bool dry_run = 2;
+	// DisableHooks causes the server to skip running any hooks for the rollback
+	bool disable_hooks = 3;
+}
+
+// RollbackReleaseResponse is the response to an update request.
+message RollbackReleaseResponse {
 	hapi.release.Release release = 1;
 }
 

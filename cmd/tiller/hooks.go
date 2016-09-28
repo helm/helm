@@ -30,21 +30,25 @@ import (
 const hookAnno = "helm.sh/hook"
 
 const (
-	preInstall  = "pre-install"
-	postInstall = "post-install"
-	preDelete   = "pre-delete"
-	postDelete  = "post-delete"
-	preUpgrade  = "pre-upgrade"
-	postUpgrade = "post-upgrade"
+	preInstall   = "pre-install"
+	postInstall  = "post-install"
+	preDelete    = "pre-delete"
+	postDelete   = "post-delete"
+	preUpgrade   = "pre-upgrade"
+	postUpgrade  = "post-upgrade"
+	preRollback  = "pre-rollback"
+	postRollback = "post-rollback"
 )
 
 var events = map[string]release.Hook_Event{
-	preInstall:  release.Hook_PRE_INSTALL,
-	postInstall: release.Hook_POST_INSTALL,
-	preDelete:   release.Hook_PRE_DELETE,
-	postDelete:  release.Hook_POST_DELETE,
-	preUpgrade:  release.Hook_PRE_UPGRADE,
-	postUpgrade: release.Hook_POST_UPGRADE,
+	preInstall:   release.Hook_PRE_INSTALL,
+	postInstall:  release.Hook_POST_INSTALL,
+	preDelete:    release.Hook_PRE_DELETE,
+	postDelete:   release.Hook_POST_DELETE,
+	preUpgrade:   release.Hook_PRE_UPGRADE,
+	postUpgrade:  release.Hook_POST_UPGRADE,
+	preRollback:  release.Hook_PRE_ROLLBACK,
+	postRollback: release.Hook_POST_ROLLBACK,
 }
 
 type simpleHead struct {

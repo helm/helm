@@ -131,6 +131,17 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 	return h.opts.rpcGetVersion(rls.NewReleaseServiceClient(c), opts...)
 }
 
+// RollbackRelease rolls back a release to the previous version
+func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	return h.opts.rpcRollbackRelease(rlsName, rls.NewReleaseServiceClient(c), opts...)
+}
+
 // ReleaseStatus returns the given release's status.
 //
 // Note: there aren't currently any  supported StatusOptions,

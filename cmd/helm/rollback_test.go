@@ -30,7 +30,7 @@ func TestRollbackCmd(t *testing.T) {
 			name:     "rollback a release",
 			args:     []string{"funny-honey"},
 			resp:     nil,
-			expected: "This command is under construction. Coming soon to a Helm near you!",
+			expected: "Rollback was a success! Happy Helming!",
 		},
 	}
 
