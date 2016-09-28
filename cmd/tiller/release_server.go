@@ -461,7 +461,17 @@ func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 		return nil, nil, err
 	}
 
-	previousRelease, err := s.env.Releases.Get(req.Name, currentRelease.Version-1)
+	v := req.Version
+	if v == 0 {
+		v = currentRelease.Version - 1
+	}
+	if v < 1 {
+		return nil, nil, errors.New("cannot rollback to version < 1")
+	}
+
+	log.Printf("rolling back %s to version %d", req.Name, v)
+
+	previousRelease, err := s.env.Releases.Get(req.Name, v)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -29,7 +29,12 @@ func TestRollbackCmd(t *testing.T) {
 		{
 			name:     "rollback a release",
 			args:     []string{"funny-honey"},
-			resp:     nil,
+			flags:    []string{"revision", "1"},
+			expected: "Rollback was a success! Happy Helming!",
+		},
+		{
+			name:     "rollback a release without version",
+			args:     []string{"funny-honey"},
 			expected: "Rollback was a success! Happy Helming!",
 		},
 	}

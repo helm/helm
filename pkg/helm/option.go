@@ -196,6 +196,13 @@ func RollbackDryRun(dry bool) RollbackOption {
 	}
 }
 
+// RollbackVersion sets the version of the release to deploy.
+func RollbackVersion(ver int32) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.Version = ver
+	}
+}
+
 // UpgradeDisableHooks will disable hooks for an upgrade operation.
 func UpgradeDisableHooks(disable bool) UpdateOption {
 	return func(opts *options) {
@@ -333,7 +340,7 @@ func (o *options) rpcRollbackRelease(rlsName string, rlc rls.ReleaseServiceClien
 	o.rollbackReq.DryRun = o.dryRun
 	o.rollbackReq.Name = rlsName
 
-	return rlc.RollbackRelease(context.TODO(), &o.rollbackReq)
+	return rlc.RollbackRelease(NewContext(), &o.rollbackReq)
 }
 
 // Executes tiller.GetReleaseStatus RPC.
