@@ -29,7 +29,7 @@ func TestGetCmd(t *testing.T) {
 			name:     "get with a release",
 			resp:     releaseMock(&releaseOptions{name: "thomas-guide"}),
 			args:     []string{"thomas-guide"},
-			expected: "VERSION: 1\nRELEASED: (.*)\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nHOOKS:\n---\n# pre-install-hook\n" + mockHookTemplate + "\nMANIFEST:",
+			expected: "REVISION: 1\nRELEASED: (.*)\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nHOOKS:\n---\n# pre-install-hook\n" + mockHookTemplate + "\nMANIFEST:",
 		},
 		{
 			name: "get requires release name arg",

@@ -183,7 +183,6 @@ message UpdateReleaseRequest {
 	hapi.chart.Config values = 3;
 	// dry_run, if true, will run through the release logic, but neither create
 	bool dry_run = 4;
-
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
 	bool disable_hooks = 5;
 }
@@ -200,6 +199,8 @@ message RollbackReleaseRequest {
 	bool dry_run = 2;
 	// DisableHooks causes the server to skip running any hooks for the rollback
 	bool disable_hooks = 3;
+	// Version is the version of the release to deploy.
+	int32 version = 4;
 }
 
 // RollbackReleaseResponse is the response to an update request.
