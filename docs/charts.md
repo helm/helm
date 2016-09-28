@@ -244,17 +244,18 @@ spec:
       serviceAccount: deis-database
       containers:
         - name: deis-database
-          image: {{.imageRegistry}}/postgres:{{.dockerTag}}
-          imagePullPolicy: {{.pullPolicy}}
+          image: {{.Values.imageRegistry}}/postgres:{{.Values.dockerTag}}
+          imagePullPolicy: {{.Values.pullPolicy}}
           ports:
             - containerPort: 5432
           env:
             - name: DATABASE_STORAGE
-              value: {{default "minio" .storage}}
+              value: {{default "minio" .Values.storage}}
 ```
 
 The above example, based loosely on [https://github.com/deis/charts](https://github.com/deis/charts), is a template for a Kubernetes replication controller.
-It can use the following four template values:
+It can use the following four template values (usually defined in a
+`.values.yaml` file):
 
 - `imageRegistry`: The source registry for the Docker image.
 - `dockerTag`: The tag for the docker image.
@@ -265,6 +266,10 @@ All of these values are defined by the template author. Helm does not
 require or dictate parameters.
 
 ### Predefined Values
+
+Values that are supplied via a `values.yaml` file (or via the `--set`
+flag) are accessible from the `.Values` object in a template. But there
+are other pre-defined pieces of data you can access in your templates.
 
 The following values are pre-defined, are available to every template, and
 cannot be overridden. As with all values, the names are _case
@@ -333,6 +338,39 @@ Note that only the last field was overridden.
 `values.yaml`. But files specified on the command line can be named
 anything.
 
+Any of these values are then accessible inside of templates using the
+`.Values` object:
+
+```yaml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: deis-database
+  namespace: deis
+  labels:
+    heritage: deis
+spec:
+  replicas: 1
+  selector:
+    app: deis-database
+  template:
+    metadata:
+      labels:
+        app: deis-database
+    spec:
+      serviceAccount: deis-database
+      containers:
+        - name: deis-database
+          image: {{.Values.imageRegistry}}/postgres:{{.Values.dockerTag}}
+          imagePullPolicy: {{.Values.pullPolicy}}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: DATABASE_STORAGE
+              value: {{default "minio" .Values.storage}}
+
+```
+
 ### Scope, Dependencies, and Values
 
 Values files can declare values for the top-level chart, as well as for
@@ -355,16 +393,16 @@ apache:
 ```
 
 Charts at a higher level have access to all of the variables defined
-beneath. So the wordpress chart can access `.mysql.password`. But lower
-level charts cannot access things in parent charts, so MySQL will not be
-able to access the `title` property. Nor, for that matter, can it access
-`.apache.port`.
+beneath. So the wordpress chart can access the MySQL password as
+`.Values.mysql.password`. But lower level charts cannot access things in
+parent charts, so MySQL will not be able to access the `title` property. Nor,
+for that matter, can it access `apache.port`.
 
 Values are namespaced, but namespaces are pruned. So for the Wordpress
-chart, it can access the MySQL password field as `.mysql.password`. But
+chart, it can access the MySQL password field as `.Values.mysql.password`. But
 for the MySQL chart, the scope of the values has been reduced and the
 namespace prefix removed, so it will see the password field simply as
-`.password`.
+`.Values.password`.
 
 #### Global Values
 
