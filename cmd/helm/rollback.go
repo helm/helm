@@ -17,8 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -32,6 +34,7 @@ The argument of the rollback command is the name of a release.
 
 type rollbackCmd struct {
 	name         string
+	version      int32
 	dryRun       bool
 	disableHooks bool
 	out          io.Writer
@@ -50,8 +53,15 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:              rollbackDesc,
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "release name"); err != nil {
-				return err
+			switch {
+			case len(args) == 0:
+				return errors.New("This command needs a release name")
+			case len(args) > 1:
+				v, err := strconv.Atoi(args[1])
+				if err != nil {
+					return fmt.Errorf("release version must be an int: %s", err)
+				}
+				rollback.version = int32(v)
 			}
 			rollback.name = args[0]
 			rollback.client = ensureHelmClient(rollback.client)
@@ -66,7 +76,12 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (r *rollbackCmd) run() error {
-	_, err := r.client.RollbackRelease(r.name, helm.RollbackDryRun(r.dryRun), helm.RollbackDisableHooks(r.disableHooks))
+	_, err := r.client.RollbackRelease(
+		r.name,
+		helm.RollbackDryRun(r.dryRun),
+		helm.RollbackDisableHooks(r.disableHooks),
+		helm.RollbackVersion(r.version),
+	)
 	if err != nil {
 		return prettyError(err)
 	}

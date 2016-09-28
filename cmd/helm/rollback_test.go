@@ -28,8 +28,12 @@ func TestRollbackCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
 			name:     "rollback a release",
+			args:     []string{"funny-honey", "1"},
+			expected: "Rollback was a success! Happy Helming!",
+		},
+		{
+			name:     "rollback a release without version",
 			args:     []string{"funny-honey"},
-			resp:     nil,
 			expected: "Rollback was a success! Happy Helming!",
 		},
 	}
