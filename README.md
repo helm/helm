@@ -41,6 +41,7 @@ Download a [release tarball of helm for your platform](https://github.com/kubern
 	- [Syncing your Chart Repository](docs/chart_repository_sync_example.md)
 - [Developers](docs/developers.md)
 - [History](docs/history.md)
+- [Glossary](docs/glossary.md)
 
 ## Community, discussion, contribution, and support
 
