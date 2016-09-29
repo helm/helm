@@ -37,6 +37,7 @@ type getManifestCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
+	version int32
 }
 
 func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -59,12 +60,14 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return get.run()
 		},
 	}
+
+	cmd.Flags().Int32Var(&get.version, "revision", 0, "get the named release with revision")
 	return cmd
 }
 
 // getManifest implements 'helm get manifest'
 func (g *getManifestCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release)
+	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
 	if err != nil {
 		return prettyError(err)
 	}
