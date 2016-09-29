@@ -26,6 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/provenance"
@@ -50,6 +51,7 @@ type packageCmd struct {
 	key     string
 	keyring string
 	out     io.Writer
+	home    helmpath.Home
 }
 
 func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -61,6 +63,7 @@ func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Short: "package a chart directory into a chart archive",
 		Long:  packageDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			pkg.home = helmpath.Home(homePath())
 			if len(args) == 0 {
 				return fmt.Errorf("This command needs at least one argument, the path to the chart.")
 			}
@@ -113,16 +116,17 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 	name, err := chartutil.Save(ch, cwd)
 	if err == nil && flagDebug {
-		cmd.Printf("Saved %s to current directory\n", name)
+		fmt.Fprintf(p.out, "Saved %s to current directory\n", name)
 	}
 
 	// Save to $HELM_HOME/local directory. This is second, because we don't want
 	// the case where we saved here, but didn't save to the default destination.
 	if p.save {
-		if err := repo.AddChartToLocalRepo(ch, localRepoDirectory()); err != nil {
+		lr := p.home.LocalRepository()
+		if err := repo.AddChartToLocalRepo(ch, lr); err != nil {
 			return err
 		} else if flagDebug {
-			cmd.Printf("Saved %s to %s\n", name, localRepoDirectory())
+			fmt.Fprintf(p.out, "Saved %s to %s\n", name, lr)
 		}
 	}
 

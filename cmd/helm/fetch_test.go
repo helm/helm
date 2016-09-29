@@ -26,7 +26,7 @@ import (
 )
 
 func TestFetchCmd(t *testing.T) {
-	hh, err := tempHelmHome()
+	hh, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
 	}

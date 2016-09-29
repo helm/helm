@@ -24,11 +24,13 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
 type repoListCmd struct {
-	out io.Writer
+	out  io.Writer
+	home helmpath.Home
 }
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
@@ -40,6 +42,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Use:   "list [flags]",
 		Short: "list chart repositories",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			list.home = helmpath.Home(homePath())
 			return list.run()
 		},
 	}
@@ -48,7 +51,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 }
 
 func (a *repoListCmd) run() error {
-	f, err := repo.LoadRepositoriesFile(repositoriesFile())
+	f, err := repo.LoadRepositoriesFile(a.home.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -58,9 +61,9 @@ func (a *repoListCmd) run() error {
 	table := uitable.New()
 	table.MaxColWidth = 50
 	table.AddRow("NAME", "URL")
-	for k, v := range f.Repositories {
-		table.AddRow(k, v)
+	for _, re := range f.Repositories {
+		table.AddRow(re.Name, re.URL)
 	}
-	fmt.Println(table)
+	fmt.Fprintln(a.out, table)
 	return nil
 }

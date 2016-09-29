@@ -44,27 +44,34 @@ type Result struct {
 // Index is a searchable index of chart information.
 type Index struct {
 	lines  map[string]string
-	charts map[string]*repo.ChartRef
+	charts map[string]*repo.ChartVersion
 }
 
 const sep = "\v"
 
 // NewIndex creats a new Index.
 func NewIndex() *Index {
-	return &Index{lines: map[string]string{}, charts: map[string]*repo.ChartRef{}}
+	return &Index{lines: map[string]string{}, charts: map[string]*repo.ChartVersion{}}
 }
 
 // AddRepo adds a repository index to the search index.
 func (i *Index) AddRepo(rname string, ind *repo.IndexFile) {
 	for name, ref := range ind.Entries {
+		if len(ref) == 0 {
+			// Skip chart names that havae zero releases.
+			continue
+		}
+		// By convention, an index file is supposed to have the newest at the
+		// 0 slot, so our best bet is to grab the 0 entry and build the index
+		// entry off of that.
 		fname := filepath.Join(rname, name)
-		i.lines[fname] = indstr(rname, ref)
-		i.charts[fname] = ref
+		i.lines[fname] = indstr(rname, ref[0])
+		i.charts[fname] = ref[0]
 	}
 }
 
 // Entries returns the entries in an index.
-func (i *Index) Entries() map[string]*repo.ChartRef {
+func (i *Index) Entries() map[string]*repo.ChartVersion {
 	return i.charts
 }
 
@@ -136,7 +143,7 @@ func (i *Index) SearchRegexp(re string, threshold int) ([]*Result, error) {
 }
 
 // Chart returns the ChartRef for a particular name.
-func (i *Index) Chart(name string) (*repo.ChartRef, error) {
+func (i *Index) Chart(name string) (*repo.ChartVersion, error) {
 	c, ok := i.charts[name]
 	if !ok {
 		return nil, errors.New("no such chart")
@@ -174,10 +181,8 @@ func (s scoreSorter) Less(a, b int) bool {
 	return first.Name < second.Name
 }
 
-func indstr(name string, ref *repo.ChartRef) string {
-	i := ref.Name + sep + name + "/" + ref.Name + sep
-	if ref.Chartfile != nil {
-		i += ref.Chartfile.Description + sep + strings.Join(ref.Chartfile.Keywords, sep)
-	}
+func indstr(name string, ref *repo.ChartVersion) string {
+	i := ref.Name + sep + name + "/" + ref.Name + sep +
+		ref.Description + sep + strings.Join(ref.Keywords, " ")
 	return strings.ToLower(i)
 }
