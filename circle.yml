@@ -38,7 +38,27 @@ test:
         parallel: true
 
 deployment:
-  gcr:
+  release:
+    tag: /.*/
+    commands:
+      # setup gcloud tools
+      - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
+      - echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
+      - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
+
+      # build canary tiller image and push
+      - make docker-build VERSION="${CIRCLE_TAG}"
+      - docker push "gcr.io/kubernetes-helm/tiller:${CIRCLE_TAG}"
+      - docker push gcr.io/kubernetes-helm/tiller:canary
+
+      # build canary helm binaries and push
+      - make build-cross
+      - make dist VERSION="${CIRCLE_TAG}"
+      - sudo /opt/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
+
+  canary:
     branch: master
     commands:
       # setup gcloud tools
