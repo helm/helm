@@ -56,6 +56,9 @@ func (h Home) CacheIndex(name string) string {
 // LocalRepository returns the location to the local repo.
 //
 // The local repo is the one used by 'helm serve'
-func (h Home) LocalRepository() string {
-	return filepath.Join(string(h), "repository/local")
+//
+// If additional path elements are passed, they are appended to the returned path.
+func (h Home) LocalRepository(paths ...string) string {
+	frag := append([]string{string(h), "repository/local"}, paths...)
+	return filepath.Join(frag...)
 }

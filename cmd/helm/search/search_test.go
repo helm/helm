@@ -52,32 +52,43 @@ func TestSortScore(t *testing.T) {
 
 var testCacheDir = "../testdata/"
 
-var indexfileEntries = map[string]*repo.ChartRef{
-	"niña-0.1.0": {
-		Name: "niña",
-		URL:  "http://example.com/charts/nina-0.1.0.tgz",
-		Chartfile: &chart.Metadata{
-			Name:        "niña",
-			Version:     "0.1.0",
-			Description: "One boat",
+var indexfileEntries = map[string]repo.ChartVersions{
+	"niña": {
+		{
+			URLs: []string{"http://example.com/charts/nina-0.1.0.tgz"},
+			Metadata: &chart.Metadata{
+				Name:        "niña",
+				Version:     "0.1.0",
+				Description: "One boat",
+			},
 		},
 	},
-	"pinta-0.1.0": {
-		Name: "pinta",
-		URL:  "http://example.com/charts/pinta-0.1.0.tgz",
-		Chartfile: &chart.Metadata{
-			Name:        "pinta",
-			Version:     "0.1.0",
-			Description: "Two ship",
+	"pinta": {
+		{
+			URLs: []string{"http://example.com/charts/pinta-0.1.0.tgz"},
+			Metadata: &chart.Metadata{
+				Name:        "pinta",
+				Version:     "0.1.0",
+				Description: "Two ship",
+			},
 		},
 	},
-	"santa-maria-1.2.3": {
-		Name: "santa-maria",
-		URL:  "http://example.com/charts/santa-maria-1.2.3.tgz",
-		Chartfile: &chart.Metadata{
-			Name:        "santa-maria",
-			Version:     "1.2.3",
-			Description: "Three boat",
+	"santa-maria": {
+		{
+			URLs: []string{"http://example.com/charts/santa-maria-1.2.3.tgz"},
+			Metadata: &chart.Metadata{
+				Name:        "santa-maria",
+				Version:     "1.2.3",
+				Description: "Three boat",
+			},
+		},
+		{
+			URLs: []string{"http://example.com/charts/santa-maria-1.2.2.tgz"},
+			Metadata: &chart.Metadata{
+				Name:        "santa-maria",
+				Version:     "1.2.2",
+				Description: "Three boat",
+			},
 		},
 	},
 }
@@ -85,14 +96,15 @@ var indexfileEntries = map[string]*repo.ChartRef{
 func loadTestIndex(t *testing.T) *Index {
 	i := NewIndex()
 	i.AddRepo("testing", &repo.IndexFile{Entries: indexfileEntries})
-	i.AddRepo("ztesting", &repo.IndexFile{Entries: map[string]*repo.ChartRef{
-		"pinta-2.0.0": {
-			Name: "pinta",
-			URL:  "http://example.com/charts/pinta-2.0.0.tgz",
-			Chartfile: &chart.Metadata{
-				Name:        "pinta",
-				Version:     "2.0.0",
-				Description: "Two ship, version two",
+	i.AddRepo("ztesting", &repo.IndexFile{Entries: map[string]repo.ChartVersions{
+		"pinta": {
+			{
+				URLs: []string{"http://example.com/charts/pinta-2.0.0.tgz"},
+				Metadata: &chart.Metadata{
+					Name:        "pinta",
+					Version:     "2.0.0",
+					Description: "Two ship, version two",
+				},
 			},
 		},
 	}})
@@ -113,44 +125,44 @@ func TestSearchByName(t *testing.T) {
 			name:  "basic search for one result",
 			query: "santa-maria",
 			expect: []*Result{
-				{Name: "testing/santa-maria-1.2.3"},
+				{Name: "testing/santa-maria"},
 			},
 		},
 		{
 			name:  "basic search for two results",
 			query: "pinta",
 			expect: []*Result{
-				{Name: "testing/pinta-0.1.0"},
-				{Name: "ztesting/pinta-2.0.0"},
+				{Name: "testing/pinta"},
+				{Name: "ztesting/pinta"},
 			},
 		},
 		{
 			name:  "repo-specific search for one result",
 			query: "ztesting/pinta",
 			expect: []*Result{
-				{Name: "ztesting/pinta-2.0.0"},
+				{Name: "ztesting/pinta"},
 			},
 		},
 		{
 			name:  "partial name search",
 			query: "santa",
 			expect: []*Result{
-				{Name: "testing/santa-maria-1.2.3"},
+				{Name: "testing/santa-maria"},
 			},
 		},
 		{
 			name:  "description search, one result",
 			query: "Three",
 			expect: []*Result{
-				{Name: "testing/santa-maria-1.2.3"},
+				{Name: "testing/santa-maria"},
 			},
 		},
 		{
 			name:  "description search, two results",
 			query: "two",
 			expect: []*Result{
-				{Name: "testing/pinta-0.1.0"},
-				{Name: "ztesting/pinta-2.0.0"},
+				{Name: "testing/pinta"},
+				{Name: "ztesting/pinta"},
 			},
 		},
 		{
@@ -162,7 +174,7 @@ func TestSearchByName(t *testing.T) {
 			name:  "regexp, one result",
 			query: "th[ref]*",
 			expect: []*Result{
-				{Name: "testing/santa-maria-1.2.3"},
+				{Name: "testing/santa-maria"},
 			},
 			regexp: true,
 		},

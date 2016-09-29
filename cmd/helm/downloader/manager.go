@@ -175,8 +175,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	for _, dep := range deps {
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
-		target := fmt.Sprintf("%s-%s", dep.Name, dep.Version)
-		churl, err := findChartURL(target, dep.Repository, repos)
+		churl, err := findChartURL(dep.Name, dep.Repository, repos)
 		if err != nil {
 			fmt.Fprintf(m.Out, "WARNING: %s (skipped)", err)
 			continue
@@ -207,7 +206,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 			found = true
 		} else {
 			for _, repo := range repos {
-				if urlsAreEqual(repo, dd.Repository) {
+				if urlsAreEqual(repo.URL, dd.Repository) {
 					found = true
 				}
 			}
@@ -236,25 +235,23 @@ func (m *Manager) UpdateRepositories() error {
 	return nil
 }
 
-func (m *Manager) parallelRepoUpdate(repos map[string]string) {
+func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) {
 	out := m.Out
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
-	for name, url := range repos {
+	for _, re := range repos {
 		wg.Add(1)
 		go func(n, u string) {
-			err := repo.DownloadIndexFile(n, u, m.HelmHome.CacheIndex(n))
-			if err != nil {
-				updateErr := fmt.Sprintf("...Unable to get an update from the %q chart repository: %s", n, err)
-				fmt.Fprintln(out, updateErr)
+			if err := repo.DownloadIndexFile(n, u, m.HelmHome.CacheIndex(n)); err != nil {
+				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", n, u, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", n)
 			}
 			wg.Done()
-		}(name, url)
+		}(re.Name, re.URL)
 	}
 	wg.Wait()
-	fmt.Fprintln(out, "Update Complete. Happy Helming!")
+	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
 }
 
 // urlsAreEqual normalizes two URLs and then compares for equality.
@@ -280,7 +277,15 @@ func findChartURL(name, repourl string, repos map[string]*repo.ChartRepository) 
 		if urlsAreEqual(repourl, cr.URL) {
 			for ename, entry := range cr.IndexFile.Entries {
 				if ename == name {
-					return entry.URL, nil
+					for _, verEntry := range entry {
+						if len(verEntry.URLs) == 0 {
+							// Not totally sure what to do here. Returning an
+							// error is the strictest option. Skipping it might
+							// be preferable.
+							return "", fmt.Errorf("chart %q has no download URL", name)
+						}
+						return verEntry.URLs[0], nil
+					}
 				}
 			}
 		}
@@ -302,8 +307,8 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		return indices, fmt.Errorf("failed to load %s: %s", repoyaml, err)
 	}
 
-	// localName: chartRepo
-	for lname, url := range rf.Repositories {
+	for _, re := range rf.Repositories {
+		lname := re.Name
 		cacheindex := m.HelmHome.CacheIndex(lname)
 		index, err := repo.LoadIndexFile(cacheindex)
 		if err != nil {
@@ -311,7 +316,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		}
 
 		cr := &repo.ChartRepository{
-			URL:       url,
+			URL:       re.URL,
 			IndexFile: index,
 		}
 		indices[lname] = cr

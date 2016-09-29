@@ -19,18 +19,18 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
 type repoRemoveCmd struct {
 	out  io.Writer
 	name string
+	home helmpath.Home
 }
 
 func newRepoRemoveCmd(out io.Writer) *cobra.Command {
@@ -47,6 +47,7 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 			remove.name = args[0]
+			remove.home = helmpath.Home(homePath())
 
 			return remove.run()
 		},
@@ -56,41 +57,35 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 }
 
 func (r *repoRemoveCmd) run() error {
-	return removeRepoLine(r.name)
+	return removeRepoLine(r.out, r.name, r.home)
 }
 
-func removeRepoLine(name string) error {
-	r, err := repo.LoadRepositoriesFile(repositoriesFile())
+func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {
+	repoFile := home.RepositoryFile()
+	r, err := repo.LoadRepositoriesFile(repoFile)
 	if err != nil {
 		return err
 	}
 
-	_, ok := r.Repositories[name]
-	if ok {
-		delete(r.Repositories, name)
-		b, err := yaml.Marshal(&r.Repositories)
-		if err != nil {
-			return err
-		}
-		if err := ioutil.WriteFile(repositoriesFile(), b, 0666); err != nil {
-			return err
-		}
-		if err := removeRepoCache(name); err != nil {
-			return err
-		}
-
-	} else {
-		return fmt.Errorf("The repository, %s, does not exist in your repositories list", name)
+	if !r.Remove(name) {
+		return fmt.Errorf("no repo named %q found", name)
+	}
+	if err := r.WriteFile(repoFile, 0644); err != nil {
+		return err
 	}
 
-	fmt.Println(name + " has been removed from your repositories")
+	if err := removeRepoCache(name, home); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(out, "%q has been removed from your repositories", name)
 
 	return nil
 }
 
-func removeRepoCache(name string) error {
-	if _, err := os.Stat(cacheIndexFile(name)); err == nil {
-		err = os.Remove(cacheIndexFile(name))
+func removeRepoCache(name string, home helmpath.Home) error {
+	if _, err := os.Stat(home.CacheIndex(name)); err == nil {
+		err = os.Remove(home.CacheIndex(name))
 		if err != nil {
 			return err
 		}
