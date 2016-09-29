@@ -101,7 +101,8 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 	}
 
 	i := search.NewIndex()
-	for n := range rf.Repositories {
+	for _, re := range rf.Repositories {
+		n := re.Name
 		f := s.helmhome.CacheIndex(n)
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {

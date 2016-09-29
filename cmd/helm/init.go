@@ -25,7 +25,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/installer"
+	"k8s.io/helm/pkg/repo"
 )
 
 const initDesc = `
@@ -42,6 +44,7 @@ type initCmd struct {
 	image      string
 	clientOnly bool
 	out        io.Writer
+	home       helmpath.Home
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -56,6 +59,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return errors.New("This command does not accept arguments")
 			}
+			i.home = helmpath.Home(homePath())
 			return i.run()
 		},
 	}
@@ -66,7 +70,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 
 // runInit initializes local config and installs tiller to Kubernetes Cluster
 func (i *initCmd) run() error {
-	if err := ensureHome(); err != nil {
+	if err := ensureHome(i.home); err != nil {
 		return err
 	}
 
@@ -101,9 +105,8 @@ func requireHome() error {
 // ensureHome checks to see if $HELM_HOME exists
 //
 // If $HELM_HOME does not exist, this function will create it.
-func ensureHome() error {
-	configDirectories := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
-
+func ensureHome(home helmpath.Home) error {
+	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository()}
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
 			fmt.Printf("Creating %s \n", p)
@@ -115,24 +118,37 @@ func ensureHome() error {
 		}
 	}
 
-	repoFile := repositoriesFile()
+	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Printf("Creating %s \n", repoFile)
-		if _, err := os.Create(repoFile); err != nil {
+		r := repo.NewRepoFile()
+		r.Add(&repo.Entry{
+			Name: defaultRepository,
+			URL:  defaultRepositoryURL,
+		})
+		if err := r.WriteFile(repoFile, 0644); err != nil {
 			return err
 		}
-		if err := addRepository(defaultRepository, defaultRepositoryURL); err != nil {
-			return err
+		cif := home.CacheIndex(defaultRepository)
+		if err := repo.DownloadIndexFile(defaultRepository, defaultRepositoryURL, cif); err != nil {
+			fmt.Printf("WARNING: Failed to download %s: %s (run 'helm update')\n", defaultRepository, err)
 		}
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoFile)
+	}
+	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
+		fmt.Println("Updating repository file format...")
+		if err := r.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
+		fmt.Println("Done")
 	}
 
 	localRepoIndexFile := localRepoDirectory(localRepoIndexFilePath)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
 		fmt.Printf("Creating %s \n", localRepoIndexFile)
-		_, err := os.Create(localRepoIndexFile)
-		if err != nil {
+		i := repo.NewIndexFile()
+		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
 			return err
 		}
 

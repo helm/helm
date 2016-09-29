@@ -22,17 +22,20 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"regexp"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/proto/hapi/version"
+	"k8s.io/helm/pkg/repo"
 )
 
 var mockHookTemplate = `apiVersion: v1
@@ -211,7 +214,7 @@ type releaseCase struct {
 	resp     *release.Release
 }
 
-// tmpHelmHome sets up a Helm Home in a temp dir.
+// tempHelmHome sets up a Helm Home in a temp dir.
 //
 // This does not clean up the directory. You must do that yourself.
 // You  must also set helmHome yourself.
@@ -223,9 +226,59 @@ func tempHelmHome() (string, error) {
 	}
 
 	helmHome = dir
-	if err := ensureHome(); err != nil {
+	if err := ensureTestHome(helmpath.Home(helmHome)); err != nil {
 		return "n/", err
 	}
 	helmHome = oldhome
 	return dir, nil
+}
+
+// ensureTestHome creates a home directory like ensureHome, but without remote references.
+func ensureTestHome(home helmpath.Home) error {
+	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository()}
+	for _, p := range configDirectories {
+		if fi, err := os.Stat(p); err != nil {
+			fmt.Printf("Creating %s \n", p)
+			if err := os.MkdirAll(p, 0755); err != nil {
+				return fmt.Errorf("Could not create %s: %s", p, err)
+			}
+		} else if !fi.IsDir() {
+			return fmt.Errorf("%s must be a directory", p)
+		}
+	}
+
+	repoFile := home.RepositoryFile()
+	if fi, err := os.Stat(repoFile); err != nil {
+		fmt.Printf("Creating %s \n", repoFile)
+		rf := repo.NewRepoFile()
+		if err := rf.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
+	} else if fi.IsDir() {
+		return fmt.Errorf("%s must be a file, not a directory", repoFile)
+	}
+	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
+		fmt.Println("Updating repository file format...")
+		if err := r.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
+		fmt.Println("Done")
+	}
+
+	localRepoIndexFile := home.LocalRepository(localRepoIndexFilePath)
+	if fi, err := os.Stat(localRepoIndexFile); err != nil {
+		fmt.Printf("Creating %s \n", localRepoIndexFile)
+		i := repo.NewIndexFile()
+		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
+			return err
+		}
+
+		//TODO: take this out and replace with helm update functionality
+		os.Symlink(localRepoIndexFile, cacheDirectory("local-index.yaml"))
+	} else if fi.IsDir() {
+		return fmt.Errorf("%s must be a file, not a directory", localRepoIndexFile)
+	}
+
+	fmt.Printf("$HELM_HOME has been configured at %s.\n", helmHome)
+	return nil
 }

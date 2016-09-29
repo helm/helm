@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/repo"
 )
@@ -77,23 +77,20 @@ func TestServer(t *testing.T) {
 		return
 	}
 
-	var m map[string]*repo.ChartRef
-	if err := yaml.Unmarshal(data, &m); err != nil {
+	m := repo.NewIndexFile()
+	if err := yaml.Unmarshal(data, m); err != nil {
 		t.Error(err)
 		return
 	}
 
-	if l := len(m); l != 1 {
+	if l := len(m.Entries); l != 1 {
 		t.Errorf("Expected 1 entry, got %d", l)
 		return
 	}
 
-	expect := "examplechart-0.1.0"
-	if m[expect].Name != "examplechart-0.1.0" {
-		t.Errorf("Unexpected chart: %s", m[expect].Name)
-	}
-	if m[expect].Chartfile.Name != "examplechart" {
-		t.Errorf("Unexpected chart: %s", m[expect].Chartfile.Name)
+	expect := "examplechart"
+	if !m.Has(expect, "0.1.0") {
+		t.Errorf("missing %q", expect)
 	}
 
 	res, err = http.Get(srv.URL() + "/index.yaml-nosuchthing")

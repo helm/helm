@@ -1,1 +1,4 @@
-testing: "http://example.com"
+apiVersion: v1
+repositories:
+  - name: testing
+    url: "http://example.com"

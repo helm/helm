@@ -1,2 +1,6 @@
-charts: http://storage.googleapis.com/kubernetes-charts
-local: http://localhost:8879/charts
+apiVersion: v1
+repositories:
+  - name: charts
+    url: "http://storage.googleapis.com/kubernetes-charts"
+  - name: local
+    url: "http://localhost:8879/charts"

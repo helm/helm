@@ -23,29 +23,33 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
 const serveDesc = `This command starts a local chart repository server that serves charts from a local directory.`
 
 type serveCmd struct {
-	repoPath string
 	out      io.Writer
+	home     helmpath.Home
+	address  string
+	repoPath string
 }
 
 func newServeCmd(out io.Writer) *cobra.Command {
-	s := &serveCmd{
-		out: out,
-	}
+	srv := &serveCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "start a local http web server",
 		Long:  serveDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return s.run()
+			srv.home = helmpath.Home(homePath())
+			return srv.run()
 		},
 	}
-	cmd.Flags().StringVar(&s.repoPath, "repo-path", localRepoDirectory(), "The local directory path from which to serve charts.")
+	cmd.Flags().StringVar(&srv.repoPath, "repo-path", srv.home.LocalRepository(), "The local directory path from which to serve charts.")
+	cmd.Flags().StringVar(&srv.address, "address", ":8879", "The address to listen on.")
+
 	return cmd
 }
 
@@ -58,6 +62,5 @@ func (s *serveCmd) run() error {
 		return err
 	}
 
-	repo.StartLocalRepo(s.repoPath)
-	return nil
+	return repo.StartLocalRepo(repoPath, s.address)
 }

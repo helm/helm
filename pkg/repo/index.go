@@ -17,12 +17,17 @@ limitations under the License.
 package repo
 
 import (
+	"errors"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
-	"gopkg.in/yaml.v2"
+	"github.com/Masterminds/semver"
+	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -31,39 +36,116 @@ import (
 
 var indexPath = "index.yaml"
 
+// APIVersionV1 is the v1 API version for index and repository files.
+const APIVersionV1 = "v1"
+
+// ErrNoAPIVersion indicates that an API version was not specified.
+var ErrNoAPIVersion = errors.New("no API version specified")
+
+// ChartVersions is a list of versioned chart references.
+// Implements a sorter on Version.
+type ChartVersions []*ChartVersion
+
+// Len returns the length.
+func (c ChartVersions) Len() int { return len(c) }
+
+// Swap swaps the position of two items in the versions slice.
+func (c ChartVersions) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+
+// Less returns true if the version of entry a is less than the version of entry b.
+func (c ChartVersions) Less(a, b int) bool {
+	// Failed parse pushes to the back.
+	i, err := semver.NewVersion(c[a].Version)
+	if err != nil {
+		return true
+	}
+	j, err := semver.NewVersion(c[b].Version)
+	if err != nil {
+		return false
+	}
+	return i.LessThan(j)
+}
+
 // IndexFile represents the index file in a chart repository
 type IndexFile struct {
-	Entries map[string]*ChartRef
+	APIVersion string                   `json:"apiVersion"`
+	Generated  time.Time                `json:"generated"`
+	Entries    map[string]ChartVersions `json:"entries"`
+	PublicKeys []string                 `json:"publicKeys,omitempty"`
 }
 
 // NewIndexFile initializes an index.
 func NewIndexFile() *IndexFile {
-	return &IndexFile{Entries: map[string]*ChartRef{}}
+	return &IndexFile{
+		APIVersion: APIVersionV1,
+		Generated:  time.Now(),
+		Entries:    map[string]ChartVersions{},
+		PublicKeys: []string{},
+	}
 }
 
 // Add adds a file to the index
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
-	name := strings.TrimSuffix(filename, ".tgz")
-	cr := &ChartRef{
-		Name:      name,
-		URL:       baseURL + "/" + filename,
-		Chartfile: md,
-		Digest:    digest,
-		Created:   nowString(),
+	cr := &ChartVersion{
+		URLs:     []string{baseURL + "/" + filename},
+		Metadata: md,
+		Digest:   digest,
+		Created:  time.Now(),
 	}
-	i.Entries[name] = cr
+	if ee, ok := i.Entries[md.Name]; !ok {
+		i.Entries[md.Name] = ChartVersions{cr}
+	} else {
+		i.Entries[md.Name] = append(ee, cr)
+	}
+}
+
+// Has returns true if the index has an entry for a chart with the given name and exact version.
+func (i IndexFile) Has(name, version string) bool {
+	vs, ok := i.Entries[name]
+	if !ok {
+		return false
+	}
+	for _, ver := range vs {
+		// TODO: Do we need to normalize the version field with the SemVer lib?
+		if ver.Version == version {
+			return true
+		}
+	}
+	return false
+}
+
+// SortEntries sorts the entries by version in descending order.
+//
+// In canonical form, the individual version records should be sorted so that
+// the most recent release for every version is in the 0th slot in the
+// Entries.ChartVersions array. That way, tooling can predict the newest
+// version without needing to parse SemVers.
+func (i IndexFile) SortEntries() {
+	for _, versions := range i.Entries {
+		sort.Sort(sort.Reverse(versions))
+	}
+}
+
+// WriteFile writes an index file to the given destination path.
+//
+// The mode on the file is set to 'mode'.
+func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
+	b, err := yaml.Marshal(i)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(dest, b, mode)
 }
 
 // Need both JSON and YAML annotations until we get rid of gopkg.in/yaml.v2
 
-// ChartRef represents a chart entry in the IndexFile
-type ChartRef struct {
-	Name      string          `yaml:"name" json:"name"`
-	URL       string          `yaml:"url" json:"url"`
-	Created   string          `yaml:"created,omitempty" json:"created,omitempty"`
-	Removed   bool            `yaml:"removed,omitempty" json:"removed,omitempty"`
-	Digest    string          `yaml:"digest,omitempty" json:"digest,omitempty"`
-	Chartfile *chart.Metadata `yaml:"chartfile" json:"chartfile"`
+// ChartVersion represents a chart entry in the IndexFile
+type ChartVersion struct {
+	*chart.Metadata
+	URLs    []string  `yaml:"url" json:"urls"`
+	Created time.Time `yaml:"created,omitempty" json:"created,omitempty"`
+	Removed bool      `yaml:"removed,omitempty" json:"removed,omitempty"`
+	Digest  string    `yaml:"digest,omitempty" json:"digest,omitempty"`
 }
 
 // IndexDirectory reads a (flat) directory and generates an index.
@@ -104,42 +186,30 @@ func DownloadIndexFile(repoName, url, indexFilePath string) error {
 	}
 	defer resp.Body.Close()
 
-	var r IndexFile
-
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
-	if err := yaml.Unmarshal(b, &r); err != nil {
+	if _, err := LoadIndex(b); err != nil {
 		return err
 	}
 
 	return ioutil.WriteFile(indexFilePath, b, 0644)
 }
 
-// UnmarshalYAML unmarshals the index file
-func (i *IndexFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var refs map[string]*ChartRef
-	if err := unmarshal(&refs); err != nil {
-		return err
+// LoadIndex loads an index file and does minimal validity checking.
+//
+// This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
+func LoadIndex(data []byte) (*IndexFile, error) {
+	i := &IndexFile{}
+	if err := yaml.Unmarshal(data, i); err != nil {
+		return i, err
 	}
-	i.Entries = refs
-	return nil
-}
-
-func (i *IndexFile) addEntry(name string, url string) ([]byte, error) {
-	if i.Entries == nil {
-		i.Entries = make(map[string]*ChartRef)
+	if i.APIVersion == "" {
+		return i, ErrNoAPIVersion
 	}
-	entry := ChartRef{Name: name, URL: url}
-	i.Entries[name] = &entry
-	out, err := yaml.Marshal(&i.Entries)
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+	return i, nil
 }
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
@@ -148,12 +218,5 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	indexfile := NewIndexFile()
-	err = yaml.Unmarshal(b, indexfile)
-	if err != nil {
-		return nil, err
-	}
-
-	return indexfile, nil
+	return LoadIndex(b)
 }

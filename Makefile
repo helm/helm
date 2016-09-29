@@ -62,7 +62,7 @@ test: test-unit
 
 .PHONY: test-unit
 test-unit:
-	$(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+	HELM_HOME=/no/such/dir $(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 
 .PHONY: test-style
 test-style:

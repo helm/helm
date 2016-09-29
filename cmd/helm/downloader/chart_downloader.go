@@ -69,7 +69,7 @@ type ChartDownloader struct {
 // For VerifyNever and VerifyIfPossible, the Verification may be empty.
 func (c *ChartDownloader) DownloadTo(ref string, dest string) (*provenance.Verification, error) {
 	// resolve URL
-	u, err := c.ResolveChartRef(ref)
+	u, err := c.ResolveChartVersion(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -111,10 +111,10 @@ func (c *ChartDownloader) DownloadTo(ref string, dest string) (*provenance.Verif
 	return ver, nil
 }
 
-// ResolveChartRef resolves a chart reference to a URL.
+// ResolveChartVersion resolves a chart reference to a URL.
 //
 // A reference may be an HTTP URL, a 'reponame/chartname' reference, or a local path.
-func (c *ChartDownloader) ResolveChartRef(ref string) (*url.URL, error) {
+func (c *ChartDownloader) ResolveChartVersion(ref string) (*url.URL, error) {
 	// See if it's already a full URL.
 	u, err := url.ParseRequestURI(ref)
 	if err == nil {
@@ -122,7 +122,7 @@ func (c *ChartDownloader) ResolveChartRef(ref string) (*url.URL, error) {
 		if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
 			return u, nil
 		}
-		return u, fmt.Errorf("Invalid chart url format: %s", ref)
+		return u, fmt.Errorf("invalid chart url format: %s", ref)
 	}
 
 	r, err := repo.LoadRepositoriesFile(c.HelmHome.RepositoryFile())
@@ -133,15 +133,29 @@ func (c *ChartDownloader) ResolveChartRef(ref string) (*url.URL, error) {
 	// See if it's of the form: repo/path_to_chart
 	p := strings.Split(ref, "/")
 	if len(p) > 1 {
-		if baseURL, ok := r.Repositories[p[0]]; ok {
-			if !strings.HasSuffix(baseURL, "/") {
-				baseURL = baseURL + "/"
-			}
-			return url.ParseRequestURI(baseURL + strings.Join(p[1:], "/"))
+		rf, err := findRepoEntry(p[0], r.Repositories)
+		if err != nil {
+			return u, err
 		}
-		return u, fmt.Errorf("No such repo: %s", p[0])
+		if rf.URL == "" {
+			return u, fmt.Errorf("no URL found for repository %q", p[0])
+		}
+		baseURL := rf.URL
+		if !strings.HasSuffix(baseURL, "/") {
+			baseURL = baseURL + "/"
+		}
+		return url.ParseRequestURI(baseURL + strings.Join(p[1:], "/"))
 	}
-	return u, fmt.Errorf("Invalid chart url format: %s", ref)
+	return u, fmt.Errorf("invalid chart url format: %s", ref)
+}
+
+func findRepoEntry(name string, repos []*repo.Entry) (*repo.Entry, error) {
+	for _, re := range repos {
+		if re.Name == name {
+			return re, nil
+		}
+	}
+	return nil, fmt.Errorf("no repo named %q", name)
 }
 
 // VerifyChart takes a path to a chart archive and a keyring, and verifies the chart.
