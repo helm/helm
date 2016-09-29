@@ -17,20 +17,20 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
 type repoAddCmd struct {
 	name string
 	url  string
+	home helmpath.Home
 	out  io.Writer
 }
 
@@ -49,6 +49,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 
 			add.name = args[0]
 			add.url = args[1]
+			add.home = helmpath.Home(homePath())
 
 			return add.run()
 		},
@@ -57,38 +58,36 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (a *repoAddCmd) run() error {
-	if err := addRepository(a.name, a.url); err != nil {
+	if err := addRepository(a.name, a.url, a.home); err != nil {
 		return err
 	}
-
-	fmt.Println(a.name + " has been added to your repositories")
+	fmt.Fprintf(a.out, "%q has been added to your repositories\n", a.name)
 	return nil
 }
 
-func addRepository(name, url string) error {
-	if err := repo.DownloadIndexFile(name, url, cacheIndexFile(name)); err != nil {
-		return errors.New("Looks like " + url + " is not a valid chart repository or cannot be reached: " + err.Error())
+func addRepository(name, url string, home helmpath.Home) error {
+	cif := home.CacheIndex(name)
+	if err := repo.DownloadIndexFile(name, url, cif); err != nil {
+		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
 	}
 
-	return insertRepoLine(name, url)
+	return insertRepoLine(name, url, home)
 }
 
-func insertRepoLine(name, url string) error {
-	f, err := repo.LoadRepositoriesFile(repositoriesFile())
+func insertRepoLine(name, url string, home helmpath.Home) error {
+	cif := home.CacheIndex(name)
+	f, err := repo.LoadRepositoriesFile(home.RepositoryFile())
 	if err != nil {
 		return err
 	}
-	_, ok := f.Repositories[name]
-	if ok {
+
+	if f.Has(name) {
 		return fmt.Errorf("The repository name you provided (%s) already exists. Please specify a different name.", name)
 	}
-
-	if f.Repositories == nil {
-		f.Repositories = make(map[string]string)
-	}
-
-	f.Repositories[name] = url
-
-	b, _ := yaml.Marshal(&f.Repositories)
-	return ioutil.WriteFile(repositoriesFile(), b, 0666)
+	f.Add(&repo.Entry{
+		Name:  name,
+		URL:   url,
+		Cache: filepath.Base(cif),
+	})
+	return f.WriteFile(home.RepositoryFile(), 0644)
 }

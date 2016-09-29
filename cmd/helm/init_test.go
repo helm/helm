@@ -17,28 +17,29 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
+	"bytes"
 	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
+
+	"k8s.io/helm/cmd/helm/helmpath"
 )
 
 func TestEnsureHome(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintln(w, "")
-	}))
-	defaultRepositoryURL = ts.URL
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(home)
 
-	home := createTmpHome()
+	b := bytes.NewBuffer(nil)
+	hh := helmpath.Home(home)
 	helmHome = home
-	if err := ensureHome(); err != nil {
-		t.Errorf("%s", err)
+	if err := ensureHome(hh, b); err != nil {
+		t.Error(err)
 	}
 
-	expectedDirs := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
+	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache(), hh.LocalRepository()}
 	for _, dir := range expectedDirs {
 		if fi, err := os.Stat(dir); err != nil {
 			t.Errorf("%s", err)
@@ -47,8 +48,8 @@ func TestEnsureHome(t *testing.T) {
 		}
 	}
 
-	if fi, err := os.Stat(repositoriesFile()); err != nil {
-		t.Errorf("%s", err)
+	if fi, err := os.Stat(hh.RepositoryFile()); err != nil {
+		t.Error(err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
 	}
@@ -58,10 +59,4 @@ func TestEnsureHome(t *testing.T) {
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
 	}
-}
-
-func createTmpHome() string {
-	tmpHome, _ := ioutil.TempDir("", "helm_home")
-	defer os.Remove(tmpHome)
-	return tmpHome
 }

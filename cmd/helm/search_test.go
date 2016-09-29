@@ -34,12 +34,12 @@ func TestSearchCmd(t *testing.T) {
 		{
 			name:   "search for 'maria', expect one match",
 			args:   []string{"maria"},
-			expect: "testing/mariadb-0.3.0",
+			expect: "testing/mariadb",
 		},
 		{
 			name:   "search for 'alpine', expect two matches",
 			args:   []string{"alpine"},
-			expect: "testing/alpine-0.1.0\ntesting/alpine-0.2.0",
+			expect: "testing/alpine",
 		},
 		{
 			name:   "search for 'syzygy', expect no matches",
@@ -50,7 +50,7 @@ func TestSearchCmd(t *testing.T) {
 			name:   "search for 'alp[a-z]+', expect two matches",
 			args:   []string{"alp[a-z]+"},
 			flags:  []string{"--regexp"},
-			expect: "testing/alpine-0.1.0\ntesting/alpine-0.2.0",
+			expect: "testing/alpine",
 			regexp: true,
 		},
 		{

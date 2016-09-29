@@ -18,29 +18,35 @@ package main
 
 import (
 	"bytes"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/repo/repotest"
 )
 
 var testName = "test-name"
 
 func TestRepoAddCmd(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintln(w, "")
-	}))
+	srv := repotest.NewServer("testdata/testserver")
+	defer srv.Stop()
+
+	thome, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldhome := homePath()
+	helmHome = thome
+	defer func() {
+		helmHome = oldhome
+		os.Remove(thome)
+	}()
 
 	tests := []releaseCase{
 		{
 			name:     "add a repository",
-			args:     []string{testName, ts.URL},
+			args:     []string{testName, srv.URL()},
 			expected: testName + " has been added to your repositories",
 		},
 	}
@@ -49,41 +55,32 @@ func TestRepoAddCmd(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 		c := newRepoAddCmd(buf)
 		if err := c.RunE(c, tt.args); err != nil {
-			t.Errorf("%q: expected '%q', got '%q'", tt.name, tt.expected, err)
+			t.Errorf("%q: expected %q, got %q", tt.name, tt.expected, err)
 		}
 	}
 }
 
 func TestRepoAdd(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintln(w, "")
-	}))
+	ts := repotest.NewServer("testdata/testserver")
+	defer ts.Stop()
 
-	helmHome, _ = ioutil.TempDir("", "helm_home")
-	defer os.Remove(helmHome)
-	os.Mkdir(filepath.Join(helmHome, repositoryDir), 0755)
-	os.Mkdir(cacheDirectory(), 0755)
-
-	if err := ioutil.WriteFile(repositoriesFile(), []byte("example-repo: http://exampleurl.com"), 0666); err != nil {
-		t.Errorf("%#v", err)
-	}
-
-	if err := addRepository(testName, ts.URL); err != nil {
-		t.Errorf("%s", err)
-	}
-
-	f, err := repo.LoadRepositoriesFile(repositoriesFile())
+	thome, err := tempHelmHome(t)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Fatal(err)
 	}
-	_, ok := f.Repositories[testName]
-	if !ok {
-		t.Errorf("%s was not successfully inserted into %s", testName, repositoriesFile())
+	defer os.Remove(thome)
+	hh := helmpath.Home(thome)
+
+	if err := addRepository(testName, ts.URL(), hh); err != nil {
+		t.Error(err)
 	}
 
-	if err := insertRepoLine(testName, ts.URL); err == nil {
-		t.Errorf("Duplicate repository name was added")
+	f, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
+	if err != nil {
+		t.Error(err)
 	}
 
+	if !f.Has(testName) {
+		t.Errorf("%s was not successfully inserted into %s", testName, hh.RepositoryFile())
+	}
 }

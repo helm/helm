@@ -101,11 +101,12 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 	}
 
 	i := search.NewIndex()
-	for n := range rf.Repositories {
+	for _, re := range rf.Repositories {
+		n := re.Name
 		f := s.helmhome.CacheIndex(n)
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt. Try 'helm update': %s", f, err)
+			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt or missing. Try 'helm update':\n\t%s\n", f, err)
 			continue
 		}
 
