@@ -27,19 +27,6 @@ message Maintainer {
 	string email = 2;
 }
 
-// Dependency describes this chart's dependency on another chart.
-message Dependency {
-	// Name is the name of the dependency, e.g. 'nginx'
-	string name = 1;
-
-	// Repository is the repository URL. Appending '/index.yaml' to this should
-	// return the repo index.
-	string repository = 2;
-
-	// Version is a SemVer 2 version.
-	string version = 3;
-}
-
 //	Metadata for a Chart file. This models the structure of a Chart.yaml file.
 //
 // 	Spec: https://k8s.io/helm/blob/master/docs/design/chart_format.md#the-chart-file
@@ -74,6 +61,4 @@ message Metadata {
 
 	// The URL to an icon file.
 	string icon = 9;
-
-	repeated Dependency dependencies = 10;
 }
