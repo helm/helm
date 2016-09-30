@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 
@@ -41,6 +42,8 @@ type options struct {
 	reuseName bool
 	// if set, skip running hooks
 	disableHooks bool
+	// name of release
+	releaseName string
 	// release list options are applied directly to the list releases request
 	listReq rls.ListReleasesRequest
 	// release install options are applied directly to the install release request
@@ -55,12 +58,23 @@ type options struct {
 	contentReq rls.GetReleaseContentRequest
 	// release rollback options are applied directly to the rollback release request
 	rollbackReq rls.RollbackReleaseRequest
+	// before intercepts client calls before sending
+	before func(context.Context, proto.Message) error
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
 func Host(host string) Option {
 	return func(opts *options) {
 		opts.host = host
+	}
+}
+
+// BeforeCall returns an option that allows intercepting a helm client rpc
+// before being sent OTA to tiller. The intercepting function should return
+// an error to indicate that the call should not proceed or nil otherwise.
+func BeforeCall(fn func(context.Context, proto.Message) error) Option {
+	return func(opts *options) {
+		opts.before = fn
 	}
 }
 
@@ -258,111 +272,8 @@ type UpdateOption func(*options)
 // running the `helm rollback` command.
 type RollbackOption func(*options)
 
-// RPC helpers defined on `options` type. Note: These actually execute the
-// the corresponding tiller RPC. There is no particular reason why these
-// are APIs are hung off `options`, they are internal to pkg/helm to remain
-// malleable.
-
-// Executes tiller.ListReleases RPC.
-func (o *options) rpcListReleases(rlc rls.ReleaseServiceClient, opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
-	// apply release list options
-	for _, opt := range opts {
-		opt(o)
-	}
-	s, err := rlc.ListReleases(NewContext(), &o.listReq)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.Recv()
-}
-
 // NewContext creates a versioned context.
 func NewContext() context.Context {
 	md := metadata.Pairs("x-helm-api-client", version.Version)
 	return metadata.NewContext(context.TODO(), md)
-}
-
-// Executes tiller.InstallRelease RPC.
-func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
-	// apply the install options
-	for _, opt := range opts {
-		opt(o)
-	}
-	o.instReq.Chart = chr
-	o.instReq.Namespace = ns
-	o.instReq.DryRun = o.dryRun
-	o.instReq.DisableHooks = o.disableHooks
-	o.instReq.ReuseName = o.reuseName
-
-	return rlc.InstallRelease(NewContext(), &o.instReq)
-}
-
-// Executes tiller.UninstallRelease RPC.
-func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
-	for _, opt := range opts {
-		opt(o)
-	}
-	if o.dryRun {
-		// In the dry run case, just see if the release exists
-		r, err := o.rpcGetReleaseContent(rlsName, rlc)
-		if err != nil {
-			return &rls.UninstallReleaseResponse{}, err
-		}
-		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
-	}
-
-	o.uninstallReq.Name = rlsName
-	o.uninstallReq.DisableHooks = o.disableHooks
-
-	return rlc.UninstallRelease(NewContext(), &o.uninstallReq)
-}
-
-// Executes tiller.UpdateRelease RPC.
-func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	for _, opt := range opts {
-		opt(o)
-	}
-
-	o.updateReq.Chart = chr
-	o.updateReq.DryRun = o.dryRun
-	o.updateReq.Name = rlsName
-
-	return rlc.UpdateRelease(NewContext(), &o.updateReq)
-}
-
-// Executes tiller.UpdateRelease RPC.
-func (o *options) rpcRollbackRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
-	for _, opt := range opts {
-		opt(o)
-	}
-
-	o.rollbackReq.DryRun = o.dryRun
-	o.rollbackReq.Name = rlsName
-
-	return rlc.RollbackRelease(NewContext(), &o.rollbackReq)
-}
-
-// Executes tiller.GetReleaseStatus RPC.
-func (o *options) rpcGetReleaseStatus(rlsName string, rlc rls.ReleaseServiceClient, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	for _, opt := range opts {
-		opt(o)
-	}
-	o.statusReq.Name = rlsName
-	return rlc.GetReleaseStatus(NewContext(), &o.statusReq)
-}
-
-// Executes tiller.GetReleaseContent.
-func (o *options) rpcGetReleaseContent(rlsName string, rlc rls.ReleaseServiceClient, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
-	for _, opt := range opts {
-		opt(o)
-	}
-	o.contentReq.Name = rlsName
-	return rlc.GetReleaseContent(NewContext(), &o.contentReq)
-}
-
-// Executes tiller.GetVersion RPC.
-func (o *options) rpcGetVersion(rlc rls.ReleaseServiceClient, opts ...VersionOption) (*rls.GetVersionResponse, error) {
-	req := &rls.GetVersionRequest{}
-	return rlc.GetVersion(NewContext(), req)
 }
