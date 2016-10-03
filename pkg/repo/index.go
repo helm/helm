@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -104,28 +104,27 @@ func DownloadIndexFile(repoName, url, indexFilePath string) error {
 	}
 	defer resp.Body.Close()
 
-	var r IndexFile
-
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
-	if err := yaml.Unmarshal(b, &r); err != nil {
+	if _, err := unmarshalIndexFile(b); err != nil {
 		return err
 	}
 
 	return ioutil.WriteFile(indexFilePath, b, 0644)
 }
 
-// UnmarshalYAML unmarshals the index file
-func (i *IndexFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
+// unmarshaIndexFile unmarshals the index file
+func unmarshalIndexFile(b []byte) (*IndexFile, error) {
+	i := NewIndexFile()
 	var refs map[string]*ChartRef
-	if err := unmarshal(&refs); err != nil {
+	if err := yaml.Unmarshal(b, &refs); err != nil {
 		return err
 	}
 	i.Entries = refs
-	return nil
+	return i
 }
 
 func (i *IndexFile) addEntry(name string, url string) ([]byte, error) {
@@ -149,11 +148,5 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, err
 	}
 
-	indexfile := NewIndexFile()
-	err = yaml.Unmarshal(b, indexfile)
-	if err != nil {
-		return nil, err
-	}
-
-	return indexfile, nil
+	return unmarshalIndexFile(b)
 }
