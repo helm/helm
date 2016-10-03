@@ -117,7 +117,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths
 	buf := new(bytes.Buffer)
-	p := kubectl.NewHumanReadablePrinter(false, false, false, false, false, false, []string{})
+	p := kubectl.NewHumanReadablePrinter(kubectl.PrintOptions{})
 	for t, ot := range objs {
 		_, err = buf.WriteString("==> " + t + "\n")
 		if err != nil {
