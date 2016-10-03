@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 
@@ -25,24 +26,31 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-var serveDesc = `This command starts a local chart repository server that serves charts from a local directory.`
-var repoPath string
+const serveDesc = `This command starts a local chart repository server that serves charts from a local directory.`
 
-func init() {
-	serveCmd.Flags().StringVar(&repoPath, "repo-path", localRepoDirectory(), "The local directory path from which to serve charts.")
-	RootCommand.AddCommand(serveCmd)
+type serveCmd struct {
+	repoPath string
+	out      io.Writer
 }
 
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "start a local http web server",
-	Long:  serveDesc,
-	RunE:  serve,
+func newServeCmd(out io.Writer) *cobra.Command {
+	s := &serveCmd{
+		out: out,
+	}
+	cmd := &cobra.Command{
+		Use:   "serve",
+		Short: "start a local http web server",
+		Long:  serveDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return s.run()
+		},
+	}
+	cmd.Flags().StringVar(&s.repoPath, "repo-path", localRepoDirectory(), "The local directory path from which to serve charts.")
+	return cmd
 }
 
-func serve(cmd *cobra.Command, args []string) error {
-
-	repoPath, err := filepath.Abs(repoPath)
+func (s *serveCmd) run() error {
+	repoPath, err := filepath.Abs(s.repoPath)
 	if err != nil {
 		return err
 	}
@@ -50,6 +58,6 @@ func serve(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	repo.StartLocalRepo(repoPath)
+	repo.StartLocalRepo(s.repoPath)
 	return nil
 }

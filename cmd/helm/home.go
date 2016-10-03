@@ -17,6 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/spf13/cobra"
 )
 
@@ -25,17 +28,14 @@ This command displays the location of HELM_HOME. This is where
 any helm configuration files live.
 `
 
-var homeCommand = &cobra.Command{
-	Use:   "home",
-	Short: "displays the location of HELM_HOME",
-	Long:  longHomeHelp,
-	Run:   home,
-}
-
-func init() {
-	RootCommand.AddCommand(homeCommand)
-}
-
-func home(cmd *cobra.Command, args []string) {
-	cmd.Printf(homePath() + "\n")
+func newHomeCmd(out io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "home",
+		Short: "displays the location of HELM_HOME",
+		Long:  longHomeHelp,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Fprintf(out, homePath()+"\n")
+		},
+	}
+	return cmd
 }
