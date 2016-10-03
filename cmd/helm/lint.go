@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -40,30 +41,37 @@ it will emit [ERROR] messages. If it encounters issues that break with conventio
 or recommendation, it will emit [WARNING] messages.
 `
 
-var lintCommand = &cobra.Command{
-	Use:   "lint [flags] PATH",
-	Short: "examines a chart for possible issues",
-	Long:  longLintHelp,
-	RunE:  lintCmd,
+type lintCmd struct {
+	strict bool
+	paths  []string
+	out    io.Writer
 }
 
-var flagStrict bool
-
-func init() {
-	lintCommand.Flags().BoolVarP(&flagStrict, "strict", "", false, "fail on lint warnings")
-	RootCommand.AddCommand(lintCommand)
+func newLintCmd(out io.Writer) *cobra.Command {
+	l := &lintCmd{
+		paths: []string{"."},
+		out:   out,
+	}
+	cmd := &cobra.Command{
+		Use:   "lint [flags] PATH",
+		Short: "examines a chart for possible issues",
+		Long:  longLintHelp,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				l.paths = args
+			}
+			return l.run()
+		},
+	}
+	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
+	return cmd
 }
 
 var errLintNoChart = errors.New("No chart found for linting (missing Chart.yaml)")
 
-func lintCmd(cmd *cobra.Command, args []string) error {
-	paths := []string{"."}
-	if len(args) > 0 {
-		paths = args
-	}
-
+func (l *lintCmd) run() error {
 	var lowestTolerance int
-	if flagStrict {
+	if l.strict {
 		lowestTolerance = support.WarningSev
 	} else {
 		lowestTolerance = support.ErrorSev
@@ -71,7 +79,7 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 
 	var total int
 	var failures int
-	for _, path := range paths {
+	for _, path := range l.paths {
 		if linter, err := lintChart(path); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
@@ -99,7 +107,7 @@ func lintCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s, %d chart(s) failed", msg, failures)
 	}
 
-	fmt.Printf("%s, no failures\n", msg)
+	fmt.Fprintf(l.out, "%s, no failures\n", msg)
 
 	return nil
 }

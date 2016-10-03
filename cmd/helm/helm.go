@@ -86,31 +86,31 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	cmd.AddCommand(
 		newCreateCmd(out),
 		newDeleteCmd(nil, out),
+		newDependencyCmd(out),
+		newFetchCmd(out),
 		newGetCmd(nil, out),
+		newHomeCmd(out),
 		newInitCmd(out),
 		newInspectCmd(nil, out),
 		newInstallCmd(nil, out),
+		newLintCmd(out),
 		newListCmd(nil, out),
-		newStatusCmd(nil, out),
-		newUpgradeCmd(nil, out),
-		newRollbackCmd(nil, out),
 		newPackageCmd(nil, out),
-		newFetchCmd(out),
-		newVerifyCmd(out),
-		newUpdateCmd(out),
-		newVersionCmd(nil, out),
 		newRepoCmd(out),
-		newDependencyCmd(out),
+		newRollbackCmd(nil, out),
 		newSearchCmd(out),
+		newServeCmd(out),
+		newStatusCmd(nil, out),
+		newUpdateCmd(out),
+		newUpgradeCmd(nil, out),
+		newVerifyCmd(out),
+		newVersionCmd(nil, out),
 	)
 	return cmd
 }
 
-// RootCommand is the top-level command for Helm.
-var RootCommand = newRootCmd(os.Stdout)
-
 func main() {
-	cmd := RootCommand
+	cmd := newRootCmd(os.Stdout)
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
