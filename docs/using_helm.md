@@ -215,7 +215,7 @@ and then pass that file during installation.
 
 ```console
 $ echo 'mariadbUser: user0` > config.yaml
-$ glide install -f config.yaml stable/mariadb
+$ helm install -f config.yaml stable/mariadb
 ```
 
 The above will set the default MariaDB user to `user0`, but accept all
