@@ -34,6 +34,20 @@ brew cask install helm
 (Note: There is also a formula for emacs-helm, which is a different
 project.)
 
+### From Canary Builds
+
+"Canary" builds are versions of the Helm software that are built from
+the latest master branch. They are not official releases, and may not be
+stable. However, they offer the opportunity to test the cutting edge
+features.
+
+Canary Helm binaries are stored in the [Kubernetes Helm GCS bucket](http://storage.googleapis.com/kubernetes-helm).
+Here are links to the common builds:
+
+- [Linux AMD64](http://storage.googleapis.com/kubernetes-helm/helm-canary-linux-amd64.tar.gz)
+- [OSX AMD64](http://storage.googleapis.com/kubernetes-helm/helm-canary-darwin-amd64.tar.gz)
+- [Experimental Windows AMD64](http://storage.googleapis.com/kubernetes-helm/helm-canary-windows-amd64.zip)
+
 ### From Source (Linux, Mac OSX)
 
 Building Helm from source is slightly more work, but is the best way to
@@ -78,6 +92,22 @@ Once Tiller is installed, running `helm version` should show you both
 the client and server version. (If it shows only the client version,
 `helm` cannot yet connect to the server. Use `kubectl` to see if any
 `tiller` pods are running.)
+
+### Installing Tiller Canary Builds
+
+Canary images are built from the `master` branch. They may not be
+stable, but they offer you the chance to test out the latest features.
+
+The easiest way to install a canary image is to use `helm init` with the
+`--tiller-image` flag:
+
+```console
+$ helm init -i "gcr.io/kubernetes-helm/tiller:canary"
+```
+
+This will use the most recently built container image. You can always
+uninstall Tiller by deleting the Tiller deployment from the
+`kube-system` namespace using `kubectl`.
 
 ### Running Tiller Locally
 
