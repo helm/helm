@@ -19,19 +19,34 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/http"
-	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+
+	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/repo/repotest"
 )
 
 func TestUpdateCmd(t *testing.T) {
+
+	thome, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldhome := homePath()
+	helmHome = thome
+	defer func() {
+		helmHome = oldhome
+		os.Remove(thome)
+	}()
+
 	out := bytes.NewBuffer(nil)
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos map[string]string, verbose bool, out io.Writer) {
-		for name := range repos {
-			fmt.Fprintln(out, name)
+	updater := func(repos []*repo.Entry, verbose bool, out io.Writer, home helmpath.Home) {
+		for _, re := range repos {
+			fmt.Fprintln(out, re.Name)
 		}
 	}
 	uc := &repoUpdateCmd{
@@ -46,36 +61,26 @@ func TestUpdateCmd(t *testing.T) {
 	}
 }
 
-const mockRepoIndex = `
-mychart-0.1.0:
-  name: mychart-0.1.0
-  url: localhost:8879/charts/mychart-0.1.0.tgz
-  chartfile:
-    name: ""
-    home: ""
-    sources: []
-    version: ""
-    description: ""
-    keywords: []
-    maintainers: []
-    engine: ""
-    icon: ""
-`
-
 func TestUpdateCharts(t *testing.T) {
-	// This tests the repo in isolation. It creates a mock HTTP server that simply
-	// returns a static YAML file in the anticipate format.
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(mockRepoIndex))
-	})
-	srv := httptest.NewServer(handler)
-	defer srv.Close()
+	srv := repotest.NewServer("testdata/testserver")
+	defer srv.Stop()
+
+	thome, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldhome := homePath()
+	helmHome = thome
+	defer func() {
+		helmHome = oldhome
+		os.Remove(thome)
+	}()
 
 	buf := bytes.NewBuffer(nil)
-	repos := map[string]string{
-		"charts": srv.URL,
+	repos := []*repo.Entry{
+		{Name: "charts", URL: srv.URL()},
 	}
-	updateCharts(repos, false, buf)
+	updateCharts(repos, false, buf, helmpath.Home(thome))
 
 	got := buf.String()
 	if strings.Contains(got, "Unable to get an update") {

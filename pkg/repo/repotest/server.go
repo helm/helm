@@ -82,20 +82,27 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 		copied[i] = newname
 	}
 
+	err = s.CreateIndex()
+	return copied, err
+}
+
+// CreateIndex will read docroot and generate an index.yaml file.
+func (s *Server) CreateIndex() error {
 	// generate the index
 	index, err := repo.IndexDirectory(s.docroot, s.URL())
 	if err != nil {
-		return copied, err
+		return err
 	}
 
-	d, err := yaml.Marshal(index.Entries)
+	d, err := yaml.Marshal(index)
 	if err != nil {
-		return copied, err
+		return err
 	}
+
+	println(string(d))
 
 	ifile := filepath.Join(s.docroot, "index.yaml")
-	err = ioutil.WriteFile(ifile, d, 0755)
-	return copied, err
+	return ioutil.WriteFile(ifile, d, 0755)
 }
 
 func (s *Server) start() {
@@ -119,12 +126,9 @@ func (s *Server) URL() string {
 
 // setTestingRepository sets up a testing repository.yaml with only the given name/URL.
 func setTestingRepository(helmhome, name, url string) error {
-	// Oddly, there is no repo.Save function for this.
-	data, err := yaml.Marshal(&map[string]string{name: url})
-	if err != nil {
-		return err
-	}
+	rf := repo.NewRepoFile()
+	rf.Add(&repo.Entry{Name: name, URL: url})
 	os.MkdirAll(filepath.Join(helmhome, "repository", name), 0755)
 	dest := filepath.Join(helmhome, "repository/repositories.yaml")
-	return ioutil.WriteFile(dest, data, 0666)
+	return rf.WriteFile(dest, 0644)
 }

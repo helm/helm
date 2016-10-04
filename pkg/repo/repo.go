@@ -17,21 +17,23 @@ limitations under the License.
 package repo // import "k8s.io/helm/pkg/repo"
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"io"
+	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/provenance"
 )
+
+// ErrRepoOutOfDate indicates that the repository file is out of date, but
+// is fixable.
+var ErrRepoOutOfDate = errors.New("repository file is out of date")
 
 // ChartRepository represents a chart repository
 type ChartRepository struct {
@@ -41,41 +43,109 @@ type ChartRepository struct {
 	IndexFile  *IndexFile
 }
 
+// Entry represents one repo entry in a repositories listing.
+type Entry struct {
+	Name  string `json:"name"`
+	Cache string `json:"cache"`
+	URL   string `json:"url"`
+}
+
 // RepoFile represents the repositories.yaml file in $HELM_HOME
 type RepoFile struct {
-	Repositories map[string]string
+	APIVersion   string    `json:"apiVersion"`
+	Generated    time.Time `json:"generated"`
+	Repositories []*Entry  `json:"repositories"`
+}
+
+// NewRepoFile generates an empty repositories file.
+//
+// Generated and APIVersion are automatically set.
+func NewRepoFile() *RepoFile {
+	return &RepoFile{
+		APIVersion:   APIVersionV1,
+		Generated:    time.Now(),
+		Repositories: []*Entry{},
+	}
 }
 
 // LoadRepositoriesFile takes a file at the given path and returns a RepoFile object
+//
+// If this returns ErrRepoOutOfDate, it also returns a recovered RepoFile that
+// can be saved as a replacement to the out of date file.
 func LoadRepositoriesFile(path string) (*RepoFile, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var r RepoFile
-	err = yaml.Unmarshal(b, &r)
+	r := &RepoFile{}
+	err = yaml.Unmarshal(b, r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &r, nil
+	// File is either corrupt, or is from before v2.0.0-Alpha.5
+	if r.APIVersion == "" {
+		m := map[string]string{}
+		if err = yaml.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		r := NewRepoFile()
+		for k, v := range m {
+			r.Add(&Entry{
+				Name:  k,
+				URL:   v,
+				Cache: fmt.Sprintf("%s-index.yaml", k),
+			})
+		}
+		return r, ErrRepoOutOfDate
+	}
+
+	return r, nil
 }
 
-// UnmarshalYAML unmarshals the repo file
-func (rf *RepoFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var repos map[string]string
-	if err := unmarshal(&repos); err != nil {
-		if _, ok := err.(*yaml.TypeError); !ok {
-			return err
+// Add adds one or more repo entries to a repo file.
+func (r *RepoFile) Add(re ...*Entry) {
+	r.Repositories = append(r.Repositories, re...)
+}
+
+// Has returns true if the given name is already a repository name.
+func (r *RepoFile) Has(name string) bool {
+	for _, rf := range r.Repositories {
+		if rf.Name == name {
+			return true
 		}
 	}
-	rf.Repositories = repos
-	return nil
+	return false
 }
 
-// LoadChartRepository takes in a path to a local chart repository
-//      which contains packaged charts and an index.yaml file
+// Remove removes the entry from the list of repositories.
+func (r *RepoFile) Remove(name string) bool {
+	cp := []*Entry{}
+	found := false
+	for _, rf := range r.Repositories {
+		if rf.Name == name {
+			found = true
+			continue
+		}
+		cp = append(cp, rf)
+	}
+	r.Repositories = cp
+	return found
+}
+
+// WriteFile writes a repositories file to the given path.
+func (r *RepoFile) WriteFile(path string, perm os.FileMode) error {
+	data, err := yaml.Marshal(r)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, data, perm)
+}
+
+// LoadChartRepository loads a directory of charts as if it were a repository.
+//
+// It requires the presence of an index.yaml file in the directory.
 //
 // This function evaluates the contents of the directory and
 // returns a ChartRepository
@@ -86,14 +156,17 @@ func LoadChartRepository(dir, url string) (*ChartRepository, error) {
 	}
 
 	if !dirInfo.IsDir() {
-		return nil, errors.New(dir + "is not a directory")
+		return nil, fmt.Errorf("%q is not a directory", dir)
 	}
 
 	r := &ChartRepository{RootPath: dir, URL: url}
 
+	// FIXME: Why are we recursively walking directories?
+	// FIXME: Why are we not reading the repositories.yaml to figure out
+	// what repos to use?
 	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
-			if strings.Contains(f.Name(), "index.yaml") {
+			if strings.Contains(f.Name(), "-index.yaml") {
 				i, err := LoadIndexFile(path)
 				if err != nil {
 					return nil
@@ -109,21 +182,18 @@ func LoadChartRepository(dir, url string) (*ChartRepository, error) {
 }
 
 func (r *ChartRepository) saveIndexFile() error {
-	index, err := yaml.Marshal(&r.IndexFile.Entries)
+	index, err := yaml.Marshal(r.IndexFile)
 	if err != nil {
 		return err
 	}
-
 	return ioutil.WriteFile(filepath.Join(r.RootPath, indexPath), index, 0644)
 }
 
-// Index generates an index for the chart repository and writes an index.yaml file
+// Index generates an index for the chart repository and writes an index.yaml file.
 func (r *ChartRepository) Index() error {
 	if r.IndexFile == nil {
-		r.IndexFile = &IndexFile{Entries: make(map[string]*ChartRef)}
+		r.IndexFile = NewIndexFile()
 	}
-
-	existCharts := map[string]bool{}
 
 	for _, path := range r.ChartPaths {
 		ch, err := chartutil.Load(path)
@@ -131,60 +201,16 @@ func (r *ChartRepository) Index() error {
 			return err
 		}
 
-		chartfile := ch.Metadata
-		digest, err := generateDigest(path)
+		digest, err := provenance.DigestFile(path)
 		if err != nil {
 			return err
 		}
 
-		key := chartfile.Name + "-" + chartfile.Version
-		if r.IndexFile.Entries == nil {
-			r.IndexFile.Entries = make(map[string]*ChartRef)
+		if !r.IndexFile.Has(ch.Metadata.Name, ch.Metadata.Version) {
+			r.IndexFile.Add(ch.Metadata, path, r.URL, digest)
 		}
-
-		ref, ok := r.IndexFile.Entries[key]
-		var created string
-		if ok && ref.Created != "" {
-			created = ref.Created
-		} else {
-			created = nowString()
-		}
-
-		url, _ := url.Parse(r.URL)
-		url.Path = filepath.Join(url.Path, key+".tgz")
-
-		entry := &ChartRef{Chartfile: chartfile, Name: chartfile.Name, URL: url.String(), Created: created, Digest: digest, Removed: false}
-
-		r.IndexFile.Entries[key] = entry
-
-		// chart is existing
-		existCharts[key] = true
+		// TODO: If a chart exists, but has a different Digest, should we error?
 	}
-
-	// update deleted charts with Removed = true
-	for k := range r.IndexFile.Entries {
-		if _, ok := existCharts[k]; !ok {
-			r.IndexFile.Entries[k].Removed = true
-		}
-	}
-
+	r.IndexFile.SortEntries()
 	return r.saveIndexFile()
-}
-
-func nowString() string {
-	// FIXME: This is a different date format than we use elsewhere.
-	return time.Now().UTC().String()
-}
-
-func generateDigest(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-
-	h := sha256.New()
-	io.Copy(h, f)
-
-	digest := h.Sum([]byte{})
-	return "sha256:" + hex.EncodeToString(digest[:]), nil
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -37,8 +38,9 @@ future releases.
 
 type repoUpdateCmd struct {
 	repoFile string
-	update   func(map[string]string, bool, io.Writer)
+	update   func([]*repo.Entry, bool, io.Writer, helmpath.Home)
 	out      io.Writer
+	home     helmpath.Home
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -53,6 +55,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Short:   "update information on available charts in the chart repositories",
 		Long:    updateDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			u.home = helmpath.Home(homePath())
 			return u.run()
 		},
 	}
@@ -69,29 +72,29 @@ func (u *repoUpdateCmd) run() error {
 		return errors.New("no repositories found. You must add one before updating")
 	}
 
-	u.update(f.Repositories, flagDebug, u.out)
+	u.update(f.Repositories, flagDebug, u.out, u.home)
 	return nil
 }
 
-func updateCharts(repos map[string]string, verbose bool, out io.Writer) {
+func updateCharts(repos []*repo.Entry, verbose bool, out io.Writer, home helmpath.Home) {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
-	for name, url := range repos {
+	for _, re := range repos {
 		wg.Add(1)
 		go func(n, u string) {
 			defer wg.Done()
-			err := repo.DownloadIndexFile(n, u, cacheIndexFile(n))
+			if n == localRepository {
+				// We skip local because the indices are symlinked.
+				return
+			}
+			err := repo.DownloadIndexFile(n, u, home.CacheIndex(n))
 			if err != nil {
-				updateErr := fmt.Sprintf("...Unable to get an update from the %q chart repository", n)
-				if verbose {
-					updateErr = updateErr + ": " + err.Error()
-				}
-				fmt.Fprintln(out, updateErr)
+				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", n, u, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", n)
 			}
-		}(name, url)
+		}(re.Name, re.URL)
 	}
 	wg.Wait()
-	fmt.Fprintln(out, "Update Complete. Happy Helming!")
+	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming!⎈ ")
 }

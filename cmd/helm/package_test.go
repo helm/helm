@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/cmd/helm/helmpath"
 )
 
 func TestPackage(t *testing.T) {
@@ -58,6 +60,13 @@ func TestPackage(t *testing.T) {
 			err:    true,
 		},
 		{
+			name:    "package testdata/testcharts/alpine, no save",
+			args:    []string{"testdata/testcharts/alpine"},
+			flags:   map[string]string{"save": "0"},
+			expect:  "",
+			hasfile: "alpine-0.1.0.tgz",
+		},
+		{
 			name:    "package testdata/testcharts/alpine",
 			args:    []string{"testdata/testcharts/alpine"},
 			expect:  "",
@@ -87,7 +96,11 @@ func TestPackage(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	ensureTestHome(helmpath.Home(tmp), t)
+	oldhome := homePath()
+	helmHome = tmp
 	defer func() {
+		helmHome = oldhome
 		os.Chdir(origDir)
 		os.RemoveAll(tmp)
 	}()

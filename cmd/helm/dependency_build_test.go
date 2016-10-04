@@ -30,7 +30,7 @@ import (
 
 func TestDependencyBuildCmd(t *testing.T) {
 	oldhome := helmHome
-	hh, err := tempHelmHome()
+	hh, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,8 +108,12 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if h := i.Entries["reqtest-0.1.0"].Digest; h != hash {
+	reqver := i.Entries["reqtest"][0]
+	if h := reqver.Digest; h != hash {
 		t.Errorf("Failed hash match: expected %s, got %s", hash, h)
+	}
+	if v := reqver.Version; v != "0.1.0" {
+		t.Errorf("mismatched versions. Expected %q, got %q", "0.1.0", v)
 	}
 
 }

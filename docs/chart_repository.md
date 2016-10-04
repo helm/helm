@@ -19,26 +19,45 @@ The index file is a yaml file called `index.yaml`. It contains some metadata abo
 
 This is an example of an index file:
 ```
-alpine-0.1.0:
-  name: alpine
-  url: https://storage.googleapis.com/kubernetes-charts/alpine-0.1.0.tgz
-  created: 2016-05-26 11:23:44.086354411 +0000 UTC
-  digest: sha256:78e9a4282295184e8ce1496d23987993673f38e33e203c8bc18bc838a73e5864
-  chartfile:
-    name: alpine
-    description: Deploy a basic Alpine Linux pod
-    version: 0.1.0
-    home: https://github.com/example-charts/alpine
-redis-2.0.0:
-  name: redis
-  url: https://storage.googleapis.com/kubernetes-charts/redis-2.0.0.tgz
-  created: 2016-05-26 11:23:44.087939192 +0000 UTC
-  digest: sha256:bde9c2949e64d059c18d8f93566a64dafc6d2e8e259a70322fb804831dfd0b5b
-  chartfile:
-    name: redis
-    description: Port of the replicatedservice template from kubernetes/charts
-    version: 2.0.0
-    home: https://github.com/example-charts/redis
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz
+      name: nginx
+      description: string
+      version: 0.1.0
+      home: https://github.com/something
+      digest: "sha256:1234567890abcdef"
+      keywords:
+        - popular
+        - web server
+        - proxy
+    - urls:
+        - http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+      keywords:
+        - popular
+        - web server
+        - proxy
+  alpine:
+    - urls:
+        - http://storage.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      version: 1.0.0
+      home: https://github.com/something
+      keywords:
+        - linux
+        - alpine
+        - small
+        - sumtin
+      digest: "sha256:1234567890abcdef"
 ```
 
 We will go through detailed GCS and Github Pages examples here, but feel free to skip to the next section if you've already created a chart repository.
