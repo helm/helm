@@ -129,9 +129,9 @@ fantastic-charts    https://storage.googleapis.com/fantastic-charts
 
 *Note: A repository will not be added if it does not contain a valid index.yaml.*
 
-After that, they'll be able to search through your charts. After you've updated the repository, they can use the `helm update` command to get the latest chart information.
+After that, they'll be able to search through your charts. After you've updated the repository, they can use the `helm repo update` command to get the latest chart information.
 
-*Under the hood, the `helm repo add` and `helm update` commands are fetching the index.yaml file and storing them in the `$HELM_HOME/repository/cache/` directory. This is where the `helm search` function finds information about charts.*
+*Under the hood, the `helm repo add` and `helm repo update` commands are fetching the index.yaml file and storing them in the `$HELM_HOME/repository/cache/` directory. This is where the `helm search` function finds information about charts.*
 
 ## Contributing charts to the official helm chart repository
 *Coming Soon*

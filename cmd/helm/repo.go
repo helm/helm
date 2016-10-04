@@ -36,8 +36,8 @@ type repoCmd struct {
 
 func newRepoCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "repo [FLAGS] add|remove|list|index [ARGS]",
-		Short: "add, list, remove, index chart repositories",
+		Use:   "repo [FLAGS] add|remove|list|index|update [ARGS]",
+		Short: "add, list, remove, update, and index chart repositories",
 		Long:  repoHelm,
 	}
 
@@ -45,6 +45,7 @@ func newRepoCmd(out io.Writer) *cobra.Command {
 	cmd.AddCommand(newRepoListCmd(out))
 	cmd.AddCommand(newRepoRemoveCmd(out))
 	cmd.AddCommand(newRepoIndexCmd(out))
+	cmd.AddCommand(newRepoUpdateCmd(out))
 
 	return cmd
 }
