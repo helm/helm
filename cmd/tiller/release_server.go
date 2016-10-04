@@ -325,6 +325,16 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	return res, nil
 }
 
+// reuseValues copies values from the current release to a new release if the new release does not have any values.
+//
+// If the request already has values, or if there are no values in the current release, this does nothing.
+func (s *releaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
+	if (req.Values == nil || req.Values.Raw == "") && current.Config != nil && current.Config.Raw != "" {
+		log.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
+		req.Values = current.Config
+	}
+}
+
 // prepareUpdate builds an updated release for an update operation.
 func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
 	if req.Name == "" {
@@ -340,6 +350,9 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// If new values were not supplied in the upgrade, re-use the existing values.
+	s.reuseValues(req, currentRelease)
 
 	ts := timeconv.Now()
 	options := chartutil.ReleaseOptions{

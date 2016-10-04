@@ -110,7 +110,7 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 			Status:        &release.Status{Code: status},
 		},
 		Chart:   chartStub(),
-		Config:  &chart.Config{Raw: `name = "value"`},
+		Config:  &chart.Config{Raw: `name: value`},
 		Version: 1,
 		Hooks: []*release.Hook{
 			{
@@ -566,6 +566,12 @@ func TestUpdateRelease(t *testing.T) {
 
 	if len(res.Release.Manifest) == 0 {
 		t.Errorf("No manifest returned: %v", res.Release)
+	}
+
+	if res.Release.Config == nil {
+		t.Errorf("Got release without config: %#v", res.Release)
+	} else if res.Release.Config.Raw != rel.Config.Raw {
+		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Release.Config.Raw)
 	}
 
 	if len(updated.Manifest) == 0 {

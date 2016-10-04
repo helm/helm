@@ -24,7 +24,9 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
-// APIVersionV1 is the API version number for version 1.
+// ApiVersionV1 is the API version number for version 1.
+//
+// This is ApiVersionV1 instead of APIVersionV1 to match the protobuf-generated name.
 const ApiVersionV1 = "v1"
 
 // UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.
