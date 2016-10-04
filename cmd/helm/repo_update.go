@@ -30,16 +30,19 @@ import (
 const updateDesc = `
 Update gets the latest information about charts from the respective chart repositories.
 Information is cached locally, where it is used by commands like 'helm search'.
+
+'helm update' is the deprecated form of 'helm repo update'. It will be removed in
+future releases.
 `
 
-type updateCmd struct {
+type repoUpdateCmd struct {
 	repoFile string
 	update   func(map[string]string, bool, io.Writer)
 	out      io.Writer
 }
 
-func newUpdateCmd(out io.Writer) *cobra.Command {
-	u := &updateCmd{
+func newRepoUpdateCmd(out io.Writer) *cobra.Command {
+	u := &repoUpdateCmd{
 		out:      out,
 		update:   updateCharts,
 		repoFile: repositoriesFile(),
@@ -56,7 +59,7 @@ func newUpdateCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (u *updateCmd) run() error {
+func (u *repoUpdateCmd) run() error {
 	f, err := repo.LoadRepositoriesFile(u.repoFile)
 	if err != nil {
 		return err

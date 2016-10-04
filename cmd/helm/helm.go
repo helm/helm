@@ -83,6 +83,9 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 
+	rup := newRepoUpdateCmd(out)
+	rup.Deprecated = "use 'helm repo update'\n"
+
 	cmd.AddCommand(
 		newCreateCmd(out),
 		newDeleteCmd(nil, out),
@@ -101,10 +104,11 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newSearchCmd(out),
 		newServeCmd(out),
 		newStatusCmd(nil, out),
-		newUpdateCmd(out),
 		newUpgradeCmd(nil, out),
 		newVerifyCmd(out),
 		newVersionCmd(nil, out),
+		// Deprecated
+		rup,
 	)
 	return cmd
 }

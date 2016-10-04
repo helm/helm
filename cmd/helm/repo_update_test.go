@@ -34,7 +34,7 @@ func TestUpdateCmd(t *testing.T) {
 			fmt.Fprintln(out, name)
 		}
 	}
-	uc := &updateCmd{
+	uc := &repoUpdateCmd{
 		out:      out,
 		update:   updater,
 		repoFile: "testdata/repositories.yaml",
