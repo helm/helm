@@ -1,5 +1,5 @@
-hash: a017cec6c2fa7ab82b7a2747d016f2254f6d26c2e24ae48f2d34bb51d85cc0d1
-updated: 2016-09-27T14:51:17.303868688-06:00
+hash: 041486e116f9792e4533a4a67b191ab139d29ea4449d4b6eb6e2d96b620b3cac
+updated: 2016-10-03T20:28:56.472755464-06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -264,7 +264,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
-  version: 89eb6984259918bffe1ddff9647b9ed06061e688
+  version: 8f797f5b23118d8fe846c4296b0ad55044201b14
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -288,6 +288,8 @@ imports:
   - model
 - name: github.com/prometheus/procfs
   version: 454a56f35412459b5e684fd5ec0f9211b94f002a
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/Sirupsen/logrus
   version: 51fe59aca108dc5680109e7b2051cbdcfa5a253c
 - name: github.com/spf13/cobra
