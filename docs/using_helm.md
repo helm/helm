@@ -338,7 +338,7 @@ $ helm repo add dev https://example.com/dev-charts
 ```
 
 Because chart repositories change frequently, at any point you can make
-sure your Helm client is up to date by running `helm update`.
+sure your Helm client is up to date by running `helm repo update`.
 
 ## Creating Your Own Charts
 
