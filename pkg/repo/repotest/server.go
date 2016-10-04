@@ -27,6 +27,30 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
+// NewTempServer creates a server inside of a temp dir.
+//
+// If the passed in string is not "", it will be treated as a shell glob, and files
+// will be copied from that path to the server's docroot.
+//
+// The caller is responsible for destroying the temp directory as well as stopping
+// the server.
+func NewTempServer(glob string) (*Server, string, error) {
+	tdir, err := ioutil.TempDir("", "helm-repotest-")
+	if err != nil {
+		return nil, tdir, err
+	}
+	srv := NewServer(tdir)
+
+	if glob != "" {
+		if _, err := srv.CopyCharts(glob); err != nil {
+			srv.Stop()
+			return srv, tdir, err
+		}
+	}
+
+	return srv, tdir, nil
+}
+
 // NewServer creates a repository server for testing.
 //
 // docroot should be a temp dir managed by the caller.

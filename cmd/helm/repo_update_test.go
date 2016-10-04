@@ -62,19 +62,21 @@ func TestUpdateCmd(t *testing.T) {
 }
 
 func TestUpdateCharts(t *testing.T) {
-	srv := repotest.NewServer("testdata/testserver")
-	defer srv.Stop()
-
-	thome, err := tempHelmHome(t)
+	srv, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	oldhome := homePath()
 	helmHome = thome
 	defer func() {
+		srv.Stop()
 		helmHome = oldhome
 		os.Remove(thome)
 	}()
+	if err := ensureTestHome(helmpath.Home(thome), t); err != nil {
+		t.Fatal(err)
+	}
 
 	buf := bytes.NewBuffer(nil)
 	repos := []*repo.Entry{
