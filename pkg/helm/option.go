@@ -60,6 +60,8 @@ type options struct {
 	rollbackReq rls.RollbackReleaseRequest
 	// before intercepts client calls before sending
 	before func(context.Context, proto.Message) error
+	// release history options are applied directly to the get release history request
+	histReq rls.GetHistoryRequest
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -271,6 +273,18 @@ type UpdateOption func(*options)
 // by the helm client user for overriding the defaults used when
 // running the `helm rollback` command.
 type RollbackOption func(*options)
+
+// HistoryOption allows configuring optional request data for
+// issuing a GetHistory rpc.
+type HistoryOption func(*options)
+
+// WithMaxHistory sets the max number of releases to return
+// in a release history query.
+func WithMaxHistory(max int32) HistoryOption {
+	return func(opts *options) {
+		opts.histReq.Max = max
+	}
+}
 
 // NewContext creates a versioned context.
 func NewContext() context.Context {

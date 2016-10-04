@@ -175,6 +175,10 @@ func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentO
 	return resp, c.err
 }
 
+func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryOption) (*rls.GetHistoryResponse, error) {
+	return &rls.GetHistoryResponse{Releases: c.rels}, c.err
+}
+
 func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {
 	return c
 }
