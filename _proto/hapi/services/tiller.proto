@@ -75,6 +75,9 @@ service ReleaseService {
     rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
     }
 
+    // ReleaseHistory retrieves a releasse's history.
+    rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
+    }
 }
 
 // ListReleasesRequest requests a list of releases.
@@ -261,4 +264,17 @@ message GetVersionRequest {
 
 message GetVersionResponse {
   hapi.version.Version Version = 1;
+}
+
+// GetHistoryRequest requests a release's history.
+message GetHistoryRequest {
+	// The name of the release.
+	string name = 1;
+	// The maximum number of releases to include.
+	int32 max = 2;
+}
+
+// GetHistoryResponse is received in response to a GetHistory rpc.
+message GetHistoryResponse {
+	repeated hapi.release.Release releases = 1;
 }
