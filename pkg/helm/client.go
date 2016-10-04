@@ -17,6 +17,7 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -44,7 +45,8 @@ type Client struct {
 
 // NewClient creates a new client.
 func NewClient(opts ...Option) *Client {
-	return new(Client).Init().Option(opts...)
+	var c Client
+	return c.Option(opts...)
 }
 
 // Option configures the helm client with the provided options
@@ -55,117 +57,271 @@ func (h *Client) Option(opts ...Option) *Client {
 	return h
 }
 
-// Init initializes the helm client with default options
-func (h *Client) Init() *Client {
-	return h
-}
-
 // ListReleases lists the current releases.
 func (h *Client) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+	for _, opt := range opts {
+		opt(&h.opts)
 	}
-	defer c.Close()
+	req := &h.opts.listReq
+	ctx := NewContext()
 
-	return h.opts.rpcListReleases(rls.NewReleaseServiceClient(c), opts...)
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.list(ctx, req)
 }
 
 // InstallRelease installs a new chart and returns the release response.
-func (h *Client) InstallRelease(chStr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
-	chart, err := chartutil.Load(chStr)
+func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+	// load the chart to install
+	chart, err := chartutil.Load(chstr)
 	if err != nil {
 		return nil, err
 	}
 
-	return h.opts.rpcInstallRelease(chart, rls.NewReleaseServiceClient(c), ns, opts...)
+	// apply the install options
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+	req := &h.opts.instReq
+	req.Chart = chart
+	req.Namespace = ns
+	req.DryRun = h.opts.dryRun
+	req.DisableHooks = h.opts.disableHooks
+	req.ReuseName = h.opts.reuseName
+	ctx := NewContext()
+
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.install(ctx, req)
 }
 
 // DeleteRelease uninstalls a named release and returns the response.
-//
-// Note: there aren't currently any supported DeleteOptions, but they are
-// kept in the API signature as a placeholder for future additions.
 func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+	if h.opts.dryRun {
+		// In the dry run case, just see if the release exists
+		r, err := h.ReleaseContent(rlsName, nil)
+		if err != nil {
+			return &rls.UninstallReleaseResponse{}, err
+		}
+		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
 	}
-	defer c.Close()
 
-	return h.opts.rpcDeleteRelease(rlsName, rls.NewReleaseServiceClient(c), opts...)
+	// apply the uninstall options
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+
+	req := &h.opts.uninstallReq
+	req.Name = rlsName
+	req.DisableHooks = h.opts.disableHooks
+	ctx := NewContext()
+
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.delete(ctx, req)
 }
 
 // UpdateRelease updates a release to a new/different chart
-func (h *Client) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
-	chart, err := chartutil.Load(chStr)
+func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	// load the chart to update
+	chart, err := chartutil.Load(chstr)
 	if err != nil {
 		return nil, err
 	}
 
-	return h.opts.rpcUpdateRelease(rlsName, chart, rls.NewReleaseServiceClient(c), opts...)
+	// apply the update options
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+	req := &h.opts.updateReq
+	req.Chart = chart
+	req.DryRun = h.opts.dryRun
+	req.Name = rlsName
+	ctx := NewContext()
+
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.update(ctx, req)
 }
 
 // GetVersion returns the server version
-//
-// Note: there aren't currently any supported StatusOptions,
-// but they are kept in the API signature as a placeholder for future additions.
 func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+	for _, opt := range opts {
+		opt(&h.opts)
 	}
-	defer c.Close()
+	req := &rls.GetVersionRequest{}
+	ctx := NewContext()
 
-	return h.opts.rpcGetVersion(rls.NewReleaseServiceClient(c), opts...)
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.version(ctx, req)
 }
 
 // RollbackRelease rolls back a release to the previous version
 func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+	for _, opt := range opts {
+		opt(&h.opts)
 	}
-	defer c.Close()
+	req := &h.opts.rollbackReq
+	req.DisableHooks = h.opts.disableHooks
+	req.DryRun = h.opts.dryRun
+	req.Name = rlsName
+	ctx := NewContext()
 
-	return h.opts.rpcRollbackRelease(rlsName, rls.NewReleaseServiceClient(c), opts...)
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.rollback(ctx, req)
 }
 
 // ReleaseStatus returns the given release's status.
-//
-// Note: there aren't currently any  supported StatusOptions,
-// but they are kept in the API signature as a placeholder for future additions.
 func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+	for _, opt := range opts {
+		opt(&h.opts)
 	}
-	defer c.Close()
+	req := &h.opts.statusReq
+	req.Name = rlsName
+	ctx := NewContext()
 
-	return h.opts.rpcGetReleaseStatus(rlsName, rls.NewReleaseServiceClient(c), opts...)
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.status(ctx, req)
 }
 
 // ReleaseContent returns the configuration for a given release.
-//
-// Note: there aren't currently any supported ContentOptions, but
-// they are kept in the API signature as a placeholder for future additions.
 func (h *Client) ReleaseContent(rlsName string, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+	req := &h.opts.contentReq
+	req.Name = rlsName
+	ctx := NewContext()
+
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.content(ctx, req)
+}
+
+// Executes tiller.ListReleases RPC.
+func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.ListReleasesResponse, error) {
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer c.Close()
 
-	return h.opts.rpcGetReleaseContent(rlsName, rls.NewReleaseServiceClient(c), opts...)
+	rlc := rls.NewReleaseServiceClient(c)
+	s, err := rlc.ListReleases(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.Recv()
+}
+
+// Executes tiller.InstallRelease RPC.
+func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*rls.InstallReleaseResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.InstallRelease(ctx, req)
+}
+
+// Executes tiller.UninstallRelease RPC.
+func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.UninstallRelease(ctx, req)
+}
+
+// Executes tiller.UpdateRelease RPC.
+func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.UpdateRelease(ctx, req)
+}
+
+// Executes tiller.RollbackRelease RPC.
+func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) (*rls.RollbackReleaseResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.RollbackRelease(ctx, req)
+}
+
+// Executes tiller.GetReleaseStatus RPC.
+func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.GetReleaseStatus(ctx, req)
+}
+
+// Executes tiller.GetReleaseContent RPC.
+func (h *Client) content(ctx context.Context, req *rls.GetReleaseContentRequest) (*rls.GetReleaseContentResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.GetReleaseContent(ctx, req)
+}
+
+// Executes tiller.GetVersion RPC.
+func (h *Client) version(ctx context.Context, req *rls.GetVersionRequest) (*rls.GetVersionResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.GetVersion(ctx, req)
 }
