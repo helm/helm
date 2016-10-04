@@ -341,6 +341,12 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
+	// If new values were not supplied in the upgrade, re-use the existing values.
+	if (req.Values == nil || req.Values.Raw == "") && currentRelease.Config != nil && currentRelease.Config.Raw != "" {
+		log.Printf("Copying values from %s (v%d) to new release.", currentRelease.Name, currentRelease.Version)
+		req.Values = currentRelease.Config
+	}
+
 	ts := timeconv.Now()
 	options := chartutil.ReleaseOptions{
 		Name:      req.Name,
