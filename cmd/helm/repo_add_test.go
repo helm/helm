@@ -29,19 +29,21 @@ import (
 var testName = "test-name"
 
 func TestRepoAddCmd(t *testing.T) {
-	srv := repotest.NewServer("testdata/testserver")
-	defer srv.Stop()
-
-	thome, err := tempHelmHome(t)
+	srv, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	oldhome := homePath()
 	helmHome = thome
 	defer func() {
+		srv.Stop()
 		helmHome = oldhome
 		os.Remove(thome)
 	}()
+	if err := ensureTestHome(helmpath.Home(thome), t); err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []releaseCase{
 		{
@@ -61,15 +63,22 @@ func TestRepoAddCmd(t *testing.T) {
 }
 
 func TestRepoAdd(t *testing.T) {
-	ts := repotest.NewServer("testdata/testserver")
-	defer ts.Stop()
-
-	thome, err := tempHelmHome(t)
+	ts, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(thome)
+
+	oldhome := homePath()
+	helmHome = thome
 	hh := helmpath.Home(thome)
+	defer func() {
+		ts.Stop()
+		helmHome = oldhome
+		os.Remove(thome)
+	}()
+	if err := ensureTestHome(hh, t); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := addRepository(testName, ts.URL(), hh); err != nil {
 		t.Error(err)

@@ -102,3 +102,26 @@ func TestServer(t *testing.T) {
 		t.Errorf("Expected 404, got %d", res.StatusCode)
 	}
 }
+
+func TestNewTempServer(t *testing.T) {
+	srv, tdir, err := NewTempServer("testdata/examplechart-0.1.0.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		srv.Stop()
+		os.RemoveAll(tdir)
+	}()
+
+	if _, err := os.Stat(tdir); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := http.Head(srv.URL() + "/examplechart-0.1.0.tgz")
+	if err != nil {
+		t.Error(err)
+	}
+	if res.StatusCode != 200 {
+		t.Errorf("Expected 200, got %d", res.StatusCode)
+	}
+}
