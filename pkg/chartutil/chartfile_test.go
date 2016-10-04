@@ -39,6 +39,11 @@ func verifyChartfile(t *testing.T, f *chart.Metadata) {
 		t.Fatal("Failed verifyChartfile because f is nil")
 	}
 
+	// Api instead of API because it was generated via protobuf.
+	if f.ApiVersion != ApiVersionV1 {
+		t.Errorf("Expected API Version %q, got %q", ApiVersionV1, f.ApiVersion)
+	}
+
 	if f.Name != "frobnitz" {
 		t.Errorf("Expected frobnitz, got %s", f.Name)
 	}

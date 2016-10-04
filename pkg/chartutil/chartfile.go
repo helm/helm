@@ -24,6 +24,9 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
+// APIVersionV1 is the API version number for version 1.
+const ApiVersionV1 = "v1"
+
 // UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.
 func UnmarshalChartfile(data []byte) (*chart.Metadata, error) {
 	y := &chart.Metadata{}

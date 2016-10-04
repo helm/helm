@@ -1,3 +1,4 @@
+apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
 version: "1.2.3"
