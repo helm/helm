@@ -69,6 +69,8 @@ var (
 	errMissingChart = errors.New("no chart provided")
 	// errMissingRelease indicates that a release (name) was not provided.
 	errMissingRelease = errors.New("no release provided")
+	// errInvalidRevision indicates that an invalid release revision number was provided.
+	errInvalidRevision = errors.New("invalid release revision")
 	// errIncompatibleVersion indicates incompatible client/server versions.
 	errIncompatibleVersion = errors.New("client version is incompatible")
 )
@@ -463,54 +465,58 @@ func (s *releaseServer) performKubeUpdate(currentRelease, targetRelease *release
 // prepareRollback finds the previous release and prepares a new release object with
 //  the previous release's configuration
 func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
-
-	if req.Name == "" {
+	switch {
+	case req.Name == "":
 		return nil, nil, errMissingRelease
+	case req.Version < 0:
+		return nil, nil, errInvalidRevision
 	}
 
 	// finds the non-deleted release with the given name
-	currentRelease, err := s.env.Releases.Deployed(req.Name)
+	h, err := s.env.Releases.History(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	v := req.Version
-	if v == 0 {
-		v = currentRelease.Version - 1
-	}
-	if v < 1 {
-		return nil, nil, errors.New("cannot rollback to version < 1")
+	if len(h) <= 1 {
+		return nil, nil, errors.New("no revision to rollback")
 	}
 
-	log.Printf("rolling back %s to version %d", req.Name, v)
+	sort.Sort(sort.Reverse(byRev(h)))
+	crls := h[0]
 
-	previousRelease, err := s.env.Releases.Get(req.Name, v)
+	rbv := req.Version
+	if req.Version == 0 {
+		rbv = crls.Version - 1
+	}
+
+	log.Printf("rolling back %s (current: v%d, target: v%d)", req.Name, crls.Version, rbv)
+
+	prls, err := s.env.Releases.Get(req.Name, rbv)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	ts := timeconv.Now()
 
 	// Store a new release object with previous release's configuration
-	targetRelease := &release.Release{
+	// Store a new release object with previous release's configuration
+	target := &release.Release{
 		Name:      req.Name,
-		Namespace: currentRelease.Namespace,
-		Chart:     previousRelease.Chart,
-		Config:    previousRelease.Config,
+		Namespace: crls.Namespace,
+		Chart:     prls.Chart,
+		Config:    prls.Config,
 		Info: &release.Info{
-			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  ts,
+			FirstDeployed: crls.Info.FirstDeployed,
+			LastDeployed:  timeconv.Now(),
 			Status: &release.Status{
 				Code:  release.Status_UNKNOWN,
-				Notes: previousRelease.Info.Status.Notes,
+				Notes: prls.Info.Status.Notes,
 			},
 		},
-		Version:  currentRelease.Version + 1,
-		Manifest: previousRelease.Manifest,
-		Hooks:    previousRelease.Hooks,
+		Version:  crls.Version + 1,
+		Manifest: prls.Manifest,
+		Hooks:    prls.Hooks,
 	}
 
-	return currentRelease, targetRelease, nil
+	return crls, target, nil
 }
 
 func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
