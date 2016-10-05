@@ -33,7 +33,9 @@ const upgradeDesc = `
 This command upgrades a release to a new version of a chart.
 
 The upgrade arguments must be a release and a chart. The chart
-argument can be a relative path to a packaged or unpackaged chart.
+argument can a chart reference ('stable/mariadb'), a path to a chart directory
+or packaged chart, or a fully qualified URL. For chart references, the latest
+version will be specified unless the '--version' flag is set.
 
 To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line.
@@ -52,6 +54,7 @@ type upgradeCmd struct {
 	keyring      string
 	install      bool
 	namespace    string
+	version      string
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -89,12 +92,13 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "the path to the keyring that contains public singing keys")
 	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.StringVar(&upgrade.namespace, "namespace", "default", "the namespace to install the release into (only used if --install is set)")
+	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used.")
 
 	return cmd
 }
 
 func (u *upgradeCmd) run() error {
-	chartPath, err := locateChartPath(u.chart, u.verify, u.keyring)
+	chartPath, err := locateChartPath(u.chart, u.version, u.verify, u.keyring)
 	if err != nil {
 		return err
 	}

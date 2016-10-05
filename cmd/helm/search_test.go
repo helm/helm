@@ -50,7 +50,7 @@ func TestSearchCmd(t *testing.T) {
 		{
 			name:   "search for 'syzygy', expect no matches",
 			args:   []string{"syzygy"},
-			expect: "NAME\tVERSION\tDESCRIPTION",
+			expect: "No results found",
 		},
 		{
 			name:   "search for 'alp[a-z]+', expect two matches",

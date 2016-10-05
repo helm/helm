@@ -49,6 +49,7 @@ type fetchCmd struct {
 	untardir string
 	chartRef string
 	destdir  string
+	version  string
 
 	verify  bool
 	keyring string
@@ -81,6 +82,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&fch.untar, "untar", false, "If set to true, will untar the chart after downloading it.")
 	f.StringVar(&fch.untardir, "untardir", ".", "If untar is specified, this flag specifies the name of the directory into which the chart is expanded.")
 	f.BoolVar(&fch.verify, "verify", false, "Verify the package against its signature.")
+	f.StringVar(&fch.version, "version", "", "The specific version of a chart. Without this, the latest version is fetched.")
 	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "The keyring containing public keys.")
 	f.StringVarP(&fch.destdir, "destination", "d", ".", "The location to write the chart. If this and tardir are specified, tardir is appended to this.")
 
@@ -89,10 +91,6 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 
 func (f *fetchCmd) run() error {
 	pname := f.chartRef
-	if filepath.Ext(pname) != ".tgz" {
-		pname += ".tgz"
-	}
-
 	c := downloader.ChartDownloader{
 		HelmHome: helmpath.Home(homePath()),
 		Out:      f.out,
@@ -116,7 +114,7 @@ func (f *fetchCmd) run() error {
 		defer os.RemoveAll(dest)
 	}
 
-	v, err := c.DownloadTo(pname, dest)
+	saved, v, err := c.DownloadTo(pname, f.version, dest)
 	if err != nil {
 		return err
 	}
@@ -140,8 +138,7 @@ func (f *fetchCmd) run() error {
 			return fmt.Errorf("Failed to untar: %s is not a directory", ud)
 		}
 
-		from := filepath.Join(dest, filepath.Base(pname))
-		return chartutil.ExpandFile(ud, from)
+		return chartutil.ExpandFile(ud, saved)
 	}
 	return nil
 }

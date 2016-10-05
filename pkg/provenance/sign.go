@@ -60,6 +60,8 @@ type Verification struct {
 	SignedBy *openpgp.Entity
 	// FileHash is the hash, prepended with the scheme, for the file that was verified.
 	FileHash string
+	// FileName is the name of the file that FileHash verifies.
+	FileName string
 }
 
 // Signatory signs things.
@@ -221,6 +223,7 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
 	}
 	ver.FileHash = sum
+	ver.FileName = basename
 
 	// TODO: when image signing is added, verify that here.
 

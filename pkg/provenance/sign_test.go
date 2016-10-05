@@ -18,6 +18,7 @@ package provenance
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -246,6 +247,8 @@ func TestVerify(t *testing.T) {
 		t.Error("Verification is missing hash.")
 	} else if ver.SignedBy == nil {
 		t.Error("No SignedBy field")
+	} else if ver.FileName != filepath.Base(testChartfile) {
+		t.Errorf("FileName is unexpectedly %q", ver.FileName)
 	}
 
 	if _, err = signer.Verify(testChartfile, testTamperedSigBlock); err == nil {

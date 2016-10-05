@@ -138,7 +138,10 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	if !ok {
 		return nil, ErrNoChartName
 	}
-	if version == "" && len(vs) > 0 {
+	if len(vs) == 0 {
+		return nil, ErrNoChartVersion
+	}
+	if len(version) == 0 {
 		return vs[0], nil
 	}
 	for _, ver := range vs {
@@ -147,7 +150,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 			return ver, nil
 		}
 	}
-	return nil, ErrNoChartVersion
+	return nil, fmt.Errorf("No chart version found for %s-%s", name, version)
 }
 
 // WriteFile writes an index file to the given destination path.
