@@ -43,7 +43,7 @@ is responsible for the following domains:
 Helm client, and interfaces with the Kubernetes API server. The server
 is responsible for the following:
 
-- Listing for incomming requests from the Helm client
+- Listening for incoming requests from the Helm client
 - Combining a chart and configuration to build a release
 - Installing charts into Kubernetes, and then tracking the subsequent
   release
