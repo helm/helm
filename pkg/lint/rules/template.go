@@ -27,7 +27,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/lint/support"
