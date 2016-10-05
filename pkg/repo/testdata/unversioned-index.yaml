@@ -1,0 +1,64 @@
+memcached-0.1.0:
+  name: memcached
+  url: https://mumoshu.github.io/charts/memcached-0.1.0.tgz
+  created: 2016-08-04 02:05:02.259205055 +0000 UTC
+  checksum: ce9b76576c4b4eb74286fa30a978c56d69e7a522
+  chartfile:
+    name: memcached
+    home: http://https://hub.docker.com/_/memcached/
+    sources: []
+    version: 0.1.0
+    description: A simple Memcached cluster
+    keywords: []
+    maintainers:
+    - name: Matt Butcher
+      email: mbutcher@deis.com
+    engine: ""
+mysql-0.2.0:
+  name: mysql
+  url: https://mumoshu.github.io/charts/mysql-0.2.0.tgz
+  created: 2016-08-04 00:42:47.517342022 +0000 UTC
+  checksum: aa5edd2904d639b0b6295f1c7cf4c0a8e4f77dd3
+  chartfile:
+    name: mysql
+    home: https://www.mysql.com/
+    sources: []
+    version: 0.2.0
+    description: Chart running MySQL.
+    keywords: []
+    maintainers:
+    - name: Matt Fisher
+      email: mfisher@deis.com
+    engine: ""
+mysql-0.2.1:
+  name: mysql
+  url: https://mumoshu.github.io/charts/mysql-0.2.1.tgz
+  created: 2016-08-04 02:40:29.717829534 +0000 UTC
+  checksum: 9d9f056171beefaaa04db75680319ca4edb6336a
+  chartfile:
+    name: mysql
+    home: https://www.mysql.com/
+    sources: []
+    version: 0.2.1
+    description: Chart running MySQL.
+    keywords: []
+    maintainers:
+    - name: Matt Fisher
+      email: mfisher@deis.com
+    engine: ""
+mysql-0.2.2:
+  name: mysql
+  url: https://mumoshu.github.io/charts/mysql-0.2.2.tgz
+  created: 2016-08-04 02:40:29.71841952 +0000 UTC
+  checksum: 6d6810e76a5987943faf0040ec22990d9fb141c7
+  chartfile:
+    name: mysql
+    home: https://www.mysql.com/
+    sources: []
+    version: 0.2.2
+    description: Chart running MySQL.
+    keywords: []
+    maintainers:
+    - name: Matt Fisher
+      email: mfisher@deis.com
+    engine: ""

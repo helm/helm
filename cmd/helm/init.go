@@ -138,7 +138,7 @@ func ensureHome(home helmpath.Home, out io.Writer) error {
 		}
 		cif := home.CacheIndex(stableRepository)
 		if err := repo.DownloadIndexFile(stableRepository, stableRepositoryURL, cif); err != nil {
-			fmt.Fprintf(out, "WARNING: Failed to download %s: %s (run 'helm update')\n", stableRepository, err)
+			fmt.Fprintf(out, "WARNING: Failed to download %s: %s (run 'helm repo update')\n", stableRepository, err)
 		}
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoFile)
