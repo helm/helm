@@ -34,23 +34,23 @@ func TestSearchCmd(t *testing.T) {
 		{
 			name:   "search for 'maria', expect one match",
 			args:   []string{"maria"},
-			expect: "testing/mariadb",
+			expect: "NAME           \tVERSION\tDESCRIPTION      \ntesting/mariadb\t0.3.0  \tChart for MariaDB",
 		},
 		{
 			name:   "search for 'alpine', expect two matches",
 			args:   []string{"alpine"},
-			expect: "testing/alpine",
+			expect: "NAME          \tVERSION\tDESCRIPTION                    \ntesting/alpine\t0.1.0  \tDeploy a basic Alpine Linux pod",
 		},
 		{
 			name:   "search for 'syzygy', expect no matches",
 			args:   []string{"syzygy"},
-			expect: "",
+			expect: "NAME\tVERSION\tDESCRIPTION",
 		},
 		{
 			name:   "search for 'alp[a-z]+', expect two matches",
 			args:   []string{"alp[a-z]+"},
 			flags:  []string{"--regexp"},
-			expect: "testing/alpine",
+			expect: "NAME          \tVERSION\tDESCRIPTION                    \ntesting/alpine\t0.1.0  \tDeploy a basic Alpine Linux pod",
 			regexp: true,
 		},
 		{

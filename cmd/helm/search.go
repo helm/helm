@@ -21,6 +21,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/helmpath"
@@ -71,6 +72,7 @@ func (s *searchCmd) run(args []string) error {
 
 	if len(args) == 0 {
 		s.showAllCharts(index)
+		return nil
 	}
 
 	q := strings.Join(args, " ")
@@ -80,17 +82,34 @@ func (s *searchCmd) run(args []string) error {
 	}
 	search.SortScore(res)
 
-	for _, r := range res {
-		fmt.Fprintln(s.out, r.Name)
-	}
+	fmt.Fprintln(s.out, s.formatSearchResults(res))
 
 	return nil
 }
 
 func (s *searchCmd) showAllCharts(i *search.Index) {
-	for name := range i.Entries() {
-		fmt.Fprintln(s.out, name)
+	e := i.Entries()
+	res := make([]*search.Result, len(e))
+	j := 0
+	for name, ch := range e {
+		res[j] = &search.Result{
+			Name:  name,
+			Chart: ch,
+		}
+		j++
 	}
+	search.SortScore(res)
+	fmt.Fprintln(s.out, s.formatSearchResults(res))
+}
+
+func (s *searchCmd) formatSearchResults(res []*search.Result) string {
+	table := uitable.New()
+	table.MaxColWidth = 50
+	table.AddRow("NAME", "VERSION", "DESCRIPTION")
+	for _, r := range res {
+		table.AddRow(r.Name, r.Chart.Version, r.Chart.Description)
+	}
+	return table.String()
 }
 
 func (s *searchCmd) buildIndex() (*search.Index, error) {
