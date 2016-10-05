@@ -39,6 +39,7 @@ import (
 type Result struct {
 	Name  string
 	Score int
+	Chart *repo.ChartVersion
 }
 
 // Index is a searchable index of chart information.
@@ -117,7 +118,7 @@ func (i *Index) SearchLiteral(term string, threshold int) []*Result {
 	for k, v := range i.lines {
 		res := strings.Index(v, term)
 		if score := i.calcScore(res, v); res != -1 && score < threshold {
-			buf = append(buf, &Result{Name: k, Score: score})
+			buf = append(buf, &Result{Name: k, Score: score, Chart: i.charts[k]})
 		}
 	}
 	return buf
@@ -136,7 +137,7 @@ func (i *Index) SearchRegexp(re string, threshold int) ([]*Result, error) {
 			continue
 		}
 		if score := i.calcScore(ind[0], v); ind[0] >= 0 && score < threshold {
-			buf = append(buf, &Result{Name: k, Score: score})
+			buf = append(buf, &Result{Name: k, Score: score, Chart: i.charts[k]})
 		}
 	}
 	return buf, nil
