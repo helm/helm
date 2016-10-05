@@ -17,7 +17,9 @@ limitations under the License.
 package repo
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -39,8 +41,14 @@ var indexPath = "index.yaml"
 // APIVersionV1 is the v1 API version for index and repository files.
 const APIVersionV1 = "v1"
 
-// ErrNoAPIVersion indicates that an API version was not specified.
-var ErrNoAPIVersion = errors.New("no API version specified")
+var (
+	// ErrNoAPIVersion indicates that an API version was not specified.
+	ErrNoAPIVersion = errors.New("no API version specified")
+	// ErrNoChartVersion indicates that a chart with the given version is not found.
+	ErrNoChartVersion = errors.New("no chart version found")
+	// ErrNoChartName indicates that a chart with the given name is not found.
+	ErrNoChartName = errors.New("no chart name found")
+)
 
 // ChartVersions is a list of versioned chart references.
 // Implements a sorter on Version.
@@ -86,8 +94,12 @@ func NewIndexFile() *IndexFile {
 
 // Add adds a file to the index
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
+	u := filename
+	if baseURL != "" {
+		u = baseURL + "/" + filename
+	}
 	cr := &ChartVersion{
-		URLs:     []string{baseURL + "/" + filename},
+		URLs:     []string{u},
 		Metadata: md,
 		Digest:   digest,
 		Created:  time.Now(),
@@ -101,17 +113,8 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 
 // Has returns true if the index has an entry for a chart with the given name and exact version.
 func (i IndexFile) Has(name, version string) bool {
-	vs, ok := i.Entries[name]
-	if !ok {
-		return false
-	}
-	for _, ver := range vs {
-		// TODO: Do we need to normalize the version field with the SemVer lib?
-		if ver.Version == version {
-			return true
-		}
-	}
-	return false
+	_, err := i.Get(name, version)
+	return err == nil
 }
 
 // SortEntries sorts the entries by version in descending order.
@@ -124,6 +127,26 @@ func (i IndexFile) SortEntries() {
 	for _, versions := range i.Entries {
 		sort.Sort(sort.Reverse(versions))
 	}
+}
+
+// Get returns the ChartVersion for the given name.
+//
+// If version is empty, this will return the chart with the highest version.
+func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
+	vs, ok := i.Entries[name]
+	if !ok {
+		return nil, ErrNoChartName
+	}
+	if version == "" && len(vs) > 0 {
+		return vs[0], nil
+	}
+	for _, ver := range vs {
+		// TODO: Do we need to normalize the version field with the SemVer lib?
+		if ver.Version == version {
+			return ver, nil
+		}
+	}
+	return nil, ErrNoChartVersion
 }
 
 // WriteFile writes an index file to the given destination path.
@@ -207,9 +230,57 @@ func LoadIndex(data []byte) (*IndexFile, error) {
 		return i, err
 	}
 	if i.APIVersion == "" {
-		return i, ErrNoAPIVersion
+		// When we leave Beta, we should remove legacy support and just
+		// return this error:
+		//return i, ErrNoAPIVersion
+		return loadUnversionedIndex(data)
 	}
 	return i, nil
+}
+
+// unversionedEntry represents a deprecated pre-Alpha.5 format.
+//
+// This will be removed prior to v2.0.0
+type unversionedEntry struct {
+	Checksum  string          `json:"checksum"`
+	URL       string          `json:"url"`
+	Chartfile *chart.Metadata `json:"chartfile"`
+}
+
+// loadUnversionedIndex loads a pre-Alpha.5 index.yaml file.
+//
+// This format is deprecated. This function will be removed prior to v2.0.0.
+func loadUnversionedIndex(data []byte) (*IndexFile, error) {
+	fmt.Fprintln(os.Stderr, "WARNING: Deprecated index file format. Try 'helm repo update'")
+	i := map[string]unversionedEntry{}
+
+	// This gets around an error in the YAML parser. Instead of parsing as YAML,
+	// we convert to JSON, and then decode again.
+	var err error
+	data, err = yaml.YAMLToJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(data, &i); err != nil {
+		return nil, err
+	}
+
+	if len(i) == 0 {
+		return nil, ErrNoAPIVersion
+	}
+	ni := NewIndexFile()
+	for n, item := range i {
+		if item.Chartfile == nil || item.Chartfile.Name == "" {
+			parts := strings.Split(n, "-")
+			ver := ""
+			if len(parts) > 1 {
+				ver = strings.TrimSuffix(parts[1], ".tgz")
+			}
+			item.Chartfile = &chart.Metadata{Name: parts[0], Version: ver}
+		}
+		ni.Add(item.Chartfile, item.URL, "", item.Checksum)
+	}
+	return ni, nil
 }
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object

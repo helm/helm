@@ -250,3 +250,23 @@ func TestIndexDirectory(t *testing.T) {
 		t.Errorf("Expected frobnitz, got %q", frob.Name)
 	}
 }
+
+func TestLoadUnversionedIndex(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/unversioned-index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ind, err := loadUnversionedIndex(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l := len(ind.Entries); l != 2 {
+		t.Fatalf("Expected 2 entries, got %d", l)
+	}
+
+	if l := len(ind.Entries["mysql"]); l != 3 {
+		t.Fatalf("Expected 3 mysql versions, got %d", l)
+	}
+}
