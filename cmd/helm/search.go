@@ -97,6 +97,9 @@ func (s *searchCmd) showAllCharts(i *search.Index) {
 }
 
 func (s *searchCmd) formatSearchResults(res []*search.Result) string {
+	if len(res) == 0 {
+		return "No results found"
+	}
 	table := uitable.New()
 	table.MaxColWidth = 50
 	table.AddRow("NAME", "VERSION", "DESCRIPTION")
@@ -119,7 +122,7 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 		f := s.helmhome.CacheIndex(n)
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update':\n\t%s\n", f, err)
+			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			continue
 		}
 

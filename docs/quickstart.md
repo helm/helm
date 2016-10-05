@@ -7,6 +7,11 @@ This guide covers how you can quickly get started using Helm.
 - You must have Kubernetes installed, and have a local configured copy
   of `kubectl`.
 
+Helm will figure out where to install Tiller by reading your Kubernetes
+configuration file (usually `$HOME/.kube/config`). This is the same file
+that `kubectl` uses, so to find out which cluster Tiller would install
+to, you can run `kubectl cluster-info`.
+
 ## Install Helm
 
 Download a binary release of the Helm client from 
@@ -27,20 +32,19 @@ $ helm init
 
 ## Install an Example Chart
 
-To install a chart, you can run the `helm install` command. 
-Let's use an example chart from this repository. 
+To install a chart, you can run the `helm install` command.
+Let's use an example chart from this repository.
 Make sure you are in the root directory of this repo.
 
 
 ```console
-$ helm install docs/examples/alpine
+$ helm install stable/mysql
 Released smiling-penguin
 ```
 
-In the example above, the `alpine` chart was released, and the name of
-our new release is `smiling-penguin`. You can view the details of the chart we just 
-installed by taking a look at the nginx chart in 
-[docs/examples/alpine/Chart.yaml](examples/alpine/Chart.yaml).
+In the example above, the `stable/mysql` chart was released, and the name of
+our new release is `smiling-penguin`. You get a simple idea of this
+MySQL chart by running `helm inspect stable/mysql`.
 
 ## Change a Default Chart Value
 
@@ -48,7 +52,7 @@ A nice feature of helm is the ability to change certain values of the package fo
 Let's install the `nginx` example from this repository but change the `replicaCount` to 7.
 
 ```console
-$ helm install --set replicaCount=7 docs/examples/nginx
+$ helm install --set replicaCount=7 ./docs/examples/nginx
 happy-panda
 ```
 
@@ -64,6 +68,9 @@ To find out about our release, run `helm status`:
 $ helm status smiling-penguin
 Status: DEPLOYED
 ```
+
+The `status` command will display information about a release in your
+cluster.
 
 ## Uninstall a Release
 

@@ -123,8 +123,6 @@ func (s *Server) CreateIndex() error {
 		return err
 	}
 
-	println(string(d))
-
 	ifile := filepath.Join(s.docroot, "index.yaml")
 	return ioutil.WriteFile(ifile, d, 0755)
 }
@@ -148,11 +146,23 @@ func (s *Server) URL() string {
 	return s.srv.URL
 }
 
+// LinkIndices links the index created with CreateIndex and makes a symboic link to the repositories/cache directory.
+//
+// This makes it possible to simulate a local cache of a repository.
+func (s *Server) LinkIndices() error {
+	destfile := "test-index.yaml"
+	// Link the index.yaml file to the
+	lstart := filepath.Join(s.docroot, "index.yaml")
+	ldest := filepath.Join(s.docroot, "repository/cache", destfile)
+	return os.Symlink(lstart, ldest)
+}
+
 // setTestingRepository sets up a testing repository.yaml with only the given name/URL.
 func setTestingRepository(helmhome, name, url string) error {
 	rf := repo.NewRepoFile()
 	rf.Add(&repo.Entry{Name: name, URL: url})
 	os.MkdirAll(filepath.Join(helmhome, "repository", name), 0755)
 	dest := filepath.Join(helmhome, "repository/repositories.yaml")
+
 	return rf.WriteFile(dest, 0644)
 }

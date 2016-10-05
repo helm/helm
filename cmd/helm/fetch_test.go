@@ -49,38 +49,51 @@ func TestFetchCmd(t *testing.T) {
 	}{
 		{
 			name:       "Basic chart fetch",
-			chart:      "test/signtest-0.1.0",
+			chart:      "test/signtest",
 			expectFile: "./signtest-0.1.0.tgz",
 		},
 		{
+			name:       "Chart fetch with version",
+			chart:      "test/signtest",
+			flags:      []string{"--version", "0.1.0"},
+			expectFile: "./signtest-0.1.0.tgz",
+		},
+		{
+			name:       "Fail chart fetch with non-existent version",
+			chart:      "test/signtest",
+			flags:      []string{"--version", "99.1.0"},
+			fail:       true,
+			failExpect: "no such chart",
+		},
+		{
 			name:       "Fail fetching non-existent chart",
-			chart:      "test/nosuchthing-0.1.0",
+			chart:      "test/nosuchthing",
 			failExpect: "Failed to fetch",
 			fail:       true,
 		},
 		{
 			name:       "Fetch and verify",
-			chart:      "test/signtest-0.1.0",
+			chart:      "test/signtest",
 			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub"},
 			expectFile: "./signtest-0.1.0.tgz",
 		},
 		{
 			name:       "Fetch and fail verify",
-			chart:      "test/reqtest-0.1.0",
+			chart:      "test/reqtest",
 			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub"},
 			failExpect: "Failed to fetch provenance",
 			fail:       true,
 		},
 		{
 			name:       "Fetch and untar",
-			chart:      "test/signtest-0.1.0",
+			chart:      "test/signtest",
 			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub", "--untar", "--untardir", "signtest"},
 			expectFile: "./signtest",
 			expectDir:  true,
 		},
 		{
 			name:       "Fetch, verify, untar",
-			chart:      "test/signtest-0.1.0",
+			chart:      "test/signtest",
 			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub", "--untar", "--untardir", "signtest"},
 			expectFile: "./signtest",
 			expectDir:  true,
@@ -93,8 +106,9 @@ func TestFetchCmd(t *testing.T) {
 	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz*"); err != nil {
 		t.Fatal(err)
 	}
-
-	t.Logf("HELM_HOME=%s", homePath())
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
 
 	for _, tt := range tests {
 		outdir := filepath.Join(hh, "testout")

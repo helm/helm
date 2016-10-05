@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -67,21 +68,24 @@ type ChartDownloader struct {
 // If Verify is set to VerifyAlways, this will return a verification or an error if the verification fails.
 //
 // For VerifyNever and VerifyIfPossible, the Verification may be empty.
-func (c *ChartDownloader) DownloadTo(ref string, dest string) (*provenance.Verification, error) {
+//
+// Returns a string path to the location where the file was downloaded and a verification
+// (if provenance was verified), or an error if something bad happened.
+func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
 	// resolve URL
-	u, err := c.ResolveChartVersion(ref)
+	u, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	data, err := download(u.String())
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	name := filepath.Base(u.Path)
 	destfile := filepath.Join(dest, name)
 	if err := ioutil.WriteFile(destfile, data.Bytes(), 0655); err != nil {
-		return nil, err
+		return destfile, nil, err
 	}
 
 	// If provenance is requested, verify it.
@@ -91,31 +95,40 @@ func (c *ChartDownloader) DownloadTo(ref string, dest string) (*provenance.Verif
 		body, err := download(u.String() + ".prov")
 		if err != nil {
 			if c.Verify == VerifyAlways {
-				return ver, fmt.Errorf("Failed to fetch provenance %q", u.String()+".prov")
+				return destfile, ver, fmt.Errorf("Failed to fetch provenance %q", u.String()+".prov")
 			}
 			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
-			return ver, nil
+			return destfile, ver, nil
 		}
 		provfile := destfile + ".prov"
 		if err := ioutil.WriteFile(provfile, body.Bytes(), 0655); err != nil {
-			return nil, err
+			return destfile, nil, err
 		}
 
 		ver, err = VerifyChart(destfile, c.Keyring)
 		if err != nil {
 			// Fail always in this case, since it means the verification step
 			// failed.
-			return ver, err
+			return destfile, ver, err
 		}
 	}
-	return ver, nil
+	return destfile, ver, nil
 }
 
 // ResolveChartVersion resolves a chart reference to a URL.
 //
 // A reference may be an HTTP URL, a 'reponame/chartname' reference, or a local path.
-func (c *ChartDownloader) ResolveChartVersion(ref string) (*url.URL, error) {
+//
+// A version is a SemVer string (1.2.3-beta.1+f334a6789).
+//
+// 	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
+//	- For a chart reference
+//		* If version is non-empty, this will return the URL for that version
+//		* If version is empty, this will return the URL for the latest version
+// 		* If no version can be found, an error is returned
+func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
 	// See if it's already a full URL.
+	// FIXME: Why do we use url.ParseRequestURI instead of url.Parse?
 	u, err := url.ParseRequestURI(ref)
 	if err == nil {
 		// If it has a scheme and host and path, it's a full URL
@@ -131,22 +144,54 @@ func (c *ChartDownloader) ResolveChartVersion(ref string) (*url.URL, error) {
 	}
 
 	// See if it's of the form: repo/path_to_chart
-	p := strings.Split(ref, "/")
-	if len(p) > 1 {
-		rf, err := findRepoEntry(p[0], r.Repositories)
-		if err != nil {
-			return u, err
-		}
-		if rf.URL == "" {
-			return u, fmt.Errorf("no URL found for repository %q", p[0])
-		}
-		baseURL := rf.URL
-		if !strings.HasSuffix(baseURL, "/") {
-			baseURL = baseURL + "/"
-		}
-		return url.ParseRequestURI(baseURL + strings.Join(p[1:], "/"))
+	p := strings.SplitN(ref, "/", 2)
+	if len(p) < 2 {
+		return u, fmt.Errorf("invalid chart url format: %s", ref)
 	}
-	return u, fmt.Errorf("invalid chart url format: %s", ref)
+
+	repoName := p[0]
+	chartName := p[1]
+	rf, err := findRepoEntry(repoName, r.Repositories)
+	if err != nil {
+		return u, err
+	}
+	if rf.URL == "" {
+		return u, fmt.Errorf("no URL found for repository %q", repoName)
+	}
+
+	// Next, we need to load the index, and actually look up the chart.
+	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(repoName))
+	if err != nil {
+		return u, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
+	}
+
+	cv, err := i.Get(chartName, version)
+	if err != nil {
+		return u, fmt.Errorf("chart %q not found in %s index. (try 'helm repo update'). %s", chartName, repoName, err)
+	}
+
+	if len(cv.URLs) == 0 {
+		return u, fmt.Errorf("chart %q has no downloadable URLs", ref)
+	}
+	return url.Parse(cv.URLs[0])
+}
+
+// urlJoin joins a base URL to one or more path components.
+//
+// It's like filepath.Join for URLs. If the baseURL is pathish, this will still
+// perform a join.
+//
+// If the URL is unparsable, this returns an error.
+func urlJoin(baseURL string, paths ...string) (string, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+	// We want path instead of filepath because path always uses /.
+	all := []string{u.Path}
+	all = append(all, paths...)
+	u.Path = path.Join(all...)
+	return u.String(), nil
 }
 
 func findRepoEntry(name string, repos []*repo.Entry) (*repo.Entry, error) {
