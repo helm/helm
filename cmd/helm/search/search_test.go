@@ -93,9 +93,9 @@ var indexfileEntries = map[string]repo.ChartVersions{
 	},
 }
 
-func loadTestIndex(t *testing.T) *Index {
+func loadTestIndex(t *testing.T, all bool) *Index {
 	i := NewIndex()
-	i.AddRepo("testing", &repo.IndexFile{Entries: indexfileEntries})
+	i.AddRepo("testing", &repo.IndexFile{Entries: indexfileEntries}, all)
 	i.AddRepo("ztesting", &repo.IndexFile{Entries: map[string]repo.ChartVersions{
 		"pinta": {
 			{
@@ -107,8 +107,22 @@ func loadTestIndex(t *testing.T) *Index {
 				},
 			},
 		},
-	}})
+	}}, all)
 	return i
+}
+
+func TestAll(t *testing.T) {
+	i := loadTestIndex(t, false)
+	all := i.All()
+	if len(all) != 4 {
+		t.Errorf("Expected 4 entries, got %d", len(all))
+	}
+
+	i = loadTestIndex(t, true)
+	all = i.All()
+	if len(all) != 5 {
+		t.Errorf("Expected 5 entries, got %d", len(all))
+	}
 }
 
 func TestSearchByName(t *testing.T) {
@@ -188,7 +202,7 @@ func TestSearchByName(t *testing.T) {
 		},
 	}
 
-	i := loadTestIndex(t)
+	i := loadTestIndex(t, false)
 
 	for _, tt := range tests {
 
@@ -221,6 +235,18 @@ func TestSearchByName(t *testing.T) {
 			}
 		}
 
+	}
+}
+
+func TestSearchByNameAll(t *testing.T) {
+	// Test with the All bit turned on.
+	i := loadTestIndex(t, true)
+	cs, err := i.Search("santa-maria", 100, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cs) != 2 {
+		t.Errorf("expected 2 charts, got %d", len(cs))
 	}
 }
 
