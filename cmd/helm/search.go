@@ -43,7 +43,8 @@ type searchCmd struct {
 	out      io.Writer
 	helmhome helmpath.Home
 
-	regexp bool
+	versions bool
+	regexp   bool
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -59,7 +60,9 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 		PreRunE: requireInit,
 	}
 
-	cmd.Flags().BoolVarP(&sc.regexp, "regexp", "r", false, "use regular expressions for searching")
+	f := cmd.Flags()
+	f.BoolVarP(&sc.regexp, "regexp", "r", false, "use regular expressions for searching")
+	f.BoolVarP(&sc.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line.")
 
 	return cmd
 }
@@ -88,16 +91,7 @@ func (s *searchCmd) run(args []string) error {
 }
 
 func (s *searchCmd) showAllCharts(i *search.Index) {
-	e := i.Entries()
-	res := make([]*search.Result, len(e))
-	j := 0
-	for name, ch := range e {
-		res[j] = &search.Result{
-			Name:  name,
-			Chart: ch,
-		}
-		j++
-	}
+	res := i.All()
 	search.SortScore(res)
 	fmt.Fprintln(s.out, s.formatSearchResults(res))
 }
@@ -129,7 +123,7 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 			continue
 		}
 
-		i.AddRepo(n, ind)
+		i.AddRepo(n, ind, s.versions)
 	}
 	return i, nil
 }

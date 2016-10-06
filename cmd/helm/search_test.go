@@ -42,6 +42,12 @@ func TestSearchCmd(t *testing.T) {
 			expect: "NAME          \tVERSION\tDESCRIPTION                    \ntesting/alpine\t0.1.0  \tDeploy a basic Alpine Linux pod",
 		},
 		{
+			name:   "search for 'alpine' with versions, expect three matches",
+			args:   []string{"alpine"},
+			flags:  []string{"--versions"},
+			expect: "NAME          \tVERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0  \tDeploy a basic Alpine Linux pod\ntesting/alpine\t0.1.0  \tDeploy a basic Alpine Linux pod",
+		},
+		{
 			name:   "search for 'syzygy', expect no matches",
 			args:   []string{"syzygy"},
 			expect: "NAME\tVERSION\tDESCRIPTION",

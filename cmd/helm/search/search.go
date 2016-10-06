@@ -29,6 +29,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver"
+
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -55,25 +57,51 @@ func NewIndex() *Index {
 	return &Index{lines: map[string]string{}, charts: map[string]*repo.ChartVersion{}}
 }
 
+// verSep is a separator for version fields in map keys.
+const verSep = "$$"
+
 // AddRepo adds a repository index to the search index.
-func (i *Index) AddRepo(rname string, ind *repo.IndexFile) {
+func (i *Index) AddRepo(rname string, ind *repo.IndexFile, all bool) {
 	for name, ref := range ind.Entries {
 		if len(ref) == 0 {
-			// Skip chart names that havae zero releases.
+			// Skip chart names that have zero releases.
 			continue
 		}
 		// By convention, an index file is supposed to have the newest at the
 		// 0 slot, so our best bet is to grab the 0 entry and build the index
 		// entry off of that.
 		fname := filepath.Join(rname, name)
-		i.lines[fname] = indstr(rname, ref[0])
-		i.charts[fname] = ref[0]
+		if !all {
+			i.lines[fname] = indstr(rname, ref[0])
+			i.charts[fname] = ref[0]
+			continue
+		}
+
+		// If 'all' is set, then we go through all of the refs, and add them all
+		// to the index. This will generate a lot of near-duplicate entries.
+		for _, rr := range ref {
+			versionedName := fname + verSep + rr.Version
+			i.lines[versionedName] = indstr(rname, rr)
+			i.charts[versionedName] = rr
+		}
 	}
 }
 
-// Entries returns the entries in an index.
-func (i *Index) Entries() map[string]*repo.ChartVersion {
-	return i.charts
+// All returns all charts in the index as if they were search results.
+//
+// Each will be given a score of 0.
+func (i *Index) All() []*Result {
+	res := make([]*Result, len(i.charts))
+	j := 0
+	for name, ch := range i.charts {
+		parts := strings.Split(name, verSep)
+		res[j] = &Result{
+			Name:  parts[0],
+			Chart: ch,
+		}
+		j++
+	}
+	return res
 }
 
 // Search searches an index for the given term.
@@ -118,7 +146,8 @@ func (i *Index) SearchLiteral(term string, threshold int) []*Result {
 	for k, v := range i.lines {
 		res := strings.Index(v, term)
 		if score := i.calcScore(res, v); res != -1 && score < threshold {
-			buf = append(buf, &Result{Name: k, Score: score, Chart: i.charts[k]})
+			parts := strings.Split(k, verSep) // Remove version, if it is there.
+			buf = append(buf, &Result{Name: parts[0], Score: score, Chart: i.charts[k]})
 		}
 	}
 	return buf
@@ -137,7 +166,8 @@ func (i *Index) SearchRegexp(re string, threshold int) ([]*Result, error) {
 			continue
 		}
 		if score := i.calcScore(ind[0], v); ind[0] >= 0 && score < threshold {
-			buf = append(buf, &Result{Name: k, Score: score, Chart: i.charts[k]})
+			parts := strings.Split(k, verSep) // Remove version, if it is there.
+			buf = append(buf, &Result{Name: parts[0], Score: score, Chart: i.charts[k]})
 		}
 	}
 	return buf, nil
@@ -178,6 +208,17 @@ func (s scoreSorter) Less(a, b int) bool {
 	}
 	if first.Score < second.Score {
 		return true
+	}
+	if first.Name == second.Name {
+		v1, err := semver.NewVersion(first.Chart.Version)
+		if err != nil {
+			return true
+		}
+		v2, err := semver.NewVersion(second.Chart.Version)
+		if err != nil {
+			return true
+		}
+		return v1.GreaterThan(v2)
 	}
 	return first.Name < second.Name
 }
