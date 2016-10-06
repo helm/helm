@@ -38,10 +38,10 @@ The historical release set is printed as a formatted table, e.g:
 
     $ helm history angry-bird --max=4
     REVISION   UPDATED                      STATUS           CHART
-    4           Mon Oct 3 10:15:13 2016     DEPLOYED        alpine-0.1.0
-    3           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0
-    2           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0
     1           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0
+    2           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0
+    3           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0
+    4           Mon Oct 3 10:15:13 2016     DEPLOYED        alpine-0.1.0
 `
 
 type historyCmd struct {
@@ -96,7 +96,8 @@ func formatHistory(rls []*release.Release) string {
 	tbl := uitable.New()
 	tbl.MaxColWidth = 30
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART")
-	for _, r := range rls {
+	for i := len(rls) - 1; i >= 0; i-- {
+		r := rls[i]
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
 		t := timeconv.String(r.Info.LastDeployed)
 		s := r.Info.Status.Code.String()
