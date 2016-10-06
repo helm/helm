@@ -166,10 +166,10 @@ func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 // ChartVersion represents a chart entry in the IndexFile
 type ChartVersion struct {
 	*chart.Metadata
-	URLs    []string  `yaml:"url" json:"urls"`
-	Created time.Time `yaml:"created,omitempty" json:"created,omitempty"`
-	Removed bool      `yaml:"removed,omitempty" json:"removed,omitempty"`
-	Digest  string    `yaml:"digest,omitempty" json:"digest,omitempty"`
+	URLs    []string  `json:"urls"`
+	Created time.Time `json:"created,omitempty"`
+	Removed bool      `json:"removed,omitempty"`
+	Digest  string    `json:"digest,omitempty"`
 }
 
 // IndexDirectory reads a (flat) directory and generates an index.
