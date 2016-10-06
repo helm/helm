@@ -225,6 +225,24 @@ func (h *Client) ReleaseContent(rlsName string, opts ...ContentOption) (*rls.Get
 	return h.content(ctx, req)
 }
 
+// ReleaseHistory returns a release's revision history.
+func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error) {
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+
+	req := &h.opts.histReq
+	req.Name = rlsName
+	ctx := NewContext()
+
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.history(ctx, req)
+}
+
 // Executes tiller.ListReleases RPC.
 func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.ListReleasesResponse, error) {
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
@@ -324,4 +342,16 @@ func (h *Client) version(ctx context.Context, req *rls.GetVersionRequest) (*rls.
 
 	rlc := rls.NewReleaseServiceClient(c)
 	return rlc.GetVersion(ctx, req)
+}
+
+// Executes tiller.GetHistory RPC.
+func (h *Client) history(ctx context.Context, req *rls.GetHistoryRequest) (*rls.GetHistoryResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.GetHistory(ctx, req)
 }
