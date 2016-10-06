@@ -30,7 +30,7 @@ To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 - Helm and Tiller are known to run on Mac OSX and most Linuxes, including
   Alpine.
 - Tiller must have access to a Kubernets cluster. It learns about the
-  cluster by examining the Kube config files that `kubectl` uese.
+  cluster by examining the Kube config files that `kubectl` uses.
 
 ## gRPC and Protobuf
 
@@ -68,7 +68,7 @@ GCR registry.
 
 For development, we highly recommend using the
 [Kubernetes Minikube](https://github.com/kubernetes/minikube)
-developer-oriented distribution. Once this is installed, you can use 
+developer-oriented distribution. Once this is installed, you can use
 `helm init` to install into the cluster.
 
 For developing on Tiller, it is sometimes more expedient to run Tiller locally
@@ -186,4 +186,3 @@ Conventions:
   messages.
 - Deprecated RPCs, messages, and fields are marked deprecated in the comments (`// UpdateFoo
   DEPRECATED updates a foo.`).
-
