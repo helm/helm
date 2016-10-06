@@ -50,7 +50,7 @@ func TestHistoryCmd(t *testing.T) {
 				mk("angry-bird", 2, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 1, rpb.Status_SUPERSEDED),
 			},
-			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n2       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n1       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n",
+			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \n1       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n2       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\n",
 		},
 		{
 			cmds: "helm history --max=MAX RELEASE_NAME",
@@ -60,7 +60,7 @@ func TestHistoryCmd(t *testing.T) {
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n",
+			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\n",
 		},
 	}
 
