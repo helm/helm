@@ -96,7 +96,8 @@ func NewIndexFile() *IndexFile {
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	u := filename
 	if baseURL != "" {
-		u = baseURL + "/" + filename
+		_, file := filepath.Split(filename)
+		u = strings.TrimSuffix(baseURL, "/") + "/" + file
 	}
 	cr := &ChartVersion{
 		URLs:     []string{u},
