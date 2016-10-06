@@ -22,10 +22,12 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/cmd/helm/helmpath"
@@ -175,7 +177,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	for _, dep := range deps {
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
-		churl, err := findChartURL(dep.Name, dep.Repository, repos)
+		churl, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			fmt.Fprintf(m.Out, "WARNING: %s (skipped)", err)
 			continue
@@ -270,27 +272,64 @@ func urlsAreEqual(a, b string) bool {
 
 // findChartURL searches the cache of repo data for a chart that has the name and the repourl specified.
 //
-// In this current version, name is of the form 'foo-1.2.3'. This will change when
-// the repository index stucture changes.
-func findChartURL(name, repourl string, repos map[string]*repo.ChartRepository) (string, error) {
+// 'name' is the name of the chart. Version is an exact semver, or an empty string. If empty, the
+// newest version will be returned.
+//
+// repourl is the repository to search
+//
+// If it finds a URL that is "relative", it will prepend the repourl.
+func findChartURL(name, version, repourl string, repos map[string]*repo.ChartRepository) (string, error) {
 	for _, cr := range repos {
 		if urlsAreEqual(repourl, cr.URL) {
 			for ename, entry := range cr.IndexFile.Entries {
 				if ename == name {
 					for _, verEntry := range entry {
 						if len(verEntry.URLs) == 0 {
-							// Not totally sure what to do here. Returning an
-							// error is the strictest option. Skipping it might
-							// be preferable.
-							return "", fmt.Errorf("chart %q has no download URL", name)
+							// Not a legit entry.
+							continue
 						}
-						return verEntry.URLs[0], nil
+
+						if version == "" || versionEquals(version, verEntry.Version) {
+							return normalizeURL(repourl, verEntry.URLs[0])
+						}
+
+						return normalizeURL(repourl, verEntry.URLs[0])
 					}
 				}
 			}
 		}
 	}
 	return "", fmt.Errorf("chart %s not found in %s", name, repourl)
+}
+
+func versionEquals(v1, v2 string) bool {
+	sv1, err := semver.NewVersion(v1)
+	if err != nil {
+		// Fallback to string comparison.
+		return v1 == v2
+	}
+	sv2, err := semver.NewVersion(v2)
+	if err != nil {
+		return false
+	}
+	return sv1.Equal(sv2)
+}
+
+func normalizeURL(baseURL, urlOrPath string) (string, error) {
+	u, err := url.Parse(urlOrPath)
+	if err != nil {
+		return urlOrPath, err
+	}
+	if u.IsAbs() {
+		return u.String(), nil
+	}
+	u2, err := url.Parse(baseURL)
+	if err != nil {
+		return urlOrPath, fmt.Errorf("Base URL failed to parse: %s", err)
+	}
+
+	u2.Path = path.Join(u2.Path, urlOrPath)
+	return u2.String(), nil
 }
 
 // loadChartRepositories reads the repositories.yaml, and then builds a map of
