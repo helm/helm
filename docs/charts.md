@@ -287,8 +287,8 @@ sensitive_.
 - `Files`: A map-like object containing all non-special files in the chart. This
   will not give you access to templates, but will give you access to additional
   files that are present. Files can be accessed using `{{index .Files "file.name"}}`
-  or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. Note that
-  file data is returned as a `[]byte` unless `{{.Files.GetString}}` is used.
+  or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. You can
+  also access the contents of the file as `[]byte` using `{{.Files.GetBytes}}`
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not
 be accessible inside of the `Chart` object. Thus, Chart.yaml cannot be
