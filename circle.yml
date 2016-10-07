@@ -12,6 +12,9 @@ machine:
     - docker
 
 dependencies:
+  cache_directories:
+    - "${HOME}/.glide"
+
   pre:
     # remove old go files
     - sudo rm -rf /usr/local/go
