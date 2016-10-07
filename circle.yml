@@ -55,7 +55,7 @@ deployment:
 
       # build canary helm binaries and push
       - make build-cross
-      - make dist VERSION="${CIRCLE_TAG}"
+      - make dist checksum VERSION="${CIRCLE_TAG}"
       - sudo /opt/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
 
   canary:
@@ -74,5 +74,5 @@ deployment:
 
       # build canary helm binaries and push
       - make build-cross
-      - make dist VERSION=canary
+      - make dist checksum VERSION=canary
       - sudo /opt/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
