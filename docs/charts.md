@@ -255,7 +255,7 @@ spec:
 
 The above example, based loosely on [https://github.com/deis/charts](https://github.com/deis/charts), is a template for a Kubernetes replication controller.
 It can use the following four template values (usually defined in a
-`.values.yaml` file):
+`values.yaml` file):
 
 - `imageRegistry`: The source registry for the Docker image.
 - `dockerTag`: The tag for the docker image.
