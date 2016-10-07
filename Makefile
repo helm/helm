@@ -36,6 +36,15 @@ dist:
 		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
 	)
 
+.PHONY: checksum
+checksum:
+	( \
+		cd _dist && \
+		for f in ./*.{tar.gz,zip} ; do \
+			shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
+		done \
+	)
+
 .PHONY: check-docker
 check-docker:
 	@if [ -z $$(which docker) ]; then \
