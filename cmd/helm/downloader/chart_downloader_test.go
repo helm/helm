@@ -30,12 +30,14 @@ import (
 
 func TestResolveChartRef(t *testing.T) {
 	tests := []struct {
-		name, ref, expect string
-		fail              bool
+		name, ref, expect, version string
+		fail                       bool
 	}{
 		{name: "full URL", ref: "http://example.com/foo-1.2.3.tgz", expect: "http://example.com/foo-1.2.3.tgz"},
 		{name: "full URL, HTTPS", ref: "https://example.com/foo-1.2.3.tgz", expect: "https://example.com/foo-1.2.3.tgz"},
-		{name: "reference, testing repo", ref: "testing/foo-1.2.3.tgz", expect: "http://example.com/foo-1.2.3.tgz"},
+		{name: "full URL, HTTPS, irrelevant version", ref: "https://example.com/foo-1.2.3.tgz", version: "0.1.0", expect: "https://example.com/foo-1.2.3.tgz"},
+		{name: "reference, testing repo", ref: "testing/alpine", expect: "http://example.com/alpine-1.2.3.tgz"},
+		{name: "reference, version, testing repo", ref: "testing/alpine", version: "0.2.0", expect: "http://example.com/alpine-0.2.0.tgz"},
 		{name: "full URL, file", ref: "file:///foo-1.2.3.tgz", fail: true},
 		{name: "invalid", ref: "invalid-1.2.3", fail: true},
 		{name: "not found", ref: "nosuchthing/invalid-1.2.3", fail: true},
@@ -47,7 +49,7 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		u, err := c.ResolveChartVersion(tt.ref)
+		u, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
 				continue
@@ -132,10 +134,14 @@ func TestDownloadTo(t *testing.T) {
 		Keyring:  "testdata/helm-test-key.pub",
 	}
 	cname := "/signtest-0.1.0.tgz"
-	v, err := c.DownloadTo(srv.URL()+cname, dest)
+	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	if expect := filepath.Join(dest, cname); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
 	}
 
 	if v.FileHash == "" {
@@ -145,5 +151,26 @@ func TestDownloadTo(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
 		t.Error(err)
 		return
+	}
+}
+
+func TestUrlJoin(t *testing.T) {
+	tests := []struct {
+		name, url, expect string
+		paths             []string
+	}{
+		{name: "URL, one path", url: "http://example.com", paths: []string{"hello"}, expect: "http://example.com/hello"},
+		{name: "Long URL, one path", url: "http://example.com/but/first", paths: []string{"slurm"}, expect: "http://example.com/but/first/slurm"},
+		{name: "URL, two paths", url: "http://example.com", paths: []string{"hello", "world"}, expect: "http://example.com/hello/world"},
+		{name: "URL, no paths", url: "http://example.com", paths: []string{}, expect: "http://example.com"},
+		{name: "basepath, two paths", url: "../example.com", paths: []string{"hello", "world"}, expect: "../example.com/hello/world"},
+	}
+
+	for _, tt := range tests {
+		if got, err := urlJoin(tt.url, tt.paths...); err != nil {
+			t.Errorf("%s: error %q", tt.name, err)
+		} else if got != tt.expect {
+			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
+		}
 	}
 }

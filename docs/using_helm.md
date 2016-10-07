@@ -181,7 +181,7 @@ To see what options are configurable on a chart, use `helm inspect
 values`:
 
 ```console
-helm inspect values stable/mariadb-0.3.0.tgz
+helm inspect values stable/mariadb
 Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 ## Bitnami MariaDB image version
 ## ref: https://hub.docker.com/r/bitnami/mariadb/tags/
@@ -235,7 +235,7 @@ complex, Helm tries to perform the least invasive upgrade. It will only
 update things that have changed since the last release.
 
 ```console
-$ helm upgrade -f panda.yaml happy-panda stable/mariadb-0.3.0.tgz                                                                                        1 ↵
+$ helm upgrade -f panda.yaml happy-panda stable/mariadb
 Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 happy-panda has been upgraded. Happy Helming!
 Last Deployed: Wed Sep 28 12:47:54 2016

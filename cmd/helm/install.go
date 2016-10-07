@@ -48,11 +48,11 @@ name of a chart in the current working directory.
 To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line.
 
-	$ helm install -f myvalues.yaml redis
+	$ helm install -f myvalues.yaml ./redis
 
 or
 
-	$ helm install --set name=prod redis
+	$ helm install --set name=prod ./redis
 
 To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined. This will still require a
@@ -60,6 +60,26 @@ round-trip to the Tiller server.
 
 If --verify is set, the chart MUST have a provenance file, and the provenenace
 fall MUST pass all verification steps.
+
+There are four different ways you can express the chart you want to install:
+
+1. By chart reference: helm install stable/mariadb
+2. By path to a packaged chart: helm install ./nginx-1.2.3.tgz
+3. By path to an unpacked chart directory: helm install ./nginx
+4. By absolute URL: helm install https://example.com/charts/nginx-1.2.3.tgz
+
+CHART REFERENCES
+
+A chart reference is a convenient way of reference a chart in a chart repository.
+
+When you use a chart reference ('stable/mariadb'), Helm will look in the local
+configuration for a chart repository named 'stable', and will then look for a
+chart in that repository whose name is 'mariadb'. It will install the latest
+version of that chart unless you also supply a version number with the
+'--version' flag.
+
+To see the list of chart repositories, use 'helm repo list'. To search for
+charts in a repository, use 'helm search'.
 `
 
 type installCmd struct {
@@ -76,6 +96,7 @@ type installCmd struct {
 	client       helm.Interface
 	values       *values
 	nameTemplate string
+	version      string
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -94,7 +115,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0], inst.verify, inst.keyring)
+			cp, err := locateChartPath(args[0], inst.version, inst.verify, inst.keyring)
 			if err != nil {
 				return err
 			}
@@ -116,6 +137,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
+	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed.")
 	return cmd
 }
 
@@ -276,9 +298,12 @@ func splitPair(item string) (name string, value interface{}) {
 // - current working directory
 // - if path is absolute or begins with '.', error out here
 // - chart repos in $HELM_HOME
+// - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func locateChartPath(name string, verify bool, keyring string) (string, error) {
+func locateChartPath(name, version string, verify bool, keyring string) (string, error) {
+	name = strings.TrimSpace(name)
+	version = strings.TrimSpace(version)
 	if fi, err := os.Stat(name); err == nil {
 		abs, err := filepath.Abs(name)
 		if err != nil {
@@ -303,12 +328,6 @@ func locateChartPath(name string, verify bool, keyring string) (string, error) {
 		return filepath.Abs(crepo)
 	}
 
-	// Try fetching the chart from a remote repo into a tmpdir
-	origname := name
-	if filepath.Ext(name) != ".tgz" {
-		name += ".tgz"
-	}
-
 	dl := downloader.ChartDownloader{
 		HelmHome: helmpath.Home(homePath()),
 		Out:      os.Stdout,
@@ -318,16 +337,19 @@ func locateChartPath(name string, verify bool, keyring string) (string, error) {
 		dl.Verify = downloader.VerifyAlways
 	}
 
-	if _, err := dl.DownloadTo(name, "."); err == nil {
-		lname, err := filepath.Abs(filepath.Base(name))
+	filename, _, err := dl.DownloadTo(name, version, ".")
+	if err == nil {
+		lname, err := filepath.Abs(filename)
 		if err != nil {
-			return lname, err
+			return filename, err
 		}
-		fmt.Printf("Fetched %s to %s\n", origname, lname)
+		fmt.Printf("Fetched %s to %s\n", name, filename)
 		return lname, nil
+	} else if flagDebug {
+		return filename, err
 	}
 
-	return name, fmt.Errorf("file %q not found", origname)
+	return filename, fmt.Errorf("file %q not found", name)
 }
 
 func generateName(nameTemplate string) (string, error) {

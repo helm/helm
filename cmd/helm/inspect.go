@@ -28,7 +28,8 @@ import (
 )
 
 const inspectDesc = `
-This command inspects a chart (directory, file, or URL) and displays information.
+This command inspects a chart and displays information. It takes a chart reference
+('stable/drupal'), a full path to a directory or packaged chart, or a URL.
 
 Inspect prints the contents of the Chart.yaml file and the values.yaml file.
 `
@@ -50,6 +51,7 @@ type inspectCmd struct {
 	keyring   string
 	out       io.Writer
 	client    helm.Interface
+	version   string
 }
 
 const (
@@ -73,7 +75,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0], insp.verify, insp.keyring)
+			cp, err := locateChartPath(args[0], insp.version, insp.verify, insp.keyring)
 			if err != nil {
 				return err
 			}
@@ -88,7 +90,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:  inspectValuesDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			insp.output = valuesOnly
-			cp, err := locateChartPath(args[0], insp.verify, insp.keyring)
+			cp, err := locateChartPath(args[0], insp.version, insp.verify, insp.keyring)
 			if err != nil {
 				return err
 			}
@@ -103,7 +105,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:  inspectChartDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			insp.output = chartOnly
-			cp, err := locateChartPath(args[0], insp.verify, insp.keyring)
+			cp, err := locateChartPath(args[0], insp.version, insp.verify, insp.keyring)
 			if err != nil {
 				return err
 			}
@@ -124,6 +126,12 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	inspectCommand.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
 	valuesSubCmd.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
 	chartSubCmd.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
+
+	verflag := "version"
+	verdesc := "the version of the chart. By default, the newest chart is shown."
+	inspectCommand.Flags().StringVar(&insp.version, verflag, "", verdesc)
+	valuesSubCmd.Flags().StringVar(&insp.version, verflag, "", verdesc)
+	chartSubCmd.Flags().StringVar(&insp.version, verflag, "", verdesc)
 
 	inspectCommand.AddCommand(valuesSubCmd)
 	inspectCommand.AddCommand(chartSubCmd)

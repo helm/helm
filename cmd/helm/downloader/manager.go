@@ -184,7 +184,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		}
 
 		dest := filepath.Join(m.ChartPath, "charts")
-		if _, err := dl.DownloadTo(churl, dest); err != nil {
+		if _, _, err := dl.DownloadTo(churl, "", dest); err != nil {
 			fmt.Fprintf(m.Out, "WARNING: Could not download %s: %s (skipped)", churl, err)
 			continue
 		}
@@ -270,36 +270,61 @@ func urlsAreEqual(a, b string) bool {
 	return au.String() == bu.String()
 }
 
-// findChartURL searches the cache of repo data for a chart that has the name and the repourl specified.
+// findChartURL searches the cache of repo data for a chart that has the name and the repoURL specified.
 //
 // 'name' is the name of the chart. Version is an exact semver, or an empty string. If empty, the
 // newest version will be returned.
 //
-// repourl is the repository to search
+// repoURL is the repository to search
 //
-// If it finds a URL that is "relative", it will prepend the repourl.
-func findChartURL(name, version, repourl string, repos map[string]*repo.ChartRepository) (string, error) {
+// If it finds a URL that is "relative", it will prepend the repoURL.
+func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (string, error) {
 	for _, cr := range repos {
-		if urlsAreEqual(repourl, cr.URL) {
-			for ename, entry := range cr.IndexFile.Entries {
-				if ename == name {
-					for _, verEntry := range entry {
-						if len(verEntry.URLs) == 0 {
-							// Not a legit entry.
-							continue
-						}
-
-						if version == "" || versionEquals(version, verEntry.Version) {
-							return normalizeURL(repourl, verEntry.URLs[0])
-						}
-
-						return normalizeURL(repourl, verEntry.URLs[0])
-					}
-				}
+		if urlsAreEqual(repoURL, cr.URL) {
+			entry, err := findEntryByName(name, cr)
+			if err != nil {
+				return "", err
 			}
+			ve, err := findVersionedEntry(version, entry)
+			if err != nil {
+				return "", err
+			}
+
+			return normalizeURL(repoURL, ve.URLs[0])
 		}
 	}
-	return "", fmt.Errorf("chart %s not found in %s", name, repourl)
+	return "", fmt.Errorf("chart %s not found in %s", name, repoURL)
+}
+
+// findEntryByName finds an entry in the chart repository whose name matches the given name.
+//
+// It returns the ChartVersions for that entry.
+func findEntryByName(name string, cr *repo.ChartRepository) (repo.ChartVersions, error) {
+	for ename, entry := range cr.IndexFile.Entries {
+		if ename == name {
+			return entry, nil
+		}
+	}
+	return nil, errors.New("entry not found")
+}
+
+// findVersionedEntry takes a ChartVersions list and returns a single chart version that satisfies the version constraints.
+//
+// If version is empty, the first chart found is returned.
+func findVersionedEntry(version string, vers repo.ChartVersions) (*repo.ChartVersion, error) {
+	for _, verEntry := range vers {
+		if len(verEntry.URLs) == 0 {
+			// Not a legit entry.
+			continue
+		}
+
+		if version == "" || versionEquals(version, verEntry.Version) {
+			return verEntry, nil
+		}
+
+		return verEntry, nil
+	}
+	return nil, errors.New("no matching version")
 }
 
 func versionEquals(v1, v2 string) bool {
