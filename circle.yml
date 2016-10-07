@@ -13,7 +13,7 @@ machine:
 
 dependencies:
   cache_directories:
-    - "${HOME}/.glide"
+    - "~/.glide"
 
   pre:
     # remove old go files
