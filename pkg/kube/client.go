@@ -274,7 +274,7 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, watchUntilReady)
 }
 
-const includeThirdPartyAPIs = false
+const includeThirdPartyAPIs = true
 
 func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc) error {
 	r := c.NewBuilder(includeThirdPartyAPIs).
