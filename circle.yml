@@ -22,8 +22,8 @@ dependencies:
 
   override:
     # install go
-    - wget "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
-    - sudo tar -C /usr/local -xzf "go${GOVERSION}.linux-amd64.tar.gz"
+    - wget "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz" -O "${HOME}/go${GOVERSION}.tar.gz"
+    - sudo tar -C /usr/local -xzf "${HOME}/go${GOVERSION}.tar.gz"
 
     # move repository to the canonical import path
     - mkdir -p "$(dirname ${WORKDIR})"
