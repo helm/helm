@@ -25,11 +25,9 @@ import (
 	"sort"
 	"strings"
 
-	"google.golang.org/grpc/metadata"
-
-	"github.com/ghodss/yaml"
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 
 	"k8s.io/helm/cmd/tiller/environment"
@@ -700,12 +698,6 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	}
 
 	return hooks, b, notes, nil
-}
-
-// validateYAML checks to see if YAML is well-formed.
-func validateYAML(data string) error {
-	b := map[string]interface{}{}
-	return yaml.Unmarshal([]byte(data), b)
 }
 
 func (s *releaseServer) recordRelease(r *release.Release, reuse bool) {
