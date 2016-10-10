@@ -270,6 +270,9 @@ func TestCoalesceValues(t *testing.T) {
 	tvals := &chart.Config{Raw: testCoalesceValuesYaml}
 
 	v, err := CoalesceValues(c, tvals)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, _ := json.MarshalIndent(v, "", "  ")
 	t.Logf("Coalesced Values: %s", string(j))
 

@@ -1,5 +1,5 @@
-hash: 59cc65f24ef42bcc96a5e5f660dd79cff89aa53040a561c47b629f1d55397424
-updated: 2016-10-05T17:24:13.347058671-06:00
+hash: d9c66d934b1b6906646654d536190df6bc2d8c9dfa6b414a91b893846fb5d86e
+updated: 2016-10-10T11:23:48.277967613-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -190,7 +190,7 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
+  version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
   subpackages:
   - jsonpb
   - proto
@@ -434,7 +434,7 @@ imports:
   - 1.4/tools/metrics
   - 1.4/transport
 - name: k8s.io/kubernetes
-  version: 23b426563780c64ac25df63a2d141247d02aac7a
+  version: bd85192c2673153b3b470a2f158ddc840d295768
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install
@@ -533,7 +533,6 @@ imports:
   - pkg/client/unversioned/testclient
   - pkg/controller
   - pkg/controller/deployment/util
-  - pkg/controller/framework
   - pkg/conversion
   - pkg/conversion/queryparams
   - pkg/credentialprovider

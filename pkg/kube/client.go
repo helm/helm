@@ -354,11 +354,8 @@ func updateResource(target *resource.Info, currentObj runtime.Object) error {
 
 	// send patch to server
 	helper := resource.NewHelper(target.Client, target.Mapping)
-	if _, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch); err != nil {
-		return err
-	}
-
-	return nil
+	_, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch)
+	return err
 }
 
 func watchUntilReady(info *resource.Info) error {
