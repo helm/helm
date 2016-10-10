@@ -37,17 +37,15 @@ future releases.
 `
 
 type repoUpdateCmd struct {
-	repoFile string
-	update   func([]*repo.Entry, bool, io.Writer, helmpath.Home)
-	out      io.Writer
-	home     helmpath.Home
+	update func([]*repo.Entry, bool, io.Writer, helmpath.Home)
+	out    io.Writer
+	home   helmpath.Home
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	u := &repoUpdateCmd{
-		out:      out,
-		update:   updateCharts,
-		repoFile: repositoriesFile(),
+		out:    out,
+		update: updateCharts,
 	}
 	cmd := &cobra.Command{
 		Use:     "update",
@@ -63,7 +61,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 }
 
 func (u *repoUpdateCmd) run() error {
-	f, err := repo.LoadRepositoriesFile(u.repoFile)
+	f, err := repo.LoadRepositoriesFile(u.home.RepositoryFile())
 	if err != nil {
 		return err
 	}

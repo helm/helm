@@ -85,7 +85,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(cacheIndexFile("test"))
+	i, err := repo.LoadIndexFile(duc.helmhome.CacheIndex("test"))
 	if err != nil {
 		t.Fatal(err)
 	}
