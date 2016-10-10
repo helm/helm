@@ -25,6 +25,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	"k8s.io/helm/cmd/helm/helmpath"
 )
 
 const (
@@ -161,7 +163,9 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 
 // requireInit is a PreRunE implementation for validating that $HELM_HOME is configured.
 func requireInit(cmd *cobra.Command, args []string) error {
-	err := requireHome()
+	// FIXME: requireInit seems to only be called from search. Either it should be called from more
+	// places or just removed.
+	err := requireHome(helmpath.Home(homePath()))
 	if err != nil {
 		return fmt.Errorf("%s (try running 'helm init')", err)
 	}

@@ -29,7 +29,6 @@ import (
 )
 
 func TestUpdateCmd(t *testing.T) {
-
 	thome, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
@@ -50,14 +49,16 @@ func TestUpdateCmd(t *testing.T) {
 		}
 	}
 	uc := &repoUpdateCmd{
-		out:      out,
-		update:   updater,
-		repoFile: "testdata/repositories.yaml",
+		out:    out,
+		update: updater,
+		home:   helmpath.Home(thome),
 	}
-	uc.run()
+	if err := uc.run(); err != nil {
+		t.Fatal(err)
+	}
 
 	if got := out.String(); !strings.Contains(got, "charts") || !strings.Contains(got, "local") {
-		t.Errorf("Expected 'charts' and 'local' (in any order) got %s", got)
+		t.Errorf("Expected 'charts' and 'local' (in any order) got %q", got)
 	}
 }
 

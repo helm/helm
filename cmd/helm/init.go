@@ -92,8 +92,8 @@ func (i *initCmd) run() error {
 	return nil
 }
 
-func requireHome() error {
-	dirs := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
+func requireHome(home helmpath.Home) error {
+	dirs := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository()}
 	for _, d := range dirs {
 		if fi, err := os.Stat(d); err != nil {
 			return fmt.Errorf("directory %q is not configured", d)
@@ -150,7 +150,7 @@ func ensureHome(home helmpath.Home, out io.Writer) error {
 		}
 	}
 
-	localRepoIndexFile := localRepoDirectory(localRepoIndexFilePath)
+	localRepoIndexFile := home.LocalRepository(localRepoIndexFilePath)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", localRepoIndexFile)
 		i := repo.NewIndexFile()
@@ -159,7 +159,7 @@ func ensureHome(home helmpath.Home, out io.Writer) error {
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(localRepoIndexFile, cacheDirectory("local-index.yaml"))
+		os.Symlink(localRepoIndexFile, home.CacheIndex("local"))
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", localRepoIndexFile)
 	}
