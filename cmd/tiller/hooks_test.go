@@ -43,7 +43,7 @@ kind: Job
 metadata:
   name: first
   labels:
-    doesnt: matter
+    doesnot: matter
   annotations:
     "helm.sh/hook": pre-install
 `,

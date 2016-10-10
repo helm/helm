@@ -98,6 +98,9 @@ func validateChartVersion(cf *chart.Metadata) error {
 	}
 
 	c, err := semver.NewConstraint("> 0")
+	if err != nil {
+		return err
+	}
 	valid, msg := c.Validate(version)
 
 	if !valid && len(msg) > 0 {
@@ -146,13 +149,6 @@ func validateChartSources(cf *chart.Metadata) error {
 		if source == "" || !govalidator.IsRequestURL(source) {
 			return fmt.Errorf("invalid source URL '%s'", source)
 		}
-	}
-	return nil
-}
-
-func validateChartHome(cf *chart.Metadata) error {
-	if cf.Home != "" && !govalidator.IsRequestURL(cf.Home) {
-		return fmt.Errorf("invalid home URL '%s'", cf.Home)
 	}
 	return nil
 }

@@ -194,27 +194,6 @@ func TestValidateChartSources(t *testing.T) {
 	}
 }
 
-func TestValidateChartHome(t *testing.T) {
-	var failTest = []string{"RiverRun", "john@winterfell", "riverrun.io"}
-	var successTest = []string{"", "http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish"}
-
-	for _, test := range failTest {
-		badChart.Home = test
-		err := validateChartHome(badChart)
-		if err == nil || !strings.Contains(err.Error(), "invalid home URL") {
-			t.Errorf("validateChartHome(%s) to return \"invalid home URL\", got no error", test)
-		}
-	}
-
-	for _, test := range successTest {
-		badChart.Home = test
-		err := validateChartHome(badChart)
-		if err != nil {
-			t.Errorf("validateChartHome(%s) to return no error, got %s", test, err.Error())
-		}
-	}
-}
-
 func TestChartfile(t *testing.T) {
 	linter := support.Linter{ChartDir: badChartDir}
 	Chartfile(&linter)

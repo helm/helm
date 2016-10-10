@@ -69,10 +69,7 @@ func Parse(file io.Reader) (*Rules, error) {
 			return r, err
 		}
 	}
-	if err := s.Err(); err != nil {
-		return r, err
-	}
-	return r, nil
+	return r, s.Err()
 }
 
 // Len returns the number of patterns in this rule set.

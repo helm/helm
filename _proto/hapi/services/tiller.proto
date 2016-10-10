@@ -51,7 +51,7 @@ service ReleaseService {
 	rpc GetReleaseStatus(GetReleaseStatusRequest) returns (GetReleaseStatusResponse) {
 	}
 
-	// GetReleaseContent retrieves the release content (chart + value) for the specifed release.
+	// GetReleaseContent retrieves the release content (chart + value) for the specified release.
 	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
 	}
 

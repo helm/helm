@@ -14,7 +14,7 @@ import:
   version: 1.1.0
 - package: github.com/technosophos/moniker
 - package: github.com/golang/protobuf
-  version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
+  version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
   subpackages:
   - proto
   - ptypes/any

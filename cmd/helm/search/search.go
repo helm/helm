@@ -112,7 +112,7 @@ func (i *Index) All() []*Result {
 // If regexp is true, the term is treated as a regular expression. Otherwise,
 // term is treated as a literal string.
 func (i *Index) Search(term string, threshold int, regexp bool) ([]*Result, error) {
-	if regexp == true {
+	if regexp {
 		return i.SearchRegexp(term, threshold)
 	}
 	return i.SearchLiteral(term, threshold), nil
