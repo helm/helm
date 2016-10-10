@@ -292,3 +292,24 @@ func TestIndexAdd(t *testing.T) {
 		t.Errorf("Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
 	}
 }
+
+func TestUrlJoin(t *testing.T) {
+	tests := []struct {
+		name, url, expect string
+		paths             []string
+	}{
+		{name: "URL, one path", url: "http://example.com", paths: []string{"hello"}, expect: "http://example.com/hello"},
+		{name: "Long URL, one path", url: "http://example.com/but/first", paths: []string{"slurm"}, expect: "http://example.com/but/first/slurm"},
+		{name: "URL, two paths", url: "http://example.com", paths: []string{"hello", "world"}, expect: "http://example.com/hello/world"},
+		{name: "URL, no paths", url: "http://example.com", paths: []string{}, expect: "http://example.com"},
+		{name: "basepath, two paths", url: "../example.com", paths: []string{"hello", "world"}, expect: "../example.com/hello/world"},
+	}
+
+	for _, tt := range tests {
+		if got, err := urlJoin(tt.url, tt.paths...); err != nil {
+			t.Errorf("%s: error %q", tt.name, err)
+		} else if got != tt.expect {
+			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
+		}
+	}
+}
