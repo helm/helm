@@ -30,10 +30,6 @@ Example usage:
     $ helm repo add [NAME] [REPO_URL]
 `
 
-type repoCmd struct {
-	out io.Writer
-}
-
 func newRepoCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "repo [FLAGS] add|remove|list|index|update [ARGS]",

@@ -27,11 +27,6 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 )
 
-const (
-	reqLock = "requirements.lock"
-	reqYaml = "requirements.yaml"
-)
-
 const dependencyDesc = `
 Manage the dependencies of a chart.
 
