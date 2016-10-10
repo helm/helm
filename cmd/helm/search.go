@@ -57,7 +57,6 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return sc.run(args)
 		},
-		PreRunE: requireInit,
 	}
 
 	f := cmd.Flags()
