@@ -323,7 +323,7 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		return name, fmt.Errorf("path %q not found", name)
 	}
 
-	crepo := filepath.Join(repositoryDirectory(), name)
+	crepo := filepath.Join(helmpath.Home(homePath()).Repository(), name)
 	if _, err := os.Stat(crepo); err == nil {
 		return filepath.Abs(crepo)
 	}

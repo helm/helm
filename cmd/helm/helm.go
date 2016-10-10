@@ -28,9 +28,10 @@ import (
 )
 
 const (
-	homeEnvVar      = "HELM_HOME"
-	hostEnvVar      = "HELM_HOST"
-	tillerNamespace = "kube-system"
+	localRepoIndexFilePath = "index.yaml"
+	homeEnvVar             = "HELM_HOME"
+	hostEnvVar             = "HELM_HOST"
+	tillerNamespace        = "kube-system"
 )
 
 var (
@@ -159,15 +160,6 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 	return nil
 }
 
-// requireInit is a PreRunE implementation for validating that $HELM_HOME is configured.
-func requireInit(cmd *cobra.Command, args []string) error {
-	err := requireHome()
-	if err != nil {
-		return fmt.Errorf("%s (try running 'helm init')", err)
-	}
-	return nil
-}
-
 // prettyError unwraps or rewrites certain errors to make them more user-friendly.
 func prettyError(err error) error {
 	if err == nil {
@@ -177,4 +169,8 @@ func prettyError(err error) error {
 	// could do is throw an interface on the lib that would let us get back
 	// the desc. Instead, we have to pass ALL errors through this.
 	return errors.New(grpc.ErrorDesc(err))
+}
+
+func homePath() string {
+	return os.ExpandEnv(helmHome)
 }
