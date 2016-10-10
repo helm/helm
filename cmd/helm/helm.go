@@ -58,9 +58,9 @@ Common actions from this point include:
 - helm list:      list releases of charts
 
 Environment:
-  $HELM_HOME      Set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $HELM_HOST      Set an alternative Tiller host. The format is host:port.
-  $KUBECONFIG     Set an alternate Kubernetes configuration file (default: "~/.kube/config").
+  $HELM_HOME      set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $HELM_HOST      set an alternative Tiller host. The format is host:port
+  $KUBECONFIG     set an alternate Kubernetes configuration file (default "~/.kube/config")
 `
 
 func newRootCmd(out io.Writer) *cobra.Command {
@@ -79,8 +79,8 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	}
 	thost := os.Getenv(hostEnvVar)
 	p := cmd.PersistentFlags()
-	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
-	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
+	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME")
+	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 
 	rup := newRepoUpdateCmd(out)
