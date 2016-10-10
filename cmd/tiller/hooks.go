@@ -165,5 +165,5 @@ func sortManifests(files map[string]string, apis versionSet, sort SortOrder) ([]
 		}
 		hs = append(hs, h)
 	}
-	return hs, generic, nil
+	return hs, sortByKind(generic, sort), nil
 }
