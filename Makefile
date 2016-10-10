@@ -1,6 +1,8 @@
 DOCKER_REGISTRY ?= gcr.io
 IMAGE_PREFIX    ?= kubernetes-helm
 SHORT_NAME      ?= tiller
+TARGETS         = darwin/amd64 linux/amd64 linux/386
+DIST_DIRS       = find * -type d -exec
 
 # go option
 GO        ?= go
@@ -12,7 +14,6 @@ LDFLAGS   :=
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
-DIST_DIRS := find * -type d -exec
 
 .PHONY: all
 all: build
@@ -24,7 +25,7 @@ build:
 # usage: make build-cross dist VERSION=v2.0.0-alpha.3
 .PHONY: build-cross
 build-cross:
-	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -os="darwin linux windows" -arch="amd64 386" $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
+	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
 
 .PHONY: dist
 dist:
@@ -32,18 +33,15 @@ dist:
 		cd _dist && \
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
 		$(DIST_DIRS) cp ../README.md {} \; && \
-		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
+		$(DIST_DIRS) tar -zcf helm-${GIT_TAG}-{}.tar.gz {} \; && \
+		$(DIST_DIRS) zip -r helm-${GIT_TAG}-{}.zip {} \; \
 	)
 
 .PHONY: checksum
 checksum:
-	( \
-		cd _dist && \
-		for f in ./*.{tar.gz,zip} ; do \
-			shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
-		done \
-	)
+	for f in _dist/*.{gz,zip} ; do \
+		shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
+	done
 
 .PHONY: check-docker
 check-docker:
