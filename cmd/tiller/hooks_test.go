@@ -19,6 +19,8 @@ package main
 import (
 	"testing"
 
+	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -153,6 +155,28 @@ metadata:
 		}
 		if !found {
 			t.Errorf("Result not found: %v", out)
+		}
+	}
+
+	// Verify the sort order
+	sorted := make([]manifest, len(data))
+	for i, s := range data {
+		var sh simpleHead
+		err := yaml.Unmarshal([]byte(s.manifest), &sh)
+		if err != nil {
+			// This is expected for manifests that are corrupt or empty.
+			t.Log(err)
+		}
+		sorted[i] = manifest{
+			content: s.manifest,
+			name:    s.name,
+			head:    &sh,
+		}
+	}
+	sorted = sortByKind(sorted, InstallOrder)
+	for i, m := range generic {
+		if m.content != sorted[i].content {
+			t.Errorf("Expected %q, got %q", m.content, sorted[i].content)
 		}
 	}
 
