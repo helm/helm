@@ -36,8 +36,8 @@ dist:
 		cd _dist && \
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
 		$(DIST_DIRS) cp ../README.md {} \; && \
-		$(DIST_DIRS) tar -zcf helm-${GIT_TAG}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${GIT_TAG}-{}.zip {} \; \
+		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
+		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
 	)
 
 .PHONY: checksum
