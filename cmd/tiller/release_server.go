@@ -278,12 +278,12 @@ func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 
 	res, err := s.performUpdate(currentRelease, updatedRelease, req)
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 
 	if !req.DryRun {
 		if err := s.env.Releases.Create(updatedRelease); err != nil {
-			return nil, err
+			return res, err
 		}
 	}
 
@@ -306,7 +306,12 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	}
 
 	if err := s.performKubeUpdate(originalRelease, updatedRelease); err != nil {
-		return nil, err
+		log.Printf("warning: Release Upgrade %q failed: %s", updatedRelease.Name, err)
+		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
+		updatedRelease.Info.Status.Code = release.Status_FAILED
+		s.recordRelease(originalRelease, true)
+		s.recordRelease(updatedRelease, false)
+		return res, err
 	}
 
 	// post-upgrade hooks
@@ -317,9 +322,7 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	}
 
 	originalRelease.Info.Status.Code = release.Status_SUPERSEDED
-	if err := s.env.Releases.Update(originalRelease); err != nil {
-		return nil, fmt.Errorf("Update of %s failed: %s", originalRelease.Name, err)
-	}
+	s.recordRelease(originalRelease, true)
 
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
 
