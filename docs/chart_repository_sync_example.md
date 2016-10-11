@@ -19,7 +19,7 @@ $ mv alpine-0.1.0.tgz fantastic-charts/
 Use helm to generate an updated index.yaml file by passing in the directory path and the url of the remote repository to the `helm repo index` command like this:
 
 ```console
-$ helm repo index fantastic-charts/ https://storage.googleapis.com/fantastic-charts
+$ helm repo index fantastic-charts/ --url https://storage.googleapis.com/fantastic-charts
 ```
 This will generate an updated index.yaml file and place in the `fantastic-charts/` directory.
 
