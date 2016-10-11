@@ -587,6 +587,42 @@ func TestUpdateRelease(t *testing.T) {
 	}
 }
 
+func TestUpdateReleaseFailure(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+	rs.env.KubeClient = newUpdateFailingKubeClient()
+
+	req := &services.UpdateReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "something", Data: []byte("hello: world")},
+			},
+		},
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err == nil {
+		t.Error("Expected failed update")
+	}
+
+	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_FAILED {
+		t.Errorf("Expected FAILED release. Got %d", updatedStatus)
+	}
+
+	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
+	if err != nil {
+		t.Errorf("Expected to be able to get previous release")
+	}
+	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_SUPERSEDED {
+		t.Errorf("Expected SUPERSEDED status on previous Release version. Got %v", oldStatus)
+	}
+}
+
 func TestUpdateReleaseNoHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
@@ -1134,6 +1170,21 @@ func mockEnvironment() *environment.Environment {
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
 	return e
+}
+
+func newUpdateFailingKubeClient() *updateFailingKubeClient {
+	return &updateFailingKubeClient{
+		PrintingKubeClient: environment.PrintingKubeClient{Out: os.Stdout},
+	}
+
+}
+
+type updateFailingKubeClient struct {
+	environment.PrintingKubeClient
+}
+
+func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader) error {
+	return errors.New("Failed update in kube client")
 }
 
 func newHookFailingKubeClient() *hookFailingKubeClient {
