@@ -848,20 +848,20 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		// We could instead just delete everything in no particular order.
 		return nil, err
 	}
-	// Note: We could re-join these into one file and delete just that one. Or
-	// we could collect errors (instead of bailing on the first error) and try
-	// to delete as much as possible instead of failing at the first error.
+
+	// Collect the errors, and return them later.
+	es := []string{}
 	for _, file := range files {
 		b := bytes.NewBufferString(file.content)
 		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
 			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
-			return nil, err
+			es = append(es, err.Error())
 		}
 	}
 
 	if !req.DisableHooks {
 		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, postDelete); err != nil {
-			return res, err
+			es = append(es, err.Error())
 		}
 	}
 
@@ -875,7 +875,12 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	return res, nil
+	var errs error
+	if len(es) > 0 {
+		errs = fmt.Errorf("deletion error count %d: %s", len(es), strings.Join(es, "; "))
+	}
+
+	return res, errs
 }
 
 // byName implements the sort.Interface for []*release.Release.
