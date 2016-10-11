@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/labels"
 
 	"k8s.io/helm/pkg/kube"
@@ -29,8 +30,17 @@ import (
 // TODO refactor out this global var
 var tunnel *kube.Tunnel
 
-func newTillerPortForwarder(namespace string) (*kube.Tunnel, error) {
-	kc := kube.New(nil)
+func getKubeConfig(context string) clientcmd.ClientConfig {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	overrides := &clientcmd.ConfigOverrides{}
+	if context != "" {
+		overrides.CurrentContext = context
+	}
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
+}
+
+func newTillerPortForwarder(namespace, context string) (*kube.Tunnel, error) {
+	kc := kube.New(getKubeConfig(context))
 	client, err := kc.Client()
 	if err != nil {
 		return nil, err
