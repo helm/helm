@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-	"sort"
 	"strings"
 
 	"google.golang.org/grpc/metadata"
@@ -36,6 +35,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
@@ -123,9 +123,9 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 
 	switch req.SortBy {
 	case services.ListSort_NAME:
-		sort.Sort(byName(rels))
+		relutil.SortByName(rels)
 	case services.ListSort_LAST_RELEASED:
-		sort.Sort(byDate(rels))
+		relutil.SortByDate(rels)
 	}
 
 	if req.SortOrder == services.ListSort_DESC {
@@ -480,8 +480,8 @@ func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 		return nil, nil, errors.New("no revision to rollback")
 	}
 
-	sort.Sort(sort.Reverse(byRev(h)))
-	crls := h[0]
+	relutil.SortByRevision(h)
+	crls := h[len(h)-1]
 
 	rbv := req.Version
 	if req.Version == 0 {
@@ -876,29 +876,6 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	return res, nil
-}
-
-// byName implements the sort.Interface for []*release.Release.
-type byName []*release.Release
-
-func (r byName) Len() int {
-	return len(r)
-}
-func (r byName) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byName) Less(i, j int) bool {
-	return r[i].Name < r[j].Name
-}
-
-type byDate []*release.Release
-
-func (r byDate) Len() int { return len(r) }
-func (r byDate) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byDate) Less(p, q int) bool {
-	return r[p].Info.LastDeployed.Seconds < r[q].Info.LastDeployed.Seconds
 }
 
 func splitManifests(bigfile string) map[string]string {

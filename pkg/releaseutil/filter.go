@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage // import "k8s.io/helm/pkg/storage"
+package releaseutil // import "k8s.io/helm/pkg/releaseutil"
 
 import rspb "k8s.io/helm/pkg/proto/hapi/release"
 
 // FilterFunc returns true if the release object satisfies
-// the predicate of the underlying func.
+// the predicate of the underlying filter func.
 type FilterFunc func(*rspb.Release) bool
 
 // Check applies the FilterFunc to the release object.
@@ -28,6 +28,17 @@ func (fn FilterFunc) Check(rls *rspb.Release) bool {
 		return false
 	}
 	return fn(rls)
+}
+
+// Filter applies the filter(s) to the list of provided releases
+// returning the list that satisfies the filtering predicate.
+func (fn FilterFunc) Filter(rels []*rspb.Release) (rets []*rspb.Release) {
+	for _, rel := range rels {
+		if fn.Check(rel) {
+			rets = append(rets, rel)
+		}
+	}
+	return
 }
 
 // Any returns a FilterFunc that filters a list of releases
