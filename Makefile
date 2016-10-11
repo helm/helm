@@ -15,6 +15,9 @@ GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
 
+# Required for globs to work correctly
+SHELL=/bin/bash
+
 .PHONY: all
 all: build
 
