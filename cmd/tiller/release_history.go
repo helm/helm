@@ -17,11 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"sort"
-
 	"golang.org/x/net/context"
-	rpb "k8s.io/helm/pkg/proto/hapi/release"
 	tpb "k8s.io/helm/pkg/proto/hapi/services"
+	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
 func (s *releaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryRequest) (*tpb.GetHistoryResponse, error) {
@@ -34,7 +32,7 @@ func (s *releaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryReque
 		return nil, err
 	}
 
-	sort.Sort(sort.Reverse(byRev(h)))
+	relutil.Reverse(h, relutil.SortByRevision)
 
 	var resp tpb.GetHistoryResponse
 	for i := 0; i < min(len(h), int(req.Max)); i++ {
@@ -43,12 +41,6 @@ func (s *releaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryReque
 
 	return &resp, nil
 }
-
-type byRev []*rpb.Release
-
-func (s byRev) Len() int           { return len(s) }
-func (s byRev) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s byRev) Less(i, j int) bool { return s[i].Version < s[j].Version }
 
 func min(x, y int) int {
 	if x < y {

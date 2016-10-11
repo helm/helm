@@ -21,6 +21,7 @@ import (
 	"log"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
@@ -73,7 +74,7 @@ func (s *Storage) ListReleases() ([]*rspb.Release, error) {
 func (s *Storage) ListDeleted() ([]*rspb.Release, error) {
 	log.Println("List deleted releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
-		return StatusFilter(rspb.Status_DELETED).Check(rls)
+		return relutil.StatusFilter(rspb.Status_DELETED).Check(rls)
 	})
 }
 
@@ -82,27 +83,27 @@ func (s *Storage) ListDeleted() ([]*rspb.Release, error) {
 func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 	log.Println("Listing all deployed releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
-		return StatusFilter(rspb.Status_DEPLOYED).Check(rls)
+		return relutil.StatusFilter(rspb.Status_DEPLOYED).Check(rls)
 	})
 }
 
 // ListFilterAll returns the set of releases satisfying satisfying the predicate
 // (filter0 && filter1 && ... && filterN), i.e. a Release is included in the results
 // if and only if all filters return true.
-func (s *Storage) ListFilterAll(filters ...FilterFunc) ([]*rspb.Release, error) {
+func (s *Storage) ListFilterAll(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
 	log.Println("Listing all releases with filter")
 	return s.Driver.List(func(rls *rspb.Release) bool {
-		return All(filters...).Check(rls)
+		return relutil.All(fns...).Check(rls)
 	})
 }
 
 // ListFilterAny returns the set of releases satisfying satisfying the predicate
 // (filter0 || filter1 || ... || filterN), i.e. a Release is included in the results
 // if at least one of the filters returns true.
-func (s *Storage) ListFilterAny(filters ...FilterFunc) ([]*rspb.Release, error) {
+func (s *Storage) ListFilterAny(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
 	log.Println("Listing any releases with filter")
 	return s.Driver.List(func(rls *rspb.Release) bool {
-		return Any(filters...).Check(rls)
+		return relutil.Any(fns...).Check(rls)
 	})
 }
 
