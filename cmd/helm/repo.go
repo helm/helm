@@ -44,7 +44,7 @@ var repoCmd = &cobra.Command{
 }
 
 type addCmd struct {
-	update bool
+	noupdate bool
 }
 
 func repoAddCmd() *cobra.Command {
@@ -59,25 +59,25 @@ func repoAddCmd() *cobra.Command {
 			name, url := args[0], args[1]
 
 			var err error
-			if add.update {
-				err = updateRepository(name, url)
-			} else {
+			if add.noupdate {
 				err = addRepository(name, url)
+			} else {
+				err = updateRepository(name, url)
 			}
 			if err != nil {
 				return err
 			}
 
-			if add.update {
-				fmt.Println(name + " has been updated")
-			} else {
+			if add.noupdate {
 				fmt.Println(name + " has been added to your repositories")
+			} else {
+				fmt.Println(name + " has been updated")
 			}
 			return nil
 		},
 	}
 	f := cmd.Flags()
-	f.BoolVarP(&add.update, "update", "u", false, "update old url if it exists")
+	f.BoolVar(&add.noupdate, "no-update", false, "raise error if repo is already registered")
 	return cmd
 }
 
