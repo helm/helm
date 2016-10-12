@@ -115,6 +115,10 @@ In Helm, one chart may depend on any number of other charts. These
 dependencies are expressed explicitly by copying the dependency charts
 into the `charts/` directory.
 
+A dependency can be either a chart archive (`foo-1.2.3.tgz`) or an
+unpacked chart directory. But its name cannot start with `_` or `.`.
+Such files are ignored by the chart loader.
+
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
 
@@ -141,7 +145,7 @@ on Apache and MySQL by including those charts inside of its `charts/`
 directory.
 
 **TIP:** _To drop a dependency into your `charts/` directory, use the
-`helm fetch` command._
+`helm fetch` command or use a `requirements.yaml` file_
 
 ### Managing Dependencies with `requirements.yaml`
 
