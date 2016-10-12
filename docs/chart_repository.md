@@ -124,7 +124,7 @@ $ mv alpine-0.1.0.tgz fantastic-charts/
 Outside of your directory, run the `helm repo index [DIR] [URL]` command. This command takes the path of the local directory that you just created and the URL of your remote chart repository and composes an index.yaml file inside the given directory path.
 
 ```console
-$ helm repo index fantastic-charts https://storage.googleapis.com/fantastic-charts
+$ helm repo index fantastic-charts --url https://storage.googleapis.com/fantastic-charts
 ```
 
 Now, you can upload the chart and the index file to your chart repository using a sync tool or manually. If you're using Google Cloud Storage, check out this [example workflow](chart_repository_sync_example.md) using the gsutil client.
