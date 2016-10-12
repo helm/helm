@@ -78,7 +78,7 @@ func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {
 		return err
 	}
 
-	fmt.Fprintf(out, "%q has been removed from your repositories", name)
+	fmt.Fprintf(out, "%q has been removed from your repositories\n", name)
 
 	return nil
 }
