@@ -173,6 +173,17 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		HelmHome: m.HelmHome,
 	}
 
+	destPath := filepath.Join(m.ChartPath, "charts")
+
+	// Create 'charts' directory if it doesn't already exist.
+	if fi, err := os.Stat(destPath); err != nil {
+		if err := os.MkdirAll(destPath, 0755); err != nil {
+			return err
+		}
+	} else if !fi.IsDir() {
+		return fmt.Errorf("%q is not a directory", destPath)
+	}
+
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	for _, dep := range deps {
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
@@ -183,8 +194,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			continue
 		}
 
-		dest := filepath.Join(m.ChartPath, "charts")
-		if _, _, err := dl.DownloadTo(churl, "", dest); err != nil {
+		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
 			fmt.Fprintf(m.Out, "WARNING: Could not download %s: %s (skipped)", churl, err)
 			continue
 		}
@@ -257,6 +267,8 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) {
 }
 
 // urlsAreEqual normalizes two URLs and then compares for equality.
+//
+// TODO: This and the urlJoin functions should really be moved to a 'urlutil' package.
 func urlsAreEqual(a, b string) bool {
 	au, err := url.Parse(a)
 	if err != nil {
