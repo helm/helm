@@ -24,20 +24,6 @@ import (
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
-const (
-	// HelmHostEnvVar is the $HELM_HOST envvar
-	HelmHostEnvVar = "HELM_HOST"
-
-	// HelmHomeEnvVar is the $HELM_HOME envvar
-	HelmHomeEnvVar = "HELM_HOME"
-
-	// DefaultHelmHost is the default tiller server host address.
-	DefaultHelmHost = ":44134"
-
-	// DefaultHelmHome is the default $HELM_HOME envvar value
-	DefaultHelmHome = "$HOME/.helm"
-)
-
 // Client manages client side of the helm-tiller protocol
 type Client struct {
 	opts options
