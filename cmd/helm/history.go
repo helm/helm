@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
 )
@@ -98,11 +99,20 @@ func formatHistory(rls []*release.Release) string {
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART")
 	for i := len(rls) - 1; i >= 0; i-- {
 		r := rls[i]
-		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
+		c := formatChartname(r.Chart)
 		t := timeconv.String(r.Info.LastDeployed)
 		s := r.Info.Status.Code.String()
 		v := r.Version
 		tbl.AddRow(v, t, s, c)
 	}
 	return tbl.String()
+}
+
+func formatChartname(c *chart.Chart) string {
+	if c == nil || c.Metadata == nil {
+		// This is an edge case that has happened in prod, though we don't
+		// know how: https://github.com/kubernetes/helm/issues/1347
+		return "MISSING"
+	}
+	return fmt.Sprintf("%s-%s", c.Metadata.Name, c.Metadata.Version)
 }
