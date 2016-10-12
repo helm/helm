@@ -344,7 +344,7 @@ sure your Helm client is up to date by running `helm repo update`.
 
 ## Creating Your Own Charts
 
-The [Chart Development Guide](chart.md) explains how to develop your own
+The [Chart Development Guide](charts.md) explains how to develop your own
 charts. But you can get started quickly by using the `helm create`
 command:
 
