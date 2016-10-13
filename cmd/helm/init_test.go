@@ -20,11 +20,83 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
+
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
+	"k8s.io/kubernetes/pkg/runtime"
 
 	"k8s.io/helm/cmd/helm/helmpath"
 )
 
+func TestInitCmd(t *testing.T) {
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(home)
+
+	var buf bytes.Buffer
+	fake := testclient.Fake{}
+	cmd := &initCmd{out: &buf, home: helmpath.Home(home), kubeClient: fake.Extensions()}
+	if err := cmd.run(); err != nil {
+		t.Errorf("expected error: %v", err)
+	}
+	actions := fake.Actions()
+	if action, ok := actions[0].(testclient.CreateAction); !ok || action.GetResource() != "deployments" {
+		t.Errorf("unexpected action: %v, expected create deployment", actions[0])
+	}
+	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
+	if !strings.Contains(buf.String(), expected) {
+		t.Errorf("expected %q, got %q", expected, buf.String())
+	}
+}
+
+func TestInitCmd_exsits(t *testing.T) {
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(home)
+
+	var buf bytes.Buffer
+	fake := testclient.Fake{}
+	fake.AddReactor("*", "*", func(action testclient.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.NewAlreadyExists(api.Resource("deployments"), "1")
+	})
+	cmd := &initCmd{out: &buf, home: helmpath.Home(home), kubeClient: fake.Extensions()}
+	if err := cmd.run(); err != nil {
+		t.Errorf("expected error: %v", err)
+	}
+	expected := "Warning: Tiller is already installed in the cluster. (Use --client-only to suppress this message.)"
+	if !strings.Contains(buf.String(), expected) {
+		t.Errorf("expected %q, got %q", expected, buf.String())
+	}
+}
+
+func TestInitCmd_clientOnly(t *testing.T) {
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(home)
+
+	var buf bytes.Buffer
+	fake := testclient.Fake{}
+	cmd := &initCmd{out: &buf, home: helmpath.Home(home), kubeClient: fake.Extensions(), clientOnly: true}
+	if err := cmd.run(); err != nil {
+		t.Errorf("expected error: %v", err)
+	}
+	if len(fake.Actions()) != 0 {
+		t.Error("expected client call")
+	}
+	expected := "Not installing tiller due to 'client-only' flag having been set"
+	if !strings.Contains(buf.String(), expected) {
+		t.Errorf("expected %q, got %q", expected, buf.String())
+	}
+}
 func TestEnsureHome(t *testing.T) {
 	home, err := ioutil.TempDir("", "helm_home")
 	if err != nil {
