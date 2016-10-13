@@ -18,46 +18,43 @@ For example, if a repository lives at the URL: `https://helm-charts.com`, the `a
 The index file is a yaml file called `index.yaml`. It contains some metadata about the package as well as a dump of the Chart.yaml file of a packaged chart. A valid chart repository must have an index file. The index file contains information about each chart in the chart repository. The `helm repo index` command will generate an index file based on a given local directory that contains packaged charts.
 
 This is an example of an index file:
+
 ```
 apiVersion: v1
 entries:
-  nginx:
-    - urls:
-        - http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz
-      name: nginx
-      description: string
-      version: 0.1.0
-      home: https://github.com/something
-      digest: "sha256:1234567890abcdef"
-      keywords:
-        - popular
-        - web server
-        - proxy
-    - urls:
-        - http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz
-      name: nginx
-      description: string
-      version: 0.2.0
-      home: https://github.com/something/else
-      digest: "sha256:1234567890abcdef"
-      keywords:
-        - popular
-        - web server
-        - proxy
   alpine:
-    - urls:
-        - http://storage.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
-        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
-      name: alpine
-      description: string
-      version: 1.0.0
-      home: https://github.com/something
-      keywords:
-        - linux
-        - alpine
-        - small
-        - sumtin
-      digest: "sha256:1234567890abcdef"
+  - created: 2016-10-06T16:23:20.499814565-06:00
+    description: Deploy a basic Alpine Linux pod
+    digest: 99c76e403d752c84ead610644d4b1c2f2b453a74b921f422b9dcb8a7c8b559cd
+    home: https://k8s.io/helm
+    name: alpine
+    sources:
+    - https://github.com/kubernetes/helm
+    urls:
+    - https://technosophos.github.io/tscharts/alpine-0.2.0.tgz
+    version: 0.2.0
+  - created: 2016-10-06T16:23:20.499543808-06:00
+    description: Deploy a basic Alpine Linux pod
+    digest: 515c58e5f79d8b2913a10cb400ebb6fa9c77fe813287afbacf1a0b897cd78727
+    home: https://k8s.io/helm
+    name: alpine
+    sources:
+    - https://github.com/kubernetes/helm
+    urls:
+    - https://technosophos.github.io/tscharts/alpine-0.1.0.tgz
+    version: 0.1.0
+  nginx:
+  - created: 2016-10-06T16:23:20.499543808-06:00
+    description: Create a basic nginx HTTP server
+    digest: aaff4545f79d8b2913a10cb400ebb6fa9c77fe813287afbacf1a0b897cdffffff
+    home: https://k8s.io/helm
+    name: nginx
+    sources:
+    - https://github.com/kubernetes/charts
+    urls:
+    - https://technosophos.github.io/tscharts/nginx-1.1.0.tgz
+    version: 1.1.0
+generated: 2016-10-06T16:23:20.499029981-06:00
 ```
 
 We will go through detailed GCS and Github Pages examples here, but feel free to skip to the next section if you've already created a chart repository.
