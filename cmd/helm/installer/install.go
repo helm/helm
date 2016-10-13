@@ -35,8 +35,11 @@ const defaultImage = "gcr.io/kubernetes-helm/tiller"
 // command failed.
 //
 // If verbose is true, this will print the manifest to stdout.
-func Install(client unversioned.DeploymentsNamespacer, namespace, image string, verbose bool) error {
-	if image == "" {
+func Install(client unversioned.DeploymentsNamespacer, namespace, image string, canary, verbose bool) error {
+	switch {
+	case canary:
+		image = defaultImage + ":canary"
+	case image == "":
 		image = fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	}
 	obj := generateDeployment(image)
