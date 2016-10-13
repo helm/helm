@@ -6,7 +6,7 @@ Helm and Tiller.
 ## Prerequisites
 
 - Go 1.6.0 or later
-- Glide 0.10.2 or later
+- Glide 0.12.0 or later
 - kubectl 1.2 or later
 - A Kubernetes cluster (optional)
 - The gRPC toolchain
