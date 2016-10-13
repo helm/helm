@@ -33,7 +33,9 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	if err := os.Link("testdata/testcharts/compressedchart-0.1.0.tgz", filepath.Join(dir, "compressedchart-0.1.0.tgz")); err != nil {
+
+	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
+	if err := os.Link("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {
 		t.Fatal(err)
 	}
 
@@ -41,16 +43,42 @@ func TestRepoIndexCmd(t *testing.T) {
 	c := newRepoIndexCmd(buf)
 
 	if err := c.RunE(c, []string{dir}); err != nil {
-		t.Errorf("%q", err)
+		t.Error(err)
 	}
 
-	index, err := repo.LoadIndexFile(filepath.Join(dir, "index.yaml"))
+	destIndex := filepath.Join(dir, "index.yaml")
+
+	index, err := repo.LoadIndexFile(destIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(index.Entries) != 1 {
-		t.Errorf("expected 1 entry, got %v: %#v", len(index.Entries), index.Entries)
+		t.Errorf("expected 1 entry, got %d: %#v", len(index.Entries), index.Entries)
 	}
 
+	// Test with `--merge`
+
+	// Remove first chart.
+	if err := os.Remove(comp); err != nil {
+		t.Fatal(err)
+	}
+	// Add another chart.
+	if err := os.Link("testdata/testcharts/reqtest-0.1.0.tgz", filepath.Join(dir, "reqtest-0.1.0.tgz")); err != nil {
+		t.Fatal(err)
+	}
+
+	c.ParseFlags([]string{"--merge", destIndex})
+	if err := c.RunE(c, []string{dir}); err != nil {
+		t.Error(err)
+	}
+
+	index, err = repo.LoadIndexFile(destIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(index.Entries) != 2 {
+		t.Errorf("expected 2 entry, got %d: %#v", len(index.Entries), index.Entries)
+	}
 }
