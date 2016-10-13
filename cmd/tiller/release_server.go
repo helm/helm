@@ -407,18 +407,18 @@ func (s *releaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 		return nil, err
 	}
 
-	rel, err := s.performRollback(currentRelease, targetRelease, req)
+	res, err := s.performRollback(currentRelease, targetRelease, req)
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 
 	if !req.DryRun {
 		if err := s.env.Releases.Create(targetRelease); err != nil {
-			return nil, err
+			return res, err
 		}
 	}
 
-	return rel, nil
+	return res, nil
 }
 
 func (s *releaseServer) performRollback(currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
@@ -437,7 +437,12 @@ func (s *releaseServer) performRollback(currentRelease, targetRelease *release.R
 	}
 
 	if err := s.performKubeUpdate(currentRelease, targetRelease); err != nil {
-		return nil, err
+		log.Printf("warning: Release Rollback %q failed: %s", targetRelease.Name, err)
+		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
+		targetRelease.Info.Status.Code = release.Status_FAILED
+		s.recordRelease(currentRelease, true)
+		s.recordRelease(targetRelease, false)
+		return res, err
 	}
 
 	// post-rollback hooks
@@ -448,9 +453,7 @@ func (s *releaseServer) performRollback(currentRelease, targetRelease *release.R
 	}
 
 	currentRelease.Info.Status.Code = release.Status_SUPERSEDED
-	if err := s.env.Releases.Update(currentRelease); err != nil {
-		return nil, fmt.Errorf("Update of %s failed: %s", currentRelease.Name, err)
-	}
+	s.recordRelease(currentRelease, true)
 
 	targetRelease.Info.Status.Code = release.Status_DEPLOYED
 
