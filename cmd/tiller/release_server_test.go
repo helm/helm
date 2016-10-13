@@ -623,6 +623,39 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	}
 }
 
+func TestRollbackReleaseFailure(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+	upgradedRel := upgradeReleaseVersion(rel)
+	rs.env.Releases.Update(rel)
+	rs.env.Releases.Create(upgradedRel)
+
+	req := &services.RollbackReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+	}
+
+	rs.env.KubeClient = newUpdateFailingKubeClient()
+	res, err := rs.RollbackRelease(c, req)
+	if err == nil {
+		t.Error("Expected failed rollback")
+	}
+
+	if targetStatus := res.Release.Info.Status.Code; targetStatus != release.Status_FAILED {
+		t.Errorf("Expected FAILED release. Got %v", targetStatus)
+	}
+
+	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
+	if err != nil {
+		t.Errorf("Expected to be able to get previous release")
+	}
+	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_SUPERSEDED {
+		t.Errorf("Expected SUPERSEDED status on previous Release version. Got %v", oldStatus)
+	}
+}
+
 func TestUpdateReleaseNoHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
