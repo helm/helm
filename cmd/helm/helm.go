@@ -25,6 +25,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"k8s.io/kubernetes/pkg/client/restclient"
+	"k8s.io/kubernetes/pkg/client/unversioned"
+
+	"k8s.io/helm/pkg/kube"
 )
 
 const (
@@ -145,8 +149,8 @@ func setupConnection(c *cobra.Command, args []string) error {
 }
 
 func teardown() {
-	if tunnel != nil {
-		tunnel.Close()
+	if tillerTunnel != nil {
+		tillerTunnel.Close()
 	}
 }
 
@@ -175,4 +179,18 @@ func prettyError(err error) error {
 
 func homePath() string {
 	return os.ExpandEnv(helmHome)
+}
+
+// getKubeClient is a convenience method for creating kubernetes config and client
+// for a given kubeconfig context
+func getKubeClient(context string) (*restclient.Config, *unversioned.Client, error) {
+	config, err := kube.GetConfig(context).ClientConfig()
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get kubernetes config for context '%s': %s", context, err)
+	}
+	client, err := unversioned.New(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get kubernetes client: %s", err)
+	}
+	return config, client, nil
 }

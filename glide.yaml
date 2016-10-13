@@ -25,25 +25,26 @@ import:
   version: ~1.4.1
   subpackages:
   - pkg/api
-  - pkg/api/meta
-  - pkg/api/error
+  - pkg/api/errors
   - pkg/api/unversioned
   - pkg/apimachinery/registered
+  - pkg/apis/batch
+  - pkg/apis/extensions
   - pkg/client/restclient
   - pkg/client/unversioned
-  - pkg/apis/batch
   - pkg/client/unversioned/clientcmd
-  - pkg/client/unversioned/fake
   - pkg/client/unversioned/portforward
   - pkg/client/unversioned/remotecommand
+  - pkg/client/unversioned/testclient
   - pkg/kubectl
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
   - pkg/labels
   - pkg/runtime
-  - pkg/watch
+  - pkg/util/intstr
   - pkg/util/strategicpatch
   - pkg/util/yaml
+  - pkg/watch
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
