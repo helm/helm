@@ -35,8 +35,9 @@ const (
 )
 
 var (
-	helmHome   string
-	tillerHost string
+	helmHome    string
+	tillerHost  string
+	kubeContext string
 )
 
 // flagDebug is a signal that the user wants additional output.
@@ -82,6 +83,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p := cmd.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST")
+	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
 
 	rup := newRepoUpdateCmd(out)
@@ -124,7 +126,7 @@ func main() {
 
 func setupConnection(c *cobra.Command, args []string) error {
 	if tillerHost == "" {
-		tunnel, err := newTillerPortForwarder(tillerNamespace)
+		tunnel, err := newTillerPortForwarder(tillerNamespace, kubeContext)
 		if err != nil {
 			return err
 		}
