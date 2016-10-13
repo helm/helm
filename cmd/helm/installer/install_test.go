@@ -42,7 +42,24 @@ func TestInstall(t *testing.T) {
 		return true, obj, nil
 	})
 
-	err := Install(fake.Extensions(), "default", image, false)
+	err := Install(fake.Extensions(), "default", image, false, false)
+	if err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+}
+
+func TestInstall_canary(t *testing.T) {
+	fake := testclient.Fake{}
+	fake.AddReactor("create", "deployments", func(action testclient.Action) (bool, runtime.Object, error) {
+		obj := action.(testclient.CreateAction).GetObject().(*extensions.Deployment)
+		i := obj.Spec.Template.Spec.Containers[0].Image
+		if i != "gcr.io/kubernetes-helm/tiller:canary" {
+			t.Errorf("expected canary image, got '%s'", i)
+		}
+		return true, obj, nil
+	})
+
+	err := Install(fake.Extensions(), "default", "", true, false)
 	if err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
