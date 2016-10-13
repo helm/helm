@@ -25,10 +25,22 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
+const repoIndexDesc = `
+Read the current directory and generate an index file based on the charts found.
+
+This tool is used for creating an 'index.yaml' file for a chart repository. To
+set an absolute URL to the charts, use '--url' flag.
+
+To merge the generated index with an existing index file, use the '--merge'
+flag. In this case, the charts found in the current directory will be merged
+into the existing index, with local charts taking priority over existing charts.
+`
+
 type repoIndexCmd struct {
-	dir string
-	url string
-	out io.Writer
+	dir   string
+	url   string
+	out   io.Writer
+	merge string
 }
 
 func newRepoIndexCmd(out io.Writer) *cobra.Command {
@@ -39,6 +51,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "index [flags] [DIR]",
 		Short: "generate an index file given a directory containing packaged charts",
+		Long:  repoIndexDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "path to a directory"); err != nil {
 				return err
@@ -52,6 +65,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.StringVar(&index.url, "url", "", "url of chart repository")
+	f.StringVar(&index.merge, "merge", "", "merge the generated index into the given index")
 
 	return cmd
 }
@@ -62,13 +76,21 @@ func (i *repoIndexCmd) run() error {
 		return err
 	}
 
-	return index(path, i.url)
+	return index(path, i.url, i.merge)
 }
 
-func index(dir, url string) error {
+func index(dir, url, mergeTo string) error {
 	chartRepo, err := repo.LoadChartRepository(dir, url)
 	if err != nil {
 		return err
+	}
+
+	if mergeTo != "" {
+		old, err := repo.LoadIndexFile(mergeTo)
+		if err != nil {
+			return err
+		}
+		return chartRepo.MergeIndex(old)
 	}
 
 	return chartRepo.Index()
