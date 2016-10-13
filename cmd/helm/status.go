@@ -79,18 +79,18 @@ func (s *statusCmd) run() error {
 // install / upgrade
 func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 	if res.Info.LastDeployed != nil {
-		fmt.Fprintf(out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
+		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
 	}
-	fmt.Fprintf(out, "Namespace: %s\n", res.Namespace)
-	fmt.Fprintf(out, "Status: %s\n", res.Info.Status.Code)
+	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
+	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
 	if res.Info.Status.Details != nil {
 		fmt.Fprintf(out, "Details: %s\n", res.Info.Status.Details)
 	}
 	fmt.Fprintf(out, "\n")
 	if len(res.Info.Status.Resources) > 0 {
-		fmt.Fprintf(out, "Resources:\n%s\n", res.Info.Status.Resources)
+		fmt.Fprintf(out, "RESOURCES:\n%s\n", res.Info.Status.Resources)
 	}
 	if len(res.Info.Status.Notes) > 0 {
-		fmt.Fprintf(out, "Notes:\n%s\n", res.Info.Status.Notes)
+		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
 	}
 }

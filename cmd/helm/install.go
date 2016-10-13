@@ -36,7 +36,6 @@ import (
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 const installDesc = `
@@ -143,7 +142,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 func (i *installCmd) run() error {
 	if flagDebug {
-		fmt.Fprintf(i.out, "Chart path: %s\n", i.chartPath)
+		fmt.Fprintf(i.out, "CHART PATH: %s\n", i.chartPath)
 	}
 
 	rawVals, err := i.vals()
@@ -158,7 +157,7 @@ func (i *installCmd) run() error {
 			return err
 		}
 		// Print the final name so the user knows what the final name of the release is.
-		fmt.Printf("Final name: %s\n", i.name)
+		fmt.Printf("FINAL NAME: %s\n", i.name)
 	}
 
 	res, err := i.client.InstallRelease(
@@ -226,12 +225,11 @@ func (i *installCmd) printRelease(rel *release.Release) {
 	// TODO: Switch to text/template like everything else.
 	if flagDebug {
 		fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
-		fmt.Fprintf(i.out, "NAMESPACE:   %s\n", rel.Namespace)
-		fmt.Fprintf(i.out, "INFO:   %s %s\n", timeconv.String(rel.Info.LastDeployed), rel.Info.Status)
+		fmt.Fprintf(i.out, "TARGET NAMESPACE:   %s\n", rel.Namespace)
 		fmt.Fprintf(i.out, "CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
 		fmt.Fprintf(i.out, "MANIFEST: %s\n", rel.Manifest)
 	} else {
-		fmt.Fprintln(i.out, rel.Name)
+		fmt.Fprintf(i.out, "NAME: %s\n", rel.Name)
 	}
 }
 

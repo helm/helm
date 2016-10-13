@@ -143,7 +143,7 @@ func setupConnection(c *cobra.Command, args []string) error {
 
 	// Set up the gRPC config.
 	if flagDebug {
-		fmt.Printf("Server: %q\n", tillerHost)
+		fmt.Printf("SERVER: %q\n", tillerHost)
 	}
 	return nil
 }
