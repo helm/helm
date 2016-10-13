@@ -21,9 +21,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
+	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/installer"
@@ -47,6 +48,7 @@ type initCmd struct {
 	clientOnly bool
 	out        io.Writer
 	home       helmpath.Home
+	kubeClient unversioned.DeploymentsNamespacer
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -77,8 +79,15 @@ func (i *initCmd) run() error {
 	}
 
 	if !i.clientOnly {
-		if err := installer.Install(tillerNamespace, i.image, flagDebug); err != nil {
-			if !strings.Contains(err.Error(), `"tiller-deploy" already exists`) {
+		if i.kubeClient == nil {
+			_, c, err := getKubeClient(kubeContext)
+			if err != nil {
+				return fmt.Errorf("could not get kubernetes client: %s", err)
+			}
+			i.kubeClient = c
+		}
+		if err := installer.Install(i.kubeClient, tillerNamespace, i.image, flagDebug); err != nil {
+			if !kerrors.IsAlreadyExists(err) {
 				return fmt.Errorf("error installing: %s", err)
 			}
 			fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster. (Use --client-only to suppress this message.)")

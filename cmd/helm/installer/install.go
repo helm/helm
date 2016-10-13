@@ -18,14 +18,12 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
 	"fmt"
-	"strings"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/intstr"
 
-	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -37,38 +35,12 @@ const defaultImage = "gcr.io/kubernetes-helm/tiller"
 // command failed.
 //
 // If verbose is true, this will print the manifest to stdout.
-func Install(namespace, image string, verbose bool) error {
-	kc := kube.New(nil)
-
-	if namespace == "" {
-		ns, _, err := kc.DefaultNamespace()
-		if err != nil {
-			return err
-		}
-		namespace = ns
-	}
-
-	c, err := kc.Client()
-	if err != nil {
-		return err
-	}
-
-	ns := generateNamespace(namespace)
-	if _, err := c.Namespaces().Create(ns); err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return err
-		}
-	}
-
+func Install(client unversioned.DeploymentsNamespacer, namespace, image string, verbose bool) error {
 	if image == "" {
-		// strip git sha off version
-		tag := strings.Split(version.Version, "+")[0]
-		image = fmt.Sprintf("%s:%s", defaultImage, tag)
+		image = fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	}
-
-	rc := generateDeployment(image)
-
-	_, err = c.Deployments(namespace).Create(rc)
+	obj := generateDeployment(image)
+	_, err := client.Deployments(namespace).Create(obj)
 	return err
 }
 
@@ -124,13 +96,4 @@ func generateDeployment(image string) *extensions.Deployment {
 		},
 	}
 	return d
-}
-
-func generateNamespace(namespace string) *api.Namespace {
-	return &api.Namespace{
-		ObjectMeta: api.ObjectMeta{
-			Name:   namespace,
-			Labels: generateLabels(map[string]string{"name": "helm-namespace"}),
-		},
-	}
 }
