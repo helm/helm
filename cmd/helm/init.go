@@ -46,6 +46,7 @@ const (
 type initCmd struct {
 	image      string
 	clientOnly bool
+	canary     bool
 	out        io.Writer
 	home       helmpath.Home
 	kubeClient unversioned.DeploymentsNamespacer
@@ -68,7 +69,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
-	cmd.Flags().BoolVarP(&i.clientOnly, "client-only", "c", false, "If set does not install tiller")
+	cmd.Flags().BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
+	cmd.Flags().BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
 	return cmd
 }
 
@@ -86,7 +88,7 @@ func (i *initCmd) run() error {
 			}
 			i.kubeClient = c
 		}
-		if err := installer.Install(i.kubeClient, tillerNamespace, i.image, flagDebug); err != nil {
+		if err := installer.Install(i.kubeClient, tillerNamespace, i.image, i.canary, flagDebug); err != nil {
 			if !kerrors.IsAlreadyExists(err) {
 				return fmt.Errorf("error installing: %s", err)
 			}
