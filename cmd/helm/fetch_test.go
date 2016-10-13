@@ -17,49 +17,123 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
-
+	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"k8s.io/helm/pkg/repo/repotest"
 )
 
-type testCase struct {
-	in          string
-	expectedErr error
-	expectedOut string
-}
+func TestFetchCmd(t *testing.T) {
+	hh, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := homePath()
+	helmHome = hh
+	defer func() {
+		helmHome = old
+		os.RemoveAll(hh)
+	}()
 
-var repos = map[string]string{
-	"local":     "http://localhost:8879/charts",
-	"someother": "http://storage.googleapis.com/mycharts",
-}
-
-var testCases = []testCase{
-	{"bad", fmt.Errorf("Invalid chart url format: bad"), ""},
-	{"http://", fmt.Errorf("Invalid chart url format: http://"), ""},
-	{"http://example.com", fmt.Errorf("Invalid chart url format: http://example.com"), ""},
-	{"http://example.com/foo/bar", nil, "http://example.com/foo/bar"},
-	{"local/nginx-2.0.0.tgz", nil, "http://localhost:8879/charts/nginx-2.0.0.tgz"},
-	{"nonexistentrepo/nginx-2.0.0.tgz", fmt.Errorf("No such repo: nonexistentrepo"), ""},
-}
-
-func testRunner(t *testing.T, tc testCase) {
-	u, err := mapRepoArg(tc.in, repos)
-	if (tc.expectedErr == nil && err != nil) ||
-		(tc.expectedErr != nil && err == nil) ||
-		(tc.expectedErr != nil && err != nil && tc.expectedErr.Error() != err.Error()) {
-		t.Errorf("Expected mapRepoArg to fail with input %s %v but got %v", tc.in, tc.expectedErr, err)
+	// all flags will get "--home=TMDIR -d outdir" appended.
+	tests := []struct {
+		name       string
+		chart      string
+		flags      []string
+		fail       bool
+		failExpect string
+		expectFile string
+		expectDir  bool
+	}{
+		{
+			name:       "Basic chart fetch",
+			chart:      "test/signtest",
+			expectFile: "./signtest-0.1.0.tgz",
+		},
+		{
+			name:       "Chart fetch with version",
+			chart:      "test/signtest",
+			flags:      []string{"--version", "0.1.0"},
+			expectFile: "./signtest-0.1.0.tgz",
+		},
+		{
+			name:       "Fail chart fetch with non-existent version",
+			chart:      "test/signtest",
+			flags:      []string{"--version", "99.1.0"},
+			fail:       true,
+			failExpect: "no such chart",
+		},
+		{
+			name:       "Fail fetching non-existent chart",
+			chart:      "test/nosuchthing",
+			failExpect: "Failed to fetch",
+			fail:       true,
+		},
+		{
+			name:       "Fetch and verify",
+			chart:      "test/signtest",
+			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub"},
+			expectFile: "./signtest-0.1.0.tgz",
+		},
+		{
+			name:       "Fetch and fail verify",
+			chart:      "test/reqtest",
+			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub"},
+			failExpect: "Failed to fetch provenance",
+			fail:       true,
+		},
+		{
+			name:       "Fetch and untar",
+			chart:      "test/signtest",
+			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub", "--untar", "--untardir", "signtest"},
+			expectFile: "./signtest",
+			expectDir:  true,
+		},
+		{
+			name:       "Fetch, verify, untar",
+			chart:      "test/signtest",
+			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub", "--untar", "--untardir", "signtest"},
+			expectFile: "./signtest",
+			expectDir:  true,
+		},
 	}
 
-	if (u == nil && len(tc.expectedOut) != 0) ||
-		(u != nil && len(tc.expectedOut) == 0) ||
-		(u != nil && tc.expectedOut != u.String()) {
-		t.Errorf("Expected %s to map to fetch url %v but got %v", tc.in, tc.expectedOut, u)
+	srv := repotest.NewServer(hh)
+	defer srv.Stop()
+
+	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz*"); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
 	}
 
-}
+	for _, tt := range tests {
+		outdir := filepath.Join(hh, "testout")
+		os.RemoveAll(outdir)
+		os.Mkdir(outdir, 0755)
 
-func TestMappings(t *testing.T) {
-	for _, tc := range testCases {
-		testRunner(t, tc)
+		buf := bytes.NewBuffer(nil)
+		cmd := newFetchCmd(buf)
+		tt.flags = append(tt.flags, "-d", outdir)
+		cmd.ParseFlags(tt.flags)
+		if err := cmd.RunE(cmd, []string{tt.chart}); err != nil {
+			if tt.fail {
+				continue
+			}
+			t.Errorf("%q reported error: %s", tt.name, err)
+			continue
+		}
+
+		ef := filepath.Join(outdir, tt.expectFile)
+		fi, err := os.Stat(ef)
+		if err != nil {
+			t.Errorf("%q: expected a file at %s. %s", tt.name, ef, err)
+		}
+		if fi.IsDir() != tt.expectDir {
+			t.Errorf("%q: expected directory=%t, but it's not.", tt.name, tt.expectDir)
+		}
 	}
 }

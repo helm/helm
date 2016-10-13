@@ -17,89 +17,115 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io"
 	"strings"
 
+	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/cmd/helm/search"
 	"k8s.io/helm/pkg/repo"
 )
 
-func init() {
-	RootCommand.AddCommand(searchCmd)
+const searchDesc = `
+Search reads through all of the repositories configured on the system, and
+looks for matches.
+
+Repositories are managed with 'helm repo' commands.
+`
+
+// searchMaxScore suggests that any score higher than this is not considered a match.
+const searchMaxScore = 25
+
+type searchCmd struct {
+	out      io.Writer
+	helmhome helmpath.Home
+
+	versions bool
+	regexp   bool
 }
 
-var searchCmd = &cobra.Command{
-	Use:     "search [keyword]",
-	Short:   "search for a keyword in charts",
-	Long:    "Searches the known repositories cache files for the specified search string, looks at name and keywords",
-	RunE:    search,
-	PreRunE: requireInit,
-}
+func newSearchCmd(out io.Writer) *cobra.Command {
+	sc := &searchCmd{out: out, helmhome: helmpath.Home(homePath())}
 
-func search(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errors.New("This command needs at least one argument (search string)")
+	cmd := &cobra.Command{
+		Use:   "search [keyword]",
+		Short: "search for a keyword in charts",
+		Long:  searchDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return sc.run(args)
+		},
 	}
 
-	results, err := searchCacheForPattern(cacheDirectory(), args[0])
+	f := cmd.Flags()
+	f.BoolVarP(&sc.regexp, "regexp", "r", false, "use regular expressions for searching")
+	f.BoolVarP(&sc.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line.")
+
+	return cmd
+}
+
+func (s *searchCmd) run(args []string) error {
+	index, err := s.buildIndex()
 	if err != nil {
 		return err
 	}
-	if len(results) > 0 {
-		for _, result := range results {
-			fmt.Println(result)
-		}
+
+	if len(args) == 0 {
+		s.showAllCharts(index)
+		return nil
 	}
+
+	q := strings.Join(args, " ")
+	res, err := index.Search(q, searchMaxScore, s.regexp)
+	if err != nil {
+		return nil
+	}
+	search.SortScore(res)
+
+	fmt.Fprintln(s.out, s.formatSearchResults(res))
+
 	return nil
 }
 
-func searchChartRefsForPattern(search string, chartRefs map[string]*repo.ChartRef) []string {
-	matches := []string{}
-	for k, c := range chartRefs {
-		if strings.Contains(c.Name, search) && !c.Removed {
-			matches = append(matches, k)
-			continue
-		}
-		if c.Chartfile == nil {
-			continue
-		}
-		for _, keyword := range c.Chartfile.Keywords {
-			if strings.Contains(keyword, search) {
-				matches = append(matches, k)
-			}
-		}
-	}
-	return matches
+func (s *searchCmd) showAllCharts(i *search.Index) {
+	res := i.All()
+	search.SortScore(res)
+	fmt.Fprintln(s.out, s.formatSearchResults(res))
 }
 
-func searchCacheForPattern(dir string, search string) ([]string, error) {
-	fileList := []string{}
-	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if !f.IsDir() {
-			fileList = append(fileList, path)
-		}
-		return nil
-	})
-	matches := []string{}
-	for _, f := range fileList {
-		index, err := repo.LoadIndexFile(f)
+func (s *searchCmd) formatSearchResults(res []*search.Result) string {
+	if len(res) == 0 {
+		return "No results found"
+	}
+	table := uitable.New()
+	table.MaxColWidth = 50
+	table.AddRow("NAME", "VERSION", "DESCRIPTION")
+	for _, r := range res {
+		table.AddRow(r.Name, r.Chart.Version, r.Chart.Description)
+	}
+	return table.String()
+}
+
+func (s *searchCmd) buildIndex() (*search.Index, error) {
+	// Load the repositories.yaml
+	rf, err := repo.LoadRepositoriesFile(s.helmhome.RepositoryFile())
+	if err != nil {
+		return nil, err
+	}
+
+	i := search.NewIndex()
+	for _, re := range rf.Repositories {
+		n := re.Name
+		f := s.helmhome.CacheIndex(n)
+		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			return matches, fmt.Errorf("index %s corrupted: %s", f, err)
+			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			continue
 		}
 
-		m := searchChartRefsForPattern(search, index.Entries)
-		repoName := strings.TrimSuffix(filepath.Base(f), "-index.yaml")
-		for _, c := range m {
-			// TODO: Is it possible for this file to be missing? Or to have
-			// an extension other than .tgz? Should the actual filename be in
-			// the YAML?
-			fname := filepath.Join(repoName, c+".tgz")
-			matches = append(matches, fname)
-		}
+		i.AddRepo(n, ind, s.versions)
 	}
-	return matches, nil
+	return i, nil
 }

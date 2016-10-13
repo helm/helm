@@ -18,18 +18,24 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
+	"os"
 	"regexp"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/proto/hapi/version"
+	"k8s.io/helm/pkg/repo"
 )
 
 var mockHookTemplate = `apiVersion: v1
@@ -46,9 +52,10 @@ metadata:
 `
 
 type releaseOptions struct {
-	name    string
-	version int32
-	chart   *chart.Chart
+	name       string
+	version    int32
+	chart      *chart.Chart
+	statusCode release.Status_Code
 }
 
 func releaseMock(opts *releaseOptions) *release.Release {
@@ -77,12 +84,17 @@ func releaseMock(opts *releaseOptions) *release.Release {
 		}
 	}
 
+	scode := release.Status_DEPLOYED
+	if opts.statusCode > 0 {
+		scode = opts.statusCode
+	}
+
 	return &release.Release{
 		Name: name,
 		Info: &release.Info{
 			FirstDeployed: &date,
 			LastDeployed:  &date,
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
+			Status:        &release.Status{Code: scode},
 		},
 		Chart:   ch,
 		Config:  &chart.Config{Raw: `name: "value"`},
@@ -128,10 +140,29 @@ func (c *fakeReleaseClient) DeleteRelease(rlsName string, opts ...helm.DeleteOpt
 }
 
 func (c *fakeReleaseClient) ReleaseStatus(rlsName string, opts ...helm.StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	return nil, nil
+	if c.rels[0] != nil {
+		return &rls.GetReleaseStatusResponse{
+			Name:      c.rels[0].Name,
+			Info:      c.rels[0].Info,
+			Namespace: c.rels[0].Namespace,
+		}, nil
+	}
+	return nil, fmt.Errorf("No such release: %s", rlsName)
+}
+
+func (c *fakeReleaseClient) GetVersion(opts ...helm.VersionOption) (*rls.GetVersionResponse, error) {
+	return &rls.GetVersionResponse{
+		Version: &version.Version{
+			SemVer: "1.2.3-fakeclient+testonly",
+		},
+	}, nil
 }
 
 func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	return nil, nil
+}
+
+func (c *fakeReleaseClient) RollbackRelease(rlsName string, opts ...helm.RollbackOption) (*rls.RollbackReleaseResponse, error) {
 	return nil, nil
 }
 
@@ -142,6 +173,10 @@ func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentO
 		}
 	}
 	return resp, c.err
+}
+
+func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryOption) (*rls.GetHistoryResponse, error) {
+	return &rls.GetHistoryResponse{Releases: c.rels}, c.err
 }
 
 func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {
@@ -181,4 +216,80 @@ type releaseCase struct {
 	expected string
 	err      bool
 	resp     *release.Release
+}
+
+// tempHelmHome sets up a Helm Home in a temp dir.
+//
+// This does not clean up the directory. You must do that yourself.
+// You  must also set helmHome yourself.
+func tempHelmHome(t *testing.T) (string, error) {
+	oldhome := helmHome
+	dir, err := ioutil.TempDir("", "helm_home-")
+	if err != nil {
+		return "n/", err
+	}
+
+	helmHome = dir
+	if err := ensureTestHome(helmpath.Home(helmHome), t); err != nil {
+		return "n/", err
+	}
+	helmHome = oldhome
+	return dir, nil
+}
+
+// ensureTestHome creates a home directory like ensureHome, but without remote references.
+//
+// t is used only for logging.
+func ensureTestHome(home helmpath.Home, t *testing.T) error {
+	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository()}
+	for _, p := range configDirectories {
+		if fi, err := os.Stat(p); err != nil {
+			if err := os.MkdirAll(p, 0755); err != nil {
+				return fmt.Errorf("Could not create %s: %s", p, err)
+			}
+		} else if !fi.IsDir() {
+			return fmt.Errorf("%s must be a directory", p)
+		}
+	}
+
+	repoFile := home.RepositoryFile()
+	if fi, err := os.Stat(repoFile); err != nil {
+		rf := repo.NewRepoFile()
+		rf.Add(&repo.Entry{
+			Name:  "charts",
+			URL:   "http://example.com/foo",
+			Cache: "charts-index.yaml",
+		}, &repo.Entry{
+			Name:  "local",
+			URL:   "http://localhost.com:7743/foo",
+			Cache: "local-index.yaml",
+		})
+		if err := rf.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
+	} else if fi.IsDir() {
+		return fmt.Errorf("%s must be a file, not a directory", repoFile)
+	}
+	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
+		t.Log("Updating repository file format...")
+		if err := r.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
+	}
+
+	localRepoIndexFile := home.LocalRepository(localRepoIndexFilePath)
+	if fi, err := os.Stat(localRepoIndexFile); err != nil {
+		i := repo.NewIndexFile()
+		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
+			return err
+		}
+
+		//TODO: take this out and replace with helm update functionality
+		os.Symlink(localRepoIndexFile, home.CacheIndex("local"))
+	} else if fi.IsDir() {
+		return fmt.Errorf("%s must be a file, not a directory", localRepoIndexFile)
+	}
+
+	t.Logf("$HELM_HOME has been configured at %s.\n", helmHome)
+	return nil
 }

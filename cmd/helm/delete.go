@@ -37,6 +37,7 @@ type deleteCmd struct {
 	name         string
 	dryRun       bool
 	disableHooks bool
+	purge        bool
 
 	out    io.Writer
 	client helm.Interface
@@ -49,7 +50,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "delete [flags] RELEASE_NAME",
+		Use:               "delete [flags] RELEASE_NAME [...]",
 		Aliases:           []string{"del"},
 		SuggestFor:        []string{"remove", "rm"},
 		Short:             "given a release name, delete the release from Kubernetes",
@@ -59,14 +60,21 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errors.New("command 'delete' requires a release name")
 			}
-			del.name = args[0]
 			del.client = ensureHelmClient(del.client)
-			return del.run()
+
+			for i := 0; i < len(args); i++ {
+				del.name = args[i]
+				if err := del.run(); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 	f := cmd.Flags()
 	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
 	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
+	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")
 
 	return cmd
 }
@@ -75,6 +83,7 @@ func (d *deleteCmd) run() error {
 	opts := []helm.DeleteOption{
 		helm.DeleteDryRun(d.dryRun),
 		helm.DeleteDisableHooks(d.disableHooks),
+		helm.DeletePurge(d.purge),
 	}
 	_, err := d.client.DeleteRelease(d.name, opts...)
 	return prettyError(err)

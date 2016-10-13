@@ -61,7 +61,7 @@ water:
 	for _, tt := range tests {
 		data, err = ReadValues([]byte(tt))
 		if err != nil {
-			t.Fatalf("Error parsing bytes: %s", err)
+			t.Fatalf("Error parsing bytes (%s): %s", tt, err)
 		}
 		if data == nil {
 			t.Errorf(`YAML string "%s" gave a nil map`, tt)
@@ -270,6 +270,9 @@ func TestCoalesceValues(t *testing.T) {
 	tvals := &chart.Config{Raw: testCoalesceValuesYaml}
 
 	v, err := CoalesceValues(c, tvals)
+	if err != nil {
+		t.Fatal(err)
+	}
 	j, _ := json.MarshalIndent(v, "", "  ")
 	t.Logf("Coalesced Values: %s", string(j))
 

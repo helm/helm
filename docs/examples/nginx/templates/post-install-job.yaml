@@ -25,7 +25,7 @@ spec:
       # more conventional syntax: {{.restartPolicy | default "Never"}}
       restartPolicy: Never
       containers:
-      - name: {{template "fullname" .}}-job
+      - name: post-install-job
         image: "alpine:3.3"
         # All we're going to do is sleep for a minute, then exit.
         command: ["/bin/sleep","{{default "10" .Values.sleepyTime}}"]

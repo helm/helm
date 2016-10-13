@@ -1,6 +1,8 @@
 DOCKER_REGISTRY ?= gcr.io
 IMAGE_PREFIX    ?= kubernetes-helm
 SHORT_NAME      ?= tiller
+TARGETS         = darwin/amd64 linux/amd64 linux/386
+DIST_DIRS       = find * -type d -exec
 
 # go option
 GO        ?= go
@@ -13,6 +15,9 @@ GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
 
+# Required for globs to work correctly
+SHELL=/bin/bash
+
 .PHONY: all
 all: build
 
@@ -20,9 +25,26 @@ all: build
 build:
 	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
 
+# usage: make build-cross dist VERSION=v2.0.0-alpha.3
 .PHONY: build-cross
 build-cross:
-	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -os="darwin linux" -arch="amd64 386" $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+	gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
+
+.PHONY: dist
+dist:
+	( \
+		cd _dist && \
+		$(DIST_DIRS) cp ../LICENSE {} \; && \
+		$(DIST_DIRS) cp ../README.md {} \; && \
+		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
+		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
+	)
+
+.PHONY: checksum
+checksum:
+	for f in _dist/*.{gz,zip} ; do \
+		shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
+	done
 
 .PHONY: check-docker
 check-docker:
@@ -50,7 +72,7 @@ test: test-unit
 
 .PHONY: test-unit
 test-unit:
-	$(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+	HELM_HOME=/no/such/dir $(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 
 .PHONY: test-style
 test-style:
@@ -63,7 +85,7 @@ protoc:
 
 .PHONY: clean
 clean:
-	@rm -rf $(BINDIR)
+	@rm -rf $(BINDIR) ./rootfs/tiller ./_dist
 	@rm -rf ./rootfs/tiller
 
 .PHONY: coverage
@@ -89,7 +111,7 @@ endif
 ifndef HAS_GIT
 	$(error You must install Git)
 endif
-	glide install
+	glide install --strip-vendor
 	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
 
 include versioning.mk

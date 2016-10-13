@@ -1,0 +1,7 @@
+description: Test chart versioning
+name: hashtest
+version: 1.2.3
+
+...
+files:
+  hashtest-1.2.3.tgz: sha256:8e90e879e2a04b1900570e1c198755e46e4706d70b0e79f5edabfac7900e4e75

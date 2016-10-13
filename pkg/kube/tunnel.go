@@ -28,14 +28,16 @@ import (
 
 // Tunnel describes a ssh-like tunnel to a kubernetes pod
 type Tunnel struct {
-	Local    int
-	Remote   int
-	stopChan chan struct{}
+	Local     int
+	Remote    int
+	stopChan  chan struct{}
+	readyChan chan struct{}
 }
 
 // Close disconnects a tunnel connection
 func (t *Tunnel) Close() {
 	close(t.stopChan)
+	close(t.readyChan)
 }
 
 // ForwardPort opens a tunnel to a kubernetes pod
@@ -69,15 +71,16 @@ func (c *Client) ForwardPort(namespace, podName string, remote int) (*Tunnel, er
 	}
 
 	t := &Tunnel{
-		Local:    local,
-		Remote:   remote,
-		stopChan: make(chan struct{}, 1),
+		Local:     local,
+		Remote:    remote,
+		stopChan:  make(chan struct{}, 1),
+		readyChan: make(chan struct{}, 1),
 	}
 
 	ports := []string{fmt.Sprintf("%d:%d", local, remote)}
 
 	var b bytes.Buffer
-	pf, err := portforward.New(dialer, ports, t.stopChan, &b, &b)
+	pf, err := portforward.New(dialer, ports, t.stopChan, t.readyChan, &b, &b)
 	if err != nil {
 		return nil, err
 	}

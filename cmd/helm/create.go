@@ -85,6 +85,7 @@ func (c *createCmd) run() error {
 		Name:        chartname,
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
+		ApiVersion:  chartutil.ApiVersionV1,
 	}
 
 	_, err := chartutil.Create(cfile, filepath.Dir(c.name))

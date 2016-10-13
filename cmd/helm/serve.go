@@ -17,32 +17,45 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
-var serveDesc = `This command starts a local chart repository server that serves charts from a local directory.`
-var repoPath string
+const serveDesc = `This command starts a local chart repository server that serves charts from a local directory.`
 
-func init() {
-	serveCmd.Flags().StringVar(&repoPath, "repo-path", localRepoDirectory(), "The local directory path from which to serve charts.")
-	RootCommand.AddCommand(serveCmd)
+type serveCmd struct {
+	out      io.Writer
+	home     helmpath.Home
+	address  string
+	repoPath string
 }
 
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "start a local http web server",
-	Long:  serveDesc,
-	RunE:  serve,
+func newServeCmd(out io.Writer) *cobra.Command {
+	srv := &serveCmd{out: out}
+	cmd := &cobra.Command{
+		Use:   "serve",
+		Short: "start a local http web server",
+		Long:  serveDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			srv.home = helmpath.Home(homePath())
+			return srv.run()
+		},
+	}
+	cmd.Flags().StringVar(&srv.repoPath, "repo-path", helmpath.Home(homePath()).LocalRepository(), "The local directory path from which to serve charts.")
+	cmd.Flags().StringVar(&srv.address, "address", "localhost:8879", "The address to listen on.")
+
+	return cmd
 }
 
-func serve(cmd *cobra.Command, args []string) error {
-
-	repoPath, err := filepath.Abs(repoPath)
+func (s *serveCmd) run() error {
+	repoPath, err := filepath.Abs(s.repoPath)
 	if err != nil {
 		return err
 	}
@@ -50,6 +63,6 @@ func serve(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	repo.StartLocalRepo(repoPath)
-	return nil
+	fmt.Fprintf(s.out, "Now serving you on %s\n", s.address)
+	return repo.StartLocalRepo(repoPath, s.address)
 }

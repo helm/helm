@@ -28,75 +28,43 @@ Think of it like apt/yum/homebrew for Kubernetes.
 - Charts can be stored on disk, or fetched from remote chart repositories
   (like Debian or RedHat packages)
 
-Using Helm is as easy as this:
-
-```console
-$ helm init                            # Initialize Helm as well as the Tiller server
-$ helm install docs/examples/alpine    # Install the example Alpine chart
-happy-panda                            # <-- That's the name of your release
-$ helm list                            # List all releases
-happy-panda
-quiet-kitten
-```
-
 ## Install
 
-Download a [release tarball of helm and tiller for your platform](https://github.com/kubernetes/helm/releases). Unpack the `helm` and `tiller` binaries and add them to your PATH and you are good to go!
+Binary downloads of the Alpha.5 Helm client can be found at the following links:
 
-### Install from source
+- [OSX](http://storage.googleapis.com/kubernetes-helm/helm-v2.0.0-alpha.5-darwin-amd64.tar.gz)
+- [Linux](http://storage.googleapis.com/kubernetes-helm/helm-v2.0.0-alpha.5-linux-amd64.tar.gz)
+- [Linux 32-bit](http://storage.googleapis.com/kubernetes-helm/helm-v2.0.0-alpha.5-linux-386.tar.gz)
 
-To install Helm from source, follow this process:
+Unpack the `helm` binary and add it to your PATH and you are good to go! OS X/[Cask](https://caskroom.github.io/) users can `brew cask install helm`.
 
-Make sure you have the prerequisites:
-- Go 1.6
-- A running Kubernetes cluster
-- `kubectl` properly configured to talk to your cluster
-- [Glide](https://glide.sh/) 0.10 or greater with both git and mercurial installed.
+To rapidly get Helm up and running, start with the [Quick Start Guide](docs/quickstart.md).
 
-1. [Properly set your $GOPATH](https://golang.org/doc/code.html)
-2. Clone (or otherwise download) this repository into $GOPATH/src/k8s.io/helm
-3. Run `make bootstrap build`
+See the [installation guide](docs/install.md) for more options,
+including installing pre-releases.
 
-You will now have two binaries built:
 
-- `bin/helm` is the client
-- `bin/tiller` is the server
+## Docs
 
-From here, you can run `bin/helm` and use it to install a recent snapshot of
-Tiller. Helm will use your `kubectl` config to learn about your cluster.
+- [Quick Start](docs/quickstart.md)
+- [Installing Helm](docs/install.md)
+- [Using Helm](docs/using_helm.md)
+- [Developing Charts](docs/charts.md)
+	- [Chart Repository Guide](docs/chart_repository.md)
+	- [Syncing your Chart Repository](docs/chart_repository_sync_example.md)
+- [Architecture](docs/architecture.md)
+- [Developers](docs/developers.md)
+- [History](docs/history.md)
+- [Glossary](docs/glossary.md)
 
-For development on Tiller, you can locally run Tiller, or you build a Docker
-image (`make docker-build`) and then deploy it (`helm init -i IMAGE_NAME`).
+## Community, discussion, contribution, and support
 
-The [documentation](docs) folder contains more information about the
-architecture and usage of Helm/Tiller.
+You can reach the Helm community and developers via the following channels:
 
-## The History of the Project
+- [Kubernetes Slack](https://slack.k8s.io): #helm
+- Mailing List: https://groups.google.com/forum/#!forum/kubernetes-sig-apps
+- Developer Call: Thursdays at 9:30-10:00 Pacific. https://engineyard.zoom.us/j/366425549
 
-Kubernetes Helm is the merged result of [Helm
-Classic](https://github.com/helm/helm) and the Kubernetes port of GCS Deployment
-Manager. The project was jointly started by Google and Deis, though it
-is now part of the CNCF.
+### Code of conduct
 
-Differences from Helm Classic:
-
-- Helm now has both a client (`helm`) and a server (`tiller`). The
-  server runs inside of Kubernetes, and manages your resources.
-- Helm's chart format has changed for the better:
-  - Dependencies are immutable and stored inside of a chart's `charts/`
-    directory.
-  - Charts are strongly versioned using [SemVer 2](http://semver.org/spec/v2.0.0.html)
-  - Charts can be loaded from directories or from chart archive files
-  - Helm supports Go templates without requiring you to run `generate`
-    or `template` commands.
-  - Helm makes it easy to configure your releases -- and share the
-    configuration with the rest of your team.
-- Helm chart repositories now use plain HTTP instead of Git/GitHub.
-  There is no longer any GitHub dependency.
-  - A chart server is a simple HTTP server
-  - Charts are referenced by version
-  - The `helm serve` command will run a local chart server, though you
-    can easily use object storage (S3, GCS) or a regular web server.
-  - And you can still load charts from a local directory.
-- The Helm workspace is gone. You can now work anywhere on your
-  filesystem that you want to work.
+Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct](code-of-conduct.md).

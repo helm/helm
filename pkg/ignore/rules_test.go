@@ -63,7 +63,6 @@ func TestParseFail(t *testing.T) {
 			t.Errorf("Rule %q should have failed", fail)
 		}
 	}
-
 }
 
 func TestParseFile(t *testing.T) {
@@ -99,6 +98,7 @@ func TestIgnore(t *testing.T) {
 		{`cargo/*.*`, "cargo/a.txt", true},
 		{`cargo/*.txt`, "mast/a.txt", false},
 		{`ru[c-e]?er.txt`, "rudder.txt", true},
+		{`templates/.?*`, "templates/.dotfile", true},
 
 		// Directory tests
 		{`cargo/`, "cargo", true},
@@ -131,6 +131,15 @@ func TestIgnore(t *testing.T) {
 		if r.Ignore(test.name, fi) != test.expect {
 			t.Errorf("Expected %q to be %v for pattern %q", test.name, test.expect, test.pattern)
 		}
+	}
+}
+
+func TestAddDefaults(t *testing.T) {
+	r := Rules{}
+	r.AddDefaults()
+
+	if len(r.patterns) != 1 {
+		t.Errorf("Expected 1 default patterns, got %d", len(r.patterns))
 	}
 }
 

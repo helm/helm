@@ -30,24 +30,29 @@ import (
 const hookAnno = "helm.sh/hook"
 
 const (
-	preInstall  = "pre-install"
-	postInstall = "post-install"
-	preDelete   = "pre-delete"
-	postDelete  = "post-delete"
-	preUpgrade  = "pre-upgrade"
-	postUpgrade = "post-upgrade"
+	preInstall   = "pre-install"
+	postInstall  = "post-install"
+	preDelete    = "pre-delete"
+	postDelete   = "post-delete"
+	preUpgrade   = "pre-upgrade"
+	postUpgrade  = "post-upgrade"
+	preRollback  = "pre-rollback"
+	postRollback = "post-rollback"
 )
 
 var events = map[string]release.Hook_Event{
-	preInstall:  release.Hook_PRE_INSTALL,
-	postInstall: release.Hook_POST_INSTALL,
-	preDelete:   release.Hook_PRE_DELETE,
-	postDelete:  release.Hook_POST_DELETE,
-	preUpgrade:  release.Hook_PRE_UPGRADE,
-	postUpgrade: release.Hook_POST_UPGRADE,
+	preInstall:   release.Hook_PRE_INSTALL,
+	postInstall:  release.Hook_POST_INSTALL,
+	preDelete:    release.Hook_PRE_DELETE,
+	postDelete:   release.Hook_POST_DELETE,
+	preUpgrade:   release.Hook_PRE_UPGRADE,
+	postUpgrade:  release.Hook_POST_UPGRADE,
+	preRollback:  release.Hook_PRE_ROLLBACK,
+	postRollback: release.Hook_POST_ROLLBACK,
 }
 
 type simpleHead struct {
+	Version  string `json:"apiVersion"`
 	Kind     string `json:"kind,omitempty"`
 	Metadata *struct {
 		Name        string            `json:"name"`
@@ -55,7 +60,29 @@ type simpleHead struct {
 	} `json:"metadata,omitempty"`
 }
 
-// sortHooks takes a map of filename/YAML contents and sorts them into hook types.
+type versionSet map[string]struct{}
+
+func newVersionSet(apiVersions ...string) versionSet {
+	vs := versionSet{}
+	for _, v := range apiVersions {
+		vs[v] = struct{}{}
+	}
+	return vs
+}
+
+func (v versionSet) Has(apiVersion string) bool {
+	_, ok := v[apiVersion]
+	return ok
+}
+
+// manifest represents a manifest file, which has a name and some content.
+type manifest struct {
+	name    string
+	content string
+	head    *simpleHead
+}
+
+// sortManifests takes a map of filename/YAML contents and sorts them into hook types.
 //
 // The resulting hooks struct will be populated with all of the generated hooks.
 // Any file that does not declare one of the hook types will be placed in the
@@ -64,6 +91,7 @@ type simpleHead struct {
 // To determine hook type, this looks for a YAML structure like this:
 //
 //  kind: SomeKind
+//  apiVersion: v1
 // 	metadata:
 //		annotations:
 //			helm.sh/hook: pre-install
@@ -75,9 +103,9 @@ type simpleHead struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortHooks(files map[string]string) ([]*release.Hook, map[string]string, error) {
+func sortManifests(files map[string]string, apis versionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
 	hs := []*release.Hook{}
-	generic := map[string]string{}
+	generic := []manifest{}
 
 	for n, c := range files {
 		// Skip partials. We could return these as a separate map, but there doesn't
@@ -99,14 +127,18 @@ func sortHooks(files map[string]string) ([]*release.Hook, map[string]string, err
 			return hs, generic, e
 		}
 
+		if sh.Version != "" && !apis.Has(sh.Version) {
+			return hs, generic, fmt.Errorf("apiVersion %q in %s is not available", sh.Version, n)
+		}
+
 		if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
-			generic[n] = c
+			generic = append(generic, manifest{name: n, content: c, head: &sh})
 			continue
 		}
 
 		hookTypes, ok := sh.Metadata.Annotations[hookAnno]
 		if !ok {
-			generic[n] = c
+			generic = append(generic, manifest{name: n, content: c, head: &sh})
 			continue
 		}
 		h := &release.Hook{
@@ -133,5 +165,5 @@ func sortHooks(files map[string]string) ([]*release.Hook, map[string]string, err
 		}
 		hs = append(hs, h)
 	}
-	return hs, generic, nil
+	return hs, sortByKind(generic, sort), nil
 }

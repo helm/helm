@@ -31,49 +31,17 @@ func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.yml", "/test.toml", "test.yml"}
 	for _, test := range failTest {
 		err := validateAllowedExtension(test)
-		if err == nil || !strings.Contains(err.Error(), "Valid extensions are .yaml or .tpl") {
-			t.Errorf("validateAllowedExtension('%s') to return \"Valid extensions are .yaml or .tpl\", got no error", test)
+		if err == nil || !strings.Contains(err.Error(), "Valid extensions are .yaml, .tpl, or .txt") {
+			t.Errorf("validateAllowedExtension('%s') to return \"Valid extensions are .yaml, .tpl, or .txt\", got no error", test)
 		}
 	}
-	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml"}
+	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml", "NOTES.txt"}
 	for _, test := range successTest {
 		err := validateAllowedExtension(test)
 		if err != nil {
 			t.Errorf("validateAllowedExtension('%s') to return no error but got \"%s\"", test, err.Error())
 		}
 	}
-}
-
-func TestValidateQuotes(t *testing.T) {
-	// add `| quote` lint error
-	var failTest = []string{"foo: {{.Release.Service }}", "foo:  {{.Release.Service }}", "- {{.Release.Service }}", "foo: {{default 'Never' .restart_policy}}", "-  {{.Release.Service }} "}
-
-	for _, test := range failTest {
-		err := validateQuotes(test)
-		if err == nil || !strings.Contains(err.Error(), "use the sprig \"quote\" function") {
-			t.Errorf("validateQuotes('%s') to return \"use the sprig \"quote\" function:\", got no error.", test)
-		}
-	}
-
-	var successTest = []string{"foo: {{.Release.Service | quote }}", "foo:  {{.Release.Service | quote }}", "- {{.Release.Service | quote }}", "foo: {{default 'Never' .restart_policy | quote }}", "foo: \"{{ .Release.Service }}\"", "foo: \"{{ .Release.Service }} {{ .Foo.Bar }}\"", "foo: \"{{ default 'Never' .Release.Service }} {{ .Foo.Bar }}\"", "foo:  {{.Release.Service | squote }}"}
-
-	for _, test := range successTest {
-		err := validateQuotes(test)
-		if err != nil {
-			t.Errorf("validateQuotes('%s') to return not error and got \"%s\"", test, err.Error())
-		}
-	}
-
-	// Surrounding quotes
-	failTest = []string{"foo: {{.Release.Service }}-{{ .Release.Bar }}", "foo: {{.Release.Service }} {{ .Release.Bar }}", "- {{.Release.Service }}-{{ .Release.Bar }}", "- {{.Release.Service }}-{{ .Release.Bar }} {{ .Release.Baz }}", "foo: {{.Release.Service | default }}-{{ .Release.Bar }}"}
-
-	for _, test := range failTest {
-		err := validateQuotes(test)
-		if err == nil || !strings.Contains(err.Error(), "wrap substitution functions in quotes") {
-			t.Errorf("validateQuotes('%s') to return \"wrap substitution functions in quotes\", got no error", test)
-		}
-	}
-
 }
 
 func TestTemplateParsing(t *testing.T) {

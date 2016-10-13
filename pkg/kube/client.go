@@ -22,6 +22,7 @@ import (
 	"io"
 	"log"
 	"reflect"
+	"strings"
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	unversionedclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -53,6 +55,25 @@ func New(config clientcmd.ClientConfig) *Client {
 
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
+
+// ErrAlreadyExists can be returned where there are no changes
+type ErrAlreadyExists struct {
+	errorMsg string
+}
+
+func (e ErrAlreadyExists) Error() string {
+	return fmt.Sprintf("Looks like there are no changes for %s", e.errorMsg)
+}
+
+// APIClient returns a Kubernetes API client.
+//
+// This is necessary because cmdutil.Client is a field, not a method, which
+// means it can't satisfy an interface's method requirement. In order to ensure
+// that an implementation of environment.KubeClient can access the raw API client,
+// it is necessary to add this method.
+func (c *Client) APIClient() (unversionedclient.Interface, error) {
+	return c.Client()
+}
 
 // Create creates kubernetes resources from an io.reader
 //
@@ -96,7 +117,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths
 	buf := new(bytes.Buffer)
-	p := kubectl.NewHumanReadablePrinter(false, false, false, false, false, false, []string{})
+	p := kubectl.NewHumanReadablePrinter(kubectl.PrintOptions{})
 	for t, ot := range objs {
 		_, err = buf.WriteString("==> " + t + "\n")
 		if err != nil {
@@ -117,13 +138,13 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	return buf.String(), err
 }
 
-// Update reads in the current configuration and a modified configuration from io.reader
+// Update reads in the current configuration and a target configuration from io.reader
 //  and creates resources that don't already exists, updates resources that have been modified
-//  and deletes resources from the current configuration that are not present in the
-//  modified configuration
+//  in the target configuration and deletes resources from the current configuration that are
+//  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reader) error {
+func (c *Client) Update(namespace string, currentReader, targetReader io.Reader) error {
 	current := c.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
@@ -132,11 +153,11 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 		Flatten().
 		Do()
 
-	modified := c.NewBuilder(includeThirdPartyAPIs).
+	target := c.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
-		Stream(modifiedReader, "").
+		Stream(targetReader, "").
 		Flatten().
 		Do()
 
@@ -145,10 +166,12 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 		return err
 	}
 
-	modifiedInfos := []*resource.Info{}
+	targetInfos := []*resource.Info{}
+	updateErrors := []string{}
 
-	modified.Visit(func(info *resource.Info, err error) error {
-		modifiedInfos = append(modifiedInfos, info)
+	err = target.Visit(func(info *resource.Info, err error) error {
+
+		targetInfos = append(targetInfos, info)
 		if err != nil {
 			return err
 		}
@@ -176,16 +199,28 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 		}
 
 		if err := updateResource(info, currentObj); err != nil {
-			log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
-			return err
+			if alreadyExistErr, ok := err.(ErrAlreadyExists); ok {
+				log.Printf(alreadyExistErr.errorMsg)
+			} else {
+				log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
+				updateErrors = append(updateErrors, err.Error())
+			}
 		}
 
-		return err
+		return nil
 	})
 
-	deleteUnwantedResources(currentInfos, modifiedInfos)
+	deleteUnwantedResources(currentInfos, targetInfos)
+
+	if err != nil {
+		return err
+	} else if len(updateErrors) != 0 {
+		return fmt.Errorf(strings.Join(updateErrors, " && "))
+
+	}
 
 	return nil
+
 }
 
 // Delete deletes kubernetes resources from an io.reader
@@ -194,17 +229,31 @@ func (c *Client) Update(namespace string, currentReader, modifiedReader io.Reade
 func (c *Client) Delete(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, func(info *resource.Info) error {
 		log.Printf("Starting delete for %s", info.Name)
+
 		reaper, err := c.Reaper(info.Mapping)
 		if err != nil {
 			// If there is no reaper for this resources, delete it.
 			if kubectl.IsNoSuchReaperError(err) {
-				return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+				err := resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+				return skipIfNotFound(err)
 			}
+
 			return err
 		}
+
 		log.Printf("Using reaper for deleting %s", info.Name)
-		return reaper.Stop(info.Namespace, info.Name, 0, nil)
+		err = reaper.Stop(info.Namespace, info.Name, 0, nil)
+		return skipIfNotFound(err)
 	})
+}
+
+func skipIfNotFound(err error) error {
+	if err != nil && errors.IsNotFound(err) {
+		log.Printf("%v", err)
+		return nil
+	}
+
+	return err
 }
 
 // WatchUntilReady watches the resource given in the reader, and waits until it is ready.
@@ -271,7 +320,7 @@ func deleteResource(info *resource.Info) error {
 	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 }
 
-func updateResource(modified *resource.Info, currentObj runtime.Object) error {
+func updateResource(target *resource.Info, currentObj runtime.Object) error {
 
 	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
 	originalSerialization, err := runtime.Encode(encoder, currentObj)
@@ -279,7 +328,7 @@ func updateResource(modified *resource.Info, currentObj runtime.Object) error {
 		return err
 	}
 
-	editedSerialization, err := runtime.Encode(encoder, modified.Object)
+	editedSerialization, err := runtime.Encode(encoder, target.Object)
 	if err != nil {
 		return err
 	}
@@ -295,7 +344,7 @@ func updateResource(modified *resource.Info, currentObj runtime.Object) error {
 	}
 
 	if reflect.DeepEqual(originalJS, editedJS) {
-		return fmt.Errorf("Looks like there are no changes for %s", modified.Name)
+		return ErrAlreadyExists{target.Name}
 	}
 
 	patch, err := strategicpatch.CreateStrategicMergePatch(originalJS, editedJS, currentObj)
@@ -304,12 +353,9 @@ func updateResource(modified *resource.Info, currentObj runtime.Object) error {
 	}
 
 	// send patch to server
-	helper := resource.NewHelper(modified.Client, modified.Mapping)
-	if _, err = helper.Patch(modified.Namespace, modified.Name, api.StrategicMergePatchType, patch); err != nil {
-		return err
-	}
-
-	return nil
+	helper := resource.NewHelper(target.Client, target.Mapping)
+	_, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch)
+	return err
 }
 
 func watchUntilReady(info *resource.Info) error {
@@ -390,10 +436,10 @@ func (c *Client) ensureNamespace(namespace string) error {
 	return nil
 }
 
-func deleteUnwantedResources(currentInfos, modifiedInfos []*resource.Info) {
+func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
 	for _, cInfo := range currentInfos {
 		found := false
-		for _, m := range modifiedInfos {
+		for _, m := range targetInfos {
 			if m.Name == cInfo.Name {
 				found = true
 			}

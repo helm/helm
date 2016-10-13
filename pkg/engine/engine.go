@@ -19,12 +19,13 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"path"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -50,12 +51,24 @@ func New() *Engine {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
 	delete(f, "expandenv")
+
+	// Add a function to convert to YAML:
+	f["toYaml"] = toYaml
 	return &Engine{
 		FuncMap: f,
 	}
 }
 
-// Render takes a chart, optional values, and value overrids, and attempts to render the Go templates.
+func toYaml(v interface{}) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return string(data)
+}
+
+// Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
 //
 // Render can be called repeatedly on the same engine.
 //
@@ -132,7 +145,6 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 
 	files := []string{}
 	for fname, r := range tpls {
-		log.Printf("Preparing template %s", fname)
 		t = t.New(fname).Funcs(funcMap)
 		if _, err := t.Parse(r.tpl); err != nil {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)

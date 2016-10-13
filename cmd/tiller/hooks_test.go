@@ -19,10 +19,12 @@ package main
 import (
 	"testing"
 
+	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
-func TestSortHooks(t *testing.T) {
+func TestSortManifests(t *testing.T) {
 
 	data := []struct {
 		name     string
@@ -41,7 +43,7 @@ kind: Job
 metadata:
   name: first
   labels:
-    doesnt: matter
+    doesnot: matter
   annotations:
     "helm.sh/hook": pre-install
 `,
@@ -52,6 +54,7 @@ metadata:
 			kind:  "ReplicaSet",
 			hooks: []release.Hook_Event{release.Hook_POST_INSTALL},
 			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
 metadata:
   name: second
   annotations:
@@ -63,6 +66,7 @@ metadata:
 			kind:  "ReplicaSet",
 			hooks: []release.Hook_Event{},
 			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
 metadata:
   name: third
   annotations:
@@ -74,6 +78,7 @@ metadata:
 			kind:  "Pod",
 			hooks: []release.Hook_Event{},
 			manifest: `kind: Pod
+apiVersion: v1
 metadata:
   name: fourth
   annotations:
@@ -85,6 +90,7 @@ metadata:
 			kind:  "ReplicaSet",
 			hooks: []release.Hook_Event{release.Hook_POST_DELETE, release.Hook_POST_INSTALL},
 			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
 metadata:
   name: fifth
   annotations:
@@ -112,7 +118,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := sortHooks(manifests)
+	hs, generic, err := sortManifests(manifests, newVersionSet("v1", "v1beta1"), InstallOrder)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -152,4 +158,42 @@ metadata:
 		}
 	}
 
+	// Verify the sort order
+	sorted := make([]manifest, len(data))
+	for i, s := range data {
+		var sh simpleHead
+		err := yaml.Unmarshal([]byte(s.manifest), &sh)
+		if err != nil {
+			// This is expected for manifests that are corrupt or empty.
+			t.Log(err)
+		}
+		sorted[i] = manifest{
+			content: s.manifest,
+			name:    s.name,
+			head:    &sh,
+		}
+	}
+	sorted = sortByKind(sorted, InstallOrder)
+	for i, m := range generic {
+		if m.content != sorted[i].content {
+			t.Errorf("Expected %q, got %q", m.content, sorted[i].content)
+		}
+	}
+
+}
+
+func TestVersionSet(t *testing.T) {
+	vs := newVersionSet("v1", "v1beta1", "extensions/alpha5", "batch/v1")
+
+	if l := len(vs); l != 4 {
+		t.Errorf("Expected 4, got %d", l)
+	}
+
+	if !vs.Has("extensions/alpha5") {
+		t.Error("No match for alpha5")
+	}
+
+	if vs.Has("nosuch/extension") {
+		t.Error("Found nonexistent extension")
+	}
 }

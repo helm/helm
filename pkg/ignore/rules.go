@@ -42,6 +42,13 @@ func Empty() *Rules {
 	return &Rules{patterns: []*pattern{}}
 }
 
+// AddDefaults adds default ignore patterns.
+//
+// Ignore all dotfiles in "templates/"
+func (r *Rules) AddDefaults() {
+	r.parseRule(`templates/.?*`)
+}
+
 // ParseFile parses a helmignore file and returns the *Rules.
 func ParseFile(file string) (*Rules, error) {
 	f, err := os.Open(file)
@@ -62,10 +69,7 @@ func Parse(file io.Reader) (*Rules, error) {
 			return r, err
 		}
 	}
-	if err := s.Err(); err != nil {
-		return r, err
-	}
-	return r, nil
+	return r, s.Err()
 }
 
 // Len returns the number of patterns in this rule set.

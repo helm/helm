@@ -29,6 +29,7 @@ func TestLoadDir(t *testing.T) {
 	}
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
+	verifyRequirements(t, c)
 }
 
 func TestLoadFile(t *testing.T) {
@@ -38,6 +39,7 @@ func TestLoadFile(t *testing.T) {
 	}
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
+	verifyRequirements(t, c)
 }
 
 func verifyChart(t *testing.T, c *chart.Chart) {
@@ -49,7 +51,7 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 		t.Errorf("Expected 1 template, got %d", len(c.Templates))
 	}
 
-	numfiles := 6
+	numfiles := 8
 	if len(c.Files) != numfiles {
 		t.Errorf("Expected %d extra files, got %d", numfiles, len(c.Files))
 		for _, n := range c.Files {
@@ -86,6 +88,57 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 		}
 	}
 
+}
+
+func verifyRequirements(t *testing.T, c *chart.Chart) {
+	r, err := LoadRequirements(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Dependencies) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(r.Dependencies))
+	}
+	tests := []*Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+	}
+	for i, tt := range tests {
+		d := r.Dependencies[i]
+		if d.Name != tt.Name {
+			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
+		}
+		if d.Version != tt.Version {
+			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
+		}
+		if d.Repository != tt.Repository {
+			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
+		}
+	}
+}
+func verifyRequirementsLock(t *testing.T, c *chart.Chart) {
+	r, err := LoadRequirementsLock(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Dependencies) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(r.Dependencies))
+	}
+	tests := []*Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+	}
+	for i, tt := range tests {
+		d := r.Dependencies[i]
+		if d.Name != tt.Name {
+			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
+		}
+		if d.Version != tt.Version {
+			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
+		}
+		if d.Repository != tt.Repository {
+			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
+		}
+	}
 }
 
 func verifyFrobnitz(t *testing.T, c *chart.Chart) {

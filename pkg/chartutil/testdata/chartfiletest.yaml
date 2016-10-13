@@ -1,3 +1,4 @@
+apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
 version: "1.2.3"
@@ -13,3 +14,4 @@ maintainers:
 sources:
   - https://example.com/foo/bar
 home: http://example.com
+icon: https://example.com/64x64.png

@@ -23,9 +23,8 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
+	unversionedclient "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 )
 
 type mockEngine struct {
@@ -36,49 +35,11 @@ func (e *mockEngine) Render(chrt *chart.Chart, v chartutil.Values) (map[string]s
 	return e.out, nil
 }
 
-type mockReleaseStorage struct {
-	rel *release.Release
-}
-
-var _ driver.Driver = (*mockReleaseStorage)(nil)
-
-func (r *mockReleaseStorage) Create(v *release.Release) error {
-	r.rel = v
-	return nil
-}
-
-func (r *mockReleaseStorage) Get(k string) (*release.Release, error) {
-	return r.rel, nil
-}
-
-func (r *mockReleaseStorage) Update(v *release.Release) error {
-	r.rel = v
-	return nil
-}
-
-func (r *mockReleaseStorage) Delete(k string) (*release.Release, error) {
-	return r.rel, nil
-}
-
-func (r *mockReleaseStorage) List(func(*release.Release) bool) ([]*release.Release, error) {
-	return []*release.Release{}, nil
-}
-
-func (r *mockReleaseStorage) Query(labels map[string]string) ([]*release.Release, error) {
-	return []*release.Release{}, nil
-}
-
-func (r *mockReleaseStorage) History(n string) ([]*release.Release, error) {
-	res := []*release.Release{}
-	rel, err := r.Get(n)
-	if err != nil {
-		return res, err
-	}
-	res = append(res, rel)
-	return res, nil
-}
-
 type mockKubeClient struct {
+}
+
+func (k *mockKubeClient) APIClient() (unversionedclient.Interface, error) {
+	return testclient.NewSimpleFake(), nil
 }
 
 func (k *mockKubeClient) Create(ns string, r io.Reader) error {
@@ -113,32 +74,6 @@ func TestEngine(t *testing.T) {
 		t.Errorf("unexpected template error: %s", err)
 	} else if out["albatross"] != "test" {
 		t.Errorf("expected 'test', got %q", out["albatross"])
-	}
-}
-
-func TestReleaseStorage(t *testing.T) {
-	rs := &mockReleaseStorage{}
-	env := New()
-	env.Releases = storage.Init(rs)
-
-	release := &release.Release{Name: "mariner"}
-
-	if err := env.Releases.Create(release); err != nil {
-		t.Fatalf("failed to store release: %s", err)
-	}
-
-	if err := env.Releases.Update(release); err != nil {
-		t.Fatalf("failed to update release: %s", err)
-	}
-
-	if v, err := env.Releases.Get("albatross"); err != nil {
-		t.Errorf("Error fetching release: %s", err)
-	} else if v.Name != "mariner" {
-		t.Errorf("Expected mariner, got %q", v.Name)
-	}
-
-	if _, err := env.Releases.Delete("albatross"); err != nil {
-		t.Fatalf("failed to delete release: %s", err)
 	}
 }
 

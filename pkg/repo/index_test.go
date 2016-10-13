@@ -17,7 +17,6 @@ limitations under the License.
 package repo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -25,25 +24,74 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gopkg.in/yaml.v2"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
-const testfile = "testdata/local-index.yaml"
-
-var (
+const (
+	testfile = "testdata/local-index.yaml"
 	testRepo = "test-repo"
 )
+
+func TestIndexFile(t *testing.T) {
+	i := NewIndexFile()
+	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
+	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.1"}, "cutter-0.1.1.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.0"}, "cutter-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	i.Add(&chart.Metadata{Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	i.SortEntries()
+
+	if i.APIVersion != APIVersionV1 {
+		t.Error("Expected API version v1")
+	}
+
+	if len(i.Entries) != 2 {
+		t.Errorf("Expected 2 charts. Got %d", len(i.Entries))
+	}
+
+	if i.Entries["clipper"][0].Name != "clipper" {
+		t.Errorf("Expected clipper, got %s", i.Entries["clipper"][0].Name)
+	}
+
+	if len(i.Entries["cutter"]) != 3 {
+		t.Error("Expected two cutters.")
+	}
+
+	// Test that the sort worked. 0.2 should be at the first index for Cutter.
+	if v := i.Entries["cutter"][0].Version; v != "0.2.0" {
+		t.Errorf("Unexpected first version: %s", v)
+	}
+}
+
+func TestLoadIndex(t *testing.T) {
+	b, err := ioutil.ReadFile(testfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i, err := LoadIndex(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyLocalIndex(t, i)
+}
+
+func TestLoadIndexFile(t *testing.T) {
+	i, err := LoadIndexFile(testfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyLocalIndex(t, i)
+}
 
 func TestDownloadIndexFile(t *testing.T) {
 	fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
 	if err != nil {
-		t.Errorf("%#v", err)
+		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "binary/octet-stream")
-		fmt.Fprintln(w, string(fileBytes))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(fileBytes)
 	}))
+	defer srv.Close()
 
 	dirName, err := ioutil.TempDir("", "tmp")
 	if err != nil {
@@ -52,7 +100,7 @@ func TestDownloadIndexFile(t *testing.T) {
 	defer os.RemoveAll(dirName)
 
 	path := filepath.Join(dirName, testRepo+"-index.yaml")
-	if err := DownloadIndexFile(testRepo, ts.URL, path); err != nil {
+	if err := DownloadIndexFile(testRepo, srv.URL, path); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -65,48 +113,203 @@ func TestDownloadIndexFile(t *testing.T) {
 		t.Errorf("error reading index file: %#v", err)
 	}
 
-	var i IndexFile
-	if err = yaml.Unmarshal(b, &i); err != nil {
-		t.Errorf("error unmarshaling index file: %#v", err)
+	i, err := LoadIndex(b)
+	if err != nil {
+		t.Errorf("Index %q failed to parse: %s", testfile, err)
+		return
 	}
 
-	numEntries := len(i.Entries)
-	if numEntries != 2 {
-		t.Errorf("Expected 2 entries in index file but got %v", numEntries)
-	}
-	os.Remove(path)
+	verifyLocalIndex(t, i)
 }
 
-func TestLoadIndexFile(t *testing.T) {
-	cf, err := LoadIndexFile(testfile)
+func verifyLocalIndex(t *testing.T, i *IndexFile) {
+	numEntries := len(i.Entries)
+	if numEntries != 2 {
+		t.Errorf("Expected 2 entries in index file but got %d", numEntries)
+	}
+
+	alpine, ok := i.Entries["alpine"]
+	if !ok {
+		t.Errorf("'alpine' section not found.")
+		return
+	}
+
+	if l := len(alpine); l != 1 {
+		t.Errorf("'alpine' should have 1 chart, got %d", l)
+		return
+	}
+
+	nginx, ok := i.Entries["nginx"]
+	if !ok || len(nginx) != 2 {
+		t.Error("Expected 2 nginx entries")
+		return
+	}
+
+	expects := []*ChartVersion{
+		{
+			Metadata: &chart.Metadata{
+				Name:        "alpine",
+				Description: "string",
+				Version:     "1.0.0",
+				Keywords:    []string{"linux", "alpine", "small", "sumtin"},
+				Home:        "https://github.com/something",
+			},
+			URLs: []string{
+				"http://storage.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz",
+				"http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz",
+			},
+			Digest: "sha256:1234567890abcdef",
+		},
+		{
+			Metadata: &chart.Metadata{
+				Name:        "nginx",
+				Description: "string",
+				Version:     "0.1.0",
+				Keywords:    []string{"popular", "web server", "proxy"},
+				Home:        "https://github.com/something",
+			},
+			URLs: []string{
+				"http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz",
+			},
+			Digest: "sha256:1234567890abcdef",
+		},
+		{
+			Metadata: &chart.Metadata{
+				Name:        "nginx",
+				Description: "string",
+				Version:     "0.2.0",
+				Keywords:    []string{"popular", "web server", "proxy"},
+				Home:        "https://github.com/something/else",
+			},
+			URLs: []string{
+				"http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz",
+			},
+			Digest: "sha256:1234567890abcdef",
+		},
+	}
+	tests := []*ChartVersion{alpine[0], nginx[0], nginx[1]}
+
+	for i, tt := range tests {
+		expect := expects[i]
+		if tt.Name != expect.Name {
+			t.Errorf("Expected name %q, got %q", expect.Name, tt.Name)
+		}
+		if tt.Description != expect.Description {
+			t.Errorf("Expected description %q, got %q", expect.Description, tt.Description)
+		}
+		if tt.Version != expect.Version {
+			t.Errorf("Expected version %q, got %q", expect.Version, tt.Version)
+		}
+		if tt.Digest != expect.Digest {
+			t.Errorf("Expected digest %q, got %q", expect.Digest, tt.Digest)
+		}
+		if tt.Home != expect.Home {
+			t.Errorf("Expected home %q, got %q", expect.Home, tt.Home)
+		}
+
+		for i, url := range tt.URLs {
+			if url != expect.URLs[i] {
+				t.Errorf("Expected URL %q, got %q", expect.URLs[i], url)
+			}
+		}
+		for i, kw := range tt.Keywords {
+			if kw != expect.Keywords[i] {
+				t.Errorf("Expected keywords %q, got %q", expect.Keywords[i], kw)
+			}
+		}
+	}
+}
+
+func TestIndexDirectory(t *testing.T) {
+	dir := "testdata/repository"
+	index, err := IndexDirectory(dir, "http://localhost:8080")
 	if err != nil {
-		t.Errorf("Failed to load index file: %s", err)
+		t.Fatal(err)
 	}
-	if len(cf.Entries) != 2 {
-		t.Errorf("Expected 2 entries in the index file, but got %d", len(cf.Entries))
+
+	if l := len(index.Entries); l != 2 {
+		t.Fatalf("Expected 2 entries, got %d", l)
 	}
-	nginx := false
-	alpine := false
-	for k, e := range cf.Entries {
-		if k == "nginx-0.1.0" {
-			if e.Name == "nginx" {
-				if len(e.Chartfile.Keywords) == 3 {
-					nginx = true
-				}
-			}
+
+	// Other things test the entry generation more thoroughly. We just test a
+	// few fields.
+	cname := "frobnitz"
+	frobs, ok := index.Entries[cname]
+	if !ok {
+		t.Fatalf("Could not read chart %s", cname)
+	}
+
+	frob := frobs[0]
+	if len(frob.Digest) == 0 {
+		t.Errorf("Missing digest of file %s.", frob.Name)
+	}
+	if frob.URLs[0] != "http://localhost:8080/frobnitz-1.2.3.tgz" {
+		t.Errorf("Unexpected URLs: %v", frob.URLs)
+	}
+	if frob.Name != "frobnitz" {
+		t.Errorf("Expected frobnitz, got %q", frob.Name)
+	}
+}
+
+func TestLoadUnversionedIndex(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/unversioned-index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ind, err := loadUnversionedIndex(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l := len(ind.Entries); l != 2 {
+		t.Fatalf("Expected 2 entries, got %d", l)
+	}
+
+	if l := len(ind.Entries["mysql"]); l != 3 {
+		t.Fatalf("Expected 3 mysql versions, got %d", l)
+	}
+}
+
+func TestIndexAdd(t *testing.T) {
+
+	i := NewIndexFile()
+	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
+
+	if i.Entries["clipper"][0].URLs[0] != "http://example.com/charts/clipper-0.1.0.tgz" {
+		t.Errorf("Expected http://example.com/charts/clipper-0.1.0.tgz, got %s", i.Entries["clipper"][0].URLs[0])
+	}
+
+	i.Add(&chart.Metadata{Name: "alpine", Version: "0.1.0"}, "/home/charts/alpine-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
+
+	if i.Entries["alpine"][0].URLs[0] != "http://example.com/charts/alpine-0.1.0.tgz" {
+		t.Errorf("Expected http://example.com/charts/alpine-0.1.0.tgz, got %s", i.Entries["alpine"][0].URLs[0])
+	}
+
+	i.Add(&chart.Metadata{Name: "deis", Version: "0.1.0"}, "/home/charts/deis-0.1.0.tgz", "http://example.com/charts/", "sha256:1234567890")
+
+	if i.Entries["deis"][0].URLs[0] != "http://example.com/charts/deis-0.1.0.tgz" {
+		t.Errorf("Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
+	}
+}
+
+func TestUrlJoin(t *testing.T) {
+	tests := []struct {
+		name, url, expect string
+		paths             []string
+	}{
+		{name: "URL, one path", url: "http://example.com", paths: []string{"hello"}, expect: "http://example.com/hello"},
+		{name: "Long URL, one path", url: "http://example.com/but/first", paths: []string{"slurm"}, expect: "http://example.com/but/first/slurm"},
+		{name: "URL, two paths", url: "http://example.com", paths: []string{"hello", "world"}, expect: "http://example.com/hello/world"},
+		{name: "URL, no paths", url: "http://example.com", paths: []string{}, expect: "http://example.com"},
+		{name: "basepath, two paths", url: "../example.com", paths: []string{"hello", "world"}, expect: "../example.com/hello/world"},
+	}
+
+	for _, tt := range tests {
+		if got, err := urlJoin(tt.url, tt.paths...); err != nil {
+			t.Errorf("%s: error %q", tt.name, err)
+		} else if got != tt.expect {
+			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
 		}
-		if k == "alpine-1.0.0" {
-			if e.Name == "alpine" {
-				if len(e.Chartfile.Keywords) == 4 {
-					alpine = true
-				}
-			}
-		}
-	}
-	if !nginx {
-		t.Errorf("nginx entry was not decoded properly")
-	}
-	if !alpine {
-		t.Errorf("alpine entry was not decoded properly")
 	}
 }

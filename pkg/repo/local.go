@@ -23,21 +23,27 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/provenance"
 )
 
 var localRepoPath string
 
 // StartLocalRepo starts a web server and serves files from the given path
-func StartLocalRepo(path string) {
-	fmt.Println("Now serving you on localhost:8879...")
+func StartLocalRepo(path, address string) error {
+	if address == "" {
+		address = ":8879"
+	}
 	localRepoPath = path
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/charts/", indexHandler)
-	http.ListenAndServe(":8879", nil)
+	return http.ListenAndServe(address, nil)
 }
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprintf(w, "Welcome to the Kubernetes Package manager!\nBrowse charts on localhost:8879/charts!")
 }
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -81,9 +87,14 @@ func Reindex(ch *chart.Chart, path string) error {
 		}
 	}
 	if !found {
-		url := "localhost:8879/charts/" + name + ".tgz"
+		dig, err := provenance.DigestFile(path)
+		if err != nil {
+			return err
+		}
 
-		out, err := y.addEntry(name, url)
+		y.Add(ch.Metadata, name+".tgz", "http://localhost:8879/charts", "sha256:"+dig)
+
+		out, err := yaml.Marshal(y)
 		if err != nil {
 			return err
 		}

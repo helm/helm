@@ -23,11 +23,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/lint/support"
@@ -92,7 +91,8 @@ func Templates(linter *support.Linter) {
 		// Check that all the templates have a matching value
 		linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
 
-		linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
+		// NOTE, disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
+		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
 		renderedContent := renderedContentMap[fileName]
 		var yamlStruct K8sYamlStruct
@@ -120,35 +120,9 @@ func validateTemplatesDir(templatesPath string) error {
 	return nil
 }
 
-// Validates that go template tags include the quote pipelined function
-// i.e {{ .Foo.bar }} -> {{ .Foo.bar | quote }}
-// {{ .Foo.bar }}-{{ .Foo.baz }} -> "{{ .Foo.bar }}-{{ .Foo.baz }}"
-func validateQuotes(templateContent string) error {
-	// {{ .Foo.bar }}
-	r, _ := regexp.Compile(`(?m)(:|-)\s+{{[\w|\.|\s|\']+}}\s*$`)
-	functions := r.FindAllString(templateContent, -1)
-
-	for _, str := range functions {
-		if match, _ := regexp.MatchString("quote", str); !match {
-			result := strings.Replace(str, "}}", " | quote }}", -1)
-			return fmt.Errorf("wrap substitution functions in quotes or use the sprig \"quote\" function: %s -> %s", str, result)
-		}
-	}
-
-	// {{ .Foo.bar }}-{{ .Foo.baz }} -> "{{ .Foo.bar }}-{{ .Foo.baz }}"
-	r, _ = regexp.Compile(`(?m)({{(\w|\.|\s|\')+}}(\s|-)*)+\s*$`)
-	functions = r.FindAllString(templateContent, -1)
-
-	for _, str := range functions {
-		result := strings.Replace(str, str, fmt.Sprintf("\"%s\"", str), -1)
-		return fmt.Errorf("wrap substitution functions in quotes: %s -> %s", str, result)
-	}
-	return nil
-}
-
 func validateAllowedExtension(fileName string) error {
 	ext := filepath.Ext(fileName)
-	validExtensions := []string{".yaml", ".tpl"}
+	validExtensions := []string{".yaml", ".tpl", ".txt"}
 
 	for _, b := range validExtensions {
 		if b == ext {
@@ -156,7 +130,7 @@ func validateAllowedExtension(fileName string) error {
 		}
 	}
 
-	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml or .tpl", ext)
+	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .tpl, or .txt", ext)
 }
 
 // validateNoMissingValues checks that all the {{}} functions returns a non empty value (<no value> or "")
@@ -178,7 +152,7 @@ func validateNoMissingValues(templatesPath string, chartValues chartutil.Values,
 	var buf bytes.Buffer
 	var emptyValues []string
 
-	// 2 - Extract every function and execute them agains the loaded values
+	// 2 - Extract every function and execute them against the loaded values
 	// Supported {{ .Chart.Name }}, {{ .Chart.Name | quote }}
 	r, _ := regexp.Compile(`{{[\w|\.|\s|\|\"|\']+}}`)
 	functions := r.FindAllString(string(templateContent), -1)

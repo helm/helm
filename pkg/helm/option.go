@@ -17,9 +17,14 @@ limitations under the License.
 package helm
 
 import (
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
+
 	cpb "k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/version"
 )
 
 // Option allows specifying various settings configurable by
@@ -29,37 +34,49 @@ type Option func(*options)
 
 // options specify optional settings used by the helm client.
 type options struct {
-	// value of helm host override
-	home string
 	// value of helm home override
 	host string
-	// name of chart
-	chart string
 	// if set dry-run helm client calls
 	dryRun bool
 	// if set, re-use an existing name
 	reuseName bool
 	// if set, skip running hooks
 	disableHooks bool
+	// name of release
+	releaseName string
 	// release list options are applied directly to the list releases request
 	listReq rls.ListReleasesRequest
 	// release install options are applied directly to the install release request
 	instReq rls.InstallReleaseRequest
 	// release update options are applied directly to the update release request
 	updateReq rls.UpdateReleaseRequest
-}
-
-// Home specifies the location of helm home, (default = "$HOME/.helm").
-func Home(home string) Option {
-	return func(opts *options) {
-		opts.home = home
-	}
+	// release uninstall options are applied directly to the uninstall release request
+	uninstallReq rls.UninstallReleaseRequest
+	// release get status options are applied directly to the get release status request
+	statusReq rls.GetReleaseStatusRequest
+	// release get content options are applied directly to the get release content request
+	contentReq rls.GetReleaseContentRequest
+	// release rollback options are applied directly to the rollback release request
+	rollbackReq rls.RollbackReleaseRequest
+	// before intercepts client calls before sending
+	before func(context.Context, proto.Message) error
+	// release history options are applied directly to the get release history request
+	histReq rls.GetHistoryRequest
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
 func Host(host string) Option {
 	return func(opts *options) {
 		opts.host = host
+	}
+}
+
+// BeforeCall returns an option that allows intercepting a helm client rpc
+// before being sent OTA to tiller. The intercepting function should return
+// an error to indicate that the call should not proceed or nil otherwise.
+func BeforeCall(fn func(context.Context, proto.Message) error) Option {
+	return func(opts *options) {
+		opts.before = fn
 	}
 }
 
@@ -103,6 +120,16 @@ func ReleaseListSort(sort int32) ReleaseListOption {
 	}
 }
 
+// ReleaseListStatuses specifies which status codes should be returned.
+func ReleaseListStatuses(statuses []release.Status_Code) ReleaseListOption {
+	return func(opts *options) {
+		if len(statuses) == 0 {
+			statuses = []release.Status_Code{release.Status_DEPLOYED}
+		}
+		opts.listReq.StatusCodes = statuses
+	}
+}
+
 // InstallOption allows specifying various settings
 // configurable by the helm client user for overriding
 // the defaults used when running the `helm install` command.
@@ -115,17 +142,17 @@ func ValueOverrides(raw []byte) InstallOption {
 	}
 }
 
-// UpdateValueOverrides specifies a list of values to include when upgrading
-func UpdateValueOverrides(raw []byte) UpdateOption {
-	return func(opts *options) {
-		opts.updateReq.Values = &cpb.Config{Raw: string(raw)}
-	}
-}
-
 // ReleaseName specifies the name of the release when installing.
 func ReleaseName(name string) InstallOption {
 	return func(opts *options) {
 		opts.instReq.Name = name
+	}
+}
+
+// UpdateValueOverrides specifies a list of values to include when upgrading
+func UpdateValueOverrides(raw []byte) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Values = &cpb.Config{Raw: string(raw)}
 	}
 }
 
@@ -143,6 +170,55 @@ func DeleteDryRun(dry bool) DeleteOption {
 	}
 }
 
+// DeletePurge removes the release from the store and make its name free for later use.
+func DeletePurge(purge bool) DeleteOption {
+	return func(opts *options) {
+		opts.uninstallReq.Purge = purge
+	}
+}
+
+// InstallDryRun will (if true) execute an installation as a dry run.
+func InstallDryRun(dry bool) InstallOption {
+	return func(opts *options) {
+		opts.dryRun = dry
+	}
+}
+
+// InstallDisableHooks disables hooks during installation.
+func InstallDisableHooks(disable bool) InstallOption {
+	return func(opts *options) {
+		opts.disableHooks = disable
+	}
+}
+
+// InstallReuseName will (if true) instruct Tiller to re-use an existing name.
+func InstallReuseName(reuse bool) InstallOption {
+	return func(opts *options) {
+		opts.reuseName = reuse
+	}
+}
+
+// RollbackDisableHooks will disable hooks for a rollback operation
+func RollbackDisableHooks(disable bool) RollbackOption {
+	return func(opts *options) {
+		opts.disableHooks = disable
+	}
+}
+
+// RollbackDryRun will (if true) execute a rollback as a dry run.
+func RollbackDryRun(dry bool) RollbackOption {
+	return func(opts *options) {
+		opts.dryRun = dry
+	}
+}
+
+// RollbackVersion sets the version of the release to deploy.
+func RollbackVersion(ver int32) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.Version = ver
+	}
+}
+
 // UpgradeDisableHooks will disable hooks for an upgrade operation.
 func UpgradeDisableHooks(disable bool) UpdateOption {
 	return func(opts *options) {
@@ -157,112 +233,61 @@ func UpgradeDryRun(dry bool) UpdateOption {
 	}
 }
 
-// InstallDisableHooks disables hooks during installation.
-func InstallDisableHooks(disable bool) InstallOption {
-	return func(opts *options) {
-		opts.disableHooks = disable
-	}
-}
-
-// InstallDryRun will (if true) execute an installation as a dry run.
-func InstallDryRun(dry bool) InstallOption {
-	return func(opts *options) {
-		opts.dryRun = dry
-	}
-}
-
-// InstallReuseName will (if true) instruct Tiller to re-use an existing name.
-func InstallReuseName(reuse bool) InstallOption {
-	return func(opts *options) {
-		opts.reuseName = reuse
-	}
-}
-
-// ContentOption -- TODO
+// ContentOption allows setting optional attributes when
+// performing a GetReleaseContent tiller rpc.
 type ContentOption func(*options)
 
-// StatusOption -- TODO
+// ContentReleaseVersion will instruct Tiller to retrieve the content
+// of a paritcular version of a release.
+func ContentReleaseVersion(version int32) ContentOption {
+	return func(opts *options) {
+		opts.contentReq.Version = version
+	}
+}
+
+// StatusOption allows setting optional attributes when
+// performing a GetReleaseStatus tiller rpc.
 type StatusOption func(*options)
 
-// DeleteOption -- TODO
+// StatusReleaseVersion will instruct Tiller to retrieve the status
+// of a particular version of a release.
+func StatusReleaseVersion(version int32) StatusOption {
+	return func(opts *options) {
+		opts.statusReq.Version = version
+	}
+}
+
+// DeleteOption allows setting optional attributes when
+// performing a UninstallRelease tiller rpc.
 type DeleteOption func(*options)
+
+// VersionOption -- TODO
+type VersionOption func(*options)
 
 // UpdateOption allows specifying various settings
 // configurable by the helm client user for overriding
 // the defaults used when running the `helm upgrade` command.
 type UpdateOption func(*options)
 
-// RPC helpers defined on `options` type. Note: These actually execute the
-// the corresponding tiller RPC. There is no particular reason why these
-// are APIs are hung off `options`, they are internal to pkg/helm to remain
-// malleable.
+// RollbackOption allows specififying various settings configurable
+// by the helm client user for overriding the defaults used when
+// running the `helm rollback` command.
+type RollbackOption func(*options)
 
-// Executes tiller.ListReleases RPC.
-func (o *options) rpcListReleases(rlc rls.ReleaseServiceClient, opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
-	// apply release list options
-	for _, opt := range opts {
-		opt(o)
-	}
-	s, err := rlc.ListReleases(context.TODO(), &o.listReq)
-	if err != nil {
-		return nil, err
-	}
+// HistoryOption allows configuring optional request data for
+// issuing a GetHistory rpc.
+type HistoryOption func(*options)
 
-	return s.Recv()
+// WithMaxHistory sets the max number of releases to return
+// in a release history query.
+func WithMaxHistory(max int32) HistoryOption {
+	return func(opts *options) {
+		opts.histReq.Max = max
+	}
 }
 
-// Executes tiller.InstallRelease RPC.
-func (o *options) rpcInstallRelease(chr *cpb.Chart, rlc rls.ReleaseServiceClient, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
-	// apply the install options
-	for _, opt := range opts {
-		opt(o)
-	}
-	o.instReq.Chart = chr
-	o.instReq.Namespace = ns
-	o.instReq.DryRun = o.dryRun
-	o.instReq.DisableHooks = o.disableHooks
-	o.instReq.ReuseName = o.reuseName
-
-	return rlc.InstallRelease(context.TODO(), &o.instReq)
-}
-
-// Executes tiller.UninstallRelease RPC.
-func (o *options) rpcDeleteRelease(rlsName string, rlc rls.ReleaseServiceClient, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
-	for _, opt := range opts {
-		opt(o)
-	}
-	if o.dryRun {
-		// In the dry run case, just see if the release exists
-		r, err := o.rpcGetReleaseContent(rlsName, rlc)
-		if err != nil {
-			return &rls.UninstallReleaseResponse{}, err
-		}
-		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
-	}
-	return rlc.UninstallRelease(context.TODO(), &rls.UninstallReleaseRequest{Name: rlsName, DisableHooks: o.disableHooks})
-}
-
-// Executes tiller.UpdateRelease RPC.
-func (o *options) rpcUpdateRelease(rlsName string, chr *cpb.Chart, rlc rls.ReleaseServiceClient, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	for _, opt := range opts {
-		opt(o)
-	}
-
-	o.updateReq.Chart = chr
-	o.updateReq.DryRun = o.dryRun
-	o.updateReq.Name = rlsName
-
-	return rlc.UpdateRelease(context.TODO(), &o.updateReq)
-}
-
-// Executes tiller.GetReleaseStatus RPC.
-func (o *options) rpcGetReleaseStatus(rlsName string, rlc rls.ReleaseServiceClient, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	req := &rls.GetReleaseStatusRequest{Name: rlsName}
-	return rlc.GetReleaseStatus(context.TODO(), req)
-}
-
-// Executes tiller.GetReleaseContent.
-func (o *options) rpcGetReleaseContent(rlsName string, rlc rls.ReleaseServiceClient, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
-	req := &rls.GetReleaseContentRequest{Name: rlsName}
-	return rlc.GetReleaseContent(context.TODO(), req)
+// NewContext creates a versioned context.
+func NewContext() context.Context {
+	md := metadata.Pairs("x-helm-api-client", version.Version)
+	return metadata.NewContext(context.TODO(), md)
 }

@@ -19,109 +19,131 @@ package main
 import (
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
+	"k8s.io/helm/cmd/helm/downloader"
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/repo"
 )
 
-var untarFile bool
-var untarDir string
+const fetchDesc = `
+Retrieve a package from a package repository, and download it locally.
 
-func init() {
-	RootCommand.AddCommand(fetchCmd)
-	fetchCmd.Flags().BoolVar(&untarFile, "untar", false, "If set to true, will untar the chart after downloading it.")
-	fetchCmd.Flags().StringVar(&untarDir, "untardir", ".", "If untar is specified, this flag specifies where to untar the chart.")
+This is useful for fetching packages to inspect, modify, or repackage. It can
+also be used to perform cryptographic verification of a chart without installing
+the chart.
+
+There are options for unpacking the chart after download. This will create a
+directory for the chart and uncomparess into that directory.
+
+If the --verify flag is specified, the requested chart MUST have a provenance
+file, and MUST pass the verification process. Failure in any part of this will
+result in an error, and the chart will not be saved locally.
+`
+
+type fetchCmd struct {
+	untar    bool
+	untardir string
+	chartRef string
+	destdir  string
+	version  string
+
+	verify  bool
+	keyring string
+
+	out io.Writer
 }
 
-var fetchCmd = &cobra.Command{
-	Use:   "fetch [chart URL | repo/chartname]",
-	Short: "download a chart from a repository and (optionally) unpack it in local directory",
-	Long:  "",
-	RunE:  fetch,
-}
+func newFetchCmd(out io.Writer) *cobra.Command {
+	fch := &fetchCmd{out: out}
 
-func fetch(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("This command needs at least one argument, url or repo/name of the chart.")
-	}
-
-	pname := args[0]
-	if filepath.Ext(pname) != ".tgz" {
-		pname += ".tgz"
-	}
-	return fetchChart(pname)
-
-}
-
-func fetchChart(pname string) error {
-
-	f, err := repo.LoadRepositoriesFile(repositoriesFile())
-	if err != nil {
-		return err
-	}
-
-	// get download url
-	u, err := mapRepoArg(pname, f.Repositories)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Get(u.String())
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("Failed to fetch %s : %s", u.String(), resp.Status)
-	}
-
-	defer resp.Body.Close()
-	if untarFile {
-		return chartutil.Expand(untarDir, resp.Body)
-	}
-	p := strings.Split(u.String(), "/")
-	return saveChartFile(p[len(p)-1], resp.Body)
-}
-
-// mapRepoArg figures out which format the argument is given, and creates a fetchable
-// url from it.
-func mapRepoArg(arg string, r map[string]string) (*url.URL, error) {
-	// See if it's already a full URL.
-	u, err := url.ParseRequestURI(arg)
-	if err == nil {
-		// If it has a scheme and host and path, it's a full URL
-		if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
-			return u, nil
-		}
-		return nil, fmt.Errorf("Invalid chart url format: %s", arg)
-	}
-	// See if it's of the form: repo/path_to_chart
-	p := strings.Split(arg, "/")
-	if len(p) > 1 {
-		if baseURL, ok := r[p[0]]; ok {
-			if !strings.HasSuffix(baseURL, "/") {
-				baseURL = baseURL + "/"
+	cmd := &cobra.Command{
+		Use:   "fetch [flags] [chart URL | repo/chartname] [...]",
+		Short: "download a chart from a repository and (optionally) unpack it in local directory",
+		Long:  fetchDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return fmt.Errorf("This command needs at least one argument, url or repo/name of the chart.")
 			}
-			return url.ParseRequestURI(baseURL + strings.Join(p[1:], "/"))
-		}
-		return nil, fmt.Errorf("No such repo: %s", p[0])
+			for i := 0; i < len(args); i++ {
+				fch.chartRef = args[i]
+				if err := fch.run(); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
 	}
-	return nil, fmt.Errorf("Invalid chart url format: %s", arg)
+
+	f := cmd.Flags()
+	f.BoolVar(&fch.untar, "untar", false, "If set to true, will untar the chart after downloading it.")
+	f.StringVar(&fch.untardir, "untardir", ".", "If untar is specified, this flag specifies the name of the directory into which the chart is expanded.")
+	f.BoolVar(&fch.verify, "verify", false, "Verify the package against its signature.")
+	f.StringVar(&fch.version, "version", "", "The specific version of a chart. Without this, the latest version is fetched.")
+	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "The keyring containing public keys.")
+	f.StringVarP(&fch.destdir, "destination", "d", ".", "The location to write the chart. If this and tardir are specified, tardir is appended to this.")
+
+	return cmd
 }
 
-func saveChartFile(c string, r io.Reader) error {
-	// Grab the chart name that we'll use for the name of the file to download to.
-	out, err := os.Create(c)
+func (f *fetchCmd) run() error {
+	pname := f.chartRef
+	c := downloader.ChartDownloader{
+		HelmHome: helmpath.Home(homePath()),
+		Out:      f.out,
+		Keyring:  f.keyring,
+		Verify:   downloader.VerifyNever,
+	}
+
+	if f.verify {
+		c.Verify = downloader.VerifyAlways
+	}
+
+	// If untar is set, we fetch to a tempdir, then untar and copy after
+	// verification.
+	dest := f.destdir
+	if f.untar {
+		var err error
+		dest, err = ioutil.TempDir("", "helm-")
+		if err != nil {
+			return fmt.Errorf("Failed to untar: %s", err)
+		}
+		defer os.RemoveAll(dest)
+	}
+
+	saved, v, err := c.DownloadTo(pname, f.version, dest)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 
-	_, err = io.Copy(out, r)
-	return err
+	if f.verify {
+		fmt.Fprintf(f.out, "Verification: %v", v)
+	}
+
+	// After verification, untar the chart into the requested directory.
+	if f.untar {
+		ud := f.untardir
+		if !filepath.IsAbs(ud) {
+			ud = filepath.Join(f.destdir, ud)
+		}
+		if fi, err := os.Stat(ud); err != nil {
+			if err := os.MkdirAll(ud, 0755); err != nil {
+				return fmt.Errorf("Failed to untar (mkdir): %s", err)
+			}
+
+		} else if !fi.IsDir() {
+			return fmt.Errorf("Failed to untar: %s is not a directory", ud)
+		}
+
+		return chartutil.ExpandFile(ud, saved)
+	}
+	return nil
+}
+
+// defaultKeyring returns the expanded path to the default keyring.
+func defaultKeyring() string {
+	return os.ExpandEnv("$HOME/.gnupg/pubring.gpg")
 }

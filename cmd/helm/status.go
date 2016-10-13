@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
 
@@ -34,6 +35,7 @@ type statusCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
+	version int32
 }
 
 func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -57,20 +59,38 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return status.run()
 		},
 	}
+
+	cmd.PersistentFlags().Int32Var(&status.version, "revision", 0, "If set, display the status of the named release with revision")
+
 	return cmd
 }
 
 func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release)
+	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version))
 	if err != nil {
 		return prettyError(err)
 	}
 
-	fmt.Fprintf(s.out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
-	fmt.Fprintf(s.out, "Status: %s\n", res.Info.Status.Code)
-	fmt.Fprintf(s.out, "Resources:\n%s\n", res.Info.Status.Resources)
-	if res.Info.Status.Details != nil {
-		fmt.Fprintf(s.out, "Details: %s\n", res.Info.Status.Details)
-	}
+	PrintStatus(s.out, res)
 	return nil
+}
+
+// PrintStatus prints out the status of a release. Shared because also used by
+// install / upgrade
+func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
+	if res.Info.LastDeployed != nil {
+		fmt.Fprintf(out, "Last Deployed: %s\n", timeconv.String(res.Info.LastDeployed))
+	}
+	fmt.Fprintf(out, "Namespace: %s\n", res.Namespace)
+	fmt.Fprintf(out, "Status: %s\n", res.Info.Status.Code)
+	if res.Info.Status.Details != nil {
+		fmt.Fprintf(out, "Details: %s\n", res.Info.Status.Details)
+	}
+	fmt.Fprintf(out, "\n")
+	if len(res.Info.Status.Resources) > 0 {
+		fmt.Fprintf(out, "Resources:\n%s\n", res.Info.Status.Resources)
+	}
+	if len(res.Info.Status.Notes) > 0 {
+		fmt.Fprintf(out, "Notes:\n%s\n", res.Info.Status.Notes)
+	}
 }

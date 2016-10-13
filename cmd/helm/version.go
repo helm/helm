@@ -17,21 +17,53 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/version"
 )
 
-func init() {
-	RootCommand.AddCommand(versionCmd)
+type versionCmd struct {
+	out    io.Writer
+	client helm.Interface
 }
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "print the client version information",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version.Version)
-	},
+func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
+	version := &versionCmd{
+		client: c,
+		out:    out,
+	}
+	cmd := &cobra.Command{
+		Use:               "version",
+		Short:             "print the client/server version information",
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			version.client = ensureHelmClient(version.client)
+			return version.run()
+		},
+	}
+	return cmd
+}
+
+func (v *versionCmd) run() error {
+	// Regardless of whether we can talk to server or not, just print the client
+	// version.
+	cv := version.GetVersionProto()
+	fmt.Fprintf(v.out, "Client: %#v\n", cv)
+
+	resp, err := v.client.GetVersion()
+	if err != nil {
+		if grpc.Code(err) == codes.Unimplemented {
+			return errors.New("server is too old to know its version")
+		}
+		return err
+	}
+	fmt.Fprintf(v.out, "Server: %#v\n", resp.Version)
+	return nil
 }

@@ -30,17 +30,15 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
+	kblabels "k8s.io/kubernetes/pkg/labels"
 )
 
+var _ Driver = (*ConfigMaps)(nil)
+
+// ConfigMapsDriverName is the string name of the driver.
+const ConfigMapsDriverName = "ConfigMap"
+
 var b64 = base64.StdEncoding
-
-// labels is a map of key value pairs to be included as metadata in a configmap object.
-type labels map[string]string
-
-func (lbs *labels) init()                   { *lbs = labels(make(map[string]string)) }
-func (lbs labels) get(key string) string    { return lbs[key] }
-func (lbs labels) set(key, val string)      { lbs[key] = val }
-func (lbs labels) toMap() map[string]string { return lbs }
 
 // ConfigMaps is a wrapper around an implementation of a kubernetes
 // ConfigMapsInterface.
@@ -52,6 +50,11 @@ type ConfigMaps struct {
 // the kubernetes ConfigMapsInterface.
 func NewConfigMaps(impl client.ConfigMapsInterface) *ConfigMaps {
 	return &ConfigMaps{impl: impl}
+}
+
+// Name returns the name of the driver.
+func (cfgmaps *ConfigMaps) Name() string {
+	return ConfigMapsDriverName
 }
 
 // Get fetches the release named by key. The corresponding release is returned
@@ -81,7 +84,10 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
 func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	list, err := cfgmaps.impl.List(api.ListOptions{})
+	lsel := kblabels.Set{"OWNER": "TILLER"}.AsSelector()
+	opts := api.ListOptions{LabelSelector: lsel}
+
+	list, err := cfgmaps.impl.List(opts)
 	if err != nil {
 		logerrf(err, "list: failed to list")
 		return nil, err
@@ -104,9 +110,41 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	return results, nil
 }
 
+// Query fetches all releases that match the provided map of labels.
+// An error is returned if the configmap fails to retrieve the releases.
+func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, error) {
+	ls := kblabels.Set{}
+	for k, v := range labels {
+		ls[k] = v
+	}
+
+	opts := api.ListOptions{LabelSelector: ls.AsSelector()}
+
+	list, err := cfgmaps.impl.List(opts)
+	if err != nil {
+		logerrf(err, "query: failed to query with labels")
+		return nil, err
+	}
+
+	if len(list.Items) == 0 {
+		return nil, ErrReleaseNotFound
+	}
+
+	var results []*rspb.Release
+	for _, item := range list.Items {
+		rls, err := decodeRelease(item.Data["release"])
+		if err != nil {
+			logerrf(err, "query: failed to decode release: %s", err)
+			continue
+		}
+		results = append(results, rls)
+	}
+	return results, nil
+}
+
 // Create creates a new ConfigMap holding the release. If the
 // ConfigMap already exists, ErrReleaseExists is returned.
-func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
+func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	// set labels for configmaps object meta data
 	var lbs labels
 
@@ -114,7 +152,7 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 	lbs.set("CREATED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap to hold the release
-	obj, err := newConfigMapsObject(rls, lbs)
+	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
 		logerrf(err, "create: failed to encode release %q", rls.Name)
 		return err
@@ -133,7 +171,7 @@ func (cfgmaps *ConfigMaps) Create(rls *rspb.Release) error {
 
 // Update updates the ConfigMap holding the release. If not found
 // the ConfigMap is created to hold the release.
-func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
+func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	// set labels for configmaps object meta data
 	var lbs labels
 
@@ -141,7 +179,7 @@ func (cfgmaps *ConfigMaps) Update(rls *rspb.Release) error {
 	lbs.set("MODIFIED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap object to hold the release
-	obj, err := newConfigMapsObject(rls, lbs)
+	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
 		logerrf(err, "update: failed to encode release %q", rls.Name)
 		return err
@@ -186,7 +224,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //    "OWNER"          - owner of the configmap, currently "TILLER".
 //    "NAME"           - name of the release.
 //
-func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) {
+func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*api.ConfigMap, error) {
 	const owner = "TILLER"
 
 	// encode the release
@@ -208,7 +246,7 @@ func newConfigMapsObject(rls *rspb.Release, lbs labels) (*api.ConfigMap, error) 
 	// create and return configmap object
 	return &api.ConfigMap{
 		ObjectMeta: api.ObjectMeta{
-			Name:   rls.Name,
+			Name:   key,
 			Labels: lbs.toMap(),
 		},
 		Data: map[string]string{"release": s},

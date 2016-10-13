@@ -20,6 +20,8 @@ import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
 import "hapi/release/info.proto";
+import "hapi/release/status.proto";
+import "hapi/version/version.proto";
 
 option go_package = "services";
 
@@ -49,7 +51,7 @@ service ReleaseService {
 	rpc GetReleaseStatus(GetReleaseStatusRequest) returns (GetReleaseStatusResponse) {
 	}
 
-	// GetReleaseContent retrieves the release content (chart + value) for the specifed release.
+	// GetReleaseContent retrieves the release content (chart + value) for the specified release.
 	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
 	}
 
@@ -64,6 +66,18 @@ service ReleaseService {
 	// UninstallRelease requests deletion of a named release.
 	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
 	}
+
+    // GetVersion returns the current version of the server.
+    rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
+    }
+
+    // RollbackRelease rolls back a release to a previous version.
+    rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
+    }
+
+    // ReleaseHistory retrieves a releasse's history.
+    rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
+    }
 }
 
 // ListReleasesRequest requests a list of releases.
@@ -90,7 +104,10 @@ message ListReleasesRequest {
 	// Anything that matches the regexp will be included in the results.
 	string filter = 4;
 
+	// SortOrder is the ordering directive used for sorting.
 	ListSort.SortOrder sort_order = 5;
+
+	repeated hapi.release.Status.Code status_codes = 6;
 }
 
 // ListSort defines sorting fields on a release list.
@@ -129,6 +146,8 @@ message ListReleasesResponse {
 message GetReleaseStatusRequest {
 	// Name is the name of the release
 	string name = 1;
+	// Version is the version of the release
+	int32 version = 2;
 }
 
 // GetReleaseStatusResponse is the response indicating the status of the named release.
@@ -138,12 +157,17 @@ message GetReleaseStatusResponse {
 
 	// Info contains information about the release.
 	hapi.release.Info info = 2;
+
+  // Namesapce the release was released into
+  string namespace = 3;
 }
 
 // GetReleaseContentRequest is a request to get the contents of a release.
 message GetReleaseContentRequest {
 	// The name of the release
 	string name = 1;
+	// Version is the version of the release
+	int32 version = 2;
 }
 
 // GetReleaseContentResponse is a response containing the contents of a release.
@@ -162,13 +186,28 @@ message UpdateReleaseRequest {
 	hapi.chart.Config values = 3;
 	// dry_run, if true, will run through the release logic, but neither create
 	bool dry_run = 4;
-
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
 	bool disable_hooks = 5;
 }
 
 // UpdateReleaseResponse is the response to an update request.
 message UpdateReleaseResponse {
+	hapi.release.Release release = 1;
+}
+
+message RollbackReleaseRequest {
+	// The name of the release
+	string name = 1;
+	// dry_run, if true, will run through the release logic but no create
+	bool dry_run = 2;
+	// DisableHooks causes the server to skip running any hooks for the rollback
+	bool disable_hooks = 3;
+	// Version is the version of the release to deploy.
+	int32 version = 4;
+}
+
+// RollbackReleaseResponse is the response to an update request.
+message RollbackReleaseResponse {
 	hapi.release.Release release = 1;
 }
 
@@ -209,10 +248,33 @@ message UninstallReleaseRequest {
 	string name = 1;
 	// DisableHooks causes the server to skip running any hooks for the uninstall.
 	bool disable_hooks = 2;
+	// Purge removes the release from the store and make its name free for later use.
+	bool purge = 3;
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.
 message UninstallReleaseResponse {
 	// Release is the release that was marked deleted.
 	hapi.release.Release release = 1;
+}
+
+// GetVersionRequest requests for version information.
+message GetVersionRequest {
+}
+
+message GetVersionResponse {
+  hapi.version.Version Version = 1;
+}
+
+// GetHistoryRequest requests a release's history.
+message GetHistoryRequest {
+	// The name of the release.
+	string name = 1;
+	// The maximum number of releases to include.
+	int32 max = 2;
+}
+
+// GetHistoryResponse is received in response to a GetHistory rpc.
+message GetHistoryResponse {
+	repeated hapi.release.Release releases = 1;
 }

@@ -22,13 +22,14 @@ Inside of this directory, Helm will expect a structure that matches this:
 
 ```
 wordpress/
-  Chart.yaml        # A YAML file containing information about the chart
-  LICENSE           # OPTIONAL: A plain text file containing the license for the chart
-  README.md         # OPTIONAL: A human-readable README file
-  values.yaml       # The default configuration values for this chart
-  charts/           # OPTIONAL: A directory containing any charts upon which this chart depends.
-  templates/        # OPTIONAL: A directory of templates that, when combined with values,
-                    # will generate valid Kubernetes manifest files.
+  Chart.yaml          # A YAML file containing information about the chart
+  LICENSE             # OPTIONAL: A plain text file containing the license for the chart
+  README.md           # OPTIONAL: A human-readable README file
+  values.yaml         # The default configuration values for this chart
+  charts/             # OPTIONAL: A directory containing any charts upon which this chart depends.
+  templates/          # OPTIONAL: A directory of templates that, when combined with values,
+                      # will generate valid Kubernetes manifest files.
+  templates/NOTES.txt # OPTIONAL: A plain text file containing short usage notes
 ```
 
 Helm will silently strip out any other files.
@@ -50,6 +51,7 @@ maintainers: # (optional)
   - name: The maintainer's name (required for each maintainer)
     email: The maintainer's email (optional for each maintainer)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
+icon: A URL to an SVG or PNG image to be used as an icon (optional).
 ```
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
@@ -88,11 +90,34 @@ in the `Chart.yaml` as a token in the package name. The system assumes
 that the version number in the chart package name matches the version number in
 the `Chart.yaml`. Failure to meet this assumption will cause an error.
 
+## Chart LICENSE, README and NOTES
+
+Charts can also contain files that describe the installation, configuration, usage and license of a
+chart. A README for a chart should be formatted in Markdown (README.md), and should generally
+contain:
+
+- A description of the application or service the chart provides
+- Any prerequisites or requirements to run the chart
+- Descriptions of options in `values.yaml` and default values
+- Any other information that may be relevant to the installation or configuration of the chart
+
+The chart can also contain a short plain text `templates/NOTES.txt` file that will be printed out
+after installation, and when viewing the status of a release. This file is evaluated as a
+[template](#templates-and-values), and can be used to display usage notes, next steps, or any other
+information relevant to a release of the chart. For example, instructions could be provided for
+connecting to a database, or accessing a web UI. Since this file is printed to STDOUT when running
+`helm install` or `helm status`, it is recommended to keep the content brief and point to the README
+for greater detail.
+
 ## Chart Dependencies
 
 In Helm, one chart may depend on any number of other charts. These
 dependencies are expressed explicitly by copying the dependency charts
 into the `charts/` directory.
+
+A dependency can be either a chart archive (`foo-1.2.3.tgz`) or an
+unpacked chart directory. But its name cannot start with `_` or `.`.
+Such files are ignored by the chart loader.
 
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
@@ -104,6 +129,7 @@ chart's `charts/` directory:
 ```
 wordpress:
   Chart.yaml
+  requirements.yaml
   # ...
   charts/
     apache/
@@ -119,7 +145,62 @@ on Apache and MySQL by including those charts inside of its `charts/`
 directory.
 
 **TIP:** _To drop a dependency into your `charts/` directory, use the
-`helm fetch` command._
+`helm fetch` command or use a `requirements.yaml` file_
+
+### Managing Dependencies with `requirements.yaml`
+
+While Helm will allow you to manually manage your dependencies, the
+preferred method of declaring dependencies is by using a
+`requirements.yaml` file inside of your chart.
+
+A `requirements.yaml` file is a simple file for listing your
+dependencies.
+
+```yaml
+dependencies:
+  - name: apache
+    version: 1.2.3
+    repository: http://example.com/charts
+  - name: mysql
+    version: 3.2.1
+    repository: http://another.example.com/charts
+```
+
+- The `name` field is the name of the chart you want.
+- The `version` field is the version of the chart you want.
+- The `repository` field is the full URL to the chart repository. Note
+  that you must also use `helm repo add` to add that repo locally.
+
+Once you have a dependencies file, you can run `helm dependency update`
+and it will use your dependency file to download all of the specified
+charts into your `charts/` directory for you.
+
+```console
+$ helm dep up foochart
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "local" chart repository
+...Successfully got an update from the "stable" chart repository
+...Successfully got an update from the "example" chart repository
+...Successfully got an update from the "another" chart repository
+Update Complete. Happy Helming!
+Saving 2 charts
+Downloading apache from repo http://example.com/charts
+Downloading mysql from repo http://another.example.com/charts
+```
+
+When `helm dependency update` retrieves charts, it will store them as
+chart archives in the `charts/` directory. So for the example above, one
+would expect to see the following files in the charts directory:
+
+```
+charts/
+  apache-1.2.3.tgz
+  mysql-3.2.1.tgz
+```
+
+Manging charts with `requirements.yaml` is a good way to easily keep
+charts updated, and also share requirements information throughout a
+team.
 
 ## Templates and Values
 
@@ -167,17 +248,18 @@ spec:
       serviceAccount: deis-database
       containers:
         - name: deis-database
-          image: {{.imageRegistry}}/postgres:{{.dockerTag}}
-          imagePullPolicy: {{.pullPolicy}}
+          image: {{.Values.imageRegistry}}/postgres:{{.Values.dockerTag}}
+          imagePullPolicy: {{.Values.pullPolicy}}
           ports:
             - containerPort: 5432
           env:
             - name: DATABASE_STORAGE
-              value: {{default "minio" .storage}}
+              value: {{default "minio" .Values.storage}}
 ```
 
 The above example, based loosely on [https://github.com/deis/charts](https://github.com/deis/charts), is a template for a Kubernetes replication controller.
-It can use the following four template values:
+It can use the following four template values (usually defined in a
+`values.yaml` file):
 
 - `imageRegistry`: The source registry for the Docker image.
 - `dockerTag`: The tag for the docker image.
@@ -188,6 +270,10 @@ All of these values are defined by the template author. Helm does not
 require or dictate parameters.
 
 ### Predefined Values
+
+Values that are supplied via a `values.yaml` file (or via the `--set`
+flag) are accessible from the `.Values` object in a template. But there
+are other pre-defined pieces of data you can access in your templates.
 
 The following values are pre-defined, are available to every template, and
 cannot be overridden. As with all values, the names are _case
@@ -205,8 +291,8 @@ sensitive_.
 - `Files`: A map-like object containing all non-special files in the chart. This
   will not give you access to templates, but will give you access to additional
   files that are present. Files can be accessed using `{{index .Files "file.name"}}`
-  or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. Note that
-  file data is returned as a `[]byte` unless `{{.Files.GetString}}` is used.
+  or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. You can
+  also access the contents of the file as `[]byte` using `{{.Files.GetBytes}}`
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not
 be accessible inside of the `Chart` object. Thus, Chart.yaml cannot be
@@ -256,6 +342,39 @@ Note that only the last field was overridden.
 `values.yaml`. But files specified on the command line can be named
 anything.
 
+Any of these values are then accessible inside of templates using the
+`.Values` object:
+
+```yaml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: deis-database
+  namespace: deis
+  labels:
+    heritage: deis
+spec:
+  replicas: 1
+  selector:
+    app: deis-database
+  template:
+    metadata:
+      labels:
+        app: deis-database
+    spec:
+      serviceAccount: deis-database
+      containers:
+        - name: deis-database
+          image: {{.Values.imageRegistry}}/postgres:{{.Values.dockerTag}}
+          imagePullPolicy: {{.Values.pullPolicy}}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: DATABASE_STORAGE
+              value: {{default "minio" .Values.storage}}
+
+```
+
 ### Scope, Dependencies, and Values
 
 Values files can declare values for the top-level chart, as well as for
@@ -278,16 +397,16 @@ apache:
 ```
 
 Charts at a higher level have access to all of the variables defined
-beneath. So the wordpress chart can access `.mysql.password`. But lower
-level charts cannot access things in parent charts, so MySQL will not be
-able to access the `title` property. Nor, for that matter, can it access
-`.apache.port`.
+beneath. So the wordpress chart can access the MySQL password as
+`.Values.mysql.password`. But lower level charts cannot access things in
+parent charts, so MySQL will not be able to access the `title` property. Nor,
+for that matter, can it access `apache.port`.
 
 Values are namespaced, but namespaces are pruned. So for the Wordpress
-chart, it can access the MySQL password field as `.mysql.password`. But
+chart, it can access the MySQL password field as `.Values.mysql.password`. But
 for the MySQL chart, the scope of the values has been reduced and the
 namespace prefix removed, so it will see the password field simply as
-`.password`.
+`.Values.password`.
 
 #### Global Values
 
@@ -483,7 +602,7 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: {{template "fullname" .}}-job
+      - name: post-install-job
         image: "alpine:3.3"
         command: ["/bin/sleep","{{default "10" .Values.sleepyTime}}"]
 

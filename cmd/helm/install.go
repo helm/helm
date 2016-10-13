@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,6 +32,8 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/downloader"
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
@@ -45,15 +48,38 @@ name of a chart in the current working directory.
 To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line.
 
-	$ helm install -f myvalues.yaml redis
+	$ helm install -f myvalues.yaml ./redis
 
 or
 
-	$ helm install --set name=prod redis
+	$ helm install --set name=prod ./redis
 
 To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined. This will still require a
 round-trip to the Tiller server.
+
+If --verify is set, the chart MUST have a provenance file, and the provenenace
+fall MUST pass all verification steps.
+
+There are four different ways you can express the chart you want to install:
+
+1. By chart reference: helm install stable/mariadb
+2. By path to a packaged chart: helm install ./nginx-1.2.3.tgz
+3. By path to an unpacked chart directory: helm install ./nginx
+4. By absolute URL: helm install https://example.com/charts/nginx-1.2.3.tgz
+
+CHART REFERENCES
+
+A chart reference is a convenient way of reference a chart in a chart repository.
+
+When you use a chart reference ('stable/mariadb'), Helm will look in the local
+configuration for a chart repository named 'stable', and will then look for a
+chart in that repository whose name is 'mariadb'. It will install the latest
+version of that chart unless you also supply a version number with the
+'--version' flag.
+
+To see the list of chart repositories, use 'helm repo list'. To search for
+charts in a repository, use 'helm search'.
 `
 
 type installCmd struct {
@@ -64,10 +90,13 @@ type installCmd struct {
 	dryRun       bool
 	disableHooks bool
 	replace      bool
+	verify       bool
+	keyring      string
 	out          io.Writer
 	client       helm.Interface
 	values       *values
 	nameTemplate string
+	version      string
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -83,10 +112,10 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:              installDesc,
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(1, len(args), "chart name"); err != nil {
+			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0])
+			cp, err := locateChartPath(args[0], inst.version, inst.verify, inst.keyring)
 			if err != nil {
 				return err
 			}
@@ -106,12 +135,15 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
 	f.Var(inst.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
+	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
+	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
+	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed.")
 	return cmd
 }
 
 func (i *installCmd) run() error {
 	if flagDebug {
-		fmt.Printf("Chart path: %s\n", i.chartPath)
+		fmt.Fprintf(i.out, "Chart path: %s\n", i.chartPath)
 	}
 
 	rawVals, err := i.vals()
@@ -126,7 +158,7 @@ func (i *installCmd) run() error {
 			return err
 		}
 		// Print the final name so the user knows what the final name of the release is.
-		fmt.Printf("final name: %s\n", i.name)
+		fmt.Printf("Final name: %s\n", i.name)
 	}
 
 	res, err := i.client.InstallRelease(
@@ -141,21 +173,52 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 
-	i.printRelease(res.GetRelease())
+	rel := res.GetRelease()
+	if rel == nil {
+		return nil
+	}
+	i.printRelease(rel)
 
+	// If this is a dry run, we can't display status.
+	if i.dryRun {
+		return nil
+	}
+
+	// Print the status like status command does
+	status, err := i.client.ReleaseStatus(rel.Name)
+	if err != nil {
+		return prettyError(err)
+	}
+	PrintStatus(i.out, status)
 	return nil
 }
 
 func (i *installCmd) vals() ([]byte, error) {
+	var buffer bytes.Buffer
+
+	// User specified a values file via -f/--values
+	if i.valuesFile != "" {
+		bytes, err := ioutil.ReadFile(i.valuesFile)
+		if err != nil {
+			return []byte{}, err
+		}
+		buffer.Write(bytes)
+	}
+
+	// User specified value pairs via --set
+	// These override any values in the specified file
 	if len(i.values.pairs) > 0 {
-		return i.values.yaml()
+		bytes, err := i.values.yaml()
+		if err != nil {
+			return []byte{}, err
+		}
+		buffer.Write(bytes)
 	}
-	if i.valuesFile == "" {
-		return []byte{}, nil
-	}
-	return ioutil.ReadFile(i.valuesFile)
+
+	return buffer.Bytes(), nil
 }
 
+// printRelease prints info about a release if the flagDebug is true.
 func (i *installCmd) printRelease(rel *release.Release) {
 	if rel == nil {
 		return
@@ -216,7 +279,6 @@ func (v *values) Set(data string) error {
 			}
 		}
 	}
-	fmt.Print(v.pairs)
 	return nil
 }
 
@@ -236,34 +298,58 @@ func splitPair(item string) (name string, value interface{}) {
 // - current working directory
 // - if path is absolute or begins with '.', error out here
 // - chart repos in $HELM_HOME
-func locateChartPath(name string) (string, error) {
-	if _, err := os.Stat(name); err == nil {
-		return filepath.Abs(name)
+// - URL
+//
+// If 'verify' is true, this will attempt to also verify the chart.
+func locateChartPath(name, version string, verify bool, keyring string) (string, error) {
+	name = strings.TrimSpace(name)
+	version = strings.TrimSpace(version)
+	if fi, err := os.Stat(name); err == nil {
+		abs, err := filepath.Abs(name)
+		if err != nil {
+			return abs, err
+		}
+		if verify {
+			if fi.IsDir() {
+				return "", errors.New("cannot verify a directory")
+			}
+			if _, err := downloader.VerifyChart(abs, keyring); err != nil {
+				return "", err
+			}
+		}
+		return abs, nil
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
 		return name, fmt.Errorf("path %q not found", name)
 	}
 
-	crepo := filepath.Join(repositoryDirectory(), name)
+	crepo := filepath.Join(helmpath.Home(homePath()).Repository(), name)
 	if _, err := os.Stat(crepo); err == nil {
 		return filepath.Abs(crepo)
 	}
 
-	// Try fetching the chart from a remote repo into a tmpdir
-	origname := name
-	if filepath.Ext(name) != ".tgz" {
-		name += ".tgz"
+	dl := downloader.ChartDownloader{
+		HelmHome: helmpath.Home(homePath()),
+		Out:      os.Stdout,
+		Keyring:  keyring,
 	}
-	if err := fetchChart(name); err == nil {
-		lname, err := filepath.Abs(filepath.Base(name))
-		if err != nil {
-			return lname, err
-		}
-		fmt.Printf("Fetched %s to %s\n", origname, lname)
-		return lname, nil
+	if verify {
+		dl.Verify = downloader.VerifyAlways
 	}
 
-	return name, fmt.Errorf("file %q not found", origname)
+	filename, _, err := dl.DownloadTo(name, version, ".")
+	if err == nil {
+		lname, err := filepath.Abs(filename)
+		if err != nil {
+			return filename, err
+		}
+		fmt.Printf("Fetched %s to %s\n", name, filename)
+		return lname, nil
+	} else if flagDebug {
+		return filename, err
+	}
+
+	return filename, fmt.Errorf("file %q not found", name)
 }
 
 func generateName(nameTemplate string) (string, error) {

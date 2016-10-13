@@ -35,6 +35,7 @@ type getHooksCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
+	version int32
 }
 
 func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -55,11 +56,12 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return ghc.run()
 		},
 	}
+	cmd.Flags().Int32Var(&ghc.version, "revision", 0, "get the named release with revision")
 	return cmd
 }
 
 func (g *getHooksCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release)
+	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
 	if err != nil {
 		fmt.Fprintln(g.out, g.release)
 		return prettyError(err)

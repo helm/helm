@@ -28,14 +28,16 @@ import (
 )
 
 const (
-	homeEnvVar      = "HELM_HOME"
-	hostEnvVar      = "HELM_HOST"
-	tillerNamespace = "kube-system"
+	localRepoIndexFilePath = "index.yaml"
+	homeEnvVar             = "HELM_HOME"
+	hostEnvVar             = "HELM_HOST"
+	tillerNamespace        = "kube-system"
 )
 
 var (
-	helmHome   string
-	tillerHost string
+	helmHome    string
+	tillerHost  string
+	kubeContext string
 )
 
 // flagDebug is a signal that the user wants additional output.
@@ -58,8 +60,9 @@ Common actions from this point include:
 - helm list:      list releases of charts
 
 Environment:
-  $HELM_HOME      Set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $HELM_HOST      Set an alternative Tiller host. The format is host:port (default ":44134").
+  $HELM_HOME      set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $HELM_HOST      set an alternative Tiller host. The format is host:port
+  $KUBECONFIG     set an alternate Kubernetes configuration file (default "~/.kube/config")
 `
 
 func newRootCmd(out io.Writer) *cobra.Command {
@@ -78,29 +81,44 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	}
 	thost := os.Getenv(hostEnvVar)
 	p := cmd.PersistentFlags()
-	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME.")
-	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST.")
+	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME")
+	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST")
+	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
+
+	rup := newRepoUpdateCmd(out)
+	rup.Deprecated = "use 'helm repo update'\n"
 
 	cmd.AddCommand(
 		newCreateCmd(out),
 		newDeleteCmd(nil, out),
+		newDependencyCmd(out),
+		newFetchCmd(out),
 		newGetCmd(nil, out),
+		newHomeCmd(out),
+		newHistoryCmd(nil, out),
 		newInitCmd(out),
 		newInspectCmd(nil, out),
 		newInstallCmd(nil, out),
+		newLintCmd(out),
 		newListCmd(nil, out),
+		newPackageCmd(nil, out),
+		newRepoCmd(out),
+		newRollbackCmd(nil, out),
+		newSearchCmd(out),
+		newServeCmd(out),
 		newStatusCmd(nil, out),
 		newUpgradeCmd(nil, out),
+		newVerifyCmd(out),
+		newVersionCmd(nil, out),
+		// Deprecated
+		rup,
 	)
 	return cmd
 }
 
-// RootCommand is the top-level command for Helm.
-var RootCommand = newRootCmd(os.Stdout)
-
 func main() {
-	cmd := RootCommand
+	cmd := newRootCmd(os.Stdout)
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -108,7 +126,7 @@ func main() {
 
 func setupConnection(c *cobra.Command, args []string) error {
 	if tillerHost == "" {
-		tunnel, err := newTillerPortForwarder(tillerNamespace)
+		tunnel, err := newTillerPortForwarder(tillerNamespace, kubeContext)
 		if err != nil {
 			return err
 		}
@@ -132,22 +150,14 @@ func teardown() {
 	}
 }
 
-func checkArgsLength(expectedNum, actualNum int, requiredArgs ...string) error {
-	if actualNum != expectedNum {
+func checkArgsLength(argsReceived int, requiredArgs ...string) error {
+	expectedNum := len(requiredArgs)
+	if argsReceived != expectedNum {
 		arg := "arguments"
 		if expectedNum == 1 {
 			arg = "argument"
 		}
 		return fmt.Errorf("This command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
-	}
-	return nil
-}
-
-// requireInit is a PreRunE implementation for validating that $HELM_HOME is configured.
-func requireInit(cmd *cobra.Command, args []string) error {
-	err := requireHome()
-	if err != nil {
-		return fmt.Errorf("%s (try running 'helm init')", err)
 	}
 	return nil
 }
@@ -161,4 +171,8 @@ func prettyError(err error) error {
 	// could do is throw an interface on the lib that would let us get back
 	// the desc. Instead, we have to pass ALL errors through this.
 	return errors.New(grpc.ErrorDesc(err))
+}
+
+func homePath() string {
+	return os.ExpandEnv(helmHome)
 }

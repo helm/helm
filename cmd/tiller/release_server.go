@@ -22,22 +22,39 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-	"sort"
+	"strings"
 
-	"github.com/ghodss/yaml"
+	"google.golang.org/grpc/metadata"
+
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 
 	"k8s.io/helm/cmd/tiller/environment"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/timeconv"
+	"k8s.io/helm/pkg/version"
 )
 
 var srv *releaseServer
+
+// releaseNameMaxLen is the maximum length of a release name.
+//
+// This is designed to accommodate the usage of release name in the 'name:'
+// field of Kubernetes resources. Many of those fields are limited to 24
+// characters in length. See https://github.com/kubernetes/helm/issues/1071
+const releaseNameMaxLen = 14
+
+// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+// wants to see this file after rendering in the status command. However, it must be a suffix
+// since there can be filepath in front of it.
+const notesFileSuffix = "NOTES.txt"
 
 func init() {
 	srv = &releaseServer{
@@ -51,6 +68,10 @@ var (
 	errMissingChart = errors.New("no chart provided")
 	// errMissingRelease indicates that a release (name) was not provided.
 	errMissingRelease = errors.New("no release provided")
+	// errInvalidRevision indicates that an invalid release revision number was provided.
+	errInvalidRevision = errors.New("invalid release revision")
+	// errIncompatibleVersion indicates incompatible client/server versions.
+	errIncompatibleVersion = errors.New("client version is incompatible")
 )
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
@@ -60,8 +81,33 @@ type releaseServer struct {
 	env *environment.Environment
 }
 
+func getVersion(c ctx.Context) string {
+	if md, ok := metadata.FromContext(c); ok {
+		if v, ok := md["x-helm-api-client"]; ok {
+			return v[0]
+		}
+	}
+	return ""
+}
+
 func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
-	rels, err := s.env.Releases.ListDeployed()
+	if !checkClientVersion(stream.Context()) {
+		return errIncompatibleVersion
+	}
+
+	if len(req.StatusCodes) == 0 {
+		req.StatusCodes = []release.Status_Code{release.Status_DEPLOYED}
+	}
+
+	//rels, err := s.env.Releases.ListDeployed()
+	rels, err := s.env.Releases.ListFilterAll(func(r *release.Release) bool {
+		for _, sc := range req.StatusCodes {
+			if sc == r.Info.Status.Code {
+				return true
+			}
+		}
+		return false
+	})
 	if err != nil {
 		return err
 	}
@@ -77,9 +123,9 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 
 	switch req.SortBy {
 	case services.ListSort_NAME:
-		sort.Sort(byName(rels))
+		relutil.SortByName(rels)
 	case services.ListSort_LAST_RELEASED:
-		sort.Sort(byDate(rels))
+		relutil.SortByDate(rels)
 	}
 
 	if req.SortOrder == services.ListSort_DESC {
@@ -129,8 +175,7 @@ func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		Total:    total,
 		Releases: rels,
 	}
-	stream.Send(res)
-	return nil
+	return stream.Send(res)
 }
 
 func filterReleases(filter string, rels []*release.Release) ([]*release.Release, error) {
@@ -147,40 +192,85 @@ func filterReleases(filter string, rels []*release.Release) ([]*release.Release,
 	return matches, nil
 }
 
+func (s *releaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
+	v := version.GetVersionProto()
+	return &services.GetVersionResponse{Version: v}, nil
+}
+
+func checkClientVersion(c ctx.Context) bool {
+	v := getVersion(c)
+	return version.IsCompatible(v, version.Version)
+}
+
 func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	if req.Name == "" {
 		return nil, errMissingRelease
 	}
-	rel, err := s.env.Releases.Get(req.Name)
-	if err != nil {
-		return nil, err
+
+	var rel *release.Release
+	var err error
+
+	if req.Version <= 0 {
+		if rel, err = s.env.Releases.Deployed(req.Name); err != nil {
+			return nil, fmt.Errorf("getting deployed release '%s': %s", req.Name, err)
+		}
+	} else {
+		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
+			return nil, fmt.Errorf("getting release '%s' (v%d): %s", req.Name, req.Version, err)
+		}
 	}
+
 	if rel.Info == nil {
 		return nil, errors.New("release info is missing")
 	}
+	if rel.Chart == nil {
+		return nil, errors.New("release chart is missing")
+	}
+
+	sc := rel.Info.Status.Code
+	statusResp := &services.GetReleaseStatusResponse{Info: rel.Info, Namespace: rel.Namespace}
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
 	kubeCli := s.env.KubeClient
 	resp, err := kubeCli.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
-	if err != nil {
+	if sc == release.Status_DELETED || sc == release.Status_FAILED {
+		// Skip errors if this is already deleted or failed.
+		return statusResp, nil
+	} else if err != nil {
 		log.Printf("warning: Get for %s failed: %v", rel.Name, err)
 		return nil, err
 	}
 	rel.Info.Status.Resources = resp
-
-	return &services.GetReleaseStatusResponse{Info: rel.Info}, nil
+	return statusResp, nil
 }
 
 func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	if req.Name == "" {
 		return nil, errMissingRelease
 	}
-	rel, err := s.env.Releases.Get(req.Name)
+	if req.Version <= 0 {
+		rel, err := s.env.Releases.Deployed(req.Name)
+		return &services.GetReleaseContentResponse{Release: rel}, err
+	}
+
+	rel, err := s.env.Releases.Get(req.Name, req.Version)
 	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
 func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
 		return nil, err
@@ -188,11 +278,13 @@ func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 
 	res, err := s.performUpdate(currentRelease, updatedRelease, req)
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 
-	if err := s.env.Releases.Update(updatedRelease); err != nil {
-		return nil, err
+	if !req.DryRun {
+		if err := s.env.Releases.Create(updatedRelease); err != nil {
+			return res, err
+		}
 	}
 
 	return res, nil
@@ -213,11 +305,13 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		}
 	}
 
-	kubeCli := s.env.KubeClient
-	original := bytes.NewBufferString(originalRelease.Manifest)
-	modified := bytes.NewBufferString(updatedRelease.Manifest)
-	if err := kubeCli.Update(updatedRelease.Namespace, original, modified); err != nil {
-		return nil, fmt.Errorf("Update of %s failed: %s", updatedRelease.Name, err)
+	if err := s.performKubeUpdate(originalRelease, updatedRelease); err != nil {
+		log.Printf("warning: Release Upgrade %q failed: %s", updatedRelease.Name, err)
+		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
+		updatedRelease.Info.Status.Code = release.Status_FAILED
+		s.recordRelease(originalRelease, true)
+		s.recordRelease(updatedRelease, false)
+		return res, err
 	}
 
 	// post-upgrade hooks
@@ -227,9 +321,22 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		}
 	}
 
+	originalRelease.Info.Status.Code = release.Status_SUPERSEDED
+	s.recordRelease(originalRelease, true)
+
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
 
 	return res, nil
+}
+
+// reuseValues copies values from the current release to a new release if the new release does not have any values.
+//
+// If the request already has values, or if there are no values in the current release, this does nothing.
+func (s *releaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
+	if (req.Values == nil || req.Values.Raw == "") && current.Config != nil && current.Config.Raw != "" {
+		log.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
+		req.Values = current.Config
+	}
 }
 
 // prepareUpdate builds an updated release for an update operation.
@@ -243,10 +350,13 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	// finds the non-deleted release with the given name
-	currentRelease, err := s.env.Releases.Get(req.Name)
+	currentRelease, err := s.env.Releases.Deployed(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// If new values were not supplied in the upgrade, re-use the existing values.
+	s.reuseValues(req, currentRelease)
 
 	ts := timeconv.Now()
 	options := chartutil.ReleaseOptions{
@@ -260,7 +370,7 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, err := s.renderResources(req.Chart, valuesToRender)
+	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -281,7 +391,137 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		Hooks:    hooks,
 	}
 
+	if len(notesTxt) > 0 {
+		updatedRelease.Info.Status.Notes = notesTxt
+	}
 	return currentRelease, updatedRelease, nil
+}
+
+func (s *releaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
+	currentRelease, targetRelease, err := s.prepareRollback(req)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := s.performRollback(currentRelease, targetRelease, req)
+	if err != nil {
+		return res, err
+	}
+
+	if !req.DryRun {
+		if err := s.env.Releases.Create(targetRelease); err != nil {
+			return res, err
+		}
+	}
+
+	return res, nil
+}
+
+func (s *releaseServer) performRollback(currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+	res := &services.RollbackReleaseResponse{Release: targetRelease}
+
+	if req.DryRun {
+		log.Printf("Dry run for %s", targetRelease.Name)
+		return res, nil
+	}
+
+	// pre-rollback hooks
+	if !req.DisableHooks {
+		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, preRollback); err != nil {
+			return res, err
+		}
+	}
+
+	if err := s.performKubeUpdate(currentRelease, targetRelease); err != nil {
+		log.Printf("warning: Release Rollback %q failed: %s", targetRelease.Name, err)
+		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
+		targetRelease.Info.Status.Code = release.Status_FAILED
+		s.recordRelease(currentRelease, true)
+		s.recordRelease(targetRelease, false)
+		return res, err
+	}
+
+	// post-rollback hooks
+	if !req.DisableHooks {
+		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, postRollback); err != nil {
+			return res, err
+		}
+	}
+
+	currentRelease.Info.Status.Code = release.Status_SUPERSEDED
+	s.recordRelease(currentRelease, true)
+
+	targetRelease.Info.Status.Code = release.Status_DEPLOYED
+
+	return res, nil
+}
+
+func (s *releaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release) error {
+	kubeCli := s.env.KubeClient
+	current := bytes.NewBufferString(currentRelease.Manifest)
+	target := bytes.NewBufferString(targetRelease.Manifest)
+	return kubeCli.Update(targetRelease.Namespace, current, target)
+}
+
+// prepareRollback finds the previous release and prepares a new release object with
+//  the previous release's configuration
+func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
+	switch {
+	case req.Name == "":
+		return nil, nil, errMissingRelease
+	case req.Version < 0:
+		return nil, nil, errInvalidRevision
+	}
+
+	// finds the non-deleted release with the given name
+	h, err := s.env.Releases.History(req.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(h) <= 1 {
+		return nil, nil, errors.New("no revision to rollback")
+	}
+
+	relutil.SortByRevision(h)
+	crls := h[len(h)-1]
+
+	rbv := req.Version
+	if req.Version == 0 {
+		rbv = crls.Version - 1
+	}
+
+	log.Printf("rolling back %s (current: v%d, target: v%d)", req.Name, crls.Version, rbv)
+
+	prls, err := s.env.Releases.Get(req.Name, rbv)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Store a new release object with previous release's configuration
+	// Store a new release object with previous release's configuration
+	target := &release.Release{
+		Name:      req.Name,
+		Namespace: crls.Namespace,
+		Chart:     prls.Chart,
+		Config:    prls.Config,
+		Info: &release.Info{
+			FirstDeployed: crls.Info.FirstDeployed,
+			LastDeployed:  timeconv.Now(),
+			Status: &release.Status{
+				Code:  release.Status_UNKNOWN,
+				Notes: prls.Info.Status.Notes,
+			},
+		},
+		Version:  crls.Version + 1,
+		Manifest: prls.Manifest,
+		Hooks:    prls.Hooks,
+	}
+
+	return crls, target, nil
 }
 
 func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
@@ -290,7 +530,12 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 	// is granted. If reuse is true and a deleted release with that name exists,
 	// we re-grant it. Otherwise, an error is returned.
 	if start != "" {
-		if rel, err := s.env.Releases.Get(start); err == driver.ErrReleaseNotFound {
+
+		if len(start) > releaseNameMaxLen {
+			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
+		}
+
+		if rel, err := s.env.Releases.Get(start, 1); err == driver.ErrReleaseNotFound {
 			return start, nil
 		} else if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
 			// Allowe re-use of names if the previous release is marked deleted.
@@ -307,7 +552,10 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 	for i := 0; i < maxTries; i++ {
 		namer := moniker.New()
 		name := namer.NameSep("-")
-		if _, err := s.env.Releases.Get(name); err == driver.ErrReleaseNotFound {
+		if len(name) > releaseNameMaxLen {
+			name = name[:releaseNameMaxLen]
+		}
+		if _, err := s.env.Releases.Get(name, 1); err == driver.ErrReleaseNotFound {
 			return name, nil
 		}
 		log.Printf("info: Name %q is taken. Searching again.", name)
@@ -329,6 +577,10 @@ func (s *releaseServer) engine(ch *chart.Chart) environment.Engine {
 }
 
 func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	rel, err := s.prepareRelease(req)
 	if err != nil {
 		log.Printf("Failed install prepare step: %s", err)
@@ -360,7 +612,7 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, err
 	}
 
-	hooks, manifestDoc, err := s.renderResources(req.Chart, valuesToRender)
+	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender)
 	if err != nil {
 		return nil, err
 	}
@@ -380,40 +632,89 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		Hooks:    hooks,
 		Version:  1,
 	}
+	if len(notesTxt) > 0 {
+		rel.Info.Status.Notes = notesTxt
+	}
 	return rel, nil
 }
 
-func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, error) {
+func (s *releaseServer) getVersionSet() (versionSet, error) {
+	defVersions := newVersionSet("v1")
+	cli, err := s.env.KubeClient.APIClient()
+	if err != nil {
+		log.Printf("API Client for Kubernetes is missing: %s.", err)
+		return defVersions, err
+	}
+
+	groups, err := cli.Discovery().ServerGroups()
+	if err != nil {
+		return defVersions, err
+	}
+
+	// FIXME: The Kubernetes test fixture for cli appears to always return nil
+	// for calls to Discovery().ServerGroups(). So in this case, we return
+	// the default API list. This is also a safe value to return in any other
+	// odd-ball case.
+	if groups == nil {
+		return defVersions, nil
+	}
+
+	versions := unversioned.ExtractGroupVersions(groups)
+	return newVersionSet(versions...), nil
+}
+
+func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
+	}
+
+	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
+	// pull it out of here into a separate file so that we can actually use the output of the rendered
+	// text file. We have to spin through this map because the file contains path information, so we
+	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
+	// it in the sortHooks.
+	notes := ""
+	for k, v := range files {
+		if strings.HasSuffix(k, notesFileSuffix) {
+			notes = v
+			delete(files, k)
+		}
 	}
 
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hooks, manifests, err := sortHooks(files)
+	vs, err := s.getVersionSet()
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+	}
+	hooks, manifests, err := sortManifests(files, vs, InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	// Aggregate all valid manifests into one big doc.
 	b := bytes.NewBuffer(nil)
-	for name, file := range manifests {
-		b.WriteString("\n---\n# Source: " + name + "\n")
-		b.WriteString(file)
+	for _, m := range manifests {
+		b.WriteString("\n---\n# Source: " + m.name + "\n")
+		b.WriteString(m.content)
 	}
 
-	return hooks, b, nil
+	return hooks, b, notes, nil
 }
 
-// validateYAML checks to see if YAML is well-formed.
-func validateYAML(data string) error {
-	b := map[string]interface{}{}
-	return yaml.Unmarshal([]byte(data), b)
+func (s *releaseServer) recordRelease(r *release.Release, reuse bool) {
+	if reuse {
+		if err := s.env.Releases.Update(r); err != nil {
+			log.Printf("warning: Failed to update release %q: %s", r.Name, err)
+		}
+	} else if err := s.env.Releases.Create(r); err != nil {
+		log.Printf("warning: Failed to record release %q: %s", r.Name, err)
+	}
 }
 
 // performRelease runs a release.
@@ -436,17 +737,18 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	kubeCli := s.env.KubeClient
 	b := bytes.NewBufferString(r.Manifest)
 	if err := kubeCli.Create(r.Namespace, b); err != nil {
-		r.Info.Status.Code = release.Status_FAILED
 		log.Printf("warning: Release %q failed: %s", r.Name, err)
-		if err := s.env.Releases.Create(r); err != nil {
-			log.Printf("warning: Failed to record release %q: %s", r.Name, err)
-		}
+		r.Info.Status.Code = release.Status_FAILED
+		s.recordRelease(r, req.ReuseName)
 		return res, fmt.Errorf("release %s failed: %s", r.Name, err)
 	}
 
 	// post-install hooks
 	if !req.DisableHooks {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall); err != nil {
+			log.Printf("warning: Release %q failed post-install: %s", r.Name, err)
+			r.Info.Status.Code = release.Status_FAILED
+			s.recordRelease(r, req.ReuseName)
 			return res, err
 		}
 	}
@@ -459,9 +761,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
 	r.Info.Status.Code = release.Status_DEPLOYED
-	if err := s.env.Releases.Create(r); err != nil {
-		log.Printf("warning: Failed to record release %q: %s", r.Name, err)
-	}
+	s.recordRelease(r, req.ReuseName)
 	return res, nil
 }
 
@@ -487,7 +787,7 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b); err != nil {
-			log.Printf("wrning: Release %q pre-install %s failed: %s", name, h.Path, err)
+			log.Printf("warning: Release %q pre-install %s failed: %s", name, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?
@@ -504,12 +804,16 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 }
 
 func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
+	if !checkClientVersion(c) {
+		return nil, errIncompatibleVersion
+	}
+
 	if req.Name == "" {
 		log.Printf("uninstall: Release not found: %s", req.Name)
 		return nil, errMissingRelease
 	}
 
-	rel, err := s.env.Releases.Get(req.Name)
+	rel, err := s.env.Releases.Deployed(req.Name)
 	if err != nil {
 		log.Printf("uninstall: Release not loaded: %s", req.Name)
 		return nil, err
@@ -518,6 +822,13 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
 	if rel.Info.Status.Code == release.Status_DELETED {
+		if req.Purge {
+			if _, err := s.env.Releases.Delete(rel.Name, rel.Version); err != nil {
+				log.Printf("uninstall: Failed to purge the release: %s", err)
+				return nil, err
+			}
+			return &services.UninstallReleaseResponse{Release: rel}, nil
+		}
 		return nil, fmt.Errorf("the release named %q is already deleted", req.Name)
 	}
 
@@ -532,44 +843,63 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	b := bytes.NewBuffer([]byte(rel.Manifest))
-	if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
-		log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
+	vs, err := s.getVersionSet()
+	if err != nil {
+		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+	}
+
+	manifests := splitManifests(rel.Manifest)
+	_, files, err := sortManifests(manifests, vs, UninstallOrder)
+	if err != nil {
+		// We could instead just delete everything in no particular order.
 		return nil, err
+	}
+
+	// Collect the errors, and return them later.
+	es := []string{}
+	for _, file := range files {
+		b := bytes.NewBufferString(file.content)
+		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
+			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
+			es = append(es, err.Error())
+		}
 	}
 
 	if !req.DisableHooks {
 		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, postDelete); err != nil {
-			return res, err
+			es = append(es, err.Error())
 		}
 	}
 
-	if err := s.env.Releases.Update(rel); err != nil {
-		log.Printf("uninstall: Failed to store updated release: %s", err)
+	if !req.Purge {
+		if err := s.env.Releases.Update(rel); err != nil {
+			log.Printf("uninstall: Failed to store updated release: %s", err)
+		}
+	} else {
+		if _, err := s.env.Releases.Delete(rel.Name, rel.Version); err != nil {
+			log.Printf("uninstall: Failed to purge the release: %s", err)
+		}
 	}
 
-	return res, nil
+	var errs error
+	if len(es) > 0 {
+		errs = fmt.Errorf("deletion error count %d: %s", len(es), strings.Join(es, "; "))
+	}
+
+	return res, errs
 }
 
-// byName implements the sort.Interface for []*release.Release.
-type byName []*release.Release
-
-func (r byName) Len() int {
-	return len(r)
-}
-func (r byName) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byName) Less(i, j int) bool {
-	return r[i].Name < r[j].Name
-}
-
-type byDate []*release.Release
-
-func (r byDate) Len() int { return len(r) }
-func (r byDate) Swap(p, q int) {
-	r[p], r[q] = r[q], r[p]
-}
-func (r byDate) Less(p, q int) bool {
-	return r[p].Info.LastDeployed.Seconds < r[q].Info.LastDeployed.Seconds
+func splitManifests(bigfile string) map[string]string {
+	// This is not the best way of doing things, but it's how k8s itself does it.
+	// Basically, we're quickly splitting a stream of YAML documents into an
+	// array of YAML docs. In the current implementation, the file name is just
+	// a place holder, and doesn't have any further meaning.
+	sep := "\n---\n"
+	tpl := "manifest-%d"
+	res := map[string]string{}
+	tmp := strings.Split(bigfile, sep)
+	for i, d := range tmp {
+		res[fmt.Sprintf(tpl, i)] = d
+	}
+	return res
 }

@@ -27,6 +27,19 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 )
 
+func TestToYaml(t *testing.T) {
+	expect := "foo: bar\n"
+	v := struct {
+		Foo string `json:"foo"`
+	}{
+		Foo: "bar",
+	}
+
+	if got := toYaml(v); got != expect {
+		t.Errorf("Expected %q, got %q", expect, got)
+	}
+}
+
 func TestEngine(t *testing.T) {
 	e := New()
 
@@ -290,20 +303,24 @@ global:
 		t.Fatalf("failed to render templates: %s", err)
 	}
 
-	if out["top/"+outerpath] != "Gather ye rosebuds while ye may" {
-		t.Errorf("Unexpected outer: %q", out[outerpath])
+	fullouterpath := "top/" + outerpath
+	if out[fullouterpath] != "Gather ye rosebuds while ye may" {
+		t.Errorf("Unexpected outer: %q", out[fullouterpath])
 	}
 
-	if out["top/charts/herrick/"+innerpath] != "Old time is still a-flyin'" {
-		t.Errorf("Unexpected inner: %q", out[innerpath])
+	fullinnerpath := "top/charts/herrick/" + innerpath
+	if out[fullinnerpath] != "Old time is still a-flyin'" {
+		t.Errorf("Unexpected inner: %q", out[fullinnerpath])
 	}
 
-	if out["top/charts/herrick/charts/deepest/"+deepestpath] != "And this same flower that smiles to-day" {
-		t.Errorf("Unexpected deepest: %q", out[deepestpath])
+	fulldeepestpath := "top/charts/herrick/charts/deepest/" + deepestpath
+	if out[fulldeepestpath] != "And this same flower that smiles to-day" {
+		t.Errorf("Unexpected deepest: %q", out[fulldeepestpath])
 	}
 
-	if out["top/charts/herrick/charts/deepest/"+checkrelease] != "Tomorrow will be dyin" {
-		t.Errorf("Unexpected release: %q", out[checkrelease])
+	fullcheckrelease := "top/charts/herrick/charts/deepest/" + checkrelease
+	if out[fullcheckrelease] != "Tomorrow will be dyin" {
+		t.Errorf("Unexpected release: %q", out[fullcheckrelease])
 	}
 }
 

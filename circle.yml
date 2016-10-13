@@ -3,22 +3,27 @@ machine:
     - curl -sSL https://s3.amazonaws.com/circle-downloads/install-circleci-docker.sh | bash -s -- 1.10.0
 
   environment:
-    GOVERSION: "1.6.3"
+    GOVERSION: "1.7.1"
     GOPATH:  "${HOME}/.go_workspace"
     WORKDIR: "${GOPATH}/src/k8s.io/helm"
+    PROJECT_NAME: "kubernetes-helm"
 
   services:
     - docker
 
 dependencies:
+  cache_directories:
+    - "~/.glide"
+
   pre:
+    # remove old go files
     - sudo rm -rf /usr/local/go
     - rm -rf "$GOPATH"
 
   override:
     # install go
-    - wget "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz"
-    - sudo tar -C /usr/local -xzf "go${GOVERSION}.linux-amd64.tar.gz"
+    - wget "https://storage.googleapis.com/golang/go${GOVERSION}.linux-amd64.tar.gz" -O "${HOME}/go${GOVERSION}.tar.gz"
+    - sudo tar -C /usr/local -xzf "${HOME}/go${GOVERSION}.tar.gz"
 
     # move repository to the canonical import path
     - mkdir -p "$(dirname ${WORKDIR})"
@@ -36,10 +41,41 @@ test:
         parallel: true
 
 deployment:
-  gcr:
+  release:
+    tag: /.*/
+    commands:
+      # setup gcloud tools
+      - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
+      - echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
+      - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
+
+      # build canary tiller image and push
+      - make docker-build VERSION="${CIRCLE_TAG}"
+      - docker push "gcr.io/kubernetes-helm/tiller:${CIRCLE_TAG}"
+      - docker push gcr.io/kubernetes-helm/tiller:canary
+
+      # build canary helm binaries and push
+      - make build-cross
+      - make dist checksum VERSION="${CIRCLE_TAG}"
+      - sudo /opt/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
+
+  canary:
     branch: master
     commands:
-      - echo $GCLOUD_SERVICE_KEY | base64 --decode > ${HOME}/gcloud-service-key.json
+      # setup gcloud tools
+      - sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
+      - echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
+      - sudo /opt/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
       - docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
+
+      # build canary tiller image and push
       - make docker-build
       - docker push gcr.io/kubernetes-helm/tiller:canary
+
+      # build canary helm binaries and push
+      - make build-cross
+      - make dist checksum VERSION=canary
+      - sudo /opt/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"

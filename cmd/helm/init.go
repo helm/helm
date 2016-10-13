@@ -25,7 +25,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/client"
+	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/cmd/helm/installer"
+	"k8s.io/helm/pkg/repo"
 )
 
 const initDesc = `
@@ -33,15 +35,18 @@ This command installs Tiller (the helm server side component) onto your
 Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.helm/)
 `
 
-var (
-	defaultRepository    = "kubernetes-charts"
-	defaultRepositoryURL = "http://storage.googleapis.com/kubernetes-charts"
+const (
+	stableRepository    = "stable"
+	localRepository     = "local"
+	stableRepositoryURL = "http://storage.googleapis.com/kubernetes-charts"
+	localRepositoryURL  = "http://localhost:8879/charts"
 )
 
 type initCmd struct {
 	image      string
 	clientOnly bool
 	out        io.Writer
+	home       helmpath.Home
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -56,6 +61,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return errors.New("This command does not accept arguments")
 			}
+			i.home = helmpath.Home(homePath())
 			return i.run()
 		},
 	}
@@ -66,16 +72,16 @@ func newInitCmd(out io.Writer) *cobra.Command {
 
 // runInit initializes local config and installs tiller to Kubernetes Cluster
 func (i *initCmd) run() error {
-	if err := ensureHome(); err != nil {
+	if err := ensureHome(i.home, i.out); err != nil {
 		return err
 	}
 
 	if !i.clientOnly {
-		if err := client.Install(tillerNamespace, i.image, flagDebug); err != nil {
+		if err := installer.Install(tillerNamespace, i.image, flagDebug); err != nil {
 			if !strings.Contains(err.Error(), `"tiller-deploy" already exists`) {
 				return fmt.Errorf("error installing: %s", err)
 			}
-			fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster. (Use --client-only to supress this message.)")
+			fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster. (Use --client-only to suppress this message.)")
 		} else {
 			fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 		}
@@ -86,27 +92,14 @@ func (i *initCmd) run() error {
 	return nil
 }
 
-func requireHome() error {
-	dirs := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
-	for _, d := range dirs {
-		if fi, err := os.Stat(d); err != nil {
-			return fmt.Errorf("directory %q is not configured", d)
-		} else if !fi.IsDir() {
-			return fmt.Errorf("expected %q to be a directory", d)
-		}
-	}
-	return nil
-}
-
 // ensureHome checks to see if $HELM_HOME exists
 //
 // If $HELM_HOME does not exist, this function will create it.
-func ensureHome() error {
-	configDirectories := []string{homePath(), repositoryDirectory(), cacheDirectory(), localRepoDirectory()}
-
+func ensureHome(home helmpath.Home, out io.Writer) error {
+	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository()}
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
-			fmt.Printf("Creating %s \n", p)
+			fmt.Fprintf(out, "Creating %s \n", p)
 			if err := os.MkdirAll(p, 0755); err != nil {
 				return fmt.Errorf("Could not create %s: %s", p, err)
 			}
@@ -115,33 +108,50 @@ func ensureHome() error {
 		}
 	}
 
-	repoFile := repositoriesFile()
+	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
-		fmt.Printf("Creating %s \n", repoFile)
-		if _, err := os.Create(repoFile); err != nil {
+		fmt.Fprintf(out, "Creating %s \n", repoFile)
+		r := repo.NewRepoFile()
+		r.Add(&repo.Entry{
+			Name:  stableRepository,
+			URL:   stableRepositoryURL,
+			Cache: "stable-index.yaml",
+		}, &repo.Entry{
+			Name:  localRepository,
+			URL:   localRepositoryURL,
+			Cache: "local-index.yaml",
+		})
+		if err := r.WriteFile(repoFile, 0644); err != nil {
 			return err
 		}
-		if err := addRepository(defaultRepository, defaultRepositoryURL); err != nil {
-			return err
+		cif := home.CacheIndex(stableRepository)
+		if err := repo.DownloadIndexFile(stableRepository, stableRepositoryURL, cif); err != nil {
+			fmt.Fprintf(out, "WARNING: Failed to download %s: %s (run 'helm repo update')\n", stableRepository, err)
 		}
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoFile)
 	}
+	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
+		fmt.Fprintln(out, "Updating repository file format...")
+		if err := r.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
+	}
 
-	localRepoIndexFile := localRepoDirectory(localRepoIndexFilePath)
+	localRepoIndexFile := home.LocalRepository(localRepoIndexFilePath)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
-		fmt.Printf("Creating %s \n", localRepoIndexFile)
-		_, err := os.Create(localRepoIndexFile)
-		if err != nil {
+		fmt.Fprintf(out, "Creating %s \n", localRepoIndexFile)
+		i := repo.NewIndexFile()
+		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
 			return err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(localRepoIndexFile, cacheDirectory("local-index.yaml"))
+		os.Symlink(localRepoIndexFile, home.CacheIndex("local"))
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", localRepoIndexFile)
 	}
 
-	fmt.Printf("$HELM_HOME has been configured at %s.\n", helmHome)
+	fmt.Fprintf(out, "$HELM_HOME has been configured at %s.\n", helmHome)
 	return nil
 }

@@ -39,6 +39,11 @@ func verifyChartfile(t *testing.T, f *chart.Metadata) {
 		t.Fatal("Failed verifyChartfile because f is nil")
 	}
 
+	// Api instead of API because it was generated via protobuf.
+	if f.ApiVersion != ApiVersionV1 {
+		t.Errorf("Expected API Version %q, got %q", ApiVersionV1, f.ApiVersion)
+	}
+
 	if f.Name != "frobnitz" {
 		t.Errorf("Expected frobnitz, got %s", f.Name)
 	}
@@ -75,6 +80,10 @@ func verifyChartfile(t *testing.T, f *chart.Metadata) {
 		t.Error("Unexpected home.")
 	}
 
+	if f.Icon != "https://example.com/64x64.png" {
+		t.Errorf("Unexpected icon: %q", f.Icon)
+	}
+
 	if len(f.Keywords) != 3 {
 		t.Error("Unexpected keywords")
 	}
@@ -85,5 +94,4 @@ func verifyChartfile(t *testing.T, f *chart.Metadata) {
 			t.Errorf("Expected %q, got %q", kk[i], k)
 		}
 	}
-
 }

@@ -48,6 +48,7 @@ type getCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
+	version int32
 }
 
 func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -71,13 +72,16 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return get.run()
 		},
 	}
+
+	cmd.Flags().Int32Var(&get.version, "revision", 0, "get the named release with revision")
+
 	cmd.AddCommand(newGetValuesCmd(nil, out))
 	cmd.AddCommand(newGetManifestCmd(nil, out))
 	cmd.AddCommand(newGetHooksCmd(nil, out))
 	return cmd
 }
 
-var getTemplate = `VERSION: {{.Release.Version}}
+var getTemplate = `REVISION: {{.Release.Version}}
 RELEASED: {{.ReleaseDate}}
 CHART: {{.Release.Chart.Metadata.Name}}-{{.Release.Chart.Metadata.Version}}
 USER-SUPPLIED VALUES:
@@ -96,7 +100,7 @@ MANIFEST:
 
 // getCmd is the command that implements 'helm get'
 func (g *getCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release)
+	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
 	if err != nil {
 		return prettyError(err)
 	}

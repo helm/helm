@@ -120,7 +120,15 @@ func loadFiles(files []*afile) (*chart.Chart, error) {
 		} else if strings.HasPrefix(f.name, "templates/") {
 			c.Templates = append(c.Templates, &chart.Template{Name: f.name, Data: f.data})
 		} else if strings.HasPrefix(f.name, "charts/") {
+			if filepath.Ext(f.name) == ".prov" {
+				c.Files = append(c.Files, &any.Any{TypeUrl: f.name, Value: f.data})
+				continue
+			}
 			cname := strings.TrimPrefix(f.name, "charts/")
+			if strings.IndexAny(cname, "._") == 0 {
+				// Ignore charts/ that start with . or _.
+				continue
+			}
 			parts := strings.SplitN(cname, "/", 2)
 			scname := parts[0]
 			subcharts[scname] = append(subcharts[scname], &afile{name: cname, data: f.data})
@@ -137,7 +145,9 @@ func loadFiles(files []*afile) (*chart.Chart, error) {
 	for n, files := range subcharts {
 		var sc *chart.Chart
 		var err error
-		if filepath.Ext(n) == ".tgz" {
+		if strings.IndexAny(n, "_.") == 0 {
+			continue
+		} else if filepath.Ext(n) == ".tgz" {
 			file := files[0]
 			if file.name != n {
 				return c, fmt.Errorf("error unpacking tar in %s: expected %s, got %s", c.Metadata.Name, n, file.name)
@@ -208,6 +218,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		}
 		rules = r
 	}
+	rules.AddDefaults()
 
 	files := []*afile{}
 	topdir += string(filepath.Separator)

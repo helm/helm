@@ -74,6 +74,24 @@ func TestInstall(t *testing.T) {
 			expected: "FOOBAR",
 			resp:     releaseMock(&releaseOptions{name: "FOOBAR"}),
 		},
+		// Install, perform chart verification along the way.
+		{
+			name:  "install with verification, missing provenance",
+			args:  []string{"testdata/testcharts/compressedchart-0.1.0.tgz"},
+			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
+			err:   true,
+		},
+		{
+			name:  "install with verification, directory instead of file",
+			args:  []string{"testdata/testcharts/signtest"},
+			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
+			err:   true,
+		},
+		{
+			name:  "install with verification, valid",
+			args:  []string{"testdata/testcharts/signtest-0.1.0.tgz"},
+			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
+		},
 	}
 
 	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
@@ -121,6 +139,23 @@ sailor: sinbad
 	if vobj.String() != y {
 		t.Errorf("Expected String() to be \n%s\nGot\n%s\n", y, out)
 	}
+
+	// Combined case, overriding a property
+	vals["sailor"] = "pisti"
+	updatedYAML := `good: true
+port:
+  destination: basrah
+  source: baghdad
+sailor: pisti
+`
+	newOut, err := vobj.yaml()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(newOut) != updatedYAML {
+		t.Errorf("Expected YAML to be \n%s\nGot\n%s\n", updatedYAML, newOut)
+	}
+
 }
 
 type nameTemplateTestCase struct {
