@@ -109,6 +109,20 @@ func (r *RepoFile) Add(re ...*Entry) {
 	r.Repositories = append(r.Repositories, re...)
 }
 
+// Update attempts to replace one or more repo entries in a repo file. If an
+// entry with the same name doesn't exist in the repo file it will add it.
+func (r *RepoFile) Update(re ...*Entry) {
+	for _, target := range re {
+		for j, repo := range r.Repositories {
+			if repo.Name == target.Name {
+				r.Repositories[j] = target
+				break
+			}
+		}
+		r.Add(target)
+	}
+}
+
 // Has returns true if the given name is already a repository name.
 func (r *RepoFile) Has(name string) bool {
 	for _, rf := range r.Repositories {
