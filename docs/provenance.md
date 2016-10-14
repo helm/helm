@@ -100,8 +100,6 @@ The following pieces of provenance data are added:
 
 * The chart file (Chart.yaml) is included to give both humans and tools an easy
   view into the contents of the chart.
-* **Not Complete yet:** Every image file that the project references is
-  correlated with its hash (SHA256, used by Docker) for verification.
 * The signature (SHA256, just like Docker) of the chart package (the .tgz file)
   is included, and may be used to verify the integrity of the chart package.
 * The entire body is signed using the algorithm used by PGP (see
@@ -110,11 +108,6 @@ The following pieces of provenance data are added:
 
 The combination of this gives users the following assurances:
 
-* The images this chart references at build time are still the same exact
-  version when installed (checksum images).
-   * This is distinct from asserting that the image Kubernetes is running is
-     exactly the same version that a chart references. Kubernetes does not
-     currently give us a way of verifying this.
 * The package itself has not been tampered with (checksum package tgz).
 * The entity who released this package is known (via the GnuPG/PGP signature).
 
@@ -137,8 +130,6 @@ home: http://nginx.com
 ...
 files:
         nginx-0.5.1.tgz: “sha256:9f5270f50fc842cfcb717f817e95178f”
-images:
-        “hub.docker.com/_/nginx:5.6.0”: “sha256:f732c04f585170ed3bc99”
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.9 (GNU/Linux)
 
@@ -149,11 +140,8 @@ WkQAmQGHuuoLEJuKhRNo+Wy7mhE7u1YG
 ```
 
 Note that the YAML section contains two documents (separated by `...\n`). The
-first is the Chart.yaml. The second is the checksums, defined as follows.
-
-* Files: A map of filenames to SHA-256 checksums (value shown is
-  fake/truncated)
-* Images: A map of image URLs to checksums (value shown is fake/truncated)
+first is the Chart.yaml. The second is the checksums, a map of filenames to
+SHA-256 digests (value shown is fake/truncated)
 
 The signature block is a standard PGP signature, which provides [tamper
 resistance](http://www.rossde.com/PGP/pgp_signatures.html).
@@ -171,3 +159,42 @@ the provenance file, if it exists, MUST be accessible at `https://example.com/ch
 From the end user's perspective, `helm install --verify myrepo/mychart-1.2.3`
 should result in the download of both the chart and the provenance file with no
 additional user configuration or action.
+
+## Establishing Authority and Authenticity
+
+When dealing with chain-of-trust systems, it is important to be able to
+establish the authority of a signer. Or, to put this plainly, the system
+above hinges on the fact that you trust the person who signed the chart.
+That, in turn, means you need to trust the public key of the signer.
+
+One of the design decisions with Kubernetes Helm has been that the Helm
+project would not insert itself into the chain of trust as a necessary
+party. We don't want to be "the certificate authority" for all chart
+signers. Instead, we strongly favor a decentralized model, which is part
+of the reason we chose OpenPGP as our foundational technology.
+So when it comes to establishing authority, we have left this
+step more-or-less undefined in Helm 2.0.0.
+
+However, we have some pointers and recommendations for those interested
+in using the provenance system:
+
+- The [Keybase](https://keybase.io) platform provides a public
+  centralized repository for trust information.
+  - You can use Keybase to store your keys or to get the public keys of others.
+  - Keybase also has fabulous documentation available
+  - While we haven't tested it, Keybase's "secure website" feature could
+    be used to serve Helm charts.
+- The [https://github.com/kubernetes/charts](official Kubernetes Charts
+  project) is trying to solve this problem for the official chart
+  repository.
+  - There is a long issue there [detailing the current thoughts](https://github.com/kubernetes/charts/issues/23).
+  - The basic idea is that an official "chart reviewer" signs charts with
+    her or his key, and the resulting provenance file is then uploaded
+    to the chart repository.
+  - There has been some work on the idea that a list of valid signing
+    keys may be included in the `index.yaml` file of a repository.
+
+Finally, chain-of-trust is an evolving feature of Helm, and some
+community members have proposed adapting part of the OSI model for
+signatures. This is an open line of inquiry in the Helm team. If you're
+interested, jump on in.
