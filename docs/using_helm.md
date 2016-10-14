@@ -13,8 +13,8 @@ covers the particulars of Helm commands, and explains how to use Helm.
 
 A *Chart* is a Helm package. It contains all of the resource definitions
 necessary to run an application, tool, or service inside of a Kubernetes
-cluster. Think of it like a Homebrew formula or an `apt` or `rpm`
-package for Kubernetes.
+cluster. Think of it like the Kubernetes equivalent of a Homebrew formula,
+an Apt dpkg, or a Yum RPM file.
 
 A *Repository* is the place where charts can be collected and shared.
 It's like Perl's [CPAN archive](http://www.cpan.org) or the
@@ -45,9 +45,11 @@ You can see which charts are available by running `helm search`:
 
 ```
 $ helm search
-stable/drupal
-stable/jenkins
-stable/mariadb
+NAME                 	VERSION 	DESCRIPTION
+stable/drupal   	0.3.2   	One of the most versatile open source content m...
+stable/jenkins  	0.1.0   	A Jenkins Helm chart for Kubernetes.
+stable/mariadb  	0.5.1   	Chart for MariaDB
+stable/mysql    	0.1.0   	Chart for MySQL
 ...
 ```
 
@@ -56,17 +58,22 @@ can narrow down your results by searching with a filter:
 
 ```
 $ helm search mysql
-stable/mysql
-stable/mariadb
+NAME               	VERSION	DESCRIPTION
+stable/mysql  	0.1.0  	Chart for MySQL
+stable/mariadb	0.5.1  	Chart for MariaDB
 ```
 
-Now you will only see the results that match your filter. Why is
-`mariadb` in the list? Because its package description. We can use `helm
-inspect chart` to see this:
+Now you will only see the results that match your filter. MySQL is
+listed, of course, but so is MariaDB. Why? Because its full description
+relates it to MySQL:
+
+Why is
+`mariadb` in the list? Because its package description relates it to
+MySQL. We can use `helm inspect chart` to see this:
 
 ```
 $ helm inspect stable/mariadb
-Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
+Fetched stable/mariadb to mariadb-0.5.1.tgz
 description: Chart for MariaDB
 engine: gotpl
 home: https://mariadb.org
@@ -75,13 +82,7 @@ keywords:
 - mysql
 - database
 - sql
-maintainers:
-- email: containers@bitnami.com
-  name: Bitnami
-name: mariadb
-sources:
-- https://github.com/bitnami/bitnami-docker-mariadb
-version: 0.3.0
+...
 ```
 
 Search is a good way to find available packages. Once you have found a
@@ -222,6 +223,15 @@ $ helm install -f config.yaml stable/mariadb
 
 The above will set the default MariaDB user to `user0`, but accept all
 the rest of the defaults for that chart.
+
+### More Installation Methods
+
+The `helm install` command can install from several sources:
+
+- A chart repository (as we've seen above)
+- A local chart archive (`helm install foo-0.1.1.tgz`)
+- An unpacked chart directory (`helm install path/to/foo`)
+- A full URL (`helm install https://example.com/charts/foo-1.2.3.tgz`)
 
 ## 'helm upgrade' and 'helm rollback': Upgrading a Release, and Recovering on Failure
 

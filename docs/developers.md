@@ -104,6 +104,25 @@ Make sure you have read and understood the main CONTRIBUTING guide:
 
 https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md
 
+### Structure of the Code
+
+The code for the Helm project is organized as follows:
+
+- The individual programs are located in `cmd/`. Code inside of `cmd/`
+  is not designed for library re-use.
+- Shared libraries are stored in `pkg/`.
+- The raw ProtoBuf files are stored in `_proto/hapi` (where `hapi` stands for 
+  the Helm Application Programming Interface).
+- The Go files generated from the `proto` definitions are stored in `pkg/proto`.
+- The `scripts/` directory contains a number of utility scripts. Most of these
+  are used by the CI/CD pipeline.
+- The `rootfs/` folder is used for Docker-specific files.
+- The `docs/` folder is used for documentation and examples.
+
+Go dependencies are managed with
+[Glide](https://github.com/Masterminds/glide) and stored in the
+`vendor/` directory.
+
 ### Git Conventions
 
 We use Git for our version control system. The `master` branch is the
@@ -145,7 +164,7 @@ Common scopes:
 - tiller: The Tiller server
 - proto: Protobuf definitions
 - pkg/lint: The lint package. Follow a similar convention for any
-  package,
+  package
 - `*`: two or more scopes
 
 Read more:
@@ -159,7 +178,7 @@ We follow the Go coding style standards very closely. Typically, running
 `go fmt` will make your code beautiful for you.
 
 We also typically follow the conventions recommended by `go lint` and
-`govet`. Run `make test-style` to test the style conformance.
+`gometalinter`. Run `make test-style` to test the style conformance.
 
 Read more:
 
