@@ -11,7 +11,7 @@ can do the following:
 - Package charts into chart archive (tgz) files
 - Interact with chart repositories where charts are stored
 - Install and uninstall charts into an existing Kubernetes cluster
-- Manage the releases of charts that have been installed with Helm
+- Manage the release cycle of charts that have been installed with Helm
 
 For Helm, there are three important concepts:
 
@@ -21,9 +21,6 @@ For Helm, there are three important concepts:
    into a packaged chart to create a releasable object.
 3. A _release_ is a running instance of a _chart_, combined with a
    specific _config_.
-
-Following the formula made famous by the [12 Factor App](http://12factor.net/), _chart + config
-= release_.
 
 ## Components
 
@@ -64,20 +61,4 @@ communicate with Kubernetes. Currently, that library uses REST+JSON.
 The Tiller server stores information in ConfigMaps located inside of
 Kubernetes. It does not need its own database.
 
-### Structure of the Code
-
-The individual programs are located in `cmd/`. Shared libraries are
-stored in `pkg/`. The raw ProtoBuf files are stored in `_proto/hapi`
-(where `hapi` stands for the Helm Application Programming Interface).
-The Go files generated from the `proto` definitions are stored in
-`pkg/proto`.
-
-Docker images are built by cross-compiling Linux binaries and then
-building a Docker image from the files in `rootfs`.
-
-The `scripts/` directory contains a number of utility scripts. Most of these
-are used by the CI/CD pipeline.
-
-Go dependencies are managed with
-[Glide](https://github.com/Masterminds/glide) and stored in the
-`vendor/` directory.
+Configuration files are, when possible, written in YAML.

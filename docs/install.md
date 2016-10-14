@@ -9,7 +9,7 @@ proceeds to show two ways to install the server.
 The Helm client can be installed either from source, or from pre-built binary
 releases.
 
-### From the GitHub Releases
+### From the Binary Releases
 
 Every [release](https://github.com/kubernetes/helm/releases) of Helm
 provides binary releases for a variety of OSes. These binary versions
@@ -53,7 +53,8 @@ Here are links to the common builds:
 Building Helm from source is slightly more work, but is the best way to
 go if you want to test the latest (pre-release) Helm version.
 
-You must have a working Go environment with [glide](https://github.com/Masterminds/glide) and Mercurial installed.
+You must have a working Go environment with
+[glide](https://github.com/Masterminds/glide) and Mercurial installed.
 
 ```console
 $ cd $GOPATH
@@ -88,6 +89,12 @@ view`). Once it connects, it will install `tiller` into the
 After `helm init`, you should be able to run `kubectl get po --namespace
 kube-system` and see Tiller running.
 
+You can explicitly tell `helm init` to...
+
+- Install the canary build with the `--canary-image` flag
+- Install a particular image (version) with `--tiller-image`
+- Install to a particular cluster with `--kube-context`
+
 Once Tiller is installed, running `helm version` should show you both
 the client and server version. (If it shows only the client version,
 `helm` cannot yet connect to the server. Use `kubectl` to see if any
@@ -99,10 +106,10 @@ Canary images are built from the `master` branch. They may not be
 stable, but they offer you the chance to test out the latest features.
 
 The easiest way to install a canary image is to use `helm init` with the
-`--tiller-image` flag:
+`--canary-image` flag:
 
 ```console
-$ helm init -i "gcr.io/kubernetes-helm/tiller:canary"
+$ helm init --canary-image
 ```
 
 This will use the most recently built container image. You can always
@@ -141,6 +148,13 @@ Server: &version.Version{SemVer:"v2.0.0-alpha.4", GitCommit:"a5...", GitTreeStat
 
 Importantly, even when running locally, Tiller will store release
 configuration in ConfigMaps inside of Kubernetes.
+
+## Deleting or Reinstalling Tiller
+
+Because Tiller stores its data in Kubernetes ConfigMaps, you can safely
+delete and re-install Tiller without worrying about losing any data. The
+recommended way of deleting Tiller is with `kubectl delete deployment
+tiller-deployment -n kube-system`
 
 ## Conclusion
 

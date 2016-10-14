@@ -4,22 +4,29 @@ This guide covers how you can quickly get started using Helm.
 
 ## Prerequisites
 
-- You must have Kubernetes installed, and have a local configured copy
-  of `kubectl`.
+- You must have Kubernetes installed. We recommend version 1.4.1 or
+  later.
+- You should also have a local configured copy of `kubectl`.
 
 Helm will figure out where to install Tiller by reading your Kubernetes
 configuration file (usually `$HOME/.kube/config`). This is the same file
-that `kubectl` uses, so to find out which cluster Tiller would install
-to, you can run `kubectl cluster-info`.
+that `kubectl` uses.
+
+To find out which cluster Tiller would install to, you can run
+`kubectl config current-context` or `kubectl cluster-info`.
+
+```console
+$ kubectl config current-context
+my-cluster
+```
 
 ## Install Helm
 
-Download a binary release of the Helm client from 
-[the official project page](https://github.com/kubernetes/helm/releases).
+Download a binary release of the Helm client. You can use tools like
+`homebrew`, or look at [the official releases page](https://github.com/kubernetes/helm/releases).
 
-Alternately, you can clone the GitHub project and build your own
-client from source. The quickest route to installing from source is to
-run `make bootstrap build`, and then use `bin/helm`.
+For more details, or for other options, see [the installation
+guide](install.md).
 
 ## Initialize Helm and Install Tiller
 
@@ -30,47 +37,47 @@ install Tiller into your Kubernetes cluster in one step:
 $ helm init
 ```
 
+This will install Tiller into the Kubernetes cluster you saw with
+`kubectl config current-context`.
+
+**TIP:** Want to install into a different cluster? Use the
+`--kube-context` flag.
+
 ## Install an Example Chart
 
-To install a chart, you can run the `helm install` command.
-Let's use an example chart from this repository.
-Make sure you are in the root directory of this repo.
-
+To install a chart, you can run the `helm install` command. Helm has
+several ways to find and install a chart, but the easiest is to use one
+of the official `stable` charts.
 
 ```console
+$ helm repo update              # Make sure we get the latest list of charts
 $ helm install stable/mysql
 Released smiling-penguin
 ```
 
 In the example above, the `stable/mysql` chart was released, and the name of
-our new release is `smiling-penguin`. You get a simple idea of this
-MySQL chart by running `helm inspect stable/mysql`.
+our new release is `smiling-penguin`. You get a simple idea of the
+features of this MySQL chart by running `helm inspect stable/mysql`.
 
-## Change a Default Chart Value
+Whenever you install a chart, a new release is created. So one chart can
+be installed multiple times into the same cluster. And each can be
+independently managed and upgrade.
 
-A nice feature of helm is the ability to change certain values of the package for the install.
-Let's install the `nginx` example from this repository but change the `replicaCount` to 7.
+The `helm install` command is a very powerful command with many
+capabilities. To learn more about it, check out the [Using Helm
+Guide](using_helm.md)
 
-```console
-$ helm install --set replicaCount=7 ./docs/examples/nginx
-happy-panda
-```
+## Learn About Releases
 
-You can view the chart for this example in 
-[docs/examples/nginx/Chart.yaml](examples/nginx/Chart.yaml) and the default values in
-[docs/examples/nginx/values.yaml](examples/nginx/values.yaml).
-
-## Learn About The Release
-
-To find out about our release, run `helm status`:
+It's easy to see what has been released using Helm:
 
 ```console
-$ helm status smiling-penguin
-Status: DEPLOYED
+$ helm ls
+NAME           	VERSION	 UPDATED                       	STATUS         	CHART
+smiling-penguin	 1      	Wed Sep 28 12:59:46 2016      	DEPLOYED       	mysql-0.1.0
 ```
 
-The `status` command will display information about a release in your
-cluster.
+The `helm list` function will show you a list of all deployed releases.
 
 ## Uninstall a Release
 
@@ -87,7 +94,12 @@ still be able to request information about that release:
 ```console
 $ helm status smiling-penguin
 Status: DELETED
+...
 ```
+
+Because Helm tracks your releases even after you've deleted them, you
+can audit a cluster's history, and even undelete a release (with `helm
+rollback`).
 
 ## Reading the Help Text
 
