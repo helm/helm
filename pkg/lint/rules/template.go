@@ -25,7 +25,6 @@ import (
 	"regexp"
 	"text/template"
 
-	"github.com/Masterminds/sprig"
 	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
@@ -138,7 +137,7 @@ func validateAllowedExtension(fileName string) error {
 func validateNoMissingValues(templatesPath string, chartValues chartutil.Values, templateContent []byte) error {
 	// 1 - Load Main and associated templates
 	// Main template that we will parse dynamically
-	tmpl := template.New("tpl").Funcs(sprig.TxtFuncMap())
+	tmpl := template.New("tpl").Funcs(engine.FuncMap())
 	// If the templatesPath includes any *.tpl files we will parse and import them as associated templates
 	associatedTemplates, err := filepath.Glob(filepath.Join(templatesPath, "*.tpl"))
 
