@@ -94,7 +94,7 @@ func Templates(linter *support.Linter) {
 		// NOTE, disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
 		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
-		renderedContent := renderedContentMap[fileName]
+		renderedContent := renderedContentMap[filepath.Join(chart.GetMetadata().Name, fileName)]
 		var yamlStruct K8sYamlStruct
 		// Even though K8sYamlStruct only defines Metadata namespace, an error in any other
 		// key will be raised as well
