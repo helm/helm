@@ -71,11 +71,11 @@ func Templates(linter *support.Linter) {
 	}
 
 	/* Iterate over all the templates to check:
-	   - It is a .yaml file
-		 - All the values in the template file is defined
-		 - {{}} include | quote
-		 - Generated content is a valid Yaml file
-		 - Metadata.Namespace is not set
+	- It is a .yaml file
+	- All the values in the template file is defined
+	- {{}} include | quote
+	- Generated content is a valid Yaml file
+	- Metadata.Namespace is not set
 	*/
 	for _, template := range chart.Templates {
 		fileName, preExecutedTemplate := template.Name, template.Data
@@ -154,12 +154,17 @@ func validateNoMissingValues(templatesPath string, chartValues chartutil.Values,
 
 	// 2 - Extract every function and execute them against the loaded values
 	// Supported {{ .Chart.Name }}, {{ .Chart.Name | quote }}
-	r, _ := regexp.Compile(`{{[\w|\.|\s|\|\"|\']+}}`)
+	r, _ := regexp.Compile(`{{[\w.\s|"'-]+}}`)
 	functions := r.FindAllString(string(templateContent), -1)
+
+	skipRegex, _ := regexp.Compile(`if|else|end`)
 
 	// Iterate over the {{ FOO }} templates, executing them against the chartValues
 	// We do individual templates parsing so we keep the reference for the key (str) that we want it to be interpolated.
 	for _, str := range functions {
+		if skipRegex.MatchString(str) {
+			continue
+		}
 		newtmpl, err := tmpl.Parse(str)
 		if err != nil {
 			return err
