@@ -69,9 +69,9 @@ var rootCommand = &cobra.Command{
 
 func main() {
 	pf := rootCommand.PersistentFlags()
-	pf.StringVarP(&grpcAddr, "listen", "l", ":44134", "The address:port to listen on")
-	pf.StringVar(&store, "storage", storageConfigMap, "The storage driver to use. One of 'configmap' or 'memory'")
-	pf.BoolVar(&enableTracing, "trace", false, "Enable rpc tracing")
+	pf.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
+	pf.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
+	pf.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
 	rootCommand.Execute()
 }
 
