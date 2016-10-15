@@ -37,5 +37,6 @@ func newHomeCmd(out io.Writer) *cobra.Command {
 			fmt.Fprintf(out, homePath()+"\n")
 		},
 	}
+
 	return cmd
 }

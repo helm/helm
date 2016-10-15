@@ -89,10 +89,10 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.Var(upgrade.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
-	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "the path to the keyring that contains public singing keys")
+	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "path to the keyring that contains public singing keys")
 	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
-	f.StringVar(&upgrade.namespace, "namespace", "default", "the namespace to install the release into (only used if --install is set)")
-	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used.")
+	f.StringVar(&upgrade.namespace, "namespace", "default", "namespace to install the release into (only used if --install is set)")
+	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
 
 	return cmd
 }

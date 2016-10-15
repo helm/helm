@@ -62,6 +62,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	cc := &createCmd{
 		out: out,
 	}
+
 	cmd := &cobra.Command{
 		Use:   "create NAME",
 		Short: "create a new chart with the given name",
@@ -74,6 +75,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 			return cc.run()
 		},
 	}
+
 	return cmd
 }
 

@@ -59,7 +59,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&vc.keyring, "keyring", defaultKeyring(), "the keyring containing public keys.")
+	f.StringVar(&vc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 
 	return cmd
 }

@@ -56,6 +56,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		out:    out,
 		client: client,
 	}
+
 	cmd := &cobra.Command{
 		Use:               "get [flags] RELEASE_NAME",
 		Short:             "download a named release",
@@ -78,6 +79,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	cmd.AddCommand(newGetValuesCmd(nil, out))
 	cmd.AddCommand(newGetManifestCmd(nil, out))
 	cmd.AddCommand(newGetHooksCmd(nil, out))
+
 	return cmd
 }
 

@@ -56,6 +56,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	i := &initCmd{
 		out: out,
 	}
+
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "initialize Helm on both client and server",
@@ -68,9 +69,12 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			return i.run()
 		},
 	}
-	cmd.Flags().StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
-	cmd.Flags().BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
-	cmd.Flags().BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
+
+	f := cmd.Flags()
+	f.StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
+	f.BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
+	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
+
 	return cmd
 }
 

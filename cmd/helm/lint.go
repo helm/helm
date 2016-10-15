@@ -63,7 +63,9 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			return l.run()
 		},
 	}
+
 	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
+
 	return cmd
 }
 

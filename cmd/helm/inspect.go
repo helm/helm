@@ -121,14 +121,14 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	chartSubCmd.Flags().BoolVar(&insp.verify, vflag, false, vdesc)
 
 	kflag := "keyring"
-	kdesc := "the path to the keyring containing public verification keys"
+	kdesc := "path to the keyring containing public verification keys"
 	kdefault := defaultKeyring()
 	inspectCommand.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
 	valuesSubCmd.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
 	chartSubCmd.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
 
 	verflag := "version"
-	verdesc := "the version of the chart. By default, the newest chart is shown."
+	verdesc := "version of the chart. By default, the newest chart is shown"
 	inspectCommand.Flags().StringVar(&insp.version, verflag, "", verdesc)
 	valuesSubCmd.Flags().StringVar(&insp.version, verflag, "", verdesc)
 	chartSubCmd.Flags().StringVar(&insp.version, verflag, "", verdesc)

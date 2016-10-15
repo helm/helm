@@ -77,6 +77,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		out:    out,
 		client: client,
 	}
+
 	cmd := &cobra.Command{
 		Use:               "list [flags] [FILTER]",
 		Short:             "list releases",
@@ -93,18 +94,20 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return list.run()
 		},
 	}
+
 	f := cmd.Flags()
 	f.BoolVarP(&list.short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.StringVarP(&list.offset, "offset", "o", "", "the next release name in the list, used to offset from start value")
+	f.StringVarP(&list.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
 	f.BoolVar(&list.all, "all", false, "show all releases, not just the ones marked DEPLOYED")
 	f.BoolVar(&list.deleted, "deleted", false, "show deleted releases")
 	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
+
 	return cmd
 }
 

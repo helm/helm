@@ -58,6 +58,7 @@ func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	pkg := &packageCmd{
 		out: out,
 	}
+
 	cmd := &cobra.Command{
 		Use:   "package [flags] [CHART_PATH] [...]",
 		Short: "package a chart directory into a chart archive",
@@ -88,8 +89,8 @@ func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&pkg.save, "save", true, "save packaged chart to local chart repository")
 	f.BoolVar(&pkg.sign, "sign", false, "use a PGP private key to sign this package")
-	f.StringVar(&pkg.key, "key", "", "the name of the key to use when signing. Used if --sign is true.")
-	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "the location of a public keyring")
+	f.StringVar(&pkg.key, "key", "", "name of the key to use when signing. Used if --sign is true")
+	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
 
 	return cmd
 }
