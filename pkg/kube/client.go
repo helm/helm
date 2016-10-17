@@ -176,6 +176,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 			return err
 		}
 		resourceName := info.Name
+		resourceKind := info.Mapping.GroupVersionKind.Kind
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		if _, err := helper.Get(info.Namespace, resourceName, info.Export); err != nil {
@@ -193,7 +194,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 			return nil
 		}
 
-		currentObj, err := getCurrentObject(resourceName, currentInfos)
+		currentObj, err := getCurrentObject(resourceName, resourceKind, currentInfos)
 		if err != nil {
 			return err
 		}
@@ -453,10 +454,11 @@ func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
 	}
 }
 
-func getCurrentObject(targetName string, infos []*resource.Info) (runtime.Object, error) {
+func getCurrentObject(targetName, targetKind string, infos []*resource.Info) (runtime.Object, error) {
 	var curr *resource.Info
 	for _, currInfo := range infos {
-		if currInfo.Name == targetName {
+		currKind := currInfo.Mapping.GroupVersionKind.Kind
+		if currInfo.Name == targetName && currKind == targetKind {
 			curr = currInfo
 		}
 	}
