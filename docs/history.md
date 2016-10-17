@@ -3,7 +3,7 @@
 Kubernetes Helm is the merged result of [Helm
 Classic](https://github.com/helm/helm) and the Kubernetes port of GCS Deployment
 Manager. The project was jointly started by Google and Deis, though it
-is now part of the CNCF.
+is now part of the CNCF. Many companies now contribute regularly to Helm.
 
 Differences from Helm Classic:
 
@@ -18,7 +18,7 @@ Differences from Helm Classic:
     or `template` commands.
   - Helm makes it easy to configure your releases -- and share the
     configuration with the rest of your team.
-- Helm chart repositories now use plain HTTP instead of Git/GitHub.
+- Helm chart repositories now use plain HTTP(S) instead of Git/GitHub.
   There is no longer any GitHub dependency.
   - A chart server is a simple HTTP server
   - Charts are referenced by version
