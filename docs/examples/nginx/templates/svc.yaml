@@ -10,7 +10,7 @@ metadata:
     chart: "{{.Chart.Name}}-{{.Chart.Version}}"
 spec:
   ports:
-  - port: {{default 80 .Values.httpPort | quote}}
+  - port: {{default 80 .Values.httpPort}}
     targetPort: 80
     protocol: TCP
     name: http
