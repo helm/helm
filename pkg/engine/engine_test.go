@@ -52,6 +52,24 @@ func TestEngine(t *testing.T) {
 	}
 }
 
+func TestFuncMap(t *testing.T) {
+	fns := FuncMap()
+	forbidden := []string{"env", "expandenv"}
+	for _, f := range forbidden {
+		if _, ok := fns[f]; ok {
+			t.Errorf("Forbidden function %s exists in FuncMap.", f)
+		}
+	}
+
+	// Test for Engine-specific template functions.
+	expect := []string{"include", "toYaml"}
+	for _, f := range expect {
+		if _, ok := fns[f]; !ok {
+			t.Errorf("Expected add-on function %q", f)
+		}
+	}
+}
+
 func TestRender(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{

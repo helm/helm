@@ -48,15 +48,36 @@ type Engine struct {
 // The FuncMap sets all of the Sprig functions except for those that provide
 // access to the underlying OS (env, expandenv).
 func New() *Engine {
+	f := FuncMap()
+	return &Engine{
+		FuncMap: f,
+	}
+}
+
+// FuncMap returns a mapping of all of the functions that Engine has.
+//
+// Because some functions are late-bound (e.g. contain context-sensitive
+// data), the functions may not all perform identically outside of an
+// Engine as they will inside of an Engine.
+//
+// Known late-bound functions:
+//
+//	- "include": This is late-bound in Engine.Render(). The version
+//	   included in the FuncMap is a placeholder.
+func FuncMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
 	delete(f, "expandenv")
 
 	// Add a function to convert to YAML:
 	f["toYaml"] = toYaml
-	return &Engine{
-		FuncMap: f,
-	}
+
+	// This is a placeholder for the "include" function, which is
+	// late-bound to a template. By declaring it here, we preserve the
+	// integrity of the linter.
+	f["include"] = func(string, interface{}) string { return "not implemented" }
+
+	return f
 }
 
 func toYaml(v interface{}) string {
