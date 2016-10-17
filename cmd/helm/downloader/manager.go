@@ -333,8 +333,6 @@ func findVersionedEntry(version string, vers repo.ChartVersions) (*repo.ChartVer
 		if version == "" || versionEquals(version, verEntry.Version) {
 			return verEntry, nil
 		}
-
-		return verEntry, nil
 	}
 	return nil, errors.New("no matching version")
 }
