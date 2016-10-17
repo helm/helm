@@ -84,7 +84,7 @@ func TestPerform(t *testing.T) {
 			namespace:  "test",
 			reader:     strings.NewReader(""),
 			err:        true,
-			errMessage: "no objects passed to create",
+			errMessage: "no objects visited",
 		},
 	}
 

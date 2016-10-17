@@ -229,7 +229,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 // Namespace will set the namespace
 func (c *Client) Delete(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, func(info *resource.Info) error {
-		log.Printf("Starting delete for %s", info.Name)
+		log.Printf("Starting delete for %s %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 
 		reaper, err := c.Reaper(info.Mapping)
 		if err != nil {
@@ -307,7 +307,7 @@ func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc
 		return err
 	}
 	if count == 0 {
-		return fmt.Errorf("no objects passed to create")
+		return fmt.Errorf("no objects visited")
 	}
 	return nil
 }
