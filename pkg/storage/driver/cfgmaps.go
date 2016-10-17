@@ -100,7 +100,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			logerrf(err, "list: failed to decode release: %s", rls)
+			logerrf(err, "list: failed to decode release: %v", item)
 			continue
 		}
 		if filter(rls) {
@@ -201,7 +201,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 			return nil, ErrReleaseNotFound
 		}
 
-		logerrf(err, "delete: failed to get release %q", rls.Name)
+		logerrf(err, "delete: failed to get release %q", key)
 		return nil, err
 	}
 	// delete the release
