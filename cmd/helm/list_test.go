@@ -48,6 +48,15 @@ func TestListCmd(t *testing.T) {
 			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
 		},
 		{
+			name: "list, one deployed, one failed",
+			args: []string{"-q"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_FAILED}),
+				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
+			},
+			expected: "thomas-guide\natlas-guide",
+		},
+		{
 			name: "with a release, multiple flags",
 			args: []string{"--deleted", "--deployed", "--failed", "-q"},
 			resp: []*release.Release{
@@ -83,7 +92,7 @@ func TestListCmd(t *testing.T) {
 		}
 		re := regexp.MustCompile(tt.expected)
 		if !re.Match(buf.Bytes()) {
-			t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, buf.String())
+			t.Errorf("%q. expected\n%q\ngot\n%q", tt.name, tt.expected, buf.String())
 		}
 		buf.Reset()
 	}
