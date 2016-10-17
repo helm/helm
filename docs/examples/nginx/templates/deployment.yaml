@@ -15,7 +15,7 @@ metadata:
     # This makes it easy to audit chart usage.
     chart: "{{.Chart.Name}}-{{.Chart.Version}}"
 spec:
-  replicas: {{default 1 .Values.replicaCount | quote}}
+  replicas: {{default 1 .Values.replicaCount}}
   template:
     metadata:
       labels:
