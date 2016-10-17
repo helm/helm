@@ -48,8 +48,10 @@ func newServeCmd(out io.Writer) *cobra.Command {
 			return srv.run()
 		},
 	}
-	cmd.Flags().StringVar(&srv.repoPath, "repo-path", helmpath.Home(homePath()).LocalRepository(), "The local directory path from which to serve charts.")
-	cmd.Flags().StringVar(&srv.address, "address", "localhost:8879", "The address to listen on.")
+
+	f := cmd.Flags()
+	f.StringVar(&srv.repoPath, "repo-path", helmpath.Home(homePath()).LocalRepository(), "local directory path from which to serve charts")
+	f.StringVar(&srv.address, "address", "localhost:8879", "address to listen on")
 
 	return cmd
 }

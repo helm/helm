@@ -73,8 +73,8 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&duc.verify, "verify", false, "Verify the packages against signatures.")
-	f.StringVar(&duc.keyring, "keyring", defaultKeyring(), "The keyring containing public keys.")
+	f.BoolVar(&duc.verify, "verify", false, "verify the packages against signatures")
+	f.StringVar(&duc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 
 	return cmd
 }

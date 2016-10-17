@@ -126,9 +126,9 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.StringVarP(&inst.valuesFile, "values", "f", "", "specify values in a YAML file")
-	f.StringVarP(&inst.name, "name", "n", "", "the release name. If unspecified, it will autogenerate one for you")
+	f.StringVarP(&inst.name, "name", "n", "", "release name. If unspecified, it will autogenerate one for you")
 	// TODO use kubeconfig default
-	f.StringVar(&inst.namespace, "namespace", "default", "the namespace to install the release into")
+	f.StringVar(&inst.namespace, "namespace", "default", "namespace to install the release into")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
@@ -136,7 +136,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
-	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed.")
+	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
+
 	return cmd
 }
 

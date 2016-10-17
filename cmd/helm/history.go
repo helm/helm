@@ -54,6 +54,7 @@ type historyCmd struct {
 
 func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	his := &historyCmd{out: w, helmc: c}
+
 	cmd := &cobra.Command{
 		Use:               "history [flags] RELEASE_NAME",
 		Long:              historyHelp,
@@ -73,6 +74,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().Int32Var(&his.max, "max", 256, "maximum number of revision to include in history")
+
 	return cmd
 }
 

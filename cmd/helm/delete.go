@@ -71,6 +71,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			return nil
 		},
 	}
+
 	f := cmd.Flags()
 	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
 	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")

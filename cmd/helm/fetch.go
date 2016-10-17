@@ -79,12 +79,12 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&fch.untar, "untar", false, "If set to true, will untar the chart after downloading it.")
-	f.StringVar(&fch.untardir, "untardir", ".", "If untar is specified, this flag specifies the name of the directory into which the chart is expanded.")
-	f.BoolVar(&fch.verify, "verify", false, "Verify the package against its signature.")
-	f.StringVar(&fch.version, "version", "", "The specific version of a chart. Without this, the latest version is fetched.")
-	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "The keyring containing public keys.")
-	f.StringVarP(&fch.destdir, "destination", "d", ".", "The location to write the chart. If this and tardir are specified, tardir is appended to this.")
+	f.BoolVar(&fch.untar, "untar", false, "if set to true, will untar the chart after downloading it")
+	f.StringVar(&fch.untardir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
+	f.BoolVar(&fch.verify, "verify", false, "verify the package against its signature")
+	f.StringVar(&fch.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
+	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.StringVarP(&fch.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
 
 	return cmd
 }

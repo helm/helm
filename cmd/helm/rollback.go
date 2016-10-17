@@ -64,6 +64,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int32Var(&rollback.version, "revision", 0, "revision to deploy")
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
+
 	return cmd
 }
 

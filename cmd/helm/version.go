@@ -39,6 +39,7 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		client: c,
 		out:    out,
 	}
+
 	cmd := &cobra.Command{
 		Use:               "version",
 		Short:             "print the client/server version information",
@@ -48,6 +49,7 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			return version.run()
 		},
 	}
+
 	return cmd
 }
 
