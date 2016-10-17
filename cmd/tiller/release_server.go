@@ -813,11 +813,17 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, errMissingRelease
 	}
 
-	rel, err := s.env.Releases.Deployed(req.Name)
+	rels, err := s.env.Releases.History(req.Name)
 	if err != nil {
 		log.Printf("uninstall: Release not loaded: %s", req.Name)
 		return nil, err
 	}
+	if len(rels) < 1 {
+		return nil, errMissingRelease
+	}
+
+	relutil.SortByRevision(rels)
+	rel := rels[len(rels)-1]
 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
