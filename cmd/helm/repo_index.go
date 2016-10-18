@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -80,18 +81,18 @@ func (i *repoIndexCmd) run() error {
 }
 
 func index(dir, url, mergeTo string) error {
-	chartRepo, err := repo.LoadChartRepository(dir, url)
+	out := filepath.Join(dir, "index.yaml")
+
+	i, err := repo.IndexDirectory(dir, url)
 	if err != nil {
 		return err
 	}
-
 	if mergeTo != "" {
-		old, err := repo.LoadIndexFile(mergeTo)
+		i2, err := repo.LoadIndexFile(mergeTo)
 		if err != nil {
-			return err
+			return fmt.Errorf("Merge failed: %s", err)
 		}
-		return chartRepo.MergeIndex(old)
+		i.Merge(i2)
 	}
-
-	return chartRepo.Index()
+	return i.WriteFile(out, 0755)
 }

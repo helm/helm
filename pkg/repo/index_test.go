@@ -82,27 +82,12 @@ func TestLoadIndexFile(t *testing.T) {
 	verifyLocalIndex(t, i)
 }
 
-func TestMergeIndex(t *testing.T) {
-	dirName, err := ioutil.TempDir("", "tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dirName)
-
-	ind := NewIndexFile()
-	ind.Add(&chart.Metadata{
+func TestMerge(t *testing.T) {
+	ind1 := NewIndexFile()
+	ind1.Add(&chart.Metadata{
 		Name:    "dreadnought",
 		Version: "0.1.0",
 	}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaa")
-
-	cr := &ChartRepository{
-		IndexFile: ind,
-		RootPath:  dirName,
-	}
-
-	if err := cr.saveIndexFile(); err != nil {
-		t.Fatal(err)
-	}
 
 	ind2 := NewIndexFile()
 	ind2.Add(&chart.Metadata{
@@ -113,25 +98,12 @@ func TestMergeIndex(t *testing.T) {
 		Name:    "doughnut",
 		Version: "0.2.0",
 	}, "doughnut-0.2.0.tgz", "http://example.com", "ccccbbbb")
-	cr.IndexFile = ind2
 
-	ind3, err := LoadIndexFile(filepath.Join(dirName, "index.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	ind1.Merge(ind2)
 
-	if err := cr.MergeIndex(ind3); err != nil {
-		t.Fatal(err)
-	}
-
-	ind4, err := LoadIndexFile(filepath.Join(dirName, "index.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(ind4.Entries) != 2 {
-		t.Errorf("Expected 2 entries, got %d", len(ind4.Entries))
-		vs := ind4.Entries["dreadnaught"]
+	if len(ind1.Entries) != 2 {
+		t.Errorf("Expected 2 entries, got %d", len(ind1.Entries))
+		vs := ind1.Entries["dreadnaught"]
 		if len(vs) != 2 {
 			t.Errorf("Expected 2 versions, got %d", len(vs))
 		}
