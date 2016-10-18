@@ -35,6 +35,7 @@ import (
 	"k8s.io/helm/cmd/helm/downloader"
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -127,8 +128,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVarP(&inst.valuesFile, "values", "f", "", "specify values in a YAML file")
 	f.StringVarP(&inst.name, "name", "n", "", "release name. If unspecified, it will autogenerate one for you")
-	// TODO use kubeconfig default
-	f.StringVar(&inst.namespace, "namespace", "default", "namespace to install the release into")
+	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
@@ -144,6 +144,10 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 func (i *installCmd) run() error {
 	if flagDebug {
 		fmt.Fprintf(i.out, "CHART PATH: %s\n", i.chartPath)
+	}
+
+	if i.namespace == "" {
+		i.namespace = defaultNamespace()
 	}
 
 	rawVals, err := i.vals()
@@ -362,4 +366,11 @@ func generateName(nameTemplate string) (string, error) {
 		return "", err
 	}
 	return b.String(), nil
+}
+
+func defaultNamespace() string {
+	if ns, _, err := kube.GetConfig(kubeContext).Namespace(); err == nil {
+		return ns
+	}
+	return "default"
 }
