@@ -902,7 +902,11 @@ func TestUninstallRelease(t *testing.T) {
 func TestUninstallPurgeRelease(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
-	rs.env.Releases.Create(releaseStub())
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+	upgradedRel := upgradeReleaseVersion(rel)
+	rs.env.Releases.Update(rel)
+	rs.env.Releases.Create(upgradedRel)
 
 	req := &services.UninstallReleaseRequest{
 		Name:  "angry-panda",
@@ -922,12 +926,15 @@ func TestUninstallPurgeRelease(t *testing.T) {
 		t.Errorf("Expected status code to be DELETED, got %d", res.Release.Info.Status.Code)
 	}
 
-	if res.Release.Hooks[0].LastRun.Seconds == 0 {
-		t.Error("Expected LastRun to be greater than zero.")
-	}
-
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
+	}
+	rels, err := rs.GetHistory(helm.NewContext(), &services.GetHistoryRequest{Name: "angry-panda"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rels.Releases) != 0 {
+		t.Errorf("Expected no releases in storage, got %d", len(rels.Releases))
 	}
 }
 
