@@ -33,8 +33,9 @@ import (
 var listHelp = `
 This command lists all of the releases.
 
-By default, it lists only releases that are deployed. Flags like '--delete' and
-'--all' will alter this behavior. Such flags can be combined: '--deleted --failed'.
+By default, it lists only releases that are deployed or failed. Flags like
+'--delete' and '--all' will alter this behavior. Such flags can be combined:
+'--deleted --failed'.
 
 By default, items are sorted alphabetically. Use the '-d' flag to sort by
 release date.
@@ -186,7 +187,7 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 
 	// Default case.
 	if len(status) == 0 {
-		status = append(status, release.Status_DEPLOYED)
+		status = append(status, release.Status_DEPLOYED, release.Status_FAILED)
 	}
 	return status
 }
