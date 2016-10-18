@@ -393,6 +393,53 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 	}
 }
 
+func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "hello", Data: []byte("hello: world")},
+				{Name: "hooks", Data: []byte(manifestWithHook)},
+				{Name: "NOTES.txt", Data: []byte(notesText)},
+			},
+			Dependencies: []*chart.Chart{
+				{
+					Metadata: &chart.Metadata{Name: "hello"},
+					Templates: []*chart.Template{
+						{Name: "hello", Data: []byte("hello: world")},
+						{Name: "hooks", Data: []byte(manifestWithHook)},
+						{Name: "NOTES.txt", Data: []byte(notesText + " child")},
+					},
+				},
+			},
+		},
+	}
+
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	if res.Release.Name == "" {
+		t.Errorf("Expected release name.")
+	}
+
+	rel, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	if err != nil {
+		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+	}
+
+	t.Logf("rel: %v", rel)
+
+	if rel.Info.Status.Notes != notesText {
+		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
+	}
+}
+
 func TestInstallReleaseDryRun(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
