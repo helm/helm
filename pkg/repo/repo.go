@@ -212,27 +212,6 @@ func (r *ChartRepository) Index() error {
 	return r.saveIndexFile()
 }
 
-// MergeIndex merges the given index file into this index, and then writes the result.
-//
-// This provides a parallel function to the Index() method, but with the additional merge step.
-func (r *ChartRepository) MergeIndex(f *IndexFile) error {
-	err := r.generateIndex()
-	if err != nil {
-		return err
-	}
-
-	for _, cvs := range f.Entries {
-		for _, cv := range cvs {
-			if !r.IndexFile.Has(cv.Name, cv.Version) {
-				e := r.IndexFile.Entries[cv.Name]
-				r.IndexFile.Entries[cv.Name] = append(e, cv)
-			}
-		}
-	}
-
-	return r.saveIndexFile()
-}
-
 func (r *ChartRepository) generateIndex() error {
 	if r.IndexFile == nil {
 		r.IndexFile = NewIndexFile()

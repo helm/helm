@@ -170,6 +170,23 @@ func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 	return ioutil.WriteFile(dest, b, mode)
 }
 
+// Merge merges the given index file into this index.
+//
+// This merges by name and version.
+//
+// If one of the entries in the given index does _not_ already exist, it is added.
+// In all other cases, the existing record is preserved.
+func (i *IndexFile) Merge(f *IndexFile) {
+	for _, cvs := range f.Entries {
+		for _, cv := range cvs {
+			if !i.Has(cv.Name, cv.Version) {
+				e := i.Entries[cv.Name]
+				i.Entries[cv.Name] = append(e, cv)
+			}
+		}
+	}
+}
+
 // Need both JSON and YAML annotations until we get rid of gopkg.in/yaml.v2
 
 // ChartVersion represents a chart entry in the IndexFile
