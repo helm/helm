@@ -32,6 +32,10 @@ The following hooks are defined:
   before a kuberntes apply operation).
 - post-upgrade: Executes on an upgrade after all resources have been
   upgraded.
+- pre-rollback: Executes on a rollback request after templates are
+  rendered, but before any resources have been rolled back.
+- post-rollback: Executes on a rollback request after all resources
+  have been modified.
 
 ## Hooks and the Release Lifecycle
 
