@@ -92,4 +92,12 @@ func TestRepoAdd(t *testing.T) {
 	if !f.Has(testName) {
 		t.Errorf("%s was not successfully inserted into %s", testName, hh.RepositoryFile())
 	}
+
+	if err := updateRepository(testName, ts.URL(), hh); err != nil {
+		t.Errorf("Repository was not updated: %s", err)
+	}
+
+	if err := addRepository(testName, ts.URL(), hh); err == nil {
+		t.Errorf("Duplicate repository name was added")
+	}
 }

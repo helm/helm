@@ -28,10 +28,11 @@ import (
 )
 
 type repoAddCmd struct {
-	name string
-	url  string
-	home helmpath.Home
-	out  io.Writer
+	name     string
+	url      string
+	home     helmpath.Home
+	out      io.Writer
+	noupdate bool
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
@@ -54,11 +55,19 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 			return add.run()
 		},
 	}
+	f := cmd.Flags()
+	f.BoolVar(&add.noupdate, "no-update", false, "raise error if repo is already registered")
 	return cmd
 }
 
 func (a *repoAddCmd) run() error {
-	if err := addRepository(a.name, a.url, a.home); err != nil {
+	var err error
+	if a.noupdate {
+		err = addRepository(a.name, a.url, a.home)
+	} else {
+		err = updateRepository(a.name, a.url, a.home)
+	}
+	if err != nil {
 		return err
 	}
 	fmt.Fprintf(a.out, "%q has been added to your repositories\n", a.name)
@@ -90,4 +99,29 @@ func insertRepoLine(name, url string, home helmpath.Home) error {
 		Cache: filepath.Base(cif),
 	})
 	return f.WriteFile(home.RepositoryFile(), 0644)
+}
+
+func updateRepository(name, url string, home helmpath.Home) error {
+	cif := home.CacheIndex(name)
+	if err := repo.DownloadIndexFile(name, url, cif); err != nil {
+		return err
+	}
+
+	return updateRepoLine(name, url, home)
+}
+
+func updateRepoLine(name, url string, home helmpath.Home) error {
+	cif := home.CacheIndex(name)
+	f, err := repo.LoadRepositoriesFile(home.RepositoryFile())
+	if err != nil {
+		return err
+	}
+
+	f.Update(&repo.Entry{
+		Name:  name,
+		URL:   url,
+		Cache: filepath.Base(cif),
+	})
+
+	return f.WriteFile(home.RepositoryFile(), 0666)
 }
