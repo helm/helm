@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -32,7 +33,7 @@ The argument of the rollback command is the name of a release.
 
 type rollbackCmd struct {
 	name         string
-	version      int32
+	revision     int32
 	dryRun       bool
 	disableHooks bool
 	out          io.Writer
@@ -51,17 +52,24 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:              rollbackDesc,
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "release name"); err != nil {
+			if err := checkArgsLength(len(args), "release name", "revision number"); err != nil {
 				return err
 			}
+
 			rollback.name = args[0]
+
+			v64, err := strconv.ParseInt(args[1], 10, 32)
+			if err != nil {
+				return fmt.Errorf("invalid revision number '%q': %s", args[1], err)
+			}
+
+			rollback.revision = int32(v64)
 			rollback.client = ensureHelmClient(rollback.client)
 			return rollback.run()
 		},
 	}
 
 	f := cmd.Flags()
-	f.Int32Var(&rollback.version, "revision", 0, "revision to deploy")
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 
@@ -73,7 +81,7 @@ func (r *rollbackCmd) run() error {
 		r.name,
 		helm.RollbackDryRun(r.dryRun),
 		helm.RollbackDisableHooks(r.disableHooks),
-		helm.RollbackVersion(r.version),
+		helm.RollbackVersion(r.revision),
 	)
 	if err != nil {
 		return prettyError(err)
