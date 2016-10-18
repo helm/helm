@@ -803,6 +803,15 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	return nil
 }
 
+func (s *releaseServer) purgeReleases(rels ...*release.Release) error {
+	for _, rel := range rels {
+		if _, err := s.env.Releases.Delete(rel.Name, rel.Version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
@@ -829,7 +838,7 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	// already marked deleted?
 	if rel.Info.Status.Code == release.Status_DELETED {
 		if req.Purge {
-			if _, err := s.env.Releases.Delete(rel.Name, rel.Version); err != nil {
+			if err := s.purgeReleases(rels...); err != nil {
 				log.Printf("uninstall: Failed to purge the release: %s", err)
 				return nil, err
 			}
@@ -882,7 +891,7 @@ func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 			log.Printf("uninstall: Failed to store updated release: %s", err)
 		}
 	} else {
-		if _, err := s.env.Releases.Delete(rel.Name, rel.Version); err != nil {
+		if err := s.purgeReleases(rels...); err != nil {
 			log.Printf("uninstall: Failed to purge the release: %s", err)
 		}
 	}
