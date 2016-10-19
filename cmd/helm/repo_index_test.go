@@ -38,6 +38,10 @@ func TestRepoIndexCmd(t *testing.T) {
 	if err := os.Link("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {
 		t.Fatal(err)
 	}
+	comp2 := filepath.Join(dir, "compressedchart-0.2.0.tgz")
+	if err := os.Link("testdata/testcharts/compressedchart-0.2.0.tgz", comp2); err != nil {
+		t.Fatal(err)
+	}
 
 	buf := bytes.NewBuffer(nil)
 	c := newRepoIndexCmd(buf)
@@ -57,14 +61,30 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Errorf("expected 1 entry, got %d: %#v", len(index.Entries), index.Entries)
 	}
 
+	vs := index.Entries["compressedchart"]
+	if len(vs) != 2 {
+		t.Errorf("expected 2 versions, got %d: %#v", len(vs), vs)
+	}
+
+	expectedVersion := "0.2.0"
+	if vs[0].Version != expectedVersion {
+		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
+	}
+
 	// Test with `--merge`
 
-	// Remove first chart.
+	// Remove first two charts.
 	if err := os.Remove(comp); err != nil {
 		t.Fatal(err)
 	}
-	// Add another chart.
+	if err := os.Remove(comp2); err != nil {
+		t.Fatal(err)
+	}
+	// Add a new chart and a new version of an existing chart
 	if err := os.Link("testdata/testcharts/reqtest-0.1.0.tgz", filepath.Join(dir, "reqtest-0.1.0.tgz")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link("testdata/testcharts/compressedchart-0.3.0.tgz", filepath.Join(dir, "compressedchart-0.3.0.tgz")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -79,6 +99,16 @@ func TestRepoIndexCmd(t *testing.T) {
 	}
 
 	if len(index.Entries) != 2 {
-		t.Errorf("expected 2 entry, got %d: %#v", len(index.Entries), index.Entries)
+		t.Errorf("expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
+	}
+
+	vs = index.Entries["compressedchart"]
+	if len(vs) != 3 {
+		t.Errorf("expected 3 versions, got %d: %#v", len(vs), vs)
+	}
+
+	expectedVersion = "0.3.0"
+	if vs[0].Version != expectedVersion {
+		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
 	}
 }
