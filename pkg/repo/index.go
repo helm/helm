@@ -95,6 +95,7 @@ func NewIndexFile() *IndexFile {
 }
 
 // Add adds a file to the index
+// This can leave the index in an unsorted state
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	u := filename
 	if baseURL != "" {
@@ -176,6 +177,8 @@ func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 //
 // If one of the entries in the given index does _not_ already exist, it is added.
 // In all other cases, the existing record is preserved.
+//
+// This can leave the index in an unsorted state
 func (i *IndexFile) Merge(f *IndexFile) {
 	for _, cvs := range f.Entries {
 		for _, cv := range cvs {
@@ -202,7 +205,7 @@ type ChartVersion struct {
 //
 // It indexes only charts that have been packaged (*.tgz).
 //
-// It writes the results to dir/index.yaml.
+// The index returned will be in an unsorted state
 func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 	archives, err := filepath.Glob(filepath.Join(dir, "*.tgz"))
 	if err != nil {
