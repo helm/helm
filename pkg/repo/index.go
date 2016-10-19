@@ -222,6 +222,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 		}
 		index.Add(c.Metadata, fname, baseURL, hash)
 	}
+	index.SortEntries()
 	return index, nil
 }
 

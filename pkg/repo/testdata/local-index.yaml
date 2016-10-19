@@ -2,22 +2,22 @@ apiVersion: v1
 entries:
   nginx:
     - urls:
-        - http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz
+        - http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz
       name: nginx
       description: string
-      version: 0.1.0
-      home: https://github.com/something
+      version: 0.2.0
+      home: https://github.com/something/else
       digest: "sha256:1234567890abcdef"
       keywords:
         - popular
         - web server
         - proxy
     - urls:
-        - http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz
+        - http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz
       name: nginx
       description: string
-      version: 0.2.0
-      home: https://github.com/something/else
+      version: 0.1.0
+      home: https://github.com/something
       digest: "sha256:1234567890abcdef"
       keywords:
         - popular

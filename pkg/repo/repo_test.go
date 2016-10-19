@@ -133,7 +133,7 @@ func TestLoadChartRepository(t *testing.T) {
 		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
 	}
 
-	paths := []string{filepath.Join(testRepository, "frobnitz-1.2.3.tgz"), filepath.Join(testRepository, "sprocket-1.2.0.tgz")}
+	paths := []string{filepath.Join(testRepository, "frobnitz-1.2.3.tgz"), filepath.Join(testRepository, "sprocket-1.1.0.tgz"), filepath.Join(testRepository, "sprocket-1.2.0.tgz")}
 
 	if cr.RootPath != testRepository {
 		t.Errorf("Expected %s as RootPath but got %s", testRepository, cr.RootPath)
@@ -209,6 +209,12 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 				Metadata: &chart.Metadata{
 					Name:    "sprocket",
 					Version: "1.2.0",
+				},
+			},
+			{
+				Metadata: &chart.Metadata{
+					Name:    "sprocket",
+					Version: "1.1.0",
 				},
 			},
 		},

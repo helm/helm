@@ -197,12 +197,12 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 			Metadata: &chart.Metadata{
 				Name:        "nginx",
 				Description: "string",
-				Version:     "0.1.0",
+				Version:     "0.2.0",
 				Keywords:    []string{"popular", "web server", "proxy"},
-				Home:        "https://github.com/something",
+				Home:        "https://github.com/something/else",
 			},
 			URLs: []string{
-				"http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz",
+				"http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
 		},
@@ -210,12 +210,12 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 			Metadata: &chart.Metadata{
 				Name:        "nginx",
 				Description: "string",
-				Version:     "0.2.0",
+				Version:     "0.1.0",
 				Keywords:    []string{"popular", "web server", "proxy"},
-				Home:        "https://github.com/something/else",
+				Home:        "https://github.com/something",
 			},
 			URLs: []string{
-				"http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz",
+				"http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
 		},
@@ -281,6 +281,18 @@ func TestIndexDirectory(t *testing.T) {
 	}
 	if frob.Name != "frobnitz" {
 		t.Errorf("Expected frobnitz, got %q", frob.Name)
+	}
+
+	cname = "sprocket"
+	sprocket, ok := index.Entries[cname]
+	if !ok {
+		t.Fatalf("Could not read chart %s", cname)
+	}
+
+	sproc := sprocket[0]
+	expectedVersion := "1.2.0"
+	if sproc.Version != expectedVersion {
+		t.Errorf("Expected %q, got %q", expectedVersion, sproc.Version)
 	}
 }
 
