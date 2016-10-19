@@ -145,6 +145,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //
 // Namespace will set the namespaces
 func (c *Client) Update(namespace string, currentReader, targetReader io.Reader) error {
+	fmt.Printf("\ncurrentReader: %v, \ntargetReader %v \n", currentReader, targetReader)
 	current := c.NewBuilder(includeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).

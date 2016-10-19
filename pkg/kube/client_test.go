@@ -19,6 +19,7 @@ package kube
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -29,6 +30,8 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	api "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/client/unversioned/fake"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/runtime"
 )
@@ -62,6 +65,49 @@ func TestUpdateResource(t *testing.T) {
 		if err != nil && err.Error() != tt.errMessage {
 			t.Errorf("%q. expected error message: %v, got %v", tt.name, tt.errMessage, err)
 		}
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	guestbookInitial := `
+        apiVersion: extensions/v1beta1
+        kind: Deployment
+        metadata:
+          name: redis-master
+        spec:
+          replicas: 1
+          template:
+            metadata:
+              labels:
+                app: redis
+                role: master
+                tier: backend
+            spec:
+              containers:
+              - name: master
+                image: gcr.io/google_containers/redis:e2e  # or just image: redis
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 100Mi
+                ports:
+                - containerPort: 6379
+    `
+
+	c := New(nil)
+	f := testclient.Fake{}
+	f.AddReactor("get", "services", func(action testclient.Action) (bool, runtime.Object, error) {
+		//create a service object with that name
+		return true, nil, nil
+	})
+
+	c.Client = func() (*client.Client, error) {
+		return &f, nil
+	}
+	fmt.Printf("FAKE: %#v \n", f)
+
+	if err := c.Update("", strings.NewReader(guestbookInitial), strings.NewReader(guestbookManifest)); err != nil {
+		t.Errorf("Expected success, got failure on update: %v", err)
 	}
 }
 
