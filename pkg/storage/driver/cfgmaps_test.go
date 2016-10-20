@@ -14,10 +14,14 @@ limitations under the License.
 package driver
 
 import (
+	"encoding/base64"
 	"reflect"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
+
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 func TestConfigMapName(t *testing.T) {
@@ -34,6 +38,37 @@ func TestConfigMapGet(t *testing.T) {
 	rel := releaseStub(name, vers, rspb.Status_DEPLOYED)
 
 	cfgmaps := newTestFixtureCfgMaps(t, []*rspb.Release{rel}...)
+
+	// get release with key
+	got, err := cfgmaps.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release: %s", err)
+	}
+	// compare fetched release with original
+	if !reflect.DeepEqual(rel, got) {
+		t.Errorf("Expected {%q}, got {%q}", rel, got)
+	}
+}
+
+func TestUNcompressedConfigMapGet(t *testing.T) {
+	vers := int32(1)
+	name := "smug-pigeon"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, rspb.Status_DEPLOYED)
+
+	// Create a test fixture which contains an uncompressed release
+	cfgmap, err := newConfigMapsObject(key, rel, nil)
+	if err != nil {
+		t.Fatalf("Failed to create configmap: %s", err)
+	}
+	b, err := proto.Marshal(rel)
+	if err != nil {
+		t.Fatalf("Failed to marshal release: %s", err)
+	}
+	cfgmap.Data["release"] = base64.StdEncoding.EncodeToString(b)
+	var mock MockConfigMapsInterface
+	mock.objects = map[string]*api.ConfigMap{key: cfgmap}
+	cfgmaps := NewConfigMaps(&mock)
 
 	// get release with key
 	got, err := cfgmaps.Get(key)
