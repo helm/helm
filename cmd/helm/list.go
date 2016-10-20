@@ -44,12 +44,12 @@ If an argument is provided, it will be treated as a filter. Filters are
 regular expressions (Perl compatible) that are applied to the list of releases.
 Only items that match the filter will be returned.
 
-	$ helm list -l 'ara[a-z]+'
+	$ helm list 'ara[a-z]+'
 	NAME            	UPDATED                 	CHART
 	maudlin-arachnid	Mon May  9 16:07:08 2016	alpine-0.1.0
 
 If no results are found, 'helm list' will exit 0, but with no output (or in
-the case of '-l', only headers).
+the case of no '-q' flag, only headers).
 
 By default, up to 256 items may be returned. To limit this, use the '--max' flag.
 Setting '--max' to 0 will not return all results. Rather, it will return the
