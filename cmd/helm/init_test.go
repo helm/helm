@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ghodss/yaml"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
@@ -87,7 +89,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 	fake := testclient.Fake{}
 	cmd := &initCmd{out: &buf, home: helmpath.Home(home), kubeClient: fake.Extensions(), clientOnly: true}
 	if err := cmd.run(); err != nil {
-		t.Errorf("expected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
 	}
 	if len(fake.Actions()) != 0 {
 		t.Error("expected client call")
@@ -97,6 +99,42 @@ func TestInitCmd_clientOnly(t *testing.T) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}
 }
+
+func TestInitCmd_dryRun(t *testing.T) {
+	// This is purely defensive in this case.
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dbg := flagDebug
+	flagDebug = true
+	defer func() {
+		os.Remove(home)
+		flagDebug = dbg
+	}()
+
+	var buf bytes.Buffer
+	fake := testclient.Fake{}
+	cmd := &initCmd{
+		out:        &buf,
+		home:       helmpath.Home(home),
+		kubeClient: fake.Extensions(),
+		clientOnly: true,
+		dryRun:     true,
+	}
+	if err := cmd.run(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.Actions()) != 0 {
+		t.Error("expected no server calls")
+	}
+
+	var y map[string]interface{}
+	if err := yaml.Unmarshal(buf.Bytes(), &y); err != nil {
+		t.Errorf("Expected parseable YAML, got %q\n\t%s", buf.String(), err)
+	}
+}
+
 func TestEnsureHome(t *testing.T) {
 	home, err := ioutil.TempDir("", "helm_home")
 	if err != nil {

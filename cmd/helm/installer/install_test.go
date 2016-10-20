@@ -20,10 +20,44 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/ghodss/yaml"
+
+	"k8s.io/helm/pkg/version"
+
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 	"k8s.io/kubernetes/pkg/runtime"
 )
+
+func TestDeploymentManifest(t *testing.T) {
+
+	tests := []struct {
+		name   string
+		image  string
+		canary bool
+		expect string
+	}{
+		{"default", "", false, "gcr.io/kubernetes-helm/tiller:" + version.Version},
+		{"canary", "example.com/tiller", true, "gcr.io/kubernetes-helm/tiller:canary"},
+		{"custom", "example.com/tiller:latest", false, "example.com/tiller:latest"},
+	}
+
+	for _, tt := range tests {
+
+		o, err := DeploymentManifest(tt.image, tt.canary)
+		if err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+		var dep extensions.Deployment
+		if err := yaml.Unmarshal([]byte(o), &dep); err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+
+		if got := dep.Spec.Template.Spec.Containers[0].Image; got != tt.expect {
+			t.Errorf("%s: expected image %q, got %q", tt.name, tt.expect, got)
+		}
+	}
+}
 
 func TestInstall(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
