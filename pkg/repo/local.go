@@ -18,6 +18,7 @@ package repo
 
 import (
 	"fmt"
+	htemplate "html/template"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -30,37 +31,74 @@ import (
 	"k8s.io/helm/pkg/provenance"
 )
 
-var localRepoPath string
+const indexHTMLTemplate = `
+<html>
+<head>
+	<title>Helm Repository</title>
+</head>
+<h1>Helm Charts Repository</h1>
+<ul>
+{{range $name, $ver := .Index.Entries}}
+  <li>{{$name}}<ul>{{range $ver}}
+    <li><a href="{{index .URLs 0}}">{{.Name}}-{{.Version}}</a></li>
+  {{end}}</ul>
+  </li>
+{{end}}
+</ul>
+<body>
+<p>Last Generated: {{.Index.Generated}}</p>
+</body>
+</html>
+`
+
+const indexFile = `
+Welcome to the Kubernetes Package manager!\nBrowse charts on localhost:8879/charts!
+`
+
+// RepositoryServer is an HTTP handler for serving a chart repository.
+type RepositoryServer struct {
+	RepoPath string
+}
+
+// ServeHTTP implements the http.Handler interface.
+func (s *RepositoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	uri := r.URL.Path
+	switch uri {
+	case "/":
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		fmt.Fprintf(w, indexFile)
+	case "/charts/", "/charts/index.html", "/charts/index":
+		s.htmlIndex(w, r)
+	default:
+		file := strings.TrimPrefix(uri, "/charts/")
+		http.ServeFile(w, r, filepath.Join(s.RepoPath, file))
+	}
+}
 
 // StartLocalRepo starts a web server and serves files from the given path
 func StartLocalRepo(path, address string) error {
 	if address == "" {
 		address = ":8879"
 	}
-	localRepoPath = path
-	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/charts/", indexHandler)
-	return http.ListenAndServe(address, nil)
-}
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(w, "Welcome to the Kubernetes Package manager!\nBrowse charts on localhost:8879/charts!")
-}
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	file := r.URL.Path[len("/charts/"):]
-	if len(strings.Split(file, ".")) > 1 {
-		serveFile(w, r, file)
-	} else if file == "" {
-		fmt.Fprintf(w, "list of charts should be here at some point")
-	} else if file == "index" {
-		fmt.Fprintf(w, "index file data should be here at some point")
-	} else {
-		fmt.Fprintf(w, "Ummm... Nothing to see here folks")
-	}
+	s := &RepositoryServer{RepoPath: path}
+	return http.ListenAndServe(address, s)
 }
 
-func serveFile(w http.ResponseWriter, r *http.Request, file string) {
-	http.ServeFile(w, r, filepath.Join(localRepoPath, file))
+func (s *RepositoryServer) htmlIndex(w http.ResponseWriter, r *http.Request) {
+	t := htemplate.Must(htemplate.New("index.html").Parse(indexHTMLTemplate))
+	// load index
+	lrp := filepath.Join(s.RepoPath, "index.yaml")
+	i, err := LoadIndexFile(lrp)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	data := map[string]interface{}{
+		"Index": i,
+	}
+	if err := t.Execute(w, data); err != nil {
+		fmt.Fprintf(w, "Template error: %s", err)
+	}
 }
 
 // AddChartToLocalRepo saves a chart in the given path and then reindexes the index file
