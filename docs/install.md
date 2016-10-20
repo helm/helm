@@ -156,6 +156,17 @@ delete and re-install Tiller without worrying about losing any data. The
 recommended way of deleting Tiller is with `kubectl delete deployment
 tiller-deployment -n kube-system`
 
+To simply update Tiller to run the latest image, you can run this
+command:
+
+```console
+$ export TILLER_TAG=v2.0.0-beta.1        # Or whatever version you want
+$ kubectl --namespace=kube-system set image deployments/tiller-deploy tiller=gcr.io/kubernetes-helm/tiller:$TILLER_TAG
+deployment "tiller-deploy" image updated
+```
+
+Setting `TILLER_TAG=canary` will get the latest snapshot of master.
+
 ## Conclusion
 
 In most cases, installation is as simple as getting a pre-built `helm` binary
