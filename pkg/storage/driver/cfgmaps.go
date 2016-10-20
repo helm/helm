@@ -17,8 +17,11 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"strconv"
 	"time"
@@ -39,6 +42,8 @@ var _ Driver = (*ConfigMaps)(nil)
 const ConfigMapsDriverName = "ConfigMap"
 
 var b64 = base64.StdEncoding
+
+var magicGzip = []byte{0x1f, 0x8b, 0x08}
 
 // ConfigMaps is a wrapper around an implementation of a kubernetes
 // ConfigMapsInterface.
@@ -254,13 +259,23 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*api.Config
 }
 
 // encodeRelease encodes a release returning a base64 encoded
-// binary protobuf encoding representation, or error.
+// gzipped binary protobuf encoding representation, or error.
 func encodeRelease(rls *rspb.Release) (string, error) {
 	b, err := proto.Marshal(rls)
 	if err != nil {
 		return "", err
 	}
-	return b64.EncodeToString(b), nil
+	var buf bytes.Buffer
+	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err != nil {
+		return "", err
+	}
+	if _, err = w.Write(b); err != nil {
+		return "", err
+	}
+	w.Close()
+
+	return b64.EncodeToString(buf.Bytes()), nil
 }
 
 // decodeRelease decodes the bytes in data into a release
@@ -272,6 +287,21 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	b, err := b64.DecodeString(data)
 	if err != nil {
 		return nil, err
+	}
+
+	// For backwards compatibility with releases that were stored before
+	// compression was introduced we skip decompression if the
+	// gzip magic header is not found
+	if bytes.Equal(b[0:3], magicGzip) {
+		r, err := gzip.NewReader(bytes.NewReader(b))
+		if err != nil {
+			return nil, err
+		}
+		b2, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		b = b2
 	}
 
 	var rls rspb.Release
