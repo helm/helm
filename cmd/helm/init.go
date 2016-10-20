@@ -40,7 +40,9 @@ const (
 	stableRepository    = "stable"
 	localRepository     = "local"
 	stableRepositoryURL = "http://storage.googleapis.com/kubernetes-charts"
-	localRepositoryURL  = "http://localhost:8879/charts"
+	// This is the IPv4 loopback, not localhost, because we have to force IPv4
+	// for Dockerized Helm: https://github.com/kubernetes/helm/issues/1410
+	localRepositoryURL = "http://127.0.0.1:8879/charts"
 )
 
 type initCmd struct {
