@@ -51,10 +51,6 @@ const indexHTMLTemplate = `
 </html>
 `
 
-const indexFile = `
-Welcome to the Kubernetes Package manager!\nBrowse charts on localhost:8879/charts!
-`
-
 // RepositoryServer is an HTTP handler for serving a chart repository.
 type RepositoryServer struct {
 	RepoPath string
@@ -64,10 +60,8 @@ type RepositoryServer struct {
 func (s *RepositoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	uri := r.URL.Path
 	switch uri {
-	case "/":
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintf(w, indexFile)
-	case "/charts/", "/charts/index.html", "/charts/index":
+	case "/", "/charts/", "/charts/index.html", "/charts/index":
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		s.htmlIndex(w, r)
 	default:
 		file := strings.TrimPrefix(uri, "/charts/")
@@ -78,7 +72,7 @@ func (s *RepositoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // StartLocalRepo starts a web server and serves files from the given path
 func StartLocalRepo(path, address string) error {
 	if address == "" {
-		address = ":8879"
+		address = "127.0.0.1:8879"
 	}
 	s := &RepositoryServer{RepoPath: path}
 	return http.ListenAndServe(address, s)
@@ -130,7 +124,7 @@ func Reindex(ch *chart.Chart, path string) error {
 			return err
 		}
 
-		y.Add(ch.Metadata, name+".tgz", "http://localhost:8879/charts", "sha256:"+dig)
+		y.Add(ch.Metadata, name+".tgz", "http://127.0.0.1:8879/charts", "sha256:"+dig)
 
 		out, err := yaml.Marshal(y)
 		if err != nil {

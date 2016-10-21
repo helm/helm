@@ -25,16 +25,20 @@ import (
 )
 
 func TestRepositoryServer(t *testing.T) {
+	expectedIndexYAML, err := ioutil.ReadFile("testdata/server/index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name   string
 		path   string
 		expect string
 	}{
-		{"index YAML", "/charts/index.yaml", "apiVersion: v1"},
+		{"index YAML", "/charts/index.yaml", string(expectedIndexYAML)},
 		{"index HTML", "/charts/index.html", "<html>"},
 		{"charts root", "/charts/", "<html>"},
-		{"root", "/", "Welcome"},
+		{"root", "/", "<html>"},
 		{"file", "/test.txt", "Hello World"},
 	}
 
