@@ -33,7 +33,23 @@ import (
 
 const initDesc = `
 This command installs Tiller (the helm server side component) onto your
-Kubernetes Cluster and sets up local configuration in $HELM_HOME (default: ~/.helm/)
+Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/)
+
+As with the rest of the Helm commands, 'helm init' discovers Kubernetes clusters
+by reading $KUBECONFIG (default '~/.kube/config') and using the default context.
+
+To set up just a local environment, use '--client-only'. That will configure
+$HELM_HOME, but not attempt to connect to a remote cluster and install the Tiller
+deployment.
+
+When installing Tiller, 'helm init' will attempt to install the latest released
+version. You can specify an alternative image with '--tiller-image'. For those
+frequently working on the latest code, the flag '--canary-image' will install
+the latest pre-release version of Tiller (e.g. the HEAD commit in the GitHub
+repository on the master branch).
+
+To dump a manifest containing the Tiller deployment YAML, combine the
+'--dry-run' and '--debug' flags.
 `
 
 const (
@@ -49,6 +65,7 @@ type initCmd struct {
 	image      string
 	clientOnly bool
 	canary     bool
+	dryRun     bool
 	out        io.Writer
 	home       helmpath.Home
 	kubeClient unversioned.DeploymentsNamespacer
@@ -76,12 +93,25 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
 	f.BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
 	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
+	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 
 	return cmd
 }
 
 // runInit initializes local config and installs tiller to Kubernetes Cluster
 func (i *initCmd) run() error {
+
+	if flagDebug {
+		m, err := installer.DeploymentManifest(i.image, i.canary)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(i.out, m)
+	}
+	if i.dryRun {
+		return nil
+	}
+
 	if err := ensureHome(i.home, i.out); err != nil {
 		return err
 	}

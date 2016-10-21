@@ -19,6 +19,8 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	"fmt"
 
+	"github.com/ghodss/yaml"
+
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/unversioned"
@@ -36,15 +38,29 @@ const defaultImage = "gcr.io/kubernetes-helm/tiller"
 //
 // If verbose is true, this will print the manifest to stdout.
 func Install(client unversioned.DeploymentsNamespacer, namespace, image string, canary, verbose bool) error {
+	obj := deployment(image, canary)
+	_, err := client.Deployments(namespace).Create(obj)
+	return err
+}
+
+// deployment gets the deployment object that installs Tiller.
+func deployment(image string, canary bool) *extensions.Deployment {
 	switch {
 	case canary:
 		image = defaultImage + ":canary"
 	case image == "":
 		image = fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	}
-	obj := generateDeployment(image)
-	_, err := client.Deployments(namespace).Create(obj)
-	return err
+	return generateDeployment(image)
+}
+
+// DeploymentManifest gets the manifest (as a string) that describes the Tiller Deployment
+// resource.
+func DeploymentManifest(image string, canary bool) (string, error) {
+	obj := deployment(image, canary)
+
+	buf, err := yaml.Marshal(obj)
+	return string(buf), err
 }
 
 func generateLabels(labels map[string]string) map[string]string {
