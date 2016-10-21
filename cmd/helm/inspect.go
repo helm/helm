@@ -85,7 +85,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	valuesSubCmd := &cobra.Command{
-		Use:   "values",
+		Use:   "values [CHART]",
 		Short: "shows inspect values",
 		Long:  inspectValuesDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -103,7 +103,7 @@ func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	chartSubCmd := &cobra.Command{
-		Use:   "chart",
+		Use:   "chart [CHART]",
 		Short: "shows inspect chart",
 		Long:  inspectChartDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
