@@ -27,7 +27,7 @@ This section describes a potential workflow for using provenance data effectivel
 
 WHAT YOU WILL NEED:
 
-- A valid  PGP keypair in a binary (not ASCII-armored) format
+- A valid, passphrase-less PGP keypair in a binary (not ASCII-armored) format
 - helm
 
 Creating a new chart is the same as before:
@@ -37,14 +37,14 @@ $ helm create mychart
 Creating mychart
 ```
 
-Once ready to package, add the `--verify` flag to `helm package`. Also, specify
-the signing key and the keyring:
+Once ready to package, add the `--sign` flag to `helm package`. Also, specify
+the name under which the signing key is known and the keyring containing the corresponding private key:
 
 ```
-$ helm package --sign --key helm --keyring path/to/keyring.secret mychart
+$ helm package --sign --key 'helm signing key' --keyring path/to/keyring.secret mychart
 ```
 
-Tip: for GnuPG users, your secret keyring is in `~/.gpg/secring.gpg`.
+Tip: for GnuPG users, your secret keyring is in `~/.gnupg/secring.gpg`.
 
 At this point, you should see both `mychart-0.1.0.tgz` and `mychart-0.1.0.tgz.prov`.
 Both files should eventually be uploaded to your desired chart repository.
@@ -68,7 +68,7 @@ To verify during an install, use the `--verify` flag.
 $ helm install --verify mychart-0.1.0.tgz
 ```
 
-If the keyring is not in the default location, you may need to point to the
+If the keyring (containing the public key associated with the signed chart) is not in the default location, you may need to point to the
 keyring with `--keyring PATH` as in the `helm package` example.
 
 If verification fails, the install will be aborted before the chart is even pushed
