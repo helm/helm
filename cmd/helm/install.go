@@ -207,6 +207,10 @@ func (i *installCmd) vals() ([]byte, error) {
 			return []byte{}, err
 		}
 		buffer.Write(bytes)
+
+		// Force a new line. An extra won't matter, but a missing one can
+		// break things. https://github.com/kubernetes/helm/issues/1430
+		buffer.WriteRune('\n')
 	}
 
 	// User specified value pairs via --set
