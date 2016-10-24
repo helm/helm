@@ -29,11 +29,29 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
+const versionDesc = `
+Show the client and server versions for Helm and tiller.
+
+This will print a representation of the client and server versions of Helm and
+Tiller. The output will look something like this:
+
+Client: &version.Version{SemVer:"v2.0.0-beta.1", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"dirty"}
+Server: &version.Version{SemVer:"v2.0.0-beta.1", GitCommit:"b0c113dfb9f612a9add796549da66c0d294508a3", GitTreeState:"clean"}
+
+- SemVer is the semantic version of the release.
+- GitCommit is the SHA for the commit that this version was built from.
+- GitTreeState is "clean" if there are no local code changes when this binary was
+  built, and "dirty" if the binary was built from locally modified code.
+
+To print just the client version, use '--client'. To print just the server version,
+use '--server'.
+`
+
 type versionCmd struct {
 	out        io.Writer
 	client     helm.Interface
-	clientOnly bool
-	serverOnly bool
+	showClient bool
+	showServer bool
 }
 
 func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -45,8 +63,13 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "print the client/server version information",
+		Long:  versionDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !version.clientOnly {
+			// If neither is explicitly set, show both.
+			if !version.showClient && !version.showServer {
+				version.showClient, version.showServer = true, true
+			}
+			if version.showServer {
 				// We do this manually instead of in PreRun because we only
 				// need a tunnel if server version is requested.
 				setupConnection(cmd, args)
@@ -56,24 +79,20 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.BoolVarP(&version.clientOnly, "client-only", "c", false, "if set does not query Tiller version")
-	f.BoolVarP(&version.serverOnly, "server-only", "s", false, "if set does not query Helm client version")
+	f.BoolVarP(&version.showClient, "client", "c", false, "if set, show the client version")
+	f.BoolVarP(&version.showServer, "server", "s", false, "if set, show the server version")
 
 	return cmd
 }
 
 func (v *versionCmd) run() error {
 
-	if v.clientOnly && v.serverOnly {
-		return errors.New("cannot set both client-only and server-only")
-	}
-
-	if !v.serverOnly {
+	if v.showClient {
 		cv := version.GetVersionProto()
 		fmt.Fprintf(v.out, "Client: %#v\n", cv)
 	}
 
-	if v.clientOnly {
+	if !v.showServer {
 		return nil
 	}
 
