@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"text/template"
@@ -285,12 +286,32 @@ func (v *values) Set(data string) error {
 	return nil
 }
 
+func typedVal(val string) interface{} {
+	if strings.EqualFold(val, "true") {
+		return true
+	}
+
+	if strings.EqualFold(val, "false") {
+		return false
+	}
+
+	if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
+		return iv
+	}
+
+	if fv, err := strconv.ParseFloat(val, 64); err == nil {
+		return fv
+	}
+
+	return val
+}
+
 func splitPair(item string) (name string, value interface{}) {
 	pair := strings.SplitN(item, "=", 2)
 	if len(pair) == 1 {
 		return pair[0], true
 	}
-	return pair[0], pair[1]
+	return pair[0], typedVal(pair[1])
 }
 
 // locateChartPath looks for a chart directory in known places, and returns either the full path or an error.
