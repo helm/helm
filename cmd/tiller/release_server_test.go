@@ -85,12 +85,12 @@ func chartStub() *chart.Chart {
 		},
 		// This adds basic templates, partials, and hooks.
 		Templates: []*chart.Template{
-			{Name: "hello", Data: []byte("hello: world")},
-			{Name: "goodbye", Data: []byte("goodbye: world")},
-			{Name: "empty", Data: []byte("")},
-			{Name: "with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-			{Name: "partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
-			{Name: "hooks", Data: []byte(manifestWithHook)},
+			{Name: "templates/hello", Data: []byte("hello: world")},
+			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
+			{Name: "templates/empty", Data: []byte("")},
+			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 		},
 	}
 }
@@ -212,8 +212,8 @@ func TestInstallRelease(t *testing.T) {
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "hooks", Data: []byte(manifestWithHook)},
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 			},
 		},
 	}
@@ -257,7 +257,7 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 }
@@ -272,9 +272,9 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "hooks", Data: []byte(manifestWithHook)},
-				{Name: "NOTES.txt", Data: []byte(notesText)},
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+				{Name: "templates/NOTES.txt", Data: []byte(notesText)},
 			},
 		},
 	}
@@ -322,7 +322,7 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 }
@@ -337,9 +337,9 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "hooks", Data: []byte(manifestWithHook)},
-				{Name: "NOTES.txt", Data: []byte(notesText + " {{.Release.Name}}")},
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+				{Name: "templates/NOTES.txt", Data: []byte(notesText + " {{.Release.Name}}")},
 			},
 		},
 	}
@@ -388,7 +388,7 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 }
@@ -403,17 +403,17 @@ func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "hooks", Data: []byte(manifestWithHook)},
-				{Name: "NOTES.txt", Data: []byte(notesText)},
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+				{Name: "templates/NOTES.txt", Data: []byte(notesText)},
 			},
 			Dependencies: []*chart.Chart{
 				{
 					Metadata: &chart.Metadata{Name: "hello"},
 					Templates: []*chart.Template{
-						{Name: "hello", Data: []byte("hello: world")},
-						{Name: "hooks", Data: []byte(manifestWithHook)},
-						{Name: "NOTES.txt", Data: []byte(notesText + " child")},
+						{Name: "templates/hello", Data: []byte("hello: world")},
+						{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+						{Name: "templates/NOTES.txt", Data: []byte(notesText + " child")},
 					},
 				},
 			},
@@ -456,11 +456,11 @@ func TestInstallReleaseDryRun(t *testing.T) {
 		t.Errorf("Expected release name.")
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/hello\nhello: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/goodbye\ngoodbye: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/goodbye\ngoodbye: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 
@@ -569,8 +569,8 @@ func TestUpdateRelease(t *testing.T) {
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "hooks", Data: []byte(manifestWithUpgradeHooks)},
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
 		},
 	}
@@ -625,7 +625,7 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(updated.Manifest, "---\n# Source: hello/hello\nhello: world") {
+	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
@@ -647,7 +647,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
-				{Name: "something", Data: []byte("hello: world")},
+				{Name: "templates/something", Data: []byte("hello: world")},
 			},
 		},
 	}
@@ -715,8 +715,8 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
 			Templates: []*chart.Template{
-				{Name: "hello", Data: []byte("hello: world")},
-				{Name: "hooks", Data: []byte(manifestWithUpgradeHooks)},
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
 		},
 	}

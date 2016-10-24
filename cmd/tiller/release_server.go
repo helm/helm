@@ -680,7 +680,7 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	for k, v := range files {
 		if strings.HasSuffix(k, notesFileSuffix) {
 			// Only apply the notes if it belongs to the parent chart
-			if k == filepath.Join(ch.Metadata.Name, notesFileSuffix) {
+			if k == filepath.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
 				notes = v
 			}
 			delete(files, k)

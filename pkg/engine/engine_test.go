@@ -77,9 +77,9 @@ func TestRender(t *testing.T) {
 			Version: "1.2.3",
 		},
 		Templates: []*chart.Template{
-			{Name: "test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
-			{Name: "test2", Data: []byte("{{.global.callme | lower }}")},
-			{Name: "test3", Data: []byte("{{.noValue}}")},
+			{Name: "templates/test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
+			{Name: "templates/test2", Data: []byte("{{.global.callme | lower }}")},
+			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
 		},
 		Values: &chart.Config{
 			Raw: "outer: DEFAULT\ninner: DEFAULT",
@@ -105,16 +105,16 @@ global:
 	}
 
 	expect := "Spouter Inn"
-	if out["moby/test1"] != expect {
+	if out["moby/templates/test1"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test1"])
 	}
 
 	expect = "ishmael"
-	if out["moby/test2"] != expect {
+	if out["moby/templates/test2"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test2"])
 	}
 	expect = ""
-	if out["moby/test3"] != expect {
+	if out["moby/templates/test3"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["test3"])
 	}
 
@@ -186,20 +186,20 @@ func TestAllTemplates(t *testing.T) {
 	ch1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "ch1"},
 		Templates: []*chart.Template{
-			{Name: "foo", Data: []byte("foo")},
-			{Name: "bar", Data: []byte("bar")},
+			{Name: "templates/foo", Data: []byte("foo")},
+			{Name: "templates/bar", Data: []byte("bar")},
 		},
 		Dependencies: []*chart.Chart{
 			{
 				Metadata: &chart.Metadata{Name: "laboratory mice"},
 				Templates: []*chart.Template{
-					{Name: "pinky", Data: []byte("pinky")},
-					{Name: "brain", Data: []byte("brain")},
+					{Name: "templates/pinky", Data: []byte("pinky")},
+					{Name: "templates/brain", Data: []byte("brain")},
 				},
 				Dependencies: []*chart.Chart{{
 					Metadata: &chart.Metadata{Name: "same thing we do every night"},
 					Templates: []*chart.Template{
-						{Name: "innermost", Data: []byte("innermost")},
+						{Name: "templates/innermost", Data: []byte("innermost")},
 					}},
 				},
 			},
@@ -220,13 +220,13 @@ func TestRenderDependency(t *testing.T) {
 	ch := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "outerchart"},
 		Templates: []*chart.Template{
-			{Name: "outer", Data: []byte(toptpl)},
+			{Name: "templates/outer", Data: []byte(toptpl)},
 		},
 		Dependencies: []*chart.Chart{
 			{
 				Metadata: &chart.Metadata{Name: "innerchart"},
 				Templates: []*chart.Template{
-					{Name: "inner", Data: []byte(deptpl)},
+					{Name: "templates/inner", Data: []byte(deptpl)},
 				},
 			},
 		},
@@ -243,7 +243,7 @@ func TestRenderDependency(t *testing.T) {
 	}
 
 	expect := "Hello World"
-	if out["outerchart/outer"] != expect {
+	if out["outerchart/templates/outer"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["outer"])
 	}
 
@@ -346,8 +346,8 @@ func TestRenderBuiltinValues(t *testing.T) {
 	inner := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "Latium"},
 		Templates: []*chart.Template{
-			{Name: "Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
-			{Name: "From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.Get "book/title.txt"}}`)},
+			{Name: "templates/Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+			{Name: "templates/From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.Get "book/title.txt"}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
 		Dependencies: []*chart.Chart{},
@@ -360,7 +360,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 	outer := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "Troy"},
 		Templates: []*chart.Template{
-			{Name: "Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+			{Name: "templates/Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
 		Dependencies: []*chart.Chart{inner},
@@ -382,9 +382,9 @@ func TestRenderBuiltinValues(t *testing.T) {
 	}
 
 	expects := map[string]string{
-		"Troy/charts/Latium/Lavinia": "Troy/charts/Latium/LaviniaLatiumAeneid",
-		"Troy/Aeneas":                "Troy/AeneasTroyAeneid",
-		"Troy/charts/Latium/From":    "Virgil Aeneid",
+		"Troy/charts/Latium/templates/Lavinia": "Troy/charts/Latium/templates/LaviniaLatiumAeneid",
+		"Troy/templates/Aeneas":                "Troy/templates/AeneasTroyAeneid",
+		"Troy/charts/Latium/templates/From":    "Virgil Aeneid",
 	}
 	for file, expect := range expects {
 		if out[file] != expect {
@@ -398,8 +398,8 @@ func TestAlterFuncMap(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "conrad"},
 		Templates: []*chart.Template{
-			{Name: "quote", Data: []byte(`{{include "conrad/_partial" . | indent 2}} dead.`)},
-			{Name: "_partial", Data: []byte(`{{.Release.Name}} - he`)},
+			{Name: "templates/quote", Data: []byte(`{{include "conrad/templates/_partial" . | indent 2}} dead.`)},
+			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}} - he`)},
 		},
 		Values:       &chart.Config{Raw: ``},
 		Dependencies: []*chart.Chart{},
@@ -419,7 +419,7 @@ func TestAlterFuncMap(t *testing.T) {
 	}
 
 	expect := "  Mistah Kurtz - he dead."
-	if got := out["conrad/quote"]; got != expect {
+	if got := out["conrad/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 }
