@@ -30,8 +30,10 @@ import (
 )
 
 type versionCmd struct {
-	out    io.Writer
-	client helm.Interface
+	out        io.Writer
+	client     helm.Interface
+	clientOnly bool
+	serverOnly bool
 }
 
 func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -41,23 +43,39 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "version",
-		Short:             "print the client/server version information",
-		PersistentPreRunE: setupConnection,
+		Use:   "version",
+		Short: "print the client/server version information",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !version.clientOnly {
+				// We do this manually instead of in PreRun because we only
+				// need a tunnel if server version is requested.
+				setupConnection(cmd, args)
+			}
 			version.client = ensureHelmClient(version.client)
 			return version.run()
 		},
 	}
+	f := cmd.Flags()
+	f.BoolVarP(&version.clientOnly, "client-only", "c", false, "if set does not query Tiller version")
+	f.BoolVarP(&version.serverOnly, "server-only", "s", false, "if set does not query Helm client version")
 
 	return cmd
 }
 
 func (v *versionCmd) run() error {
-	// Regardless of whether we can talk to server or not, just print the client
-	// version.
-	cv := version.GetVersionProto()
-	fmt.Fprintf(v.out, "Client: %#v\n", cv)
+
+	if v.clientOnly && v.serverOnly {
+		return errors.New("cannot set both client-only and server-only")
+	}
+
+	if !v.serverOnly {
+		cv := version.GetVersionProto()
+		fmt.Fprintf(v.out, "Client: %#v\n", cv)
+	}
+
+	if v.clientOnly {
+		return nil
+	}
 
 	resp, err := v.client.GetVersion()
 	if err != nil {
