@@ -28,11 +28,16 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-const serveDesc = `This command starts a local chart repository server that serves charts from a local directory.`
+const serveDesc = `
+This command starts a local chart repository server that serves charts from a local directory.
+
+The new server will provide HTTP access to a repository. By default, it will
+scan all of the charts in '$HELM_HOME/repository/local' and serve those over
+the a local IPv4 TCP port (default '127.0.0.1:8879').
+`
 
 type serveCmd struct {
 	out      io.Writer
-	home     helmpath.Home
 	address  string
 	repoPath string
 }
@@ -44,7 +49,6 @@ func newServeCmd(out io.Writer) *cobra.Command {
 		Short: "start a local http web server",
 		Long:  serveDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			srv.home = helmpath.Home(homePath())
 			return srv.run()
 		},
 	}
@@ -62,6 +66,11 @@ func (s *serveCmd) run() error {
 		return err
 	}
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
+		return err
+	}
+
+	fmt.Fprintln(s.out, "Regenerating index. This may take a moment.")
+	if err := index(repoPath, "http://"+s.address, ""); err != nil {
 		return err
 	}
 
