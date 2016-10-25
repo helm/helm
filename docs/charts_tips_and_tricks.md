@@ -46,7 +46,7 @@ they're blocks or template partials. And often, it's cleaner to keep
 these in their own files.
 
 In the `templates/` directory, any file that begins with an
-underscore(`_`) is not expected to ouput a Kubernetes manifest file. So
+underscore(`_`) is not expected to output a Kubernetes manifest file. So
 by convention, helper templates and partials are placed in a
 `_helpers.tpl` file.
 

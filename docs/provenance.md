@@ -1,7 +1,7 @@
 # Helm Provenance and Integrity
 
 Helm has provenance tools which help chart users verify the integrity and origin
-of a package. Using industry-standard tools based on PKI, GnuPG, and well-resepected
+of a package. Using industry-standard tools based on PKI, GnuPG, and well-respected
 package managers, Helm can generate and verify signature files.
 
 **Note:**

@@ -29,7 +29,7 @@ To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 
 - Helm and Tiller are known to run on Mac OSX and most Linuxes, including
   Alpine.
-- Tiller must have access to a Kubernets cluster. It learns about the
+- Tiller must have access to a Kubernetes cluster. It learns about the
   cluster by examining the Kube config files that `kubectl` uses.
 
 ## gRPC and Protobuf

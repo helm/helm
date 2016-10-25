@@ -29,7 +29,7 @@ The following hooks are defined:
   resources have been deleted.
 - pre-upgrade: Executes on an upgrade request after templates are
   rendered, but before any resources are loaded into Kubernetes (e.g.
-  before a kuberntes apply operation).
+  before a Kubernetes apply operation).
 - post-upgrade: Executes on an upgrade after all resources have been
   upgraded.
 - pre-rollback: Executes on a rollback request after templates are
@@ -91,7 +91,7 @@ or `post-delete` hook.
 
 ## Writing a Hook
 
-Hooks are just Kubernetes manfiest files with special annotations in the
+Hooks are just Kubernetes manifest files with special annotations in the
 `metadata` section. Because they are template files, you can use all of
 the normal template features, including reading `.Values`, `.Release`,
 and `.Template`.
@@ -145,7 +145,7 @@ One resource can implement multiple hooks:
 
 Similarly, there is no limit to the number of different resources that
 may implement a given hook. For example, one could declare both a secret
-as a config map as a pre-install hook. It is important to keep in mind,
+and a config map as a pre-install hook. It is important to keep in mind,
 though, that there are no ordering guarantees about hooks.
 
 When subcharts declare hooks, those are also evaluated. There is no way
