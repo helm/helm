@@ -27,10 +27,13 @@ This section describes a potential workflow for using provenance data effectivel
 
 Prerequisites:
 
-- A valid, passphrase-less PGP keypair in a binary (not ASCII-armored) format
+- A valid PGP keypair in a binary (not ASCII-armored) format
 - The `helm` command line tool
 - GnuPG command line tools (optional)
 - Keybase command line tools (optional)
+
+**NOTE:** If your PGP private key has a passphrase, you will be prompted to enter
+that passphrase for any commands that support the `--sign` option.
 
 Creating a new chart is the same as before:
 

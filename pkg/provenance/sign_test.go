@@ -32,12 +32,17 @@ const (
 	// phrase. Use `gpg --export-secret-keys helm-test` to export the secret.
 	testKeyfile = "testdata/helm-test-key.secret"
 
+	// testPasswordKeyFile is a keyfile with a password.
+	testPasswordKeyfile = "testdata/helm-password-key.secret"
+
 	// testPubfile is the public key file.
 	// Use `gpg --export helm-test` to export the public key.
 	testPubfile = "testdata/helm-test-key.pub"
 
 	// Generated name for the PGP key in testKeyFile.
 	testKeyName = `Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>`
+
+	testPasswordKeyName = `password key (fake) <fake@helm.sh>`
 
 	testChartfile = "testdata/hashtest-1.2.3.tgz"
 
@@ -174,6 +179,36 @@ func TestDigestFile(t *testing.T) {
 
 	if !strings.Contains(sig, hash) {
 		t.Errorf("Expected %s to be in %s", hash, sig)
+	}
+}
+
+func TestDecryptKey(t *testing.T) {
+	k, err := NewFromKeyring(testPasswordKeyfile, testPasswordKeyName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !k.Entity.PrivateKey.Encrypted {
+		t.Fatal("Key is not encrypted")
+	}
+
+	// We give this a simple callback that returns the password.
+	if err := k.DecryptKey(func(s string) ([]byte, error) {
+		return []byte("secret"), nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-read the key (since we already unlocked it)
+	k, err = NewFromKeyring(testPasswordKeyfile, testPasswordKeyName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Now we give it a bogus password.
+	if err := k.DecryptKey(func(s string) ([]byte, error) {
+		return []byte("secrets_and_lies"), nil
+	}); err == nil {
+		t.Fatal("Expected an error when giving a bogus passphrase")
 	}
 }
 

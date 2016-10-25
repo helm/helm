@@ -144,8 +144,53 @@ func NewFromKeyring(keyringfile, id string) (*Signatory, error) {
 	if vague {
 		return s, fmt.Errorf("more than one key contain the id %q", id)
 	}
+
 	s.Entity = candidate
 	return s, nil
+}
+
+// PassphraseFetcher returns a passphrase for decrypting keys.
+//
+// This is used as a callback to read a passphrase from some other location. The
+// given name is the Name field on the key, typically of the form:
+//
+//	USER_NAME (COMMENT) <EMAIL>
+type PassphraseFetcher func(name string) ([]byte, error)
+
+// DecryptKey decrypts a private key in the Signatory.
+//
+// If the key is not encrypted, this will return without error.
+//
+// If the key does not exist, this will return an error.
+//
+// If the key exists, but cannot be unlocked with the passphrase returned by
+// the PassphraseFetcher, this will return an error.
+//
+// If the key is successfully unlocked, it will return nil.
+func (s *Signatory) DecryptKey(fn PassphraseFetcher) error {
+	if s.Entity == nil || s.Entity.PrivateKey == nil {
+		return errors.New("private key not found")
+	}
+
+	// Nothing else to do if key is not encrypted.
+	if !s.Entity.PrivateKey.Encrypted {
+		return nil
+	}
+
+	fname := "Unknown"
+	for i := range s.Entity.Identities {
+		if i != "" {
+			fname = i
+			break
+		}
+	}
+
+	p, err := fn(fname)
+	if err != nil {
+		return err
+	}
+
+	return s.Entity.PrivateKey.Decrypt(p)
 }
 
 // ClearSign signs a chart with the given key.
