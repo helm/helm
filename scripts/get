@@ -1,0 +1,145 @@
+#!/bin/bash
+
+# Copyright 2016 The Kubernetes Authors All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# The install script is based off of the MIT-licensed script from glide,
+# the package manager for Go: https://github.com/Masterminds/glide.sh/blob/master/get
+
+PROJECT_NAME="helm"
+
+: ${HELM_INSTALL_DIR:="/usr/local/bin"}
+
+# initArch discovers the architecture for this system.
+initArch() {
+  ARCH=$(uname -m)
+  case $ARCH in
+    armv5*) ARCH="armv5";;
+    armv6*) ARCH="armv6";;
+    armv7*) ARCH="armv7";;
+    aarch64) ARCH="arm64";;
+    x86) ARCH="386";;
+    x86_64) ARCH="amd64";;
+    i686) ARCH="386";;
+    i386) ARCH="386";;
+  esac
+}
+
+# initOS discovers the operating system for this system.
+initOS() {
+  OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
+
+  case "$OS" in
+    # Minimalist GNU for Windows
+    mingw*) OS='windows';;
+  esac
+}
+
+# verifySupported checks that the os/arch combination is supported for
+# binary builds.
+verifySupported() {
+  local supported="linux-amd64\ndarwin-amd64\nlinux-386"
+  if ! echo "${supported}" | grep -q "${OS}-${ARCH}"; then
+    echo "No prebuild binary for ${OS}-${ARCH}."
+    echo "To build from source, go to https://github.com/kubernetes/helm"
+    exit 1
+  fi
+
+  if ! type "curl" > /dev/null && ! type "wget" > /dev/null; then 
+    echo "Either curl or wget is required"
+    exit 1
+  fi
+}
+
+# downloadFile downloads the latest binary package and also the checksum
+# for that binary.
+downloadFile() {
+  # Use the GitHub API to find the latest version for this project.
+  local latest_url="https://api.github.com/repos/kubernetes/helm/releases/latest"
+  if type "curl" > /dev/null; then
+    TAG=$(curl -s $latest_url | awk '/\"tag_name\":/{gsub( /[,\"]/,"", $2); print $2}')
+  elif type "wget" > /dev/null; then
+    TAG=$(wget -q -O - $latest_url | awk '/\"tag_name\":/{gsub( /[,\"]/,"", $2); print $2}')
+  fi
+
+  HELM_DIST="helm-$TAG-$OS-$ARCH.tar.gz"
+  DOWNLOAD_URL="http://storage.googleapis.com/kubernetes-helm/$HELM_DIST"
+  CHECKSUM_URL="$DOWNLOAD_URL.sha256"
+  HELM_TMP_FILE="/tmp/$HELM_DIST"
+  HELM_SUM_FILE="/tmp/$HELM_DIST.sha256"
+  echo "Downloading $DOWNLOAD_URL"
+  if type "curl" > /dev/null; then
+    curl -Ls "$CHECKSUM_URL" -o "$HELM_SUM_FILE"
+  elif type "wget" > /dev/null; then
+    wget -q -O "$HELM_SUM_FILE" "$CHECKSUM_URL"
+  fi
+  if type "curl" > /dev/null; then
+    curl -L "$DOWNLOAD_URL" -o "$HELM_TMP_FILE"
+  elif type "wget" > /dev/null; then
+    wget -q -O "$HELM_TMP_FILE" "$DOWNLOAD_URL"
+  fi
+}
+
+# installFile verifies the SHA256 for the file, then unpacks and
+# installs it.
+installFile() {
+  HELM_TMP="/tmp/$PROJECT_NAME"
+  local sum=$(shasum -a 256 ${HELM_TMP_FILE} | awk '{print $1}')
+  local expected_sum=$(cat ${HELM_SUM_FILE})
+  if [ "$sum" != "$expected_sum" ]; then
+    echo "SHA sum of $HELM_TMP does not match. Aborting."
+    exit 1
+  fi
+
+  mkdir -p "$HELM_TMP"
+  tar xf "$HELM_TMP_FILE" -C "$HELM_TMP"
+  HELM_TMP_BIN="$HELM_TMP/$OS-$ARCH/$PROJECT_NAME"
+  echo "Preparing to install into ${HELM_INSTALL_DIR} (sudo)"
+  sudo cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR"
+}
+
+# fail_trap is executed if an error occurs.
+fail_trap() {
+  result=$?
+  if [ "$result" != "0" ]; then
+    echo "Failed to install $PROJECT_NAME"
+    echo "\tFor support, go to https://github.com/kubernetes/helm."
+  fi
+  exit $result
+}
+
+# testVersion tests the installed client to make sure it is working.
+testVersion() {
+  set +e
+  echo "$PROJECT_NAME installed into $HELM_INSTALL_DIR/$PROJECT_NAME"
+  HELM="$(which $PROJECT_NAME)"
+  if [ "$?" = "1" ]; then
+    echo "$PROJECT_NAME not found. Is $HELM_INSTALL_DIR on your "'$PATH?'
+    exit 1
+  fi
+  set -e
+  echo "Run '$PROJECT_NAME init' to configure $PROJECT_NAME."
+}
+
+# Execution
+
+#Stop execution on any error
+trap "fail_trap" EXIT
+set -e
+initArch
+initOS
+verifySupported
+downloadFile
+installFile
+testVersion
