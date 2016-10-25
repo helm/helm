@@ -548,7 +548,7 @@ func TestInstallReleaseReuseName(t *testing.T) {
 		t.Errorf("expected %q, got %q", rel.Name, res.Release.Name)
 	}
 
-	getreq := &services.GetReleaseStatusRequest{Name: rel.Name, Version: 1}
+	getreq := &services.GetReleaseStatusRequest{Name: rel.Name, Version: 0}
 	getres, err := rs.GetReleaseStatus(c, getreq)
 	if err != nil {
 		t.Errorf("Failed to retrieve release: %s", err)
