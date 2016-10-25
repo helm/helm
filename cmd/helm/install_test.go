@@ -100,7 +100,7 @@ func TestInstall(t *testing.T) {
 }
 
 func TestValues(t *testing.T) {
-	args := "sailor=sinbad,good,port.source=baghdad,port.destination=basrah"
+	args := "sailor=sinbad,good,port.source=baghdad,port.destination=basrah,success=True"
 	vobj := new(values)
 	vobj.Set(args)
 
@@ -111,6 +111,10 @@ func TestValues(t *testing.T) {
 	vals := vobj.pairs
 	if fmt.Sprint(vals["good"]) != "true" {
 		t.Errorf("Expected good to be true. Got %v", vals["good"])
+	}
+
+	if !vals["success"].(bool) {
+		t.Errorf("Expected boolean true. Got %T, %v", vals["success"], vals["success"])
 	}
 
 	port := vals["port"].(map[string]interface{})
@@ -127,6 +131,7 @@ port:
   destination: basrah
   source: baghdad
 sailor: sinbad
+success: true
 `
 	out, err := vobj.yaml()
 	if err != nil {
@@ -147,6 +152,7 @@ port:
   destination: basrah
   source: baghdad
 sailor: pisti
+success: true
 `
 	newOut, err := vobj.yaml()
 	if err != nil {
