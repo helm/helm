@@ -138,6 +138,12 @@ func (m *Manager) Update() error {
 		return err
 	}
 
+	// If the lock file hasn't changed, don't write a new one.
+	oldLock, err := chartutil.LoadRequirementsLock(c)
+	if err == nil && oldLock.Digest == lock.Digest {
+		return nil
+	}
+
 	// Finally, we need to write the lockfile.
 	return writeLock(m.ChartPath, lock)
 }
