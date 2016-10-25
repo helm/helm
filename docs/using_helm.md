@@ -38,7 +38,7 @@ _repositories_.
 
 When you first install Helm, it is preconfigured to talk to the official
 Kubernetes charts repository. This repository contains a number of
-carefully currated and maintained charts. This chart repository is named
+carefully curated and maintained charts. This chart repository is named
 `stable` by default.
 
 You can see which charts are available by running `helm search`:

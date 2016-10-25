@@ -118,7 +118,7 @@ A release can be upgraded to a newer chart or configuration. But since
 release history is stored, a release can also be _rolled back_ to a
 previous release number. This is done with the `helm rollback` command.
 
-Importantly, a rolled back release will recieve a new release number.
+Importantly, a rolled back release will receive a new release number.
 
 Operation | Release Number
 ----------|---------------
@@ -148,7 +148,7 @@ information on where each chart can be downloaded from. (Many chart
 repositories serve the charts as well as the `index.yaml` file.)
 
 A Helm client can point to zero or more chart repositories. By default,
-Helm clients point the the `stable` official Kubernetes chart
+Helm clients point to the `stable` official Kubernetes chart
 repository.
 
 ## Values (Values Files, values.yaml)

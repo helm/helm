@@ -199,7 +199,7 @@ charts/
   mysql-3.2.1.tgz
 ```
 
-Manging charts with `requirements.yaml` is a good way to easily keep
+Managing charts with `requirements.yaml` is a good way to easily keep
 charts updated, and also share requirements information throughout a
 team.
 

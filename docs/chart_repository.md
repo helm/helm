@@ -1,6 +1,6 @@
 # The Chart Repository Guide
 
-## Prerequistes
+## Prerequisites
 * Go through the [Quickstart](quickstart.md) Guide
 * Read through the [Charts](charts.md) document
 
@@ -80,7 +80,7 @@ Congratulations, now you have an empty GCS bucket ready to serve charts!
 In a similar way you can create charts repository using Github Pages.
 
 The first step will be to **create your gh-pages branch**.
-You can do that localy as.
+You can do that locally as.
 
 ```
 $ git checkout -b [name_of_your_new_branch]
