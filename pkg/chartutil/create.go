@@ -232,25 +232,25 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 	// Write out deployment.yaml
 	val = []byte(defaultDeployment)
 	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, DeploymentName), val, 0644); err != nil {
-			return cdir, err
+		return cdir, err
 	}
 
 	// Write out service.yaml
 	val = []byte(defaultService)
 	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, ServiceName), val, 0644); err != nil {
-			return cdir, err
+		return cdir, err
 	}
 
 	// Write out NOTES.txt
 	val = []byte(defaultNotes)
 	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, NotesName), val, 0644); err != nil {
-			return cdir, err
+		return cdir, err
 	}
 
 	// Write out _helpers.tpl
 	val = []byte(defaultHelpers)
 	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, HelpersName), val, 0644); err != nil {
-			return cdir, err
+		return cdir, err
 	}
 	return cdir, nil
 }
