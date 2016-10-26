@@ -23,8 +23,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
@@ -145,6 +147,10 @@ func (p *packageCmd) clearsign(filename string) error {
 		return err
 	}
 
+	if err := signer.DecryptKey(promptUser); err != nil {
+		return err
+	}
+
 	sig, err := signer.ClearSign(filename)
 	if err != nil {
 		return err
@@ -155,4 +161,12 @@ func (p *packageCmd) clearsign(filename string) error {
 	}
 
 	return ioutil.WriteFile(filename+".prov", []byte(sig), 0755)
+}
+
+// promptUser implements provenance.PassphraseFetcher
+func promptUser(name string) ([]byte, error) {
+	fmt.Printf("Password for key %q >  ", name)
+	pw, err := terminal.ReadPassword(int(syscall.Stdin))
+	fmt.Println()
+	return []byte(pw), err
 }
