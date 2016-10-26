@@ -249,8 +249,5 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 
 	// Write out _helpers.tpl
 	val = []byte(defaultHelpers)
-	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, HelpersName), val, 0644); err != nil {
-		return cdir, err
-	}
-	return cdir, nil
+	return cdir, ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, HelpersName), val, 0644)
 }
