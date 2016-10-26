@@ -59,6 +59,14 @@ service:
   type: ClusterIP
   externalPort: 80
   internalPort: 80
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
 `
 
 const defaultIgnore = `# Patterns to ignore when building packages.
@@ -103,6 +111,16 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
         - containerPort: {{ .Values.service.internalPort }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
 `
 
 const defaultService = `apiVersion: v1
