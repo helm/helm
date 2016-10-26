@@ -25,10 +25,12 @@ can be checked by multiple commands, notable `helm install --verify`.
 
 This section describes a potential workflow for using provenance data effectively.
 
-WHAT YOU WILL NEED:
+Prerequisites:
 
 - A valid, passphrase-less PGP keypair in a binary (not ASCII-armored) format
-- helm
+- The `helm` command line tool
+- GnuPG command line tools (optional)
+- Keybase command line tools (optional)
 
 Creating a new chart is the same as before:
 
@@ -44,7 +46,8 @@ the name under which the signing key is known and the keyring containing the cor
 $ helm package --sign --key 'helm signing key' --keyring path/to/keyring.secret mychart
 ```
 
-Tip: for GnuPG users, your secret keyring is in `~/.gnupg/secring.gpg`.
+**TIP:** for GnuPG users, your secret keyring is in `~/.gnupg/secring.gpg`. You can
+use `gpg --list-secret-keys` to list the keys you have.
 
 At this point, you should see both `mychart-0.1.0.tgz` and `mychart-0.1.0.tgz.prov`.
 Both files should eventually be uploaded to your desired chart repository.
@@ -73,6 +76,79 @@ keyring with `--keyring PATH` as in the `helm package` example.
 
 If verification fails, the install will be aborted before the chart is even pushed
 up to Tiller.
+
+### Using Keybase.io credentials
+
+The [Keybase.io](https://keybase.io) service makes it easy to establish a chain of
+trust for a cryptographic identity. Keybase credentials can be used to sign charts.
+
+Prerequisites:
+
+- A configured Keybase.io account
+- GnuPG installed locally
+- The `keybase` CLI installed locally
+
+#### Signing packages
+
+The first step is to import your keybase keys into your local GnuPG keyring:
+
+```
+$ keybase pgp export -s | gpg --import
+```
+
+This will convert your Keybase key into the OpenPGP format, and then import it
+locally into your `~/.gnupg/secring.gpg` file.
+
+You can double check by running `gpg --list-secret-keys`.
+
+```
+$ gpg --list-secret-keys                                                                                                       1 ↵
+/Users/mattbutcher/.gnupg/secring.gpg
+-------------------------------------
+sec   2048R/1FC18762 2016-07-25
+uid                  technosophos (keybase.io/technosophos) <technosophos@keybase.io>
+ssb   2048R/D125E546 2016-07-25
+```
+
+Note that your secret key will have an identifier string:
+
+```
+technosophos (keybase.io/technosophos) <technosophos@keybase.io>
+```
+
+That is the full name of your key.
+
+Next, you can package and sign a chart with `helm package`. Make sure you use at
+least part of that name string in `--key`.
+
+```
+$ helm package --sign --key technosophos --keyring ~/.gnupg/secring.gpg mychart
+```
+
+As a result, the `package` command should produce both a `.tgz` file and a `.tgz.prov`
+file.
+
+#### Verifying packages
+
+You can also use a similar technique to verify a chart signed by someone else's
+Keybase key. Say you want to verify a package signed by `keybase.io/technosophos`.
+To do this, use the `keybase` tool:
+
+```
+$ keybase follow technosophos
+$ keybase pgp pull
+```
+
+The first command above tracks the user `technosophos`. Next `keybase pgp pull`
+downloads the OpenPGP keys of all of the accounts you follow, placing them in
+your GnuPG keyring (`~/.gnupg/pubring.gpg`).
+
+At this point, you can now use `helm verify` or any of the commands with a `--verify`
+flag:
+
+```
+$ helm verify somechart-1.2.3.tgz
+```
 
 ### Reasons a chart may not verify
 
