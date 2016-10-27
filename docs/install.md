@@ -34,6 +34,22 @@ brew cask install helm
 (Note: There is also a formula for emacs-helm, which is a different
 project.)
 
+## From Script
+
+Helm now has an installer script that will automatically grab the latest version
+of the Helm client and [install it locally](https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get).
+
+You can fetch that script, and then execute it locally. It's well documented so
+that you can read through it and understand what it is doing before you run it.
+
+```
+$ curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+```
+
+Yes, you can `curl ...| bash` that if you want to live on the edge.
+
 ### From Canary Builds
 
 "Canary" builds are versions of the Helm software that are built from
