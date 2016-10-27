@@ -213,13 +213,21 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	}
 
 	var rel *release.Release
-	var err error
 
 	if req.Version <= 0 {
-		if rel, err = s.env.Releases.Deployed(req.Name); err != nil {
+		h, err := s.env.Releases.History(req.Name)
+		if err != nil {
 			return nil, fmt.Errorf("getting deployed release '%s': %s", req.Name, err)
 		}
+		if len(h) < 1 {
+			return nil, errMissingRelease
+		}
+
+		relutil.Reverse(h, relutil.SortByRevision)
+		rel = h[0]
+
 	} else {
+		var err error
 		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
 			return nil, fmt.Errorf("getting release '%s' (v%d): %s", req.Name, req.Version, err)
 		}
@@ -503,7 +511,6 @@ func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 	}
 
 	// Store a new release object with previous release's configuration
-	// Store a new release object with previous release's configuration
 	target := &release.Release{
 		Name:      req.Name,
 		Namespace: crls.Namespace,
@@ -536,9 +543,14 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
 		}
 
-		if rel, err := s.env.Releases.Get(start, 1); err == driver.ErrReleaseNotFound {
+		h, err := s.env.Releases.History(start)
+		if err != nil || len(h) < 1 {
 			return start, nil
-		} else if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
+		}
+		relutil.Reverse(h, relutil.SortByRevision)
+		rel := h[0]
+
+		if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
 			// Allowe re-use of names if the previous release is marked deleted.
 			log.Printf("reusing name %q", start)
 			return start, nil
@@ -737,14 +749,42 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 		}
 	}
 
-	// regular manifests
-	kubeCli := s.env.KubeClient
-	b := bytes.NewBufferString(r.Manifest)
-	if err := kubeCli.Create(r.Namespace, b); err != nil {
-		log.Printf("warning: Release %q failed: %s", r.Name, err)
-		r.Info.Status.Code = release.Status_FAILED
-		s.recordRelease(r, req.ReuseName)
-		return res, fmt.Errorf("release %s failed: %s", r.Name, err)
+	switch h, err := s.env.Releases.History(req.Name); {
+	// if this is a replace operation, append to the release history
+	case req.ReuseName && err == nil && len(h) >= 1:
+		// get latest release revision
+		relutil.Reverse(h, relutil.SortByRevision)
+
+		// old release
+		old := h[0]
+
+		// update old release status
+		old.Info.Status.Code = release.Status_SUPERSEDED
+		s.recordRelease(old, true)
+
+		// update new release with next revision number
+		// so as to append to the old release's history
+		r.Version = old.Version + 1
+
+		if err := s.performKubeUpdate(old, r); err != nil {
+			log.Printf("warning: Release replace %q failed: %s", r.Name, err)
+			old.Info.Status.Code = release.Status_SUPERSEDED
+			r.Info.Status.Code = release.Status_FAILED
+			s.recordRelease(old, true)
+			s.recordRelease(r, false)
+			return res, err
+		}
+
+	default:
+		// nothing to replace, create as normal
+		// regular manifests
+		b := bytes.NewBufferString(r.Manifest)
+		if err := s.env.KubeClient.Create(r.Namespace, b); err != nil {
+			log.Printf("warning: Release %q failed: %s", r.Name, err)
+			r.Info.Status.Code = release.Status_FAILED
+			s.recordRelease(r, false)
+			return res, fmt.Errorf("release %s failed: %s", r.Name, err)
+		}
 	}
 
 	// post-install hooks
@@ -752,7 +792,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall); err != nil {
 			log.Printf("warning: Release %q failed post-install: %s", r.Name, err)
 			r.Info.Status.Code = release.Status_FAILED
-			s.recordRelease(r, req.ReuseName)
+			s.recordRelease(r, false)
 			return res, err
 		}
 	}
@@ -765,7 +805,8 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
 	r.Info.Status.Code = release.Status_DEPLOYED
-	s.recordRelease(r, req.ReuseName)
+	s.recordRelease(r, false)
+
 	return res, nil
 }
 
