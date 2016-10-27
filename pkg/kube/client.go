@@ -145,7 +145,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //
 // Namespace will set the namespaces
 func (c *Client) Update(namespace string, currentReader, targetReader io.Reader) error {
-	current := c.NewBuilder(includeThirdPartyAPIs).
+	current := c.NewBuilder(IncludeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
@@ -153,7 +153,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 		Flatten().
 		Do()
 
-	target := c.NewBuilder(includeThirdPartyAPIs).
+	target := c.NewBuilder(IncludeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
@@ -275,10 +275,16 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, watchUntilReady)
 }
 
-const includeThirdPartyAPIs = false
+// IncludeThirdPartyAPIs indicates whether to load "dynamic" APIs.
+//
+// This requires additional calls to the Kubernetes API server, and these calls
+// are not supported by all versions. Additionally, during testing, initializing
+// a client will still attempt to contact a live server. In these situations,
+// this flag may need to be disabled.
+var IncludeThirdPartyAPIs = true
 
 func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc) error {
-	r := c.NewBuilder(includeThirdPartyAPIs).
+	r := c.NewBuilder(IncludeThirdPartyAPIs).
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().

@@ -33,6 +33,12 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
+func init() {
+	// Disable 3rd party APIs because this requires a live Kube API server
+	// upon initialization.
+	IncludeThirdPartyAPIs = false
+}
+
 func TestUpdateResource(t *testing.T) {
 
 	tests := []struct {
