@@ -48,6 +48,7 @@ including installing pre-releases.
 
 - [Quick Start](docs/quickstart.md)
 - [Installing Helm](docs/install.md)
+  - [Kubernetes Distribution Notes](docs/kubernetes_distros.md)
 - [Using Helm](docs/using_helm.md)
 - [Developing Charts](docs/charts.md)
 	- [Chart Lifecycle Hooks](docs/charts_hooks.md)
