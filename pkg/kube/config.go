@@ -23,7 +23,7 @@ import (
 // GetConfig returns a kubernetes client config for a given context.
 func GetConfig(context string) clientcmd.ClientConfig {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	overrides := &clientcmd.ConfigOverrides{}
+	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
 	if context != "" {
 		overrides.CurrentContext = context
 	}
