@@ -101,6 +101,7 @@ func TestPerform(t *testing.T) {
 		}
 
 		c := New(nil)
+		c.IncludeThirdPartyAPIs = false
 		c.ClientForMapping = func(mapping *meta.RESTMapping) (resource.RESTClient, error) {
 			return &fake.RESTClient{}, nil
 		}
@@ -121,12 +122,15 @@ func TestPerform(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	if err := New(nil).Create("test", strings.NewReader(guestbookManifest)); err != nil {
+	c := New(nil)
+	c.IncludeThirdPartyAPIs = false
+	if err := c.Create("test", strings.NewReader(guestbookManifest)); err != nil {
 		t.Fatal(err)
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c := New(nil)
+	c = New(nil)
+	c.IncludeThirdPartyAPIs = false
 	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}
