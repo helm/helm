@@ -194,15 +194,15 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	for _, dep := range deps {
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
+		// Any failure to resolve/download a chart should fail:
+		// https://github.com/kubernetes/helm/issues/1439
 		churl, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
-			fmt.Fprintf(m.Out, "WARNING: %s (skipped)", err)
-			continue
+			return fmt.Errorf("could not find %s: %s", churl, err)
 		}
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
-			fmt.Fprintf(m.Out, "WARNING: Could not download %s: %s (skipped)", churl, err)
-			continue
+			return fmt.Errorf("could not download %s: %s", churl, err)
 		}
 	}
 	return nil
