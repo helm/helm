@@ -1,0 +1,129 @@
+# Installation: Frequently Asked Questions
+
+This section tracks some of the more frequently encountered issues with installing
+or getting started with Helm.
+
+**We'd love your help** making this document better. To add, correct, or remove
+information, [file an issue](https://github.com/kubernetes/helm/issues) or
+send us a pull request.
+
+## Downloading
+
+I want to know more about my downloading options.
+
+**Q: I can't get to GitHub releases of the newest Helm. Where are they?**
+
+A: We no longer use GitHub releases. Binaries are now stored in a
+[GCS public bucket](http://storage.googleapis.com/kubernetes-helm/).
+
+**Q: Why aren't there Debian/Fedora/... native packages of Helm?**
+
+We'd love to provide these or point you toward a trusted provider. If you're
+interested in helping, we'd love it. This is how the Homebrew formula was
+started.
+
+**Q: Why do you provide a `curl ...|bash` script?**
+
+A: There is a script in our repository (`scripts/get`) that can be executed as
+a `curl ..|bash` script. The transfers are all protected by HTTPS, and the script
+does some auditing of the packages it fetches. However, the script has all the
+usual dangers of any shell script.
+
+We provide it because it is useful, but we suggest that users carefully read the
+script first. What we'd really like, though, are better packaged releases of
+Helm.
+
+## Installing
+
+I'm trying to install Helm/Tiller, but something is not right.
+
+**Q: How do I put the Helm client files somewhere other than ~/.helm?**
+
+Set the `$HELM_HOME` environment variable, and then run `helm init`:
+
+```console
+export HELM_HOME=/some/path
+helm init --client-only
+```
+
+Note that if you have existing repositories, you will need to re-add them
+with `helm repo add...`.
+
+**Q: How do I configure Helm, but not install Tiller?**
+
+By default, `helm init` will ensure that the local `$HELM_HOME` is configured,
+and then install Tiller on your cluster. To locally configure, but not install
+Tiller, use `helm init --client-only`.
+
+**Q: How do I manually install Tiller on the cluster?**
+
+Tiller is installed as a Kubernetes `deployment`. You can get the manifest
+by running `helm init --dry-run --debug`, and then manually install it with
+`kubectl`. It is suggested that you do not remove or change the labels on that
+deployment, as they are sometimes used by supporting scripts and tools.
+
+
+## Getting Started
+
+I successfully installed Helm/Tiller but I can't use it.
+
+**Q: Trying to use Helm, I get the error "client transport was broken"**
+
+```
+E1014 02:26:32.885226   16143 portforward.go:329] an error occurred forwarding 37008 -> 44134: error forwarding port 44134 to pod tiller-deploy-2117266891-e4lev_kube-system, uid : unable to do port forwarding: socat not found.
+2016/10/14 02:26:32 transport: http2Client.notifyError got notified that the client transport was broken EOF.
+Error: transport is closing
+```
+
+A: This is usually a good indication that Kubernetes is not set up to allow port forwarding.
+
+Typically, the missing piece is `socat`. Here are a few resolved issues that may
+help you get started:
+
+- https://github.com/kubernetes/helm/issues/1371
+- https://github.com/kubernetes/helm/issues/966
+
+**Q: Trying to use Helm, I get the error "lookup XXXXX on 8.8.8.8:53: no such host"**
+
+```
+Error: Error forwarding ports: error upgrading connection: dial tcp: lookup kube-4gb-lon1-02 on 8.8.8.8:53: no such host
+```
+
+A: We have seen this issue with Ubuntu and Kubeadm. See this issue for more
+information: https://github.com/kubernetes/helm/issues/1455
+
+## Upgrading
+
+My Helm used to work, then I upgrade. Now it is broken.
+
+**Q: After upgrade, I get the error "Client version is incompatible". What's wrong?**
+
+Tiller and Helm have to negotiate a common version to make sure that they can safely
+communicate without breaking API assumptions. That error means that the version
+difference is too great to safely continue. Typically, you need to upgrade
+Tiller manually for this.
+
+The [Installation Guide](install.yaml) has definitive information about safely
+upgrading Helm and Tiller.
+
+The rules for version numbers are as follows:
+
+- Pre-release versions are incompatible with everything else. `Alpha.1` is incompatible with `Alpha.2`.
+- Patch revisions _are compatible_: 1.2.3 is compatible with 1.2.4
+- Minor revisions _are not compatible_: 1.2.0 is not compatible with 1.3.0,
+  though we may relax this constraint in the future.
+- Major revisions _are not compatible_: 1.0.0 is not compatible with 2.0.0.
+
+## Uninstalling
+
+I am trying to remove stuff.
+
+**Q: When I delete the Tiller deployment, how come all the releases are still there?**
+
+Releases are stored in ConfigMaps inside of the `kube-system` namespace. You will
+have to manually delete them to get rid of the record.
+
+**Q: I want to delete my local Helm. Where are all its files?**
+
+Along with the `helm` binary, Helm stores some files in `$HELM_HOME`, which is
+located by default in `~/.helm`.
