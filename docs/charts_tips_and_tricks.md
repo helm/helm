@@ -50,6 +50,35 @@ underscore(`_`) is not expected to output a Kubernetes manifest file. So
 by convention, helper templates and partials are placed in a
 `_helpers.tpl` file.
 
+## Complex Charts with Many Dependencies
+
+Many of the charts in the [official charts repository](https://github.com/kubernetes/charts)
+are "building blocks" for creating more advanced applications. But charts may be
+used to create instances of large-scale applications. In such cases, a single
+umbrella chart may have multiple subcharts, each of which functions as a piece
+of the whole.
+
+The current best practice for composing a complex application from discrete parts
+is to create a top-level umbrella chart that
+exposes the global configurations, and then use the `charts/` subdirectory to
+embed each of the components.
+
+Two strong design patterns are illustrated by these projects:
+
+**SAP's [OpenStack chart](https://github.com/sapcc/openstack-helm):** This chart
+installs a full OpenStack IaaS on Kubernetes. All of the charts are collected
+together in one GitHub repository.
+
+**Deis's [Workflow](https://github.com/deis/workflow/tree/master/charts/workflow):**
+This chart exposes the entire Deis PaaS system with one chart. But it's different
+from the SAP chart in that this master chart is built from each component, and
+each component is tracked in a different Git repository. Check out the
+`requirements.yaml` file to see how this chart is composed by their CI/CD
+pipeline.
+
+Both of these charts illustrate proven techniques for standing up complex environments
+using Helm.
+
 ## YAML is a Superset of JSON
 
 According to the YAML specification, YAML is a superset of JSON. That
