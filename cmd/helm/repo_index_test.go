@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -35,11 +36,11 @@ func TestRepoIndexCmd(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
-	if err := os.Link("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {
+	if err := linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {
 		t.Fatal(err)
 	}
 	comp2 := filepath.Join(dir, "compressedchart-0.2.0.tgz")
-	if err := os.Link("testdata/testcharts/compressedchart-0.2.0.tgz", comp2); err != nil {
+	if err := linkOrCopy("testdata/testcharts/compressedchart-0.2.0.tgz", comp2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -81,10 +82,10 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Add a new chart and a new version of an existing chart
-	if err := os.Link("testdata/testcharts/reqtest-0.1.0.tgz", filepath.Join(dir, "reqtest-0.1.0.tgz")); err != nil {
+	if err := linkOrCopy("testdata/testcharts/reqtest-0.1.0.tgz", filepath.Join(dir, "reqtest-0.1.0.tgz")); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Link("testdata/testcharts/compressedchart-0.3.0.tgz", filepath.Join(dir, "compressedchart-0.3.0.tgz")); err != nil {
+	if err := linkOrCopy("testdata/testcharts/compressedchart-0.3.0.tgz", filepath.Join(dir, "compressedchart-0.3.0.tgz")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -111,4 +112,30 @@ func TestRepoIndexCmd(t *testing.T) {
 	if vs[0].Version != expectedVersion {
 		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
 	}
+}
+
+func linkOrCopy(old, new string) error {
+	if err := os.Link(old, new); err != nil {
+		return copyFile(old, new)
+	}
+
+	return nil
+}
+
+func copyFile(dst, src string) error {
+	i, err := os.Open(dst)
+	if err != nil {
+		return err
+	}
+	defer i.Close()
+
+	o, err := os.Create(src)
+	if err != nil {
+		return err
+	}
+	defer o.Close()
+
+	_, err = io.Copy(o, i)
+
+	return err
 }
