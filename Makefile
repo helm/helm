@@ -84,6 +84,13 @@ test-style:
 protoc:
 	$(MAKE) -C _proto/ all
 
+.PHONY: docs
+docs: build
+	@mkdir -p docs/helm docs/man/man1
+	bin/helm docs --dir ./docs/helm
+	bin/helm docs --dir ./docs/man/man1 --type man
+	bin/helm docs --dir ./scripts --type bash
+
 .PHONY: clean
 clean:
 	@rm -rf $(BINDIR) ./rootfs/tiller ./_dist
