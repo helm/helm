@@ -115,6 +115,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newUpgradeCmd(nil, out),
 		newVerifyCmd(out),
 		newVersionCmd(nil, out),
+		newDocsCmd(out, cmd),
 		// Deprecated
 		rup,
 	)
