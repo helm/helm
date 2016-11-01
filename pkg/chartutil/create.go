@@ -114,11 +114,11 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 80
+            port: {{ .Values.service.internalPort }}
         readinessProbe:
           httpGet:
             path: /
-            port: 80
+            port: {{ .Values.service.internalPort }}
         resources:
 {{ toYaml .Values.resources | indent 12 }}
 `
