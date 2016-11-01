@@ -20,11 +20,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 
@@ -89,6 +92,9 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST")
 	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
+
+	// Tell gRPC not to log to console.
+	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 
 	rup := newRepoUpdateCmd(out)
 	rup.Deprecated = "use 'helm repo update'\n"
