@@ -152,8 +152,8 @@ const defaultNotes = `1. Get the application URL by running these commands:
   echo http://$SERVICE_IP:{{ .Values.Master.ServicePort }}
 {{- else if contains "ClusterIP"  .Values.service.type }}
   export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "fullname" . }}" -o jsonpath="{.items[0].metadata.name}")
-  echo http://127.0.0.1:{{ .Values.service.externalPort }}
-  kubectl port-forward $POD_NAME {{ .Values.service.externalPort }}:{{ .Values.service.externalPort }}
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl port-forward $POD_NAME 8080:{{ .Values.service.externalPort }}
 {{- end }}
 `
 
