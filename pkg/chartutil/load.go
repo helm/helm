@@ -84,14 +84,11 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 			continue
 		}
 
-		parts := strings.Split(hd.Name, "/")
-		n := strings.Join(parts[1:], "/")
-
 		if _, err := io.Copy(b, tr); err != nil {
 			return &chart.Chart{}, err
 		}
 
-		files = append(files, &afile{name: n, data: b.Bytes()})
+		files = append(files, &afile{name: hd.Name, data: b.Bytes()})
 		b.Reset()
 	}
 
@@ -99,6 +96,22 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 		return nil, errors.New("no files in chart archive")
 	}
 
+	// usually files in chart.tgz are inside a folder
+	// but lets accept tarballs where the Chart.yaml is in the root folder too
+	root := false
+	for _, f := range files {
+		if f.name == "Chart.yaml" {
+			root = true
+			fmt.Println("Warning: this chart file contains `Chart.yaml` in the root of the tgz file. Chart tgz files should include the Chart.yaml inside a child directory")
+			break
+		}
+	}
+	if !root {
+		for _, f := range files {
+			parts := strings.Split(f.name, "/")
+			f.name = strings.Join(parts[1:], "/")
+		}
+	}
 	return loadFiles(files)
 }
 
