@@ -87,6 +87,10 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 		parts := strings.Split(hd.Name, "/")
 		n := strings.Join(parts[1:], "/")
 
+		if parts[0] == "Chart.yaml" {
+			return nil, errors.New("chart yaml not in base directory")
+		}
+
 		if _, err := io.Copy(b, tr); err != nil {
 			return &chart.Chart{}, err
 		}
