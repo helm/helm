@@ -151,7 +151,7 @@ const defaultNotes = `1. Get the application URL by running these commands:
   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ template "fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo http://$SERVICE_IP:{{ .Values.Master.ServicePort }}
 {{- else if contains "ClusterIP"  .Values.service.type }}
-  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "component={{ template "fullname" . }}-master" -o jsonpath="{.items[0].metadata.name}")
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "fullname" . }}" -o jsonpath="{.items[0].metadata.name}")
   echo http://127.0.0.1:{{ .Values.service.externalPort }}
   kubectl port-forward $POD_NAME {{ .Values.service.externalPort }}:{{ .Values.service.externalPort }}
 {{- end }}
