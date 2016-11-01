@@ -104,8 +104,6 @@ func Templates(linter *support.Linter) {
 		if !validYaml {
 			continue
 		}
-
-		linter.RunLinterRule(support.ErrorSev, path, validateNoNamespace(yamlStruct))
 	}
 }
 
@@ -192,13 +190,6 @@ func validateNoMissingValues(templatesPath string, chartValues chartutil.Values,
 func validateYamlContent(err error) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse YAML\n\t%s", err)
-	}
-	return nil
-}
-
-func validateNoNamespace(yamlStruct K8sYamlStruct) error {
-	if yamlStruct.Metadata.Namespace != "" {
-		return errors.New("namespace option is currently NOT supported")
 	}
 	return nil
 }
