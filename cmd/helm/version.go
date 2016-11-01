@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -101,7 +102,10 @@ func (v *versionCmd) run() error {
 		if grpc.Code(err) == codes.Unimplemented {
 			return errors.New("server is too old to know its version")
 		}
-		return err
+		if flagDebug {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		return errors.New("cannot connect to Tiller")
 	}
 	fmt.Fprintf(v.out, "Server: %#v\n", resp.Version)
 	return nil
