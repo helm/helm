@@ -106,7 +106,7 @@ spec:
         app: {{ template "fullname" . }}
     spec:
       containers:
-      - name: nginx
+      - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
