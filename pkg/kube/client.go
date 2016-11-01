@@ -180,11 +180,9 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 		if err != nil {
 			return err
 		}
-		resourceName := info.Name
-		resourceKind := info.Mapping.GroupVersionKind.Kind
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
-		if _, err := helper.Get(info.Namespace, resourceName, info.Export); err != nil {
+		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("Could not get information about the resource: err: %s", err)
 			}
@@ -195,11 +193,11 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			log.Printf("Created a new %s called %s\n", kind, resourceName)
+			log.Printf("Created a new %s called %s\n", kind, info.Name)
 			return nil
 		}
 
-		currentObj, err := getCurrentObject(resourceName, resourceKind, currentInfos)
+		currentObj, err := getCurrentObject(info, currentInfos)
 		if err != nil {
 			return err
 		}
@@ -208,7 +206,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 			if alreadyExistErr, ok := err.(ErrAlreadyExists); ok {
 				log.Printf(alreadyExistErr.errorMsg)
 			} else {
-				log.Printf("error updating the resource %s:\n\t %v", resourceName, err)
+				log.Printf("error updating the resource %s:\n\t %v", info.Name, err)
 				updateErrors = append(updateErrors, err.Error())
 			}
 		}
@@ -220,7 +218,6 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 		return err
 	} else if len(updateErrors) != 0 {
 		return fmt.Errorf(strings.Join(updateErrors, " && "))
-
 	}
 	deleteUnwantedResources(currentInfos, targetInfos)
 	return nil
@@ -419,13 +416,7 @@ func (c *Client) ensureNamespace(namespace string) error {
 
 func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
 	for _, cInfo := range currentInfos {
-		found := false
-		for _, m := range targetInfos {
-			if m.Name == cInfo.Name {
-				found = true
-			}
-		}
-		if !found {
+		if _, ok := findMatchingInfo(cInfo, targetInfos); !ok {
 			log.Printf("Deleting %s...", cInfo.Name)
 			if err := deleteResource(cInfo); err != nil {
 				log.Printf("Failed to delete %s, err: %s", cInfo.Name, err)
@@ -434,20 +425,26 @@ func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
 	}
 }
 
-func getCurrentObject(targetName, targetKind string, infos []*resource.Info) (runtime.Object, error) {
-	var curr *resource.Info
-	for _, currInfo := range infos {
-		currKind := currInfo.Mapping.GroupVersionKind.Kind
-		if currInfo.Name == targetName && currKind == targetKind {
-			curr = currInfo
+func getCurrentObject(target *resource.Info, infos []*resource.Info) (runtime.Object, error) {
+	if found, ok := findMatchingInfo(target, infos); ok {
+		encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
+		defaultVersion := unversioned.GroupVersion{}
+		return resource.AsVersionedObject([]*resource.Info{found}, false, defaultVersion, encoder)
+	}
+	return nil, fmt.Errorf("No resource with the name %s found.", target.Name)
+}
+
+// isMatchingInfo returns true if infos match on Name and Kind.
+func isMatchingInfo(a, b *resource.Info) bool {
+	return a.Name == b.Name && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind
+}
+
+// findMatchingInfo returns the first object that matches target.
+func findMatchingInfo(target *resource.Info, infos []*resource.Info) (*resource.Info, bool) {
+	for _, info := range infos {
+		if isMatchingInfo(target, info) {
+			return info, true
 		}
 	}
-
-	if curr == nil {
-		return nil, fmt.Errorf("No resource with the name %s found.", targetName)
-	}
-
-	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
-	defaultVersion := unversioned.GroupVersion{}
-	return resource.AsVersionedObject([]*resource.Info{curr}, false, defaultVersion, encoder)
+	return nil, false
 }
