@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package tiller
 
 import (
 	"bytes"
@@ -31,18 +31,16 @@ import (
 	ctx "golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 
-	"k8s.io/helm/cmd/tiller/environment"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
 )
-
-var srv *releaseServer
 
 // releaseNameMaxLen is the maximum length of a release name.
 //
@@ -56,13 +54,6 @@ const releaseNameMaxLen = 14
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
-
-func init() {
-	srv = &releaseServer{
-		env: env,
-	}
-	services.RegisterReleaseServiceServer(rootServer, srv)
-}
 
 var (
 	// errMissingChart indicates that a chart was not provided.
@@ -78,8 +69,14 @@ var (
 // ListDefaultLimit is the default limit for number of items returned in a list.
 var ListDefaultLimit int64 = 512
 
-type releaseServer struct {
+type ReleaseServer struct {
 	env *environment.Environment
+}
+
+func NewReleaseServer(env *environment.Environment) *ReleaseServer {
+	return &ReleaseServer{
+		env: env,
+	}
 }
 
 func getVersion(c ctx.Context) string {
@@ -91,7 +88,7 @@ func getVersion(c ctx.Context) string {
 	return ""
 }
 
-func (s *releaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
+func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
 	if !checkClientVersion(stream.Context()) {
 		return errIncompatibleVersion
 	}
@@ -193,7 +190,7 @@ func filterReleases(filter string, rels []*release.Release) ([]*release.Release,
 	return matches, nil
 }
 
-func (s *releaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
+func (s *ReleaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
 	v := version.GetVersionProto()
 	return &services.GetVersionResponse{Version: v}, nil
 }
@@ -203,7 +200,7 @@ func checkClientVersion(c ctx.Context) bool {
 	return version.IsCompatible(v, version.Version)
 }
 
-func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
+func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
 	}
@@ -258,7 +255,7 @@ func (s *releaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	return statusResp, nil
 }
 
-func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
+func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
 	}
@@ -275,7 +272,7 @@ func (s *releaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
-func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
 	}
@@ -299,7 +296,7 @@ func (s *releaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	return res, nil
 }
 
-func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
 	res := &services.UpdateReleaseResponse{Release: updatedRelease}
 
 	if req.DryRun {
@@ -341,7 +338,7 @@ func (s *releaseServer) performUpdate(originalRelease, updatedRelease *release.R
 // reuseValues copies values from the current release to a new release if the new release does not have any values.
 //
 // If the request already has values, or if there are no values in the current release, this does nothing.
-func (s *releaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
+func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
 	if (req.Values == nil || req.Values.Raw == "") && current.Config != nil && current.Config.Raw != "" {
 		log.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
@@ -349,7 +346,7 @@ func (s *releaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 }
 
 // prepareUpdate builds an updated release for an update operation.
-func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
+func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
 	if req.Name == "" {
 		return nil, nil, errMissingRelease
 	}
@@ -406,7 +403,7 @@ func (s *releaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	return currentRelease, updatedRelease, nil
 }
 
-func (s *releaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
 	}
@@ -430,7 +427,7 @@ func (s *releaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 	return res, nil
 }
 
-func (s *releaseServer) performRollback(currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
 	res := &services.RollbackReleaseResponse{Release: targetRelease}
 
 	if req.DryRun {
@@ -469,7 +466,7 @@ func (s *releaseServer) performRollback(currentRelease, targetRelease *release.R
 	return res, nil
 }
 
-func (s *releaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release) error {
+func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release) error {
 	kubeCli := s.env.KubeClient
 	current := bytes.NewBufferString(currentRelease.Manifest)
 	target := bytes.NewBufferString(targetRelease.Manifest)
@@ -478,7 +475,7 @@ func (s *releaseServer) performKubeUpdate(currentRelease, targetRelease *release
 
 // prepareRollback finds the previous release and prepares a new release object with
 //  the previous release's configuration
-func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
+func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	switch {
 	case req.Name == "":
 		return nil, nil, errMissingRelease
@@ -532,7 +529,7 @@ func (s *releaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 	return crls, target, nil
 }
 
-func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
+func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 
 	// If a name is supplied, we check to see if that name is taken. If not, it
 	// is granted. If reuse is true and a deleted release with that name exists,
@@ -577,7 +574,7 @@ func (s *releaseServer) uniqName(start string, reuse bool) (string, error) {
 	return "ERROR", errors.New("no available release name found")
 }
 
-func (s *releaseServer) engine(ch *chart.Chart) environment.Engine {
+func (s *ReleaseServer) engine(ch *chart.Chart) environment.Engine {
 	renderer := s.env.EngineYard.Default()
 	if ch.Metadata.Engine != "" {
 		if r, ok := s.env.EngineYard.Get(ch.Metadata.Engine); ok {
@@ -589,7 +586,7 @@ func (s *releaseServer) engine(ch *chart.Chart) environment.Engine {
 	return renderer
 }
 
-func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
 	}
@@ -608,7 +605,7 @@ func (s *releaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 }
 
 // prepareRelease builds a release for an install operation.
-func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
 	if req.Chart == nil {
 		return nil, errMissingChart
 	}
@@ -651,7 +648,7 @@ func (s *releaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, nil
 }
 
-func (s *releaseServer) getVersionSet() (versionSet, error) {
+func (s *ReleaseServer) getVersionSet() (versionSet, error) {
 	defVersions := newVersionSet("v1")
 	cli, err := s.env.KubeClient.APIClient()
 	if err != nil {
@@ -676,7 +673,7 @@ func (s *releaseServer) getVersionSet() (versionSet, error) {
 	return newVersionSet(versions...), nil
 }
 
-func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
 	if err != nil {
@@ -723,7 +720,7 @@ func (s *releaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	return hooks, b, notes, nil
 }
 
-func (s *releaseServer) recordRelease(r *release.Release, reuse bool) {
+func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
 		if err := s.env.Releases.Update(r); err != nil {
 			log.Printf("warning: Failed to update release %q: %s", r.Name, err)
@@ -734,7 +731,7 @@ func (s *releaseServer) recordRelease(r *release.Release, reuse bool) {
 }
 
 // performRelease runs a release.
-func (s *releaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	res := &services.InstallReleaseResponse{Release: r}
 
 	if req.DryRun {
@@ -810,7 +807,7 @@ func (s *releaseServer) performRelease(r *release.Release, req *services.Install
 	return res, nil
 }
 
-func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook string) error {
+func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook string) error {
 	kubeCli := s.env.KubeClient
 	code, ok := events[hook]
 	if !ok {
@@ -848,7 +845,7 @@ func (s *releaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	return nil
 }
 
-func (s *releaseServer) purgeReleases(rels ...*release.Release) error {
+func (s *ReleaseServer) purgeReleases(rels ...*release.Release) error {
 	for _, rel := range rels {
 		if _, err := s.env.Releases.Delete(rel.Name, rel.Version); err != nil {
 			return err
@@ -857,7 +854,7 @@ func (s *releaseServer) purgeReleases(rels ...*release.Release) error {
 	return nil
 }
 
-func (s *releaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
+func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
 	}

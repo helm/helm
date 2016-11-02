@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package tiller
 
 import (
 	"golang.org/x/net/context"
@@ -22,7 +22,7 @@ import (
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
-func (s *releaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryRequest) (*tpb.GetHistoryResponse, error) {
+func (s *ReleaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryRequest) (*tpb.GetHistoryResponse, error) {
 	if !checkClientVersion(ctx) {
 		return nil, errIncompatibleVersion
 	}

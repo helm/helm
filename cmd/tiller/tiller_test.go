@@ -19,8 +19,8 @@ package main
 import (
 	"testing"
 
-	"k8s.io/helm/cmd/tiller/environment"
 	"k8s.io/helm/pkg/engine"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // These are canary tests to make sure that the default server actually
