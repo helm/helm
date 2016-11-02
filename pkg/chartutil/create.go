@@ -106,7 +106,7 @@ spec:
         app: {{ template "fullname" . }}
     spec:
       containers:
-      - name: nginx
+      - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
@@ -114,11 +114,11 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 80
+            port: {{ .Values.service.internalPort }}
         readinessProbe:
           httpGet:
             path: /
-            port: 80
+            port: {{ .Values.service.internalPort }}
         resources:
 {{ toYaml .Values.resources | indent 12 }}
 `
@@ -151,9 +151,9 @@ const defaultNotes = `1. Get the application URL by running these commands:
   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ template "fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo http://$SERVICE_IP:{{ .Values.Master.ServicePort }}
 {{- else if contains "ClusterIP"  .Values.service.type }}
-  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "component={{ template "fullname" . }}-master" -o jsonpath="{.items[0].metadata.name}")
-  echo http://127.0.0.1:{{ .Values.service.externalPort }}
-  kubectl port-forward $POD_NAME {{ .Values.service.externalPort }}:{{ .Values.service.externalPort }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "fullname" . }}" -o jsonpath="{.items[0].metadata.name}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl port-forward $POD_NAME 8080:{{ .Values.service.externalPort }}
 {{- end }}
 `
 
