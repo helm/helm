@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package tiller
 
 import (
 	"errors"
@@ -29,13 +29,13 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 
-	"k8s.io/helm/cmd/tiller/environment"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 const notesText = "my notes here"
@@ -70,8 +70,8 @@ data:
   name: value
 `
 
-func rsFixture() *releaseServer {
-	return &releaseServer{
+func rsFixture() *ReleaseServer {
+	return &ReleaseServer{
 		env: mockEnvironment(),
 	}
 }

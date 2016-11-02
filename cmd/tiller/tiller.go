@@ -25,9 +25,11 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
-	"k8s.io/helm/cmd/tiller/environment"
+	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/helm/pkg/tiller"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 const (
@@ -104,6 +106,8 @@ func start(c *cobra.Command, args []string) {
 	srvErrCh := make(chan error)
 	probeErrCh := make(chan error)
 	go func() {
+		svc := tiller.NewReleaseServer(env)
+		services.RegisterReleaseServiceServer(rootServer, svc)
 		if err := rootServer.Serve(lstn); err != nil {
 			srvErrCh <- err
 		}
