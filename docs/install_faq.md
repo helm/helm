@@ -89,8 +89,17 @@ help you get started:
 Error: Error forwarding ports: error upgrading connection: dial tcp: lookup kube-4gb-lon1-02 on 8.8.8.8:53: no such host
 ```
 
-A: We have seen this issue with Ubuntu and Kubeadm. See this issue for more
-information: https://github.com/kubernetes/helm/issues/1455
+A: We have seen this issue with Ubuntu and Kubeadm in multi-node clusters. The
+issue is that the nodes expect certain DNS records to be obtainable via global
+DNS. Until this is resolved upstream, you can work around the issue as
+follows:
+
+1) Add entries to `/etc/hosts` on the master mapping your hostnames to their public IPs
+2) Install `dnsmasq` on the master (e.g. `apt install -y dnsmasq`)
+3) Kill the k8s api server container on master (kubelet will recreate it)
+4) Then `systemctl restart docker` (or reboot the master) for it to pick up the /etc/resolv.conf changes
+
+See this issue for more information: https://github.com/kubernetes/helm/issues/1455
 
 ## Upgrading
 
