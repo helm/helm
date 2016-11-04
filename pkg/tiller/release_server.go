@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -905,11 +906,21 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
 
+	// From here on out, the release is currently considered to be in Status_DELETED
+	// state. See https://github.com/kubernetes/helm/issues/1511 for a better way
+	// to do this.
+	if err := s.env.Releases.Update(rel); err != nil {
+		log.Printf("uninstall: Failed to store updated release: %s", err)
+	}
+
 	manifests := splitManifests(rel.Manifest)
 	_, files, err := sortManifests(manifests, vs, UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
-		return nil, err
+		// FIXME: One way to delete at this point would be to try a label-based
+		// deletion. The problem with this is that we could get a false positive
+		// and delete something that was not legitimately part of this release.
+		return nil, fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)
 	}
 
 	// Collect the errors, and return them later.
@@ -918,6 +929,10 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		b := bytes.NewBufferString(file.content)
 		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
 			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
+			if err == kube.ErrNoObjectsVisited {
+				// Rewrite the message from "no objects visited"
+				err = errors.New("object not found, skipping delete")
+			}
 			es = append(es, err.Error())
 		}
 	}
@@ -928,11 +943,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	if !req.Purge {
-		if err := s.env.Releases.Update(rel); err != nil {
-			log.Printf("uninstall: Failed to store updated release: %s", err)
-		}
-	} else {
+	if req.Purge {
 		if err := s.purgeReleases(rels...); err != nil {
 			log.Printf("uninstall: Failed to purge the release: %s", err)
 		}
@@ -940,7 +951,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 	var errs error
 	if len(es) > 0 {
-		errs = fmt.Errorf("deletion error count %d: %s", len(es), strings.Join(es, "; "))
+		errs = fmt.Errorf("deletion completed with %d error(s): %s", len(es), strings.Join(es, "; "))
 	}
 
 	return res, errs
