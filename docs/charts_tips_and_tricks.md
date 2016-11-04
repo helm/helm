@@ -3,6 +3,28 @@
 This guide covers some of the tips and tricks Helm chart developers have
 learned while building production-quality charts.
 
+## Know Your Template Functions
+
+Helm uses [Go templates](https://godoc.org/text/template) for templating
+your resource files. While Go ships several built-in functions, we have
+added many others.
+
+First, we added almost all of the functions in the
+[Sprig library](https://godoc.org/github.com/Masterminds/sprig). We removed two
+for security reasons: `env` and `expandenv` (which would have given chart authors
+access to Tiller's environment).
+
+We also added one special template function: `include`. The `include` function
+allows you to bring in another template, and then pass the results to other
+template functions.
+
+For example, this template snippet includes a template called `mytpl.tpl`, then
+lowercases the result, then wraps that in double quotes.
+
+```yaml
+value: {{include "mytpl.tpl" . | lower | quote}}
+```
+
 ## Quote Strings, Don't Quote Integers
 
 When you are working with string data, you are always safer quoting the
