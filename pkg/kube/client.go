@@ -18,6 +18,7 @@ package kube // import "k8s.io/helm/pkg/kube"
 
 import (
 	"bytes"
+	goerrors "errors"
 	"fmt"
 	"io"
 	"log"
@@ -40,6 +41,9 @@ import (
 	"k8s.io/kubernetes/pkg/util/yaml"
 	"k8s.io/kubernetes/pkg/watch"
 )
+
+// ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
+var ErrNoObjectsVisited = goerrors.New("no objects visited")
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
@@ -279,7 +283,7 @@ func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc
 	case err != nil:
 		return err
 	case len(infos) == 0:
-		return fmt.Errorf("no objects visited")
+		return ErrNoObjectsVisited
 	}
 	for _, info := range infos {
 		if err := fn(info); err != nil {
