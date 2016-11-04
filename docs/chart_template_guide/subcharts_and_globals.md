@@ -38,9 +38,9 @@ Next, we'll create a new ConfigMap template in `mychart/charts/subchart/template
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-cfgmap2
+  name: {{ .Release.Name }}-cfgmap2
 data:
-  dessert: {{.Values.dessert}}
+  dessert: {{ .Values.dessert }}
 ```
 
 Because every subchart is a _stand-alone chart_, we can test `mysubchart` on its own:
@@ -124,7 +124,7 @@ global:
   salad: caesar
 ```
 
-Because of the way globals work, both `mychart/templates/configmap.yaml` and `mysubchart/templates/configmap.yaml` should be able to access that value as `{{.Values.global.salad}}`.
+Because of the way globals work, both `mychart/templates/configmap.yaml` and `mysubchart/templates/configmap.yaml` should be able to access that value as `{{ .Values.global.salad}}`.
 
 `mychart/templates/configmap.yaml`:
 
@@ -132,9 +132,9 @@ Because of the way globals work, both `mychart/templates/configmap.yaml` and `my
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
-  salad: {{.Values.global.salad}}
+  salad: {{ .Values.global.salad }}
 ```
 
 `mysubchart/tempaltes/configmap.yaml`:
@@ -143,10 +143,10 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-cfgmap2
+  name: {{ .Release.Name }}-cfgmap2
 data:
-  dessert: {{.Values.dessert}}
-  salad: {{.Values.global.salad}}
+  dessert: {{ .Values.dessert }}
+  salad: {{ .Values.global.salad }}
 ```
 
 Now if we run a dry run install, we'll see the same value in both outputs:
@@ -181,11 +181,11 @@ Parent charts and subcharts can share templates. This can become very powerful w
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-cfgmap2
-  {{block "labels" .}}from: mysubchart{{end}}
+  name: {{ .Release.Name }}-cfgmap2
+  {{block "labels" . }}from: mysubchart{{ end }}
 data:
-  dessert: {{.Values.dessert}}
-  salad: {{.Values.global.salad}}
+  dessert: {{ .Values.dessert }}
+  salad: {{ .Values.global.salad }}
 ```
 
 Running this would produce:
@@ -205,7 +205,7 @@ data:
 Note that the `from:` line says `mysubchart`. In a previous section, we created `mychart/templates/_helpers.tpl`. Let's define a new named template there called `labels` to match the declaration on the block above.
 
 ```yaml
-{{- define "labels" }}from: mychart{{end}}
+{{- define "labels" }}from: mychart{{ end }}
 ```
 
 Recall how the labels on templates are _globally shared_. That means that if we create a block named `labels` in one chart, and then define an override named `labels` in another chart, the override will be applied.

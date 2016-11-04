@@ -6,9 +6,9 @@ In an earlier example, we saw that this code will fail:
 
 ```yaml
   {{- with .Values.favorite }}
-  drink: {{.drink | default "tea" | quote}}
-  food: {{.food | upper | quote}}
-  release: {{.Release.Name}}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
+  release: {{ .Release.Name }}
   {{- end }}
 ```
 
@@ -20,14 +20,14 @@ In Helm templates, a variable is a named reference to another object. It follows
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
   {{- $relname := .Release.Name -}}
   {{- with .Values.favorite }}
-  drink: {{.drink | default "tea" | quote}}
-  food: {{.food | upper | quote}}
-  release: {{$relname}}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
+  release: {{ $relname }}
   {{- end }}
 ```
 
@@ -53,7 +53,7 @@ Variables are particularly useful in `range` loops. They can be used on list-lik
 ```yaml
   toppings: |-
     {{- range $index, $topping := .Values.pizzaToppings }}
-      {{$index}}: {{$topping}}
+      {{ $index }}: {{ $topping }}
     {{- end }}
 
 ```
@@ -74,11 +74,11 @@ For data structures that have both a key and a value, we can use `range` to get 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
-  {{$key}}: {{$val | quote}}
+  {{ $key }}: {{ $val | quote }}
   {{- end}}
 ```
 

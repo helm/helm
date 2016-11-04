@@ -7,14 +7,14 @@ To add installation notes to your chart, simply create a `templates/NOTES.txt` f
 Let's create a simple `NOTES.txt` file:
 
 ```
-Thank you for installing {{.Chart.Name}}.
+Thank you for installing {{ .Chart.Name }}.
 
-Your release is named {{.Release.Name}}.
+Your release is named {{ .Release.Name }}.
 
 To learn more about the release, try:
 
-  $ helm status {{.Release.Name}}
-  $ helm get {{.Release.Name}}
+  $ helm status {{ .Release.Name }}
+  $ helm get {{ .Release.Name }}
 
 ```
 

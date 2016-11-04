@@ -21,39 +21,39 @@ These files are used to store partials and helpers. In fact, when we first creat
 The `define` action allows us to create a named template inside of a template file. Its syntax goes like this:
 
 ```yaml
-{{define "MY_NAME"}}
+{{ define "MY_NAME" }}
   # body of template here
-{{end}}
+{{ end }}
 ```
 
 For example, we can define a template to encapsulate a Kubernetes block of labels:
 
 ```yaml
-{{- define "my_labels"}}
+{{- define "my_labels" }}
   labels:
     generator: helm
-    date: {{now | htmlDate}}
-{{- end}}
+    date: {{ now | htmlDate }}
+{{- end }}
 ```
 
 Now we can embed this template inside of our existing ConfigMap, and then include it with the `template` action:
 
 ```
-{{- define "my_labels"}}
+{{- define "my_labels" }}
   labels:
     generator: helm
-    date: {{now | htmlDate}}
-{{- end}}
+    date: {{ now | htmlDate }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
-  {{- template "my_labels"}}
+  name: {{ .Release.Name }}-configmap
+  {{- template "my_labels" }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
-  {{$key}}: {{$val | quote}}
-  {{- end}}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
 ```
 
 When the template engine reads this file, it will store away the reference to `my_labels` until `template "my_labels"` is called. Then it will render that template inline. So the result will look like this:
@@ -77,11 +77,11 @@ Conventionally, Helm charts put these templates inside of a partials file, usual
 
 ```yaml
 {{/* Generate basic labels */}}
-{{- define "my_labels"}}
+{{- define "my_labels" }}
   labels:
     generator: helm
-    date: {{now | htmlDate}}
-{{- end}}
+    date: {{ now | htmlDate }}
+{{- end }}
 ```
 
 By convention, `define` functions should have a simple documentation block (`{{/* ... */}}`) describing what they do.
@@ -92,18 +92,18 @@ Even though this definition is in `_helpers.tpl`, it can still be accessed in `c
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
-  {{- template "my_labels"}}
+  name: {{ .Release.Name }}-configmap
+  {{- template "my_labels" }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
-  {{$key}}: {{$val | quote}}
-  {{- end}}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
 ```
 
 There is one _really important detail_ to keep in mind when naming templates: **template names are global**. If you declare two templates with the same name, whichever one is loaded last will be the one used. Because templates in subcharts are compiled together with top-level templates, you should be careful to name your templates with chart-specific names.
 
-One popular naming convention is to prefix each defined template with the name of the chart: `{{define "mychart.labels"}}` or `{{define "mychart_labels"}}`.
+One popular naming convention is to prefix each defined template with the name of the chart: `{{ define "mychart.labels" }}` or `{{ define "mychart_labels" }}`.
 
 ## Setting the scope of a template
 
@@ -111,13 +111,13 @@ In the template we defined above, we did not use any objects. We just used funct
 
 ```yaml
 {{/* Generate basic labels */}}
-{{- define "my_labels"}}
+{{- define "my_labels" }}
   labels:
     generator: helm
-    date: {{now | htmlDate}}
-    chart: {{.Chart.Name}}
-    version: {{.Chart.Version}}
-{{- end}}
+    date: {{ now | htmlDate }}
+    chart: {{ .Chart.Name }}
+    version: {{ .Chart.Version }}
+{{- end }}
 ```
 
 If we render this, the result will not be what we expect:
@@ -147,7 +147,7 @@ No scope was passed in, so within the template we cannot access anything in `.`.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
   {{- template "my_labels" . }}
 ```
 
@@ -168,7 +168,7 @@ metadata:
     version: 0.1.0
 ```
 
-Now `{{.Chart.Name}}` resolves to `mychart`, and `{{.Chart.Version}}` resolves to `0.1.0`.
+Now `{{ .Chart.Name }}` resolves to `mychart`, and `{{ .Chart.Version }}` resolves to `0.1.0`.
 
 ## Creating override-able sections with `block`
 
@@ -177,8 +177,8 @@ Say we want to create a template in our `_helpers.tpl` file, but then override p
 Blocks are declared like this:
 
 ```yaml
-{{block "NAME" PIPELINE}}
-{{end}}
+{{ block "NAME" PIPELINE }}
+{{ end }}
 ```
 
 Here, "NAME" is the name that a `define` block can use to override it, and PIPELINE is the pipeline that will set the scope. So let's rewrite our `labels:` section to use this strategy. We'll create a basic labels section in our `_helpers.tpl` file, but add some extra labels in the `configmap.yaml` template.
@@ -186,12 +186,12 @@ Here, "NAME" is the name that a `define` block can use to override it, and PIPEL
 Let's start with `_helpers.tpl`:
 
 ```
-{{- define "my_labels"}}
+{{- define "my_labels" }}
   labels:
-    chart: {{.Chart.Name}}
-    version: {{.Chart.Version}}
-    {{block "my_extra_labels" .}}extras: false{{end}}
-{{- end}}
+    chart: {{ .Chart.Name }}
+    version: {{ .Chart.Version }}
+    {{ block "my_extra_labels" . }}extras: false{{ end }}
+{{- end `u}}
 ```
 
 Inside of our `my_labels` template, we now declare a block called `my_extra_labels`. By default, this section will have one extra label: `extras: false`. If we were to execute this using the same `configmap.yaml` file from last time, we'd get this:
@@ -215,20 +215,20 @@ data:
 But inside of our `configmap.yaml` template, we can override `my_extra_labels`:
 
 ```yaml
-{{- define "my_extra_labels"}}chart: {{.Chart.Name}}{{ end -}}
+{{- define "my_extra_labels" }}chart: {{ .Chart.Name }}{{ end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
-  {{- template "my_labels" .}}
+  name: {{ .Release.Name }}-configmap
+  {{- template "my_labels" . }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
-  {{$key}}: {{$val | quote}}
-  {{- end}}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
 ```
 
-On the first line, we redefine `my_extra_labels` to include `chart: {{.Chart.Name}}`. If we
+On the first line, we redefine `my_extra_labels` to include `chart: {{ .Chart.Name }}`. If we
 run this, we will get:
 
 ```yaml
@@ -257,8 +257,8 @@ Say we've defined a simple template that looks like this:
 
 ```
 {{- define "mychart_app" -}}
-app_name: {{.Chart.Name}}
-app_version: "{{.Chart.Version}}+{{.Release.Time.Seconds}}"
+app_name: {{ .Chart.Name }}
+app_version: "{{ .Chart.Version} }+{{ .Release.Time.Seconds }}"
 {{- end -}}
 ```
 
@@ -268,15 +268,15 @@ Now say I want to insert this both into the `labels:` section of my template, an
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
   labels:
-    {{template "mychart_app" .}}
+    {{ template "mychart_app" .}}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
-  {{$key}}: {{$val | quote}}
-  {{- end}}
-  {{template "mychart_app" .}}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+  {{ template "mychart_app" . }}
 
 ```
 
@@ -309,15 +309,15 @@ Here's the example above, corrected to use `indent` to indent the `mychart_app` 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
   labels:
-{{include "mychart_app" . | indent 4}}
+{{ include "mychart_app" . | indent 4 }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
-  {{$key}}: {{$val | quote}}
-  {{- end}}
-{{include "mychart_app" . | indent 2}}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{ include "mychart_app" . | indent 2 }}
 ```
 
 Now the produced YAML is correctly indented for each section:
