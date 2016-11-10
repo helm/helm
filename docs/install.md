@@ -170,7 +170,7 @@ configuration in ConfigMaps inside of Kubernetes.
 Because Tiller stores its data in Kubernetes ConfigMaps, you can safely
 delete and re-install Tiller without worrying about losing any data. The
 recommended way of deleting Tiller is with `kubectl delete deployment
-tiller-deployment --namespace kube-system`
+tiller-deploy --namespace kube-system`
 
 To simply update Tiller to run the latest image, you can run this
 command:
