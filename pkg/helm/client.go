@@ -89,6 +89,11 @@ func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.I
 
 // DeleteRelease uninstalls a named release and returns the response.
 func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+	// apply the uninstall options
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+
 	if h.opts.dryRun {
 		// In the dry run case, just see if the release exists
 		r, err := h.ReleaseContent(rlsName, nil)
@@ -96,11 +101,6 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 			return &rls.UninstallReleaseResponse{}, err
 		}
 		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
-	}
-
-	// apply the uninstall options
-	for _, opt := range opts {
-		opt(&h.opts)
 	}
 
 	req := &h.opts.uninstallReq
