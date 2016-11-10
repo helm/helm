@@ -113,13 +113,17 @@ func (r *RepoFile) Add(re ...*Entry) {
 // entry with the same name doesn't exist in the repo file it will add it.
 func (r *RepoFile) Update(re ...*Entry) {
 	for _, target := range re {
+		found := false
 		for j, repo := range r.Repositories {
 			if repo.Name == target.Name {
 				r.Repositories[j] = target
+				found = true
 				break
 			}
 		}
-		r.Add(target)
+		if !found {
+			r.Add(target)
+		}
 	}
 }
 
