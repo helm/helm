@@ -209,18 +209,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		return cdir, err
 	}
 
-	if err := SaveChartfile(filepath.Join(cdir, ChartfileName), chartfile); err != nil {
-		return cdir, err
-	}
-
-	val := []byte(fmt.Sprintf(defaultValues, chartfile.Name))
-	if err := ioutil.WriteFile(filepath.Join(cdir, ValuesfileName), val, 0644); err != nil {
-		return cdir, err
-	}
-
-	val = []byte(defaultIgnore)
-	if err := ioutil.WriteFile(filepath.Join(cdir, IgnorefileName), val, 0644); err != nil {
-		return cdir, err
+	cf := filepath.Join(cdir, ChartfileName)
+	if _, err := os.Stat(cf); err != nil {
+		if err := SaveChartfile(cf, chartfile); err != nil {
+			return cdir, err
+		}
 	}
 
 	for _, d := range []string{TemplatesDir, ChartsDir} {
@@ -229,25 +222,50 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		}
 	}
 
-	// Write out deployment.yaml
-	val = []byte(defaultDeployment)
-	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, DeploymentName), val, 0644); err != nil {
-		return cdir, err
+	files := []struct {
+		path    string
+		content []byte
+	}{
+		{
+			// values.yaml
+			path:    filepath.Join(cdir, ValuesfileName),
+			content: []byte(fmt.Sprintf(defaultValues, chartfile.Name)),
+		},
+		{
+			// .helmignore
+			path:    filepath.Join(cdir, IgnorefileName),
+			content: []byte(defaultIgnore),
+		},
+		{
+			// deployment.yaml
+			path:    filepath.Join(cdir, TemplatesDir, DeploymentName),
+			content: []byte(defaultDeployment),
+		},
+		{
+			// service.yaml
+			path:    filepath.Join(cdir, TemplatesDir, ServiceName),
+			content: []byte(defaultService),
+		},
+		{
+			// NOTES.txt
+			path:    filepath.Join(cdir, TemplatesDir, NotesName),
+			content: []byte(defaultNotes),
+		},
+		{
+			// _helpers.tpl
+			path:    filepath.Join(cdir, TemplatesDir, HelpersName),
+			content: []byte(defaultHelpers),
+		},
 	}
 
-	// Write out service.yaml
-	val = []byte(defaultService)
-	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, ServiceName), val, 0644); err != nil {
-		return cdir, err
+	for _, file := range files {
+		if _, err := os.Stat(file.path); err == nil {
+			// File exists and is okay. Skip it.
+			continue
+		}
+		if err := ioutil.WriteFile(file.path, file.content, 0644); err != nil {
+			return cdir, err
+		}
 	}
-
-	// Write out NOTES.txt
-	val = []byte(defaultNotes)
-	if err := ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, NotesName), val, 0644); err != nil {
-		return cdir, err
-	}
-
-	// Write out _helpers.tpl
-	val = []byte(defaultHelpers)
-	return cdir, ioutil.WriteFile(filepath.Join(cdir, TemplatesDir, HelpersName), val, 0644)
+	return cdir, nil
 }
