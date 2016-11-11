@@ -36,6 +36,7 @@ gometalinter \
   --enable vet \
   --tests \
   --vendor \
+  --deadline 60s \
   ./... || exit_code=1
 
 echo
@@ -46,6 +47,7 @@ gometalinter \
   --enable golint \
   --vendor \
   --skip proto \
+  --deadline 60s \
   ./... || :
 
 exit $exit_code
