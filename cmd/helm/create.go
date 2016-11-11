@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -54,8 +55,10 @@ will be overwritten, but other files will be left alone.
 `
 
 type createCmd struct {
-	name string
-	out  io.Writer
+	home    helmpath.Home
+	name    string
+	out     io.Writer
+	starter string
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
@@ -68,6 +71,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		Short: "create a new chart with the given name",
 		Long:  createDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cc.home = helmpath.Home(homePath())
 			if len(args) == 0 {
 				return errors.New("the name of the new chart is required")
 			}
@@ -76,6 +80,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVarP(&cc.starter, "starter", "p", "", "the named Helm starter scaffold")
 	return cmd
 }
 
@@ -88,6 +93,12 @@ func (c *createCmd) run() error {
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
 		ApiVersion:  chartutil.ApiVersionV1,
+	}
+
+	if c.starter != "" {
+		// Create from the starter
+		lstarter := filepath.Join(c.home.Starters(), c.starter)
+		return chartutil.CreateFrom(cfile, filepath.Dir(c.name), lstarter)
 	}
 
 	_, err := chartutil.Create(cfile, filepath.Dir(c.name))

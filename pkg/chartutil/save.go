@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -30,6 +31,60 @@ import (
 )
 
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
+
+// SaveDir saves a chart as files in a directory.
+func SaveDir(c *chart.Chart, dest string) error {
+	// Create the chart directory
+	outdir := filepath.Join(dest, c.Metadata.Name)
+	if err := os.Mkdir(outdir, 0755); err != nil {
+		return err
+	}
+
+	// Save the chart file.
+	if err := SaveChartfile(filepath.Join(outdir, ChartfileName), c.Metadata); err != nil {
+		return err
+	}
+
+	// Save values.yaml
+	if c.Values != nil && len(c.Values.Raw) > 0 {
+		vf := filepath.Join(outdir, ValuesfileName)
+		if err := ioutil.WriteFile(vf, []byte(c.Values.Raw), 0755); err != nil {
+			return err
+		}
+	}
+
+	for _, d := range []string{TemplatesDir, ChartsDir} {
+		if err := os.MkdirAll(filepath.Join(outdir, d), 0755); err != nil {
+			return err
+		}
+	}
+
+	// Save templates
+	for _, f := range c.Templates {
+		n := filepath.Join(outdir, f.Name)
+		if err := ioutil.WriteFile(n, f.Data, 0755); err != nil {
+			return err
+		}
+	}
+
+	// Save files
+	for _, f := range c.Files {
+		n := filepath.Join(outdir, f.TypeUrl)
+		if err := ioutil.WriteFile(n, f.Value, 0755); err != nil {
+			return err
+		}
+	}
+
+	// Save dependencies
+	base := filepath.Join(outdir, ChartsDir)
+	for _, dep := range c.Dependencies {
+		// Here, we write each dependency as a tar file.
+		if _, err := Save(dep, base); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // Save creates an archived chart to the given directory.
 //

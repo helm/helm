@@ -53,6 +53,11 @@ func (h Home) CacheIndex(name string) string {
 	return filepath.Join(string(h), target)
 }
 
+// Starters returns the path to the Helm starter packs.
+func (h Home) Starters() string {
+	return filepath.Join(string(h), "starters")
+}
+
 // LocalRepository returns the location to the local repo.
 //
 // The local repo is the one used by 'helm serve'

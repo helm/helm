@@ -241,7 +241,7 @@ func tempHelmHome(t *testing.T) (string, error) {
 //
 // t is used only for logging.
 func ensureTestHome(home helmpath.Home, t *testing.T) error {
-	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository()}
+	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository(), home.Starters()}
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
 			if err := os.MkdirAll(p, 0755); err != nil {
