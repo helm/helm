@@ -22,6 +22,7 @@ import (
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
+// GetHistory gets the history for a given release.
 func (s *ReleaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryRequest) (*tpb.GetHistoryResponse, error) {
 	if !checkClientVersion(ctx) {
 		return nil, errIncompatibleVersion

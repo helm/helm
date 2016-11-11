@@ -70,10 +70,12 @@ var (
 // ListDefaultLimit is the default limit for number of items returned in a list.
 var ListDefaultLimit int64 = 512
 
+// ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
 	env *environment.Environment
 }
 
+// NewReleaseServer creates a new release server.
 func NewReleaseServer(env *environment.Environment) *ReleaseServer {
 	return &ReleaseServer{
 		env: env,
@@ -89,6 +91,7 @@ func getVersion(c ctx.Context) string {
 	return ""
 }
 
+// ListReleases lists the releases found by the server.
 func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
 	if !checkClientVersion(stream.Context()) {
 		return errIncompatibleVersion
@@ -191,6 +194,7 @@ func filterReleases(filter string, rels []*release.Release) ([]*release.Release,
 	return matches, nil
 }
 
+// GetVersion sends the server version.
 func (s *ReleaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
 	v := version.GetVersionProto()
 	return &services.GetVersionResponse{Version: v}, nil
@@ -201,6 +205,7 @@ func checkClientVersion(c ctx.Context) bool {
 	return version.IsCompatible(v, version.Version)
 }
 
+// GetReleaseStatus gets the status information for a named release.
 func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
@@ -256,6 +261,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	return statusResp, nil
 }
 
+// GetReleaseContent gets all of the stored information for the given release.
 func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
@@ -273,6 +279,7 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
+// UpdateRelease takes an existing release and new information, and upgrades the release.
 func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
@@ -404,6 +411,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	return currentRelease, updatedRelease, nil
 }
 
+// RollbackRelease rolls back to a previous version of the given release.
 func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
@@ -587,6 +595,7 @@ func (s *ReleaseServer) engine(ch *chart.Chart) environment.Engine {
 	return renderer
 }
 
+// InstallRelease installs a release and stores the release record.
 func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
@@ -855,6 +864,7 @@ func (s *ReleaseServer) purgeReleases(rels ...*release.Release) error {
 	return nil
 }
 
+// UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
 func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
 	if !checkClientVersion(c) {
 		return nil, errIncompatibleVersion
