@@ -49,6 +49,9 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	srv := repotest.NewServer(hh)
 	defer srv.Stop()
 	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("Copied charts:\n%s", strings.Join(copied, "\n"))
 	t.Logf("Listening on directory %s", srv.Root())
 

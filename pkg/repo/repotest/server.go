@@ -75,7 +75,7 @@ func NewServer(docroot string) *Server {
 	return srv
 }
 
-// Server is an implementaiton of a repository server for testing.
+// Server is an implementation of a repository server for testing.
 type Server struct {
 	docroot string
 	srv     *httptest.Server
