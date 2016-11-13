@@ -138,6 +138,9 @@ func validateNoMissingValues(templatesPath string, chartValues chartutil.Values,
 	tmpl := template.New("tpl").Funcs(engine.FuncMap())
 	// If the templatesPath includes any *.tpl files we will parse and import them as associated templates
 	associatedTemplates, err := filepath.Glob(filepath.Join(templatesPath, "*.tpl"))
+	if err != nil {
+		return err
+	}
 
 	if len(associatedTemplates) > 0 {
 		tmpl, err = tmpl.ParseFiles(associatedTemplates...)

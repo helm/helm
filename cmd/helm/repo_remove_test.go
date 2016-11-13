@@ -32,6 +32,9 @@ func TestRepoRemove(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 
 	home, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.Remove(home)
 	hh := helmpath.Home(home)
 
