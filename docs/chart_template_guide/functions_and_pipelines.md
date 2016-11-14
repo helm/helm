@@ -8,11 +8,11 @@ Let's start with a best practice: When injecting strings from the `.Values` obje
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{quote .Values.favorite.drink}}
-  food: {{quote .Values.favorite.food}}
+  drink: {{ quote .Values.favorite.drink }}
+  food: {{ quote .Values.favorite.food }}
 ```
 
 Template functions follow the syntax `functionName arg1 arg2...`. In the snippet above, `quote .Values.favorite.drink` calls the `quote` function and passes it a single argument.
@@ -29,11 +29,11 @@ One of the powerful features of the template language is its concept of _pipelin
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | quote}}
-  food: {{.Values.favorite.food | quote}}
+  drink: {{ .Values.favorite.drink | quote }}
+  food: {{ .Values.favorite.food | quote }}
 ```
 
 In this example, instead of calling `quote ARGUMENT`, we inverted the order. We "sent" the argument to the function using a pipeline (`|`): `.Values.favorite.drink | quote`. Using pipelines, we can chain several functions together:
@@ -42,11 +42,11 @@ In this example, instead of calling `quote ARGUMENT`, we inverted the order. We 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | quote}}
-  food: {{.Values.favorite.food | upper | quote}}
+  drink: {{ .Values.favorite.drink | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
 ```
 
 > Inverting the order is a common practice in templates. You will see `.val | quote` more often than `quote .val`. Either practice is fine.
@@ -73,11 +73,11 @@ When pipelining arguments like this, the result of the first evaluation (`.Value
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | repeat 5 | quote}}
-  food: {{.Values.favorite.food | upper | quote}}
+  drink: {{ .Values.favorite.drink | repeat 5 | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
 ```
 
 The `repeat` function will echo the given string the given number of times, so we will get this for output:
@@ -99,7 +99,7 @@ data:
 One function frequently used in templates is the `default` function: `default DEFAULT_VALUE GIVEN_VALUE`. This function allows you to specify a default value inside of the template, in case the value is omitted. Let's use it to modify the drink example above:
 
 ```yaml
-drink: {{.Values.favorite.drink | default "tea" | quote}}
+drink: {{ .Values.favorite.drink | default "tea" | quote }}
 ```
 
 If we run this as normal, we'll get our `coffee`:

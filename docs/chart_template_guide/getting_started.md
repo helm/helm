@@ -151,17 +151,17 @@ Let's alter `configmap.yaml` accordingly.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
 ```
 
 The big change comes in the value of the `name:` field, which is now
-`{{.Release.Name}}-configmap`.
+`{{ .Release.Name }}-configmap`.
 
 > A template directive is enclosed in `{{` and `}}` blocks.
 
-The template directive `{{.Release.Name}}` injects the release name into the template. The values that are passed into a template can be thought of as _namespaced objects_, where a dot (`.`) separates each namespaced element.
+The template directive `{{ .Release.Name }}` injects the release name into the template. The values that are passed into a template can be thought of as _namespaced objects_, where a dot (`.`) separates each namespaced element.
 
 The leading dot before `Release` indicates that we start with the top-most namespace for this scope (we'll talk about scope in a bit). So we could read `.Release.Name` as "start at the top namespace, find the `Release` object, then look inside of it for an object called `Name`".
 

@@ -21,13 +21,13 @@ The first control structure we'll look at is for conditionally including blocks 
 The basic structure for a conditional looks like this:
 
 ```
-{{if PIPELINE}}
+{{ if PIPELINE }}
   # Do something
-{{else if OTHER PIPELINE}}
+{{ else if OTHER PIPELINE }}
   # Do something else
 {{ else }}
   # Default case
-{{end}}
+{{ end }}
 ```
 
 Notice that we're now talking about _pipelines_ instead of values. The reason for this is to make it clear that control structures can execute an entire pipeline, not just evaluate a value.
@@ -48,12 +48,12 @@ Let's add a simple conditional to our ConfigMap. We'll add another setting if th
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | default "tea" | quote}}
-  food: {{.Values.favorite.food | upper | quote}}
-  {{if eq .Values.favorite.drink "coffee"}}mug: true{{end}}
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
+  {{ if eq .Values.favorite.drink "coffee" }}mug: true{{ end }}
 ```
 
 Since we commented out `drink: coffee` in our last example, the output should not include a `mug: true` flag. But if we add that line back into our `values.yaml` file, the output should look like this:
@@ -79,11 +79,11 @@ While we're looking at conditionals, we should take a quick look at the way whit
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | default "tea" | quote}}
-  food: {{.Values.favorite.food | upper | quote}}
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
   {{if eq .Values.favorite.drink "coffee"}}
     mug: true
   {{end}}
@@ -119,11 +119,11 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | default "tea" | quote}}
-  food: {{.Values.favorite.food | upper | quote}}
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
   {{if eq .Values.favorite.drink "coffee"}}
   mug: true
   {{end}}
@@ -160,11 +160,11 @@ Using this syntax, we can modify our template to get rid of those new lines:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | default "tea" | quote}}
-  food: {{.Values.favorite.food | upper | quote}}
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
   {{- if eq .Values.favorite.drink "coffee"}}
   mug: true
   {{- end}}
@@ -176,11 +176,11 @@ Just for the same of making this point clear, let's adjust the above, and substi
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink | default "tea" | quote}}
-  food: {{.Values.favorite.food | upper | quote}}*
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}*
 **{{- if eq .Values.favorite.drink "coffee"}}
   mug: true*
 **{{- end}}
@@ -205,7 +205,7 @@ data:
 Be careful with the chomping modifiers. It is easy to accidentally do things like this:
 
 ```yaml
-  food: {{.Values.favorite.food | upper | quote}}
+  food: {{ .Values.favorite.food | upper | quote }}
   {{- if eq .Values.favorite.drink "coffee" -}}
   mug: true
   {{- end -}}
@@ -234,12 +234,12 @@ Scopes can be changed. `with` can allow you to set the current scope (`.`) to a 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
   {{- with .Values.favorite }}
-  drink: {{.drink | default "tea" | quote}}
-  food: {{.food | upper | quote}}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
   {{- end }}
 ```
 
@@ -251,9 +251,9 @@ But here's a note of caution! Inside of the restricted scope, you will not be ab
 
 ```yaml
   {{- with .Values.favorite }}
-  drink: {{.drink | default "tea" | quote}}
-  food: {{.food | upper | quote}}
-  release: {{.Release.Name}}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
+  release: {{ .Release.Name }}
   {{- end }}
 ```
 
@@ -261,10 +261,10 @@ It will produce an error because `Release.Name` is not inside of the restricted 
 
 ```yaml
   {{- with .Values.favorite }}
-  drink: {{.drink | default "tea" | quote}}
-  food: {{.food | upper | quote}}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
   {{- end }}
-  release: {{.Release.Name}}
+  release: {{ .Release.Name }}
 ```
 
 After looking a `range`, we will take a look at template variables, which offer one solution to the scoping issue above.
@@ -292,23 +292,23 @@ Now we have a list (called a `slice` in templates) of `pizzaToppings`. We can mo
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
   {{- with .Values.favorite }}
-  drink: {{.drink | default "tea" | quote}}
-  food: {{.food | upper | quote}}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
   {{- end }}
   toppings: |-
     {{- range .Values.pizzaToppings }}
-    - {{. | title | quote }}
+    - {{ . | title | quote }}
     {{- end }}
 
 ```
 
 Let's take a closer look at the `toppings:` list. The `range` function will "range over" (iterate through) the `pizzaToppings` list. But now something interesting happens. Just like `with` sets the scope of `.`, so does a `range` operator. Each time through the loop, `.` is set to the current pizza topping. That is, the first time, `.` is set to `mushrooms`. The second iteration it is set to `cheese`, and so on.
 
-We can send the value of `.` directly down a pipeline, so when we do `{{. | title | quote }}`, it sends `.` to `title` (title case function) and then to `quote`. If we run this template, the output will be:
+We can send the value of `.` directly down a pipeline, so when we do `{{ . | title | quote }}`, it sends `.` to `title` (title case function) and then to `quote`. If we run this template, the output will be:
 
 ```yaml
 # Source: mychart/templates/configmap.yaml
@@ -336,7 +336,7 @@ Sometimes it's useful to be able to quickly make a list inside of your template,
 ```yaml
   sizes: |-
     {{- range tuple "small" "medium" "large" }}
-    - {{.}}
+    - {{ . }}
     {{- end }}
 ```
 

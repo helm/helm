@@ -35,11 +35,11 @@ Each of these is a simple TOML file (think old-school Windows INI files). We kno
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
-  {{- $files := .Files}}
+  {{- $files := .Files }}
   {{- range tuple "config1.toml" "config2.toml" "config3.toml" }}
-  {{.}}: |-
+  {{ . }}: |-
     {{ $files.Get . }}
   {{- end }}
 ```
@@ -71,11 +71,11 @@ When working with a Secret resource, you can import a file and have the template
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{.Release.Name}}-secret
+  name: {{ .Release.Name }}-secret
 type: Opaque
 data:
   token: |-
-    {{.Files.Get "config1.toml" | b64enc}}
+    {{ .Files.Get "config1.toml" | b64enc }}
 ```
 
 The above will take the same `config1.toml` file we used before and encode it:

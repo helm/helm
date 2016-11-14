@@ -23,13 +23,13 @@ Now we can use this inside of a template:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favoriteDrink}}
+  drink: {{ .Values.favoriteDrink }}
 ```
 
-Notice on the last line we access `favoriteDrink` as an attribute of `Values`: `{{.Values.favoriteDrink}}`.
+Notice on the last line we access `favoriteDrink` as an attribute of `Values`: `{{ .Values.favoriteDrink}}`.
 
 Let's see how this renders.
 
@@ -89,11 +89,11 @@ Now we would have to modify the template slightly:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{.Release.Name}}-configmap
+  name: {{ .Release.Name }}-configmap
 data:
   myvalue: "Hello World"
-  drink: {{.Values.favorite.drink}}
-  food: {{.Values.favorite.food}}
+  drink: {{ .Values.favorite.drink }}
+  food: {{ .Values.favorite.food }}
 ```
 
 While structuring data this way is possible, the recommendation is that you keep your values trees shallow, favoring flatness. When we look at assigning values to subcharts, we'll see how values are named using a tree structure.
