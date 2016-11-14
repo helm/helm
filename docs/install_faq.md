@@ -77,8 +77,13 @@ Error: transport is closing
 
 A: This is usually a good indication that Kubernetes is not set up to allow port forwarding.
 
-Typically, the missing piece is `socat`. Here are a few resolved issues that may
-help you get started:
+Typically, the missing piece is `socat`. If you are running CoreOS, we have been
+told that it may have been misconfigured on installation. The CoreOS team
+recommends reading this:
+
+- https://coreos.com/kubernetes/docs/latest/kubelet-wrapper.html
+
+Here are a few resolved issues that may help you get started:
 
 - https://github.com/kubernetes/helm/issues/1371
 - https://github.com/kubernetes/helm/issues/966
