@@ -146,7 +146,7 @@ Charts repository hosts its charts, so you may want to take a
 [peek at that project](https://github.com/kubernetes/charts) if you get stuck.
 
 **Note:** A public GCS bucket can be accessed via simple HTTPS at this address
-`https://storage.googleapis.com/bucket-name`.
+`https://bucket-name.storage.googleapis.com/`.
 
 ### Github Pages example
 
@@ -228,7 +228,7 @@ packaged chart to that directory.
 $ helm package docs/examples/alpine/
 $ mkdir fantastic-charts
 $ mv alpine-0.1.0.tgz fantastic-charts/
-$ helm repo index . --url https://storage.googleapis.com/fantastic-charts
+$ helm repo index . --url https://fantastic-charts.storage.googleapis.com
 ```
 
 The last command takes the path of the local directory that you just created and
@@ -263,9 +263,9 @@ repo add [NAME] [URL]` command with any name they would like to use to
 reference the repository.
 
 ```console
-$ helm repo add fantastic-charts https://storage.googleapis.com/fantastic-charts
+$ helm repo add fantastic-charts https://fantastic-charts.storage.googleapis.com
 $ helm repo list
-fantastic-charts    https://storage.googleapis.com/fantastic-charts
+fantastic-charts    https://fantastic-charts.storage.googleapis.com
 ```
 
 **Note:** A repository will not be added if it does not contain a valid

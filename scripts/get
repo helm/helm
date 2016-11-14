@@ -56,7 +56,7 @@ verifySupported() {
     exit 1
   fi
 
-  if ! type "curl" > /dev/null && ! type "wget" > /dev/null; then 
+  if ! type "curl" > /dev/null && ! type "wget" > /dev/null; then
     echo "Either curl or wget is required"
     exit 1
   fi
@@ -74,7 +74,7 @@ downloadFile() {
   fi
 
   HELM_DIST="helm-$TAG-$OS-$ARCH.tar.gz"
-  DOWNLOAD_URL="http://storage.googleapis.com/kubernetes-helm/$HELM_DIST"
+  DOWNLOAD_URL="http://kubernetes-helm.storage.googleapis.com/$HELM_DIST"
   CHECKSUM_URL="$DOWNLOAD_URL.sha256"
   HELM_TMP_FILE="/tmp/$HELM_DIST"
   HELM_SUM_FILE="/tmp/$HELM_DIST.sha256"

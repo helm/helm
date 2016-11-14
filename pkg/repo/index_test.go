@@ -188,7 +188,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 				Home:        "https://github.com/something",
 			},
 			URLs: []string{
-				"http://storage.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz",
+				"http://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz",
 				"http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
@@ -202,7 +202,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 				Home:        "https://github.com/something/else",
 			},
 			URLs: []string{
-				"http://storage.googleapis.com/kubernetes-charts/nginx-0.2.0.tgz",
+				"http://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
 		},
@@ -215,7 +215,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 				Home:        "https://github.com/something",
 			},
 			URLs: []string{
-				"http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz",
+				"http://kubernetes-charts.storage.googleapis.com/nginx-0.1.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
 		},
