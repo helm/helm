@@ -146,32 +146,38 @@ func CoalesceValues(chrt *chart.Chart, vals *chart.Config) (Values, error) {
 		if err != nil {
 			return cvals, err
 		}
-		cvals = coalesce(chrt, evals)
+		cvals, err = coalesce(chrt, evals)
+		if err != nil {
+			return cvals, err
+		}
 	}
 
-	cvals = coalesceDeps(chrt, cvals)
-
-	return cvals, nil
+	var err error
+	cvals, err = coalesceDeps(chrt, cvals)
+	return cvals, err
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
 // This is a helper function for CoalesceValues.
-func coalesce(ch *chart.Chart, dest map[string]interface{}) map[string]interface{} {
-	dest = coalesceValues(ch, dest)
+func coalesce(ch *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	dest, err = coalesceValues(ch, dest)
+	if err != nil {
+		return dest, err
+	}
 	coalesceDeps(ch, dest)
-	return dest
+	return dest, nil
 }
 
 // coalesceDeps coalesces the dependencies of the given chart.
-func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) map[string]interface{} {
+func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
 	for _, subchart := range chrt.Dependencies {
 		if c, ok := dest[subchart.Metadata.Name]; !ok {
 			// If dest doesn't already have the key, create it.
 			dest[subchart.Metadata.Name] = map[string]interface{}{}
 		} else if !istable(c) {
-			log.Printf("error: type mismatch on %s: %t", subchart.Metadata.Name, c)
-			return dest
+			return dest, fmt.Errorf("type mismatch on %s: %t", subchart.Metadata.Name, c)
 		}
 		if dv, ok := dest[subchart.Metadata.Name]; ok {
 			dvmap := dv.(map[string]interface{})
@@ -179,11 +185,15 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) map[string]int
 			// Get globals out of dest and merge them into dvmap.
 			coalesceGlobals(dvmap, dest)
 
+			var err error
 			// Now coalesce the rest of the values.
-			dest[subchart.Metadata.Name] = coalesce(subchart, dvmap)
+			dest[subchart.Metadata.Name], err = coalesce(subchart, dvmap)
+			if err != nil {
+				return dest, err
+			}
 		}
 	}
-	return dest
+	return dest, nil
 }
 
 // coalesceGlobals copies the globals out of src and merges them into dest.
@@ -228,10 +238,10 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.
-func coalesceValues(c *chart.Chart, v map[string]interface{}) map[string]interface{} {
+func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interface{}, error) {
 	// If there are no values in the chart, we just return the given values
 	if c.Values == nil || c.Values.Raw == "" {
-		return v
+		return v, nil
 	}
 
 	nv, err := ReadValues([]byte(c.Values.Raw))
@@ -239,8 +249,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) map[string]interfa
 		// On error, we return just the overridden values.
 		// FIXME: We should log this error. It indicates that the YAML data
 		// did not parse.
-		log.Printf("error reading default values (%s): %s", c.Values.Raw, err)
-		return v
+		return v, fmt.Errorf("error reading default values (%s): %s", c.Values.Raw, err)
 	}
 
 	for key, val := range nv {
@@ -259,7 +268,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) map[string]interfa
 			coalesceTables(dest, src)
 		}
 	}
-	return v
+	return v, nil
 }
 
 // coalesceTables merges a source map into a destination map.
