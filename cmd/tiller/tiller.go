@@ -18,6 +18,7 @@ package main // import "k8s.io/helm/cmd/tiller"
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -70,6 +71,8 @@ var rootCommand = &cobra.Command{
 }
 
 func main() {
+	log.SetFlags(log.Flags() | log.Lshortfile)
+
 	p := rootCommand.PersistentFlags()
 	p.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
 	p.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
