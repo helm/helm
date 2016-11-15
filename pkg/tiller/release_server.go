@@ -604,7 +604,14 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	rel, err := s.prepareRelease(req)
 	if err != nil {
 		log.Printf("Failed install prepare step: %s", err)
-		return nil, err
+		res := &services.InstallReleaseResponse{Release: rel}
+
+		// On dry run, append the manifest contents to a failed release. This is
+		// a stop-gap until we can revisit an error backchannel post-2.0.
+		if req.DryRun && strings.HasPrefix(err.Error(), "YAML parse error") {
+			err = fmt.Errorf("%s\n%s", err, rel.Manifest)
+		}
+		return res, err
 	}
 
 	res, err := s.performRelease(rel, req)
@@ -634,7 +641,24 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 
 	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender)
 	if err != nil {
-		return nil, err
+		// Return a release with partial data so that client can show debugging
+		// information.
+		rel := &release.Release{
+			Name:      name,
+			Namespace: req.Namespace,
+			Chart:     req.Chart,
+			Config:    req.Values,
+			Info: &release.Info{
+				FirstDeployed: ts,
+				LastDeployed:  ts,
+				Status:        &release.Status{Code: release.Status_UNKNOWN},
+			},
+			Version: 0,
+		}
+		if manifestDoc != nil {
+			rel.Manifest = manifestDoc.String()
+		}
+		return rel, err
 	}
 
 	// Store a release.
@@ -717,7 +741,18 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
-		return nil, nil, "", err
+		//
+		// We return the files as a big blob of data to help the user debug parser
+		// errors.
+		b := bytes.NewBuffer(nil)
+		for name, content := range files {
+			if len(strings.TrimSpace(content)) == 0 {
+				continue
+			}
+			b.WriteString("\n---\n# Source: " + name + "\n")
+			b.WriteString(content)
+		}
+		return nil, b, "", err
 	}
 
 	// Aggregate all valid manifests into one big doc.
