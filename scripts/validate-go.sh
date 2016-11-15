@@ -17,15 +17,15 @@ set -euo pipefail
 
 exit_code=0
 
-if ! hash gometalinter 2>/dev/null ; then
-  go get github.com/alecthomas/gometalinter
-  gometalinter --install
+if ! hash gometalinter.v1 2>/dev/null ; then
+  go get -u gopkg.in/alecthomas/gometalinter.v1
+  gometalinter.v1 --install
 fi
 
 echo
 echo "==> Running static validations <=="
 # Run linters that should return errors
-gometalinter \
+gometalinter.v1 \
   --disable-all \
   --enable deadcode \
   --severity deadcode:error \
@@ -42,7 +42,7 @@ gometalinter \
 echo
 echo "==> Running linters <=="
 # Run linters that should return warnings
-gometalinter \
+gometalinter.v1 \
   --disable-all \
   --enable golint \
   --vendor \
