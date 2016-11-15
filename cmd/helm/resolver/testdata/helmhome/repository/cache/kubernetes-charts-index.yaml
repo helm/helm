@@ -1,0 +1,49 @@
+apiVersion: v1
+entries:
+  alpine:
+    - name: alpine
+      urls:
+        - https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
+      home: https://k8s.io/helm
+      sources:
+      - https://github.com/kubernetes/helm
+      version: 0.2.0
+      description: Deploy a basic Alpine Linux pod
+      keywords: []
+      maintainers: []
+      engine: ""
+      icon: ""
+    - name: alpine
+      urls:
+        - https://kubernetes-charts.storage.googleapis.com/alpine-0.2.0.tgz
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
+      home: https://k8s.io/helm
+      sources:
+      - https://github.com/kubernetes/helm
+      version: 0.1.0
+      description: Deploy a basic Alpine Linux pod
+      keywords: []
+      maintainers: []
+      engine: ""
+      icon: ""
+  mariadb:
+    - name: mariadb
+      urls:
+        - https://kubernetes-charts.storage.googleapis.com/mariadb-0.3.0.tgz
+      checksum: 65229f6de44a2be9f215d11dbff311673fc8ba56
+      home: https://mariadb.org
+      sources:
+      - https://github.com/bitnami/bitnami-docker-mariadb
+      version: 0.3.0
+      description: Chart for MariaDB
+      keywords:
+      - mariadb
+      - mysql
+      - database
+      - sql
+      maintainers:
+      - name: Bitnami
+        email: containers@bitnami.com
+      engine: gotpl
+      icon: ""
