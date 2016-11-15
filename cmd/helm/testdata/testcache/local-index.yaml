@@ -1,5 +1,5 @@
 nginx-0.1.0:
-  url: http://storage.googleapis.com/kubernetes-charts/nginx-0.1.0.tgz
+  url: https://kubernetes-charts.storage.googleapis.com/nginx-0.1.0.tgz
   name: nginx
   removed: false
   chartfile:
@@ -12,7 +12,7 @@ nginx-0.1.0:
       - web server
       - proxy
 alpine-1.0.0:
-  url: http://storage.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+  url: https://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz
   name: alpine
   removed: false
   chartfile:
@@ -25,4 +25,3 @@ alpine-1.0.0:
       - alpine
       - small
       - sumtin
-
