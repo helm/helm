@@ -36,8 +36,8 @@ Show the client and server versions for Helm and tiller.
 This will print a representation of the client and server versions of Helm and
 Tiller. The output will look something like this:
 
-Client: &version.Version{SemVer:"v2.0.0-beta.1", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"dirty"}
-Server: &version.Version{SemVer:"v2.0.0-beta.1", GitCommit:"b0c113dfb9f612a9add796549da66c0d294508a3", GitTreeState:"clean"}
+Client: &version.Version{SemVer:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"clean"}
+Server: &version.Version{SemVer:"v2.0.0", GitCommit:"b0c113dfb9f612a9add796549da66c0d294508a3", GitTreeState:"clean"}
 
 - SemVer is the semantic version of the release.
 - GitCommit is the SHA for the commit that this version was built from.
