@@ -141,9 +141,9 @@ Hard-coding the `name:` into a resource is usually considered to be bad practice
 Names should be unique to a release. So we might want to generate a name field
 by inserting the release name.
 
-**TIP:** The `name:` field is limited to 24 characters because of limitations to
-the DNS system (long story). For that reason, release names are limited to
-14 characters.
+**TIP:** The `name:` field is limited to 63 characters because of limitations to
+the DNS system. For that reason, release names are limited to 53 characters.
+Kubernetes 1.3 and earlier limited to only 24 characters (thus 14 character names).
 
 Let's alter `configmap.yaml` accordingly.
 

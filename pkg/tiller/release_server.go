@@ -45,10 +45,10 @@ import (
 
 // releaseNameMaxLen is the maximum length of a release name.
 //
-// This is designed to accommodate the usage of release name in the 'name:'
-// field of Kubernetes resources. Many of those fields are limited to 24
-// characters in length. See https://github.com/kubernetes/helm/issues/1071
-const releaseNameMaxLen = 14
+// As of Kubernetes 1.4, the max limit on a name is 63 chars. We reserve 10 for
+// charts to add data. Effectively, that gives us 53 chars.
+// See https://github.com/kubernetes/helm/issues/1528
+const releaseNameMaxLen = 53
 
 // NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
 // but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
