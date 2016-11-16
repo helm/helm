@@ -28,10 +28,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	"k8s.io/kubernetes/pkg/apis/batch"
-	unversionedclient "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -83,7 +82,7 @@ func (e ErrAlreadyExists) Error() string {
 // means it can't satisfy an interface's method requirement. In order to ensure
 // that an implementation of environment.KubeClient can access the raw API client,
 // it is necessary to add this method.
-func (c *Client) APIClient() (unversionedclient.Interface, error) {
+func (c *Client) APIClient() (unversioned.Interface, error) {
 	return c.Client()
 }
 
@@ -431,9 +430,7 @@ func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
 
 func getCurrentObject(target *resource.Info, infos []*resource.Info) (runtime.Object, error) {
 	if found, ok := findMatchingInfo(target, infos); ok {
-		encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
-		defaultVersion := unversioned.GroupVersion{}
-		return resource.AsVersionedObject([]*resource.Info{found}, false, defaultVersion, encoder)
+		return found.Mapping.ConvertToVersion(found.Object, found.Mapping.GroupVersionKind.GroupVersion())
 	}
 	return nil, fmt.Errorf("No resource with the name %s found.", target.Name)
 }
