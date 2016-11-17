@@ -116,8 +116,10 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// Check that all of the repos we're dependent on actually exist.
-	if err := m.hasAllRepos(req.Dependencies); err != nil {
+	// Check that all of the repos we're dependent on actually exist and
+	// the repo index names.
+	repoNames, err := m.getRepoNames(req.Dependencies)
+	if err != nil {
 		return err
 	}
 
@@ -128,7 +130,7 @@ func (m *Manager) Update() error {
 
 	// Now we need to find out which version of a chart best satisfies the
 	// requirements the requirements.yaml
-	lock, err := m.resolve(req)
+	lock, err := m.resolve(req, repoNames)
 	if err != nil {
 		return err
 	}
@@ -160,9 +162,9 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 // resolve takes a list of requirements and translates them into an exact version to download.
 //
 // This returns a lock file, which has all of the requirements normalized to a specific version.
-func (m *Manager) resolve(req *chartutil.Requirements) (*chartutil.RequirementsLock, error) {
+func (m *Manager) resolve(req *chartutil.Requirements, repoNames map[string]string) (*chartutil.RequirementsLock, error) {
 	res := resolver.New(m.ChartPath, m.HelmHome)
-	return res.Resolve(req)
+	return res.Resolve(req, repoNames)
 }
 
 // downloadAll takes a list of dependencies and downloads them into charts/
@@ -237,6 +239,39 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 		return fmt.Errorf("no repository definition for %s. Try 'helm repo add'", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+// getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
+func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string, error) {
+	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
+	if err != nil {
+		return nil, err
+	}
+	repos := rf.Repositories
+
+	reposMap := make(map[string]string)
+
+	// Verify that all repositories referenced in the deps are actually known
+	// by Helm.
+	missing := []string{}
+	for _, dd := range deps {
+		found := false
+
+		for _, repo := range repos {
+			if urlsAreEqual(repo.URL, dd.Repository) {
+				found = true
+				reposMap[dd.Name] = repo.Name
+				break
+			}
+		}
+		if !found {
+			missing = append(missing, dd.Repository)
+		}
+	}
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("no repository definition for %s. Try 'helm repo add'", strings.Join(missing, ", "))
+	}
+	return reposMap, nil
 }
 
 // UpdateRepositories updates all of the local repos to the latest.

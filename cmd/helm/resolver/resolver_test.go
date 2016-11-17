@@ -32,7 +32,34 @@ func TestResolve(t *testing.T) {
 			name: "version failure",
 			req: &chartutil.Requirements{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "oedipus-rex", Repository: "http://example.com", Version: ">1"},
+					{Name: "oedipus-rex", Repository: "http://example.com", Version: ">a1"},
+				},
+			},
+			err: true,
+		},
+		{
+			name: "cache index failure",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "oedipus-rex", Repository: "http://example.com", Version: "1.0.0"},
+				},
+			},
+			err: true,
+		},
+		{
+			name: "chart not found failure",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "redis", Repository: "http://example.com", Version: "1.0.0"},
+				},
+			},
+			err: true,
+		},
+		{
+			name: "constraint not satisfied failure",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "alpine", Repository: "http://example.com", Version: ">=1.0.0"},
 				},
 			},
 			err: true,
@@ -41,20 +68,21 @@ func TestResolve(t *testing.T) {
 			name: "valid lock",
 			req: &chartutil.Requirements{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "antigone", Repository: "http://example.com", Version: "1.0.0"},
+					{Name: "alpine", Repository: "http://example.com", Version: ">=0.1.0"},
 				},
 			},
 			expect: &chartutil.RequirementsLock{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "antigone", Repository: "http://example.com", Version: "1.0.0"},
+					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
 				},
 			},
 		},
 	}
 
+	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
 	r := New("testdata/chartpath", "testdata/helmhome")
 	for _, tt := range tests {
-		l, err := r.Resolve(tt.req)
+		l, err := r.Resolve(tt.req, repoNames)
 		if err != nil {
 			if tt.err {
 				continue

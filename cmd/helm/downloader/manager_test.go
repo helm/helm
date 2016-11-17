@@ -17,9 +17,11 @@ package downloader
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/chartutil"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -83,4 +85,53 @@ func TestFindChartURL(t *testing.T) {
 		t.Errorf("Unexpected URL %q", churl)
 	}
 
+}
+
+func TestGetRepoNames(t *testing.T) {
+	b := bytes.NewBuffer(nil)
+	m := &Manager{
+		Out:      b,
+		HelmHome: helmpath.Home("testdata/helmhome"),
+	}
+	tests := []struct {
+		name   string
+		req    []*chartutil.Dependency
+		expect map[string]string
+		err    bool
+	}{
+		{
+			name: "no repo definition failure",
+			req: []*chartutil.Dependency{
+				{Name: "oedipus-rex", Repository: "http://example.com/test"},
+			},
+			err: true,
+		},
+		{
+			name: "no repo definition failure",
+			req: []*chartutil.Dependency{
+				{Name: "oedipus-rex", Repository: "http://example.com"},
+			},
+			expect: map[string]string{"oedipus-rex": "testing"},
+		},
+	}
+
+	for _, tt := range tests {
+		l, err := m.getRepoNames(tt.req)
+		if err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatal(err)
+		}
+
+		if tt.err {
+			t.Fatalf("Expected error in test %q", tt.name)
+		}
+
+		// m1 and m2 are the maps we want to compare
+		eq := reflect.DeepEqual(l, tt.expect)
+		if !eq {
+			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
+		}
+	}
 }

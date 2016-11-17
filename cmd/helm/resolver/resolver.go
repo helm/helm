@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/provenance"
+	"k8s.io/helm/pkg/repo"
 )
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
@@ -43,7 +45,7 @@ func New(chartpath string, helmhome helmpath.Home) *Resolver {
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs *chartutil.Requirements) (*chartutil.RequirementsLock, error) {
+func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]string) (*chartutil.RequirementsLock, error) {
 	d, err := HashReq(reqs)
 	if err != nil {
 		return nil, err
@@ -51,22 +53,49 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements) (*chartutil.Requirement
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chartutil.Dependency, len(reqs.Dependencies))
+	missing := []string{}
 	for i, d := range reqs.Dependencies {
-		// Right now, we're just copying one entry to another. What we need to
-		// do here is parse the requirement as a SemVer range, and then look up
-		// whether a version in index.yaml satisfies this constraint. If so,
-		// we need to clone the dep, setting Version appropriately.
-		// If not, we need to error out.
-		if _, err := semver.NewVersion(d.Version); err != nil {
-			return nil, fmt.Errorf("dependency %q has an invalid version: %s", d.Name, err)
+		constraint, err := semver.NewConstraint(d.Version)
+		if err != nil {
+			return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %s", d.Name, err)
 		}
+
+		repoIndex, err := repo.LoadIndexFile(r.helmhome.CacheIndex(repoNames[d.Name]))
+		if err != nil {
+			return nil, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
+		}
+
+		vs, ok := repoIndex.Entries[d.Name]
+		if !ok {
+			return nil, fmt.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
+		}
+
 		locked[i] = &chartutil.Dependency{
 			Name:       d.Name,
 			Repository: d.Repository,
-			Version:    d.Version,
+		}
+		found := false
+		// The version are already sorted and hence the first one to satisfy the constraint is used
+		for _, ver := range vs {
+			v, err := semver.NewVersion(ver.Version)
+			if err != nil || len(ver.URLs) == 0 {
+				// Not a legit entry.
+				continue
+			}
+			if constraint.Check(v) {
+				found = true
+				locked[i].Version = v.Original()
+				break
+			}
+		}
+
+		if !found {
+			missing = append(missing, d.Name)
 		}
 	}
-
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("Can't get a valid version for repositories %s. Try changing the version constraint in requirements.yaml", strings.Join(missing, ", "))
+	}
 	return &chartutil.RequirementsLock{
 		Generated:    time.Now(),
 		Digest:       d,
