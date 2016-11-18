@@ -264,7 +264,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 808ed7761c233af2de3f9729a041d68c62527f3a
 - name: github.com/Masterminds/sprig
-  version: 8f797f5b23118d8fe846c4296b0ad55044201b14
+  version: 3fb136ad254dd34998b95f8d523b09a0dafa31b5
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
