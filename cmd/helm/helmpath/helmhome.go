@@ -67,3 +67,8 @@ func (h Home) LocalRepository(paths ...string) string {
 	frag := append([]string{string(h), "repository/local"}, paths...)
 	return filepath.Join(frag...)
 }
+
+// Plugins returns the path to the plugins directory.
+func (h Home) Plugins() string {
+	return filepath.Join(string(h), "plugins")
+}
