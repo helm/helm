@@ -26,8 +26,10 @@ import (
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api/meta"
+	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	api "k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/client/unversioned/fake"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -67,12 +69,13 @@ func TestUpdateResource(t *testing.T) {
 
 func TestPerform(t *testing.T) {
 	tests := []struct {
-		name       string
-		namespace  string
-		reader     io.Reader
-		count      int
-		err        bool
-		errMessage string
+		name        string
+		namespace   string
+		reader      io.Reader
+		count       int
+		swaggerFile string
+		err         bool
+		errMessage  string
 	}{
 		{
 			name:      "Valid input",
@@ -85,6 +88,13 @@ func TestPerform(t *testing.T) {
 			reader:     strings.NewReader(""),
 			err:        true,
 			errMessage: "no objects visited",
+		}, {
+			name:        "Invalid schema",
+			namespace:   "test",
+			reader:      strings.NewReader(testInvalidServiceManifest),
+			swaggerFile: "../../vendor/k8s.io/kubernetes/api/swagger-spec/" + testapi.Default.GroupVersion().Version + ".json",
+			err:         true,
+			errMessage:  `error validating "": error validating data: expected type int, for field spec.ports[0].port, got string`,
 		},
 	}
 
@@ -104,6 +114,16 @@ func TestPerform(t *testing.T) {
 		c.IncludeThirdPartyAPIs = false
 		c.ClientForMapping = func(mapping *meta.RESTMapping) (resource.RESTClient, error) {
 			return &fake.RESTClient{}, nil
+		}
+		c.Validator = func(validate bool, cacheDir string) (validation.Schema, error) {
+			if tt.swaggerFile == "" {
+				return validation.NullSchema{}, nil
+			}
+			data, err := ioutil.ReadFile(tt.swaggerFile)
+			if err != nil {
+				t.Fatalf("could not load swagger spec: %s", err)
+			}
+			return validation.NewSwaggerSchemaFromBytes(data, nil)
 		}
 
 		err := perform(c, tt.namespace, tt.reader, fn)
@@ -157,6 +177,14 @@ spec:
     - port: 80
       protocol: TCP
       targetPort: 9376
+`
+
+const testInvalidServiceManifest = `
+kind: Service
+apiVersion: v1
+spec:
+  ports:
+    - port: "80"
 `
 
 const testEndpointManifest = `

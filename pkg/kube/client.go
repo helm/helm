@@ -54,6 +54,10 @@ type Client struct {
 	// a client will still attempt to contact a live server. In these situations,
 	// this flag may need to be disabled.
 	IncludeThirdPartyAPIs bool
+	// Validate idicates whether to load a schema for validation.
+	Validate bool
+	// SchemaCacheDir is the path for loading cached schema.
+	SchemaCacheDir string
 }
 
 // New create a new Client
@@ -61,6 +65,8 @@ func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:               cmdutil.NewFactory(config),
 		IncludeThirdPartyAPIs: true,
+		Validate:              true,
+		SchemaCacheDir:        clientcmd.RecommendedSchemaFile,
 	}
 }
 
@@ -97,8 +103,13 @@ func (c *Client) Create(namespace string, reader io.Reader) error {
 }
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Builder {
+	schema, err := c.Validator(c.Validate, c.SchemaCacheDir)
+	if err != nil {
+		log.Printf("warning: failed to load schema: %s", err)
+	}
 	return c.NewBuilder(c.IncludeThirdPartyAPIs).
 		ContinueOnError().
+		Schema(schema).
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
@@ -280,7 +291,7 @@ func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc
 	infos, err := c.newBuilder(namespace, reader).Do().Infos()
 	switch {
 	case err != nil:
-		return err
+		return scrubValidationError(err)
 	case len(infos) == 0:
 		return ErrNoObjectsVisited
 	}
@@ -448,4 +459,14 @@ func findMatchingInfo(target *resource.Info, infos []*resource.Info) (*resource.
 		}
 	}
 	return nil, false
+}
+
+// scrubValidationError removes kubectl info from the message
+func scrubValidationError(err error) error {
+	const stopValidateMessage = "if you choose to ignore these errors, turn validation off with --validate=false"
+
+	if strings.Contains(err.Error(), stopValidateMessage) {
+		return goerrors.New(strings.Replace(err.Error(), "; "+stopValidateMessage, "", -1))
+	}
+	return err
 }
