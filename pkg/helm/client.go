@@ -96,7 +96,7 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 
 	if h.opts.dryRun {
 		// In the dry run case, just see if the release exists
-		r, err := h.ReleaseContent(rlsName, nil)
+		r, err := h.ReleaseContent(rlsName)
 		if err != nil {
 			return &rls.UninstallReleaseResponse{}, err
 		}
