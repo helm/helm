@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"text/template"
@@ -35,6 +34,7 @@ import (
 
 	"k8s.io/helm/cmd/helm/downloader"
 	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/cmd/helm/strvals"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -95,7 +95,7 @@ type installCmd struct {
 	keyring      string
 	out          io.Writer
 	client       helm.Interface
-	values       *values
+	values       string
 	nameTemplate string
 	version      string
 }
@@ -104,7 +104,6 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	inst := &installCmd{
 		out:    out,
 		client: c,
-		values: new(values),
 	}
 
 	cmd := &cobra.Command{
@@ -133,7 +132,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
-	f.Var(inst.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
+	f.StringVar(&inst.values, "set", "", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
@@ -199,7 +198,7 @@ func (i *installCmd) run() error {
 }
 
 func (i *installCmd) vals() ([]byte, error) {
-	var buffer bytes.Buffer
+	base := map[string]interface{}{}
 
 	// User specified a values file via -f/--values
 	if i.valuesFile != "" {
@@ -207,24 +206,17 @@ func (i *installCmd) vals() ([]byte, error) {
 		if err != nil {
 			return []byte{}, err
 		}
-		buffer.Write(bytes)
 
-		// Force a new line. An extra won't matter, but a missing one can
-		// break things. https://github.com/kubernetes/helm/issues/1430
-		buffer.WriteRune('\n')
-	}
-
-	// User specified value pairs via --set
-	// These override any values in the specified file
-	if len(i.values.pairs) > 0 {
-		bytes, err := i.values.yaml()
-		if err != nil {
-			return []byte{}, err
+		if err := yaml.Unmarshal(bytes, &base); err != nil {
+			return []byte{}, fmt.Errorf("failed to parse %s: %s", i.valuesFile, err)
 		}
-		buffer.Write(bytes)
 	}
 
-	return buffer.Bytes(), nil
+	if err := strvals.ParseInto(i.values, base); err != nil {
+		return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+	}
+
+	return yaml.Marshal(base)
 }
 
 // printRelease prints info about a release if the flagDebug is true.
@@ -241,81 +233,6 @@ func (i *installCmd) printRelease(rel *release.Release) {
 	} else {
 		fmt.Fprintf(i.out, "NAME: %s\n", rel.Name)
 	}
-}
-
-// values represents the command-line value pairs
-type values struct {
-	pairs map[string]interface{}
-}
-
-func (v *values) yaml() ([]byte, error) {
-	return yaml.Marshal(v.pairs)
-}
-
-func (v *values) String() string {
-	out, _ := v.yaml()
-	return string(out)
-}
-
-func (v *values) Type() string {
-	// Added to pflags.Value interface, but not documented there.
-	return "struct"
-}
-
-func (v *values) Set(data string) error {
-	v.pairs = map[string]interface{}{}
-
-	items := strings.Split(data, ",")
-	for _, item := range items {
-		n, val := splitPair(item)
-		names := strings.Split(n, ".")
-		ln := len(names)
-		current := &v.pairs
-		for i := 0; i < ln; i++ {
-			if i+1 == ln {
-				// We're at the last element. Set it.
-				(*current)[names[i]] = val
-			} else {
-				//
-				if e, ok := (*current)[names[i]]; !ok {
-					m := map[string]interface{}{}
-					(*current)[names[i]] = m
-					current = &m
-				} else if m, ok := e.(map[string]interface{}); ok {
-					current = &m
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func typedVal(val string) interface{} {
-	if strings.EqualFold(val, "true") {
-		return true
-	}
-
-	if strings.EqualFold(val, "false") {
-		return false
-	}
-
-	if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
-		return iv
-	}
-
-	if fv, err := strconv.ParseFloat(val, 64); err == nil {
-		return fv
-	}
-
-	return val
-}
-
-func splitPair(item string) (name string, value interface{}) {
-	pair := strings.SplitN(item, "=", 2)
-	if len(pair) == 1 {
-		return pair[0], true
-	}
-	return pair[0], typedVal(pair[1])
 }
 
 // locateChartPath looks for a chart directory in known places, and returns either the full path or an error.

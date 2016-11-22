@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -97,71 +96,6 @@ func TestInstall(t *testing.T) {
 	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
 		return newInstallCmd(c, out)
 	})
-}
-
-func TestValues(t *testing.T) {
-	args := "sailor=sinbad,good,port.source=baghdad,port.destination=basrah,success=True"
-	vobj := new(values)
-	vobj.Set(args)
-
-	if vobj.Type() != "struct" {
-		t.Fatalf("Expected Type to be struct, got %s", vobj.Type())
-	}
-
-	vals := vobj.pairs
-	if fmt.Sprint(vals["good"]) != "true" {
-		t.Errorf("Expected good to be true. Got %v", vals["good"])
-	}
-
-	if !vals["success"].(bool) {
-		t.Errorf("Expected boolean true. Got %T, %v", vals["success"], vals["success"])
-	}
-
-	port := vals["port"].(map[string]interface{})
-
-	if fmt.Sprint(port["source"]) != "baghdad" {
-		t.Errorf("Expected source to be baghdad. Got %s", port["source"])
-	}
-	if fmt.Sprint(port["destination"]) != "basrah" {
-		t.Errorf("Expected source to be baghdad. Got %s", port["source"])
-	}
-
-	y := `good: true
-port:
-  destination: basrah
-  source: baghdad
-sailor: sinbad
-success: true
-`
-	out, err := vobj.yaml()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(out) != y {
-		t.Errorf("Expected YAML to be \n%s\nGot\n%s\n", y, out)
-	}
-
-	if vobj.String() != y {
-		t.Errorf("Expected String() to be \n%s\nGot\n%s\n", y, out)
-	}
-
-	// Combined case, overriding a property
-	vals["sailor"] = "pisti"
-	updatedYAML := `good: true
-port:
-  destination: basrah
-  source: baghdad
-sailor: pisti
-success: true
-`
-	newOut, err := vobj.yaml()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(newOut) != updatedYAML {
-		t.Errorf("Expected YAML to be \n%s\nGot\n%s\n", updatedYAML, newOut)
-	}
-
 }
 
 type nameTemplateTestCase struct {
