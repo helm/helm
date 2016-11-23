@@ -543,3 +543,21 @@ commands. However, Helm does not provide tools for uploading charts to
 remote repository servers. This is because doing so would add
 substantial requirements to an implementing server, and thus raise the
 barrier for setting up a repository.
+
+## Chart Starter Packs
+
+The `helm create` command takes an optional `--starter` option that lets you
+specify a "starter chart".
+
+Starters are just regular charts, but are located in `$HELM_HOME/starters`.
+As a chart developer, you may author charts that are specifically designed
+to be used as starters. Such charts should be designed with the following
+considerations in mind:
+
+- The `Chart.yaml` will be overwritten by the genertor.
+- Users will expect to modify such a chart's contents, so documentation
+  should indicate how users can do so.
+
+Currently the only way to add a chart to `$HELM_HOME/starters` is to manually
+copy it there. In your chart's documentation, you may want to explain that
+process.

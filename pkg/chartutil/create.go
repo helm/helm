@@ -175,6 +175,17 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 `
 
+// CreateFrom creates a new chart, but scaffolds it from the src chart.
+func CreateFrom(chartfile *chart.Metadata, dest string, src string) error {
+	schart, err := Load(src)
+	if err != nil {
+		return fmt.Errorf("could not load %s: %s", src, err)
+	}
+
+	schart.Metadata = chartfile
+	return SaveDir(schart, dest)
+}
+
 // Create creates a new chart in a directory.
 //
 // Inside of dir, this will create a directory based on the name of
