@@ -58,6 +58,8 @@ type ChartDownloader struct {
 	Keyring string
 	// HelmHome is the $HELM_HOME.
 	HelmHome helmpath.Home
+	// A Client is an HTTP client.
+	Client *http.Client
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -76,7 +78,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	if err != nil {
 		return "", nil, err
 	}
-	data, err := download(u.String())
+	data, err := download(u.String(), c.Client)
 	if err != nil {
 		return "", nil, err
 	}
@@ -91,7 +93,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	ver := &provenance.Verification{}
 	if c.Verify > VerifyNever {
 
-		body, err := download(u.String() + ".prov")
+		body, err := download(u.String()+".prov", c.Client)
 		if err != nil {
 			if c.Verify == VerifyAlways {
 				return destfile, ver, fmt.Errorf("Failed to fetch provenance %q", u.String()+".prov")
@@ -211,10 +213,10 @@ func VerifyChart(path string, keyring string) (*provenance.Verification, error) 
 }
 
 // download performs a simple HTTP Get and returns the body.
-func download(href string) (*bytes.Buffer, error) {
+func download(href string, client *http.Client) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
 
-	resp, err := http.Get(href)
+	resp, err := client.Get(href)
 	if err != nil {
 		return buf, err
 	}

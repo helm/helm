@@ -19,20 +19,27 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/util"
 )
 
 type repoAddCmd struct {
 	name     string
 	url      string
 	home     helmpath.Home
-	out      io.Writer
 	noupdate bool
+
+	certFile string
+	keyFile  string
+	caFile   string
+
+	out io.Writer
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
@@ -55,17 +62,32 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 			return add.run()
 		},
 	}
+
 	f := cmd.Flags()
 	f.BoolVar(&add.noupdate, "no-update", false, "raise error if repo is already registered")
+	f.StringVar(&add.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&add.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&add.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+
 	return cmd
 }
 
 func (a *repoAddCmd) run() error {
+	var client *http.Client
 	var err error
-	if a.noupdate {
-		err = addRepository(a.name, a.url, a.home)
+	if a.certFile != "" && a.keyFile != "" && a.caFile != "" {
+		client, err = util.NewHTTPClientTLS(a.certFile, a.keyFile, a.caFile)
+		if err != nil {
+			return err
+		}
 	} else {
-		err = updateRepository(a.name, a.url, a.home)
+		client = http.DefaultClient
+	}
+
+	if a.noupdate {
+		err = addRepository(a.name, a.url, a.home, client)
+	} else {
+		err = updateRepository(a.name, a.url, a.home, client)
 	}
 	if err != nil {
 		return err
@@ -74,9 +96,9 @@ func (a *repoAddCmd) run() error {
 	return nil
 }
 
-func addRepository(name, url string, home helmpath.Home) error {
+func addRepository(name, url string, home helmpath.Home, client *http.Client) error {
 	cif := home.CacheIndex(name)
-	if err := repo.DownloadIndexFile(name, url, cif); err != nil {
+	if err := repo.DownloadIndexFile(name, url, cif, client); err != nil {
 		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
 	}
 
@@ -101,9 +123,9 @@ func insertRepoLine(name, url string, home helmpath.Home) error {
 	return f.WriteFile(home.RepositoryFile(), 0644)
 }
 
-func updateRepository(name, url string, home helmpath.Home) error {
+func updateRepository(name, url string, home helmpath.Home, client *http.Client) error {
 	cif := home.CacheIndex(name)
-	if err := repo.DownloadIndexFile(name, url, cif); err != nil {
+	if err := repo.DownloadIndexFile(name, url, cif, client); err != nil {
 		return err
 	}
 
