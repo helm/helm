@@ -1,8 +1,11 @@
-hash: e04a956fc7be01bd1a2450cdc0000ed25394da383f0c7a7e057a9377bd832c1e
-updated: 2016-10-13T12:28:13.380298639-07:00
+hash: 99054419731f37edfc9fca9ae35d473635e865f1e1c9a7633ec36963dfa25c2a
+updated: 2016-11-22T16:38:51.234855217-08:00
 imports:
-- name: bitbucket.org/ww/goautoneg
-  version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
+- name: cloud.google.com/go
+  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
+  subpackages:
+  - compute/metadata
+  - internal
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/asaskevich/govalidator
@@ -11,67 +14,8 @@ imports:
   version: 70b2c90b260171e829f1ebd7c17f600c11858dbe
   subpackages:
   - winterm
-- name: github.com/beorn7/perks
-  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
-  subpackages:
-  - quantile
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
-- name: github.com/coreos/etcd
-  version: 9efa00d1030d4bf62eb8e5ec130023aeb1b8e2d0
-  subpackages:
-  - alarm
-  - auth
-  - auth/authpb
-  - client
-  - clientv3
-  - compactor
-  - discovery
-  - error
-  - etcdserver
-  - etcdserver/api
-  - etcdserver/api/v2http
-  - etcdserver/api/v2http/httptypes
-  - etcdserver/api/v3rpc
-  - etcdserver/api/v3rpc/rpctypes
-  - etcdserver/auth
-  - etcdserver/etcdserverpb
-  - etcdserver/membership
-  - etcdserver/stats
-  - integration
-  - lease
-  - lease/leasehttp
-  - lease/leasepb
-  - mvcc
-  - mvcc/backend
-  - mvcc/mvccpb
-  - pkg/adt
-  - pkg/contention
-  - pkg/crc
-  - pkg/fileutil
-  - pkg/httputil
-  - pkg/idutil
-  - pkg/ioutil
-  - pkg/logutil
-  - pkg/netutil
-  - pkg/pathutil
-  - pkg/pbutil
-  - pkg/runtime
-  - pkg/schedule
-  - pkg/testutil
-  - pkg/tlsutil
-  - pkg/transport
-  - pkg/types
-  - pkg/wait
-  - raft
-  - raft/raftpb
-  - rafthttp
-  - snap
-  - snap/snappb
-  - store
-  - version
-  - wal
-  - wal/walpb
 - name: github.com/coreos/go-oidc
   version: 5cf2aa52da8c574d3aa4458f471ad6ae2240fe6b
   subpackages:
@@ -192,12 +136,11 @@ imports:
 - name: github.com/golang/protobuf
   version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
   subpackages:
-  - jsonpb
   - proto
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/cadvisor
-  version: 0cdf4912793fac9990de3790c273342ec31817fb
+  version: a726d13de8cb32860e73d72a78dc8e0124267709
   subpackages:
   - api
   - cache/memory
@@ -247,12 +190,6 @@ imports:
   subpackages:
   - util/strutil
   - util/wordwrap
-- name: github.com/grpc-ecosystem/grpc-gateway
-  version: f52d055dc48aec25854ed7d31862f78913cf17d1
-  subpackages:
-  - runtime
-  - runtime/internal
-  - utilities
 - name: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/inconshreveable/mousetrap
@@ -267,27 +204,8 @@ imports:
   version: 8f797f5b23118d8fe846c4296b0ad55044201b14
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
-- name: github.com/matttproud/golang_protobuf_extensions
-  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
-  subpackages:
-  - pbutil
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
-- name: github.com/prometheus/client_golang
-  version: e51041b3fa41cece0dca035740ba6411905be473
-  subpackages:
-  - prometheus
-- name: github.com/prometheus/client_model
-  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
-  subpackages:
-  - go
-- name: github.com/prometheus/common
-  version: ffe929a3f4c4faeaa10f2b9535c2b1be3ad15650
-  subpackages:
-  - expfmt
-  - model
-- name: github.com/prometheus/procfs
-  version: 454a56f35412459b5e684fd5ec0f9211b94f002a
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/Sirupsen/logrus
@@ -314,6 +232,7 @@ imports:
   - openpgp/errors
   - openpgp/packet
   - openpgp/s2k
+  - ssh/terminal
 - name: golang.org/x/net
   version: fb93926129b8ec0056f2f458b1f519654814edf0
   subpackages:
@@ -325,14 +244,14 @@ imports:
   - trace
   - websocket
 - name: golang.org/x/oauth2
-  version: b5adcc2dcdf009d0391547edc6ecbaff889f5bb9
+  version: 3c3a985cb79f52a3190fbc056984415ca6763d01
   subpackages:
   - google
   - internal
   - jws
   - jwt
 - name: google.golang.org/appengine
-  version: 12d5545dc1cfa6047a286d5e853841b6471f4c19
+  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:
   - internal
   - internal/app_identity
@@ -343,13 +262,6 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
-- name: google.golang.org/cloud
-  version: eb47ba841d53d93506cfbfbc03927daf9cc48f88
-  repo: https://code.googlesource.com/gocloud
-  vcs: git
-  subpackages:
-  - compute/metadata
-  - internal
 - name: google.golang.org/grpc
   version: 0032a855ba5c8a3c8e0d71c2deef354b70af1584
   subpackages:
@@ -434,7 +346,7 @@ imports:
   - 1.4/tools/metrics
   - 1.4/transport
 - name: k8s.io/kubernetes
-  version: fc3dab7de68c15de3421896dd051c2f127fb64ab
+  version: fd8fac83034df346529c6e11aabceea2db48d663
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install
@@ -547,7 +459,6 @@ imports:
   - pkg/kubelet/types
   - pkg/labels
   - pkg/master/ports
-  - pkg/registry/generic
   - pkg/registry/thirdpartyresourcedata
   - pkg/runtime
   - pkg/runtime/serializer
@@ -560,15 +471,8 @@ imports:
   - pkg/security/podsecuritypolicy/util
   - pkg/selection
   - pkg/storage
-  - pkg/storage/etcd
-  - pkg/storage/etcd/metrics
-  - pkg/storage/etcd/util
-  - pkg/storage/etcd3
-  - pkg/storage/storagebackend
-  - pkg/storage/storagebackend/factory
   - pkg/types
   - pkg/util
-  - pkg/util/cache
   - pkg/util/certificates
   - pkg/util/clock
   - pkg/util/config
