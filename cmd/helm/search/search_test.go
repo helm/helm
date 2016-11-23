@@ -95,8 +95,8 @@ var indexfileEntries = map[string]repo.ChartVersions{
 
 func loadTestIndex(t *testing.T, all bool) *Index {
 	i := NewIndex()
-	i.AddRepo("testing", &repo.IndexFile{Entries: indexfileEntries}, all)
-	i.AddRepo("ztesting", &repo.IndexFile{Entries: map[string]repo.ChartVersions{
+	i.AddRepo("testing", &repo.ChartRepositoryIndex{Entries: indexfileEntries}, all)
+	i.AddRepo("ztesting", &repo.ChartRepositoryIndex{Entries: map[string]repo.ChartVersions{
 		"pinta": {
 			{
 				URLs: []string{"http://example.com/charts/pinta-2.0.0.tgz"},

@@ -24,24 +24,33 @@ import (
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/repo/repotest"
 )
 
 func TestRepoRemove(t *testing.T) {
-	testURL := "https://test-url.com"
-
-	b := bytes.NewBuffer(nil)
-
-	home, err := tempHelmHome(t)
+	ts, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(home)
-	hh := helmpath.Home(home)
+
+	oldhome := homePath()
+	helmHome = thome
+	hh := helmpath.Home(thome)
+	defer func() {
+		ts.Stop()
+		helmHome = oldhome
+		os.Remove(thome)
+	}()
+	if err := ensureTestHome(hh, t); err != nil {
+		t.Fatal(err)
+	}
+
+	b := bytes.NewBuffer(nil)
 
 	if err := removeRepoLine(b, testName, hh); err == nil {
 		t.Errorf("Expected error removing %s, but did not get one.", testName)
 	}
-	if err := insertRepoLine(testName, testURL, hh); err != nil {
+	if err := addRepository(testName, ts.URL(), hh, "", "", "", true); err != nil {
 		t.Error(err)
 	}
 

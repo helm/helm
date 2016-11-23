@@ -166,7 +166,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
-	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(repoName))
+	i, err := repo.NewChartRepositoryIndexFromFile(c.HelmHome.CacheIndex(repoName))
 	if err != nil {
 		return u, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
 	}
@@ -182,7 +182,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	return url.Parse(cv.URLs[0])
 }
 
-func findRepoEntry(name string, repos []*repo.Entry) (*repo.Entry, error) {
+func findRepoEntry(name string, repos []*repo.ChartRepositoryConfig) (*repo.ChartRepositoryConfig, error) {
 	for _, re := range repos {
 		if re.Name == name {
 			return re, nil

@@ -119,7 +119,7 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 	for _, re := range rf.Repositories {
 		n := re.Name
 		f := s.helmhome.CacheIndex(n)
-		ind, err := repo.LoadIndexFile(f)
+		ind, err := repo.NewChartRepositoryIndexFromFile(f)
 		if err != nil {
 			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			continue

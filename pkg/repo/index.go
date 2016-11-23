@@ -21,10 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -36,6 +33,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
+	"k8s.io/helm/pkg/urlutil"
 )
 
 var indexPath = "index.yaml"
@@ -76,17 +74,35 @@ func (c ChartVersions) Less(a, b int) bool {
 	return i.LessThan(j)
 }
 
-// IndexFile represents the index file in a chart repository
-type IndexFile struct {
+// ChartRepositoryIndex represents the index file in a chart repository
+type ChartRepositoryIndex struct {
 	APIVersion string                   `json:"apiVersion"`
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
 	PublicKeys []string                 `json:"publicKeys,omitempty"`
 }
 
-// NewIndexFile initializes an index.
-func NewIndexFile() *IndexFile {
-	return &IndexFile{
+// ChartVersion represents a chart entry in the ChartRepositoryIndex
+type ChartVersion struct {
+	*chart.Metadata
+	URLs    []string  `json:"urls"`
+	Created time.Time `json:"created,omitempty"`
+	Removed bool      `json:"removed,omitempty"`
+	Digest  string    `json:"digest,omitempty"`
+}
+
+// unversionedEntry represents a deprecated pre-Alpha.5 format.
+//
+// This will be removed prior to v2.0.0
+type unversionedEntry struct {
+	Checksum  string          `json:"checksum"`
+	URL       string          `json:"url"`
+	Chartfile *chart.Metadata `json:"chartfile"`
+}
+
+// NewChartRepositoryIndex initializes an index.
+func NewChartRepositoryIndex() *ChartRepositoryIndex {
+	return &ChartRepositoryIndex{
 		APIVersion: APIVersionV1,
 		Generated:  time.Now(),
 		Entries:    map[string]ChartVersions{},
@@ -94,14 +110,103 @@ func NewIndexFile() *IndexFile {
 	}
 }
 
+// NewChartRepositoryIndexFromFile takes a file at the given path and returns an ChartRepositoryIndex object
+func NewChartRepositoryIndexFromFile(path string) (*ChartRepositoryIndex, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return loadIndex(b)
+}
+
+// NewChartRepositoryIndexFromDirectory reads a (flat) directory and generates an index.
+//
+// It indexes only charts that have been packaged (*.tgz).
+//
+// The index returned will be in an unsorted state
+func NewChartRepositoryIndexFromDirectory(dir, baseURL string) (*ChartRepositoryIndex, error) {
+	archives, err := filepath.Glob(filepath.Join(dir, "*.tgz"))
+	if err != nil {
+		return nil, err
+	}
+	index := NewChartRepositoryIndex()
+	for _, arch := range archives {
+		fname := filepath.Base(arch)
+		c, err := chartutil.Load(arch)
+		if err != nil {
+			// Assume this is not a chart.
+			continue
+		}
+		hash, err := provenance.DigestFile(arch)
+		if err != nil {
+			return index, err
+		}
+		index.Add(c.Metadata, fname, baseURL, hash)
+	}
+	return index, nil
+}
+
+// loadIndex loads an index file and does minimal validity checking.
+//
+// This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
+func loadIndex(data []byte) (*ChartRepositoryIndex, error) {
+	i := &ChartRepositoryIndex{}
+	if err := yaml.Unmarshal(data, i); err != nil {
+		return i, err
+	}
+	if i.APIVersion == "" {
+		// When we leave Beta, we should remove legacy support and just
+		// return this error:
+		//return i, ErrNoAPIVersion
+		return loadUnversionedIndex(data)
+	}
+	return i, nil
+}
+
+// loadUnversionedIndex loads a pre-Alpha.5 index.yaml file.
+//
+// This format is deprecated. This function will be removed prior to v2.0.0.
+func loadUnversionedIndex(data []byte) (*ChartRepositoryIndex, error) {
+	fmt.Fprintln(os.Stderr, "WARNING: Deprecated index file format. Try 'helm repo update'")
+	i := map[string]unversionedEntry{}
+
+	// This gets around an error in the YAML parser. Instead of parsing as YAML,
+	// we convert to JSON, and then decode again.
+	var err error
+	data, err = yaml.YAMLToJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(data, &i); err != nil {
+		return nil, err
+	}
+
+	if len(i) == 0 {
+		return nil, ErrNoAPIVersion
+	}
+	ni := NewChartRepositoryIndex()
+	for n, item := range i {
+		if item.Chartfile == nil || item.Chartfile.Name == "" {
+			parts := strings.Split(n, "-")
+			ver := ""
+			if len(parts) > 1 {
+				ver = strings.TrimSuffix(parts[1], ".tgz")
+			}
+			item.Chartfile = &chart.Metadata{Name: parts[0], Version: ver}
+		}
+		ni.Add(item.Chartfile, item.URL, "", item.Checksum)
+	}
+	return ni, nil
+}
+
 // Add adds a file to the index
 // This can leave the index in an unsorted state
-func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
+func (i ChartRepositoryIndex) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	u := filename
 	if baseURL != "" {
 		var err error
 		_, file := filepath.Split(filename)
-		u, err = urlJoin(baseURL, file)
+		u, err = urlutil.URLJoin(baseURL, file)
 		if err != nil {
 			u = filepath.Join(baseURL, file)
 		}
@@ -120,7 +225,7 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 }
 
 // Has returns true if the index has an entry for a chart with the given name and exact version.
-func (i IndexFile) Has(name, version string) bool {
+func (i ChartRepositoryIndex) Has(name, version string) bool {
 	_, err := i.Get(name, version)
 	return err == nil
 }
@@ -131,7 +236,7 @@ func (i IndexFile) Has(name, version string) bool {
 // the most recent release for every version is in the 0th slot in the
 // Entries.ChartVersions array. That way, tooling can predict the newest
 // version without needing to parse SemVers.
-func (i IndexFile) SortEntries() {
+func (i ChartRepositoryIndex) SortEntries() {
 	for _, versions := range i.Entries {
 		sort.Sort(sort.Reverse(versions))
 	}
@@ -140,7 +245,7 @@ func (i IndexFile) SortEntries() {
 // Get returns the ChartVersion for the given name.
 //
 // If version is empty, this will return the chart with the highest version.
-func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
+func (i ChartRepositoryIndex) Get(name, version string) (*ChartVersion, error) {
 	vs, ok := i.Entries[name]
 	if !ok {
 		return nil, ErrNoChartName
@@ -163,7 +268,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 // WriteFile writes an index file to the given destination path.
 //
 // The mode on the file is set to 'mode'.
-func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
+func (i ChartRepositoryIndex) WriteFile(dest string, mode os.FileMode) error {
 	b, err := yaml.Marshal(i)
 	if err != nil {
 		return err
@@ -179,7 +284,7 @@ func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 // In all other cases, the existing record is preserved.
 //
 // This can leave the index in an unsorted state
-func (i *IndexFile) Merge(f *IndexFile) {
+func (i *ChartRepositoryIndex) Merge(f *ChartRepositoryIndex) {
 	for _, cvs := range f.Entries {
 		for _, cv := range cvs {
 			if !i.Has(cv.Name, cv.Version) {
@@ -188,154 +293,4 @@ func (i *IndexFile) Merge(f *IndexFile) {
 			}
 		}
 	}
-}
-
-// Need both JSON and YAML annotations until we get rid of gopkg.in/yaml.v2
-
-// ChartVersion represents a chart entry in the IndexFile
-type ChartVersion struct {
-	*chart.Metadata
-	URLs    []string  `json:"urls"`
-	Created time.Time `json:"created,omitempty"`
-	Removed bool      `json:"removed,omitempty"`
-	Digest  string    `json:"digest,omitempty"`
-}
-
-// IndexDirectory reads a (flat) directory and generates an index.
-//
-// It indexes only charts that have been packaged (*.tgz).
-//
-// The index returned will be in an unsorted state
-func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
-	archives, err := filepath.Glob(filepath.Join(dir, "*.tgz"))
-	if err != nil {
-		return nil, err
-	}
-	index := NewIndexFile()
-	for _, arch := range archives {
-		fname := filepath.Base(arch)
-		c, err := chartutil.Load(arch)
-		if err != nil {
-			// Assume this is not a chart.
-			continue
-		}
-		hash, err := provenance.DigestFile(arch)
-		if err != nil {
-			return index, err
-		}
-		index.Add(c.Metadata, fname, baseURL, hash)
-	}
-	return index, nil
-}
-
-// DownloadIndexFile fetches the index from a repository.
-func DownloadIndexFile(repoName, url, indexFilePath string) error {
-	var indexURL string
-
-	indexURL = strings.TrimSuffix(url, "/") + "/index.yaml"
-	resp, err := http.Get(indexURL)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if _, err := LoadIndex(b); err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(indexFilePath, b, 0644)
-}
-
-// LoadIndex loads an index file and does minimal validity checking.
-//
-// This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
-func LoadIndex(data []byte) (*IndexFile, error) {
-	i := &IndexFile{}
-	if err := yaml.Unmarshal(data, i); err != nil {
-		return i, err
-	}
-	if i.APIVersion == "" {
-		// When we leave Beta, we should remove legacy support and just
-		// return this error:
-		//return i, ErrNoAPIVersion
-		return loadUnversionedIndex(data)
-	}
-	return i, nil
-}
-
-// unversionedEntry represents a deprecated pre-Alpha.5 format.
-//
-// This will be removed prior to v2.0.0
-type unversionedEntry struct {
-	Checksum  string          `json:"checksum"`
-	URL       string          `json:"url"`
-	Chartfile *chart.Metadata `json:"chartfile"`
-}
-
-// loadUnversionedIndex loads a pre-Alpha.5 index.yaml file.
-//
-// This format is deprecated. This function will be removed prior to v2.0.0.
-func loadUnversionedIndex(data []byte) (*IndexFile, error) {
-	fmt.Fprintln(os.Stderr, "WARNING: Deprecated index file format. Try 'helm repo update'")
-	i := map[string]unversionedEntry{}
-
-	// This gets around an error in the YAML parser. Instead of parsing as YAML,
-	// we convert to JSON, and then decode again.
-	var err error
-	data, err = yaml.YAMLToJSON(data)
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(data, &i); err != nil {
-		return nil, err
-	}
-
-	if len(i) == 0 {
-		return nil, ErrNoAPIVersion
-	}
-	ni := NewIndexFile()
-	for n, item := range i {
-		if item.Chartfile == nil || item.Chartfile.Name == "" {
-			parts := strings.Split(n, "-")
-			ver := ""
-			if len(parts) > 1 {
-				ver = strings.TrimSuffix(parts[1], ".tgz")
-			}
-			item.Chartfile = &chart.Metadata{Name: parts[0], Version: ver}
-		}
-		ni.Add(item.Chartfile, item.URL, "", item.Checksum)
-	}
-	return ni, nil
-}
-
-// LoadIndexFile takes a file at the given path and returns an IndexFile object
-func LoadIndexFile(path string) (*IndexFile, error) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return LoadIndex(b)
-}
-
-// urlJoin joins a base URL to one or more path components.
-//
-// It's like filepath.Join for URLs. If the baseURL is pathish, this will still
-// perform a join.
-//
-// If the URL is unparsable, this returns an error.
-func urlJoin(baseURL string, paths ...string) (string, error) {
-	u, err := url.Parse(baseURL)
-	if err != nil {
-		return "", err
-	}
-	// We want path instead of filepath because path always uses /.
-	all := []string{u.Path}
-	all = append(all, paths...)
-	u.Path = path.Join(all...)
-	return u.String(), nil
 }

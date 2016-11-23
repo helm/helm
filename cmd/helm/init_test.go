@@ -43,20 +43,22 @@ func TestInitCmd(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	fc := fake.NewSimpleClientset()
+
+	fake := testclient.Fake{}
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
-		kubeClient: fc.Extensions(),
-		namespace:  api.NamespaceDefault,
+		kubeClient: fake.Extensions(),
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
 	}
-	action := fc.Actions()[0]
-	if !action.Matches("create", "deployments") {
-		t.Errorf("unexpected action: %v, expected create deployment", action)
+
+	actions := fake.Actions()
+	if action, ok := actions[0].(testclient.CreateAction); !ok || action.GetResource() != "deployments" {
+		t.Errorf("unexpected action: %v, expected create deployment", actions[0])
 	}
+
 	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
@@ -169,7 +171,13 @@ func TestEnsureHome(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	hh := helmpath.Home(home)
 	helmHome = home
-	if err := ensureHome(hh, b); err != nil {
+	if err := ensureDirectories(hh, b); err != nil {
+		t.Error(err)
+	}
+	if err := ensureDefaultRepos(hh, b); err != nil {
+		t.Error(err)
+	}
+	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {
 		t.Error(err)
 	}
 

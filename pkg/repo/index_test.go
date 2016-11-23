@@ -33,7 +33,7 @@ const (
 )
 
 func TestIndexFile(t *testing.T) {
-	i := NewIndexFile()
+	i := NewChartRepositoryIndex()
 	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.1"}, "cutter-0.1.1.tgz", "http://example.com/charts", "sha256:1234567890abc")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.0"}, "cutter-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
@@ -67,7 +67,7 @@ func TestLoadIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	i, err := LoadIndex(b)
+	i, err := loadIndex(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestLoadIndex(t *testing.T) {
 }
 
 func TestLoadIndexFile(t *testing.T) {
-	i, err := LoadIndexFile(testfile)
+	i, err := NewChartRepositoryIndexFromFile(testfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,13 +83,13 @@ func TestLoadIndexFile(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
-	ind1 := NewIndexFile()
+	ind1 := NewChartRepositoryIndex()
 	ind1.Add(&chart.Metadata{
 		Name:    "dreadnought",
 		Version: "0.1.0",
 	}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaa")
 
-	ind2 := NewIndexFile()
+	ind2 := NewChartRepositoryIndex()
 	ind2.Add(&chart.Metadata{
 		Name:    "dreadnought",
 		Version: "0.2.0",
@@ -132,21 +132,30 @@ func TestDownloadIndexFile(t *testing.T) {
 	}
 	defer os.RemoveAll(dirName)
 
-	path := filepath.Join(dirName, testRepo+"-index.yaml")
-	if err := DownloadIndexFile(testRepo, srv.URL, path); err != nil {
+	indexFilePath := filepath.Join(dirName, testRepo+"-index.yaml")
+	r, err := NewChartRepository(&ChartRepositoryConfig{
+		Name:  testRepo,
+		URL:   srv.URL,
+		Cache: indexFilePath,
+	})
+	if err != nil {
+		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
+	}
+
+	if err := r.DownloadIndexFile(); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(indexFilePath); err != nil {
 		t.Errorf("error finding created index file: %#v", err)
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := ioutil.ReadFile(indexFilePath)
 	if err != nil {
 		t.Errorf("error reading index file: %#v", err)
 	}
 
-	i, err := LoadIndex(b)
+	i, err := loadIndex(b)
 	if err != nil {
 		t.Errorf("Index %q failed to parse: %s", testfile, err)
 		return
@@ -155,7 +164,7 @@ func TestDownloadIndexFile(t *testing.T) {
 	verifyLocalIndex(t, i)
 }
 
-func verifyLocalIndex(t *testing.T, i *IndexFile) {
+func verifyLocalIndex(t *testing.T, i *ChartRepositoryIndex) {
 	numEntries := len(i.Entries)
 	if numEntries != 2 {
 		t.Errorf("Expected 2 entries in index file but got %d", numEntries)
@@ -255,7 +264,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 func TestIndexDirectory(t *testing.T) {
 	dir := "testdata/repository"
-	index, err := IndexDirectory(dir, "http://localhost:8080")
+	index, err := NewChartRepositoryIndexFromDirectory(dir, "http://localhost:8080")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -305,8 +314,7 @@ func TestLoadUnversionedIndex(t *testing.T) {
 }
 
 func TestIndexAdd(t *testing.T) {
-
-	i := NewIndexFile()
+	i := NewChartRepositoryIndex()
 	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
 
 	if i.Entries["clipper"][0].URLs[0] != "http://example.com/charts/clipper-0.1.0.tgz" {
@@ -323,26 +331,5 @@ func TestIndexAdd(t *testing.T) {
 
 	if i.Entries["deis"][0].URLs[0] != "http://example.com/charts/deis-0.1.0.tgz" {
 		t.Errorf("Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
-	}
-}
-
-func TestUrlJoin(t *testing.T) {
-	tests := []struct {
-		name, url, expect string
-		paths             []string
-	}{
-		{name: "URL, one path", url: "http://example.com", paths: []string{"hello"}, expect: "http://example.com/hello"},
-		{name: "Long URL, one path", url: "http://example.com/but/first", paths: []string{"slurm"}, expect: "http://example.com/but/first/slurm"},
-		{name: "URL, two paths", url: "http://example.com", paths: []string{"hello", "world"}, expect: "http://example.com/hello/world"},
-		{name: "URL, no paths", url: "http://example.com", paths: []string{}, expect: "http://example.com"},
-		{name: "basepath, two paths", url: "../example.com", paths: []string{"hello", "world"}, expect: "../example.com/hello/world"},
-	}
-
-	for _, tt := range tests {
-		if got, err := urlJoin(tt.url, tt.paths...); err != nil {
-			t.Errorf("%s: error %q", tt.name, err)
-		} else if got != tt.expect {
-			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
-		}
 	}
 }

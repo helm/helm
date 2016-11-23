@@ -103,7 +103,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(dbc.helmhome.CacheIndex("test"))
+	i, err := repo.NewChartRepositoryIndexFromFile(dbc.helmhome.CacheIndex("test"))
 	if err != nil {
 		t.Fatal(err)
 	}

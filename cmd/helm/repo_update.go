@@ -36,10 +36,14 @@ Information is cached locally, where it is used by commands like 'helm search'.
 future releases.
 `
 
+var (
+	errNoRepositories = errors.New("no repositories found. You must add one before updating")
+)
+
 type repoUpdateCmd struct {
-	update func([]*repo.Entry, bool, io.Writer, helmpath.Home)
-	out    io.Writer
+	update func([]*repo.ChartRepository, io.Writer)
 	home   helmpath.Home
+	out    io.Writer
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -67,31 +71,39 @@ func (u *repoUpdateCmd) run() error {
 	}
 
 	if len(f.Repositories) == 0 {
-		return errors.New("no repositories found. You must add one before updating")
+		return errNoRepositories
+	}
+	var repos []*repo.ChartRepository
+	for _, cfg := range f.Repositories {
+		r, err := repo.NewChartRepository(cfg)
+		if err != nil {
+			return err
+		}
+		repos = append(repos, r)
 	}
 
-	u.update(f.Repositories, flagDebug, u.out, u.home)
+	u.update(repos, u.out)
 	return nil
 }
 
-func updateCharts(repos []*repo.Entry, verbose bool, out io.Writer, home helmpath.Home) {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	for _, re := range repos {
 		wg.Add(1)
-		go func(n, u string) {
+		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if n == localRepository {
-				// We skip local because the indices are symlinked.
+			if re.Config.Name == localRepository {
+				fmt.Fprintf(out, "...Skip %s chart repository", re.Config.Name)
 				return
 			}
-			err := repo.DownloadIndexFile(n, u, home.CacheIndex(n))
+			err := re.DownloadIndexFile()
 			if err != nil {
-				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", n, u, err)
+				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {
-				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", n)
+				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
 			}
-		}(re.Name, re.URL)
+		}(re)
 	}
 	wg.Wait()
 	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming!⎈ ")

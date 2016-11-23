@@ -43,15 +43,15 @@ func TestUpdateCmd(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.Entry, verbose bool, out io.Writer, home helmpath.Home) {
+	updater := func(repos []*repo.ChartRepository, out io.Writer) {
 		for _, re := range repos {
-			fmt.Fprintln(out, re.Name)
+			fmt.Fprintln(out, re.Config.Name)
 		}
 	}
 	uc := &repoUpdateCmd{
-		out:    out,
 		update: updater,
 		home:   helmpath.Home(thome),
+		out:    out,
 	}
 	if err := uc.run(); err != nil {
 		t.Fatal(err)
@@ -63,33 +63,40 @@ func TestUpdateCmd(t *testing.T) {
 }
 
 func TestUpdateCharts(t *testing.T) {
-	srv, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ts, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	oldhome := homePath()
 	helmHome = thome
+	hh := helmpath.Home(thome)
 	defer func() {
-		srv.Stop()
+		ts.Stop()
 		helmHome = oldhome
 		os.Remove(thome)
 	}()
-	if err := ensureTestHome(helmpath.Home(thome), t); err != nil {
+	if err := ensureTestHome(hh, t); err != nil {
 		t.Fatal(err)
 	}
 
-	buf := bytes.NewBuffer(nil)
-	repos := []*repo.Entry{
-		{Name: "charts", URL: srv.URL()},
+	r, err := repo.NewChartRepository(&repo.ChartRepositoryConfig{
+		Name:  "charts",
+		URL:   ts.URL(),
+		Cache: hh.CacheIndex("charts"),
+	})
+	if err != nil {
+		t.Error(err)
 	}
-	updateCharts(repos, false, buf, helmpath.Home(thome))
 
-	got := buf.String()
+	b := bytes.NewBuffer(nil)
+	updateCharts([]*repo.ChartRepository{r}, b)
+
+	got := b.String()
 	if strings.Contains(got, "Unable to get an update") {
 		t.Errorf("Failed to get a repo: %q", got)
 	}
 	if !strings.Contains(got, "Update Complete.") {
-		t.Errorf("Update was not successful")
+		t.Error("Update was not successful")
 	}
 }

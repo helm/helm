@@ -135,27 +135,3 @@ func TestGetRepoNames(t *testing.T) {
 		}
 	}
 }
-
-func TestUrlsAreEqual(t *testing.T) {
-	for _, tt := range []struct {
-		a, b  string
-		match bool
-	}{
-		{"http://example.com", "http://example.com", true},
-		{"http://example.com", "http://another.example.com", false},
-		{"https://example.com", "https://example.com", true},
-		{"http://example.com/", "http://example.com", true},
-		{"https://example.com", "http://example.com", false},
-		{"http://example.com/foo", "http://example.com/foo/", true},
-		{"http://example.com/foo//", "http://example.com/foo/", true},
-		{"http://example.com/./foo/", "http://example.com/foo/", true},
-		{"http://example.com/bar/../foo/", "http://example.com/foo/", true},
-		{"/foo", "/foo", true},
-		{"/foo", "/foo/", true},
-		{"/foo/.", "/foo/", true},
-	} {
-		if tt.match != urlsAreEqual(tt.a, tt.b) {
-			t.Errorf("Expected %q==%q to be %t", tt.a, tt.b, tt.match)
-		}
-	}
-}
