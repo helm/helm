@@ -5,8 +5,6 @@ import:
   subpackages:
   - context
 - package: github.com/spf13/cobra
-- package: github.com/spf13/pflag
-  version: 367864438f1b1a3c7db4da06a2f55b144e6784e0
 - package: github.com/Masterminds/sprig
   version: ^2.6
 - package: github.com/ghodss/yaml
@@ -20,7 +18,7 @@ import:
   - ptypes/any
   - ptypes/timestamp
 - package: google.golang.org/grpc
-  version: v1.0.1-GA
+  version: 1.0.3
 - package: k8s.io/kubernetes
   version: ~1.4.1
   subpackages:
@@ -48,9 +46,6 @@ import:
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
-- package: google.golang.org/cloud
-  vcs: git
-  repo: https://code.googlesource.com/gocloud
 - package: golang.org/x/crypto
   subpackages:
   - openpgp
