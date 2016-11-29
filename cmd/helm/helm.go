@@ -141,7 +141,7 @@ func setupConnection(c *cobra.Command, args []string) error {
 			return err
 		}
 
-		tillerHost = fmt.Sprintf(":%d", tunnel.Local)
+		tillerHost = fmt.Sprintf("localhost:%d", tunnel.Local)
 		if flagDebug {
 			fmt.Printf("Created tunnel using local port: '%d'\n", tunnel.Local)
 		}
