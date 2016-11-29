@@ -31,6 +31,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/kube"
 )
 
@@ -91,7 +92,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST")
 	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	p.BoolVarP(&flagDebug, "debug", "", false, "enable verbose output")
+	p.BoolVar(&flagDebug, "debug", false, "enable verbose output")
 
 	// Tell gRPC not to log to console.
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
@@ -124,6 +125,10 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		// Deprecated
 		rup,
 	)
+
+	// Find and add plugins
+	loadPlugins(cmd, helmpath.Home(homePath()), out)
+
 	return cmd
 }
 
@@ -151,6 +156,7 @@ func setupConnection(c *cobra.Command, args []string) error {
 	if flagDebug {
 		fmt.Printf("SERVER: %q\n", tillerHost)
 	}
+	// Plugin support.
 	return nil
 }
 

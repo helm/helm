@@ -1,0 +1,8 @@
+name: "hello"
+version: "0.1.0"
+usage: "usage"
+description: |-
+  description
+command: "$HELM_PLUGIN_SELF/helm-hello"
+useTunnel: true
+ignoreFlags: true

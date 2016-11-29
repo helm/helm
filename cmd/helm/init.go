@@ -143,7 +143,7 @@ func (i *initCmd) run() error {
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureHome(home helmpath.Home, out io.Writer) error {
-	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository(), home.Starters()}
+	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository(), home.Plugins(), home.Starters()}
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
 			fmt.Fprintf(out, "Creating %s \n", p)
