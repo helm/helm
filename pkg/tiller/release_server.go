@@ -70,6 +70,17 @@ var (
 // ListDefaultLimit is the default limit for number of items returned in a list.
 var ListDefaultLimit int64 = 512
 
+// ValidName is a regular expression for names.
+//
+// According to the Kubernetes help text, the regular expression it uses is:
+//
+//	(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+//
+// We modified that. First, we added start and end delimiters. Second, we changed
+// the final ? to + to require that the pattern match at least once. This modification
+// prevents an empty string from matching.
+var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
+
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
 	env *environment.Environment
@@ -211,7 +222,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		return nil, errIncompatibleVersion
 	}
 
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		return nil, errMissingRelease
 	}
 
@@ -267,9 +278,10 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 		return nil, errIncompatibleVersion
 	}
 
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		return nil, errMissingRelease
 	}
+
 	if req.Version <= 0 {
 		rel, err := s.env.Releases.Deployed(req.Name)
 		return &services.GetReleaseContentResponse{Release: rel}, err
@@ -355,7 +367,7 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 
 // prepareUpdate builds an updated release for an update operation.
 func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		return nil, nil, errMissingRelease
 	}
 
@@ -486,7 +498,7 @@ func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release
 //  the previous release's configuration
 func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	switch {
-	case req.Name == "":
+	case !ValidName.MatchString(req.Name):
 		return nil, nil, errMissingRelease
 	case req.Version < 0:
 		return nil, nil, errInvalidRevision
@@ -905,7 +917,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, errIncompatibleVersion
 	}
 
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		log.Printf("uninstall: Release not found: %s", req.Name)
 		return nil, errMissingRelease
 	}
