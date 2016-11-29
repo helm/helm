@@ -1302,3 +1302,4 @@ func (l *mockListServer) SendMsg(v interface{}) error    { return nil }
 func (l *mockListServer) RecvMsg(v interface{}) error    { return nil }
 func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
 func (l *mockListServer) SetTrailer(m metadata.MD)       {}
+func (l *mockListServer) SetHeader(m metadata.MD) error  { return nil }

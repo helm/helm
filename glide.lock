@@ -1,5 +1,5 @@
 hash: 89695daf5f2de706b79fdd8e8b095f9514f418c0fbcf80d7fdca4c208d114d19
-updated: 2016-11-29T11:37:40.998261206-05:00
+updated: 2016-11-29T14:56:31.55726541-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -41,6 +41,10 @@ imports:
   - health
   - httputil
   - timeutil
+- name: github.com/cpuguy83/go-md2man
+  version: a65d4d2de4d5f7c74868dfa9b202a3c8be315aaa
+  subpackages:
+  - md2man
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
@@ -201,17 +205,23 @@ imports:
 - name: github.com/Masterminds/semver
   version: 52edfc04e184ecf0962489d167b511b27aeebd61
 - name: github.com/Masterminds/sprig
-  version: 3fb136ad254dd34998b95f8d523b09a0dafa31b5
+  version: 8f797f5b23118d8fe846c4296b0ad55044201b14
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- name: github.com/russross/blackfriday
+  version: 300106c228d52c8941d4b3de6054a6062a86dda3
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
+- name: github.com/shurcooL/sanitized_anchor_name
+  version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/Sirupsen/logrus
   version: 51fe59aca108dc5680109e7b2051cbdcfa5a253c
 - name: github.com/spf13/cobra
   version: 6a8bd97bdb1fc0d08a83459940498ea49d3e8c93
+  subpackages:
+  - doc
 - name: github.com/spf13/pflag
   version: 367864438f1b1a3c7db4da06a2f55b144e6784e0
 - name: github.com/technosophos/moniker
@@ -263,7 +273,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/grpc
-  version: 0032a855ba5c8a3c8e0d71c2deef354b70af1584
+  version: b7f1379d3cbbbeb2ca3405852012e237aa05459e
   subpackages:
   - codes
   - credentials

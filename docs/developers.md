@@ -32,6 +32,19 @@ To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 - Tiller must have access to a Kubernetes cluster. It learns about the
   cluster by examining the Kube config files that `kubectl` uses.
 
+### Man pages
+
+Man pages and Markdown documentation are already pre-built in `docs/`. You may
+regenerate documentation using `make docs`.
+
+To expose the Helm man pages to your `man` client, you can put the files in your
+`$MANPATH`:
+
+```
+$ export MANPATH=$GOPATH/src/k8s.io/helm/docs/man:$MANPATH
+$ man helm
+```
+
 ## gRPC and Protobuf
 
 Helm and Tiller communicate using gRPC. To get started with gRPC, you will need to...
