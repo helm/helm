@@ -135,7 +135,12 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
-	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
+	_, err = u.client.UpdateRelease(
+		u.release,
+		chartPath,
+		helm.UpdateValueOverrides(rawVals),
+		helm.UpgradeDryRun(u.dryRun),
+		helm.UpgradeDisableHooks(u.disableHooks))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
