@@ -1,5 +1,5 @@
-hash: 99054419731f37edfc9fca9ae35d473635e865f1e1c9a7633ec36963dfa25c2a
-updated: 2016-11-22T16:38:51.234855217-08:00
+hash: 89695daf5f2de706b79fdd8e8b095f9514f418c0fbcf80d7fdca4c208d114d19
+updated: 2016-11-29T11:37:40.998261206-05:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -199,7 +199,7 @@ imports:
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
 - name: github.com/Masterminds/semver
-  version: 808ed7761c233af2de3f9729a041d68c62527f3a
+  version: 52edfc04e184ecf0962489d167b511b27aeebd61
 - name: github.com/Masterminds/sprig
   version: 8f797f5b23118d8fe846c4296b0ad55044201b14
 - name: github.com/mattn/go-runewidth
