@@ -63,9 +63,7 @@ stable/mysql  	0.1.0  	Chart for MySQL
 stable/mariadb	0.5.1  	Chart for MariaDB
 ```
 
-Now you will only see the results that match your filter. MySQL is
-listed, of course, but so is MariaDB. Why? Because its full description
-relates it to MySQL:
+Now you will only see the results that match your filter. 
 
 Why is
 `mariadb` in the list? Because its package description relates it to
