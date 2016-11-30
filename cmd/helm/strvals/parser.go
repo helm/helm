@@ -26,6 +26,9 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+// ErrNotList indicates that a non-list was treated as a list.
+var ErrNotList = errors.New("not a list")
+
 // ToYAML takes a string of arguments and converts to a YAML document.
 func ToYAML(s string) (string, error) {
 	m, err := Parse(s)
@@ -155,8 +158,6 @@ func (t *parser) val() ([]rune, error) {
 	v, _, err := runesUntil(t.sc, stop)
 	return v, err
 }
-
-var ErrNotList = errors.New("not a list")
 
 func (t *parser) valList() ([]interface{}, error) {
 
