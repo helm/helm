@@ -226,7 +226,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 			found = true
 		} else {
 			for _, repo := range repos {
-				if urlsAreEqual(repo.URL, dd.Repository) {
+				if urlsAreEqual(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
 					found = true
 				}
 			}
