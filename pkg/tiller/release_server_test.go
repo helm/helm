@@ -144,6 +144,28 @@ func upgradeReleaseVersion(rel *release.Release) *release.Release {
 	}
 }
 
+func TestValidName(t *testing.T) {
+	for name, valid := range map[string]bool{
+		"nina pinta santa-maria": false,
+		"nina-pinta-santa-maria": true,
+		"-nina":                  false,
+		"pinta-":                 false,
+		"santa-maria":            true,
+		"niña":                   false,
+		"...":                    false,
+		"pinta...":               false,
+		"santa...maria":          true,
+		"":                       false,
+		" ":                      false,
+		".nina.":                 false,
+		"nina.pinta":             true,
+	} {
+		if valid != ValidName.MatchString(name) {
+			t.Errorf("Expected %q to be %t", name, valid)
+		}
+	}
+}
+
 func TestGetVersionSet(t *testing.T) {
 	rs := rsFixture()
 	vs, err := rs.getVersionSet()
