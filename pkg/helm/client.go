@@ -132,6 +132,7 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOptio
 	req.Chart = chart
 	req.DryRun = h.opts.dryRun
 	req.Name = rlsName
+	req.DisableHooks = h.opts.disableHooks
 	ctx := NewContext()
 
 	if h.opts.before != nil {
