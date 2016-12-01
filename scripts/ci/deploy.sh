@@ -40,10 +40,7 @@ echo "Building the tiller image"
 make docker-build VERSION="${VERSION}"
 
 echo "Pushing image to gcr.io"
-if [[ "${VERSION}" != "canary" ]]; then
-  docker push "gcr.io/kubernetes-helm/tiller:${VERSION}"
-fi
-docker push gcr.io/kubernetes-helm/tiller:canary
+docker push "gcr.io/kubernetes-helm/tiller:${VERSION}"
 
 echo "Building helm binaries"
 make build-cross
