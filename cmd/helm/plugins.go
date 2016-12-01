@@ -78,9 +78,11 @@ func loadPlugins(baseCmd *cobra.Command, home helmpath.Home, out io.Writer) {
 				prog.Stdout = out
 				prog.Stderr = os.Stderr
 				if err := prog.Run(); err != nil {
-					eerr := err.(*exec.ExitError)
-					os.Stderr.Write(eerr.Stderr)
-					return fmt.Errorf("plugin %q exited with error", md.Name)
+					if eerr, ok := err.(*exec.ExitError); ok {
+						os.Stderr.Write(eerr.Stderr)
+						return fmt.Errorf("plugin %q exited with error", md.Name)
+					}
+					return err
 				}
 				return nil
 			},
