@@ -142,8 +142,8 @@ func (l *listCmd) run() error {
 		return nil
 	}
 
-	if res.Next != "" {
-		fmt.Fprintf(l.out, "\tnext: %s", res.Next)
+	if res.Next != "" && !l.short {
+		fmt.Fprintf(l.out, "\tnext: %s\n", res.Next)
 	}
 
 	rels := res.Releases
