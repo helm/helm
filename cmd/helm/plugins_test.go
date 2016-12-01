@@ -77,7 +77,7 @@ func TestLoadPlugins(t *testing.T) {
 
 	envs := strings.Join([]string{
 		"fullenv",
-		"fullenv.yaml",
+		hh.Plugins() + "/fullenv",
 		hh.Plugins(),
 		hh.String(),
 		hh.Repository(),
@@ -102,6 +102,11 @@ func TestLoadPlugins(t *testing.T) {
 	}
 
 	plugins := cmd.Commands()
+
+	if len(plugins) != len(tests) {
+		t.Fatalf("Expected %d plugins, got %d", len(tests), len(plugins))
+	}
+
 	for i := 0; i < len(plugins); i++ {
 		out.Reset()
 		tt := tests[i]
