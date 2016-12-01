@@ -1,5 +1,5 @@
-hash: 89695daf5f2de706b79fdd8e8b095f9514f418c0fbcf80d7fdca4c208d114d19
-updated: 2016-11-29T14:56:31.55726541-07:00
+hash: 707ac6d1785d0029397f2f9a3b0bc45f7d8ce819f14f6c246967b0a404627a2c
+updated: 2016-12-01T09:07:51.289370422-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -103,6 +103,16 @@ imports:
   version: 465937c80b3c07a7c7ad20cc934898646a91c1de
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/gobwas/glob
+  version: 0354991b92587e2742549d3036f3b5bae5ab03f2
+  subpackages:
+  - compiler
+  - match
+  - syntax
+  - syntax/ast
+  - syntax/lexer
+  - util/runes
+  - util/strings
 - name: github.com/gogo/protobuf
   version: e18d7aa8f8c624c915db340349aad4c49b10d173
   subpackages:

@@ -21,23 +21,25 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 )
 
-func TestNewFiles(t *testing.T) {
+var cases = []struct {
+	path, data string
+}{
+	{"ship/captain.txt", "The Captain"},
+	{"ship/stowaway.txt", "Legatt"},
+	{"story/name.txt", "The Secret Sharer"},
+	{"story/author.txt", "Joseph Conrad"},
+}
 
-	cases := []struct {
-		path, data string
-	}{
-		{"ship/captain.txt", "The Captain"},
-		{"ship/stowaway.txt", "Legatt"},
-		{"story/name.txt", "The Secret Sharer"},
-		{"story/author.txt", "Joseph Conrad"},
-	}
-
+func getTestFiles() []*any.Any {
 	a := []*any.Any{}
 	for _, c := range cases {
 		a = append(a, &any.Any{TypeUrl: c.path, Value: []byte(c.data)})
 	}
+	return a
+}
 
-	files := NewFiles(a)
+func TestNewFiles(t *testing.T) {
+	files := NewFiles(getTestFiles())
 	if len(files) != len(cases) {
 		t.Errorf("Expected len() = %d, got %d", len(cases), len(files))
 	}
@@ -49,5 +51,20 @@ func TestNewFiles(t *testing.T) {
 		if got := files.Get(f.path); got != f.data {
 			t.Errorf("%d: expected %q, got %q", i, f.data, got)
 		}
+	}
+}
+
+func TestFileGlob(t *testing.T) {
+	f := NewFiles(getTestFiles())
+
+	matched := f.Glob("story/**")
+
+	if len(matched) != 2 {
+		t.Errorf("Expected two files in glob story/**, got %d", len(matched))
+	}
+
+	m, expect := matched.Get("story/author.txt"), "Joseph Conrad"
+	if m != expect {
+		t.Errorf("Wrong globbed file content. Expected %s, got %s", expect, m)
 	}
 }
