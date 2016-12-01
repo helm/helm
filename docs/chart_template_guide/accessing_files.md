@@ -67,6 +67,8 @@ data:
     message = Goodbye from config 3
 ```
 
+## Glob patterns
+
 As your chart grows, you may find you have a greater need to organize your
 files more, and so we provide a `Files.Glob(pattern string)` method to assist
 in extracting certain files however you need.
@@ -80,8 +82,6 @@ foo/:
 bar/:
   bar.go bar.conf baz.yaml
 ```
-
-## Glob patterns
 
 You have multiple options with Globs:
 
