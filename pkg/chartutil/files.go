@@ -16,6 +16,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"github.com/gobwas/glob"
 	"github.com/golang/protobuf/ptypes/any"
 )
 
@@ -26,8 +27,10 @@ type Files map[string][]byte
 // Given an []*any.Any (the format for files in a chart.Chart), extract a map of files.
 func NewFiles(from []*any.Any) Files {
 	files := map[string][]byte{}
-	for _, f := range from {
-		files[f.TypeUrl] = f.Value
+	if from != nil {
+		for _, f := range from {
+			files[f.TypeUrl] = f.Value
+		}
 	}
 	return files
 }
@@ -55,4 +58,27 @@ func (f Files) GetBytes(name string) []byte {
 //	{{.Files.Get "foo"}}
 func (f Files) Get(name string) string {
 	return string(f.GetBytes(name))
+}
+
+// Glob takes a glob pattern and returns another files object only containing
+// matched  files.
+//
+// This is designed to be called from a template.
+// {{ range $name, $content := .Files.Glob("foo/**") }}
+// {{ $name }}: |
+// {{ .Files.Get($name) | indent 4 }}{{ end }}
+func (f Files) Glob(pattern string) Files {
+	g, err := glob.Compile(pattern, '/')
+	if err != nil {
+		g, _ = glob.Compile("**")
+	}
+
+	nf := NewFiles(nil)
+	for name, contents := range f {
+		if g.Match(name) {
+			nf[name] = contents
+		}
+	}
+
+	return nf
 }

@@ -9,6 +9,8 @@ Helm provides access to files through the `.Files` object. Before we get going w
 	- Files in `templates/` cannot be accessed.
 - Charts to not preserve UNIX mode information, so file-level permissions will have no impact on the availability of a file when it comes to the `.Files` object.
 
+## Basic example
+
 With those caveats behind, let's write a template that reads three files into our ConfigMap. To get started, we will add three files to the chart, putting all three directly inside of the `mychart/` directory.
 
 `config1.toml`:
@@ -64,6 +66,42 @@ data:
   config3.toml: |-
     message = Goodbye from config 3
 ```
+
+As your chart grows, you may find you have a greater need to organize your
+files more, and so we provide a `Files.Glob(pattern string)` method to assist
+in extracting certain files however you need.
+
+For example, imagine the directory structure:
+
+```
+foo/: 
+  foo.txt foo.yaml
+
+bar/:
+  bar.go bar.conf baz.yaml
+```
+
+## Glob patterns
+
+You have multiple options with Globs:
+
+
+```yaml
+{{ range $path := .Files.Glob "**.yaml" }}
+{{ $path }}: |
+{{ .Files.Get $path }}
+{{ end }}
+```
+
+Or
+
+```yaml
+{{ range $path, $bytes := .Files.Glob "foo/*" }}
+{{ $path }}: '{{ b64enc $bytes }}'
+{{ end }}
+```
+
+## Secrets
 
 When working with a Secret resource, you can import a file and have the template base-64 encode it for you:
 

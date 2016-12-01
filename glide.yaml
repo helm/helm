@@ -49,3 +49,5 @@ import:
 - package: golang.org/x/crypto
   subpackages:
   - openpgp
+- package: github.com/gobwas/glob
+  version: ^0.2.1
