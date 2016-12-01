@@ -64,6 +64,7 @@ func (f Files) Get(name string) string {
 // matched  files.
 //
 // This is designed to be called from a template.
+//
 // {{ range $name, $content := .Files.Glob("foo/**") }}
 // {{ $name }}: |
 // {{ .Files.Get($name) | indent 4 }}{{ end }}
