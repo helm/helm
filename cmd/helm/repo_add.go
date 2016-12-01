@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -95,7 +96,7 @@ func insertRepoLine(name, url string, home helmpath.Home) error {
 	}
 	f.Add(&repo.Entry{
 		Name:  name,
-		URL:   url,
+		URL:   strings.TrimSuffix(url, "/"),
 		Cache: filepath.Base(cif),
 	})
 	return f.WriteFile(home.RepositoryFile(), 0644)
