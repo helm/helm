@@ -71,7 +71,7 @@ data:
 
 As your chart grows, you may find you have a greater need to organize your
 files more, and so we provide a `Files.Glob(pattern string)` method to assist
-in extracting certain files however you need.
+in extracting certain files with all the flexibility of [glob patterns](//godoc.org/github.com/gobwas/glob).
 
 For example, imagine the directory structure:
 
