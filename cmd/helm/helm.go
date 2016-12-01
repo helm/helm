@@ -133,6 +133,9 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	// Find and add plugins
 	loadPlugins(cmd, helmpath.Home(homePath()), out)
 
+	// Disable setting generated timestamp in docs
+	cmd.DisableAutoGenTag = true
+
 	return cmd
 }
 
