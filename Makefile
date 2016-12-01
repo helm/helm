@@ -79,6 +79,7 @@ test-unit:
 test-style:
 	@scripts/validate-go.sh
 	@scripts/validate-license.sh
+	@scripts/validate-generated-docs.sh
 
 .PHONY: protoc
 protoc:
