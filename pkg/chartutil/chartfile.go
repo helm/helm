@@ -56,5 +56,5 @@ func SaveChartfile(filename string, cf *chart.Metadata) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filename, out, 0755)
+	return ioutil.WriteFile(filename, out, 0644)
 }
