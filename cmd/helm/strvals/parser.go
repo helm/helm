@@ -153,14 +153,12 @@ func set(data map[string]interface{}, key string, val interface{}) {
 }
 
 func (t *parser) val() ([]rune, error) {
-	v := []rune{}
 	stop := runeSet([]rune{','})
 	v, _, err := runesUntil(t.sc, stop)
 	return v, err
 }
 
 func (t *parser) valList() ([]interface{}, error) {
-
 	r, _, e := t.sc.ReadRune()
 	if e != nil {
 		return []interface{}{}, e
@@ -193,7 +191,7 @@ func (t *parser) valList() ([]interface{}, error) {
 	}
 }
 
-func runesUntil(in *bytes.Buffer, stop map[rune]bool) ([]rune, rune, error) {
+func runesUntil(in io.RuneReader, stop map[rune]bool) ([]rune, rune, error) {
 	v := []rune{}
 	for {
 		switch r, _, e := in.ReadRune(); {

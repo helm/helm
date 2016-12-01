@@ -443,7 +443,7 @@ func getCurrentObject(target *resource.Info, infos []*resource.Info) (runtime.Ob
 	if found, ok := findMatchingInfo(target, infos); ok {
 		return found.Mapping.ConvertToVersion(found.Object, found.Mapping.GroupVersionKind.GroupVersion())
 	}
-	return nil, fmt.Errorf("No resource with the name %s found.", target.Name)
+	return nil, fmt.Errorf("no resource with the name %s found", target.Name)
 }
 
 // isMatchingInfo returns true if infos match on Name and Kind.

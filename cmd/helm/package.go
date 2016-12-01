@@ -166,7 +166,7 @@ func (p *packageCmd) clearsign(filename string) error {
 // promptUser implements provenance.PassphraseFetcher
 func promptUser(name string) ([]byte, error) {
 	fmt.Printf("Password for key %q >  ", name)
-	pw, err := terminal.ReadPassword(int(syscall.Stdin))
+	pw, err := terminal.ReadPassword(syscall.Stdin)
 	fmt.Println()
-	return []byte(pw), err
+	return pw, err
 }
