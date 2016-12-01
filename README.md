@@ -32,9 +32,10 @@ Think of it like apt/yum/homebrew for Kubernetes.
 
 Binary downloads of the Helm client can be found at the following links:
 
-- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.0.0-darwin-amd64.tar.gz)
-- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.0.0-linux-amd64.tar.gz)
-- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.0.0-linux-386.tar.gz)
+- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.0.1-darwin-amd64.tar.gz)
+- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.0.1-linux-amd64.tar.gz)
+- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.0.1-linux-386.tar.gz)
+- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.0.1-windows-amd64.zip)
 
 Unpack the `helm` binary and add it to your PATH and you are good to go! OS X/[Cask](https://caskroom.github.io/) users can `brew cask install helm`.
 
