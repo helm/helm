@@ -96,7 +96,7 @@ func (t *Tunnel) ForwardPort() error {
 
 	select {
 	case err = <-errChan:
-		return fmt.Errorf("Error forwarding ports: %v\n", err)
+		return fmt.Errorf("forwarding ports: %v", err)
 	case <-pf.Ready:
 		return nil
 	}
