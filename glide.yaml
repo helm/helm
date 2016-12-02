@@ -6,7 +6,7 @@ import:
   - context
 - package: github.com/spf13/cobra
 - package: github.com/Masterminds/sprig
-  version: ^2.6
+  version: ^2.7
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
   version: ~1.2.1
