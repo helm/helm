@@ -49,14 +49,14 @@ func TestInspect(t *testing.T) {
 	}
 
 	expect := []string{
-		strings.TrimSpace(string(cdata)),
-		strings.TrimSpace(string(data)),
+		strings.Replace(strings.TrimSpace(string(cdata)), "\r", "", -1),
+		strings.Replace(strings.TrimSpace(string(data)), "\r", "", -1),
 	}
 
 	// Problem: ghodss/yaml doesn't marshal into struct order. To solve, we
 	// have to carefully craft the Chart.yaml to match.
 	for i, got := range parts {
-		got = strings.TrimSpace(got)
+		got = strings.Replace(strings.TrimSpace(got), "\r", "", -1)
 		if got != expect[i] {
 			t.Errorf("Expected\n%q\nGot\n%q\n", expect[i], got)
 		}

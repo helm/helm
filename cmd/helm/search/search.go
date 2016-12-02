@@ -24,7 +24,7 @@ package search
 
 import (
 	"errors"
-	"path/filepath"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -70,7 +70,9 @@ func (i *Index) AddRepo(rname string, ind *repo.IndexFile, all bool) {
 		// By convention, an index file is supposed to have the newest at the
 		// 0 slot, so our best bet is to grab the 0 entry and build the index
 		// entry off of that.
-		fname := filepath.Join(rname, name)
+		// Note: Do not use filePath.Join since on Windows it will return \
+		//       which results in a repo name that cannot be understood.
+		fname := path.Join(rname, name)
 		if !all {
 			i.lines[fname] = indstr(rname, ref[0])
 			i.charts[fname] = ref[0]
