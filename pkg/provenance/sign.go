@@ -168,8 +168,10 @@ type PassphraseFetcher func(name string) ([]byte, error)
 //
 // If the key is successfully unlocked, it will return nil.
 func (s *Signatory) DecryptKey(fn PassphraseFetcher) error {
-	if s.Entity == nil || s.Entity.PrivateKey == nil {
+	if s.Entity == nil {
 		return errors.New("private key not found")
+	} else if s.Entity.PrivateKey == nil {
+		return errors.New("provided key is not a private key")
 	}
 
 	// Nothing else to do if key is not encrypted.
@@ -200,8 +202,10 @@ func (s *Signatory) DecryptKey(fn PassphraseFetcher) error {
 // The Signatory must have a valid Entity.PrivateKey for this to work. If it does
 // not, an error will be returned.
 func (s *Signatory) ClearSign(chartpath string) (string, error) {
-	if s.Entity == nil || s.Entity.PrivateKey == nil {
+	if s.Entity == nil {
 		return "", errors.New("private key not found")
+	} else if s.Entity.PrivateKey == nil {
+		return "", errors.New("provided key is not a private key")
 	}
 
 	if fi, err := os.Stat(chartpath); err != nil {
