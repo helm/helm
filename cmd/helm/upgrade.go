@@ -171,7 +171,7 @@ func (u *upgradeCmd) vals() ([]byte, error) {
 			return []byte{}, err
 		}
 
-		if err := yaml.Unmarshal(bytes, base); err != nil {
+		if err := yaml.Unmarshal(bytes, &base); err != nil {
 			return []byte{}, fmt.Errorf("failed to parse %s: %s", u.valuesFile, err)
 		}
 	}
