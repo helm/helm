@@ -159,18 +159,15 @@ to use the tunnel.
 
 ## A Note on Flag Parsing
 
-When executing a plugin, Helm will parse global flags for its own use, but pass
-all flags to the plugin.
+When executing a plugin, Helm will parse global flags for its own use. Some of
+these flags are _not_ passed on to the plugin.
 
-Plugins MUST NOT produce an error for the following flags:
-
-- `--debug`
-- `--home`
-- `--host`
-- `--kube-context`
-- `-h`
-- `--help`
+- `--debug`: If this is specified, `$HELM_DEBUG` is set to `1`
+- `--home`: This is converted to `$HELM_HOME`
+- `--host`: This is convereted to `$HELM_HOST`
+- `--kube-context`: This is simply dropped. If your plugin uses `useTunnel`, this
+  is used to set up the tunnel for you.
 
 Plugins _should_ display help text and then exit for `-h` and `--help`. In all
-other cases, plugins may simply ignore the flags.
+other cases, plugins may use flags as appropriate.
 

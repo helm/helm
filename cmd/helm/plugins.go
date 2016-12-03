@@ -173,10 +173,14 @@ func setupEnv(shortname, base, plugdirs string, home helmpath.Home) {
 		"HELM_PATH_REPOSITORY_FILE":  home.RepositoryFile(),
 		"HELM_PATH_CACHE":            home.Cache(),
 		"HELM_PATH_LOCAL_REPOSITORY": home.LocalRepository(),
-		//"HELM_PATH_STARTER":          home.Starter(),
+		"HELM_PATH_STARTER":          home.Starters(),
 
 		"TILLER_HOST": tillerHost,
 	} {
 		os.Setenv(key, val)
+	}
+
+	if flagDebug {
+		os.Setenv("HELM_DEBUG", "1")
 	}
 }

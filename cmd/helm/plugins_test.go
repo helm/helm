@@ -18,6 +18,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -125,6 +126,39 @@ func TestLoadPlugins(t *testing.T) {
 		}
 		if out.String() != tt.expect {
 			t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
+		}
+	}
+}
+
+func TestSetupEnv(t *testing.T) {
+	name := "pequod"
+	hh := helmpath.Home("testdata/helmhome")
+	base := filepath.Join(hh.Plugins(), name)
+	plugdirs := hh.Plugins()
+	flagDebug = true
+	defer func() {
+		flagDebug = false
+	}()
+
+	setupEnv(name, base, plugdirs, hh)
+	for _, tt := range []struct {
+		name   string
+		expect string
+	}{
+		{"HELM_PLUGIN_NAME", name},
+		{"HELM_PLUGIN_DIR", base},
+		{"HELM_PLUGIN", hh.Plugins()},
+		{"HELM_DEBUG", "1"},
+		{"HELM_HOME", hh.String()},
+		{"HELM_PATH_REPOSITORY", hh.Repository()},
+		{"HELM_PATH_REPOSITORY_FILE", hh.RepositoryFile()},
+		{"HELM_PATH_CACHE", hh.Cache()},
+		{"HELM_PATH_LOCAL_REPOSITORY", hh.LocalRepository()},
+		{"HELM_PATH_STARTER", hh.Starters()},
+		{"TILLER_HOST", tillerHost},
+	} {
+		if got := os.Getenv(tt.name); got != tt.expect {
+			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
 		}
 	}
 }
