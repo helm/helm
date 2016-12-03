@@ -217,6 +217,38 @@ func TestStorageHistory(t *testing.T) {
 	}
 }
 
+func TestStorageLast(t *testing.T) {
+	storage := Init(driver.NewMemory())
+
+	const name = "angry-bird"
+
+	// setup storage with test releases
+	setup := func() {
+		// release records
+		rls0 := ReleaseTestData{Name: name, Version: 1, Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls1 := ReleaseTestData{Name: name, Version: 2, Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls2 := ReleaseTestData{Name: name, Version: 3, Status: rspb.Status_SUPERSEDED}.ToRelease()
+		rls3 := ReleaseTestData{Name: name, Version: 4, Status: rspb.Status_FAILED}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+	}
+
+	setup()
+
+	h, err := storage.Last(name)
+	if err != nil {
+		t.Fatalf("Failed to query for release history (%q): %s\n", name, err)
+	}
+
+	if h.Version != 4 {
+		t.Errorf("Expected revision 4, got %d", h.Version)
+	}
+}
+
 type ReleaseTestData struct {
 	Name      string
 	Version   int32

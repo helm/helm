@@ -241,17 +241,11 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	var rel *release.Release
 
 	if req.Version <= 0 {
-		h, err := s.env.Releases.History(req.Name)
+		var err error
+		rel, err = s.env.Releases.Last(req.Name)
 		if err != nil {
-			return nil, fmt.Errorf("getting deployed release '%s': %s", req.Name, err)
+			return nil, fmt.Errorf("getting deployed release %q: %s", req.Name, err)
 		}
-		if len(h) < 1 {
-			return nil, errMissingRelease
-		}
-
-		relutil.Reverse(h, relutil.SortByRevision)
-		rel = h[0]
-
 	} else {
 		var err error
 		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
@@ -388,7 +382,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	// finds the non-deleted release with the given name
-	currentRelease, err := s.env.Releases.Deployed(req.Name)
+	currentRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -516,17 +510,10 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 		return nil, nil, errInvalidRevision
 	}
 
-	// finds the non-deleted release with the given name
-	h, err := s.env.Releases.History(req.Name)
+	crls, err := s.env.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(h) <= 1 {
-		return nil, nil, errors.New("no revision to rollback")
-	}
-
-	relutil.SortByRevision(h)
-	crls := h[len(h)-1]
 
 	rbv := req.Version
 	if req.Version == 0 {
