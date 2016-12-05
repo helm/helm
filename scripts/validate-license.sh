@@ -16,22 +16,32 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+license='Licensed under the Apache License, Version 2.0'
+
 find_files() {
-  find . -not \( \
+  find . -type f -not \( \
     \( \
       -wholename './vendor' \
       -o -wholename './pkg/proto' \
       -o -wholename '*testdata*' \
     \) -prune \
   \) \
-  \( -name '*.go' -o -name '*.sh' -o -name 'Dockerfile' \)
+  \( -name '*.go' -o -name '*.sh' -o -name 'Dockerfile' \) \
+  -not \( -exec git check-ignore -q {}+ \;  \)
 }
 
-failed=($(find_files | xargs grep -L 'Licensed under the Apache License, Version 2.0 (the "License");'))
-if (( ${#failed[@]} > 0 )); then
-  echo "Some source files are missing license headers."
-  for f in "${failed[@]}"; do
-    echo "  $f"
-  done
-  exit 1
+
+if type "ag" > /dev/null 2>&1 ; then
+  # ag automatically skips anything in .gitignore
+  ag -L "$license" --go --shell --ignore pkg/proto --ignore testdata --ignore completions.bash
+else
+  failed=($(find_files | xargs grep -L "$license"))
+  if (( ${#failed[@]} > 0 )); then
+    echo "Some source files are missing license headers."
+    for f in "${failed[@]}"; do
+      echo "  $f"
+    done
+    exit 1
+  fi
 fi
+
