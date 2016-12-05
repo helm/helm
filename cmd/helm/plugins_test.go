@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -121,11 +122,16 @@ func TestLoadPlugins(t *testing.T) {
 		if pp.Long != tt.long {
 			t.Errorf("%d: Expected Use=%q, got %q", i, tt.long, pp.Long)
 		}
-		if err := pp.RunE(pp, tt.args); err != nil {
-			t.Errorf("Error running %s: %s", tt.use, err)
-		}
-		if out.String() != tt.expect {
-			t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
+
+		// Currently, plugins assume a Linux subsystem. Skip the execution
+		// tests until this is fixed
+		if runtime.GOOS != "windows" {
+			if err := pp.RunE(pp, tt.args); err != nil {
+				t.Errorf("Error running %s: %s", tt.use, err)
+			}
+			if out.String() != tt.expect {
+				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
+			}
 		}
 	}
 }

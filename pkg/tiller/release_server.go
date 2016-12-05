@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"path/filepath"
+	"path"
 	"regexp"
 	"strings"
 
@@ -735,7 +735,8 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	for k, v := range files {
 		if strings.HasSuffix(k, notesFileSuffix) {
 			// Only apply the notes if it belongs to the parent chart
-			if k == filepath.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
+			// Note: Do not use filePath.Join since it creates a path with \ which is not expected
+			if k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
 				notes = v
 			}
 			delete(files, k)
