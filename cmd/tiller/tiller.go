@@ -24,7 +24,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
@@ -41,7 +40,7 @@ const (
 // rootServer is the root gRPC server.
 //
 // Each gRPC service registers itself to this server during init().
-var rootServer = grpc.NewServer()
+var rootServer = tiller.NewServer()
 
 // env is the default environment.
 //
