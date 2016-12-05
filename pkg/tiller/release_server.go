@@ -25,6 +25,7 @@ import (
 	"regexp"
 	"strings"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/technosophos/moniker"
@@ -80,6 +81,17 @@ var ListDefaultLimit int64 = 512
 // the final ? to + to require that the pattern match at least once. This modification
 // prevents an empty string from matching.
 var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
+
+// maxMsgSize use 10MB as the default message size limit.
+// grpc library default is 4MB
+var maxMsgSize = 1024 * 1024 * 10
+
+// NewServer creates a new grpc server.
+func NewServer() *grpc.Server {
+	return grpc.NewServer(
+		grpc.MaxMsgSize(maxMsgSize),
+	)
+}
 
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
