@@ -33,6 +33,8 @@ message Status {
                 SUPERSEDED = 3;
                 // Status_FAILED indicates that the release was not successfully deployed.
                 FAILED = 4;
+                // Status_DELETING indicates that a delete operation is underway.
+                DELETING = 5;
         }
 
         Code code = 1;
