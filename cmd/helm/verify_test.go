@@ -24,13 +24,13 @@ import (
 
 func TestVerifyCmd(t *testing.T) {
 
-	stat_exe := "stat"
-	stat_path_msg := "no such file or directory"
-	stat_file_msg := stat_path_msg
+	statExe := "stat"
+	statPathMsg := "no such file or directory"
+	statFileMsg := statPathMsg
 	if runtime.GOOS == "windows" {
-		stat_exe = "GetFileAttributesEx"
-		stat_path_msg = "The system cannot find the path specified."
-		stat_file_msg = "The system cannot find the file specified."
+		statExe = "GetFileAttributesEx"
+		statPathMsg = "The system cannot find the path specified."
+		statFileMsg = "The system cannot find the file specified."
 	}
 
 	tests := []struct {
@@ -48,7 +48,7 @@ func TestVerifyCmd(t *testing.T) {
 		{
 			name:   "verify requires that chart exists",
 			args:   []string{"no/such/file"},
-			expect: fmt.Sprintf("%s no/such/file: %s", stat_exe, stat_path_msg),
+			expect: fmt.Sprintf("%s no/such/file: %s", statExe, statPathMsg),
 			err:    true,
 		},
 		{
@@ -60,7 +60,7 @@ func TestVerifyCmd(t *testing.T) {
 		{
 			name:   "verify requires that chart has prov file",
 			args:   []string{"testdata/testcharts/compressedchart-0.1.0.tgz"},
-			expect: fmt.Sprintf("could not load provenance file testdata/testcharts/compressedchart-0.1.0.tgz.prov: %s testdata/testcharts/compressedchart-0.1.0.tgz.prov: %s", stat_exe, stat_file_msg),
+			expect: fmt.Sprintf("could not load provenance file testdata/testcharts/compressedchart-0.1.0.tgz.prov: %s testdata/testcharts/compressedchart-0.1.0.tgz.prov: %s", statExe, statFileMsg),
 			err:    true,
 		},
 		{
