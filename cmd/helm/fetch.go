@@ -51,8 +51,9 @@ type fetchCmd struct {
 	destdir  string
 	version  string
 
-	verify  bool
-	keyring string
+	verify      bool
+	verifyLater bool
+	keyring     string
 
 	out io.Writer
 }
@@ -82,6 +83,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&fch.untar, "untar", false, "if set to true, will untar the chart after downloading it")
 	f.StringVar(&fch.untardir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
 	f.BoolVar(&fch.verify, "verify", false, "verify the package against its signature")
+	f.BoolVar(&fch.verifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
 	f.StringVar(&fch.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
 	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.StringVarP(&fch.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
@@ -100,6 +102,8 @@ func (f *fetchCmd) run() error {
 
 	if f.verify {
 		c.Verify = downloader.VerifyAlways
+	} else if f.verifyLater {
+		c.Verify = downloader.VerifyLater
 	}
 
 	// If untar is set, we fetch to a tempdir, then untar and copy after
