@@ -142,8 +142,8 @@ func (l *listCmd) run() error {
 		return nil
 	}
 
-	if res.Next != "" {
-		fmt.Fprintf(l.out, "\tnext: %s", res.Next)
+	if res.Next != "" && !l.short {
+		fmt.Fprintf(l.out, "\tnext: %s\n", res.Next)
 	}
 
 	rels := res.Releases
@@ -194,7 +194,7 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 
 func formatList(rels []*release.Release) string {
 	table := uitable.New()
-	table.MaxColWidth = 30
+	table.MaxColWidth = 60
 	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)

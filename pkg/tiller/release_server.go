@@ -21,10 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"path/filepath"
+	"path"
 	"regexp"
 	"strings"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/technosophos/moniker"
@@ -69,6 +70,28 @@ var (
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
 var ListDefaultLimit int64 = 512
+
+// ValidName is a regular expression for names.
+//
+// According to the Kubernetes help text, the regular expression it uses is:
+//
+//	(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+//
+// We modified that. First, we added start and end delimiters. Second, we changed
+// the final ? to + to require that the pattern match at least once. This modification
+// prevents an empty string from matching.
+var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
+
+// maxMsgSize use 10MB as the default message size limit.
+// grpc library default is 4MB
+var maxMsgSize = 1024 * 1024 * 10
+
+// NewServer creates a new grpc server.
+func NewServer() *grpc.Server {
+	return grpc.NewServer(
+		grpc.MaxMsgSize(maxMsgSize),
+	)
+}
 
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
@@ -211,24 +234,18 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		return nil, errIncompatibleVersion
 	}
 
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		return nil, errMissingRelease
 	}
 
 	var rel *release.Release
 
 	if req.Version <= 0 {
-		h, err := s.env.Releases.History(req.Name)
+		var err error
+		rel, err = s.env.Releases.Last(req.Name)
 		if err != nil {
-			return nil, fmt.Errorf("getting deployed release '%s': %s", req.Name, err)
+			return nil, fmt.Errorf("getting deployed release %q: %s", req.Name, err)
 		}
-		if len(h) < 1 {
-			return nil, errMissingRelease
-		}
-
-		relutil.Reverse(h, relutil.SortByRevision)
-		rel = h[0]
-
 	} else {
 		var err error
 		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
@@ -267,9 +284,10 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 		return nil, errIncompatibleVersion
 	}
 
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		return nil, errMissingRelease
 	}
+
 	if req.Version <= 0 {
 		rel, err := s.env.Releases.Deployed(req.Name)
 		return &services.GetReleaseContentResponse{Release: rel}, err
@@ -355,7 +373,7 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 
 // prepareUpdate builds an updated release for an update operation.
 func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		return nil, nil, errMissingRelease
 	}
 
@@ -364,7 +382,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	// finds the non-deleted release with the given name
-	currentRelease, err := s.env.Releases.Deployed(req.Name)
+	currentRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -486,23 +504,16 @@ func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release
 //  the previous release's configuration
 func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	switch {
-	case req.Name == "":
+	case !ValidName.MatchString(req.Name):
 		return nil, nil, errMissingRelease
 	case req.Version < 0:
 		return nil, nil, errInvalidRevision
 	}
 
-	// finds the non-deleted release with the given name
-	h, err := s.env.Releases.History(req.Name)
+	crls, err := s.env.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(h) <= 1 {
-		return nil, nil, errors.New("no revision to rollback")
-	}
-
-	relutil.SortByRevision(h)
-	crls := h[len(h)-1]
 
 	rbv := req.Version
 	if req.Version == 0 {
@@ -723,7 +734,8 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	for k, v := range files {
 		if strings.HasSuffix(k, notesFileSuffix) {
 			// Only apply the notes if it belongs to the parent chart
-			if k == filepath.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
+			// Note: Do not use filePath.Join since it creates a path with \ which is not expected
+			if k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
 				notes = v
 			}
 			delete(files, k)
@@ -905,7 +917,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, errIncompatibleVersion
 	}
 
-	if req.Name == "" {
+	if !ValidName.MatchString(req.Name) {
 		log.Printf("uninstall: Release not found: %s", req.Name)
 		return nil, errMissingRelease
 	}

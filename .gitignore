@@ -1,8 +1,10 @@
 .DS_Store
 .coverage/
 .vimrc
+.vscode/
 _dist/
 _proto/*.pb.go
 bin/
 rootfs/tiller
 vendor/
+*.exe

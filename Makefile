@@ -1,7 +1,7 @@
 DOCKER_REGISTRY ?= gcr.io
 IMAGE_PREFIX    ?= kubernetes-helm
 SHORT_NAME      ?= tiller
-TARGETS         = darwin/amd64 linux/amd64 linux/386
+TARGETS         = darwin/amd64 linux/amd64 linux/386 windows/amd64
 DIST_DIRS       = find * -type d -exec
 
 # go option
@@ -83,6 +83,13 @@ test-style:
 .PHONY: protoc
 protoc:
 	$(MAKE) -C _proto/ all
+
+.PHONY: docs
+docs: build
+	@mkdir -p docs/helm docs/man/man1
+	bin/helm docs --dir ./docs/helm
+	bin/helm docs --dir ./docs/man/man1 --type man
+	bin/helm docs --dir ./scripts --type bash
 
 .PHONY: clean
 clean:

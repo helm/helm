@@ -1,0 +1,4 @@
+name: env
+usage: "env stuff"
+description: "show the env"
+command: "echo $HELM_HOME"

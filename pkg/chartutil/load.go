@@ -229,6 +229,10 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 	err = filepath.Walk(topdir, func(name string, fi os.FileInfo, err error) error {
 		n := strings.TrimPrefix(name, topdir)
+
+		// Normalize to / since it will also work on Windows
+		n = filepath.ToSlash(n)
+
 		if err != nil {
 			return err
 		}

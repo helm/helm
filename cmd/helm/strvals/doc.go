@@ -13,25 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package helmpath
+/*Package strvals provides tools for working with strval lines.
 
-import (
-	"testing"
-)
+Helm supports a compressed format for YAML settings which we call strvals.
+The format is roughly like this:
 
-func TestHelmHome(t *testing.T) {
-	hh := Home("/r")
-	isEq := func(t *testing.T, a, b string) {
-		if a != b {
-			t.Errorf("Expected %q, got %q", a, b)
-		}
-	}
+	name=value,topname.subname=value
 
-	isEq(t, hh.String(), "/r")
-	isEq(t, hh.Repository(), "/r/repository")
-	isEq(t, hh.RepositoryFile(), "/r/repository/repositories.yaml")
-	isEq(t, hh.LocalRepository(), "/r/repository/local")
-	isEq(t, hh.Cache(), "/r/repository/cache")
-	isEq(t, hh.CacheIndex("t"), "/r/repository/cache/t-index.yaml")
-	isEq(t, hh.Starters(), "/r/starters")
-}
+The above is equivalent to the YAML document
+
+	name: value
+	topname:
+	  subname: value
+
+This package provides a parser and utilities for converting the strvals format
+to other formats.
+*/
+package strvals

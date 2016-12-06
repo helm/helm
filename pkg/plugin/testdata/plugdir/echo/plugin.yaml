@@ -1,0 +1,6 @@
+name: "echo"
+version: "1.2.3"
+usage: "echo something"
+description: |-
+  This is a testing fixture.
+command: "echo Hello"

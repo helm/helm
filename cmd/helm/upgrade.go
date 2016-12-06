@@ -17,14 +17,15 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/strvals"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/storage/driver"
 )
@@ -49,7 +50,7 @@ type upgradeCmd struct {
 	dryRun       bool
 	disableHooks bool
 	valuesFile   string
-	values       *values
+	values       string
 	verify       bool
 	keyring      string
 	install      bool
@@ -62,7 +63,6 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	upgrade := &upgradeCmd{
 		out:    out,
 		client: client,
-		values: new(values),
 	}
 
 	cmd := &cobra.Command{
@@ -86,13 +86,16 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVarP(&upgrade.valuesFile, "values", "f", "", "path to a values YAML file")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
-	f.Var(upgrade.values, "set", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
-	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks")
+	f.StringVar(&upgrade.values, "set", "", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
+	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
+	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
 	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "path to the keyring that contains public singing keys")
 	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.StringVar(&upgrade.namespace, "namespace", "default", "namespace to install the release into (only used if --install is set)")
 	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
+
+	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
 	return cmd
 }
@@ -135,7 +138,12 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
-	_, err = u.client.UpdateRelease(u.release, chartPath, helm.UpdateValueOverrides(rawVals), helm.UpgradeDryRun(u.dryRun), helm.UpgradeDisableHooks(u.disableHooks))
+	_, err = u.client.UpdateRelease(
+		u.release,
+		chartPath,
+		helm.UpdateValueOverrides(rawVals),
+		helm.UpgradeDryRun(u.dryRun),
+		helm.UpgradeDisableHooks(u.disableHooks))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
@@ -154,7 +162,7 @@ func (u *upgradeCmd) run() error {
 }
 
 func (u *upgradeCmd) vals() ([]byte, error) {
-	var buffer bytes.Buffer
+	base := map[string]interface{}{}
 
 	// User specified a values file via -f/--values
 	if u.valuesFile != "" {
@@ -162,18 +170,15 @@ func (u *upgradeCmd) vals() ([]byte, error) {
 		if err != nil {
 			return []byte{}, err
 		}
-		buffer.Write(bytes)
-	}
 
-	// User specified value pairs via --set
-	// These override any values in the specified file
-	if len(u.values.pairs) > 0 {
-		bytes, err := u.values.yaml()
-		if err != nil {
-			return []byte{}, err
+		if err := yaml.Unmarshal(bytes, &base); err != nil {
+			return []byte{}, fmt.Errorf("failed to parse %s: %s", u.valuesFile, err)
 		}
-		buffer.Write(bytes)
 	}
 
-	return buffer.Bytes(), nil
+	if err := strvals.ParseInto(u.values, base); err != nil {
+		return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+	}
+
+	return yaml.Marshal(base)
 }

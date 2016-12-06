@@ -51,6 +51,7 @@ including installing pre-releases.
   - [Kubernetes Distribution Notes](docs/kubernetes_distros.md)
   - [Frequently Asked Questions](docs/install_faq.md)
 - [Using Helm](docs/using_helm.md)
+  - [Plugins](docs/plugins.md)
 - [Developing Charts](docs/charts.md)
 	- [Chart Lifecycle Hooks](docs/charts_hooks.md)
 	- [Chart Tips and Tricks](docs/charts_tips_and_tricks.md)

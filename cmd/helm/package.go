@@ -168,5 +168,5 @@ func promptUser(name string) ([]byte, error) {
 	fmt.Printf("Password for key %q >  ", name)
 	pw, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
-	return []byte(pw), err
+	return pw, err
 }

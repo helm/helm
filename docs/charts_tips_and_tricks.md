@@ -61,6 +61,29 @@ Because YAML ascribes significance to indentation levels and whitespace,
 this is one great way to include snippets of code, but handle
 indentation in a relevant context.
 
+## Automatically Roll Deployments When ConfigMaps or Secrets change
+
+Often times configmaps or secrets are injected as configuration
+files in containers.
+Depending on the application a restart may be required should those
+be updated with a subsequent `helm upgrade`, but if the
+deployment spec itself didn't change the application keeps running
+with the old configuration resulting in an inconsistent deployment.
+
+The `sha256sum` function can be used together with the `include`
+function to ensure a deployments template section is updated if another
+spec changes: 
+
+```
+kind: Deployment
+spec:
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include "mychart/templates/configmap.yaml" . | sha256sum }}
+[...]    
+```
+
 ## Using "Partials" and Template Includes
 
 Sometimes you want to create some reusable parts in your chart, whether

@@ -63,9 +63,7 @@ stable/mysql  	0.1.0  	Chart for MySQL
 stable/mariadb	0.5.1  	Chart for MariaDB
 ```
 
-Now you will only see the results that match your filter. MySQL is
-listed, of course, but so is MariaDB. Why? Because its full description
-relates it to MySQL:
+Now you will only see the results that match your filter. 
 
 Why is
 `mariadb` in the list? Because its package description relates it to
@@ -223,6 +221,57 @@ $ helm install -f config.yaml stable/mariadb
 
 The above will set the default MariaDB user to `user0`, but accept all
 the rest of the defaults for that chart.
+
+There are two ways to pass configuration data during install:
+
+- `--values` (or `-f`): Specifiy a YAML file with overrides.
+- `--set`: Specify overrides on the command line.
+
+If both are used, `--set` values are merged into `--values` with higher precedence.
+
+#### The Format and Limitations of `--set`
+
+The `--set` option takes zero or more name/value pairs. At its simplest, it is
+used like this: `--set name=value`. The YAML equivalent of that is:
+
+```yaml
+name: value
+```
+
+Multiple values are separated by `,` characters. So `--set a=b,c=d` becomes:
+
+```yaml
+a: b
+c: d
+```
+
+More complex expressions are supported. For example, `--set outer.inner=value` is
+translated into this:
+```yaml
+outer:
+  inner: value
+```
+
+Lists can be expressed by enclosing values in `{` and `}`. For example,
+`--set name={a, b, c}` translates to:
+
+```yaml
+name:
+  - a
+  - b
+  - c
+```
+
+Sometimes you need to use special characters in your `--set` lines. You can use
+a backslash to escape the characters; `--set name=value1\,value2` will become:
+
+```yaml
+name: "value1,value2"
+```
+
+The `--set` syntax is not as expressive as YAML, especially when it comes to
+collections. And there is currently no method for expressing things such as "set
+the third item in a list to...".
 
 ### More Installation Methods
 
