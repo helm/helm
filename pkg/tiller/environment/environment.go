@@ -133,7 +133,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Update(namespace string, originalReader, modifiedReader io.Reader) error
+	Update(namespace string, originalReader, modifiedReader io.Reader, restart bool) error
 
 	// APIClient gets a raw API client for Kubernetes.
 	APIClient() (unversioned.Interface, error)

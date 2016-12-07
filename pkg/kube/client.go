@@ -180,7 +180,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, currentReader, targetReader io.Reader) error {
+func (c *Client) Update(namespace string, currentReader, targetReader io.Reader, restart bool) error {
 	currentInfos, err := c.newBuilder(namespace, currentReader).Do().Infos()
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -221,7 +221,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 			return err
 		}
 
-		if err := updateResource(c, info, currentObj); err != nil {
+		if err := updateResource(c, info, currentObj, restart); err != nil {
 			if alreadyExistErr, ok := err.(ErrAlreadyExists); ok {
 				log.Printf(alreadyExistErr.errorMsg)
 			} else {
@@ -317,7 +317,7 @@ func deleteResource(info *resource.Info) error {
 	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, restart bool) error {
 
 	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
 	originalSerialization, err := runtime.Encode(encoder, currentObj)
@@ -357,10 +357,11 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object)
 		return err
 	}
 
-    kind := target.Mapping.GroupVersionKind.Kind
+    if restart {
+        kind := target.Mapping.GroupVersionKind.Kind
 
-    client, _ := c.Client()
-	switch kind {
+        client, _ := c.Client()
+        switch kind {
         case "ReplicationController":
             rc := currentObj.(*v1.ReplicationController)
             err = restartPods(client, target.Namespace, rc.Spec.Selector)
@@ -370,7 +371,11 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object)
         case "PetSet":
             petSet := currentObj.(*v1alpha1.PetSet)
             err = restartPods(client, target.Namespace, petSet.Spec.Selector.MatchLabels)
-	}
+        case "ReplicaSet":
+            replicaSet := currentObj.(*v1beta1.ReplicaSet)
+            err = restartPods(client, target.Namespace, replicaSet.Spec.Selector.MatchLabels)
+        }
+    }
 
 	return err
 }

@@ -40,6 +40,8 @@ type options struct {
 	dryRun bool
 	// if set, re-use an existing name
 	reuseName bool
+    //
+    restart bool
 	// if set, skip running hooks
 	disableHooks bool
 	// name of release
@@ -212,6 +214,13 @@ func RollbackDryRun(dry bool) RollbackOption {
 	}
 }
 
+// RollbackDryRun will (if true) execute a rollback as a dry run.
+func RollbackRestart(restart bool) RollbackOption {
+	return func(opts *options) {
+		opts.restart = restart
+	}
+}
+
 // RollbackVersion sets the version of the release to deploy.
 func RollbackVersion(ver int32) RollbackOption {
 	return func(opts *options) {
@@ -230,6 +239,13 @@ func UpgradeDisableHooks(disable bool) UpdateOption {
 func UpgradeDryRun(dry bool) UpdateOption {
 	return func(opts *options) {
 		opts.dryRun = dry
+	}
+}
+
+// UpgradeDryRun will (if true) execute an upgrade as a dry run.
+func UpgradeRestart(restart bool) UpdateOption {
+	return func(opts *options) {
+		opts.restart = restart
 	}
 }
 
