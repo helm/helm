@@ -54,6 +54,7 @@ type upgradeCmd struct {
 	out          io.Writer
 	client       helm.Interface
 	dryRun       bool
+	restart      bool
 	disableHooks bool
 	valueFiles   valueFiles
 	values       string
@@ -92,6 +93,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
+	f.BoolVar(&upgrade.restart, "restart", false, "performs pods restart for the resource if applicable")
 	f.StringVar(&upgrade.values, "set", "", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
@@ -149,6 +151,7 @@ func (u *upgradeCmd) run() error {
 		chartPath,
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
+		helm.UpgradeRestart(u.restart),
 		helm.UpgradeDisableHooks(u.disableHooks))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))

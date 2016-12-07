@@ -131,7 +131,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Update(namespace string, originalReader, modifiedReader io.Reader) error
+	Update(namespace string, originalReader, modifiedReader io.Reader, restart bool) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
