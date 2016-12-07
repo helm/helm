@@ -38,11 +38,11 @@ type Tunnel struct {
 	stopChan  chan struct{}
 	readyChan chan struct{}
 	config    *restclient.Config
-	client    *restclient.RESTClient
+	client    restclient.Interface
 }
 
 // NewTunnel creates a new tunnel
-func NewTunnel(client *restclient.RESTClient, config *restclient.Config, namespace, podName string, remote int) *Tunnel {
+func NewTunnel(client restclient.Interface, config *restclient.Config, namespace, podName string, remote int) *Tunnel {
 	return &Tunnel{
 		config:    config,
 		client:    client,
