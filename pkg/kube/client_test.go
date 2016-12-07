@@ -30,7 +30,8 @@ import (
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	api "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/validation"
-	"k8s.io/kubernetes/pkg/client/unversioned/fake"
+	"k8s.io/kubernetes/pkg/client/restclient/fake"
+	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/runtime"
 )
@@ -110,20 +111,18 @@ func TestPerform(t *testing.T) {
 			return nil
 		}
 
-		c := New(nil)
-		c.IncludeThirdPartyAPIs = false
-		c.ClientForMapping = func(mapping *meta.RESTMapping) (resource.RESTClient, error) {
-			return &fake.RESTClient{}, nil
-		}
-		c.Validator = func(validate bool, cacheDir string) (validation.Schema, error) {
-			if tt.swaggerFile == "" {
-				return validation.NullSchema{}, nil
-			}
+		f, tf, _, _ := cmdtesting.NewAPIFactory()
+		c := &Client{Factory: f}
+		if tt.swaggerFile != "" {
 			data, err := ioutil.ReadFile(tt.swaggerFile)
+			if err != nil {
+				t.Fatalf("could not read swagger spec: %s", err)
+			}
+			validator, err := validation.NewSwaggerSchemaFromBytes(data, nil)
 			if err != nil {
 				t.Fatalf("could not load swagger spec: %s", err)
 			}
-			return validation.NewSwaggerSchemaFromBytes(data, nil)
+			tf.Validator = validator
 		}
 
 		err := perform(c, tt.namespace, tt.reader, fn)

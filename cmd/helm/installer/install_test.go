@@ -21,12 +21,13 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	testcore "k8s.io/kubernetes/pkg/client/testing/core"
+	"k8s.io/kubernetes/pkg/runtime"
 
 	"k8s.io/helm/pkg/version"
-
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
-	"k8s.io/kubernetes/pkg/runtime"
 )
 
 func TestDeploymentManifest(t *testing.T) {
@@ -44,7 +45,7 @@ func TestDeploymentManifest(t *testing.T) {
 
 	for _, tt := range tests {
 
-		o, err := DeploymentManifest(tt.image, tt.canary)
+		o, err := DeploymentManifest(api.NamespaceDefault, tt.image, tt.canary)
 		if err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
@@ -62,9 +63,9 @@ func TestDeploymentManifest(t *testing.T) {
 func TestInstall(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
-	fake := testclient.Fake{}
-	fake.AddReactor("create", "deployments", func(action testclient.Action) (bool, runtime.Object, error) {
-		obj := action.(testclient.CreateAction).GetObject().(*extensions.Deployment)
+	fake := fake.NewSimpleClientset()
+	fake.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
@@ -76,16 +77,16 @@ func TestInstall(t *testing.T) {
 		return true, obj, nil
 	})
 
-	err := Install(fake.Extensions(), "default", image, false, false)
+	err := Install(fake.Extensions(), api.NamespaceDefault, image, false, false)
 	if err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 }
 
 func TestInstall_canary(t *testing.T) {
-	fake := testclient.Fake{}
-	fake.AddReactor("create", "deployments", func(action testclient.Action) (bool, runtime.Object, error) {
-		obj := action.(testclient.CreateAction).GetObject().(*extensions.Deployment)
+	fake := fake.NewSimpleClientset()
+	fake.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != "gcr.io/kubernetes-helm/tiller:canary" {
 			t.Errorf("expected canary image, got '%s'", i)
@@ -93,7 +94,7 @@ func TestInstall_canary(t *testing.T) {
 		return true, obj, nil
 	})
 
-	err := Install(fake.Extensions(), "default", "", true, false)
+	err := Install(fake.Extensions(), api.NamespaceDefault, "", true, false)
 	if err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}

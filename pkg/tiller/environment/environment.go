@@ -25,14 +25,15 @@ package environment
 import (
 	"io"
 
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/typed/discovery"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
 )
 
 // TillerNamespace is the namespace tiller is running in.
@@ -135,8 +136,11 @@ type KubeClient interface {
 	// by "\n---\n").
 	Update(namespace string, originalReader, modifiedReader io.Reader) error
 
-	// APIClient gets a raw API client for Kubernetes.
-	APIClient() (unversioned.Interface, error)
+	// Client gets a raw API client for Kubernetes.
+	ClientSet() (*internalclientset.Clientset, error)
+
+	// DiscoveryClient returns a kubernetes discovery client.
+	DiscoveryClient() (discovery.CachedDiscoveryInterface, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -145,12 +149,21 @@ type PrintingKubeClient struct {
 	Out io.Writer
 }
 
-// APIClient always returns an error.
+// ClientSet always returns an error.
 //
 // The printing client does not have access to a Kubernetes client at all. So it
 // will always return an error if the client is accessed.
-func (p *PrintingKubeClient) APIClient() (unversioned.Interface, error) {
-	return testclient.NewSimpleFake(), nil
+func (p *PrintingKubeClient) ClientSet() (*internalclientset.Clientset, error) {
+	return new(internalclientset.Clientset), nil
+}
+
+// DiscoveryClient always returns an error.
+//
+// The printing client does not have access to a Kubernetes client at all. So it
+// will always return an error if the client is accessed.
+func (p *PrintingKubeClient) DiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
+	var dc discovery.CachedDiscoveryInterface
+	return dc, nil
 }
 
 // Create prints the values of what would be created with a real KubeClient.

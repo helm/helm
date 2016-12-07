@@ -28,8 +28,8 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned"
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/kube"
@@ -199,12 +199,12 @@ func homePath() string {
 
 // getKubeClient is a convenience method for creating kubernetes config and client
 // for a given kubeconfig context
-func getKubeClient(context string) (*restclient.Config, *unversioned.Client, error) {
+func getKubeClient(context string) (*restclient.Config, *internalclientset.Clientset, error) {
 	config, err := kube.GetConfig(context).ClientConfig()
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get kubernetes config for context '%s': %s", context, err)
 	}
-	client, err := unversioned.New(config)
+	client, err := internalclientset.NewForConfig(config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get kubernetes client: %s", err)
 	}
