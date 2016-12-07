@@ -23,8 +23,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
-	unversionedclient "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 type mockEngine struct {
@@ -35,11 +34,10 @@ func (e *mockEngine) Render(chrt *chart.Chart, v chartutil.Values) (map[string]s
 	return e.out, nil
 }
 
-type mockKubeClient struct {
-}
+type mockKubeClient struct{}
 
-func (k *mockKubeClient) APIClient() (unversionedclient.Interface, error) {
-	return testclient.NewSimpleFake(), nil
+func (k *mockKubeClient) ClientSet() (*internalclientset.Clientset, error) {
+	return &internalclientset.Clientset{}, nil
 }
 
 func (k *mockKubeClient) Create(ns string, r io.Reader) error {

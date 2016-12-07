@@ -695,13 +695,18 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 
 func (s *ReleaseServer) getVersionSet() (versionSet, error) {
 	defVersions := newVersionSet("v1")
-	cli, err := s.env.KubeClient.APIClient()
+	cli, err := s.env.KubeClient.ClientSet()
 	if err != nil {
-		log.Printf("API Client for Kubernetes is missing: %s.", err)
+		log.Printf("discovery client for Kubernetes is missing: %s.", err)
 		return defVersions, err
 	}
 
-	groups, err := cli.Discovery().ServerGroups()
+	dc := cli.Discovery()
+	if dc.RESTClient() == nil {
+		return defVersions, nil
+	}
+
+	groups, err := dc.ServerGroups()
 	if err != nil {
 		return defVersions, err
 	}

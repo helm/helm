@@ -23,7 +23,7 @@ import (
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/kubernetes/pkg/api"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 )
 
 func releaseStub(name string, vers int32, code rspb.Status_Code) *rspb.Release {
@@ -73,7 +73,7 @@ func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps 
 
 // MockConfigMapsInterface mocks a kubernetes ConfigMapsInterface
 type MockConfigMapsInterface struct {
-	unversioned.ConfigMapsInterface
+	internalversion.ConfigMapInterface
 
 	objects map[string]*api.ConfigMap
 }
@@ -132,7 +132,7 @@ func (mock *MockConfigMapsInterface) Update(cfgmap *api.ConfigMap) (*api.ConfigM
 }
 
 // Delete deletes a ConfigMap by name.
-func (mock *MockConfigMapsInterface) Delete(name string) error {
+func (mock *MockConfigMapsInterface) Delete(name string, opts *api.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
 		return kberrs.NewNotFound(api.Resource("tests"), name)
 	}
