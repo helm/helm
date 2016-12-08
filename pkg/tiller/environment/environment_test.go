@@ -23,7 +23,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 type mockEngine struct {
@@ -35,10 +34,6 @@ func (e *mockEngine) Render(chrt *chart.Chart, v chartutil.Values) (map[string]s
 }
 
 type mockKubeClient struct{}
-
-func (k *mockKubeClient) ClientSet() (*internalclientset.Clientset, error) {
-	return &internalclientset.Clientset{}, nil
-}
 
 func (k *mockKubeClient) Create(ns string, r io.Reader) error {
 	return nil
