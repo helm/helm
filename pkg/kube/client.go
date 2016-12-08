@@ -77,7 +77,11 @@ func (e ErrAlreadyExists) Error() string {
 //
 // Namespace will set the namespace
 func (c *Client) Create(namespace string, reader io.Reader) error {
-	if err := c.ensureNamespace(namespace); err != nil {
+	client, err := c.ClientSet()
+	if err != nil {
+		return err
+	}
+	if err := ensureNamespace(client, namespace); err != nil {
 		return err
 	}
 	return perform(c, namespace, reader, createResource)
@@ -392,21 +396,6 @@ func waitForJob(e watch.Event, name string) (bool, error) {
 
 	log.Printf("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
 	return false, nil
-}
-
-func (c *Client) ensureNamespace(namespace string) error {
-	client, err := c.ClientSet()
-	if err != nil {
-		return err
-	}
-
-	ns := &api.Namespace{}
-	ns.Name = namespace
-	_, err = client.Namespaces().Create(ns)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
 }
 
 func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
