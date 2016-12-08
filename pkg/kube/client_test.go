@@ -142,14 +142,12 @@ func TestPerform(t *testing.T) {
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)
-	c.IncludeThirdPartyAPIs = false
 	if err := c.Create("test", strings.NewReader(guestbookManifest)); err != nil {
 		t.Fatal(err)
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
 	c = New(nil)
-	c.IncludeThirdPartyAPIs = false
 	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}

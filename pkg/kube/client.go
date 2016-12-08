@@ -46,13 +46,6 @@ var ErrNoObjectsVisited = goerrors.New("no objects visited")
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
 	cmdutil.Factory
-	// IncludeThirdPartyAPIs indicates whether to load "dynamic" APIs.
-	//
-	// This requires additional calls to the Kubernetes API server, and these calls
-	// are not supported by all versions. Additionally, during testing, initializing
-	// a client will still attempt to contact a live server. In these situations,
-	// this flag may need to be disabled.
-	IncludeThirdPartyAPIs bool
 	// Validate idicates whether to load a schema for validation.
 	Validate bool
 	// SchemaCacheDir is the path for loading cached schema.
@@ -62,10 +55,9 @@ type Client struct {
 // New create a new Client
 func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
-		Factory:               cmdutil.NewFactory(config),
-		IncludeThirdPartyAPIs: true,
-		Validate:              true,
-		SchemaCacheDir:        clientcmd.RecommendedSchemaFile,
+		Factory:        cmdutil.NewFactory(config),
+		Validate:       true,
+		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
 	}
 }
 
