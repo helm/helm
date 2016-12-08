@@ -25,8 +25,6 @@ package environment
 import (
 	"io"
 
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/kube"
@@ -134,23 +132,12 @@ type KubeClient interface {
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
 	Update(namespace string, originalReader, modifiedReader io.Reader) error
-
-	// Client gets a raw API client for Kubernetes.
-	ClientSet() (*internalclientset.Clientset, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
 // the given output.
 type PrintingKubeClient struct {
 	Out io.Writer
-}
-
-// ClientSet always returns an error.
-//
-// The printing client does not have access to a Kubernetes client at all. So it
-// will always return an error if the client is accessed.
-func (p *PrintingKubeClient) ClientSet() (*internalclientset.Clientset, error) {
-	return new(internalclientset.Clientset), nil
 }
 
 // Create prints the values of what would be created with a real KubeClient.

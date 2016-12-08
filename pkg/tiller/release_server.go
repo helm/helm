@@ -31,6 +31,8 @@ import (
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/typed/discovery"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/kube"
@@ -95,13 +97,15 @@ func NewServer() *grpc.Server {
 
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
-	env *environment.Environment
+	env       *environment.Environment
+	clientset internalclientset.Interface
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface) *ReleaseServer {
 	return &ReleaseServer{
-		env: env,
+		env:       env,
+		clientset: clientset,
 	}
 }
 
@@ -693,20 +697,10 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, nil
 }
 
-func (s *ReleaseServer) getVersionSet() (versionSet, error) {
+func getVersionSet(client discovery.DiscoveryInterface) (versionSet, error) {
 	defVersions := newVersionSet("v1")
-	cli, err := s.env.KubeClient.ClientSet()
-	if err != nil {
-		log.Printf("discovery client for Kubernetes is missing: %s.", err)
-		return defVersions, err
-	}
 
-	dc := cli.Discovery()
-	if dc.RESTClient() == nil {
-		return defVersions, nil
-	}
-
-	groups, err := dc.ServerGroups()
+	groups, err := client.ServerGroups()
 	if err != nil {
 		return defVersions, err
 	}
@@ -750,7 +744,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	vs, err := s.getVersionSet()
+	vs, err := getVersionSet(s.clientset.Discovery())
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
@@ -963,7 +957,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	vs, err := s.getVersionSet()
+	vs, err := getVersionSet(s.clientset.Discovery())
 	if err != nil {
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
