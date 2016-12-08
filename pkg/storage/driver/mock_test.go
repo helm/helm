@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"testing"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/kubernetes/pkg/api"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func releaseStub(name string, vers int32, code rspb.Status_Code) *rspb.Release {
