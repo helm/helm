@@ -696,7 +696,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, nil
 }
 
-func getVersionSet(client discovery.DiscoveryInterface) (versionSet, error) {
+func getVersionSet(client discovery.ServerGroupsInterface) (versionSet, error) {
 	defVersions := newVersionSet("v1")
 
 	groups, err := client.ServerGroups()
