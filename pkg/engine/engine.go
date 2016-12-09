@@ -24,7 +24,6 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -69,24 +68,26 @@ func FuncMap() template.FuncMap {
 	delete(f, "env")
 	delete(f, "expandenv")
 
-	// Add a function to convert to YAML:
-	f["toYaml"] = toYaml
+	// Add some extra functionality
+	extra := template.FuncMap{
+		"toYaml": files.ToYaml,
+		"base":   path.Base,
+		"dir":    path.Dir,
+		"ext":    path.Ext,
+		"isAbs":  path.IsAbs,
+		"clean":  path.Clean,
 
-	// This is a placeholder for the "include" function, which is
-	// late-bound to a template. By declaring it here, we preserve the
-	// integrity of the linter.
-	f["include"] = func(string, interface{}) string { return "not implemented" }
+		// This is a placeholder for the "include" function, which is
+		// late-bound to a template. By declaring it here, we preserve the
+		// integrity of the linter.
+		"include": func(string, interface{}) string { return "not implemented" },
+	}
+
+	for k, v := range extra {
+		f[k] = v
+	}
 
 	return f
-}
-
-func toYaml(v interface{}) string {
-	data, err := yaml.Marshal(v)
-	if err != nil {
-		// Swallow errors inside of a template.
-		return ""
-	}
-	return string(data)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.

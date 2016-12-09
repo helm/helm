@@ -9,6 +9,17 @@ Helm provides access to files through the `.Files` object. Before we get going w
 	- Files in `templates/` cannot be accessed.
 - Charts to not preserve UNIX mode information, so file-level permissions will have no impact on the availability of a file when it comes to the `.Files` object.
 
+<!-- (see https://github.com/jonschlinkert/markdown-toc) -->
+
+<!-- toc -->
+
+- [Basic example](#basic-example)
+- [Glob patterns](#glob-patterns)
+- [ConfigMap and Secrets utility functions](#configmap-and-secrets-utility-functions)
+- [Secrets](#secrets)
+
+<!-- tocstop -->
+
 ## Basic example
 
 With those caveats behind, let's write a template that reads three files into our ConfigMap. To get started, we will add three files to the chart, putting all three directly inside of the `mychart/` directory.
@@ -73,6 +84,9 @@ As your chart grows, you may find you have a greater need to organize your
 files more, and so we provide a `Files.Glob(pattern string)` method to assist
 in extracting certain files with all the flexibility of [glob patterns](//godoc.org/github.com/gobwas/glob).
 
+`.Glob` returns a `Files` type, so you may call any of the `Files` methods on
+the returned object.
+
 For example, imagine the directory structure:
 
 ```
@@ -99,6 +113,36 @@ Or
 {{ range $path, $bytes := .Files.Glob "foo/*" }}
 {{ $path }}: '{{ b64enc $bytes }}'
 {{ end }}
+```
+
+## ConfigMap and Secrets utility functions
+
+(Not present in version 2.0.2 or prior)
+
+It is very common to want to place file content into both configmaps and
+secrets, for mounting into your pods at run time. To help with this, we provide a
+couple utility methods on the `Files` type.
+
+For further organization, it is especially useful to use these methods in
+conjunction with the `Glob` method.
+
+Given the directory structure from the [Glob][Glob patterns] example above:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conf
+data:
+{{ (.Files.Glob "foo/*").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: very-secret
+type: Opaque
+data:
+{{ (.Files.Glob "bar/*").AsSecrets | indent 2 }}
 ```
 
 ## Secrets

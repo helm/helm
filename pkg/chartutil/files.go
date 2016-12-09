@@ -16,6 +16,11 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/base64"
+	"path"
+
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/gobwas/glob"
 	"github.com/golang/protobuf/ptypes/any"
 )
@@ -82,4 +87,70 @@ func (f Files) Glob(pattern string) Files {
 	}
 
 	return nf
+}
+
+// AsConfig turns a Files group and flattens it to a YAML map suitable for
+// including in the `data` section of a kubernetes ConfigMap definition.
+// Duplicate keys will be overwritten, so be aware that your filenames
+// (regardless of path) should be unique.
+//
+// This is designed to be called from a template, and will return empty string
+// (via ToYaml function) if it cannot be serialized to YAML, or if the Files
+// object is nil.
+//
+// The output will not be indented, so you will want to pipe this to the
+// `indent` template function.
+//
+//   data:
+// {{ .Files.Glob("config/**").AsConfig() | indent 4 }}
+func (f Files) AsConfig() string {
+	if f == nil {
+		return ""
+	}
+
+	m := map[string]string{}
+
+	// Explicitly convert to strings, and file names
+	for k, v := range f {
+		m[path.Base(k)] = string(v)
+	}
+
+	return ToYaml(m)
+}
+
+// AsSecrets returns the value of a Files object as base64 suitable for
+// including in the `data` section of a kubernetes Secret definition.
+// Duplicate keys will be overwritten, so be aware that your filenames
+// (regardless of path) should be unique.
+//
+// This is designed to be called from a template, and will return empty string
+// (via ToYaml function) if it cannot be serialized to YAML, or if the Files
+// object is nil.
+//
+// The output will not be indented, so you will want to pipe this to the
+// `indent` template function.
+//
+//   data:
+// {{ .Files.Glob("secrets/*").AsSecrets() }}
+func (f Files) AsSecrets() string {
+	if f == nil {
+		return ""
+	}
+
+	m := map[string]string{}
+
+	for k, v := range f {
+		m[path.Base(k)] = base64.StdEncoding.EncodeToString(v)
+	}
+
+	return ToYaml(m)
+}
+
+func ToYaml(v interface{}) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return string(data)
 }
