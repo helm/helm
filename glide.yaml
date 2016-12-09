@@ -1,7 +1,7 @@
 package: k8s.io/helm
 import:
 - package: golang.org/x/net
-  version: fb93926129b8ec0056f2f458b1f519654814edf0
+  version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
   subpackages:
   - context
 - package: github.com/spf13/cobra
@@ -23,7 +23,7 @@ import:
 - package: google.golang.org/grpc
   version: 1.0.3
 - package: k8s.io/kubernetes
-  version: 1.5.0-beta.2
+  version: 1.5.0-beta.3
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
