@@ -14,6 +14,7 @@ Helm provides access to files through the `.Files` object. Before we get going w
 <!-- toc -->
 
 - [Basic example](#basic-example)
+- [Path helpers](#path-helpers)
 - [Glob patterns](#glob-patterns)
 - [ConfigMap and Secrets utility functions](#configmap-and-secrets-utility-functions)
 - [Secrets](#secrets)
@@ -78,11 +79,26 @@ data:
     message = Goodbye from config 3
 ```
 
+## Path helpers
+
+When working with files, it can be very useful to perform some standard
+operations on the file paths themselves. To help with this, Helm imports many of
+the functions from Go's [path](https://golang.org/pkg/path/) package for your
+use. They are all accessible with the same names as in the Go package, but
+with a lowercase first letter. For example, `Base` becomes `base`, etc.
+
+The imported functions are:
+- Base
+- Dir
+- Ext
+- IsAbs
+- Clean
+
 ## Glob patterns
 
 As your chart grows, you may find you have a greater need to organize your
 files more, and so we provide a `Files.Glob(pattern string)` method to assist
-in extracting certain files with all the flexibility of [glob patterns](//godoc.org/github.com/gobwas/glob).
+in extracting certain files with all the flexibility of [glob patterns](https://godoc.org/github.com/gobwas/glob).
 
 `.Glob` returns a `Files` type, so you may call any of the `Files` methods on
 the returned object.
