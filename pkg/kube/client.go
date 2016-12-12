@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"reflect"
 	"strings"
 	"time"
 
@@ -36,7 +35,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/strategicpatch"
-	"k8s.io/kubernetes/pkg/util/yaml"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -298,33 +296,22 @@ func deleteResource(info *resource.Info) error {
 }
 
 func updateResource(target *resource.Info, currentObj runtime.Object) error {
-
 	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
-	originalSerialization, err := runtime.Encode(encoder, currentObj)
+	original, err := runtime.Encode(encoder, currentObj)
 	if err != nil {
 		return err
 	}
 
-	editedSerialization, err := runtime.Encode(encoder, target.Object)
+	modified, err := runtime.Encode(encoder, target.Object)
 	if err != nil {
 		return err
 	}
 
-	originalJS, err := yaml.ToJSON(originalSerialization)
-	if err != nil {
-		return err
-	}
-
-	editedJS, err := yaml.ToJSON(editedSerialization)
-	if err != nil {
-		return err
-	}
-
-	if reflect.DeepEqual(originalJS, editedJS) {
+	if api.Semantic.DeepEqual(original, modified) {
 		return ErrAlreadyExists{target.Name}
 	}
 
-	patch, err := strategicpatch.CreateStrategicMergePatch(originalJS, editedJS, currentObj)
+	patch, err := strategicpatch.CreateTwoWayMergePatch(original, modified, currentObj)
 	if err != nil {
 		return err
 	}
