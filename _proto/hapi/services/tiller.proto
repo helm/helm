@@ -256,6 +256,8 @@ message UninstallReleaseRequest {
 message UninstallReleaseResponse {
 	// Release is the release that was marked deleted.
 	hapi.release.Release release = 1;
+	// Info is an uninstall message
+	string info = 2;
 }
 
 // GetVersionRequest requests for version information.

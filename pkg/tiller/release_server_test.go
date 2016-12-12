@@ -50,6 +50,16 @@ data:
   name: value
 `
 
+var manifestWithKeep = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm-keep
+  annotations:
+    "helm.sh/resource-policy": keep
+data:
+  name: value
+`
+
 var manifestWithUpgradeHooks = `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1029,6 +1039,63 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 	_, err2 := rs.UninstallRelease(c, req2)
 	if err2 != nil && err2.Error() != "'angry-panda' has no deployed releases" {
 		t.Errorf("Failed uninstall: %s", err2)
+	}
+}
+
+func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	name := "angry-bunny"
+	rs.env.Releases.Create(releaseWithKeepStub(name))
+
+	req := &services.UninstallReleaseRequest{
+		Name: name,
+	}
+
+	res, err := rs.UninstallRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed uninstall: %s", err)
+	}
+
+	if res.Release.Name != name {
+		t.Errorf("Expected angry-bunny, got %q", res.Release.Name)
+	}
+
+	if res.Release.Info.Status.Code != release.Status_DELETED {
+		t.Errorf("Expected status code to be DELETED, got %d", res.Release.Info.Status.Code)
+	}
+
+	if res.Info == "" {
+		t.Errorf("Expected response info to not be empty")
+	} else {
+		if !strings.Contains(res.Info, "[ConfigMap] test-cm-keep") {
+			t.Errorf("unexpected output: %s", res.Info)
+		}
+	}
+}
+
+func releaseWithKeepStub(rlsName string) *release.Release {
+	ch := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "bunnychart",
+		},
+		Templates: []*chart.Template{
+			{Name: "templates/configmap", Data: []byte(manifestWithKeep)},
+		},
+	}
+
+	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
+	return &release.Release{
+		Name: rlsName,
+		Info: &release.Info{
+			FirstDeployed: &date,
+			LastDeployed:  &date,
+			Status:        &release.Status{Code: release.Status_DEPLOYED},
+		},
+		Chart:    ch,
+		Config:   &chart.Config{Raw: `name: value`},
+		Version:  1,
+		Manifest: manifestWithKeep,
 	}
 }
 

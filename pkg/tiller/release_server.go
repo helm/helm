@@ -980,9 +980,14 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)
 	}
 
+	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	if len(filesToKeep) > 0 {
+		res.Info = summarizeKeptManifests(filesToKeep)
+	}
+
 	// Collect the errors, and return them later.
 	es := []string{}
-	for _, file := range files {
+	for _, file := range filesToDelete {
 		b := bytes.NewBufferString(file.content)
 		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
 			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
