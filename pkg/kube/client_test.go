@@ -18,17 +18,15 @@ package kube
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 
-	"k8s.io/kubernetes/pkg/api/meta"
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	api "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/client/restclient/fake"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
@@ -36,34 +34,106 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
-func TestUpdateResource(t *testing.T) {
+func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
+	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
+}
 
-	tests := []struct {
-		name       string
-		namespace  string
-		modified   *resource.Info
-		currentObj runtime.Object
-		err        bool
-		errMessage string
-	}{
-		{
-			name:       "no changes when updating resources",
-			modified:   createFakeInfo("nginx", nil),
-			currentObj: createFakePod("nginx", nil),
-			err:        true,
-			errMessage: "Looks like there are no changes for nginx",
+func newPod(name string) api.Pod {
+	return api.Pod{
+		ObjectMeta: api.ObjectMeta{Name: name},
+		Spec: api.PodSpec{
+			Containers: []api.Container{{
+				Name:  "app:v4",
+				Image: "abc/app:v4",
+				Ports: []api.ContainerPort{{Name: "http", ContainerPort: 80}},
+			}},
 		},
-		//{
-		//name:       "valid update input",
-		//modified:   createFakeInfo("nginx", map[string]string{"app": "nginx"}),
-		//currentObj: createFakePod("nginx", nil),
-		//},
+	}
+}
+
+func newPodList(names ...string) api.PodList {
+	var list api.PodList
+	for _, name := range names {
+		list.Items = append(list.Items, newPod(name))
+	}
+	return list
+}
+
+func notFoundBody() *unversioned.Status {
+	return &unversioned.Status{
+		Code:    http.StatusNotFound,
+		Status:  unversioned.StatusFailure,
+		Reason:  unversioned.StatusReasonNotFound,
+		Message: " \"\" not found",
+		Details: &unversioned.StatusDetails{},
+	}
+}
+
+func newResponse(code int, obj runtime.Object) (*http.Response, error) {
+	header := http.Header{}
+	header.Set("Content-Type", runtime.ContentTypeJSON)
+	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(testapi.Default.Codec(), obj))))
+	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
+}
+
+func TestUpdate(t *testing.T) {
+	listA := newPodList("starfish", "otter", "squid")
+	listB := newPodList("starfish", "otter", "dolphin")
+	listB.Items[0].Spec.Containers[0].Ports = []api.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+	actions := make(map[string]string)
+
+	f, tf, codec, ns := cmdtesting.NewAPIFactory()
+	tf.Client = &fake.RESTClient{
+		NegotiatedSerializer: ns,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			actions[p] = m
+			switch {
+			case p == "/namespaces/test/pods/starfish" && m == "GET":
+				return newResponse(200, &listA.Items[0])
+			case p == "/namespaces/test/pods/otter" && m == "GET":
+				return newResponse(200, &listA.Items[1])
+			case p == "/namespaces/test/pods/dolphin" && m == "GET":
+				return newResponse(404, notFoundBody())
+			case p == "/namespaces/test/pods/starfish" && m == "PATCH":
+				data, err := ioutil.ReadAll(req.Body)
+				if err != nil {
+					t.Fatalf("could not dump request: %s", err)
+				}
+				req.Body.Close()
+				expected := `{"spec":{"containers":[{"name":"app:v4","ports":[{"containerPort":443,"name":"https","protocol":"TCP"},{"$patch":"delete","containerPort":80}]}]}}`
+				if string(data) != expected {
+					t.Errorf("expected patch %s, got %s", expected, string(data))
+				}
+				return newResponse(200, &listB.Items[0])
+			case p == "/namespaces/test/pods" && m == "POST":
+				return newResponse(200, &listB.Items[1])
+			case p == "/namespaces/test/pods/squid" && m == "DELETE":
+				return newResponse(200, &listB.Items[1])
+			default:
+				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+				return nil, nil
+			}
+		}),
 	}
 
-	for _, tt := range tests {
-		err := updateResource(tt.modified, tt.currentObj)
-		if err != nil && err.Error() != tt.errMessage {
-			t.Errorf("%q. expected error message: %v, got %v", tt.name, tt.errMessage, err)
+	c := &Client{Factory: f}
+	if err := c.Update("test", objBody(codec, &listA), objBody(codec, &listB)); err != nil {
+		t.Fatal(err)
+	}
+
+	expectedActions := map[string]string{
+		"/namespaces/test/pods/dolphin":  "GET",
+		"/namespaces/test/pods/otter":    "GET",
+		"/namespaces/test/pods/starfish": "PATCH",
+		"/namespaces/test/pods":          "POST",
+		"/namespaces/test/pods/squid":    "DELETE",
+	}
+
+	for k, v := range expectedActions {
+		if m, ok := actions[k]; !ok || m != v {
+			t.Errorf("expected a %s request to %s", k, v)
 		}
 	}
 }
@@ -319,52 +389,3 @@ spec:
         ports:
         - containerPort: 80
 `
-
-func createFakePod(name string, labels map[string]string) runtime.Object {
-	objectMeta := createObjectMeta(name, labels)
-
-	object := &api.Pod{
-		ObjectMeta: objectMeta,
-	}
-
-	return object
-}
-
-func createFakeInfo(name string, labels map[string]string) *resource.Info {
-	pod := createFakePod(name, labels)
-	marshaledObj, _ := json.Marshal(pod)
-
-	mapping := &meta.RESTMapping{
-		Resource: name,
-		Scope:    meta.RESTScopeNamespace,
-		GroupVersionKind: unversioned.GroupVersionKind{
-			Kind:    "Pod",
-			Version: "v1",
-		}}
-
-	client := &fake.RESTClient{
-		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-			header := http.Header{}
-			header.Set("Content-Type", runtime.ContentTypeJSON)
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       ioutil.NopCloser(bytes.NewReader(marshaledObj)),
-			}, nil
-		})}
-	info := resource.NewInfo(client, mapping, "default", "nginx", false)
-
-	info.Object = pod
-
-	return info
-}
-
-func createObjectMeta(name string, labels map[string]string) api.ObjectMeta {
-	objectMeta := api.ObjectMeta{Name: name, Namespace: "default"}
-
-	if labels != nil {
-		objectMeta.Labels = labels
-	}
-
-	return objectMeta
-}
