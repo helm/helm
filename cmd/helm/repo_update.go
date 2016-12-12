@@ -26,8 +26,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/httputil"
 	"k8s.io/helm/pkg/repo"
-	"k8s.io/helm/pkg/util"
 )
 
 const updateDesc = `
@@ -77,7 +77,7 @@ func (u *repoUpdateCmd) run() error {
 	var client *http.Client
 	var err error
 	if u.certFile != "" && u.keyFile != "" && u.caFile != "" {
-		client, err = util.NewHTTPClientTLS(u.certFile, u.keyFile, u.caFile)
+		client, err = httputil.NewHTTPClientTLS(u.certFile, u.keyFile, u.caFile)
 		if err != nil {
 			return err
 		}

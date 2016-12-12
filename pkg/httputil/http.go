@@ -14,16 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util
+package httputil
 
 import (
 	"fmt"
 	"net/http"
+
+	"k8s.io/helm/pkg/tlsutil"
 )
 
 // NewHTTPClientTLS constructs http.Client with configured TLS for http.Transport
 func NewHTTPClientTLS(certFile, keyFile, caFile string) (*http.Client, error) {
-	tlsConf, err := NewClientTLS(certFile, keyFile, caFile)
+	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile)
 	if err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %s", err.Error())
 	}

@@ -28,7 +28,7 @@ import (
 	"k8s.io/helm/cmd/helm/downloader"
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/util"
+	"k8s.io/helm/pkg/httputil"
 )
 
 const fetchDesc = `
@@ -104,7 +104,7 @@ func (f *fetchCmd) run() error {
 	var client *http.Client
 	var err error
 	if f.certFile != "" && f.keyFile != "" && f.caFile != "" {
-		client, err = util.NewHTTPClientTLS(f.certFile, f.keyFile, f.caFile)
+		client, err = httputil.NewHTTPClientTLS(f.certFile, f.keyFile, f.caFile)
 		if err != nil {
 			return err
 		}

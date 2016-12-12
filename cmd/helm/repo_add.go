@@ -26,8 +26,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/httputil"
 	"k8s.io/helm/pkg/repo"
-	"k8s.io/helm/pkg/util"
 )
 
 type repoAddCmd struct {
@@ -77,7 +77,7 @@ func (a *repoAddCmd) run() error {
 	var client *http.Client
 	var err error
 	if a.certFile != "" && a.keyFile != "" && a.caFile != "" {
-		client, err = util.NewHTTPClientTLS(a.certFile, a.keyFile, a.caFile)
+		client, err = httputil.NewHTTPClientTLS(a.certFile, a.keyFile, a.caFile)
 		if err != nil {
 			return err
 		}

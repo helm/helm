@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/helm/cmd/helm/downloader"
 	"k8s.io/helm/cmd/helm/helmpath"
-	"k8s.io/helm/pkg/util"
+	"k8s.io/helm/pkg/httputil"
 )
 
 const dependencyUpDesc = `
@@ -94,7 +94,7 @@ func (d *dependencyUpdateCmd) run() error {
 	var client *http.Client
 	var err error
 	if d.certFile != "" && d.keyFile != "" && d.caFile != "" {
-		client, err = util.NewHTTPClientTLS(d.certFile, d.keyFile, d.caFile)
+		client, err = httputil.NewHTTPClientTLS(d.certFile, d.keyFile, d.caFile)
 		if err != nil {
 			return err
 		}
