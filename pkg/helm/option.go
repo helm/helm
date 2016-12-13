@@ -40,8 +40,8 @@ type options struct {
 	dryRun bool
 	// if set, re-use an existing name
 	reuseName bool
-    //
-    restart bool
+	// if set, performs pod restart during upgrade/rollback
+	restart bool
 	// if set, skip running hooks
 	disableHooks bool
 	// name of release

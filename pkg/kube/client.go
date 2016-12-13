@@ -27,21 +27,21 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
+	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/strategicpatch"
 	"k8s.io/kubernetes/pkg/watch"
-    "k8s.io/kubernetes/pkg/labels"
-    "k8s.io/kubernetes/pkg/fields"
-    "k8s.io/kubernetes/pkg/api/v1"
-    "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
-	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -326,11 +326,11 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	helper := resource.NewHelper(target.Client, target.Mapping)
 	_, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch)
 
-    if err != nil {
+	if err != nil {
 		return err
 	}
 
-    if restart {
+	if restart {
 		kind := target.Mapping.GroupVersionKind.Kind
 
 		client, _ := c.ClientSet()
@@ -353,36 +353,34 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	return err
 }
 
-
 func restartPods(client *internalclientset.Clientset, namespace string, selector map[string]string) error {
-    pods, err := client.Pods(namespace).List(api.ListOptions{
-            FieldSelector: fields.Everything(),
-            LabelSelector: labels.Set(selector).AsSelector(),
-    })
+	pods, err := client.Pods(namespace).List(api.ListOptions{
+		FieldSelector: fields.Everything(),
+		LabelSelector: labels.Set(selector).AsSelector(),
+	})
 
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    // Restart pods
-    for _, pod := range pods.Items {
-        log.Printf("Restarting pod: %v/%v", pod.Namespace, pod.Name)
+	// Restart pods
+	for _, pod := range pods.Items {
+		log.Printf("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
-        // Delete each pod for get them restarted with changed spec.
-        err := client.Pods(pod.Namespace).Delete(pod.Name, &api.DeleteOptions{
-            Preconditions: &api.Preconditions{
-                UID: &pod.UID,
-            },
-        })
+		// Delete each pod for get them restarted with changed spec.
+		err := client.Pods(pod.Namespace).Delete(pod.Name, &api.DeleteOptions{
+			Preconditions: &api.Preconditions{
+				UID: &pod.UID,
+			},
+		})
 
-        if err != nil {
-            return err
-        }
-    }
+		if err != nil {
+			return err
+		}
+	}
 
-    return nil
+	return nil
 }
-
 
 func watchUntilReady(info *resource.Info) error {
 	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
