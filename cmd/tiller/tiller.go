@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
@@ -80,15 +81,16 @@ func main() {
 }
 
 func start(c *cobra.Command, args []string) {
+	clientset, err := kube.New(nil).ClientSet()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s", err)
+	}
+
 	switch store {
 	case storageMemory:
 		env.Releases = storage.Init(driver.NewMemory())
 	case storageConfigMap:
-		c, err := env.KubeClient.APIClient()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s", err)
-		}
-		env.Releases = storage.Init(driver.NewConfigMaps(c.ConfigMaps(environment.TillerNamespace)))
+		env.Releases = storage.Init(driver.NewConfigMaps(clientset.Core().ConfigMaps(environment.TillerNamespace)))
 	}
 
 	lstn, err := net.Listen("tcp", grpcAddr)
@@ -108,7 +110,7 @@ func start(c *cobra.Command, args []string) {
 	srvErrCh := make(chan error)
 	probeErrCh := make(chan error)
 	go func() {
-		svc := tiller.NewReleaseServer(env)
+		svc := tiller.NewReleaseServer(env, clientset)
 		services.RegisterReleaseServiceServer(rootServer, svc)
 		if err := rootServer.Serve(lstn); err != nil {
 			srvErrCh <- err

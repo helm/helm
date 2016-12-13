@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/labels"
 
 	"k8s.io/helm/pkg/kube"
@@ -35,16 +35,16 @@ func newTillerPortForwarder(namespace, context string) (*kube.Tunnel, error) {
 		return nil, err
 	}
 
-	podName, err := getTillerPodName(client, namespace)
+	podName, err := getTillerPodName(client.Core(), namespace)
 	if err != nil {
 		return nil, err
 	}
 	const tillerPort = 44134
-	t := kube.NewTunnel(client.RESTClient, config, namespace, podName, tillerPort)
+	t := kube.NewTunnel(client.Core().RESTClient(), config, namespace, podName, tillerPort)
 	return t, t.ForwardPort()
 }
 
-func getTillerPodName(client unversioned.PodsNamespacer, namespace string) (string, error) {
+func getTillerPodName(client internalversion.PodsGetter, namespace string) (string, error) {
 	// TODO use a const for labels
 	selector := labels.Set{"app": "helm", "name": "tiller"}.AsSelector()
 	pod, err := getFirstRunningPod(client, namespace, selector)
@@ -54,7 +54,7 @@ func getTillerPodName(client unversioned.PodsNamespacer, namespace string) (stri
 	return pod.ObjectMeta.GetName(), nil
 }
 
-func getFirstRunningPod(client unversioned.PodsNamespacer, namespace string, selector labels.Selector) (*api.Pod, error) {
+func getFirstRunningPod(client internalversion.PodsGetter, namespace string, selector labels.Selector) (*api.Pod, error) {
 	options := api.ListOptions{LabelSelector: selector}
 	pods, err := client.Pods(namespace).List(options)
 	if err != nil {

@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/helm"
-
 	rpb "k8s.io/helm/pkg/proto/hapi/release"
 	tpb "k8s.io/helm/pkg/proto/hapi/services"
 )

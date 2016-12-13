@@ -30,7 +30,6 @@ import (
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -46,14 +45,7 @@ var ErrNoObjectsVisited = goerrors.New("no objects visited")
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
-	*cmdutil.Factory
-	// IncludeThirdPartyAPIs indicates whether to load "dynamic" APIs.
-	//
-	// This requires additional calls to the Kubernetes API server, and these calls
-	// are not supported by all versions. Additionally, during testing, initializing
-	// a client will still attempt to contact a live server. In these situations,
-	// this flag may need to be disabled.
-	IncludeThirdPartyAPIs bool
+	cmdutil.Factory
 	// Validate idicates whether to load a schema for validation.
 	Validate bool
 	// SchemaCacheDir is the path for loading cached schema.
@@ -63,10 +55,9 @@ type Client struct {
 // New create a new Client
 func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
-		Factory:               cmdutil.NewFactory(config),
-		IncludeThirdPartyAPIs: true,
-		Validate:              true,
-		SchemaCacheDir:        clientcmd.RecommendedSchemaFile,
+		Factory:        cmdutil.NewFactory(config),
+		Validate:       true,
+		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
 	}
 }
 
@@ -82,21 +73,15 @@ func (e ErrAlreadyExists) Error() string {
 	return fmt.Sprintf("Looks like there are no changes for %s", e.errorMsg)
 }
 
-// APIClient returns a Kubernetes API client.
-//
-// This is necessary because cmdutil.Client is a field, not a method, which
-// means it can't satisfy an interface's method requirement. In order to ensure
-// that an implementation of environment.KubeClient can access the raw API client,
-// it is necessary to add this method.
-func (c *Client) APIClient() (unversioned.Interface, error) {
-	return c.Client()
-}
-
 // Create creates kubernetes resources from an io.reader
 //
 // Namespace will set the namespace
 func (c *Client) Create(namespace string, reader io.Reader) error {
-	if err := c.ensureNamespace(namespace); err != nil {
+	client, err := c.ClientSet()
+	if err != nil {
+		return err
+	}
+	if err := ensureNamespace(client, namespace); err != nil {
 		return err
 	}
 	return perform(c, namespace, reader, createResource)
@@ -107,7 +92,7 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Builde
 	if err != nil {
 		log.Printf("warning: failed to load schema: %s", err)
 	}
-	return c.NewBuilder(c.IncludeThirdPartyAPIs).
+	return c.NewBuilder().
 		ContinueOnError().
 		Schema(schema).
 		NamespaceParam(namespace).
@@ -411,21 +396,6 @@ func waitForJob(e watch.Event, name string) (bool, error) {
 
 	log.Printf("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
 	return false, nil
-}
-
-func (c *Client) ensureNamespace(namespace string) error {
-	client, err := c.Client()
-	if err != nil {
-		return err
-	}
-
-	ns := &api.Namespace{}
-	ns.Name = namespace
-	_, err = client.Namespaces().Create(ns)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
 }
 
 func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
