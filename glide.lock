@@ -1,5 +1,5 @@
 hash: 93ecfadd94d604412b346a3b988000c40e4e4414788d653cec36139481e4d157
-updated: 2016-12-13T00:31:11.783543393-08:00
+updated: 2016-12-13T15:58:13.374454775-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -180,7 +180,7 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/Masterminds/semver
-  version: 52edfc04e184ecf0962489d167b511b27aeebd61
+  version: 59c29afe1a994eacb71c833025ca7acf874bb1da
 - name: github.com/Masterminds/sprig
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mattn/go-runewidth
@@ -490,4 +490,12 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
   - third_party/forked/golang/template
-testImports: []
+testImports:
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
