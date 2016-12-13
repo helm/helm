@@ -946,7 +946,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	log.Printf("uninstall: Deleting %s", req.Name)
-	rel.Info.Status.Code = release.Status_DELETED
+	rel.Info.Status.Code = release.Status_DELETING
 	rel.Info.Deleted = timeconv.Now()
 	res := &services.UninstallReleaseResponse{Release: rel}
 
@@ -961,9 +961,8 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
 
-	// From here on out, the release is currently considered to be in Status_DELETED
-	// state. See https://github.com/kubernetes/helm/issues/1511 for a better way
-	// to do this.
+	// From here on out, the release is currently considered to be in Status_DELETING
+	// state.
 	if err := s.env.Releases.Update(rel); err != nil {
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
@@ -1007,6 +1006,11 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		if err := s.purgeReleases(rels...); err != nil {
 			log.Printf("uninstall: Failed to purge the release: %s", err)
 		}
+	}
+
+	rel.Info.Status.Code = release.Status_DELETED
+	if err := s.env.Releases.Update(rel); err != nil {
+		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
 	var errs error
