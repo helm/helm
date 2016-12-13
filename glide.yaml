@@ -5,6 +5,9 @@ import:
   subpackages:
   - context
 - package: github.com/spf13/cobra
+  version: f62e98d28ab7ad31d707ba837a966378465c7b57
+- package: github.com/spf13/pflag
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - package: github.com/Masterminds/sprig
   version: ^2.7
 - package: github.com/ghodss/yaml
@@ -20,29 +23,7 @@ import:
 - package: google.golang.org/grpc
   version: 1.0.3
 - package: k8s.io/kubernetes
-  version: ~1.4.1
-  subpackages:
-  - pkg/api
-  - pkg/api/errors
-  - pkg/api/unversioned
-  - pkg/apimachinery/registered
-  - pkg/apis/batch
-  - pkg/apis/extensions
-  - pkg/client/restclient
-  - pkg/client/unversioned
-  - pkg/client/unversioned/clientcmd
-  - pkg/client/unversioned/portforward
-  - pkg/client/unversioned/remotecommand
-  - pkg/client/unversioned/testclient
-  - pkg/kubectl
-  - pkg/kubectl/cmd/util
-  - pkg/kubectl/resource
-  - pkg/labels
-  - pkg/runtime
-  - pkg/util/intstr
-  - pkg/util/strategicpatch
-  - pkg/util/yaml
-  - pkg/watch
+  version: 1.5.0-beta.2
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0

@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 )
 
 func mockTillerPod() api.Pod {
@@ -74,8 +74,8 @@ func TestGetFirstPod(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		client := testclient.NewSimpleFake(&api.PodList{Items: tt.pods})
-		name, err := getTillerPodName(client, api.NamespaceDefault)
+		client := fake.NewSimpleClientset(&api.PodList{Items: tt.pods})
+		name, err := getTillerPodName(client.Core(), api.NamespaceDefault)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}

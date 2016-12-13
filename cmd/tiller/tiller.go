@@ -84,11 +84,11 @@ func start(c *cobra.Command, args []string) {
 	case storageMemory:
 		env.Releases = storage.Init(driver.NewMemory())
 	case storageConfigMap:
-		c, err := env.KubeClient.APIClient()
+		c, err := env.KubeClient.ClientSet()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s", err)
 		}
-		env.Releases = storage.Init(driver.NewConfigMaps(c.ConfigMaps(environment.TillerNamespace)))
+		env.Releases = storage.Init(driver.NewConfigMaps(c.Core().ConfigMaps(environment.TillerNamespace)))
 	}
 
 	lstn, err := net.Listen("tcp", grpcAddr)
