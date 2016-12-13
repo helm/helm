@@ -19,12 +19,16 @@ package environment
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"testing"
+	"time"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
-	unversionedclient "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/typed/discovery"
+	"k8s.io/kubernetes/pkg/client/typed/discovery/fake"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 type mockEngine struct {
@@ -35,11 +39,18 @@ func (e *mockEngine) Render(chrt *chart.Chart, v chartutil.Values) (map[string]s
 	return e.out, nil
 }
 
-type mockKubeClient struct {
+type mockKubeClient struct{}
+
+func (k *mockKubeClient) ClientSet() (*internalclientset.Clientset, error) {
+	return new(internalclientset.Clientset), nil
 }
 
-func (k *mockKubeClient) APIClient() (unversionedclient.Interface, error) {
-	return testclient.NewSimpleFake(), nil
+func (k *mockKubeClient) DiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		return nil, err
+	}
+	return cmdutil.NewCachedDiscoveryClient(&fake.FakeDiscovery{}, d, 60*time.Second), nil
 }
 
 func (k *mockKubeClient) Create(ns string, r io.Reader) error {
