@@ -124,7 +124,7 @@ func (f *fetchCmd) run() error {
 	}
 
 	if f.verify {
-		fmt.Fprintf(f.out, "Verification: %v", v)
+		fmt.Fprintf(f.out, "Verification: %v\n", v)
 	}
 
 	// After verification, untar the chart into the requested directory.
