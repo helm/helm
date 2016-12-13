@@ -71,11 +71,6 @@ func FuncMap() template.FuncMap {
 	// Add some extra functionality
 	extra := template.FuncMap{
 		"toYaml": chartutil.ToYaml,
-		"base":   path.Base,
-		"dir":    path.Dir,
-		"ext":    path.Ext,
-		"isAbs":  path.IsAbs,
-		"clean":  path.Clean,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the

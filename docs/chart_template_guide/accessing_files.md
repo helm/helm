@@ -18,6 +18,7 @@ Helm provides access to files through the `.Files` object. Before we get going w
 - [Glob patterns](#glob-patterns)
 - [ConfigMap and Secrets utility functions](#configmap-and-secrets-utility-functions)
 - [Secrets](#secrets)
+- [Lines](#lines)
 
 <!-- tocstop -->
 
@@ -188,6 +189,17 @@ type: Opaque
 data:
   token: |-
     bWVzc2FnZSA9IEhlbGxvIGZyb20gY29uZmlnIDEK
+```
+
+## Lines
+
+Sometimes it is desireable to access each line of a file in your template. We
+provide a convenient `Lines` method for this.
+
+```yaml
+data:
+  some-file.txt: {{ range .Files.Lines "foo/bar.txt" }}
+    {{ . }}{{ end }}
 ```
 
 Currently, there is no way to pass files external to the chart during `helm install`. So if you are asking users to supply data, it must be loaded using `helm install -f` or `helm install --set`.

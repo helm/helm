@@ -18,6 +18,7 @@ package chartutil
 import (
 	"encoding/base64"
 	"path"
+	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -144,6 +145,15 @@ func (f Files) AsSecrets() string {
 	}
 
 	return ToYaml(m)
+}
+
+// Lines returns
+func (f Files) Lines(string path) []string {
+	if f == nil || f[path] == nil {
+		return []string{}
+	}
+
+	return strings.Split(string(f[path]), "\n")
 }
 
 // ToYaml takes an interface, marshals it to yaml, and returns a string. It will
