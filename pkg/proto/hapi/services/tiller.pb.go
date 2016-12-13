@@ -246,8 +246,8 @@ type UpdateReleaseRequest struct {
 	DryRun bool `protobuf:"varint,4,opt,name=dry_run,json=dryRun" json:"dry_run,omitempty"`
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
 	DisableHooks bool `protobuf:"varint,5,opt,name=disable_hooks,json=disableHooks" json:"disable_hooks,omitempty"`
-    // Performs pods restart for resources if applicable
-    Restart bool `protobuf:"varint,6,opt,name=restart,json=restart" json:"restart,omitempty"`
+	// Performs pods restart for resources if applicable
+	Restart bool `protobuf:"varint,6,opt,name=restart,json=restart" json:"restart,omitempty"`
 }
 
 func (m *UpdateReleaseRequest) Reset()                    { *m = UpdateReleaseRequest{} }
@@ -296,7 +296,7 @@ type RollbackReleaseRequest struct {
 	// Version is the version of the release to deploy.
 	Version int32 `protobuf:"varint,4,opt,name=version" json:"version,omitempty"`
 	// Performs pods restart for resources if applicable
-    Restart bool `protobuf:"varint,5,opt,name=restart,json=restart" json:"restart,omitempty"`
+	Restart bool `protobuf:"varint,5,opt,name=restart,json=restart" json:"restart,omitempty"`
 }
 
 func (m *RollbackReleaseRequest) Reset()                    { *m = RollbackReleaseRequest{} }

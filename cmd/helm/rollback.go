@@ -35,7 +35,7 @@ type rollbackCmd struct {
 	name         string
 	revision     int32
 	dryRun       bool
-    restart      bool
+	restart      bool
 	disableHooks bool
 	out          io.Writer
 	client       helm.Interface
