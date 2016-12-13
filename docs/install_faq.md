@@ -106,6 +106,34 @@ follows:
 
 See this issue for more information: https://github.com/kubernetes/helm/issues/1455
 
+**Q: On GKE (Google Container Engine) I get "No SSH tunnels currently open"**
+
+```
+Error: Error forwarding ports: error upgrading connection: No SSH tunnels currently open. Were the targets able to accept an ssh-key for user "gke-[redacted]"?
+```
+
+Another variation of the error message is:
+
+
+```
+Unable to connect to the server: x509: certificate signed by unknown authority
+
+```
+
+A: The issue is that your local Kubernetes config file must have the correct credentials.
+
+When you create a cluster on GKE, it will give you credentials, including SSL
+certificates and certificate authorities. These need to be stored in a Kubernetes
+config file (Default: `~/.kube/config` so that `kubectl` and `helm` can access
+them.
+
+**Q: When I run a Helm command, I get an error about the tunnel or proxy**
+
+A: Helm uses the Kubernetes proxy service to connect to the Tiller server.
+If the command `kubectl proxy` does not work for you, neither will Helm.
+Typically, the error is related to a missing `socat` service.
+
+
 ## Upgrading
 
 My Helm used to work, then I upgrade. Now it is broken.
