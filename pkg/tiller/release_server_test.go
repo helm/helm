@@ -28,6 +28,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -82,7 +83,8 @@ data:
 
 func rsFixture() *ReleaseServer {
 	return &ReleaseServer{
-		env: mockEnvironment(),
+		env:       mockEnvironment(),
+		clientset: fake.NewSimpleClientset(),
 	}
 }
 
@@ -178,7 +180,7 @@ func TestValidName(t *testing.T) {
 
 func TestGetVersionSet(t *testing.T) {
 	rs := rsFixture()
-	vs, err := rs.getVersionSet()
+	vs, err := getVersionSet(rs.clientset.Discovery())
 	if err != nil {
 		t.Error(err)
 	}
