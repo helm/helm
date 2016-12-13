@@ -147,8 +147,14 @@ func (f Files) AsSecrets() string {
 	return ToYaml(m)
 }
 
-// Lines returns
-func (f Files) Lines(string path) []string {
+// Lines returns each line of a named file (split by "\n") as a slice, so it can
+// be ranged over in your templates.
+//
+// This is designed to be called from a template.
+//
+// {{ range .Files.Lines "foo/bar.html" }}
+// {{ . }}{{ end }}
+func (f Files) Lines(path string) []string {
 	if f == nil || f[path] == nil {
 		return []string{}
 	}

@@ -29,6 +29,7 @@ var cases = []struct {
 	{"ship/stowaway.txt", "Legatt"},
 	{"story/name.txt", "The Secret Sharer"},
 	{"story/author.txt", "Joseph Conrad"},
+	{"multiline/test.txt", "bar\nfoo"},
 }
 
 func getTestFiles() []*any.Any {
@@ -84,6 +85,17 @@ func TestToSecret(t *testing.T) {
 
 	out := f.Glob("ship/**").AsSecrets()
 	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0\n", out)
+}
+
+func TestLines(t *testing.T) {
+	as := assert.New(t)
+
+	f := NewFiles(getTestFiles())
+
+	out := f.Lines("multiline/test.txt")
+	as.Len(out, 2)
+
+	as.Equal("bar", out[0])
 }
 
 func TestToYaml(t *testing.T) {
