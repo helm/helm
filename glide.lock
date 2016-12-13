@@ -1,5 +1,5 @@
-hash: 93ecfadd94d604412b346a3b988000c40e4e4414788d653cec36139481e4d157
-updated: 2016-12-13T15:58:13.374454775-07:00
+hash: 2fc61aa64319b4dc6cd4a107c46a25264865f2e07362d7dcd8a3db002278d6a6
+updated: 2016-12-13T17:07:47.402783003-05:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -496,6 +496,8 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: e3a8ff8ce36581f87a15341206f205b1da467059
   subpackages:
   - assert
+  - mock
+  - require
