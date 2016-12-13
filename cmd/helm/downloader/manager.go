@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -49,6 +50,8 @@ type Manager struct {
 	Verify VerificationStrategy
 	// Keyring is the key ring file.
 	Keyring string
+	// A Client is an HTTP client.
+	Client *http.Client
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -179,6 +182,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		Verify:   m.Verify,
 		Keyring:  m.Keyring,
 		HelmHome: m.HelmHome,
+		Client:   m.Client,
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
@@ -295,7 +299,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) {
 	for _, re := range repos {
 		wg.Add(1)
 		go func(n, u string) {
-			if err := repo.DownloadIndexFile(n, u, m.HelmHome.CacheIndex(n)); err != nil {
+			if err := repo.DownloadIndexFile(n, u, m.HelmHome.CacheIndex(n), http.DefaultClient); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", n, u, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", n)

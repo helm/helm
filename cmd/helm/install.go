@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -277,6 +278,8 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		HelmHome: helmpath.Home(homePath()),
 		Out:      os.Stdout,
 		Keyring:  keyring,
+		// TODO: this should be configurable
+		Client: http.DefaultClient,
 	}
 	if verify {
 		dl.Verify = downloader.VerifyAlways

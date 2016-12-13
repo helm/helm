@@ -20,11 +20,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"sync"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/httputil"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -37,9 +39,14 @@ future releases.
 `
 
 type repoUpdateCmd struct {
-	update func([]*repo.Entry, bool, io.Writer, helmpath.Home)
-	out    io.Writer
+	update func([]*repo.Entry, bool, io.Writer, helmpath.Home, *http.Client)
 	home   helmpath.Home
+
+	certFile string
+	keyFile  string
+	caFile   string
+
+	out io.Writer
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -57,10 +64,27 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 			return u.run()
 		},
 	}
+
+	f := cmd.Flags()
+	f.StringVar(&u.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&u.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&u.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+
 	return cmd
 }
 
 func (u *repoUpdateCmd) run() error {
+	var client *http.Client
+	var err error
+	if u.certFile != "" && u.keyFile != "" && u.caFile != "" {
+		client, err = httputil.NewHTTPClientTLS(u.certFile, u.keyFile, u.caFile)
+		if err != nil {
+			return err
+		}
+	} else {
+		client = http.DefaultClient
+	}
+
 	f, err := repo.LoadRepositoriesFile(u.home.RepositoryFile())
 	if err != nil {
 		return err
@@ -70,11 +94,11 @@ func (u *repoUpdateCmd) run() error {
 		return errors.New("no repositories found. You must add one before updating")
 	}
 
-	u.update(f.Repositories, flagDebug, u.out, u.home)
+	u.update(f.Repositories, flagDebug, u.out, u.home, client)
 	return nil
 }
 
-func updateCharts(repos []*repo.Entry, verbose bool, out io.Writer, home helmpath.Home) {
+func updateCharts(repos []*repo.Entry, verbose bool, out io.Writer, home helmpath.Home, client *http.Client) {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	for _, re := range repos {
@@ -85,7 +109,7 @@ func updateCharts(repos []*repo.Entry, verbose bool, out io.Writer, home helmpat
 				// We skip local because the indices are symlinked.
 				return
 			}
-			err := repo.DownloadIndexFile(n, u, home.CacheIndex(n))
+			err := repo.DownloadIndexFile(n, u, home.CacheIndex(n), client)
 			if err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", n, u, err)
 			} else {

@@ -133,7 +133,7 @@ func TestDownloadIndexFile(t *testing.T) {
 	defer os.RemoveAll(dirName)
 
 	path := filepath.Join(dirName, testRepo+"-index.yaml")
-	if err := DownloadIndexFile(testRepo, srv.URL, path); err != nil {
+	if err := DownloadIndexFile(testRepo, srv.URL, path, http.DefaultClient); err != nil {
 		t.Errorf("%#v", err)
 	}
 

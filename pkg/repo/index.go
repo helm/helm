@@ -229,11 +229,11 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 }
 
 // DownloadIndexFile fetches the index from a repository.
-func DownloadIndexFile(repoName, url, indexFilePath string) error {
+func DownloadIndexFile(repoName, url, indexFilePath string, client *http.Client) error {
 	var indexURL string
 
 	indexURL = strings.TrimSuffix(url, "/") + "/index.yaml"
-	resp, err := http.Get(indexURL)
+	resp, err := client.Get(indexURL)
 	if err != nil {
 		return err
 	}

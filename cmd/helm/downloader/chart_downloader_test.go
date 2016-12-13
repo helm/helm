@@ -82,7 +82,7 @@ func TestDownload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	got, err := download(srv.URL)
+	got, err := download(srv.URL, http.DefaultClient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,6 +132,7 @@ func TestDownloadTo(t *testing.T) {
 		Out:      os.Stderr,
 		Verify:   VerifyAlways,
 		Keyring:  "testdata/helm-test-key.pub",
+		Client:   http.DefaultClient,
 	}
 	cname := "/signtest-0.1.0.tgz"
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)

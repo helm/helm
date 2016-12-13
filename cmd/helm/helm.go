@@ -37,14 +37,23 @@ import (
 
 const (
 	localRepoIndexFilePath = "index.yaml"
-	homeEnvVar             = "HELM_HOME"
-	hostEnvVar             = "HELM_HOST"
 	tillerNamespace        = "kube-system"
+)
+
+const (
+	homeEnvVar     = "HELM_HOME"
+	hostEnvVar     = "HELM_HOST"
+	certFileEnvVar = "HELM_CERT_FILE"
+	keyFileEnvVar  = "HELM_KEY_FILE"
+	caFileEnvVar   = "HELM_CA_FILE"
 )
 
 var (
 	helmHome    string
 	tillerHost  string
+	certFile    string
+	keyFile     string
+	caFile      string
 	kubeContext string
 )
 
@@ -68,9 +77,12 @@ Common actions from this point include:
 - helm list:      list releases of charts
 
 Environment:
-  $HELM_HOME      set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $HELM_HOST      set an alternative Tiller host. The format is host:port
-  $KUBECONFIG     set an alternate Kubernetes configuration file (default "~/.kube/config")
+  $HELM_HOME        set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $HELM_HOST        set an alternative Tiller host. The format is host:port
+  $HELM_CERT_FILE   identify HTTPS client using this SSL certificate file.
+  $HELM_KEY_FILE    identify HTTPS client using this SSL key file.
+  $HELM_CA_FILE     verify certificates of HTTPS-enabled servers using this CA bundle.
+  $KUBECONFIG       set an alternate Kubernetes configuration file (default "~/.kube/config")
 `
 
 func newRootCmd(out io.Writer) *cobra.Command {
@@ -91,6 +103,9 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p := cmd.PersistentFlags()
 	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME")
 	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST")
+	p.StringVar(&certFile, "cert-file", os.Getenv(certFileEnvVar), "identify HTTPS client using this SSL certificate file. Overrides $HELM_CERT_FILE")
+	p.StringVar(&keyFile, "key-file", os.Getenv(keyFileEnvVar), "identify HTTPS client using this SSL key file. Overrides $HELM_KEY_FILE")
+	p.StringVar(&caFile, "ca-file", os.Getenv(caFileEnvVar), "verify certificates of HTTPS-enabled servers using this CA bundle. Overrides $HELM_CA_FILE")
 	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	p.BoolVar(&flagDebug, "debug", false, "enable verbose output")
 

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -172,7 +173,7 @@ func ensureHome(home helmpath.Home, out io.Writer) error {
 			return err
 		}
 		cif := home.CacheIndex(stableRepository)
-		if err := repo.DownloadIndexFile(stableRepository, stableRepositoryURL, cif); err != nil {
+		if err := repo.DownloadIndexFile(stableRepository, stableRepositoryURL, cif, http.DefaultClient); err != nil {
 			fmt.Fprintf(out, "WARNING: Failed to download %s: %s (run 'helm repo update')\n", stableRepository, err)
 		}
 	} else if fi.IsDir() {

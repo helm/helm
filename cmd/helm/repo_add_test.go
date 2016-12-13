@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"net/http"
 	"os"
 	"testing"
 
@@ -80,7 +81,7 @@ func TestRepoAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := addRepository(testName, ts.URL(), hh); err != nil {
+	if err := addRepository(testName, ts.URL(), hh, http.DefaultClient); err != nil {
 		t.Error(err)
 	}
 
@@ -93,11 +94,11 @@ func TestRepoAdd(t *testing.T) {
 		t.Errorf("%s was not successfully inserted into %s", testName, hh.RepositoryFile())
 	}
 
-	if err := updateRepository(testName, ts.URL(), hh); err != nil {
+	if err := updateRepository(testName, ts.URL(), hh, http.DefaultClient); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := addRepository(testName, ts.URL(), hh); err == nil {
+	if err := addRepository(testName, ts.URL(), hh, http.DefaultClient); err == nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 }
