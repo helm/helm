@@ -86,7 +86,7 @@ func generateDeployment(image string) *extensions.Deployment {
 						{
 							Name:            "tiller",
 							Image:           image,
-							ImagePullPolicy: "Always",
+							ImagePullPolicy: "IfNotPresent",
 							Ports:           []api.ContainerPort{{ContainerPort: 44134, Name: "tiller"}},
 							LivenessProbe: &api.Probe{
 								Handler: api.Handler{
