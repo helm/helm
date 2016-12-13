@@ -55,3 +55,8 @@ import:
   - openpgp
 - package: github.com/gobwas/glob
   version: ^0.2.1
+testImports:
+- package: github.com/stretchr/testify
+  version: ^1.1.4
+  subpackages:
+  - assert
