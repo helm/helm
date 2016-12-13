@@ -27,19 +27,6 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 )
 
-func TestToYaml(t *testing.T) {
-	expect := "foo: bar\n"
-	v := struct {
-		Foo string `json:"foo"`
-	}{
-		Foo: "bar",
-	}
-
-	if got := toYaml(v); got != expect {
-		t.Errorf("Expected %q, got %q", expect, got)
-	}
-}
-
 func TestEngine(t *testing.T) {
 	e := New()
 

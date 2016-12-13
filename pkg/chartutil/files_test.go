@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/stretchr/testify/assert"
 )
 
 var cases = []struct {
@@ -28,6 +29,7 @@ var cases = []struct {
 	{"ship/stowaway.txt", "Legatt"},
 	{"story/name.txt", "The Secret Sharer"},
 	{"story/author.txt", "Joseph Conrad"},
+	{"multiline/test.txt", "bar\nfoo"},
 }
 
 func getTestFiles() []*any.Any {
@@ -55,16 +57,56 @@ func TestNewFiles(t *testing.T) {
 }
 
 func TestFileGlob(t *testing.T) {
+	as := assert.New(t)
+
 	f := NewFiles(getTestFiles())
 
 	matched := f.Glob("story/**")
 
-	if len(matched) != 2 {
-		t.Errorf("Expected two files in glob story/**, got %d", len(matched))
+	as.Len(matched, 2, "Should be two files in glob story/**")
+	as.Equal("Joseph Conrad", matched.Get("story/author.txt"))
+}
+
+func TestToConfig(t *testing.T) {
+	as := assert.New(t)
+
+	f := NewFiles(getTestFiles())
+	out := f.Glob("**/captain.txt").AsConfig()
+	as.Equal("captain.txt: The Captain\n", out)
+
+	out = f.Glob("ship/**").AsConfig()
+	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt\n", out)
+}
+
+func TestToSecret(t *testing.T) {
+	as := assert.New(t)
+
+	f := NewFiles(getTestFiles())
+
+	out := f.Glob("ship/**").AsSecrets()
+	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0\n", out)
+}
+
+func TestLines(t *testing.T) {
+	as := assert.New(t)
+
+	f := NewFiles(getTestFiles())
+
+	out := f.Lines("multiline/test.txt")
+	as.Len(out, 2)
+
+	as.Equal("bar", out[0])
+}
+
+func TestToYaml(t *testing.T) {
+	expect := "foo: bar\n"
+	v := struct {
+		Foo string `json:"foo"`
+	}{
+		Foo: "bar",
 	}
 
-	m, expect := matched.Get("story/author.txt"), "Joseph Conrad"
-	if m != expect {
-		t.Errorf("Wrong globbed file content. Expected %s, got %s", expect, m)
+	if got := ToYaml(v); got != expect {
+		t.Errorf("Expected %q, got %q", expect, got)
 	}
 }
