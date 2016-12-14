@@ -21,15 +21,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"path/filepath"
+	"path"
 	"regexp"
 	"strings"
 
-	"google.golang.org/grpc/metadata"
-
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/typed/discovery"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/kube"
@@ -81,15 +83,28 @@ var ListDefaultLimit int64 = 512
 // prevents an empty string from matching.
 var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
 
+// maxMsgSize use 10MB as the default message size limit.
+// grpc library default is 4MB
+var maxMsgSize = 1024 * 1024 * 10
+
+// NewServer creates a new grpc server.
+func NewServer() *grpc.Server {
+	return grpc.NewServer(
+		grpc.MaxMsgSize(maxMsgSize),
+	)
+}
+
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
-	env *environment.Environment
+	env       *environment.Environment
+	clientset internalclientset.Interface
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface) *ReleaseServer {
 	return &ReleaseServer{
-		env: env,
+		env:       env,
+		clientset: clientset,
 	}
 }
 
@@ -229,17 +244,11 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	var rel *release.Release
 
 	if req.Version <= 0 {
-		h, err := s.env.Releases.History(req.Name)
+		var err error
+		rel, err = s.env.Releases.Last(req.Name)
 		if err != nil {
-			return nil, fmt.Errorf("getting deployed release '%s': %s", req.Name, err)
+			return nil, fmt.Errorf("getting deployed release %q: %s", req.Name, err)
 		}
-		if len(h) < 1 {
-			return nil, errMissingRelease
-		}
-
-		relutil.Reverse(h, relutil.SortByRevision)
-		rel = h[0]
-
 	} else {
 		var err error
 		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
@@ -376,7 +385,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	// finds the non-deleted release with the given name
-	currentRelease, err := s.env.Releases.Deployed(req.Name)
+	currentRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -504,17 +513,10 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 		return nil, nil, errInvalidRevision
 	}
 
-	// finds the non-deleted release with the given name
-	h, err := s.env.Releases.History(req.Name)
+	crls, err := s.env.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(h) <= 1 {
-		return nil, nil, errors.New("no revision to rollback")
-	}
-
-	relutil.SortByRevision(h)
-	crls := h[len(h)-1]
 
 	rbv := req.Version
 	if req.Version == 0 {
@@ -694,15 +696,10 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, nil
 }
 
-func (s *ReleaseServer) getVersionSet() (versionSet, error) {
+func getVersionSet(client discovery.ServerGroupsInterface) (versionSet, error) {
 	defVersions := newVersionSet("v1")
-	cli, err := s.env.KubeClient.APIClient()
-	if err != nil {
-		log.Printf("API Client for Kubernetes is missing: %s.", err)
-		return defVersions, err
-	}
 
-	groups, err := cli.Discovery().ServerGroups()
+	groups, err := client.ServerGroups()
 	if err != nil {
 		return defVersions, err
 	}
@@ -735,7 +732,8 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	for k, v := range files {
 		if strings.HasSuffix(k, notesFileSuffix) {
 			// Only apply the notes if it belongs to the parent chart
-			if k == filepath.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
+			// Note: Do not use filePath.Join since it creates a path with \ which is not expected
+			if k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
 				notes = v
 			}
 			delete(files, k)
@@ -745,7 +743,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	vs, err := s.getVersionSet()
+	vs, err := getVersionSet(s.clientset.Discovery())
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
@@ -948,7 +946,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	log.Printf("uninstall: Deleting %s", req.Name)
-	rel.Info.Status.Code = release.Status_DELETED
+	rel.Info.Status.Code = release.Status_DELETING
 	rel.Info.Deleted = timeconv.Now()
 	res := &services.UninstallReleaseResponse{Release: rel}
 
@@ -958,14 +956,13 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	vs, err := s.getVersionSet()
+	vs, err := getVersionSet(s.clientset.Discovery())
 	if err != nil {
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
 
-	// From here on out, the release is currently considered to be in Status_DELETED
-	// state. See https://github.com/kubernetes/helm/issues/1511 for a better way
-	// to do this.
+	// From here on out, the release is currently considered to be in Status_DELETING
+	// state.
 	if err := s.env.Releases.Update(rel); err != nil {
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
@@ -980,9 +977,14 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)
 	}
 
+	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	if len(filesToKeep) > 0 {
+		res.Info = summarizeKeptManifests(filesToKeep)
+	}
+
 	// Collect the errors, and return them later.
 	es := []string{}
-	for _, file := range files {
+	for _, file := range filesToDelete {
 		b := bytes.NewBufferString(file.content)
 		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
 			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
@@ -1004,6 +1006,11 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		if err := s.purgeReleases(rels...); err != nil {
 			log.Printf("uninstall: Failed to purge the release: %s", err)
 		}
+	}
+
+	rel.Info.Status.Code = release.Status_DELETED
+	if err := s.env.Releases.Update(rel); err != nil {
+		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
 	var errs error

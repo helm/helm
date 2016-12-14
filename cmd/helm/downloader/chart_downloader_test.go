@@ -153,3 +153,47 @@ func TestDownloadTo(t *testing.T) {
 		return
 	}
 }
+
+func TestDownloadTo_VerifyLater(t *testing.T) {
+	hh, err := ioutil.TempDir("", "helm-downloadto-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(hh)
+
+	dest := filepath.Join(hh, "dest")
+	os.MkdirAll(dest, 0755)
+
+	// Set up a fake repo
+	srv := repotest.NewServer(hh)
+	defer srv.Stop()
+	if _, err := srv.CopyCharts("testdata/*.tgz*"); err != nil {
+		t.Error(err)
+		return
+	}
+
+	c := ChartDownloader{
+		HelmHome: helmpath.Home("testdata/helmhome"),
+		Out:      os.Stderr,
+		Verify:   VerifyLater,
+	}
+	cname := "/signtest-0.1.0.tgz"
+	where, _, err := c.DownloadTo(srv.URL()+cname, "", dest)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if expect := filepath.Join(dest, cname); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
+	}
+
+	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
+		t.Error(err)
+		return
+	}
+	if _, err := os.Stat(filepath.Join(dest, cname+".prov")); err != nil {
+		t.Error(err)
+		return
+	}
+}

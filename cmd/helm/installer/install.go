@@ -23,7 +23,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/unversioned"
+	extensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
 	"k8s.io/kubernetes/pkg/util/intstr"
 
 	"k8s.io/helm/pkg/version"
@@ -37,27 +37,27 @@ const defaultImage = "gcr.io/kubernetes-helm/tiller"
 // command failed.
 //
 // If verbose is true, this will print the manifest to stdout.
-func Install(client unversioned.DeploymentsNamespacer, namespace, image string, canary, verbose bool) error {
-	obj := deployment(image, canary)
-	_, err := client.Deployments(namespace).Create(obj)
+func Install(client extensionsclient.DeploymentsGetter, namespace, image string, canary, verbose bool) error {
+	obj := deployment(namespace, image, canary)
+	_, err := client.Deployments(obj.Namespace).Create(obj)
 	return err
 }
 
 // deployment gets the deployment object that installs Tiller.
-func deployment(image string, canary bool) *extensions.Deployment {
+func deployment(namespace, image string, canary bool) *extensions.Deployment {
 	switch {
 	case canary:
 		image = defaultImage + ":canary"
 	case image == "":
 		image = fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	}
-	return generateDeployment(image)
+	return generateDeployment(namespace, image)
 }
 
 // DeploymentManifest gets the manifest (as a string) that describes the Tiller Deployment
 // resource.
-func DeploymentManifest(image string, canary bool) (string, error) {
-	obj := deployment(image, canary)
+func DeploymentManifest(namespace, image string, canary bool) (string, error) {
+	obj := deployment(namespace, image, canary)
 
 	buf, err := yaml.Marshal(obj)
 	return string(buf), err
@@ -68,12 +68,13 @@ func generateLabels(labels map[string]string) map[string]string {
 	return labels
 }
 
-func generateDeployment(image string) *extensions.Deployment {
+func generateDeployment(namespace, image string) *extensions.Deployment {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	d := &extensions.Deployment{
 		ObjectMeta: api.ObjectMeta{
-			Name:   "tiller-deploy",
-			Labels: labels,
+			Namespace: namespace,
+			Name:      "tiller-deploy",
+			Labels:    labels,
 		},
 		Spec: extensions.DeploymentSpec{
 			Replicas: 1,
@@ -86,7 +87,7 @@ func generateDeployment(image string) *extensions.Deployment {
 						{
 							Name:            "tiller",
 							Image:           image,
-							ImagePullPolicy: "Always",
+							ImagePullPolicy: "IfNotPresent",
 							Ports:           []api.ContainerPort{{ContainerPort: 44134, Name: "tiller"}},
 							LivenessProbe: &api.Probe{
 								Handler: api.Handler{

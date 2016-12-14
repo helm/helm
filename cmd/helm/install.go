@@ -55,6 +55,12 @@ or
 
 	$ helm install --set name=prod ./redis
 
+You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
+last (right-most) file specified. For example, if both myvalues.yaml and override.yaml 
+contained a key called 'Test', the value set in override.yaml would take precedence:
+
+	$ helm install -f myvalues.yaml -f override.yaml ./redis
+
 To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined. This will still require a
 round-trip to the Tiller server.
@@ -86,7 +92,7 @@ charts in a repository, use 'helm search'.
 type installCmd struct {
 	name         string
 	namespace    string
-	valuesFile   string
+	valueFiles   valueFiles
 	chartPath    string
 	dryRun       bool
 	disableHooks bool
@@ -98,6 +104,23 @@ type installCmd struct {
 	values       string
 	nameTemplate string
 	version      string
+}
+
+type valueFiles []string
+
+func (v *valueFiles) String() string {
+	return fmt.Sprint(*v)
+}
+
+func (v *valueFiles) Type() string {
+	return "valueFiles"
+}
+
+func (v *valueFiles) Set(value string) error {
+	for _, filePath := range strings.Split(value, ",") {
+		*v = append(*v, filePath)
+	}
+	return nil
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -126,7 +149,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&inst.valuesFile, "values", "f", "", "specify values in a YAML file")
+	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.StringVarP(&inst.name, "name", "n", "", "release name. If unspecified, it will autogenerate one for you")
 	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
@@ -197,19 +220,54 @@ func (i *installCmd) run() error {
 	return nil
 }
 
+// Merges source and destination map, preferring values from the source map
+func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[string]interface{} {
+	for k, v := range src {
+		// If the key doesn't exist already, then just set the key to that value
+		if _, exists := dest[k]; !exists {
+			dest[k] = v
+			continue
+		}
+		nextMap, ok := v.(map[string]interface{})
+		// If it isn't another map, overwrite the value
+		if !ok {
+			dest[k] = v
+			continue
+		}
+		// If the key doesn't exist already, then just set the key to that value
+		if _, exists := dest[k]; !exists {
+			dest[k] = nextMap
+			continue
+		}
+		// Edge case: If the key exists in the destination, but isn't a map
+		destMap, isMap := dest[k].(map[string]interface{})
+		// If the source map has a map for this key, prefer it
+		if !isMap {
+			dest[k] = v
+			continue
+		}
+		// If we got to this point, it is a map in both, so merge them
+		dest[k] = mergeValues(destMap, nextMap)
+	}
+	return dest
+}
+
 func (i *installCmd) vals() ([]byte, error) {
 	base := map[string]interface{}{}
 
-	// User specified a values file via -f/--values
-	if i.valuesFile != "" {
-		bytes, err := ioutil.ReadFile(i.valuesFile)
+	// User specified a values files via -f/--values
+	for _, filePath := range i.valueFiles {
+		currentMap := map[string]interface{}{}
+		bytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			return []byte{}, err
 		}
 
-		if err := yaml.Unmarshal(bytes, &base); err != nil {
-			return []byte{}, fmt.Errorf("failed to parse %s: %s", i.valuesFile, err)
+		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+			return []byte{}, fmt.Errorf("failed to parse %s: %s", filePath, err)
 		}
+		// Merge with the previous map
+		base = mergeValues(base, currentMap)
 	}
 
 	if err := strvals.ParseInto(i.values, base); err != nil {

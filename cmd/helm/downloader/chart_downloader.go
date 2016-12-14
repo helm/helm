@@ -44,6 +44,10 @@ const (
 	// VerifyAlways will always attempt a verification, and will fail if the
 	// verification fails.
 	VerifyAlways
+	// VerifyLater will fetch verification data, but not do any verification.
+	// This is to accommodate the case where another step of the process will
+	// perform verification.
+	VerifyLater
 )
 
 // ChartDownloader handles downloading a chart.
@@ -65,6 +69,7 @@ type ChartDownloader struct {
 // If Verify is set to VerifyNever, the verification will be nil.
 // If Verify is set to VerifyIfPossible, this will return a verification (or nil on failure), and print a warning on failure.
 // If Verify is set to VerifyAlways, this will return a verification or an error if the verification fails.
+// If Verify is set to VerifyLater, this will download the prov file (if it exists), but not verify it.
 //
 // For VerifyNever and VerifyIfPossible, the Verification may be empty.
 //
@@ -104,11 +109,13 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return destfile, nil, err
 		}
 
-		ver, err = VerifyChart(destfile, c.Keyring)
-		if err != nil {
-			// Fail always in this case, since it means the verification step
-			// failed.
-			return destfile, ver, err
+		if c.Verify != VerifyLater {
+			ver, err = VerifyChart(destfile, c.Keyring)
+			if err != nil {
+				// Fail always in this case, since it means the verification step
+				// failed.
+				return destfile, ver, err
+			}
 		}
 	}
 	return destfile, ver, nil

@@ -1,15 +1,18 @@
 package: k8s.io/helm
 import:
 - package: golang.org/x/net
-  version: fb93926129b8ec0056f2f458b1f519654814edf0
+  version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
   subpackages:
   - context
 - package: github.com/spf13/cobra
+  version: f62e98d28ab7ad31d707ba837a966378465c7b57
+- package: github.com/spf13/pflag
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - package: github.com/Masterminds/sprig
   version: ^2.7
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
-  version: ~1.2.1
+  version: ~1.2.2
 - package: github.com/technosophos/moniker
 - package: github.com/golang/protobuf
   version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
@@ -20,7 +23,7 @@ import:
 - package: google.golang.org/grpc
   version: 1.0.3
 - package: k8s.io/kubernetes
-  version: ~1.4.1
+  version: ~1.5.0
   subpackages:
   - pkg/api
   - pkg/api/errors
@@ -28,12 +31,14 @@ import:
   - pkg/apimachinery/registered
   - pkg/apis/batch
   - pkg/apis/extensions
+  - pkg/client/clientset_generated/internalclientset
+  - pkg/client/clientset_generated/internalclientset/typed/core/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion
   - pkg/client/restclient
-  - pkg/client/unversioned
+  - pkg/client/typed/discovery
   - pkg/client/unversioned/clientcmd
   - pkg/client/unversioned/portforward
   - pkg/client/unversioned/remotecommand
-  - pkg/client/unversioned/testclient
   - pkg/kubectl
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
@@ -41,7 +46,6 @@ import:
   - pkg/runtime
   - pkg/util/intstr
   - pkg/util/strategicpatch
-  - pkg/util/yaml
   - pkg/watch
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
@@ -51,3 +55,8 @@ import:
   - openpgp
 - package: github.com/gobwas/glob
   version: ^0.2.1
+testImports:
+- package: github.com/stretchr/testify
+  version: ^1.1.4
+  subpackages:
+  - assert

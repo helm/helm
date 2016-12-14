@@ -18,8 +18,10 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"k8s.io/helm/pkg/repo/repotest"
@@ -39,13 +41,14 @@ func TestFetchCmd(t *testing.T) {
 
 	// all flags will get "--home=TMDIR -d outdir" appended.
 	tests := []struct {
-		name       string
-		chart      string
-		flags      []string
-		fail       bool
-		failExpect string
-		expectFile string
-		expectDir  bool
+		name         string
+		chart        string
+		flags        []string
+		fail         bool
+		failExpect   string
+		expectFile   string
+		expectDir    bool
+		expectVerify bool
 	}{
 		{
 			name:       "Basic chart fetch",
@@ -72,10 +75,11 @@ func TestFetchCmd(t *testing.T) {
 			fail:       true,
 		},
 		{
-			name:       "Fetch and verify",
-			chart:      "test/signtest",
-			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub"},
-			expectFile: "./signtest-0.1.0.tgz",
+			name:         "Fetch and verify",
+			chart:        "test/signtest",
+			flags:        []string{"--verify", "--keyring", "testdata/helm-test-key.pub"},
+			expectFile:   "./signtest-0.1.0.tgz",
+			expectVerify: true,
 		},
 		{
 			name:       "Fetch and fail verify",
@@ -87,16 +91,17 @@ func TestFetchCmd(t *testing.T) {
 		{
 			name:       "Fetch and untar",
 			chart:      "test/signtest",
-			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub", "--untar", "--untardir", "signtest"},
+			flags:      []string{"--untar", "--untardir", "signtest"},
 			expectFile: "./signtest",
 			expectDir:  true,
 		},
 		{
-			name:       "Fetch, verify, untar",
-			chart:      "test/signtest",
-			flags:      []string{"--verify", "--keyring", "testdata/helm-test-key.pub", "--untar", "--untardir", "signtest"},
-			expectFile: "./signtest",
-			expectDir:  true,
+			name:         "Fetch, verify, untar",
+			chart:        "test/signtest",
+			flags:        []string{"--verify", "--keyring", "testdata/helm-test-key.pub", "--untar", "--untardir", "signtest"},
+			expectFile:   "./signtest",
+			expectDir:    true,
+			expectVerify: true,
 		},
 	}
 
@@ -125,6 +130,15 @@ func TestFetchCmd(t *testing.T) {
 			}
 			t.Errorf("%q reported error: %s", tt.name, err)
 			continue
+		}
+		if tt.expectVerify {
+			pointerAddressPattern := "0[xX][A-Fa-f0-9]+"
+			sha256Pattern := "[A-Fa-f0-9]{64}"
+			verificationRegex := regexp.MustCompile(
+				fmt.Sprintf("Verification: &{%s sha256:%s signtest-0.1.0.tgz}\n", pointerAddressPattern, sha256Pattern))
+			if !verificationRegex.MatchString(buf.String()) {
+				t.Errorf("%q: expected match for regex %s, got %s", tt.name, verificationRegex, buf.String())
+			}
 		}
 
 		ef := filepath.Join(outdir, tt.expectFile)

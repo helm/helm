@@ -1,0 +1,12 @@
+language: go
+
+go:
+  - '1.7.x'
+
+go_import_path: k8s.io/helm
+
+before_install:
+  - make bootstrap
+
+script:
+  - make test

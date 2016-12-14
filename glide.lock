@@ -1,5 +1,5 @@
-hash: 8ae84a3225f6cc31f91cc42dc8cf816792a989838254964cdcaaa57c75c37cdc
-updated: 2016-12-01T17:35:05.940550036-07:00
+hash: 2fc61aa64319b4dc6cd4a107c46a25264865f2e07362d7dcd8a3db002278d6a6
+updated: 2016-12-13T17:07:47.402783003-05:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -17,22 +17,13 @@ imports:
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
 - name: github.com/coreos/go-oidc
-  version: 5cf2aa52da8c574d3aa4458f471ad6ae2240fe6b
+  version: 5644a2f50e2d2d5ba0b474bc5bc55fea1925936d
   subpackages:
   - http
   - jose
   - key
   - oauth2
   - oidc
-- name: github.com/coreos/go-systemd
-  version: 4484981625c1a6a2ecb40a390fcb6a9bcfee76e3
-  subpackages:
-  - activation
-  - daemon
-  - dbus
-  - journal
-  - unit
-  - util
 - name: github.com/coreos/pkg
   version: fa29b1d70f0beaddd4c7021607cc3c3be8ce94b8
   subpackages:
@@ -49,6 +40,8 @@ imports:
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
+- name: github.com/dgrijalva/jwt-go
+  version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
 - name: github.com/docker/distribution
   version: cd27f179f2c10c5d300e6d09025b538c475b0d51
   subpackages:
@@ -101,10 +94,20 @@ imports:
   - swagger
 - name: github.com/evanphx/json-patch
   version: 465937c80b3c07a7c7ad20cc934898646a91c1de
+- name: github.com/exponent-io/jsonpath
+  version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/go-openapi/jsonpointer
+  version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
+- name: github.com/go-openapi/jsonreference
+  version: 13c6e3589ad90f49bd3e3bbe2c2cb3d7a4142272
+- name: github.com/go-openapi/spec
+  version: 6aced65f8501fe1217321abf0749d354824ba2ff
+- name: github.com/go-openapi/swag
+  version: 1d0bd113de87027671077d3c71eb3ac5d7dbba72
 - name: github.com/gobwas/glob
-  version: 0354991b92587e2742549d3036f3b5bae5ab03f2
+  version: bea32b9cd2d6f55753d94a28e959b13f0244797a
   subpackages:
   - compiler
   - match
@@ -153,50 +156,6 @@ imports:
   - proto
   - ptypes/any
   - ptypes/timestamp
-- name: github.com/google/cadvisor
-  version: a726d13de8cb32860e73d72a78dc8e0124267709
-  subpackages:
-  - api
-  - cache/memory
-  - client/v2
-  - collector
-  - container
-  - container/common
-  - container/docker
-  - container/libcontainer
-  - container/raw
-  - container/rkt
-  - container/systemd
-  - devicemapper
-  - events
-  - fs
-  - healthz
-  - http
-  - http/mux
-  - info/v1
-  - info/v1/test
-  - info/v2
-  - machine
-  - manager
-  - manager/watcher
-  - manager/watcher/raw
-  - manager/watcher/rkt
-  - metrics
-  - pages
-  - pages/static
-  - storage
-  - summary
-  - utils
-  - utils/cloudinfo
-  - utils/cpuload
-  - utils/cpuload/netlink
-  - utils/docker
-  - utils/oomparser
-  - utils/sysfs
-  - utils/sysinfo
-  - utils/tail
-  - validate
-  - version
 - name: github.com/google/gofuzz
   version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
 - name: github.com/gosuri/uitable
@@ -204,6 +163,8 @@ imports:
   subpackages:
   - util/strutil
   - util/wordwrap
+- name: github.com/howeyc/gopass
+  version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/inconshreveable/mousetrap
@@ -212,14 +173,26 @@ imports:
   version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
+- name: github.com/mailru/easyjson
+  version: d5b7844b561a7bc640052f1b935f7b800330d7e0
+  subpackages:
+  - buffer
+  - jlexer
+  - jwriter
 - name: github.com/Masterminds/semver
-  version: 52edfc04e184ecf0962489d167b511b27aeebd61
+  version: 59c29afe1a994eacb71c833025ca7acf874bb1da
 - name: github.com/Masterminds/sprig
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
+- name: github.com/mitchellh/go-wordwrap
+  version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- name: github.com/PuerkitoBio/purell
+  version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
+- name: github.com/PuerkitoBio/urlesc
+  version: 5bd2802263f21d8788851d5305584c82a5c75d7e
 - name: github.com/russross/blackfriday
   version: 300106c228d52c8941d4b3de6054a6062a86dda3
 - name: github.com/satori/go.uuid
@@ -229,11 +202,11 @@ imports:
 - name: github.com/Sirupsen/logrus
   version: 51fe59aca108dc5680109e7b2051cbdcfa5a253c
 - name: github.com/spf13/cobra
-  version: 6a8bd97bdb1fc0d08a83459940498ea49d3e8c93
+  version: f62e98d28ab7ad31d707ba837a966378465c7b57
   subpackages:
   - doc
 - name: github.com/spf13/pflag
-  version: 367864438f1b1a3c7db4da06a2f55b144e6784e0
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/technosophos/moniker
   version: 9f956786b91d9786ca11aa5be6104542fa911546
 - name: github.com/ugorji/go
@@ -254,13 +227,15 @@ imports:
   - openpgp/s2k
   - ssh/terminal
 - name: golang.org/x/net
-  version: fb93926129b8ec0056f2f458b1f519654814edf0
+  version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
   subpackages:
   - context
   - context/ctxhttp
   - http2
   - http2/hpack
+  - idna
   - internal/timeseries
+  - lex/httplex
   - trace
   - websocket
 - name: golang.org/x/oauth2
@@ -270,6 +245,23 @@ imports:
   - internal
   - jws
   - jwt
+- name: golang.org/x/sys
+  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
+  subpackages:
+  - unix
+- name: golang.org/x/text
+  version: 2910a502d2bf9e43193af9d68ca516529614eed3
+  subpackages:
+  - cases
+  - internal/tag
+  - language
+  - runes
+  - secure/bidirule
+  - secure/precis
+  - transform
+  - unicode/bidi
+  - unicode/norm
+  - width
 - name: google.golang.org/appengine
   version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:
@@ -297,88 +289,24 @@ imports:
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-- name: k8s.io/client-go
-  version: 0b62e254fe853d89b1d8d3445bbdab11bcc11bc3
-  subpackages:
-  - 1.4/pkg/api
-  - 1.4/pkg/api/endpoints
-  - 1.4/pkg/api/errors
-  - 1.4/pkg/api/meta
-  - 1.4/pkg/api/meta/metatypes
-  - 1.4/pkg/api/pod
-  - 1.4/pkg/api/resource
-  - 1.4/pkg/api/service
-  - 1.4/pkg/api/unversioned
-  - 1.4/pkg/api/unversioned/validation
-  - 1.4/pkg/api/util
-  - 1.4/pkg/api/v1
-  - 1.4/pkg/api/validation
-  - 1.4/pkg/apimachinery
-  - 1.4/pkg/apimachinery/registered
-  - 1.4/pkg/apis/autoscaling
-  - 1.4/pkg/apis/batch
-  - 1.4/pkg/apis/extensions
-  - 1.4/pkg/auth/user
-  - 1.4/pkg/capabilities
-  - 1.4/pkg/conversion
-  - 1.4/pkg/conversion/queryparams
-  - 1.4/pkg/fields
-  - 1.4/pkg/labels
-  - 1.4/pkg/runtime
-  - 1.4/pkg/runtime/serializer
-  - 1.4/pkg/runtime/serializer/json
-  - 1.4/pkg/runtime/serializer/protobuf
-  - 1.4/pkg/runtime/serializer/recognizer
-  - 1.4/pkg/runtime/serializer/streaming
-  - 1.4/pkg/runtime/serializer/versioning
-  - 1.4/pkg/security/apparmor
-  - 1.4/pkg/selection
-  - 1.4/pkg/third_party/forked/golang/reflect
-  - 1.4/pkg/types
-  - 1.4/pkg/util
-  - 1.4/pkg/util/clock
-  - 1.4/pkg/util/config
-  - 1.4/pkg/util/crypto
-  - 1.4/pkg/util/errors
-  - 1.4/pkg/util/flowcontrol
-  - 1.4/pkg/util/framer
-  - 1.4/pkg/util/hash
-  - 1.4/pkg/util/integer
-  - 1.4/pkg/util/intstr
-  - 1.4/pkg/util/json
-  - 1.4/pkg/util/labels
-  - 1.4/pkg/util/net
-  - 1.4/pkg/util/net/sets
-  - 1.4/pkg/util/parsers
-  - 1.4/pkg/util/rand
-  - 1.4/pkg/util/runtime
-  - 1.4/pkg/util/sets
-  - 1.4/pkg/util/uuid
-  - 1.4/pkg/util/validation
-  - 1.4/pkg/util/validation/field
-  - 1.4/pkg/util/wait
-  - 1.4/pkg/util/yaml
-  - 1.4/pkg/version
-  - 1.4/pkg/watch
-  - 1.4/pkg/watch/versioned
-  - 1.4/rest
-  - 1.4/tools/clientcmd/api
-  - 1.4/tools/metrics
-  - 1.4/transport
 - name: k8s.io/kubernetes
-  version: fd8fac83034df346529c6e11aabceea2db48d663
+  version: d47846323632bf59c729460fc7344d2df347bf46
   subpackages:
+  - cmd/kubeadm/app/apis/kubeadm
+  - cmd/kubeadm/app/apis/kubeadm/install
+  - cmd/kubeadm/app/apis/kubeadm/v1alpha1
   - federation/apis/federation
   - federation/apis/federation/install
   - federation/apis/federation/v1beta1
   - federation/client/clientset_generated/federation_internalclientset
-  - federation/client/clientset_generated/federation_internalclientset/typed/core/unversioned
-  - federation/client/clientset_generated/federation_internalclientset/typed/extensions/unversioned
-  - federation/client/clientset_generated/federation_internalclientset/typed/federation/unversioned
+  - federation/client/clientset_generated/federation_internalclientset/typed/core/internalversion
+  - federation/client/clientset_generated/federation_internalclientset/typed/extensions/internalversion
+  - federation/client/clientset_generated/federation_internalclientset/typed/federation/internalversion
   - pkg/api
   - pkg/api/annotations
   - pkg/api/endpoints
   - pkg/api/errors
+  - pkg/api/events
   - pkg/api/install
   - pkg/api/meta
   - pkg/api/meta/metatypes
@@ -392,11 +320,13 @@ imports:
   - pkg/api/util
   - pkg/api/v1
   - pkg/api/validation
+  - pkg/api/validation/path
   - pkg/apimachinery
+  - pkg/apimachinery/announced
   - pkg/apimachinery/registered
   - pkg/apis/apps
   - pkg/apis/apps/install
-  - pkg/apis/apps/v1alpha1
+  - pkg/apis/apps/v1beta1
   - pkg/apis/authentication
   - pkg/apis/authentication/install
   - pkg/apis/authentication/v1beta1
@@ -425,43 +355,60 @@ imports:
   - pkg/apis/imagepolicy/v1alpha1
   - pkg/apis/policy
   - pkg/apis/policy/install
-  - pkg/apis/policy/v1alpha1
+  - pkg/apis/policy/v1beta1
   - pkg/apis/rbac
   - pkg/apis/rbac/install
   - pkg/apis/rbac/v1alpha1
   - pkg/apis/storage
   - pkg/apis/storage/install
+  - pkg/apis/storage/util
   - pkg/apis/storage/v1beta1
+  - pkg/auth/authenticator
   - pkg/auth/user
   - pkg/capabilities
   - pkg/client/cache
   - pkg/client/clientset_generated/internalclientset
-  - pkg/client/clientset_generated/internalclientset/typed/authentication/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/authorization/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/autoscaling/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/batch/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/certificates/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/core/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/extensions/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/rbac/unversioned
-  - pkg/client/clientset_generated/internalclientset/typed/storage/unversioned
+  - pkg/client/clientset_generated/internalclientset/fake
+  - pkg/client/clientset_generated/internalclientset/typed/apps/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/apps/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/authentication/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/authentication/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/autoscaling/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/autoscaling/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/batch/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/batch/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/certificates/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/certificates/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/core/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/core/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/policy/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/policy/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion/fake
+  - pkg/client/clientset_generated/internalclientset/typed/storage/internalversion
+  - pkg/client/clientset_generated/internalclientset/typed/storage/internalversion/fake
   - pkg/client/metrics
   - pkg/client/record
   - pkg/client/restclient
+  - pkg/client/restclient/fake
+  - pkg/client/retry
+  - pkg/client/testing/core
   - pkg/client/transport
   - pkg/client/typed/discovery
+  - pkg/client/typed/discovery/fake
   - pkg/client/typed/dynamic
   - pkg/client/unversioned
-  - pkg/client/unversioned/adapters/internalclientset
   - pkg/client/unversioned/auth
   - pkg/client/unversioned/clientcmd
   - pkg/client/unversioned/clientcmd/api
   - pkg/client/unversioned/clientcmd/api/latest
   - pkg/client/unversioned/clientcmd/api/v1
-  - pkg/client/unversioned/fake
   - pkg/client/unversioned/portforward
   - pkg/client/unversioned/remotecommand
-  - pkg/client/unversioned/testclient
   - pkg/controller
   - pkg/controller/deployment/util
   - pkg/conversion
@@ -469,8 +416,10 @@ imports:
   - pkg/credentialprovider
   - pkg/fieldpath
   - pkg/fields
+  - pkg/genericapiserver/openapi/common
   - pkg/httplog
   - pkg/kubectl
+  - pkg/kubectl/cmd/testing
   - pkg/kubectl/cmd/util
   - pkg/kubectl/resource
   - pkg/kubelet/qos
@@ -479,7 +428,7 @@ imports:
   - pkg/kubelet/types
   - pkg/labels
   - pkg/master/ports
-  - pkg/registry/thirdpartyresourcedata
+  - pkg/registry/extensions/thirdpartyresourcedata
   - pkg/runtime
   - pkg/runtime/serializer
   - pkg/runtime/serializer/json
@@ -488,15 +437,17 @@ imports:
   - pkg/runtime/serializer/streaming
   - pkg/runtime/serializer/versioning
   - pkg/security/apparmor
+  - pkg/security/podsecuritypolicy/seccomp
   - pkg/security/podsecuritypolicy/util
   - pkg/selection
+  - pkg/serviceaccount
   - pkg/storage
   - pkg/types
   - pkg/util
-  - pkg/util/certificates
+  - pkg/util/cert
   - pkg/util/clock
   - pkg/util/config
-  - pkg/util/crypto
+  - pkg/util/diff
   - pkg/util/errors
   - pkg/util/exec
   - pkg/util/flag
@@ -514,10 +465,10 @@ imports:
   - pkg/util/labels
   - pkg/util/net
   - pkg/util/net/sets
+  - pkg/util/node
   - pkg/util/parsers
   - pkg/util/pod
   - pkg/util/rand
-  - pkg/util/replicaset
   - pkg/util/runtime
   - pkg/util/sets
   - pkg/util/slice
@@ -539,4 +490,14 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
   - third_party/forked/golang/template
-testImports: []
+testImports:
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: e3a8ff8ce36581f87a15341206f205b1da467059
+  subpackages:
+  - assert
+  - mock
+  - require

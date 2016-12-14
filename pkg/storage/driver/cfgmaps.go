@@ -27,13 +27,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
-
 	"k8s.io/kubernetes/pkg/api"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	kblabels "k8s.io/kubernetes/pkg/labels"
+
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 var _ Driver = (*ConfigMaps)(nil)
@@ -48,12 +47,12 @@ var magicGzip = []byte{0x1f, 0x8b, 0x08}
 // ConfigMaps is a wrapper around an implementation of a kubernetes
 // ConfigMapsInterface.
 type ConfigMaps struct {
-	impl client.ConfigMapsInterface
+	impl internalversion.ConfigMapInterface
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implmenetation of
 // the kubernetes ConfigMapsInterface.
-func NewConfigMaps(impl client.ConfigMapsInterface) *ConfigMaps {
+func NewConfigMaps(impl internalversion.ConfigMapInterface) *ConfigMaps {
 	return &ConfigMaps{impl: impl}
 }
 
@@ -210,7 +209,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 		return nil, err
 	}
 	// delete the release
-	if err = cfgmaps.impl.Delete(key); err != nil {
+	if err = cfgmaps.impl.Delete(key, &api.DeleteOptions{}); err != nil {
 		return rls, err
 	}
 	return rls, nil

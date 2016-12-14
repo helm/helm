@@ -18,6 +18,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -86,6 +87,10 @@ func (d *deleteCmd) run() error {
 		helm.DeleteDisableHooks(d.disableHooks),
 		helm.DeletePurge(d.purge),
 	}
-	_, err := d.client.DeleteRelease(d.name, opts...)
+	res, err := d.client.DeleteRelease(d.name, opts...)
+	if res != nil && res.Info != "" {
+		fmt.Fprintln(d.out, res.Info)
+	}
+
 	return prettyError(err)
 }

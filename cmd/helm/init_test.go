@@ -27,7 +27,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/client/unversioned/testclient"
+	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	testcore "k8s.io/kubernetes/pkg/client/testing/core"
 	"k8s.io/kubernetes/pkg/runtime"
 
 	"k8s.io/helm/cmd/helm/helmpath"
@@ -41,14 +43,19 @@ func TestInitCmd(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	fake := testclient.Fake{}
-	cmd := &initCmd{out: &buf, home: helmpath.Home(home), kubeClient: fake.Extensions()}
+	fc := fake.NewSimpleClientset()
+	cmd := &initCmd{
+		out:        &buf,
+		home:       helmpath.Home(home),
+		kubeClient: fc.Extensions(),
+		namespace:  api.NamespaceDefault,
+	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
 	}
-	actions := fake.Actions()
-	if action, ok := actions[0].(testclient.CreateAction); !ok || action.GetResource() != "deployments" {
-		t.Errorf("unexpected action: %v, expected create deployment", actions[0])
+	action := fc.Actions()[0]
+	if !action.Matches("create", "deployments") {
+		t.Errorf("unexpected action: %v, expected create deployment", action)
 	}
 	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
@@ -64,11 +71,21 @@ func TestInitCmd_exsits(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	fake := testclient.Fake{}
-	fake.AddReactor("*", "*", func(action testclient.Action) (bool, runtime.Object, error) {
+	fc := fake.NewSimpleClientset(&extensions.Deployment{
+		ObjectMeta: api.ObjectMeta{
+			Namespace: api.NamespaceDefault,
+			Name:      "tiller-deploy",
+		},
+	})
+	fc.AddReactor("*", "*", func(action testcore.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.NewAlreadyExists(api.Resource("deployments"), "1")
 	})
-	cmd := &initCmd{out: &buf, home: helmpath.Home(home), kubeClient: fake.Extensions()}
+	cmd := &initCmd{
+		out:        &buf,
+		home:       helmpath.Home(home),
+		kubeClient: fc.Extensions(),
+		namespace:  api.NamespaceDefault,
+	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
 	}
@@ -86,12 +103,18 @@ func TestInitCmd_clientOnly(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	fake := testclient.Fake{}
-	cmd := &initCmd{out: &buf, home: helmpath.Home(home), kubeClient: fake.Extensions(), clientOnly: true}
+	fc := fake.NewSimpleClientset()
+	cmd := &initCmd{
+		out:        &buf,
+		home:       helmpath.Home(home),
+		kubeClient: fc.Extensions(),
+		clientOnly: true,
+		namespace:  api.NamespaceDefault,
+	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	if len(fake.Actions()) != 0 {
+	if len(fc.Actions()) != 0 {
 		t.Error("expected client call")
 	}
 	expected := "Not installing tiller due to 'client-only' flag having been set"
@@ -114,18 +137,19 @@ func TestInitCmd_dryRun(t *testing.T) {
 	}()
 
 	var buf bytes.Buffer
-	fake := testclient.Fake{}
+	fc := fake.NewSimpleClientset()
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
-		kubeClient: fake.Extensions(),
+		kubeClient: fc.Extensions(),
 		clientOnly: true,
 		dryRun:     true,
+		namespace:  api.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Fatal(err)
 	}
-	if len(fake.Actions()) != 0 {
+	if len(fc.Actions()) != 0 {
 		t.Error("expected no server calls")
 	}
 

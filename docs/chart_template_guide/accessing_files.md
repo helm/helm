@@ -9,6 +9,19 @@ Helm provides access to files through the `.Files` object. Before we get going w
 	- Files in `templates/` cannot be accessed.
 - Charts to not preserve UNIX mode information, so file-level permissions will have no impact on the availability of a file when it comes to the `.Files` object.
 
+<!-- (see https://github.com/jonschlinkert/markdown-toc) -->
+
+<!-- toc -->
+
+- [Basic example](#basic-example)
+- [Path helpers](#path-helpers)
+- [Glob patterns](#glob-patterns)
+- [ConfigMap and Secrets utility functions](#configmap-and-secrets-utility-functions)
+- [Secrets](#secrets)
+- [Lines](#lines)
+
+<!-- tocstop -->
+
 ## Basic example
 
 With those caveats behind, let's write a template that reads three files into our ConfigMap. To get started, we will add three files to the chart, putting all three directly inside of the `mychart/` directory.
@@ -67,11 +80,29 @@ data:
     message = Goodbye from config 3
 ```
 
+## Path helpers
+
+When working with files, it can be very useful to perform some standard
+operations on the file paths themselves. To help with this, Helm imports many of
+the functions from Go's [path](https://golang.org/pkg/path/) package for your
+use. They are all accessible with the same names as in the Go package, but
+with a lowercase first letter. For example, `Base` becomes `base`, etc.
+
+The imported functions are:
+- Base
+- Dir
+- Ext
+- IsAbs
+- Clean
+
 ## Glob patterns
 
 As your chart grows, you may find you have a greater need to organize your
 files more, and so we provide a `Files.Glob(pattern string)` method to assist
-in extracting certain files with all the flexibility of [glob patterns](//godoc.org/github.com/gobwas/glob).
+in extracting certain files with all the flexibility of [glob patterns](https://godoc.org/github.com/gobwas/glob).
+
+`.Glob` returns a `Files` type, so you may call any of the `Files` methods on
+the returned object.
 
 For example, imagine the directory structure:
 
@@ -101,6 +132,36 @@ Or
 {{ end }}
 ```
 
+## ConfigMap and Secrets utility functions
+
+(Not present in version 2.0.2 or prior)
+
+It is very common to want to place file content into both configmaps and
+secrets, for mounting into your pods at run time. To help with this, we provide a
+couple utility methods on the `Files` type.
+
+For further organization, it is especially useful to use these methods in
+conjunction with the `Glob` method.
+
+Given the directory structure from the [Glob][Glob patterns] example above:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conf
+data:
+{{ (.Files.Glob "foo/*").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: very-secret
+type: Opaque
+data:
+{{ (.Files.Glob "bar/*").AsSecrets | indent 2 }}
+```
+
 ## Secrets
 
 When working with a Secret resource, you can import a file and have the template base-64 encode it for you:
@@ -128,6 +189,17 @@ type: Opaque
 data:
   token: |-
     bWVzc2FnZSA9IEhlbGxvIGZyb20gY29uZmlnIDEK
+```
+
+## Lines
+
+Sometimes it is desireable to access each line of a file in your template. We
+provide a convenient `Lines` method for this.
+
+```yaml
+data:
+  some-file.txt: {{ range .Files.Lines "foo/bar.txt" }}
+    {{ . }}{{ end }}
 ```
 
 Currently, there is no way to pass files external to the chart during `helm install`. So if you are asking users to supply data, it must be loaded using `helm install -f` or `helm install --set`.

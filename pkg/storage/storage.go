@@ -139,6 +139,19 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	return l, nil
 }
 
+func (s *Storage) Last(name string) (*rspb.Release, error) {
+	h, err := s.History(name)
+	if err != nil {
+		return nil, err
+	}
+	if len(h) == 0 {
+		return nil, fmt.Errorf("no revision for release %q", name)
+	}
+
+	relutil.Reverse(h, relutil.SortByRevision)
+	return h[0], nil
+}
+
 // makeKey concatenates a release name and version into
 // a string with format ```<release_name>#v<version>```.
 // This key is used to uniquely identify storage objects.

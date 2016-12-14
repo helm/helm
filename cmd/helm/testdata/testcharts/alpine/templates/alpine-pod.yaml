@@ -12,6 +12,7 @@ metadata:
     release: {{.Release.Name | quote }}
     # This makes it easy to audit chart usage.
     chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    values: {{.Values.test.Name}}
   annotations:
     "helm.sh/created": {{.Release.Time.Seconds | quote }}
 spec:
