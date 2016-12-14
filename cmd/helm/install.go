@@ -346,7 +346,9 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		if err != nil {
 			return filename, err
 		}
-		fmt.Printf("Fetched %s to %s\n", name, filename)
+		if flagDebug {
+			fmt.Printf("Fetched %s to %s\n", name, filename)
+		}
 		return lname, nil
 	} else if flagDebug {
 		return filename, err
