@@ -584,6 +584,9 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 	for i := 0; i < maxTries; i++ {
 		namer := moniker.New()
 		name := namer.NameSep("-")
+		//too long for services, for now get rid of first segment
+		name = strings.Split(name, "-")[1]
+		log.Println(name)
 		if len(name) > releaseNameMaxLen {
 			name = name[:releaseNameMaxLen]
 		}
@@ -722,6 +725,21 @@ func (s *ReleaseServer) getVersionSet() (versionSet, error) {
 	return newVersionSet(versions...), nil
 }
 
+type Dependency struct {
+	Name   string
+	Child  string
+	Parent string
+}
+
+func (d Dependency) String() string {
+	return fmt.Sprintf(`apiVersion: appcontroller.k8s/v1alpha1
+kind: Dependency
+metadata:
+  name: %s
+parent: %s
+child: %s`, d.Name, d.Parent, d.Child)
+}
+
 func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
@@ -787,6 +805,13 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		b.WriteString(wrapped)
 	}
 
+	deps := getDependencies(ch, manifests)
+
+	for _, d := range deps {
+		b.WriteString("\n---\n")
+		b.WriteString(d.String())
+	}
+
 	//log.Println(b.String())
 
 	return hooks, b, notes, nil
@@ -799,6 +824,52 @@ func getInput(in string, indent int) string {
 
 	return result
 
+}
+
+func getDependencies(ch *chart.Chart, manifests []manifest) []Dependency {
+	dependencies := []Dependency{}
+
+	for _, dep := range ch.Dependencies {
+		dependencies = append(dependencies, getDependencies(dep, manifests)...)
+		dependencies = append(dependencies, getInterChartDependencies(ch, dep, manifests)...)
+	}
+
+	return dependencies
+}
+
+// This is horribly hacky.
+func getInterChartDependencies(child, parent *chart.Chart, manifests []manifest) []Dependency {
+	parentNames := []string{}
+	childNames := []string{}
+	for _, m := range manifests {
+		kind := m.head.Kind
+		name := m.head.Metadata.Name
+		log.Printf("comparing %s and %s with %s/%s", child.Metadata.Name, parent.Metadata.Name, kind, name)
+		//so hacky I'm gonna cry. need to find a better way
+		//I had to remove first segment of helm release name for this to work (chart names were truncated from release name)
+		if strings.Contains(name, parent.Metadata.Name) {
+			log.Printf("adding %s to parents", strings.ToLower(kind)+"/"+name)
+			parentNames = append(parentNames, strings.ToLower(kind)+"/"+name)
+		}
+		if strings.Contains(name, child.Metadata.Name) {
+			log.Printf("adding %s to children", strings.ToLower(kind)+"/"+name)
+			childNames = append(childNames, strings.ToLower(kind)+"/"+name)
+		}
+	}
+
+	deps := make([]Dependency, 0, len(parentNames)*len(childNames))
+
+	for _, parent := range parentNames {
+		for _, child := range childNames {
+			namer := moniker.New()
+			deps = append(deps, Dependency{
+				Name:   namer.NameSep("-"),
+				Child:  child,
+				Parent: parent,
+			})
+		}
+	}
+	return deps
 }
 
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
