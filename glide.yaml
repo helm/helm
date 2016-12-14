@@ -51,3 +51,5 @@ import:
   - openpgp
 - package: github.com/gobwas/glob
   version: ^0.2.1
+- package: github.com/Mirantis/k8s-appcontroller
+  version: ~0.2.0

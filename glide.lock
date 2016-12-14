@@ -1,5 +1,5 @@
-hash: 8ae84a3225f6cc31f91cc42dc8cf816792a989838254964cdcaaa57c75c37cdc
-updated: 2016-12-01T17:35:05.940550036-07:00
+hash: 2399faed85452e1edc64e88c2120139ce2023892df79ec54ac4067d1695844da
+updated: 2016-12-06T14:33:44.101187141+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -218,6 +218,10 @@ imports:
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
+- name: github.com/Mirantis/k8s-appcontroller
+  version: 65c6ca6dc3e63ab51ee9ef88585140c28b2d67f7
+  subpackages:
+  - cmd/format
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/russross/blackfriday
@@ -298,7 +302,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/client-go
-  version: 0b62e254fe853d89b1d8d3445bbdab11bcc11bc3
+  version: 3a5b96cfd3d3ff1d53d979b4297c4f3b869aab09
   subpackages:
   - 1.4/pkg/api
   - 1.4/pkg/api/endpoints
