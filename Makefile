@@ -112,11 +112,12 @@ endif
 ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
+
 ifndef HAS_HG
-	$(error You must install Mercurial (hg))
-endif
+	@echo "Mercurial is not installed! Checking for Git"
 ifndef HAS_GIT
-	$(error You must install Git)
+	$(error You must either install Mercurial  or Git)
+endif
 endif
 	glide install --strip-vendor
 	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
