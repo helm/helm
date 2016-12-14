@@ -101,7 +101,6 @@ coverage:
 
 HAS_GLIDE := $(shell command -v glide;)
 HAS_GOX := $(shell command -v gox;)
-HAS_HG := $(shell command -v hg;)
 HAS_GIT := $(shell command -v git;)
 
 .PHONY: bootstrap
@@ -113,11 +112,8 @@ ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
 
-ifndef HAS_HG
-	@echo "Mercurial is not installed! Checking for Git"
 ifndef HAS_GIT
-	$(error You must either install Mercurial  or Git)
-endif
+	$(error You must install Git)
 endif
 	glide install --strip-vendor
 	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
