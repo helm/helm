@@ -119,7 +119,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	c := &Client{Factory: f}
-	if err := c.Update("test", objBody(codec, &listA), objBody(codec, &listB)); err != nil {
+	if err := c.Update("test", objBody(codec, &listA), objBody(codec, &listB), false); err != nil {
 		t.Fatal(err)
 	}
 

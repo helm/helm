@@ -44,7 +44,7 @@ func (k *mockKubeClient) Get(ns string, r io.Reader) (string, error) {
 func (k *mockKubeClient) Delete(ns string, r io.Reader) error {
 	return nil
 }
-func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader) error {
+func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, restart bool) error {
 	return nil
 }
 func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader) error {

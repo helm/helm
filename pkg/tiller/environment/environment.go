@@ -167,7 +167,7 @@ func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader) error {
+func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, restart bool) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }
