@@ -11,6 +11,8 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
 	- `Release.Time`: The time of the release
 	- `Release.Namespace`: The namespace to be released into (if the manifest doesn't override)
 	- `Release.Service`: The name of the releasing service (always `Tiller`).
+  - `Release.Revision`: The revision number of this release. It begins at 1 and is incremented for each `helm upgrade`.
+  - `Release.IsUpgrade`: This is set to `true` if the current operation is an upgrade.
 - `Values`: Values passed into the template from the `values.yaml` file and from user-supplied files. By default, `Values` is empty.
 - `Chart`: The contents of the `Chart.yaml` file. Any data in `Chart.yaml` will be accessible here. For example `{{.Chart.Name}}-{{.Chart.Version}}` will print out the `mychart-0.1.0`.
   - The available fields are listed in the [Charts Guide](charts.md)

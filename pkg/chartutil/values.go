@@ -304,6 +304,8 @@ type ReleaseOptions struct {
 	Name      string
 	Time      *timestamp.Timestamp
 	Namespace string
+	IsUpgrade bool
+	Revision  int
 }
 
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
@@ -314,6 +316,8 @@ func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOp
 			"Name":      options.Name,
 			"Time":      options.Time,
 			"Namespace": options.Namespace,
+			"IsUpgrade": options.IsUpgrade,
+			"Revision":  options.Revision,
 			"Service":   "Tiller",
 		},
 		"Chart": chrt.Metadata,

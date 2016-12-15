@@ -292,6 +292,10 @@ sensitive_.
 - `Release.Namespace`: The namespace the chart was released to.
 - `Release.Service`: The service that conducted the release. Usually
   this is `Tiller`.
+- `Release.IsUpgrade`: This is set to true if the current operation is an upgrade.
+  It is false for install.
+- `Release.Revision`: The revision number. It begins at 1, and increments with
+  each `helm upgrade`.
 - `Chart`: The contents of the `Chart.yaml`. Thus, the chart version is
   obtainable as `Chart.Version` and the maintainers are in
   `Chart.Maintainers`.

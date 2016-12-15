@@ -139,6 +139,7 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	return l, nil
 }
 
+// Last fetches the last revision of the named release.
 func (s *Storage) Last(name string) (*rspb.Release, error) {
 	h, err := s.History(name)
 	if err != nil {
