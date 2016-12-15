@@ -659,6 +659,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		Time:      ts,
 		Namespace: req.Namespace,
 		Revision:  revision,
+		IsInstall: true,
 	}
 	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
 	if err != nil {

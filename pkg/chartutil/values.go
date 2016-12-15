@@ -305,6 +305,7 @@ type ReleaseOptions struct {
 	Time      *timestamp.Timestamp
 	Namespace string
 	IsUpgrade bool
+	IsInstall bool
 	Revision  int
 }
 
@@ -317,6 +318,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOp
 			"Time":      options.Time,
 			"Namespace": options.Namespace,
 			"IsUpgrade": options.IsUpgrade,
+			"IsInstall": options.IsInstall,
 			"Revision":  options.Revision,
 			"Service":   "Tiller",
 		},

@@ -104,6 +104,7 @@ where:
 		Name:      "Seven Voyages",
 		Time:      timeconv.Now(),
 		Namespace: "al Basrah",
+		IsInstall: true,
 		Revision:  5,
 	}
 
@@ -125,6 +126,9 @@ where:
 	}
 	if relmap["IsUpgrade"].(bool) {
 		t.Errorf("Expected upgrade to be false.")
+	}
+	if !relmap["IsInstall"].(bool) {
+		t.Errorf("Expected install to be true.")
 	}
 	if data := res["Files"].(Files)["scheherazade/shahryar.txt"]; string(data) != "1,001 Nights" {
 		t.Errorf("Expected file '1,001 Nights', got %q", string(data))
