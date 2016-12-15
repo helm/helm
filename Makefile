@@ -101,7 +101,6 @@ coverage:
 
 HAS_GLIDE := $(shell command -v glide;)
 HAS_GOX := $(shell command -v gox;)
-HAS_HG := $(shell command -v hg;)
 HAS_GIT := $(shell command -v git;)
 
 .PHONY: bootstrap
@@ -112,9 +111,7 @@ endif
 ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
-ifndef HAS_HG
-	$(error You must install Mercurial (hg))
-endif
+
 ifndef HAS_GIT
 	$(error You must install Git)
 endif
