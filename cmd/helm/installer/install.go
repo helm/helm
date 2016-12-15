@@ -88,7 +88,12 @@ func generateDeployment(namespace, image string) *extensions.Deployment {
 							Name:            "tiller",
 							Image:           image,
 							ImagePullPolicy: "IfNotPresent",
-							Ports:           []api.ContainerPort{{ContainerPort: 44134, Name: "tiller"}},
+							Ports: []api.ContainerPort{
+								{ContainerPort: 44134, Name: "tiller"},
+							},
+							Env: []api.EnvVar{
+								{Name: "TILLER_NAMESPACE", Value: namespace},
+							},
 							LivenessProbe: &api.Probe{
 								Handler: api.Handler{
 									HTTPGet: &api.HTTPGetAction{

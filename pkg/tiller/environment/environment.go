@@ -33,8 +33,8 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-// TillerNamespace is the namespace tiller is running in.
-const TillerNamespace = "kube-system"
+// DefaultTillerNamespace is the default namespace for tiller.
+const DefaultTillerNamespace = "kube-system"
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"
