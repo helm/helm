@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -40,12 +41,14 @@ const (
 	localRepoIndexFilePath = "index.yaml"
 	homeEnvVar             = "HELM_HOME"
 	hostEnvVar             = "HELM_HOST"
+	tillerNamespaceEnvVar  = "TILLER_NAMESPACE"
 )
 
 var (
-	helmHome    string
-	tillerHost  string
-	kubeContext string
+	helmHome        string
+	tillerHost      string
+	tillerNamespace string
+	kubeContext     string
 )
 
 // flagDebug is a signal that the user wants additional output.
@@ -68,9 +71,10 @@ Common actions from this point include:
 - helm list:      list releases of charts
 
 Environment:
-  $HELM_HOME      set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $HELM_HOST      set an alternative Tiller host. The format is host:port
-  $KUBECONFIG     set an alternate Kubernetes configuration file (default "~/.kube/config")
+  $HELM_HOME          set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $HELM_HOST          set an alternative Tiller host. The format is host:port
+  $TILLER_NAMESPACE   set an alternative Tiller namespace (default "kube-namespace")
+  $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
 func newRootCmd(out io.Writer) *cobra.Command {
@@ -83,16 +87,12 @@ func newRootCmd(out io.Writer) *cobra.Command {
 			teardown()
 		},
 	}
-	home := os.Getenv(homeEnvVar)
-	if home == "" {
-		home = "$HOME/.helm"
-	}
-	thost := os.Getenv(hostEnvVar)
 	p := cmd.PersistentFlags()
-	p.StringVar(&helmHome, "home", home, "location of your Helm config. Overrides $HELM_HOME")
-	p.StringVar(&tillerHost, "host", thost, "address of tiller. Overrides $HELM_HOST")
+	p.StringVar(&helmHome, "home", defaultHelmHome(), "location of your Helm config. Overrides $HELM_HOME")
+	p.StringVar(&tillerHost, "host", defaultHelmHost(), "address of tiller. Overrides $HELM_HOST")
 	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	p.BoolVar(&flagDebug, "debug", false, "enable verbose output")
+	p.StringVar(&tillerNamespace, "tiller-namespace", defaultTillerNamespace(), "namespace of tiller")
 
 	// Tell gRPC not to log to console.
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
@@ -146,7 +146,7 @@ func main() {
 
 func setupConnection(c *cobra.Command, args []string) error {
 	if tillerHost == "" {
-		tunnel, err := newTillerPortForwarder(environment.TillerNamespace, kubeContext)
+		tunnel, err := newTillerPortForwarder(tillerNamespace, kubeContext)
 		if err != nil {
 			return err
 		}
@@ -194,8 +194,26 @@ func prettyError(err error) error {
 	return errors.New(grpc.ErrorDesc(err))
 }
 
+func defaultHelmHome() string {
+	if home := os.Getenv(homeEnvVar); home != "" {
+		return home
+	}
+	return filepath.Join(os.Getenv("HOME"), ".helm")
+}
+
 func homePath() string {
 	return os.ExpandEnv(helmHome)
+}
+
+func defaultHelmHost() string {
+	return os.Getenv(hostEnvVar)
+}
+
+func defaultTillerNamespace() string {
+	if ns := os.Getenv(tillerNamespaceEnvVar); ns != "" {
+		return ns
+	}
+	return environment.DefaultTillerNamespace
 }
 
 // getKubeClient is a convenience method for creating kubernetes config and client

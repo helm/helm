@@ -57,6 +57,10 @@ func TestDeploymentManifest(t *testing.T) {
 		if got := dep.Spec.Template.Spec.Containers[0].Image; got != tt.expect {
 			t.Errorf("%s: expected image %q, got %q", tt.name, tt.expect, got)
 		}
+
+		if got := dep.Spec.Template.Spec.Containers[0].Env[0].Value; got != api.NamespaceDefault {
+			t.Errorf("%s: expected namespace %q, got %q", tt.name, api.NamespaceDefault, got)
+		}
 	}
 }
 

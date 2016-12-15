@@ -110,11 +110,15 @@ You can explicitly tell `helm init` to...
 - Install the canary build with the `--canary-image` flag
 - Install a particular image (version) with `--tiller-image`
 - Install to a particular cluster with `--kube-context`
+- Install into a particular namespace with `--tiller-namespace`
 
 Once Tiller is installed, running `helm version` should show you both
 the client and server version. (If it shows only the client version,
 `helm` cannot yet connect to the server. Use `kubectl` to see if any
 `tiller` pods are running.)
+
+If Helm will look for Tiller in the `kube-system` namespace unless
+`--tiller-namespace` or `TILLER_NAMESPACE` is set.
 
 ### Installing Tiller Canary Builds
 

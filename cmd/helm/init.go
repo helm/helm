@@ -29,7 +29,6 @@ import (
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/repo"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 const initDesc = `
@@ -75,8 +74,7 @@ type initCmd struct {
 
 func newInitCmd(out io.Writer) *cobra.Command {
 	i := &initCmd{
-		out:       out,
-		namespace: environment.TillerNamespace,
+		out: out,
 	}
 
 	cmd := &cobra.Command{
@@ -87,6 +85,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return errors.New("This command does not accept arguments")
 			}
+			i.namespace = tillerNamespace
 			i.home = helmpath.Home(homePath())
 			return i.run()
 		},
