@@ -30,10 +30,10 @@ func TestLoadChartfile(t *testing.T) {
 		t.Errorf("Failed to open %s: %s", testfile, err)
 		return
 	}
-	verifyChartfile(t, f)
+	verifyChartfile(t, f, "frobnitz")
 }
 
-func verifyChartfile(t *testing.T, f *chart.Metadata) {
+func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 
 	if f == nil {
 		t.Fatal("Failed verifyChartfile because f is nil")
@@ -44,8 +44,8 @@ func verifyChartfile(t *testing.T, f *chart.Metadata) {
 		t.Errorf("Expected API Version %q, got %q", ApiVersionV1, f.ApiVersion)
 	}
 
-	if f.Name != "frobnitz" {
-		t.Errorf("Expected frobnitz, got %s", f.Name)
+	if f.Name != name {
+		t.Errorf("Expected %s, got %s", name, f.Name)
 	}
 
 	if f.Description != "This is a frobnitz." {

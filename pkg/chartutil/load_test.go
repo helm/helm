@@ -42,6 +42,18 @@ func TestLoadFile(t *testing.T) {
 	verifyRequirements(t, c)
 }
 
+// Packaging the chart on a Windows machine will produce an
+// archive that has \\ as delimiters. Test that we support these archives
+func TestLoadFileBackslash(t *testing.T) {
+	c, err := Load("testdata/frobnitz_backslash-1.2.3.tgz")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyChartFileAndTemplate(t, c, "frobnitz_backslash")
+	verifyChart(t, c)
+	verifyRequirements(t, c)
+}
+
 func verifyChart(t *testing.T, c *chart.Chart) {
 	if c.Metadata.Name == "" {
 		t.Fatalf("No chart metadata found on %v", c)
@@ -142,7 +154,12 @@ func verifyRequirementsLock(t *testing.T, c *chart.Chart) {
 }
 
 func verifyFrobnitz(t *testing.T, c *chart.Chart) {
-	verifyChartfile(t, c.Metadata)
+	verifyChartFileAndTemplate(t, c, "frobnitz")
+}
+
+func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
+
+	verifyChartfile(t, c.Metadata, name)
 
 	if len(c.Templates) != 1 {
 		t.Fatalf("Expected 1 template, got %d", len(c.Templates))

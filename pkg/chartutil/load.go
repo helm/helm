@@ -84,8 +84,17 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 			continue
 		}
 
-		parts := strings.Split(hd.Name, "/")
-		n := strings.Join(parts[1:], "/")
+		// Archive could contain \ if generated on Windows
+		delimiter := "/"
+		if strings.ContainsRune(hd.Name, '\\') {
+			delimiter = "\\"
+		}
+
+		parts := strings.Split(hd.Name, delimiter)
+		n := strings.Join(parts[1:], delimiter)
+
+		// Normalize the path to the / delimiter
+		n = strings.Replace(n, delimiter, "/", -1)
 
 		if parts[0] == "Chart.yaml" {
 			return nil, errors.New("chart yaml not in base directory")
