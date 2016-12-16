@@ -72,7 +72,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
-	f.BoolVar(&rollback.recreate, "recreate", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 
 	return cmd

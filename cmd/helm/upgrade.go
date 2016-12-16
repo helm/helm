@@ -93,7 +93,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
-	f.BoolVar(&upgrade.recreate, "recreate", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.StringVar(&upgrade.values, "set", "", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
