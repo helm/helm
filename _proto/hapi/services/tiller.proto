@@ -189,7 +189,7 @@ message UpdateReleaseRequest {
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
 	bool disable_hooks = 5;
 	// Performs pods restart for resources if applicable
-	bool restart = 6;
+	bool recreate = 6;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -207,7 +207,7 @@ message RollbackReleaseRequest {
 	// Version is the version of the release to deploy.
 	int32 version = 4;
 	// Performs pods restart for resources if applicable
-	bool restart = 5;
+	bool recreate = 5;
 }
 
 // RollbackReleaseResponse is the response to an update request.

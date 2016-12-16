@@ -131,7 +131,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Update(namespace string, originalReader, modifiedReader io.Reader, restart bool) error
+	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -167,7 +167,7 @@ func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, restart bool) error {
+func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, recreate bool) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }

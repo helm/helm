@@ -496,11 +496,11 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	return res, nil
 }
 
-func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, restart bool) error {
+func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, recreate bool) error {
 	kubeCli := s.env.KubeClient
 	current := bytes.NewBufferString(currentRelease.Manifest)
 	target := bytes.NewBufferString(targetRelease.Manifest)
-	return kubeCli.Update(targetRelease.Namespace, current, target, restart)
+	return kubeCli.Update(targetRelease.Namespace, current, target, recreate)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with

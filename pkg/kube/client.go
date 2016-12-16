@@ -164,7 +164,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, currentReader, targetReader io.Reader, restart bool) error {
+func (c *Client) Update(namespace string, currentReader, targetReader io.Reader, recreate bool) error {
 	currentInfos, err := c.newBuilder(namespace, currentReader).Do().Infos()
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -205,7 +205,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader,
 			return err
 		}
 
-		if err := updateResource(c, info, currentObj, restart); err != nil {
+		if err := updateResource(c, info, currentObj, recreate); err != nil {
 			if alreadyExistErr, ok := err.(ErrAlreadyExists); ok {
 				log.Printf(alreadyExistErr.errorMsg)
 			} else {
@@ -301,7 +301,7 @@ func deleteResource(info *resource.Info) error {
 	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, restart bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, recreate bool) error {
 	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
 	original, err := runtime.Encode(encoder, currentObj)
 	if err != nil {
@@ -330,30 +330,30 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return err
 	}
 
-	if restart {
+	if recreate {
 		kind := target.Mapping.GroupVersionKind.Kind
 
 		client, _ := c.ClientSet()
 		switch kind {
 		case "ReplicationController":
 			rc := currentObj.(*v1.ReplicationController)
-			err = restartPods(client, target.Namespace, rc.Spec.Selector)
+			err = recreatePods(client, target.Namespace, rc.Spec.Selector)
 		case "DaemonSet":
 			daemonSet := currentObj.(*v1beta1.DaemonSet)
-			err = restartPods(client, target.Namespace, daemonSet.Spec.Selector.MatchLabels)
+			err = recreatePods(client, target.Namespace, daemonSet.Spec.Selector.MatchLabels)
 		case "StatefulSet":
 			petSet := currentObj.(*apps.StatefulSet)
-			err = restartPods(client, target.Namespace, petSet.Spec.Selector.MatchLabels)
+			err = recreatePods(client, target.Namespace, petSet.Spec.Selector.MatchLabels)
 		case "ReplicaSet":
 			replicaSet := currentObj.(*v1beta1.ReplicaSet)
-			err = restartPods(client, target.Namespace, replicaSet.Spec.Selector.MatchLabels)
+			err = recreatePods(client, target.Namespace, replicaSet.Spec.Selector.MatchLabels)
 		}
 	}
 
 	return err
 }
 
-func restartPods(client *internalclientset.Clientset, namespace string, selector map[string]string) error {
+func recreatePods(client *internalclientset.Clientset, namespace string, selector map[string]string) error {
 	pods, err := client.Pods(namespace).List(api.ListOptions{
 		FieldSelector: fields.Everything(),
 		LabelSelector: labels.Set(selector).AsSelector(),

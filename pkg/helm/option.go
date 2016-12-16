@@ -41,7 +41,7 @@ type options struct {
 	// if set, re-use an existing name
 	reuseName bool
 	// if set, performs pod restart during upgrade/rollback
-	restart bool
+	recreate bool
 	// if set, skip running hooks
 	disableHooks bool
 	// name of release
@@ -214,10 +214,10 @@ func RollbackDryRun(dry bool) RollbackOption {
 	}
 }
 
-// RollbackDryRun will (if true) execute a rollback as a dry run.
-func RollbackRestart(restart bool) RollbackOption {
+// RollbackRecreate will (if true) recreate pods after rollback.
+func RollbackRecreate(recreate bool) RollbackOption {
 	return func(opts *options) {
-		opts.restart = restart
+		opts.recreate = recreate
 	}
 }
 
@@ -242,10 +242,10 @@ func UpgradeDryRun(dry bool) UpdateOption {
 	}
 }
 
-// UpgradeDryRun will (if true) execute an upgrade as a dry run.
-func UpgradeRestart(restart bool) UpdateOption {
+// UpgradeRecreate will (if true) recreate pods after upgrade.
+func UpgradeRecreate(recreate bool) UpdateOption {
 	return func(opts *options) {
-		opts.restart = restart
+		opts.recreate = recreate
 	}
 }
 

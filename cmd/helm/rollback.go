@@ -82,7 +82,7 @@ func (r *rollbackCmd) run() error {
 	_, err := r.client.RollbackRelease(
 		r.name,
 		helm.RollbackDryRun(r.dryRun),
-		helm.RollbackRestart(r.restart),
+		helm.RollbackRecreate(r.restart),
 		helm.RollbackDisableHooks(r.disableHooks),
 		helm.RollbackVersion(r.revision),
 	)

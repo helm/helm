@@ -151,7 +151,7 @@ func (u *upgradeCmd) run() error {
 		chartPath,
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
-		helm.UpgradeRestart(u.restart),
+		helm.UpgradeRecreate(u.restart),
 		helm.UpgradeDisableHooks(u.disableHooks))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
