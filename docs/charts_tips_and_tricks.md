@@ -80,7 +80,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include "mychart/templates/configmap.yaml" . | sha256sum }}
+        checksum/config: {{ include (print $.Chart.Name "/templates/secret.yaml") . | sha256sum }}
 [...]    
 ```
 
