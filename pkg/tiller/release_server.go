@@ -393,11 +393,17 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	// If new values were not supplied in the upgrade, re-use the existing values.
 	s.reuseValues(req, currentRelease)
 
+	// Increment revision count. This is passed to templates, and also stored on
+	// the release object.
+	revision := currentRelease.Version + 1
+
 	ts := timeconv.Now()
 	options := chartutil.ReleaseOptions{
 		Name:      req.Name,
 		Time:      ts,
 		Namespace: currentRelease.Namespace,
+		IsUpgrade: true,
+		Revision:  int(revision),
 	}
 
 	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
@@ -421,7 +427,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 			LastDeployed:  ts,
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
 		},
-		Version:  currentRelease.Version + 1,
+		Version:  revision,
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
 	}
@@ -646,8 +652,15 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, err
 	}
 
+	revision := 1
 	ts := timeconv.Now()
-	options := chartutil.ReleaseOptions{Name: name, Time: ts, Namespace: req.Namespace}
+	options := chartutil.ReleaseOptions{
+		Name:      name,
+		Time:      ts,
+		Namespace: req.Namespace,
+		Revision:  revision,
+		IsInstall: true,
+	}
 	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
 	if err != nil {
 		return nil, err
@@ -688,7 +701,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		},
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
-		Version:  1,
+		Version:  int32(revision),
 	}
 	if len(notesTxt) > 0 {
 		rel.Info.Status.Notes = notesTxt

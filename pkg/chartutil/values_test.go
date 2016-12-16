@@ -104,6 +104,8 @@ where:
 		Name:      "Seven Voyages",
 		Time:      timeconv.Now(),
 		Namespace: "al Basrah",
+		IsInstall: true,
+		Revision:  5,
 	}
 
 	res, err := ToRenderValues(c, v, o)
@@ -115,8 +117,18 @@ where:
 	if name := res["Chart"].(*chart.Metadata).Name; name != "test" {
 		t.Errorf("Expected chart name 'test', got %q", name)
 	}
-	if name := res["Release"].(map[string]interface{})["Name"]; fmt.Sprint(name) != "Seven Voyages" {
+	relmap := res["Release"].(map[string]interface{})
+	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
 		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
+	}
+	if rev := relmap["Revision"]; rev.(int) != 5 {
+		t.Errorf("Expected release revision %d, got %q", 5, rev)
+	}
+	if relmap["IsUpgrade"].(bool) {
+		t.Errorf("Expected upgrade to be false.")
+	}
+	if !relmap["IsInstall"].(bool) {
+		t.Errorf("Expected install to be true.")
 	}
 	if data := res["Files"].(Files)["scheherazade/shahryar.txt"]; string(data) != "1,001 Nights" {
 		t.Errorf("Expected file '1,001 Nights', got %q", string(data))
