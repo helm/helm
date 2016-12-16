@@ -216,15 +216,30 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 		return dg
 	}
 
-	// We manually copy (instead of using coalesceTables) because (a) we need
-	// to prevent loops, and (b) we disallow nesting tables under globals.
-	// Globals should _just_ be k/v pairs.
+	// EXPERIMENTAL: In the past, we have disallowed globals to test tables. This
+	// reverses that decision. It may somehow be possible to introduce a loop
+	// here, but I haven't found a way. So for the time being, let's allow
+	// tables in globals.
 	for key, val := range sg {
 		if istable(val) {
-			log.Printf("warning: nested values are illegal in globals (%s)", key)
-			continue
+			vv := copyMap(val.(map[string]interface{}))
+			if destv, ok := dg[key]; ok {
+				if destvmap, ok := destv.(map[string]interface{}); ok {
+					// Basically, we reverse order of coalesce here to merge
+					// top-down.
+					coalesceTables(vv, destvmap)
+					dg[key] = vv
+					continue
+				} else {
+					log.Printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
+				}
+			} else {
+				// Here there is no merge. We're just adding.
+				dg[key] = vv
+			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
-			log.Printf("warning: nested values are illegal in globals (%s)", key)
+			// It's not clear if this condition can actually ever trigger.
+			log.Printf("key %s is table. Skipping", key)
 			continue
 		}
 		// TODO: Do we need to do any additional checking on the value?
@@ -232,7 +247,14 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 	}
 	dest[GlobalKey] = dg
 	return dest
+}
 
+func copyMap(src map[string]interface{}) map[string]interface{} {
+	dest := make(map[string]interface{}, len(src))
+	for k, v := range src {
+		dest[k] = v
+	}
+	return dest
 }
 
 // coalesceValues builds up a values map for a particular chart.
