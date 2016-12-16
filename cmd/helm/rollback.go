@@ -35,7 +35,7 @@ type rollbackCmd struct {
 	name         string
 	revision     int32
 	dryRun       bool
-	restart      bool
+	recreate     bool
 	disableHooks bool
 	out          io.Writer
 	client       helm.Interface
@@ -72,7 +72,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
-	f.BoolVar(&rollback.restart, "restart", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 
 	return cmd
@@ -82,7 +82,7 @@ func (r *rollbackCmd) run() error {
 	_, err := r.client.RollbackRelease(
 		r.name,
 		helm.RollbackDryRun(r.dryRun),
-		helm.RollbackRecreate(r.restart),
+		helm.RollbackRecreate(r.recreate),
 		helm.RollbackDisableHooks(r.disableHooks),
 		helm.RollbackVersion(r.revision),
 	)
