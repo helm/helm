@@ -263,11 +263,16 @@ top: yup
 global:
   name: Ishmael
   subject: Queequeg
+  nested:
+    boat: true
 
 pequod:
   global:
     name: Stinky
     harpooner: Tashtego
+    nested:
+      boat: false
+      sail: true
   ahab:
     scope: whale
 `
@@ -307,6 +312,12 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.pequod.global.subject}}", "Queequeg"},
 		{"{{.spouter.global.name}}", "Ishmael"},
 		{"{{.spouter.global.harpooner}}", "<no value>"},
+
+		{"{{.global.nested.boat}}", "true"},
+		{"{{.pequod.global.nested.boat}}", "true"},
+		{"{{.spouter.global.nested.boat}}", "true"},
+		{"{{.pequod.global.nested.sail}}", "true"},
+		{"{{.spouter.global.nested.sail}}", "<no value>"},
 	}
 
 	for _, tt := range tests {
