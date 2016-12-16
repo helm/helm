@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"k8s.io/helm/pkg/helm"
+	pb "k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -53,6 +54,7 @@ type versionCmd struct {
 	client     helm.Interface
 	showClient bool
 	showServer bool
+	short      bool
 }
 
 func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -80,8 +82,9 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.BoolVarP(&version.showClient, "client", "c", false, "if set, show the client version")
-	f.BoolVarP(&version.showServer, "server", "s", false, "if set, show the server version")
+	f.BoolVarP(&version.showClient, "client", "c", false, "client version only")
+	f.BoolVarP(&version.showServer, "server", "s", false, "server version only")
+	f.BoolVar(&version.short, "short", false, "print the version number")
 
 	return cmd
 }
@@ -90,7 +93,7 @@ func (v *versionCmd) run() error {
 
 	if v.showClient {
 		cv := version.GetVersionProto()
-		fmt.Fprintf(v.out, "Client: %#v\n", cv)
+		fmt.Fprintf(v.out, "Client: %s\n", formatVersion(cv, v.short))
 	}
 
 	if !v.showServer {
@@ -107,6 +110,13 @@ func (v *versionCmd) run() error {
 		}
 		return errors.New("cannot connect to Tiller")
 	}
-	fmt.Fprintf(v.out, "Server: %#v\n", resp.Version)
+	fmt.Fprintf(v.out, "Server: %s\n", formatVersion(resp.Version, v.short))
 	return nil
+}
+
+func formatVersion(v *pb.Version, short bool) string {
+	if short {
+		return fmt.Sprintf("%s+g%s", v.SemVer, v.GitCommit[:7])
+	}
+	return fmt.Sprintf("%#v", v)
 }
