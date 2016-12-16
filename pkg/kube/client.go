@@ -27,12 +27,18 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
+	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/strategicpatch"
 	"k8s.io/kubernetes/pkg/watch"
@@ -158,7 +164,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, currentReader, targetReader io.Reader) error {
+func (c *Client) Update(namespace string, currentReader, targetReader io.Reader, recreate bool) error {
 	currentInfos, err := c.newBuilder(namespace, currentReader).Do().Infos()
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -199,7 +205,7 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader)
 			return err
 		}
 
-		if err := updateResource(info, currentObj); err != nil {
+		if err := updateResource(c, info, currentObj, recreate); err != nil {
 			if alreadyExistErr, ok := err.(ErrAlreadyExists); ok {
 				log.Printf(alreadyExistErr.errorMsg)
 			} else {
@@ -295,7 +301,7 @@ func deleteResource(info *resource.Info) error {
 	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
 }
 
-func updateResource(target *resource.Info, currentObj runtime.Object) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, recreate bool) error {
 	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
 	original, err := runtime.Encode(encoder, currentObj)
 	if err != nil {
@@ -319,7 +325,61 @@ func updateResource(target *resource.Info, currentObj runtime.Object) error {
 	// send patch to server
 	helper := resource.NewHelper(target.Client, target.Mapping)
 	_, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch)
+
+	if err != nil {
+		return err
+	}
+
+	if recreate {
+		kind := target.Mapping.GroupVersionKind.Kind
+
+		client, _ := c.ClientSet()
+		switch kind {
+		case "ReplicationController":
+			rc := currentObj.(*v1.ReplicationController)
+			err = recreatePods(client, target.Namespace, rc.Spec.Selector)
+		case "DaemonSet":
+			daemonSet := currentObj.(*v1beta1.DaemonSet)
+			err = recreatePods(client, target.Namespace, daemonSet.Spec.Selector.MatchLabels)
+		case "StatefulSet":
+			petSet := currentObj.(*apps.StatefulSet)
+			err = recreatePods(client, target.Namespace, petSet.Spec.Selector.MatchLabels)
+		case "ReplicaSet":
+			replicaSet := currentObj.(*v1beta1.ReplicaSet)
+			err = recreatePods(client, target.Namespace, replicaSet.Spec.Selector.MatchLabels)
+		}
+	}
+
 	return err
+}
+
+func recreatePods(client *internalclientset.Clientset, namespace string, selector map[string]string) error {
+	pods, err := client.Pods(namespace).List(api.ListOptions{
+		FieldSelector: fields.Everything(),
+		LabelSelector: labels.Set(selector).AsSelector(),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// Restart pods
+	for _, pod := range pods.Items {
+		log.Printf("Restarting pod: %v/%v", pod.Namespace, pod.Name)
+
+		// Delete each pod for get them restarted with changed spec.
+		err := client.Pods(pod.Namespace).Delete(pod.Name, &api.DeleteOptions{
+			Preconditions: &api.Preconditions{
+				UID: &pod.UID,
+			},
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func watchUntilReady(info *resource.Info) error {

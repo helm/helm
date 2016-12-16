@@ -133,6 +133,7 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOptio
 	req.DryRun = h.opts.dryRun
 	req.Name = rlsName
 	req.DisableHooks = h.opts.disableHooks
+	req.Restart = h.opts.recreate
 	ctx := NewContext()
 
 	if h.opts.before != nil {

@@ -340,7 +340,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(originalRelease, updatedRelease); err != nil {
+	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Restart); err != nil {
 		log.Printf("warning: Release Upgrade %q failed: %s", updatedRelease.Name, err)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
 		updatedRelease.Info.Status.Code = release.Status_FAILED
@@ -478,7 +478,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(currentRelease, targetRelease); err != nil {
+	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Restart); err != nil {
 		log.Printf("warning: Release Rollback %q failed: %s", targetRelease.Name, err)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
 		targetRelease.Info.Status.Code = release.Status_FAILED
@@ -502,11 +502,11 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	return res, nil
 }
 
-func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release) error {
+func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, recreate bool) error {
 	kubeCli := s.env.KubeClient
 	current := bytes.NewBufferString(currentRelease.Manifest)
 	target := bytes.NewBufferString(targetRelease.Manifest)
-	return kubeCli.Update(targetRelease.Namespace, current, target)
+	return kubeCli.Update(targetRelease.Namespace, current, target, recreate)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -831,7 +831,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
 
-		if err := s.performKubeUpdate(old, r); err != nil {
+		if err := s.performKubeUpdate(old, r, false); err != nil {
 			log.Printf("warning: Release replace %q failed: %s", r.Name, err)
 			old.Info.Status.Code = release.Status_SUPERSEDED
 			r.Info.Status.Code = release.Status_FAILED
