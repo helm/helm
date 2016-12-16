@@ -82,6 +82,14 @@ func TestInstall(t *testing.T) {
 			expected: "aeneas",
 			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
+		// Install, with timeout
+		{
+			name:     "install with a timeout",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--timeout 120", " "),
+			expected: "foobar",
+			resp:     releaseMock(&releaseOptions{name: "foobar"}),
+		},
 		// Install, using the name-template
 		{
 			name:     "install with name-template",

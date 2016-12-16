@@ -258,6 +258,12 @@ func skipIfNotFound(err error) error {
 	return err
 }
 
+func watchTimeout(t time.Duration) ResourceActorFunc {
+	return func(info *resource.Info) error {
+		return watchUntilReady(t, info)
+	}
+}
+
 // WatchUntilReady watches the resource given in the reader, and waits until it is ready.
 //
 // This function is mainly for hook implementations. It watches for a resource to
@@ -270,10 +276,10 @@ func skipIfNotFound(err error) error {
 //   ascertained by watching the Status fields in a job's output.
 //
 // Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(namespace string, reader io.Reader) error {
+func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64) error {
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(c, namespace, reader, watchUntilReady)
+	return perform(c, namespace, reader, watchTimeout(time.Duration(timeout)*time.Second))
 }
 
 func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc) error {
@@ -382,15 +388,14 @@ func recreatePods(client *internalclientset.Clientset, namespace string, selecto
 	return nil
 }
 
-func watchUntilReady(info *resource.Info) error {
+func watchUntilReady(timeout time.Duration, info *resource.Info) error {
 	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
 	if err != nil {
 		return err
 	}
 
 	kind := info.Mapping.GroupVersionKind.Kind
-	log.Printf("Watching for changes to %s %s", kind, info.Name)
-	timeout := time.Minute * 5
+	log.Printf("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
 
 	// What we watch for depends on the Kind.
 	// - For a Job, we watch for completion.

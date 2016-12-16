@@ -122,7 +122,7 @@ type KubeClient interface {
 	// For Jobs, "ready" means the job ran to completion (excited without error).
 	// For all other kinds, it means the kind was created or modified without
 	// error.
-	WatchUntilReady(namespace string, reader io.Reader) error
+	WatchUntilReady(namespace string, reader io.Reader, timeout int64) error
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist
@@ -161,7 +161,7 @@ func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
 }
 
 // WatchUntilReady implements KubeClient WatchUntilReady.
-func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
+func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader, t int64) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }

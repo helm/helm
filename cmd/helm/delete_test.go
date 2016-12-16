@@ -34,6 +34,13 @@ func TestDelete(t *testing.T) {
 			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
 		},
 		{
+			name:     "delete with timeout",
+			args:     []string{"aeneas"},
+			flags:    []string{"--timeout", "120"},
+			expected: "",
+			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
+		},
+		{
 			name:     "delete without hooks",
 			args:     []string{"aeneas"},
 			flags:    []string{"--no-hooks"},

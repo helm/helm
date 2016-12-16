@@ -63,6 +63,7 @@ type upgradeCmd struct {
 	install      bool
 	namespace    string
 	version      string
+	timeout      int64
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -102,6 +103,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.StringVar(&upgrade.namespace, "namespace", "default", "namespace to install the release into (only used if --install is set)")
 	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.Int64Var(&upgrade.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
@@ -136,6 +138,7 @@ func (u *upgradeCmd) run() error {
 				keyring:      u.keyring,
 				values:       u.values,
 				namespace:    u.namespace,
+				timeout:      u.timeout,
 			}
 			return ic.run()
 		}
@@ -152,7 +155,8 @@ func (u *upgradeCmd) run() error {
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
-		helm.UpgradeDisableHooks(u.disableHooks))
+		helm.UpgradeDisableHooks(u.disableHooks),
+		helm.UpgradeTimeout(u.timeout))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}

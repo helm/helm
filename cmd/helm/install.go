@@ -104,6 +104,7 @@ type installCmd struct {
 	values       string
 	nameTemplate string
 	version      string
+	timeout      int64
 }
 
 type valueFiles []string
@@ -160,6 +161,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
+	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
 
 	return cmd
 }
@@ -195,7 +197,8 @@ func (i *installCmd) run() error {
 		helm.ReleaseName(i.name),
 		helm.InstallDryRun(i.dryRun),
 		helm.InstallReuseName(i.replace),
-		helm.InstallDisableHooks(i.disableHooks))
+		helm.InstallDisableHooks(i.disableHooks),
+		helm.InstallTimeout(i.timeout))
 	if err != nil {
 		return prettyError(err)
 	}

@@ -39,6 +39,7 @@ type rollbackCmd struct {
 	disableHooks bool
 	out          io.Writer
 	client       helm.Interface
+	timeout      int64
 }
 
 func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -74,6 +75,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
+	f.Int64Var(&rollback.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
 
 	return cmd
 }
@@ -85,7 +87,7 @@ func (r *rollbackCmd) run() error {
 		helm.RollbackRecreate(r.recreate),
 		helm.RollbackDisableHooks(r.disableHooks),
 		helm.RollbackVersion(r.revision),
-	)
+		helm.RollbackTimeout(r.timeout))
 	if err != nil {
 		return prettyError(err)
 	}
