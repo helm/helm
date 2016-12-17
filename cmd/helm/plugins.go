@@ -63,7 +63,7 @@ func loadPlugins(baseCmd *cobra.Command, home helmpath.Home, out io.Writer) {
 			RunE: func(cmd *cobra.Command, args []string) error {
 
 				k, u := manuallyProcessArgs(args)
-				if err := cmd.ParseFlags(k); err != nil {
+				if err := cmd.Parent().ParseFlags(k); err != nil {
 					return err
 				}
 
