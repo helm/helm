@@ -44,8 +44,8 @@ type docsCmd struct {
 	topCmd        *cobra.Command
 }
 
-func newDocsCmd(out io.Writer, topCmd *cobra.Command) *cobra.Command {
-	dc := &docsCmd{out: out, topCmd: topCmd}
+func newDocsCmd(out io.Writer) *cobra.Command {
+	dc := &docsCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:    "docs",
@@ -53,8 +53,8 @@ func newDocsCmd(out io.Writer, topCmd *cobra.Command) *cobra.Command {
 		Long:   docsDesc,
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dc.run()
-			return nil
+			dc.topCmd = cmd.Root()
+			return dc.run()
 		},
 	}
 

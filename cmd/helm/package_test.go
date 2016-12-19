@@ -107,7 +107,7 @@ func TestPackage(t *testing.T) {
 
 	for _, tt := range tests {
 		buf := bytes.NewBuffer(nil)
-		c := newPackageCmd(nil, buf)
+		c := newPackageCmd(buf)
 
 		// This is an unfortunate byproduct of the tmpdir
 		if v, ok := tt.flags["keyring"]; ok && len(v) > 0 {

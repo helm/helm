@@ -30,7 +30,6 @@ import (
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 )
@@ -56,7 +55,7 @@ type packageCmd struct {
 	home    helmpath.Home
 }
 
-func newPackageCmd(client helm.Interface, out io.Writer) *cobra.Command {
+func newPackageCmd(out io.Writer) *cobra.Command {
 	pkg := &packageCmd{
 		out: out,
 	}

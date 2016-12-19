@@ -94,41 +94,39 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	p.BoolVar(&flagDebug, "debug", false, "enable verbose output")
 	p.StringVar(&tillerNamespace, "tiller-namespace", defaultTillerNamespace(), "namespace of tiller")
 
-	// Tell gRPC not to log to console.
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-
-	rup := newRepoUpdateCmd(out)
-	rup.Deprecated = "use 'helm repo update'\n"
-
 	cmd.AddCommand(
+		// chart commands
 		newCreateCmd(out),
-		newDeleteCmd(nil, out),
 		newDependencyCmd(out),
 		newFetchCmd(out),
-		newGetCmd(nil, out),
-		newHomeCmd(out),
-		newHistoryCmd(nil, out),
-		newInitCmd(out),
-		newInspectCmd(nil, out),
-		newInstallCmd(nil, out),
+		newInspectCmd(out),
 		newLintCmd(out),
-		newListCmd(nil, out),
-		newPackageCmd(nil, out),
+		newPackageCmd(out),
 		newRepoCmd(out),
-		newRollbackCmd(nil, out),
 		newSearchCmd(out),
 		newServeCmd(out),
+		newVerifyCmd(out),
+
+		// release commands
+		newDeleteCmd(nil, out),
+		newGetCmd(nil, out),
+		newHistoryCmd(nil, out),
+		newInstallCmd(nil, out),
+		newListCmd(nil, out),
+		newRollbackCmd(nil, out),
 		newStatusCmd(nil, out),
 		newUpgradeCmd(nil, out),
-		newVerifyCmd(out),
+
+		newCompletionCmd(out),
+		newHomeCmd(out),
+		newInitCmd(out),
 		newVersionCmd(nil, out),
-		newCompletionCmd(out, cmd),
 
 		// Hidden documentation generator command: 'helm docs'
-		newDocsCmd(out, cmd),
+		newDocsCmd(out),
 
 		// Deprecated
-		rup,
+		markDeprecated(newRepoUpdateCmd(out), "use 'helm repo update'\n"),
 	)
 
 	// Find and add plugins
@@ -137,11 +135,21 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
+func init() {
+	// Tell gRPC not to log to console.
+	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+}
+
 func main() {
 	cmd := newRootCmd(os.Stdout)
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
+	cmd.Deprecated = notice
+	return cmd
 }
 
 func setupConnection(c *cobra.Command, args []string) error {
