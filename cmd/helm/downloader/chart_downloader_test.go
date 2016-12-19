@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,6 +36,7 @@ func TestResolveChartRef(t *testing.T) {
 	}{
 		{name: "full URL", ref: "http://example.com/foo-1.2.3.tgz", expect: "http://example.com/foo-1.2.3.tgz"},
 		{name: "full URL, HTTPS", ref: "https://example.com/foo-1.2.3.tgz", expect: "https://example.com/foo-1.2.3.tgz"},
+		{name: "full URL, with authentication", ref: "http://username:password@example.com/foo-1.2.3.tgz", expect: "http://username:password@example.com/foo-1.2.3.tgz"},
 		{name: "full URL, HTTPS, irrelevant version", ref: "https://example.com/foo-1.2.3.tgz", version: "0.1.0", expect: "https://example.com/foo-1.2.3.tgz"},
 		{name: "reference, testing repo", ref: "testing/alpine", expect: "http://example.com/alpine-1.2.3.tgz"},
 		{name: "reference, version, testing repo", ref: "testing/alpine", version: "0.2.0", expect: "http://example.com/alpine-0.2.0.tgz"},
@@ -83,6 +85,27 @@ func TestDownload(t *testing.T) {
 	defer srv.Close()
 
 	got, err := download(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, got.String())
+	}
+
+	// test with server backed by basic auth
+	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" && password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+		fmt.Fprint(w, expect)
+	}))
+	defer basicAuthSrv.Close()
+
+	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
+	u.User = url.UserPassword("username", "password")
+	got, err = download(u.String())
 	if err != nil {
 		t.Fatal(err)
 	}
