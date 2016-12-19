@@ -174,3 +174,18 @@ func ToYaml(v interface{}) string {
 	}
 	return string(data)
 }
+
+// FromYaml converts a YAML document into a map[string]interface{}.
+//
+// This is not a general-purpose YAML parser, and will not parse all valid
+// YAML documents. Additionally, because its intended use is within templates
+// it tolerates errors. It will insert the returned error message string into
+// m["error"] in the returned map.
+func FromYaml(str string) map[string]interface{} {
+	m := map[string]interface{}{}
+
+	if err := yaml.Unmarshal([]byte(str), &m); err != nil {
+		m["Error"] = err.Error()
+	}
+	return m
+}

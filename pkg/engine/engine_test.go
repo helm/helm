@@ -49,7 +49,7 @@ func TestFuncMap(t *testing.T) {
 	}
 
 	// Test for Engine-specific template functions.
-	expect := []string{"include", "toYaml"}
+	expect := []string{"include", "toYaml", "fromYaml"}
 	for _, f := range expect {
 		if _, ok := fns[f]; !ok {
 			t.Errorf("Expected add-on function %q", f)
