@@ -44,7 +44,7 @@ Creating mychart
 
 From here on, we'll be working in the `mychart` directory.
 
-### A Quick Glimps of `mychart/templates/`
+### A Quick Glimpse of `mychart/templates/`
 
 If you take a look at the `mychart/templates/` directory, you'll notice a few files
 already there.
