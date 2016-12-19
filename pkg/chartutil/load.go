@@ -151,8 +151,11 @@ func loadFiles(files []*afile) (*chart.Chart, error) {
 	}
 
 	// Ensure that we got a Chart.yaml file
-	if c.Metadata == nil || c.Metadata.Name == "" {
+	if c.Metadata == nil {
 		return c, errors.New("chart metadata (Chart.yaml) missing")
+	}
+	if c.Metadata.Name == "" {
+		return c, errors.New("invalid chart (Chart.yaml): name must not be empty")
 	}
 
 	for n, files := range subcharts {
