@@ -8,7 +8,7 @@ This guide explains how to use and create plugins.
 
 ## An Overview
 
-Helm plugins are add-on tools that integrate seemlessly with Helm. They provide
+Helm plugins are add-on tools that integrate seamlessly with Helm. They provide
 a way to extend the core feature set of Helm, but without requiring every new
 feature to be written in Go and added to the core tool.
 
