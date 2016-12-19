@@ -23,7 +23,11 @@ Follow either of the two links above to access the appropriate CLA and instructi
 
 ***NOTE***: Only original source code from you and other people that have signed the CLA can be accepted into the main repository.
 
-## How to Contribute A Patch
+## How to Submit a Proposal
+
+Submit proposals through the issue queue. The title of your issue should start with `PROPOSAL:`.
+
+## How to Contribute a Patch
 
 1. If you haven't already done so, sign a Contributor License Agreement (see details above).
 1. Fork the desired repo, develop and test your code changes.
