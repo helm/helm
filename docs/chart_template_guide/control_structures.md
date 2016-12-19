@@ -214,6 +214,8 @@ Be careful with the chomping modifiers. It is easy to accidentally do things lik
 
 That will produce `food: "PIZZA"mug:true` because it consumed newlines on both sides.
 
+> For the details on whitespace control in templates, see the [Official Go template documentation](https://godoc.org/text/template)
+
 Finally, sometimes it's easier to tell the template system how to indent for you instead of trying to master the spacing of template directives. For that reason, you may sometimes find it useful to use the `indent` function (`{{indent 2 "mug:true"}}`).
 
 ## Modifying scope using `with`
