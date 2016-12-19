@@ -6,7 +6,7 @@ hooks to:
 
 - Load a ConfigMap or Secret during install before any other charts are
   loaded.
-- Execute a Job to backup up a database before installing a new chart,
+- Execute a Job to back up a database before installing a new chart,
   and then execute a second job after the upgrade in order to restore
   data.
 - Run a Job before deleting a release to gracefully take a service out
