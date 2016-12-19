@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helm"
 )
 
 const inspectDesc = `
@@ -50,7 +49,6 @@ type inspectCmd struct {
 	verify    bool
 	keyring   string
 	out       io.Writer
-	client    helm.Interface
 	version   string
 }
 
@@ -60,9 +58,8 @@ const (
 	both       = "both"
 )
 
-func newInspectCmd(c helm.Interface, out io.Writer) *cobra.Command {
+func newInspectCmd(out io.Writer) *cobra.Command {
 	insp := &inspectCmd{
-		client: c,
 		out:    out,
 		output: both,
 	}

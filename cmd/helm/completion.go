@@ -33,29 +33,15 @@ Can be sourced as such
 	$ source <(helm completion)
 `
 
-type completionCmd struct {
-	out    io.Writer
-	topCmd *cobra.Command
-}
-
-func newCompletionCmd(out io.Writer, topCmd *cobra.Command) *cobra.Command {
-	cc := &completionCmd{out: out, topCmd: topCmd}
-
+func newCompletionCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "completion",
 		Short:  "Generate bash autocompletions script",
 		Long:   completionDesc,
 		Hidden: false,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cc.run()
-			return nil
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Root().GenBashCompletion(out)
 		},
 	}
-
 	return cmd
-}
-
-func (c *completionCmd) run() error {
-
-	return c.topCmd.GenBashCompletion(c.out)
 }
