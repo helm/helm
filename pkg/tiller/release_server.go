@@ -340,7 +340,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Restart); err != nil {
+	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Recreate); err != nil {
 		log.Printf("warning: Release Upgrade %q failed: %s", updatedRelease.Name, err)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
 		updatedRelease.Info.Status.Code = release.Status_FAILED
@@ -478,7 +478,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Restart); err != nil {
+	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Recreate); err != nil {
 		log.Printf("warning: Release Rollback %q failed: %s", targetRelease.Name, err)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
 		targetRelease.Info.Status.Code = release.Status_FAILED
