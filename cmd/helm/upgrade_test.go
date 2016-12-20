@@ -67,14 +67,14 @@ func TestUpgradeCmd(t *testing.T) {
 			name:     "upgrade a release",
 			args:     []string{"funny-bunny", chartPath},
 			resp:     releaseMock(&releaseOptions{name: "funny-bunny", version: 2, chart: ch}),
-			expected: "funny-bunny has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
 		},
 		{
 			name:     "install a release with 'upgrade --install'",
 			args:     []string{"zany-bunny", chartPath},
 			flags:    []string{"-i"},
 			resp:     releaseMock(&releaseOptions{name: "zany-bunny", version: 1, chart: ch}),
-			expected: "zany-bunny has been upgraded. Happy Helming!\n",
+			expected: "Release \"zany-bunny\" has been upgraded. Happy Helming!\n",
 		},
 	}
 
