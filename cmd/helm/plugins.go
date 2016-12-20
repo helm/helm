@@ -63,7 +63,7 @@ func loadPlugins(baseCmd *cobra.Command, home helmpath.Home, out io.Writer) {
 			RunE: func(cmd *cobra.Command, args []string) error {
 
 				k, u := manuallyProcessArgs(args)
-				if err := cmd.ParseFlags(k); err != nil {
+				if err := cmd.Parent().ParseFlags(k); err != nil {
 					return err
 				}
 
@@ -112,7 +112,7 @@ func loadPlugins(baseCmd *cobra.Command, home helmpath.Home, out io.Writer) {
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--host", "--kube-context", "--home"}
+	kvargs := []string{"--host", "--kube-context", "--home", "--tiller-namespace"}
 	knownArg := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
@@ -175,7 +175,8 @@ func setupEnv(shortname, base, plugdirs string, home helmpath.Home) {
 		"HELM_PATH_LOCAL_REPOSITORY": home.LocalRepository(),
 		"HELM_PATH_STARTER":          home.Starters(),
 
-		"TILLER_HOST": tillerHost,
+		"TILLER_HOST":         tillerHost,
+		tillerNamespaceEnvVar: tillerNamespace,
 	} {
 		os.Setenv(key, val)
 	}

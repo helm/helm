@@ -31,18 +31,16 @@ import (
 func TestManuallyProcessArgs(t *testing.T) {
 	input := []string{
 		"--debug",
-		"--foo",
-		"bar",
-		"--host",
-		"example.com",
-		"--kube-context",
-		"test1",
+		"--foo", "bar",
+		"--host", "example.com",
+		"--kube-context", "test1",
 		"--home=/tmp",
+		"--tiller-namespace=hello",
 		"command",
 	}
 
 	expectKnown := []string{
-		"--debug", "--host", "example.com", "--kube-context", "test1", "--home=/tmp",
+		"--debug", "--host", "example.com", "--kube-context", "test1", "--home=/tmp", "--tiller-namespace=hello",
 	}
 
 	expectUnknown := []string{
@@ -162,6 +160,7 @@ func TestSetupEnv(t *testing.T) {
 		{"HELM_PATH_LOCAL_REPOSITORY", hh.LocalRepository()},
 		{"HELM_PATH_STARTER", hh.Starters()},
 		{"TILLER_HOST", tillerHost},
+		{"TILLER_NAMESPACE", tillerNamespace},
 	} {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
