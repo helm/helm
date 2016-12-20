@@ -61,7 +61,7 @@ features of this MySQL chart by running `helm inspect stable/mysql`.
 
 Whenever you install a chart, a new release is created. So one chart can
 be installed multiple times into the same cluster. And each can be
-independently managed and upgrade.
+independently managed and upgraded.
 
 The `helm install` command is a very powerful command with many
 capabilities. To learn more about it, check out the [Using Helm
