@@ -56,7 +56,7 @@ or
 	$ helm install --set name=prod ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
-last (right-most) file specified. For example, if both myvalues.yaml and override.yaml 
+last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
 
 	$ helm install -f myvalues.yaml -f override.yaml ./redis
@@ -283,13 +283,11 @@ func (i *installCmd) printRelease(rel *release.Release) {
 		return
 	}
 	// TODO: Switch to text/template like everything else.
+	fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
 	if flagDebug {
-		fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
 		fmt.Fprintf(i.out, "TARGET NAMESPACE:   %s\n", rel.Namespace)
 		fmt.Fprintf(i.out, "CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
 		fmt.Fprintf(i.out, "MANIFEST: %s\n", rel.Manifest)
-	} else {
-		fmt.Fprintf(i.out, "NAME: %s\n", rel.Name)
 	}
 }
 

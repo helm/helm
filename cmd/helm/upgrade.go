@@ -21,13 +21,17 @@ import (
 	"io"
 	"io/ioutil"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/strvals"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 const upgradeDesc = `
@@ -42,7 +46,7 @@ To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line.
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
-last (right-most) file specified. For example, if both myvalues.yaml and override.yaml 
+last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
 
 	$ helm install -f myvalues.yaml -f override.yaml ./redis
@@ -146,7 +150,7 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
-	_, err = u.client.UpdateRelease(
+	resp, err := u.client.UpdateRelease(
 		u.release,
 		chartPath,
 		helm.UpdateValueOverrides(rawVals),
@@ -157,8 +161,11 @@ func (u *upgradeCmd) run() error {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
 
-	success := u.release + " has been upgraded. Happy Helming!\n"
-	fmt.Fprintf(u.out, success)
+	if flagDebug {
+		u.printRelease(resp.Release)
+	}
+
+	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
 
 	// Print the status like status command does
 	status, err := u.client.ReleaseStatus(u.release)
@@ -193,4 +200,27 @@ func (u *upgradeCmd) vals() ([]byte, error) {
 	}
 
 	return yaml.Marshal(base)
+}
+
+// printRelease prints info about a release.
+func (u *upgradeCmd) printRelease(rel *release.Release) error {
+	if rel == nil {
+		return nil
+	}
+
+	cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
+	if err != nil {
+		return err
+	}
+	cfgStr, err := cfg.YAML()
+	if err != nil {
+		return err
+	}
+
+	data := map[string]interface{}{
+		"Release":        rel,
+		"ComputedValues": cfgStr,
+		"ReleaseDate":    timeconv.Format(rel.Info.LastDeployed, time.ANSIC),
+	}
+	return tpl(getTemplate, data, u.out)
 }
