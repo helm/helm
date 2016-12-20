@@ -21,17 +21,13 @@ import (
 	"io"
 	"io/ioutil"
 	"strings"
-	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/strvals"
-	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 const upgradeDesc = `
@@ -162,7 +158,7 @@ func (u *upgradeCmd) run() error {
 	}
 
 	if flagDebug {
-		u.printRelease(resp.Release)
+		printRelease(u.out, resp.Release)
 	}
 
 	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
@@ -200,27 +196,4 @@ func (u *upgradeCmd) vals() ([]byte, error) {
 	}
 
 	return yaml.Marshal(base)
-}
-
-// printRelease prints info about a release.
-func (u *upgradeCmd) printRelease(rel *release.Release) error {
-	if rel == nil {
-		return nil
-	}
-
-	cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
-	if err != nil {
-		return err
-	}
-	cfgStr, err := cfg.YAML()
-	if err != nil {
-		return err
-	}
-
-	data := map[string]interface{}{
-		"Release":        rel,
-		"ComputedValues": cfgStr,
-		"ReleaseDate":    timeconv.Format(rel.Info.LastDeployed, time.ANSIC),
-	}
-	return tpl(getTemplate, data, u.out)
 }
