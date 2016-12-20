@@ -285,9 +285,7 @@ func (i *installCmd) printRelease(rel *release.Release) {
 	// TODO: Switch to text/template like everything else.
 	fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
 	if flagDebug {
-		fmt.Fprintf(i.out, "TARGET NAMESPACE:   %s\n", rel.Namespace)
-		fmt.Fprintf(i.out, "CHART:  %s %s\n", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
-		fmt.Fprintf(i.out, "MANIFEST: %s\n", rel.Manifest)
+		printRelease(i.out, rel)
 	}
 }
 
