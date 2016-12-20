@@ -19,14 +19,10 @@ package main
 import (
 	"errors"
 	"io"
-	"text/template"
-	"time"
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 var getHelp = `
@@ -83,53 +79,13 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-var getTemplate = `REVISION: {{.Release.Version}}
-RELEASED: {{.ReleaseDate}}
-CHART: {{.Release.Chart.Metadata.Name}}-{{.Release.Chart.Metadata.Version}}
-USER-SUPPLIED VALUES:
-{{.Release.Config.Raw}}
-COMPUTED VALUES:
-{{.ComputedValues}}
-HOOKS:
-{{- range .Release.Hooks }}
----
-# {{.Name}}
-{{.Manifest}}
-{{- end }}
-MANIFEST:
-{{.Release.Manifest}}
-`
-
 // getCmd is the command that implements 'helm get'
 func (g *getCmd) run() error {
 	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
 	if err != nil {
 		return prettyError(err)
 	}
-
-	cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config)
-	if err != nil {
-		return err
-	}
-	cfgStr, err := cfg.YAML()
-	if err != nil {
-		return err
-	}
-
-	data := map[string]interface{}{
-		"Release":        res.Release,
-		"ComputedValues": cfgStr,
-		"ReleaseDate":    timeconv.Format(res.Release.Info.LastDeployed, time.ANSIC),
-	}
-	return tpl(getTemplate, data, g.out)
-}
-
-func tpl(t string, vals map[string]interface{}, out io.Writer) error {
-	tt, err := template.New("_").Parse(t)
-	if err != nil {
-		return err
-	}
-	return tt.Execute(out, vals)
+	return printRelease(g.out, res.Release)
 }
 
 func ensureHelmClient(h helm.Interface) helm.Interface {
