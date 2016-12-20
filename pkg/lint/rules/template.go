@@ -17,13 +17,10 @@ limitations under the License.
 package rules
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"text/template"
 
 	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/chartutil"
@@ -77,7 +74,7 @@ func Templates(linter *support.Linter) {
 	- Metadata.Namespace is not set
 	*/
 	for _, template := range chart.Templates {
-		fileName, preExecutedTemplate := template.Name, template.Data
+		fileName, _ := template.Name, template.Data
 		path = fileName
 
 		linter.RunLinterRule(support.ErrorSev, path, validateAllowedExtension(fileName))
@@ -87,10 +84,11 @@ func Templates(linter *support.Linter) {
 			continue
 		}
 
+		// NOTE: disabled for now, Refs https://github.com/kubernetes/helm/issues/1463
 		// Check that all the templates have a matching value
-		linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
+		//linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
 
-		// NOTE, disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
+		// NOTE: disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
 		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
 		renderedContent := renderedContentMap[filepath.Join(chart.GetMetadata().Name, fileName)]
@@ -128,66 +126,6 @@ func validateAllowedExtension(fileName string) error {
 	}
 
 	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .tpl, or .txt", ext)
-}
-
-// validateNoMissingValues checks that all the {{}} functions returns a non empty value (<no value> or "")
-// and return an error otherwise.
-func validateNoMissingValues(templatesPath string, chartValues chartutil.Values, templateContent []byte) error {
-	// 1 - Load Main and associated templates
-	// Main template that we will parse dynamically
-	tmpl := template.New("tpl").Funcs(engine.FuncMap())
-	// If the templatesPath includes any *.tpl files we will parse and import them as associated templates
-	associatedTemplates, err := filepath.Glob(filepath.Join(templatesPath, "*.tpl"))
-	if err != nil {
-		return err
-	}
-
-	if len(associatedTemplates) > 0 {
-		tmpl, err = tmpl.ParseFiles(associatedTemplates...)
-		if err != nil {
-			return err
-		}
-	}
-
-	var buf bytes.Buffer
-	var emptyValues []string
-
-	// 2 - Extract every function and execute them against the loaded values
-	// Supported {{ .Chart.Name }}, {{ .Chart.Name | quote }}
-	r, _ := regexp.Compile(`{{[\w.\s|"'-]+}}`)
-	functions := r.FindAllString(string(templateContent), -1)
-
-	skipRegex, _ := regexp.Compile(`if|else|end`)
-
-	// Iterate over the {{ FOO }} templates, executing them against the chartValues
-	// We do individual templates parsing so we keep the reference for the key (str) that we want it to be interpolated.
-	for _, str := range functions {
-		if skipRegex.MatchString(str) {
-			continue
-		}
-		newtmpl, err := tmpl.Parse(str)
-		if err != nil {
-			return err
-		}
-
-		err = newtmpl.ExecuteTemplate(&buf, "tpl", chartValues)
-
-		if err != nil {
-			return err
-		}
-
-		renderedValue := buf.String()
-
-		if renderedValue == "<no value>" || renderedValue == "" {
-			emptyValues = append(emptyValues, str)
-		}
-		buf.Reset()
-	}
-
-	if len(emptyValues) > 0 {
-		return fmt.Errorf("these substitution functions are returning no value: %v", emptyValues)
-	}
-	return nil
 }
 
 func validateYamlContent(err error) error {
