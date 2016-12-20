@@ -176,8 +176,7 @@ set as per below:
 
 ![Create Github Pages branch](images/set-a-gh-page.png)
 
-By default **Source** usually gets set to **gh-pages branch**, if not do so
-select it.
+By default **Source** usually gets set to **gh-pages branch**. If this is not set by default, then select it.
 
 You can use a **custom domain** there if you wish so.
 
