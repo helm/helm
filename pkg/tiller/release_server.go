@@ -368,7 +368,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 //
 // If the request already has values, or if there are no values in the current release, this does nothing.
 func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
-	if (req.Values == nil || req.Values.Raw == "") && current.Config != nil && current.Config.Raw != "" {
+	if (req.Values == nil || req.Values.Raw == "" || req.Values.Raw == "{}\n") && current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
 		log.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}
