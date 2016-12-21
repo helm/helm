@@ -1,5 +1,5 @@
-hash: 2fc61aa64319b4dc6cd4a107c46a25264865f2e07362d7dcd8a3db002278d6a6
-updated: 2016-12-13T17:07:47.402783003-05:00
+hash: f59cd1f34ecf299aeb8ca9e16cfc181d8aeaf5a5762b89d76f18d08be35e4d67
+updated: 2016-12-21T11:19:14.731981344-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -182,7 +182,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 59c29afe1a994eacb71c833025ca7acf874bb1da
 - name: github.com/Masterminds/sprig
-  version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
+  version: 69011c0cd9b4d2e0733c4d9e2c8e2a5a0d0a2f2f
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/mitchellh/go-wordwrap
@@ -290,7 +290,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: d47846323632bf59c729460fc7344d2df347bf46
+  version: 5f332aab13e58173f85fd204a2c77731f7a2573f
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - cmd/kubeadm/app/apis/kubeadm/install
@@ -499,5 +499,3 @@ testImports:
   version: e3a8ff8ce36581f87a15341206f205b1da467059
   subpackages:
   - assert
-  - mock
-  - require
