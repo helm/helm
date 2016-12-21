@@ -3,6 +3,7 @@ IMAGE_PREFIX    ?= kubernetes-helm
 SHORT_NAME      ?= tiller
 TARGETS         = darwin/amd64 linux/amd64 linux/386 linux/arm windows/amd64
 DIST_DIRS       = find * -type d -exec
+APP             = helm
 
 # go option
 GO        ?= go
