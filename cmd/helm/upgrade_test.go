@@ -91,7 +91,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"funny-bunny", chartPath},
 			flags:    []string{"--timeout", "120"},
 			resp:     releaseMock(&releaseOptions{name: "funny-bunny", version: 3, chart: ch2}),
-			expected: "funny-bunny has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
 		},
 		{
 			name:     "install a release with 'upgrade --install'",
@@ -105,7 +105,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"crazy-bunny", chartPath},
 			flags:    []string{"-i", "--timeout", "120"},
 			resp:     releaseMock(&releaseOptions{name: "crazy-bunny", version: 1, chart: ch}),
-			expected: "crazy-bunny has been upgraded. Happy Helming!\n",
+			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
 		},
 	}
 
