@@ -22,13 +22,13 @@ can be manually downloaded and installed.
 
 From there, you should be able to run the client: `helm help`.
 
-### From Homebrew (Mac OSX)
+### From Homebrew (macOS)
 
-Members of the Kubernetes community have contributed a Helm cask built to
+Members of the Kubernetes community have contributed a Helm formula build to
 Homebrew. This formula is generally up to date.
 
 ```
-brew cask install helm
+brew install kubernetes-helm
 ```
 
 (Note: There is also a formula for emacs-helm, which is a different
