@@ -435,7 +435,8 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	if len(notesTxt) > 0 {
 		updatedRelease.Info.Status.Notes = notesTxt
 	}
-	return currentRelease, updatedRelease, nil
+	err = validateManifest(s.env.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
+	return currentRelease, updatedRelease, err
 }
 
 // RollbackRelease rolls back to a previous version of the given release.
@@ -706,7 +707,9 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	if len(notesTxt) > 0 {
 		rel.Info.Status.Notes = notesTxt
 	}
-	return rel, nil
+
+	err = validateManifest(s.env.KubeClient, req.Namespace, manifestDoc.Bytes())
+	return rel, err
 }
 
 func getVersionSet(client discovery.ServerGroupsInterface) (versionSet, error) {
@@ -1047,4 +1050,10 @@ func splitManifests(bigfile string) map[string]string {
 		res[fmt.Sprintf(tpl, i)] = d
 	}
 	return res
+}
+
+func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
+	r := bytes.NewReader(manifest)
+	_, err := c.Build(ns, r)
+	return err
 }

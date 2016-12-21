@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 type mockEngine struct {
@@ -49,6 +50,9 @@ func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Read
 }
 func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader, t int64) error {
 	return nil
+}
+func (k *mockKubeClient) Build(ns string, reader io.Reader) ([]*resource.Info, error) {
+	return []*resource.Info{}, nil
 }
 
 var _ Engine = &mockEngine{}
