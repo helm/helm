@@ -32,10 +32,19 @@ func createNamespace(client internalclientset.Interface, namespace string) error
 	return err
 }
 
+func getNamespace(client internalclientset.Interface, namespace string) (*api.Namespace, error) {
+	return client.Core().Namespaces().Get(namespace)
+}
+
 func ensureNamespace(client internalclientset.Interface, namespace string) error {
-	err := createNamespace(client, namespace)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
+	if _, getError := getNamespace(client, namespace); getError != nil && errors.IsNotFound(getError) {
+		createError := createNamespace(client, namespace)
+		if createError != nil {
+			return createError
+		}
+	} else if getError != nil {
+		return getError
 	}
+
 	return nil
 }
