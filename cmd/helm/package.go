@@ -25,11 +25,13 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 )
@@ -51,6 +53,7 @@ type packageCmd struct {
 	path    string
 	key     string
 	keyring string
+	version string
 	out     io.Writer
 	home    helmpath.Home
 }
@@ -92,6 +95,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&pkg.sign, "sign", false, "use a PGP private key to sign this package")
 	f.StringVar(&pkg.key, "key", "", "name of the key to use when signing. Used if --sign is true")
 	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
+	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
 
 	return cmd
 }
@@ -105,6 +109,16 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	ch, err := chartutil.LoadDir(path)
 	if err != nil {
 		return err
+	}
+
+	// If version is set, modify the version.
+	if len(p.version) != 0 {
+		if err := setVersion(ch, p.version); err != nil {
+			return err
+		}
+		if flagDebug {
+			fmt.Fprintf(p.out, "Setting version to %s", p.version)
+		}
 	}
 
 	if filepath.Base(path) != ch.Metadata.Name {
@@ -137,6 +151,17 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	return err
+}
+
+func setVersion(ch *chart.Chart, ver string) error {
+	// Verify that version is a SemVer, and error out if it is not.
+	if _, err := semver.NewVersion(ver); err != nil {
+		return err
+	}
+
+	// Set the version field on the chart.
+	ch.Metadata.Version = ver
+	return nil
 }
 
 func (p *packageCmd) clearsign(filename string) error {
