@@ -27,7 +27,7 @@ To run all of the tests (without running the tests for `vendor/`), run
 
 To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 
-- Helm and Tiller are known to run on Mac OSX and most Linuxes, including
+- Helm and Tiller are known to run on macOS and most Linuxes, including
   Alpine.
 - Tiller must have access to a Kubernetes cluster. It learns about the
   cluster by examining the Kube config files that `kubectl` uses.

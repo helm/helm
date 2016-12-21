@@ -33,7 +33,7 @@ Think of it like apt/yum/homebrew for Kubernetes.
 
 Binary downloads of the Helm client can be found at the following links:
 
-- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.1.2-darwin-amd64.tar.gz)
+- [macOS](https://kubernetes-helm.storage.googleapis.com/helm-v2.1.2-darwin-amd64.tar.gz)
 - [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.1.2-linux-amd64.tar.gz)
 - [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.1.2-linux-386.tar.gz)
 

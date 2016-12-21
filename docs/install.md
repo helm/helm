@@ -61,10 +61,10 @@ Canary Helm binaries are stored in the [Kubernetes Helm GCS bucket](https://kube
 Here are links to the common builds:
 
 - [Linux AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-linux-amd64.tar.gz)
-- [OSX AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
+- [macOS AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
 - [Experimental Windows AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-windows-amd64.zip)
 
-### From Source (Linux, Mac OSX)
+### From Source (Linux, macOS)
 
 Building Helm from source is slightly more work, but is the best way to
 go if you want to test the latest (pre-release) Helm version.
