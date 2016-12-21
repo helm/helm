@@ -37,14 +37,9 @@ func getNamespace(client internalclientset.Interface, namespace string) (*api.Na
 }
 
 func ensureNamespace(client internalclientset.Interface, namespace string) error {
-	if _, getError := getNamespace(client, namespace); getError != nil && errors.IsNotFound(getError) {
-		createError := createNamespace(client, namespace)
-		if createError != nil {
-			return createError
-		}
-	} else if getError != nil {
-		return getError
+	_, err := getNamespace(client, namespace)
+	if err != nil && errors.IsNotFound(err) {
+		return createNamespace(client, namespace)
 	}
-
-	return nil
+	return err
 }
