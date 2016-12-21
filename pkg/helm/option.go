@@ -151,6 +151,34 @@ func ReleaseName(name string) InstallOption {
 	}
 }
 
+// InstallTimeout specifies the number of seconds before kubernetes calls timeout
+func InstallTimeout(timeout int64) InstallOption {
+	return func(opts *options) {
+		opts.instReq.Timeout = timeout
+	}
+}
+
+// UpgradeTimeout specifies the number of seconds before kubernetes calls timeout
+func UpgradeTimeout(timeout int64) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Timeout = timeout
+	}
+}
+
+// DeleteTimeout specifies the number of seconds before kubernetes calls timeout
+func DeleteTimeout(timeout int64) DeleteOption {
+	return func(opts *options) {
+		opts.uninstallReq.Timeout = timeout
+	}
+}
+
+// RollbackTimeout specifies the number of seconds before kubernetes calls timeout
+func RollbackTimeout(timeout int64) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.Timeout = timeout
+	}
+}
+
 // UpdateValueOverrides specifies a list of values to include when upgrading
 func UpdateValueOverrides(raw []byte) UpdateOption {
 	return func(opts *options) {

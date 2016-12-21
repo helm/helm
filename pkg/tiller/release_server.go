@@ -333,9 +333,9 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		return res, nil
 	}
 
-	// pre-ugrade hooks
+	// pre-upgrade hooks
 	if !req.DisableHooks {
-		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, preUpgrade); err != nil {
+		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, preUpgrade, req.Timeout); err != nil {
 			return res, err
 		}
 	}
@@ -351,7 +351,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 
 	// post-upgrade hooks
 	if !req.DisableHooks {
-		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, postUpgrade); err != nil {
+		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, postUpgrade, req.Timeout); err != nil {
 			return res, err
 		}
 	}
@@ -473,7 +473,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 
 	// pre-rollback hooks
 	if !req.DisableHooks {
-		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, preRollback); err != nil {
+		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, preRollback, req.Timeout); err != nil {
 			return res, err
 		}
 	}
@@ -489,7 +489,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 
 	// post-rollback hooks
 	if !req.DisableHooks {
-		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, postRollback); err != nil {
+		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, postRollback, req.Timeout); err != nil {
 			return res, err
 		}
 	}
@@ -809,7 +809,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 	// pre-install hooks
 	if !req.DisableHooks {
-		if err := s.execHook(r.Hooks, r.Name, r.Namespace, preInstall); err != nil {
+		if err := s.execHook(r.Hooks, r.Name, r.Namespace, preInstall, req.Timeout); err != nil {
 			return res, err
 		}
 	}
@@ -854,7 +854,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 	// post-install hooks
 	if !req.DisableHooks {
-		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall); err != nil {
+		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall, req.Timeout); err != nil {
 			log.Printf("warning: Release %q failed post-install: %s", r.Name, err)
 			r.Info.Status.Code = release.Status_FAILED
 			s.recordRelease(r, false)
@@ -875,7 +875,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	return res, nil
 }
 
-func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook string) error {
+func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook string, timeout int64) error {
 	kubeCli := s.env.KubeClient
 	code, ok := events[hook]
 	if !ok {
@@ -903,7 +903,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
 		b.WriteString(h.Manifest)
-		if err := kubeCli.WatchUntilReady(namespace, b); err != nil {
+		if err := kubeCli.WatchUntilReady(namespace, b, timeout); err != nil {
 			log.Printf("warning: Release %q pre-install %s could not complete: %s", name, h.Path, err)
 			return err
 		}
@@ -964,7 +964,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	res := &services.UninstallReleaseResponse{Release: rel}
 
 	if !req.DisableHooks {
-		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, preDelete); err != nil {
+		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, preDelete, req.Timeout); err != nil {
 			return res, err
 		}
 	}
@@ -1010,7 +1010,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	if !req.DisableHooks {
-		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, postDelete); err != nil {
+		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, postDelete, req.Timeout); err != nil {
 			es = append(es, err.Error())
 		}
 	}

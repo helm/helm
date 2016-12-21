@@ -1375,7 +1375,7 @@ type hookFailingKubeClient struct {
 	environment.PrintingKubeClient
 }
 
-func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader) error {
+func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, t int64) error {
 	return errors.New("Failed watch")
 }
 

@@ -190,6 +190,8 @@ message UpdateReleaseRequest {
 	bool disable_hooks = 5;
 	// Performs pods restart for resources if applicable
 	bool recreate = 6;
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	int64 timeout = 7;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -208,6 +210,8 @@ message RollbackReleaseRequest {
 	int32 version = 4;
 	// Performs pods restart for resources if applicable
 	bool recreate = 5;
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	int64 timeout = 6;
 }
 
 // RollbackReleaseResponse is the response to an update request.
@@ -239,6 +243,9 @@ message InstallReleaseRequest {
 
 	// ReuseName requests that Tiller re-uses a name, instead of erroring out.
 	bool reuse_name = 7;
+
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	int64 timeout = 8;
 }
 
 // InstallReleaseResponse is the response from a release installation.
@@ -254,6 +261,8 @@ message UninstallReleaseRequest {
 	bool disable_hooks = 2;
 	// Purge removes the release from the store and make its name free for later use.
 	bool purge = 3;
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	int64 timeout = 4;
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.

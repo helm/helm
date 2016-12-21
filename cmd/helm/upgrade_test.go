@@ -62,6 +62,23 @@ func TestUpgradeCmd(t *testing.T) {
 		t.Errorf("Error loading updated chart: %v", err)
 	}
 
+	// update chart version again
+	cfile = &chart.Metadata{
+		Name:        "testUpgradeChart",
+		Description: "A Helm chart for Kubernetes",
+		Version:     "0.1.3",
+	}
+
+	chartPath, err = chartutil.Create(cfile, tmpChart)
+	if err != nil {
+		t.Errorf("Error creating chart: %v", err)
+	}
+	var ch2 *chart.Chart
+	ch2, err = chartutil.Load(chartPath)
+	if err != nil {
+		t.Errorf("Error loading updated chart: %v", err)
+	}
+
 	tests := []releaseCase{
 		{
 			name:     "upgrade a release",
@@ -70,11 +87,25 @@ func TestUpgradeCmd(t *testing.T) {
 			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
 		},
 		{
+			name:     "upgrade a release with timeout",
+			args:     []string{"funny-bunny", chartPath},
+			flags:    []string{"--timeout", "120"},
+			resp:     releaseMock(&releaseOptions{name: "funny-bunny", version: 3, chart: ch2}),
+			expected: "funny-bunny has been upgraded. Happy Helming!\n",
+		},
+		{
 			name:     "install a release with 'upgrade --install'",
 			args:     []string{"zany-bunny", chartPath},
 			flags:    []string{"-i"},
 			resp:     releaseMock(&releaseOptions{name: "zany-bunny", version: 1, chart: ch}),
 			expected: "Release \"zany-bunny\" has been upgraded. Happy Helming!\n",
+		},
+		{
+			name:     "install a release with 'upgrade --install' and timeout",
+			args:     []string{"crazy-bunny", chartPath},
+			flags:    []string{"-i", "--timeout", "120"},
+			resp:     releaseMock(&releaseOptions{name: "crazy-bunny", version: 1, chart: ch}),
+			expected: "crazy-bunny has been upgraded. Happy Helming!\n",
 		},
 	}
 
