@@ -31,6 +31,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 // DefaultTillerNamespace is the default namespace for tiller.
@@ -132,6 +133,8 @@ type KubeClient interface {
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
 	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool) error
+
+	Build(namespace string, reader io.Reader) ([]*resource.Info, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -170,6 +173,11 @@ func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader, t int64) er
 func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, recreate bool) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
+}
+
+// Build implements KubeClient Build.
+func (p *PrintingKubeClient) Build(ns string, reader io.Reader) ([]*resource.Info, error) {
+	return []*resource.Info{}, nil
 }
 
 // Environment provides the context for executing a client request.

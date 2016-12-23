@@ -50,8 +50,6 @@ var ErrNoObjectsVisited = goerrors.New("no objects visited")
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
 	cmdutil.Factory
-	// Validate idicates whether to load a schema for validation.
-	Validate bool
 	// SchemaCacheDir is the path for loading cached schema.
 	SchemaCacheDir string
 }
@@ -60,7 +58,6 @@ type Client struct {
 func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:        cmdutil.NewFactory(config),
-		Validate:       true,
 		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
 	}
 }
@@ -91,8 +88,8 @@ func (c *Client) Create(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, createResource)
 }
 
-func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Builder {
-	schema, err := c.Validator(c.Validate, c.SchemaCacheDir)
+func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
+	schema, err := c.Validator(true, c.SchemaCacheDir)
 	if err != nil {
 		log.Printf("warning: failed to load schema: %s", err)
 	}
@@ -102,7 +99,13 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Builde
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
-		Flatten()
+		Flatten().
+		Do()
+}
+
+// Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
+func (c *Client) Build(namespace string, reader io.Reader) ([]*resource.Info, error) {
+	return c.newBuilder(namespace, reader).Infos()
 }
 
 // Get gets kubernetes resources as pretty printed string
@@ -165,12 +168,12 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //
 // Namespace will set the namespaces
 func (c *Client) Update(namespace string, currentReader, targetReader io.Reader, recreate bool) error {
-	currentInfos, err := c.newBuilder(namespace, currentReader).Do().Infos()
+	currentInfos, err := c.Build(namespace, currentReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
-	target := c.newBuilder(namespace, targetReader).Do()
+	target := c.newBuilder(namespace, targetReader)
 	if target.Err() != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", target.Err())
 	}
@@ -283,7 +286,7 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int
 }
 
 func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc) error {
-	infos, err := c.newBuilder(namespace, reader).Do().Infos()
+	infos, err := c.Build(namespace, reader)
 	switch {
 	case err != nil:
 		return scrubValidationError(err)
