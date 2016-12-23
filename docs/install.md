@@ -22,13 +22,13 @@ can be manually downloaded and installed.
 
 From there, you should be able to run the client: `helm help`.
 
-### From Homebrew (Mac OSX)
+### From Homebrew (macOS)
 
-Members of the Kubernetes community have contributed a Helm cask built to
+Members of the Kubernetes community have contributed a Helm formula build to
 Homebrew. This formula is generally up to date.
 
 ```
-brew cask install helm
+brew install kubernetes-helm
 ```
 
 (Note: There is also a formula for emacs-helm, which is a different
@@ -61,10 +61,10 @@ Canary Helm binaries are stored in the [Kubernetes Helm GCS bucket](https://kube
 Here are links to the common builds:
 
 - [Linux AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-linux-amd64.tar.gz)
-- [OSX AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
+- [macOS AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
 - [Experimental Windows AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-windows-amd64.zip)
 
-### From Source (Linux, Mac OSX)
+### From Source (Linux, macOS)
 
 Building Helm from source is slightly more work, but is the best way to
 go if you want to test the latest (pre-release) Helm version.
