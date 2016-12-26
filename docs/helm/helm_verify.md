@@ -8,7 +8,7 @@ verify that a chart at the given path has been signed and is valid
 
 Verify that the given chart has a valid provenance file.
 
-Provenance files provide crytographic verification that a chart has not been
+Provenance files provide cryptographic verification that a chart has not been
 tampered with, and was packaged by a trusted provider.
 
 This command can be used to verify a local chart. Several other commands provide

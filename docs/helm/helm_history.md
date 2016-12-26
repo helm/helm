@@ -11,7 +11,7 @@ History prints historical revisions for a given release.
 A default maximum of 256 revisions will be returned. Setting '--max'
 configures the maximum length of the revision list returned.
 
-The historical release set is printed as a formatted table, e.g:
+The historical release set is printed as a formatted table, e.g.:
 
     $ helm history angry-bird --max=4
     REVISION   UPDATED                      STATUS           CHART

@@ -9,7 +9,7 @@ There are a few commands that can help you debug.
 - `helm get manifest`: This is a good way to see what templates are installed on the server.
 
 When your YAML is failing to parse, but you want to see what is generated, one
-easy way to retrieve the YAML is to commet out the problem section in the template,
+easy way to retrieve the YAML is to comment out the problem section in the template,
 and then re-run `helm install --dry-run --debug`:
 
 ```YAML

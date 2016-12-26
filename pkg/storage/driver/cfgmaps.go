@@ -311,7 +311,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	return &rls, nil
 }
 
-// logerrf wraps an error with the a formatted string (used for debugging)
+// logerrf wraps an error with a formatted string (used for debugging)
 func logerrf(err error, format string, args ...interface{}) {
 	log.Printf("configmaps: %s: %s\n", fmt.Sprintf(format, args...), err)
 }

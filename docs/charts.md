@@ -559,7 +559,7 @@ As a chart developer, you may author charts that are specifically designed
 to be used as starters. Such charts should be designed with the following
 considerations in mind:
 
-- The `Chart.yaml` will be overwritten by the genertor.
+- The `Chart.yaml` will be overwritten by the generator.
 - Users will expect to modify such a chart's contents, so documentation
   should indicate how users can do so.
 
