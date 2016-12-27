@@ -48,11 +48,11 @@ func NewRepositoryFile() *RepositoryFile {
 	}
 }
 
-// LoadRepositoriesFile takes a file at the given path and returns a RepositoryFile object
+// LoadRepositoryFile takes a file at the given path and returns a RepositoryFile object
 //
 // If this returns ErrRepoOutOfDate, it also returns a recovered RepositoryFile that
 // can be saved as a replacement to the out of date file.
-func LoadRepositoriesFile(path string) (*RepositoryFile, error) {
+func LoadRepositoryFile(path string) (*RepositoryFile, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err

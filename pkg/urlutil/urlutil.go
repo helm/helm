@@ -17,6 +17,7 @@ limitations under the License.
 package urlutil
 
 import (
+	"net"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -63,4 +64,18 @@ func URLAreEqual(a, b string) bool {
 		u.Path = filepath.Clean(u.Path)
 	}
 	return au.String() == bu.String()
+}
+
+// ExtractHostname returns hostname from URL
+func ExtractHostname(addr string) (string, error) {
+	u, err := url.Parse(addr)
+	if err != nil {
+		return "", err
+	}
+
+	host, _, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return "", err
+	}
+	return host, nil
 }

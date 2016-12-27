@@ -29,6 +29,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/tlsutil"
+	"k8s.io/helm/pkg/urlutil"
 )
 
 // ChartRepositoryConfig represents a collection of parameters for chart repository
@@ -58,6 +59,13 @@ func NewChartRepository(cfg *ChartRepositoryConfig) (*ChartRepository, error) {
 			return nil, fmt.Errorf("can't create TLS config for client: %s", err.Error())
 		}
 		tlsConf.BuildNameToCertificate()
+
+		sni, err := urlutil.ExtractHostname(cfg.URL)
+		if err != nil {
+			return nil, err
+		}
+		tlsConf.ServerName = sni
+
 		client = &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,

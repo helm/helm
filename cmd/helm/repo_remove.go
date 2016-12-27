@@ -62,7 +62,7 @@ func (r *repoRemoveCmd) run() error {
 
 func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {
 	repoFile := home.RepositoryFile()
-	r, err := repo.LoadRepositoriesFile(repoFile)
+	r, err := repo.LoadRepositoryFile(repoFile)
 	if err != nil {
 		return err
 	}

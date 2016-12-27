@@ -213,7 +213,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 // hasAllRepos ensures that all of the referenced deps are in the local repo cache.
 func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
-	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadRepositoryFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -244,7 +244,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 
 // getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
 func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string, error) {
-	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadRepositoryFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 
 // UpdateRepositories updates all of the local repos to the latest.
 func (m *Manager) UpdateRepositories() error {
-	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadRepositoryFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -409,7 +409,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	repoyaml := m.HelmHome.RepositoryFile()
 
 	// Load repositories.yaml file
-	rf, err := repo.LoadRepositoriesFile(repoyaml)
+	rf, err := repo.LoadRepositoryFile(repoyaml)
 	if err != nil {
 		return indices, fmt.Errorf("failed to load %s: %s", repoyaml, err)
 	}

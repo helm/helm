@@ -73,7 +73,7 @@ func TestNewRepositoriesFile(t *testing.T) {
 		},
 	)
 
-	repofile, err := LoadRepositoriesFile(testRepositoriesFile)
+	repofile, err := LoadRepositoryFile(testRepositoriesFile)
 	if err != nil {
 		t.Errorf("%q could not be loaded: %s", testRepositoriesFile, err)
 	}
@@ -97,7 +97,7 @@ func TestNewRepositoriesFile(t *testing.T) {
 }
 
 func TestNewPreV1RepositoriesFile(t *testing.T) {
-	r, err := LoadRepositoriesFile("testdata/old-repositories.yaml")
+	r, err := LoadRepositoryFile("testdata/old-repositories.yaml")
 	if err != nil && err != ErrRepoOutOfDate {
 		t.Fatal(err)
 	}

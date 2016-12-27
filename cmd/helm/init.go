@@ -55,7 +55,7 @@ To dump a manifest containing the Tiller deployment YAML, combine the
 const (
 	stableRepository    = "stable"
 	localRepository     = "local"
-	stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com/"
+	stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
 	// This is the IPv4 loopback, not localhost, because we have to force IPv4
 	// for Dockerized Helm: https://github.com/kubernetes/helm/issues/1410
 	localRepositoryURL = "http://127.0.0.1:8879/charts"
@@ -236,7 +236,7 @@ func initLocalRepo(indexFile, cacheFile string) (*repo.ChartRepositoryConfig, er
 }
 
 func ensureRepoFileFormat(file string, out io.Writer) error {
-	r, err := repo.LoadRepositoriesFile(file)
+	r, err := repo.LoadRepositoryFile(file)
 	if err == repo.ErrRepoOutOfDate {
 		fmt.Fprintln(out, "Updating repository file format...")
 		if err := r.WriteFile(file, 0644); err != nil {

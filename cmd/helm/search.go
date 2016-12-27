@@ -110,7 +110,7 @@ func (s *searchCmd) formatSearchResults(res []*search.Result) string {
 
 func (s *searchCmd) buildIndex() (*search.Index, error) {
 	// Load the repositories.yaml
-	rf, err := repo.LoadRepositoriesFile(s.helmhome.RepositoryFile())
+	rf, err := repo.LoadRepositoryFile(s.helmhome.RepositoryFile())
 	if err != nil {
 		return nil, err
 	}

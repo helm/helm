@@ -270,7 +270,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoFile)
 	}
-	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
+	if r, err := repo.LoadRepositoryFile(repoFile); err == repo.ErrRepoOutOfDate {
 		t.Log("Updating repository file format...")
 		if err := r.WriteFile(repoFile, 0644); err != nil {
 			return err
