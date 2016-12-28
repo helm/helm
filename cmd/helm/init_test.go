@@ -43,22 +43,20 @@ func TestInitCmd(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-
-	fake := testclient.Fake{}
+	fc := fake.NewSimpleClientset()
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
-		kubeClient: fake.Extensions(),
+		kubeClient: fc.Extensions(),
+		namespace:  api.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
 	}
-
-	actions := fake.Actions()
-	if action, ok := actions[0].(testclient.CreateAction); !ok || action.GetResource() != "deployments" {
-		t.Errorf("unexpected action: %v, expected create deployment", actions[0])
+	action := fc.Actions()[0]
+	if !action.Matches("create", "deployments") {
+		t.Errorf("unexpected action: %v, expected create deployment", action)
 	}
-
 	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
