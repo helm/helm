@@ -197,7 +197,7 @@ communicate without breaking API assumptions. That error means that the version
 difference is too great to safely continue. Typically, you need to upgrade
 Tiller manually for this.
 
-The [Installation Guide](install.yaml) has definitive information about safely
+The [Installation Guide](install.md) has definitive information about safely
 upgrading Helm and Tiller.
 
 The rules for version numbers are as follows:
