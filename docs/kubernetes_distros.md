@@ -32,10 +32,6 @@ distributions:
 Some versions of Helm (v2.0.0-beta2) require you to `export KUBECONFIG=/etc/kubernetes/admin.conf`
 or create a `~/.kube/config`.
 
-## CoreOS
+## Container Linux by CoreOS
 
-Some versions of CoreOS's Kubernetes do not ship with `socat`, which is what
-the Kubernetes API server uses to create tunnels. This will prevent Helm from
-being able to tunnel to Tiller.
-
-
+Helm requires that kubelet have access to a copy of the `socat` program to proxy connections to the Tiller API. On Container Linux the Kubelet runs inside of a [hyperkube](https://github.com/kubernetes/kubernetes/tree/master/cluster/images/hyperkube) container image that has socat. So, even though Container Linux doesn't ship `socat` the container filesystem running kubelet does have socat. To learn move read the [Kubelet Wrapper](https://coreos.com/kubernetes/docs/latest/kubelet-wrapper.html) docs.
