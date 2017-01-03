@@ -13,7 +13,7 @@ also be used to perform cryptographic verification of a chart without installing
 the chart.
 
 There are options for unpacking the chart after download. This will create a
-directory for the chart and uncomparess into that directory.
+directory for the chart and uncompress into that directory.
 
 If the --verify flag is specified, the requested chart MUST have a provenance
 file, and MUST pass the verification process. Failure in any part of this will

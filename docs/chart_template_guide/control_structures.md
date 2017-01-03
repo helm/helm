@@ -271,7 +271,7 @@ It will produce an error because `Release.Name` is not inside of the restricted 
 
 After looking a `range`, we will take a look at template variables, which offer one solution to the scoping issue above.
 
-## Looping with the the `range` action
+## Looping with the `range` action
 
 Many programming languages have support for looping using `for` loops, `foreach` loops, or similar functional mechanisms. In Helm's template language, the way to iterate through a collection is to use the `range` operator.
 

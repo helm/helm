@@ -224,7 +224,7 @@ the rest of the defaults for that chart.
 
 There are two ways to pass configuration data during install:
 
-- `--values` (or `-f`): Specifiy a YAML file with overrides.
+- `--values` (or `-f`): Specify a YAML file with overrides.
 - `--set`: Specify overrides on the command line.
 
 If both are used, `--set` values are merged into `--values` with higher precedence.

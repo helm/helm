@@ -193,7 +193,7 @@ data:
 
 ## Lines
 
-Sometimes it is desireable to access each line of a file in your template. We
+Sometimes it is desirable to access each line of a file in your template. We
 provide a convenient `Lines` method for this.
 
 ```yaml

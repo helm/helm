@@ -267,7 +267,7 @@ Some files in Helm cannot contain more than one doc. If, for example, more
 than one document is provided inside of a `values.yaml` file, only the first
 will be used.
 
-Template files, however, may have more than one document. When this happends,
+Template files, however, may have more than one document. When this happens,
 the file (and all of its documents) is treated as one object during
 template rendering. But then the resulting YAML is split into multiple
 documents before it is fed to Kubernetes.

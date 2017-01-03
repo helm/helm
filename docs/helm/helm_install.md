@@ -24,7 +24,7 @@ To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined. This will still require a
 round-trip to the Tiller server.
 
-If --verify is set, the chart MUST have a provenance file, and the provenenace
+If --verify is set, the chart MUST have a provenance file, and the provenance
 fall MUST pass all verification steps.
 
 There are four different ways you can express the chart you want to install:

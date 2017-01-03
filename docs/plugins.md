@@ -164,7 +164,7 @@ these flags are _not_ passed on to the plugin.
 
 - `--debug`: If this is specified, `$HELM_DEBUG` is set to `1`
 - `--home`: This is converted to `$HELM_HOME`
-- `--host`: This is convereted to `$HELM_HOST`
+- `--host`: This is converted to `$HELM_HOST`
 - `--kube-context`: This is simply dropped. If your plugin uses `useTunnel`, this
   is used to set up the tunnel for you.
 
