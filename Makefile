@@ -1,8 +1,9 @@
 DOCKER_REGISTRY ?= gcr.io
 IMAGE_PREFIX    ?= kubernetes-helm
 SHORT_NAME      ?= tiller
-TARGETS         = darwin/amd64 linux/amd64 linux/386 windows/amd64
+TARGETS         = darwin/amd64 linux/amd64 linux/386 linux/arm windows/amd64
 DIST_DIRS       = find * -type d -exec
+APP             = helm
 
 # go option
 GO        ?= go
@@ -25,11 +26,11 @@ all: build
 build:
 	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
 
-# usage: make build-cross dist VERSION=v2.0.0-alpha.3
+# usage: make clean build-cross dist APP=helm|tiller VERSION=v2.0.0-alpha.3
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
 build-cross:
-	CGO_ENABLED=0 gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
+	CGO_ENABLED=0 gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/$(APP)
 
 .PHONY: dist
 dist:
@@ -38,7 +39,8 @@ dist:
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
 		$(DIST_DIRS) cp ../README.md {} \; && \
 		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
+		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; && \
+		mv $(APP)-${VERSION}-*.* .. \
 	)
 
 .PHONY: checksum
