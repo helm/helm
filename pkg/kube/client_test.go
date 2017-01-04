@@ -305,6 +305,51 @@ func TestPerform(t *testing.T) {
 	}
 }
 
+func TestWaitAndGetCompletedPodStatus(t *testing.T) {
+	f, tf, codec, ns := cmdtesting.NewAPIFactory()
+	actions := make(map[string]string)
+	testPodList := newPodList("bestpod")
+
+	tf.Client = &fake.RESTClient{
+		NegotiatedSerializer: ns,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			actions[p] = m
+			count := 0
+			switch {
+			case p == "/namespaces/test/pods/bestpod" && m == "GET":
+				return newResponse(200, &testPodList.Items[0])
+			case p == "/watch/namespaces/test/pods/bestpod" && m == "GET":
+				//TODO: fix response
+				count = count + 1
+				if count == 1 {
+					//returns event running
+					return newResponse(200, &testPodList.Items[0])
+				}
+				if count == 2 {
+					//return event succeeded
+					return newResponse(200, &testPodList.Items[0])
+				}
+			default:
+				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+				return nil, nil
+			}
+		}),
+	}
+
+	c := &Client{Factory: f}
+	//stub watchUntil to return no error
+
+	status, err := c.WaitAndGetCompletedPodStatus("test", objBody(codec, &testPodList), 30*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != api.PodSucceeded {
+		t.Fatal("Expected %s, got %s", api.PodSucceeded, status)
+	}
+}
+
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)

@@ -122,6 +122,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newInitCmd(out),
 		newResetCmd(nil, out),
 		newVersionCmd(nil, out),
+		newReleaseTestCmd(nil, out),
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),

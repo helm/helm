@@ -22,6 +22,7 @@ import "hapi/release/release.proto";
 import "hapi/release/info.proto";
 import "hapi/release/status.proto";
 import "hapi/version/version.proto";
+import "hapi/release/test_suite.proto";
 
 option go_package = "services";
 
@@ -77,6 +78,11 @@ service ReleaseService {
 
     // ReleaseHistory retrieves a releasse's history.
     rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
+    }
+
+    //TODO: move this to a test release service or rename to RunReleaseTest
+    // TestRelease runs the tests for a given release
+    rpc RunReleaseTest(TestReleaseRequest) returns (TestReleaseResponse) {
     }
 }
 
@@ -303,4 +309,18 @@ message GetHistoryRequest {
 // GetHistoryResponse is received in response to a GetHistory rpc.
 message GetHistoryResponse {
 	repeated hapi.release.Release releases = 1;
+}
+
+// TestReleaseRequest is a request to get the status of a release.
+message TestReleaseRequest {
+	// Name is the name of the release
+	string name = 1;
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	int64 timeout = 2;
+}
+
+// TestReleaseResponse
+message TestReleaseResponse {
+	// TODO: change to repeated hapi.release.Release.Test results = 1; (for stream)
+	hapi.release.TestSuite result = 1;
 }

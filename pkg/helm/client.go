@@ -244,6 +244,19 @@ func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.Get
 	return h.history(ctx, req)
 }
 
+// ReleaseTest executes a pre-defined test on a release
+func (h *Client) ReleaseTest(rlsName string, opts ...ReleaseTestOption) (*rls.TestReleaseResponse, error) {
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+
+	req := &h.opts.testReq
+	req.Name = rlsName
+	ctx := NewContext()
+
+	return h.test(ctx, req)
+}
+
 // Executes tiller.ListReleases RPC.
 func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.ListReleasesResponse, error) {
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
@@ -355,4 +368,16 @@ func (h *Client) history(ctx context.Context, req *rls.GetHistoryRequest) (*rls.
 
 	rlc := rls.NewReleaseServiceClient(c)
 	return rlc.GetHistory(ctx, req)
+}
+
+// Executes tiller.TestRelease RPC.
+func (h *Client) test(ctx context.Context, req *rls.TestReleaseRequest) (*rls.TestReleaseResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.RunReleaseTest(ctx, req)
 }

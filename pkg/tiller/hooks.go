@@ -40,6 +40,7 @@ const (
 	postUpgrade  = "post-upgrade"
 	preRollback  = "pre-rollback"
 	postRollback = "post-rollback"
+	releaseTest  = "test"
 )
 
 var events = map[string]release.Hook_Event{
@@ -51,6 +52,7 @@ var events = map[string]release.Hook_Event{
 	postUpgrade:  release.Hook_POST_UPGRADE,
 	preRollback:  release.Hook_PRE_ROLLBACK,
 	postRollback: release.Hook_POST_ROLLBACK,
+	releaseTest:  release.Hook_RELEASE_TEST,
 }
 
 type simpleHead struct {

@@ -17,32 +17,15 @@ syntax = "proto3";
 package hapi.release;
 
 import "google/protobuf/timestamp.proto";
+import "hapi/release/test_result.proto";
 
 option go_package = "release";
 
-// Hook defines a hook object.
-message Hook {
-	enum Event {
-        UNKNOWN = 0;
-        PRE_INSTALL = 1;
-        POST_INSTALL = 2;
-        PRE_DELETE = 3;
-        POST_DELETE = 4;
-        PRE_UPGRADE = 5;
-        POST_UPGRADE = 6;
-        PRE_ROLLBACK = 7;
-        POST_ROLLBACK = 8;
-        RELEASE_TEST = 9;
-	}
-	string name = 1;
-	// Kind is the Kubernetes kind.
-	string kind = 2;
-	// Path is the chart-relative path to the template.
-	string path = 3;
-	// Manifest is the manifest contents.
-	string manifest = 4;
-	// Events are the events that this hook fires on.
-	repeated Event events = 5;
-	// LastRun indicates the date/time this was last run.
-	google.protobuf.Timestamp last_run = 6;
+// TestSuite comprises of the last run of the pre-defined test suite of a release version
+message TestSuite {
+        // LastRun indicates the date/time this test was last run.
+        google.protobuf.Timestamp last_run = 1;
+
+        // Results are the results of each segment of the test
+        repeated hapi.release.TestResult results = 2;
 }

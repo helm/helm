@@ -28,6 +28,8 @@ It has these top-level messages:
 	GetVersionResponse
 	GetHistoryRequest
 	GetHistoryResponse
+	TestReleaseRequest
+	TestReleaseResponse
 */
 package services
 
@@ -36,10 +38,11 @@ import fmt "fmt"
 import math "math"
 import hapi_chart3 "k8s.io/helm/pkg/proto/hapi/chart"
 import hapi_chart "k8s.io/helm/pkg/proto/hapi/chart"
-import hapi_release3 "k8s.io/helm/pkg/proto/hapi/release"
+import hapi_release5 "k8s.io/helm/pkg/proto/hapi/release"
 import hapi_release2 "k8s.io/helm/pkg/proto/hapi/release"
 import hapi_release1 "k8s.io/helm/pkg/proto/hapi/release"
 import hapi_version "k8s.io/helm/pkg/proto/hapi/version"
+import hapi_release4 "k8s.io/helm/pkg/proto/hapi/release"
 
 import (
 	context "golang.org/x/net/context"
@@ -153,7 +156,7 @@ type ListReleasesResponse struct {
 	// Total is the total number of queryable releases.
 	Total int64 `protobuf:"varint,3,opt,name=total" json:"total,omitempty"`
 	// Releases is the list of found release objects.
-	Releases []*hapi_release3.Release `protobuf:"bytes,4,rep,name=releases" json:"releases,omitempty"`
+	Releases []*hapi_release5.Release `protobuf:"bytes,4,rep,name=releases" json:"releases,omitempty"`
 }
 
 func (m *ListReleasesResponse) Reset()                    { *m = ListReleasesResponse{} }
@@ -161,7 +164,7 @@ func (m *ListReleasesResponse) String() string            { return proto.Compact
 func (*ListReleasesResponse) ProtoMessage()               {}
 func (*ListReleasesResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-func (m *ListReleasesResponse) GetReleases() []*hapi_release3.Release {
+func (m *ListReleasesResponse) GetReleases() []*hapi_release5.Release {
 	if m != nil {
 		return m.Releases
 	}
@@ -219,7 +222,7 @@ func (*GetReleaseContentRequest) Descriptor() ([]byte, []int) { return fileDescr
 // GetReleaseContentResponse is a response containing the contents of a release.
 type GetReleaseContentResponse struct {
 	// The release content
-	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *GetReleaseContentResponse) Reset()                    { *m = GetReleaseContentResponse{} }
@@ -227,7 +230,7 @@ func (m *GetReleaseContentResponse) String() string            { return proto.Co
 func (*GetReleaseContentResponse) ProtoMessage()               {}
 func (*GetReleaseContentResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-func (m *GetReleaseContentResponse) GetRelease() *hapi_release3.Release {
+func (m *GetReleaseContentResponse) GetRelease() *hapi_release5.Release {
 	if m != nil {
 		return m.Release
 	}
@@ -278,7 +281,7 @@ func (m *UpdateReleaseRequest) GetValues() *hapi_chart.Config {
 
 // UpdateReleaseResponse is the response to an update request.
 type UpdateReleaseResponse struct {
-	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *UpdateReleaseResponse) Reset()                    { *m = UpdateReleaseResponse{} }
@@ -286,7 +289,7 @@ func (m *UpdateReleaseResponse) String() string            { return proto.Compac
 func (*UpdateReleaseResponse) ProtoMessage()               {}
 func (*UpdateReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
-func (m *UpdateReleaseResponse) GetRelease() *hapi_release3.Release {
+func (m *UpdateReleaseResponse) GetRelease() *hapi_release5.Release {
 	if m != nil {
 		return m.Release
 	}
@@ -318,7 +321,7 @@ func (*RollbackReleaseRequest) Descriptor() ([]byte, []int) { return fileDescrip
 
 // RollbackReleaseResponse is the response to an update request.
 type RollbackReleaseResponse struct {
-	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *RollbackReleaseResponse) Reset()                    { *m = RollbackReleaseResponse{} }
@@ -326,7 +329,7 @@ func (m *RollbackReleaseResponse) String() string            { return proto.Comp
 func (*RollbackReleaseResponse) ProtoMessage()               {}
 func (*RollbackReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
-func (m *RollbackReleaseResponse) GetRelease() *hapi_release3.Release {
+func (m *RollbackReleaseResponse) GetRelease() *hapi_release5.Release {
 	if m != nil {
 		return m.Release
 	}
@@ -381,7 +384,7 @@ func (m *InstallReleaseRequest) GetValues() *hapi_chart.Config {
 
 // InstallReleaseResponse is the response from a release installation.
 type InstallReleaseResponse struct {
-	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 }
 
 func (m *InstallReleaseResponse) Reset()                    { *m = InstallReleaseResponse{} }
@@ -389,7 +392,7 @@ func (m *InstallReleaseResponse) String() string            { return proto.Compa
 func (*InstallReleaseResponse) ProtoMessage()               {}
 func (*InstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
-func (m *InstallReleaseResponse) GetRelease() *hapi_release3.Release {
+func (m *InstallReleaseResponse) GetRelease() *hapi_release5.Release {
 	if m != nil {
 		return m.Release
 	}
@@ -416,7 +419,7 @@ func (*UninstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescri
 // UninstallReleaseResponse represents a successful response to an uninstall request.
 type UninstallReleaseResponse struct {
 	// Release is the release that was marked deleted.
-	Release *hapi_release3.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 	// Info is an uninstall message
 	Info string `protobuf:"bytes,2,opt,name=info" json:"info,omitempty"`
 }
@@ -426,7 +429,7 @@ func (m *UninstallReleaseResponse) String() string            { return proto.Com
 func (*UninstallReleaseResponse) ProtoMessage()               {}
 func (*UninstallReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
 
-func (m *UninstallReleaseResponse) GetRelease() *hapi_release3.Release {
+func (m *UninstallReleaseResponse) GetRelease() *hapi_release5.Release {
 	if m != nil {
 		return m.Release
 	}
@@ -443,7 +446,7 @@ func (*GetVersionRequest) ProtoMessage()               {}
 func (*GetVersionRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
 
 type GetVersionResponse struct {
-	Version *hapi_version.Version `protobuf:"bytes,1,opt,name=Version" json:"Version,omitempty"`
+	Version *hapi_version.Version `protobuf:"bytes,1,opt,name=Version,json=version" json:"Version,omitempty"`
 }
 
 func (m *GetVersionResponse) Reset()                    { *m = GetVersionResponse{} }
@@ -473,7 +476,7 @@ func (*GetHistoryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0,
 
 // GetHistoryResponse is received in response to a GetHistory rpc.
 type GetHistoryResponse struct {
-	Releases []*hapi_release3.Release `protobuf:"bytes,1,rep,name=releases" json:"releases,omitempty"`
+	Releases []*hapi_release5.Release `protobuf:"bytes,1,rep,name=releases" json:"releases,omitempty"`
 }
 
 func (m *GetHistoryResponse) Reset()                    { *m = GetHistoryResponse{} }
@@ -481,9 +484,40 @@ func (m *GetHistoryResponse) String() string            { return proto.CompactTe
 func (*GetHistoryResponse) ProtoMessage()               {}
 func (*GetHistoryResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{18} }
 
-func (m *GetHistoryResponse) GetReleases() []*hapi_release3.Release {
+func (m *GetHistoryResponse) GetReleases() []*hapi_release5.Release {
 	if m != nil {
 		return m.Releases
+	}
+	return nil
+}
+
+// TestReleaseRequest is a request to get the status of a release.
+type TestReleaseRequest struct {
+	// Name is the name of the release
+	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	Timeout int64 `protobuf:"varint,2,opt,name=timeout" json:"timeout,omitempty"`
+}
+
+func (m *TestReleaseRequest) Reset()                    { *m = TestReleaseRequest{} }
+func (m *TestReleaseRequest) String() string            { return proto.CompactTextString(m) }
+func (*TestReleaseRequest) ProtoMessage()               {}
+func (*TestReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
+
+// TestReleaseResponse
+type TestReleaseResponse struct {
+	// TODO: change to repeated hapi.release.Release.Test results = 1; (for stream)
+	Result *hapi_release4.TestSuite `protobuf:"bytes,1,opt,name=result" json:"result,omitempty"`
+}
+
+func (m *TestReleaseResponse) Reset()                    { *m = TestReleaseResponse{} }
+func (m *TestReleaseResponse) String() string            { return proto.CompactTextString(m) }
+func (*TestReleaseResponse) ProtoMessage()               {}
+func (*TestReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
+
+func (m *TestReleaseResponse) GetResult() *hapi_release4.TestSuite {
+	if m != nil {
+		return m.Result
 	}
 	return nil
 }
@@ -508,6 +542,8 @@ func init() {
 	proto.RegisterType((*GetVersionResponse)(nil), "hapi.services.tiller.GetVersionResponse")
 	proto.RegisterType((*GetHistoryRequest)(nil), "hapi.services.tiller.GetHistoryRequest")
 	proto.RegisterType((*GetHistoryResponse)(nil), "hapi.services.tiller.GetHistoryResponse")
+	proto.RegisterType((*TestReleaseRequest)(nil), "hapi.services.tiller.TestReleaseRequest")
+	proto.RegisterType((*TestReleaseResponse)(nil), "hapi.services.tiller.TestReleaseResponse")
 	proto.RegisterEnum("hapi.services.tiller.ListSort_SortBy", ListSort_SortBy_name, ListSort_SortBy_value)
 	proto.RegisterEnum("hapi.services.tiller.ListSort_SortOrder", ListSort_SortOrder_name, ListSort_SortOrder_value)
 }
@@ -544,6 +580,9 @@ type ReleaseServiceClient interface {
 	RollbackRelease(ctx context.Context, in *RollbackReleaseRequest, opts ...grpc.CallOption) (*RollbackReleaseResponse, error)
 	// ReleaseHistory retrieves a releasse's history.
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
+	// TODO: move this to a test release service or rename to RunReleaseTest
+	// TestRelease runs the tests for a given release
+	RunReleaseTest(ctx context.Context, in *TestReleaseRequest, opts ...grpc.CallOption) (*TestReleaseResponse, error)
 }
 
 type releaseServiceClient struct {
@@ -658,6 +697,15 @@ func (c *releaseServiceClient) GetHistory(ctx context.Context, in *GetHistoryReq
 	return out, nil
 }
 
+func (c *releaseServiceClient) RunReleaseTest(ctx context.Context, in *TestReleaseRequest, opts ...grpc.CallOption) (*TestReleaseResponse, error) {
+	out := new(TestReleaseResponse)
+	err := grpc.Invoke(ctx, "/hapi.services.tiller.ReleaseService/RunReleaseTest", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for ReleaseService service
 
 type ReleaseServiceServer interface {
@@ -682,6 +730,9 @@ type ReleaseServiceServer interface {
 	RollbackRelease(context.Context, *RollbackReleaseRequest) (*RollbackReleaseResponse, error)
 	// ReleaseHistory retrieves a releasse's history.
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
+	// TODO: move this to a test release service or rename to RunReleaseTest
+	// TestRelease runs the tests for a given release
+	RunReleaseTest(context.Context, *TestReleaseRequest) (*TestReleaseResponse, error)
 }
 
 func RegisterReleaseServiceServer(s *grpc.Server, srv ReleaseServiceServer) {
@@ -853,6 +904,24 @@ func _ReleaseService_GetHistory_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ReleaseService_RunReleaseTest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TestReleaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReleaseServiceServer).RunReleaseTest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/hapi.services.tiller.ReleaseService/RunReleaseTest",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReleaseServiceServer).RunReleaseTest(ctx, req.(*TestReleaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _ReleaseService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "hapi.services.tiller.ReleaseService",
 	HandlerType: (*ReleaseServiceServer)(nil),
@@ -888,6 +957,10 @@ var _ReleaseService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHistory",
 			Handler:    _ReleaseService_GetHistory_Handler,
+		},
+		{
+			MethodName: "RunReleaseTest",
+			Handler:    _ReleaseService_RunReleaseTest_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
