@@ -16,12 +16,6 @@ limitations under the License.
 
 package driver
 
-import (
-	"bytes"
-	"fmt"
-	"io"
-)
-
 // labels is a map of key value pairs to be included as metadata in a configmap object.
 type labels map[string]string
 
@@ -51,16 +45,4 @@ func (lbs *labels) fromMap(kvs map[string]string) {
 	for k, v := range kvs {
 		lbs.set(k, v)
 	}
-}
-
-func (lbs labels) dump(w io.Writer) error {
-	var b bytes.Buffer
-
-	fmt.Fprintln(&b, "labels:")
-	for k, v := range lbs {
-		fmt.Fprintf(&b, "\t- %q -> %q\n", k, v)
-	}
-
-	_, err := w.Write(b.Bytes())
-	return err
 }

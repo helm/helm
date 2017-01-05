@@ -17,9 +17,6 @@ limitations under the License.
 package driver
 
 import (
-	"bytes"
-	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -151,28 +148,6 @@ func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	default:
 		return nil, ErrInvalidKey
 	}
-}
-
-func (mem *Memory) dump(w io.Writer) error {
-	var b bytes.Buffer
-
-	fmt.Fprintln(&b, "memory:")
-	for key, recs := range mem.cache {
-		fmt.Fprintf(&b, "\t# %q\n", key)
-
-		recs.Iter(func(index int, r *record) bool {
-			fmt.Fprintf(&b, "\t\t- [%d] v%d (status = %s)\n",
-				index,
-				r.rls.Version,
-				r.rls.Info.Status.Code,
-			)
-
-			return true
-		})
-	}
-
-	_, err := w.Write(b.Bytes())
-	return err
 }
 
 // wlock locks mem for writing

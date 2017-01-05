@@ -50,8 +50,6 @@ func TestSortScore(t *testing.T) {
 	}
 }
 
-var testCacheDir = "../testdata/"
-
 var indexfileEntries = map[string]repo.ChartVersions{
 	"niña": {
 		{
