@@ -43,15 +43,32 @@ func Install(client extensionsclient.DeploymentsGetter, namespace, image string,
 	return err
 }
 
+// Upgrade uses kubernetes client to upgrade tiller to current version
+//
+// Returns an error if the command failed.
+func Upgrade(client extensionsclient.DeploymentsGetter, namespace, image string, canary bool) error {
+	obj, err := client.Deployments(namespace).Get("tiller-deploy")
+	if err != nil {
+		return err
+	}
+	obj.Spec.Template.Spec.Containers[0].Image = selectImage(image, canary)
+	_, err = client.Deployments(namespace).Update(obj)
+	return err
+}
+
 // deployment gets the deployment object that installs Tiller.
 func deployment(namespace, image string, canary bool) *extensions.Deployment {
+	return generateDeployment(namespace, selectImage(image, canary))
+}
+
+func selectImage(image string, canary bool) string {
 	switch {
 	case canary:
 		image = defaultImage + ":canary"
 	case image == "":
 		image = fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	}
-	return generateDeployment(namespace, image)
+	return image
 }
 
 // DeploymentManifest gets the manifest (as a string) that describes the Tiller Deployment

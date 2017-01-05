@@ -65,6 +65,7 @@ type initCmd struct {
 	image      string
 	clientOnly bool
 	canary     bool
+	upgrade    bool
 	namespace  string
 	dryRun     bool
 	out        io.Writer
@@ -94,6 +95,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
 	f.BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
+	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if tiller is already installed")
 	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 
@@ -130,7 +132,15 @@ func (i *initCmd) run() error {
 			if !kerrors.IsAlreadyExists(err) {
 				return fmt.Errorf("error installing: %s", err)
 			}
-			fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster. (Use --client-only to suppress this message.)")
+			if i.upgrade {
+				if err := installer.Upgrade(i.kubeClient, i.namespace, i.image, i.canary); err != nil {
+					return fmt.Errorf("error when upgrading: %s", err)
+				}
+				fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been upgraded to the current version.")
+			} else {
+				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
+					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
+			}
 		} else {
 			fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 		}
