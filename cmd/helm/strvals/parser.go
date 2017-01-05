@@ -216,29 +216,6 @@ func inMap(k rune, m map[rune]bool) bool {
 	return ok
 }
 
-func (t *parser) listVal() []rune {
-	v := []rune{}
-	for {
-		switch r, _, e := t.sc.ReadRune(); {
-		case e != nil:
-			// End of input or error with reader stops value parsing.
-			return v
-		case r == '\\':
-			//Escape char. Consume next and append.
-			next, _, e := t.sc.ReadRune()
-			if e != nil {
-				return v
-			}
-			v = append(v, next)
-		case r == ',':
-			//End of key. Consume ',' and return.
-			return v
-		default:
-			v = append(v, r)
-		}
-	}
-}
-
 func typedVal(v []rune) interface{} {
 	val := string(v)
 	if strings.EqualFold(val, "true") {
