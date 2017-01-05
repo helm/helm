@@ -139,7 +139,7 @@ func start(c *cobra.Command, args []string) {
 
 // namespace returns the namespace of tiller
 func namespace() string {
-	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+	if ns := os.Getenv("TILLER_NAMESPACE"); ns != "" {
 		return ns
 	}
 
