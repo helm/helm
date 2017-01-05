@@ -7,6 +7,12 @@ displays the status of the named release
 
 
 This command shows the status of a named release.
+The status consists of:
+- last deployment time
+- k8s namespace in which the release lives
+- state of the release (can be: UNKNOWN, DEPLOYED, DELETED, SUPERSEDED, FAILED or DELETING)
+- list of resources that this release consists of, sorted by kind
+- additional notes provided by the chart
 
 
 ```
