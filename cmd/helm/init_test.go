@@ -89,7 +89,8 @@ func TestInitCmd_exsits(t *testing.T) {
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
 	}
-	expected := "Warning: Tiller is already installed in the cluster. (Use --client-only to suppress this message.)"
+	expected := "Warning: Tiller is already installed in the cluster.\n" +
+		"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)"
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}

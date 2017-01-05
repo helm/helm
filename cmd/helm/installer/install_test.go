@@ -103,3 +103,22 @@ func TestInstall_canary(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 }
+
+func TestUpgrade(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+
+	fc := fake.NewSimpleClientset(deployment(api.NamespaceDefault, "imageToReplace", false))
+	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
+		i := obj.Spec.Template.Spec.Containers[0].Image
+		if i != image {
+			t.Errorf("expected image = '%s', got '%s'", image, i)
+		}
+		return true, obj, nil
+	})
+
+	err := Upgrade(fc.Extensions(), api.NamespaceDefault, image, false)
+	if err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+}
