@@ -19,6 +19,8 @@ package main
 import (
 	"fmt"
 	"io"
+	"regexp"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -89,7 +91,11 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 	}
 	fmt.Fprintf(out, "\n")
 	if len(res.Info.Status.Resources) > 0 {
-		fmt.Fprintf(out, "RESOURCES:\n%s\n", res.Info.Status.Resources)
+		re := regexp.MustCompile("  +")
+
+		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
+		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Status.Resources, "\t"))
+		w.Flush()
 	}
 	if len(res.Info.Status.Notes) > 0 {
 		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
