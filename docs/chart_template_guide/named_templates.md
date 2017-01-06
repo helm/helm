@@ -12,7 +12,7 @@ Before we get to the nuts-and-bolts of writing those templates, there is file na
 
 - Most files in `templates/` are treated as if they contain Kubernetes manifests
 - The `NOTES.txt` is one exception
-- But files whose name begins with an underscore (`_`) are assumed to _not_ have a manifest inside. The rendered version of these files is not sent to Kubernetes.
+- But files whose name begins with an underscore (`_`) are assumed to _not_ have a manifest inside. These files are not rendered to Kubernetes object definitions, but are available everywhere within other chart templates for use.
 
 These files are used to store partials and helpers. In fact, when we first created `mychart`, we saw a file called `_helpers.tpl`. That file is the default location for template partials.
 
@@ -38,7 +38,7 @@ For example, we can define a template to encapsulate a Kubernetes block of label
 
 Now we can embed this template inside of our existing ConfigMap, and then include it with the `template` action:
 
-```
+```yaml
 {{- define "my_labels" }}
   labels:
     generator: helm
@@ -137,7 +137,7 @@ metadata:
 
 What happened to the name and version? They weren't in the scope for our defined template. When a named template (created with `define`) is rendered, it will receive the scope passed in by the `template` call. In our example, we included the template like this:
 
-```
+```yaml
 {{- template "my_labels" }}
 ```
 
@@ -185,7 +185,7 @@ Here, "NAME" is the name that a `define` block can use to override it, and PIPEL
 
 Let's start with `_helpers.tpl`:
 
-```
+```yaml
 {{- define "my_labels" }}
   labels:
     chart: {{ .Chart.Name }}
