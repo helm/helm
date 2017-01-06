@@ -21,6 +21,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -118,7 +119,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := sortManifests(manifests, newVersionSet("v1", "v1beta1"), InstallOrder)
+	hs, generic, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -183,7 +184,7 @@ metadata:
 }
 
 func TestVersionSet(t *testing.T) {
-	vs := newVersionSet("v1", "v1beta1", "extensions/alpha5", "batch/v1")
+	vs := chartutil.NewVersionSet("v1", "v1beta1", "extensions/alpha5", "batch/v1")
 
 	if l := len(vs); l != 4 {
 		t.Errorf("Expected 4, got %d", l)

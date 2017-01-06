@@ -332,7 +332,20 @@ type ReleaseOptions struct {
 }
 
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
+//
+// WARNING: This function is deprecated for Helm > 2.1.99 Use ToRenderValuesCaps() instead. It will
+// remain in the codebase to stay SemVer compliant.
+//
+// In Helm 3.0, this will be changed to accept Capabilities as a fourth parameter.
 func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOptions) (Values, error) {
+	caps := &Capabilities{APIVersions: DefaultVersionSet}
+	return ToRenderValuesCaps(chrt, chrtVals, options, caps)
+}
+
+// ToRenderValuesCaps composes the struct from the data coming from the Releases, Charts and Values files
+//
+// This takes both ReleaseOptions and Capabilities to merge into the render values.
+func ToRenderValuesCaps(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOptions, caps *Capabilities) (Values, error) {
 
 	top := map[string]interface{}{
 		"Release": map[string]interface{}{
@@ -344,8 +357,9 @@ func ToRenderValues(chrt *chart.Chart, chrtVals *chart.Config, options ReleaseOp
 			"Revision":  options.Revision,
 			"Service":   "Tiller",
 		},
-		"Chart": chrt.Metadata,
-		"Files": NewFiles(chrt.Files),
+		"Chart":        chrt.Metadata,
+		"Files":        NewFiles(chrt.Files),
+		"Capabilities": caps,
 	}
 
 	vals, err := CoalesceValues(chrt, chrtVals)

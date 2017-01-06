@@ -51,7 +51,8 @@ func Templates(linter *support.Linter) {
 	}
 
 	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: "testNamespace"}
-	valuesToRender, err := chartutil.ToRenderValues(chart, chart.Values, options)
+	caps := &chartutil.Capabilities{APIVersions: chartutil.DefaultVersionSet}
+	valuesToRender, err := chartutil.ToRenderValuesCaps(chart, chart.Values, options, caps)
 	if err != nil {
 		// FIXME: This seems to generate a duplicate, but I can't find where the first
 		// error is coming from.

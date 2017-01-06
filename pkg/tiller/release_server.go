@@ -361,12 +361,16 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		Revision:  int(revision),
 	}
 
-	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
+	caps, err := capabilities(s.clientset.Discovery())
+	if err != nil {
+		return nil, nil, err
+	}
+	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender)
+	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -589,6 +593,23 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	return res, err
 }
 
+// capabilities builds a Capabilities from discovery information.
+func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, error) {
+	sv, err := disc.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	vs, err := getVersionSet(disc)
+	if err != nil {
+		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+	}
+	return &chartutil.Capabilities{
+		APIVersions:   vs,
+		KubeVersion:   sv,
+		TillerVersion: version.GetVersionProto(),
+	}, nil
+}
+
 // prepareRelease builds a release for an install operation.
 func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
 	if req.Chart == nil {
@@ -596,6 +617,11 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	}
 
 	name, err := s.uniqName(req.Name, req.ReuseName)
+	if err != nil {
+		return nil, err
+	}
+
+	caps, err := capabilities(s.clientset.Discovery())
 	if err != nil {
 		return nil, err
 	}
@@ -609,12 +635,12 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		Revision:  revision,
 		IsInstall: true,
 	}
-	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options)
+	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
 	if err != nil {
 		return nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender)
+	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
 	if err != nil {
 		// Return a release with partial data so that client can show debugging
 		// information.
@@ -659,12 +685,10 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, err
 }
 
-func getVersionSet(client discovery.ServerGroupsInterface) (versionSet, error) {
-	defVersions := newVersionSet("v1")
-
+func getVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
 	groups, err := client.ServerGroups()
 	if err != nil {
-		return defVersions, err
+		return chartutil.DefaultVersionSet, err
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -672,14 +696,14 @@ func getVersionSet(client discovery.ServerGroupsInterface) (versionSet, error) {
 	// the default API list. This is also a safe value to return in any other
 	// odd-ball case.
 	if groups == nil {
-		return defVersions, nil
+		return chartutil.DefaultVersionSet, nil
 	}
 
 	versions := unversioned.ExtractGroupVersions(groups)
-	return newVersionSet(versions...), nil
+	return chartutil.NewVersionSet(versions...), nil
 }
 
-func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
 	if err != nil {
@@ -706,10 +730,6 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	vs, err := getVersionSet(s.clientset.Discovery())
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
-	}
 	hooks, manifests, err := sortManifests(files, vs, InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going

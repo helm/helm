@@ -24,8 +24,11 @@ import (
 	"text/template"
 
 	"github.com/golang/protobuf/ptypes/any"
+
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/timeconv"
+	"k8s.io/helm/pkg/version"
+	kversion "k8s.io/kubernetes/pkg/version"
 )
 
 func TestReadValues(t *testing.T) {
@@ -69,7 +72,7 @@ water:
 	}
 }
 
-func TestToRenderValues(t *testing.T) {
+func TestToRenderValuesCaps(t *testing.T) {
 
 	chartValues := `
 name: al Rashid
@@ -108,7 +111,13 @@ where:
 		Revision:  5,
 	}
 
-	res, err := ToRenderValues(c, v, o)
+	caps := &Capabilities{
+		APIVersions:   DefaultVersionSet,
+		TillerVersion: version.GetVersionProto(),
+		KubeVersion:   &kversion.Info{Major: "1"},
+	}
+
+	res, err := ToRenderValuesCaps(c, v, o, caps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,13 +134,22 @@ where:
 		t.Errorf("Expected release revision %d, got %q", 5, rev)
 	}
 	if relmap["IsUpgrade"].(bool) {
-		t.Errorf("Expected upgrade to be false.")
+		t.Error("Expected upgrade to be false.")
 	}
 	if !relmap["IsInstall"].(bool) {
 		t.Errorf("Expected install to be true.")
 	}
 	if data := res["Files"].(Files)["scheherazade/shahryar.txt"]; string(data) != "1,001 Nights" {
 		t.Errorf("Expected file '1,001 Nights', got %q", string(data))
+	}
+	if !res["Capabilities"].(*Capabilities).APIVersions.Has("v1") {
+		t.Error("Expected Capabilities to have v1 as an API")
+	}
+	if res["Capabilities"].(*Capabilities).TillerVersion.SemVer == "" {
+		t.Error("Expected Capabilities to have a Tiller version")
+	}
+	if res["Capabilities"].(*Capabilities).KubeVersion.Major != "1" {
+		t.Error("Expected Capabilities to have a Kube version")
 	}
 
 	var vals Values

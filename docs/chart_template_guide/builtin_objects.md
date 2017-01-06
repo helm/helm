@@ -20,6 +20,11 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
 - `Files`: This provides access to all non-special files in a chart. While you cannot use it to access templates, you can use it to access other files in the chart. See the section _Accessing Files_ for more.
   - `Files.Get` is a function for getting a file by name (`.Files.Get config.ini`)
   - `Files.GetBytes` is a function for getting the contents of a file as an array of bytes instead of as a string. This is useful for things like images.
+- `Capabilities`: This provides information about what capabilities the Kubernetes cluster supports.
+  - `Capabilities.APIVersions` is a set of versions.
+  - `Capabilities.APIVersions.Has $version` indicates whether a version (`batch/v1`) is enabled on the cluster.
+  - `Capabilities.KubeVersion` provides a way to look up the Kubernetes version. It has the following values: `Major`, `Minor`, `GitVersion`, `GitCommit`, `GitTreeState`, `BuildDate`, `GoVersion`, `Compiler`, and `Platform`.
+  - `Capabilities.TillerVersion` provides a way to look up the Tiller version. It has the following values: `SemVer`, `GitCommit`, and `GitTreeState`.
 
 The values are available to any top-level template. As we will see later, this does not necessarily mean that they will be available _everywhere_.
 
