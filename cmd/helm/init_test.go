@@ -77,7 +77,7 @@ func TestInitCmd_exsits(t *testing.T) {
 			Name:      "tiller-deploy",
 		},
 	})
-	fc.AddReactor("*", "*", func(action testcore.Action) (bool, runtime.Object, error) {
+	fc.PrependReactor("*", "*", func(action testcore.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.NewAlreadyExists(api.Resource("deployments"), "1")
 	})
 	cmd := &initCmd{

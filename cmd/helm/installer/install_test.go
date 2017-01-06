@@ -67,8 +67,8 @@ func TestDeploymentManifest(t *testing.T) {
 func TestInstall(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
-	fake := fake.NewSimpleClientset()
-	fake.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+	fc := &fake.Clientset{}
+	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
 		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
@@ -81,15 +81,18 @@ func TestInstall(t *testing.T) {
 		return true, obj, nil
 	})
 
-	err := Install(fake.Extensions(), api.NamespaceDefault, image, false, false)
-	if err != nil {
+	if err := Install(fc.Extensions(), api.NamespaceDefault, image, false, false); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 1 {
+		t.Errorf("unexpected actions: %v, expected 1 actions got %d", actions, len(actions))
 	}
 }
 
 func TestInstall_canary(t *testing.T) {
-	fake := fake.NewSimpleClientset()
-	fake.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+	fc := &fake.Clientset{}
+	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
 		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != "gcr.io/kubernetes-helm/tiller:canary" {
@@ -98,18 +101,26 @@ func TestInstall_canary(t *testing.T) {
 		return true, obj, nil
 	})
 
-	err := Install(fake.Extensions(), api.NamespaceDefault, "", true, false)
-	if err != nil {
+	if err := Install(fc.Extensions(), api.NamespaceDefault, "", true, false); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 1 {
+		t.Errorf("unexpected actions: %v, expected 1 actions got %d", actions, len(actions))
 	}
 }
 
 func TestUpgrade(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
-	fc := fake.NewSimpleClientset(deployment(api.NamespaceDefault, "imageToReplace", false))
+	existingDeployment := deployment(api.NamespaceDefault, "imageToReplace", false)
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingDeployment, nil
+	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*extensions.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -117,8 +128,11 @@ func TestUpgrade(t *testing.T) {
 		return true, obj, nil
 	})
 
-	err := Upgrade(fc.Extensions(), api.NamespaceDefault, image, false)
-	if err != nil {
+	if err := Upgrade(fc.Extensions(), api.NamespaceDefault, image, false); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 2 {
+		t.Errorf("unexpected actions: %v, expected 2 actions got %d", actions, len(actions))
 	}
 }
