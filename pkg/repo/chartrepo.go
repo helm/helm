@@ -50,6 +50,10 @@ type ChartRepository struct {
 	Client     *http.Client
 }
 
+type Getter interface {
+	Get(url string) (*http.Response, error)
+}
+
 // NewChartRepository constructs ChartRepository
 func NewChartRepository(cfg *ChartRepositoryConfig) (*ChartRepository, error) {
 	var client *http.Client
@@ -80,6 +84,14 @@ func NewChartRepository(cfg *ChartRepositoryConfig) (*ChartRepository, error) {
 		IndexFile: NewChartRepositoryIndex(),
 		Client:    client,
 	}, nil
+}
+
+func (r *ChartRepository) Get(url string) (*http.Response, error) {
+	resp, err := r.Client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // Load loads a directory of charts as if it were a repository.
@@ -119,7 +131,7 @@ func (r *ChartRepository) DownloadIndexFile() error {
 	var indexURL string
 
 	indexURL = strings.TrimSuffix(r.Config.URL, "/") + "/index.yaml"
-	resp, err := r.Client.Get(indexURL)
+	resp, err := r.Get(indexURL)
 	if err != nil {
 		return err
 	}

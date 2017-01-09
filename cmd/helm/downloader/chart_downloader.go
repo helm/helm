@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -76,12 +75,12 @@ type ChartDownloader struct {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
-	u, client, err := c.ResolveChartVersion(ref, version)
+	u, r, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
 		return "", nil, err
 	}
 
-	data, err := download(u.String(), client)
+	data, err := download(u.String(), r)
 	if err != nil {
 		return "", nil, err
 	}
@@ -95,7 +94,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	// If provenance is requested, verify it.
 	ver := &provenance.Verification{}
 	if c.Verify > VerifyNever {
-		body, err := download(u.String()+".prov", client)
+		body, err := download(u.String()+".prov", r)
 		if err != nil {
 			if c.Verify == VerifyAlways {
 				return destfile, ver, fmt.Errorf("Failed to fetch provenance %q", u.String()+".prov")
@@ -131,7 +130,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 //		* If version is non-empty, this will return the URL for that version
 //		* If version is empty, this will return the URL for the latest version
 // 		* If no version can be found, an error is returned
-func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *http.Client, error) {
+func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *repo.ChartRepository, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
@@ -199,7 +198,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *h
 		return nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
-	return u, r.Client, nil
+	return u, r, nil
 }
 
 // VerifyChart takes a path to a chart archive and a keyring, and verifies the chart.
@@ -228,11 +227,11 @@ func VerifyChart(path string, keyring string) (*provenance.Verification, error) 
 	return sig.Verify(path, provfile)
 }
 
-// download performs a HTTP Get using specified client and returns the body.
-func download(href string, client *http.Client) (*bytes.Buffer, error) {
+// download performs a Get from repo.Getter and returns the body.
+func download(href string, r repo.Getter) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
 
-	resp, err := client.Get(href)
+	resp, err := r.Get(href)
 	if err != nil {
 		return buf, err
 	}
