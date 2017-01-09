@@ -17,7 +17,7 @@ data:
 
 Template functions follow the syntax `functionName arg1 arg2...`. In the snippet above, `quote .Values.favorite.drink` calls the `quote` function and passes it a single argument.
 
-Helm has over 60 available functions. Some of them are defined by the [Go template language](https://godoc.org/text/template) itself. Most of the others are part of the [Spring template library](https://godoc.org/github.com/Masterminds/sprig). We'll see many of them as we progress through the examples.
+Helm has over 60 available functions. Some of them are defined by the [Go template language](https://godoc.org/text/template) itself. Most of the others are part of the [Sprig template library](https://godoc.org/github.com/Masterminds/sprig). We'll see many of them as we progress through the examples.
 
 > While we talk about the "Helm template language" as if it is Helm-specific, it is actually a combination of the Go template language, some extra functions, and a variety of wrappers to expose certain objects to the templates. Many resources on Go templates may be helpful as you learn about templating.
 
