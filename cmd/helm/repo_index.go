@@ -83,12 +83,12 @@ func (i *repoIndexCmd) run() error {
 func index(dir, url, mergeTo string) error {
 	out := filepath.Join(dir, "index.yaml")
 
-	i, err := repo.NewChartRepositoryIndexFromDirectory(dir, url)
+	i, err := repo.IndexDirectory(dir, url)
 	if err != nil {
 		return err
 	}
 	if mergeTo != "" {
-		i2, err := repo.NewChartRepositoryIndexFromFile(mergeTo)
+		i2, err := repo.LoadIndexFile(mergeTo)
 		if err != nil {
 			return fmt.Errorf("Merge failed: %s", err)
 		}

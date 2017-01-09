@@ -77,7 +77,7 @@ func TestServer(t *testing.T) {
 		return
 	}
 
-	m := repo.NewChartRepositoryIndex()
+	m := repo.NewIndexFile()
 	if err := yaml.Unmarshal(data, m); err != nil {
 		t.Error(err)
 		return

@@ -61,7 +61,7 @@ func NewIndex() *Index {
 const verSep = "$$"
 
 // AddRepo adds a repository index to the search index.
-func (i *Index) AddRepo(rname string, ind *repo.ChartRepositoryIndex, all bool) {
+func (i *Index) AddRepo(rname string, ind *repo.IndexFile, all bool) {
 	for name, ref := range ind.Entries {
 		if len(ref) == 0 {
 			// Skip chart names that have zero releases.

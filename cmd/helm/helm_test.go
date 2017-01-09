@@ -254,12 +254,12 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 
 	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
-		rf := repo.NewRepositoryFile()
-		rf.Add(&repo.ChartRepositoryConfig{
+		rf := repo.NewRepoFile()
+		rf.Add(&repo.Entry{
 			Name:  "charts",
 			URL:   "http://example.com/foo",
 			Cache: "charts-index.yaml",
-		}, &repo.ChartRepositoryConfig{
+		}, &repo.Entry{
 			Name:  "local",
 			URL:   "http://localhost.com:7743/foo",
 			Cache: "local-index.yaml",
@@ -270,7 +270,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoFile)
 	}
-	if r, err := repo.LoadRepositoryFile(repoFile); err == repo.ErrRepoOutOfDate {
+	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
 		t.Log("Updating repository file format...")
 		if err := r.WriteFile(repoFile, 0644); err != nil {
 			return err
@@ -279,7 +279,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 
 	localRepoIndexFile := home.LocalRepository(localRepoIndexFilePath)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
-		i := repo.NewChartRepositoryIndex()
+		i := repo.NewIndexFile()
 		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
 			return err
 		}

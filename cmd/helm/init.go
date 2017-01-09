@@ -179,7 +179,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer) error {
 	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
-		f := repo.NewRepositoryFile()
+		f := repo.NewRepoFile()
 		sr, err := initStableRepo(home.CacheIndex(stableRepository))
 		if err != nil {
 			return err
@@ -199,8 +199,8 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func initStableRepo(cacheFile string) (*repo.ChartRepositoryConfig, error) {
-	c := repo.ChartRepositoryConfig{
+func initStableRepo(cacheFile string) (*repo.Entry, error) {
+	c := repo.Entry{
 		Name:  stableRepository,
 		URL:   stableRepositoryURL,
 		Cache: cacheFile,
@@ -217,9 +217,9 @@ func initStableRepo(cacheFile string) (*repo.ChartRepositoryConfig, error) {
 	return &c, nil
 }
 
-func initLocalRepo(indexFile, cacheFile string) (*repo.ChartRepositoryConfig, error) {
+func initLocalRepo(indexFile, cacheFile string) (*repo.Entry, error) {
 	if fi, err := os.Stat(indexFile); err != nil {
-		i := repo.NewChartRepositoryIndex()
+		i := repo.NewIndexFile()
 		if err := i.WriteFile(indexFile, 0644); err != nil {
 			return nil, err
 		}
@@ -230,7 +230,7 @@ func initLocalRepo(indexFile, cacheFile string) (*repo.ChartRepositoryConfig, er
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
 
-	return &repo.ChartRepositoryConfig{
+	return &repo.Entry{
 		Name:  localRepository,
 		URL:   localRepositoryURL,
 		Cache: cacheFile,
@@ -238,7 +238,7 @@ func initLocalRepo(indexFile, cacheFile string) (*repo.ChartRepositoryConfig, er
 }
 
 func ensureRepoFileFormat(file string, out io.Writer) error {
-	r, err := repo.LoadRepositoryFile(file)
+	r, err := repo.LoadRepositoriesFile(file)
 	if err == repo.ErrRepoOutOfDate {
 		fmt.Fprintln(out, "Updating repository file format...")
 		if err := r.WriteFile(file, 0644); err != nil {

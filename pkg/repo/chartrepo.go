@@ -32,8 +32,8 @@ import (
 	"k8s.io/helm/pkg/urlutil"
 )
 
-// ChartRepositoryConfig represents a collection of parameters for chart repository
-type ChartRepositoryConfig struct {
+// Entry represents a collection of parameters for chart repository
+type Entry struct {
 	Name     string `json:"name"`
 	Cache    string `json:"cache"`
 	URL      string `json:"url"`
@@ -44,18 +44,19 @@ type ChartRepositoryConfig struct {
 
 // ChartRepository represents a chart repository
 type ChartRepository struct {
-	Config     *ChartRepositoryConfig
+	Config     *Entry
 	ChartPaths []string
-	IndexFile  *ChartRepositoryIndex
+	IndexFile  *IndexFile
 	Client     *http.Client
 }
 
+// Getter is an interface to support GET to the specified URL.
 type Getter interface {
 	Get(url string) (*http.Response, error)
 }
 
 // NewChartRepository constructs ChartRepository
-func NewChartRepository(cfg *ChartRepositoryConfig) (*ChartRepository, error) {
+func NewChartRepository(cfg *Entry) (*ChartRepository, error) {
 	var client *http.Client
 	if cfg.CertFile != "" && cfg.KeyFile != "" && cfg.CAFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(cfg.CertFile, cfg.KeyFile, cfg.CAFile)
@@ -81,11 +82,12 @@ func NewChartRepository(cfg *ChartRepositoryConfig) (*ChartRepository, error) {
 
 	return &ChartRepository{
 		Config:    cfg,
-		IndexFile: NewChartRepositoryIndex(),
+		IndexFile: NewIndexFile(),
 		Client:    client,
 	}, nil
 }
 
+// Get issues a GET using configured client to the specified URL.
 func (r *ChartRepository) Get(url string) (*http.Response, error) {
 	resp, err := r.Client.Get(url)
 	if err != nil {
@@ -112,7 +114,7 @@ func (r *ChartRepository) Load() error {
 	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			if strings.Contains(f.Name(), "-index.yaml") {
-				i, err := NewChartRepositoryIndexFromFile(path)
+				i, err := LoadIndexFile(path)
 				if err != nil {
 					return nil
 				}

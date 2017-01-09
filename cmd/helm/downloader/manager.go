@@ -213,7 +213,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 // hasAllRepos ensures that all of the referenced deps are in the local repo cache.
 func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
-	rf, err := repo.LoadRepositoryFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -244,7 +244,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 
 // getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
 func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string, error) {
-	rf, err := repo.LoadRepositoryFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 
 // UpdateRepositories updates all of the local repos to the latest.
 func (m *Manager) UpdateRepositories() error {
-	rf, err := repo.LoadRepositoryFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -291,7 +291,7 @@ func (m *Manager) UpdateRepositories() error {
 	return nil
 }
 
-func (m *Manager) parallelRepoUpdate(repos []*repo.ChartRepositoryConfig) error {
+func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 	out := m.Out
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
@@ -409,7 +409,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	repoyaml := m.HelmHome.RepositoryFile()
 
 	// Load repositories.yaml file
-	rf, err := repo.LoadRepositoryFile(repoyaml)
+	rf, err := repo.LoadRepositoriesFile(repoyaml)
 	if err != nil {
 		return indices, fmt.Errorf("failed to load %s: %s", repoyaml, err)
 	}
@@ -417,7 +417,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	for _, re := range rf.Repositories {
 		lname := re.Name
 		cacheindex := m.HelmHome.CacheIndex(lname)
-		index, err := repo.NewChartRepositoryIndexFromFile(cacheindex)
+		index, err := repo.LoadIndexFile(cacheindex)
 		if err != nil {
 			return indices, err
 		}

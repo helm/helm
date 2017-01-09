@@ -80,7 +80,7 @@ func TestUpdateCharts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r, err := repo.NewChartRepository(&repo.ChartRepositoryConfig{
+	r, err := repo.NewChartRepository(&repo.Entry{
 		Name:  "charts",
 		URL:   ts.URL(),
 		Cache: hh.CacheIndex("charts"),

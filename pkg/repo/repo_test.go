@@ -21,14 +21,14 @@ import "testing"
 const testRepositoriesFile = "testdata/repositories.yaml"
 
 func TestRepoFile(t *testing.T) {
-	rf := NewRepositoryFile()
+	rf := NewRepoFile()
 	rf.Add(
-		&ChartRepositoryConfig{
+		&Entry{
 			Name:  "stable",
 			URL:   "https://example.com/stable/charts",
 			Cache: "stable-index.yaml",
 		},
-		&ChartRepositoryConfig{
+		&Entry{
 			Name:  "incubator",
 			URL:   "https://example.com/incubator",
 			Cache: "incubator-index.yaml",
@@ -59,21 +59,21 @@ func TestRepoFile(t *testing.T) {
 }
 
 func TestNewRepositoriesFile(t *testing.T) {
-	expects := NewRepositoryFile()
+	expects := NewRepoFile()
 	expects.Add(
-		&ChartRepositoryConfig{
+		&Entry{
 			Name:  "stable",
 			URL:   "https://example.com/stable/charts",
 			Cache: "stable-index.yaml",
 		},
-		&ChartRepositoryConfig{
+		&Entry{
 			Name:  "incubator",
 			URL:   "https://example.com/incubator",
 			Cache: "incubator-index.yaml",
 		},
 	)
 
-	repofile, err := LoadRepositoryFile(testRepositoriesFile)
+	repofile, err := LoadRepositoriesFile(testRepositoriesFile)
 	if err != nil {
 		t.Errorf("%q could not be loaded: %s", testRepositoriesFile, err)
 	}
@@ -97,7 +97,7 @@ func TestNewRepositoriesFile(t *testing.T) {
 }
 
 func TestNewPreV1RepositoriesFile(t *testing.T) {
-	r, err := LoadRepositoryFile("testdata/old-repositories.yaml")
+	r, err := LoadRepositoriesFile("testdata/old-repositories.yaml")
 	if err != nil && err != ErrRepoOutOfDate {
 		t.Fatal(err)
 	}

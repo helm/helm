@@ -82,7 +82,7 @@ func (s *RepositoryServer) htmlIndex(w http.ResponseWriter, r *http.Request) {
 	t := htemplate.Must(htemplate.New("index.html").Parse(indexHTMLTemplate))
 	// load index
 	lrp := filepath.Join(s.RepoPath, "index.yaml")
-	i, err := NewChartRepositoryIndexFromFile(lrp)
+	i, err := LoadIndexFile(lrp)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -107,7 +107,7 @@ func AddChartToLocalRepo(ch *chart.Chart, path string) error {
 // Reindex adds an entry to the index file at the given path
 func Reindex(ch *chart.Chart, path string) error {
 	name := ch.Metadata.Name + "-" + ch.Metadata.Version
-	y, err := NewChartRepositoryIndexFromFile(path)
+	y, err := LoadIndexFile(path)
 	if err != nil {
 		return err
 	}

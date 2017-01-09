@@ -84,7 +84,7 @@ func TestRepoAdd(t *testing.T) {
 		t.Error(err)
 	}
 
-	f, err := repo.LoadRepositoryFile(hh.RepositoryFile())
+	f, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
 	if err != nil {
 		t.Error(err)
 	}

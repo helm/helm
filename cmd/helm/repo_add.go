@@ -78,7 +78,7 @@ func (a *repoAddCmd) run() error {
 }
 
 func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFile string, noUpdate bool) error {
-	f, err := repo.LoadRepositoryFile(home.RepositoryFile())
+	f, err := repo.LoadRepositoriesFile(home.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 	}
 
 	cif := home.CacheIndex(name)
-	c := repo.ChartRepositoryConfig{
+	c := repo.Entry{
 		Name:     name,
 		Cache:    cif,
 		URL:      url,

@@ -33,7 +33,7 @@ const (
 )
 
 func TestIndexFile(t *testing.T) {
-	i := NewChartRepositoryIndex()
+	i := NewIndexFile()
 	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.1"}, "cutter-0.1.1.tgz", "http://example.com/charts", "sha256:1234567890abc")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.0"}, "cutter-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
@@ -75,7 +75,7 @@ func TestLoadIndex(t *testing.T) {
 }
 
 func TestLoadIndexFile(t *testing.T) {
-	i, err := NewChartRepositoryIndexFromFile(testfile)
+	i, err := LoadIndexFile(testfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,13 +83,13 @@ func TestLoadIndexFile(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
-	ind1 := NewChartRepositoryIndex()
+	ind1 := NewIndexFile()
 	ind1.Add(&chart.Metadata{
 		Name:    "dreadnought",
 		Version: "0.1.0",
 	}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaa")
 
-	ind2 := NewChartRepositoryIndex()
+	ind2 := NewIndexFile()
 	ind2.Add(&chart.Metadata{
 		Name:    "dreadnought",
 		Version: "0.2.0",
@@ -133,7 +133,7 @@ func TestDownloadIndexFile(t *testing.T) {
 	defer os.RemoveAll(dirName)
 
 	indexFilePath := filepath.Join(dirName, testRepo+"-index.yaml")
-	r, err := NewChartRepository(&ChartRepositoryConfig{
+	r, err := NewChartRepository(&Entry{
 		Name:  testRepo,
 		URL:   srv.URL,
 		Cache: indexFilePath,
@@ -164,7 +164,7 @@ func TestDownloadIndexFile(t *testing.T) {
 	verifyLocalIndex(t, i)
 }
 
-func verifyLocalIndex(t *testing.T, i *ChartRepositoryIndex) {
+func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	numEntries := len(i.Entries)
 	if numEntries != 2 {
 		t.Errorf("Expected 2 entries in index file but got %d", numEntries)
@@ -264,7 +264,7 @@ func verifyLocalIndex(t *testing.T, i *ChartRepositoryIndex) {
 
 func TestIndexDirectory(t *testing.T) {
 	dir := "testdata/repository"
-	index, err := NewChartRepositoryIndexFromDirectory(dir, "http://localhost:8080")
+	index, err := IndexDirectory(dir, "http://localhost:8080")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ func TestLoadUnversionedIndex(t *testing.T) {
 }
 
 func TestIndexAdd(t *testing.T) {
-	i := NewChartRepositoryIndex()
+	i := NewIndexFile()
 	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
 
 	if i.Entries["clipper"][0].URLs[0] != "http://example.com/charts/clipper-0.1.0.tgz" {

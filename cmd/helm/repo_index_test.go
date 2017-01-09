@@ -53,7 +53,7 @@ func TestRepoIndexCmd(t *testing.T) {
 
 	destIndex := filepath.Join(dir, "index.yaml")
 
-	index, err := repo.NewChartRepositoryIndexFromFile(destIndex)
+	index, err := repo.LoadIndexFile(destIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Error(err)
 	}
 
-	index, err = repo.NewChartRepositoryIndexFromFile(destIndex)
+	index, err = repo.LoadIndexFile(destIndex)
 	if err != nil {
 		t.Fatal(err)
 	}

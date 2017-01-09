@@ -32,7 +32,7 @@ const (
 )
 
 func TestLoadChartRepository(t *testing.T) {
-	r, err := NewChartRepository(&ChartRepositoryConfig{
+	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
 	})
@@ -64,7 +64,7 @@ func TestLoadChartRepository(t *testing.T) {
 }
 
 func TestIndex(t *testing.T) {
-	r, err := NewChartRepository(&ChartRepositoryConfig{
+	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
 	})
@@ -82,7 +82,7 @@ func TestIndex(t *testing.T) {
 	}
 
 	tempIndexPath := filepath.Join(testRepository, indexPath)
-	actual, err := NewChartRepositoryIndexFromFile(tempIndexPath)
+	actual, err := LoadIndexFile(tempIndexPath)
 	defer os.Remove(tempIndexPath) // clean up
 	if err != nil {
 		t.Errorf("Error loading index file %v", err)
@@ -94,14 +94,14 @@ func TestIndex(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error performing re-index: %s\n", err)
 	}
-	second, err := NewChartRepositoryIndexFromFile(tempIndexPath)
+	second, err := LoadIndexFile(tempIndexPath)
 	if err != nil {
 		t.Errorf("Error re-loading index file %v", err)
 	}
 	verifyIndex(t, second)
 }
 
-func verifyIndex(t *testing.T, actual *ChartRepositoryIndex) {
+func verifyIndex(t *testing.T, actual *IndexFile) {
 	var empty time.Time
 	if actual.Generated == empty {
 		t.Errorf("Generated should be greater than 0: %s", actual.Generated)

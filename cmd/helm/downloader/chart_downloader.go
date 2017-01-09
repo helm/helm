@@ -136,14 +136,14 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *r
 		return nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
-	rf, err := repo.LoadRepositoryFile(c.HelmHome.RepositoryFile())
+	rf, err := repo.LoadRepositoriesFile(c.HelmHome.RepositoryFile())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var (
 		chartName string
-		rc        *repo.ChartRepositoryConfig
+		rc        *repo.Entry
 	)
 	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
 		// If it has a scheme and host and path, it's a full URL
@@ -178,7 +178,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *r
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
-	i, err := repo.NewChartRepositoryIndexFromFile(c.HelmHome.CacheIndex(r.Config.Name))
+	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
 	if err != nil {
 		return nil, nil, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
 	}
@@ -252,7 +252,7 @@ func isTar(filename string) bool {
 	return strings.ToLower(filepath.Ext(filename)) == ".tgz"
 }
 
-func pickChartRepositoryConfigByName(name string, cfgs []*repo.ChartRepositoryConfig) (*repo.ChartRepositoryConfig, error) {
+func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Entry, error) {
 	for _, rc := range cfgs {
 		if rc.Name == name {
 			if rc.URL == "" {
@@ -264,7 +264,7 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.ChartRepositoryCo
 	return nil, fmt.Errorf("repo %s not found", name)
 }
 
-func pickChartRepositoryConfigByURL(u string, cfgs []*repo.ChartRepositoryConfig) (*repo.ChartRepositoryConfig, error) {
+func pickChartRepositoryConfigByURL(u string, cfgs []*repo.Entry) (*repo.Entry, error) {
 	for _, rc := range cfgs {
 		if rc.URL == u {
 			return rc, nil
