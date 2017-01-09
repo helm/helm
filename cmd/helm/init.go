@@ -190,7 +190,9 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer) error {
 		}
 		f.Add(sr)
 		f.Add(lr)
-		f.WriteFile(repoFile, 0644)
+		if err := f.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
 	} else if fi.IsDir() {
 		return fmt.Errorf("%s must be a file, not a directory", repoFile)
 	}
