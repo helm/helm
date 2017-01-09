@@ -227,7 +227,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 			found = true
 		} else {
 			for _, repo := range repos {
-				if urlutil.URLAreEqual(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
+				if urlutil.Equal(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
 					found = true
 				}
 			}
@@ -259,7 +259,7 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 		found := false
 
 		for _, repo := range repos {
-			if urlutil.URLAreEqual(repo.URL, dd.Repository) {
+			if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
 				reposMap[dd.Name] = repo.Name
 				break
@@ -325,7 +325,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.ChartRepositoryConfig) error 
 // If it finds a URL that is "relative", it will prepend the repoURL.
 func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (string, error) {
 	for _, cr := range repos {
-		if urlutil.URLAreEqual(repoURL, cr.Config.URL) {
+		if urlutil.Equal(repoURL, cr.Config.URL) {
 			entry, err := findEntryByName(name, cr)
 			if err != nil {
 				return "", err

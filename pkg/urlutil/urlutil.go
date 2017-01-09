@@ -41,10 +41,8 @@ func URLJoin(baseURL string, paths ...string) (string, error) {
 	return u.String(), nil
 }
 
-// URLAreEqual normalizes two URLs and then compares for equality.
-//
-// TODO: This and the urlJoin functions should really be moved to a 'urlutil' package.
-func URLAreEqual(a, b string) bool {
+// Equal normalizes two URLs and then compares for equality.
+func Equal(a, b string) bool {
 	au, err := url.Parse(a)
 	if err != nil {
 		a = filepath.Clean(a)

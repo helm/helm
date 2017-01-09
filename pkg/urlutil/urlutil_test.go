@@ -39,7 +39,7 @@ func TestUrlJoin(t *testing.T) {
 	}
 }
 
-func TestUrlAreEqual(t *testing.T) {
+func TestEqual(t *testing.T) {
 	for _, tt := range []struct {
 		a, b  string
 		match bool
@@ -57,7 +57,7 @@ func TestUrlAreEqual(t *testing.T) {
 		{"/foo", "/foo/", true},
 		{"/foo/.", "/foo/", true},
 	} {
-		if tt.match != URLAreEqual(tt.a, tt.b) {
+		if tt.match != Equal(tt.a, tt.b) {
 			t.Errorf("Expected %q==%q to be %t", tt.a, tt.b, tt.match)
 		}
 	}
