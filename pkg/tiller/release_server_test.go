@@ -1153,6 +1153,9 @@ func TestGetReleaseStatus(t *testing.T) {
 		t.Errorf("Error getting release content: %s", err)
 	}
 
+	if res.Name != rel.Name {
+		t.Errorf("Expected name %q, got %q", rel.Name, res.Name)
+	}
 	if res.Info.Status.Code != release.Status_DEPLOYED {
 		t.Errorf("Expected %d, got %d", release.Status_DEPLOYED, res.Info.Status.Code)
 	}
