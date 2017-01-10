@@ -981,13 +981,16 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
+	rel.Info.Status.Code = release.Status_DELETED
+
 	if req.Purge {
-		if err := s.purgeReleases(rels...); err != nil {
+		err := s.purgeReleases(rels...)
+		if err != nil {
 			log.Printf("uninstall: Failed to purge the release: %s", err)
 		}
+		return res, err
 	}
 
-	rel.Info.Status.Code = release.Status_DELETED
 	if err := s.env.Releases.Update(rel); err != nil {
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
