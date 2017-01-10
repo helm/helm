@@ -170,7 +170,13 @@ func TestEnsureHome(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	hh := helmpath.Home(home)
 	helmHome = home
-	if err := ensureHome(hh, b); err != nil {
+	if err := ensureDirectories(hh, b); err != nil {
+		t.Error(err)
+	}
+	if err := ensureDefaultRepos(hh, b); err != nil {
+		t.Error(err)
+	}
+	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {
 		t.Error(err)
 	}
 

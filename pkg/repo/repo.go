@@ -21,34 +21,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
-
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/provenance"
 )
 
 // ErrRepoOutOfDate indicates that the repository file is out of date, but
 // is fixable.
 var ErrRepoOutOfDate = errors.New("repository file is out of date")
-
-// ChartRepository represents a chart repository
-type ChartRepository struct {
-	RootPath   string
-	URL        string // URL of repository
-	ChartPaths []string
-	IndexFile  *IndexFile
-}
-
-// Entry represents one repo entry in a repositories listing.
-type Entry struct {
-	Name  string `json:"name"`
-	Cache string `json:"cache"`
-	URL   string `json:"url"`
-}
 
 // RepoFile represents the repositories.yaml file in $HELM_HOME
 type RepoFile struct {
@@ -159,84 +139,4 @@ func (r *RepoFile) WriteFile(path string, perm os.FileMode) error {
 		return err
 	}
 	return ioutil.WriteFile(path, data, perm)
-}
-
-// LoadChartRepository loads a directory of charts as if it were a repository.
-//
-// It requires the presence of an index.yaml file in the directory.
-//
-// This function evaluates the contents of the directory and
-// returns a ChartRepository
-func LoadChartRepository(dir, url string) (*ChartRepository, error) {
-	dirInfo, err := os.Stat(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	if !dirInfo.IsDir() {
-		return nil, fmt.Errorf("%q is not a directory", dir)
-	}
-
-	r := &ChartRepository{RootPath: dir, URL: url}
-
-	// FIXME: Why are we recursively walking directories?
-	// FIXME: Why are we not reading the repositories.yaml to figure out
-	// what repos to use?
-	filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if !f.IsDir() {
-			if strings.Contains(f.Name(), "-index.yaml") {
-				i, err := LoadIndexFile(path)
-				if err != nil {
-					return nil
-				}
-				r.IndexFile = i
-			} else if strings.HasSuffix(f.Name(), ".tgz") {
-				r.ChartPaths = append(r.ChartPaths, path)
-			}
-		}
-		return nil
-	})
-	return r, nil
-}
-
-func (r *ChartRepository) saveIndexFile() error {
-	index, err := yaml.Marshal(r.IndexFile)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(filepath.Join(r.RootPath, indexPath), index, 0644)
-}
-
-// Index generates an index for the chart repository and writes an index.yaml file.
-func (r *ChartRepository) Index() error {
-	err := r.generateIndex()
-	if err != nil {
-		return err
-	}
-	return r.saveIndexFile()
-}
-
-func (r *ChartRepository) generateIndex() error {
-	if r.IndexFile == nil {
-		r.IndexFile = NewIndexFile()
-	}
-
-	for _, path := range r.ChartPaths {
-		ch, err := chartutil.Load(path)
-		if err != nil {
-			return err
-		}
-
-		digest, err := provenance.DigestFile(path)
-		if err != nil {
-			return err
-		}
-
-		if !r.IndexFile.Has(ch.Metadata.Name, ch.Metadata.Version) {
-			r.IndexFile.Add(ch.Metadata, path, r.URL, digest)
-		}
-		// TODO: If a chart exists, but has a different Digest, should we error?
-	}
-	r.IndexFile.SortEntries()
-	return nil
 }

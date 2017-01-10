@@ -16,19 +16,9 @@ limitations under the License.
 
 package repo
 
-import (
-	"os"
-	"path/filepath"
-	"reflect"
-	"testing"
-	"time"
-
-	"k8s.io/helm/pkg/proto/hapi/chart"
-)
+import "testing"
 
 const testRepositoriesFile = "testdata/repositories.yaml"
-const testRepository = "testdata/repository"
-const testURL = "http://example-charts.com"
 
 func TestRepoFile(t *testing.T) {
 	rf := NewRepoFile()
@@ -68,7 +58,7 @@ func TestRepoFile(t *testing.T) {
 	}
 }
 
-func TestLoadRepositoriesFile(t *testing.T) {
+func TestNewRepositoriesFile(t *testing.T) {
 	expects := NewRepoFile()
 	expects.Add(
 		&Entry{
@@ -106,7 +96,7 @@ func TestLoadRepositoriesFile(t *testing.T) {
 	}
 }
 
-func TestLoadPreV1RepositoriesFile(t *testing.T) {
+func TestNewPreV1RepositoriesFile(t *testing.T) {
 	r, err := LoadRepositoriesFile("testdata/old-repositories.yaml")
 	if err != nil && err != ErrRepoOutOfDate {
 		t.Fatal(err)
@@ -124,141 +114,5 @@ func TestLoadPreV1RepositoriesFile(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected the best charts ever. Got %#v", r.Repositories)
-	}
-}
-
-func TestLoadChartRepository(t *testing.T) {
-	cr, err := LoadChartRepository(testRepository, testURL)
-	if err != nil {
-		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
-	}
-
-	paths := []string{filepath.Join(testRepository, "frobnitz-1.2.3.tgz"), filepath.Join(testRepository, "sprocket-1.1.0.tgz"), filepath.Join(testRepository, "sprocket-1.2.0.tgz")}
-
-	if cr.RootPath != testRepository {
-		t.Errorf("Expected %s as RootPath but got %s", testRepository, cr.RootPath)
-	}
-
-	if !reflect.DeepEqual(cr.ChartPaths, paths) {
-		t.Errorf("Expected %#v but got %#v\n", paths, cr.ChartPaths)
-	}
-
-	if cr.URL != testURL {
-		t.Errorf("Expected url for chart repository to be %s but got %s", testURL, cr.URL)
-	}
-}
-
-func TestIndex(t *testing.T) {
-	cr, err := LoadChartRepository(testRepository, testURL)
-	if err != nil {
-		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
-	}
-
-	err = cr.Index()
-	if err != nil {
-		t.Errorf("Error performing index: %v\n", err)
-	}
-
-	tempIndexPath := filepath.Join(testRepository, indexPath)
-	actual, err := LoadIndexFile(tempIndexPath)
-	defer os.Remove(tempIndexPath) // clean up
-	if err != nil {
-		t.Errorf("Error loading index file %v", err)
-	}
-	verifyIndex(t, actual)
-
-	// Re-index and test again.
-	err = cr.Index()
-	if err != nil {
-		t.Errorf("Error performing re-index: %s\n", err)
-	}
-	second, err := LoadIndexFile(tempIndexPath)
-	if err != nil {
-		t.Errorf("Error re-loading index file %v", err)
-	}
-	verifyIndex(t, second)
-}
-
-func verifyIndex(t *testing.T, actual *IndexFile) {
-
-	var empty time.Time
-	if actual.Generated == empty {
-		t.Errorf("Generated should be greater than 0: %s", actual.Generated)
-	}
-
-	if actual.APIVersion != APIVersionV1 {
-		t.Error("Expected v1 API")
-	}
-
-	entries := actual.Entries
-	if numEntries := len(entries); numEntries != 2 {
-		t.Errorf("Expected 2 charts to be listed in index file but got %v", numEntries)
-	}
-
-	expects := map[string]ChartVersions{
-		"frobnitz": {
-			{
-				Metadata: &chart.Metadata{
-					Name:    "frobnitz",
-					Version: "1.2.3",
-				},
-			},
-		},
-		"sprocket": {
-			{
-				Metadata: &chart.Metadata{
-					Name:    "sprocket",
-					Version: "1.2.0",
-				},
-			},
-			{
-				Metadata: &chart.Metadata{
-					Name:    "sprocket",
-					Version: "1.1.0",
-				},
-			},
-		},
-	}
-
-	for name, versions := range expects {
-		got, ok := entries[name]
-		if !ok {
-			t.Errorf("Could not find %q entry", name)
-			continue
-		}
-		if len(versions) != len(got) {
-			t.Errorf("Expected %d versions, got %d", len(versions), len(got))
-			continue
-		}
-		for i, e := range versions {
-			g := got[i]
-			if e.Name != g.Name {
-				t.Errorf("Expected %q, got %q", e.Name, g.Name)
-			}
-			if e.Version != g.Version {
-				t.Errorf("Expected %q, got %q", e.Version, g.Version)
-			}
-			if len(g.Keywords) != 3 {
-				t.Error("Expected 3 keyrwords.")
-			}
-			if len(g.Maintainers) != 2 {
-				t.Error("Expected 2 maintainers.")
-			}
-			if g.Created == empty {
-				t.Error("Expected created to be non-empty")
-			}
-			if g.Description == "" {
-				t.Error("Expected description to be non-empty")
-			}
-			if g.Home == "" {
-				t.Error("Expected home to be non-empty")
-			}
-			if g.Digest == "" {
-				t.Error("Expected digest to be non-empty")
-			}
-			if len(g.URLs) != 1 {
-				t.Error("Expected exactly 1 URL")
-			}
-		}
 	}
 }

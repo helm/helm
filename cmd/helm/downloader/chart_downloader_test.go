@@ -37,9 +37,9 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "full URL", ref: "http://example.com/foo-1.2.3.tgz", expect: "http://example.com/foo-1.2.3.tgz"},
 		{name: "full URL, HTTPS", ref: "https://example.com/foo-1.2.3.tgz", expect: "https://example.com/foo-1.2.3.tgz"},
 		{name: "full URL, with authentication", ref: "http://username:password@example.com/foo-1.2.3.tgz", expect: "http://username:password@example.com/foo-1.2.3.tgz"},
-		{name: "full URL, HTTPS, irrelevant version", ref: "https://example.com/foo-1.2.3.tgz", version: "0.1.0", expect: "https://example.com/foo-1.2.3.tgz"},
 		{name: "reference, testing repo", ref: "testing/alpine", expect: "http://example.com/alpine-1.2.3.tgz"},
 		{name: "reference, version, testing repo", ref: "testing/alpine", version: "0.2.0", expect: "http://example.com/alpine-0.2.0.tgz"},
+		{name: "full URL, HTTPS, irrelevant version", ref: "https://example.com/foo-1.2.3.tgz", version: "0.1.0", expect: "https://example.com/foo-1.2.3.tgz", fail: true},
 		{name: "full URL, file", ref: "file:///foo-1.2.3.tgz", fail: true},
 		{name: "invalid", ref: "invalid-1.2.3", fail: true},
 		{name: "not found", ref: "nosuchthing/invalid-1.2.3", fail: true},
@@ -51,7 +51,7 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		u, err := c.ResolveChartVersion(tt.ref, tt.version)
+		u, _, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
 				continue
@@ -84,7 +84,7 @@ func TestDownload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	got, err := download(srv.URL)
+	got, err := download(srv.URL, http.DefaultClient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestDownload(t *testing.T) {
 
 	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
 	u.User = url.UserPassword("username", "password")
-	got, err = download(u.String())
+	got, err = download(u.String(), http.DefaultClient)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,25 +133,43 @@ func TestIsTar(t *testing.T) {
 }
 
 func TestDownloadTo(t *testing.T) {
-	hh, err := ioutil.TempDir("", "helm-downloadto-")
+	tmp, err := ioutil.TempDir("", "helm-downloadto-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(hh)
+	defer os.RemoveAll(tmp)
 
-	dest := filepath.Join(hh, "dest")
-	os.MkdirAll(dest, 0755)
+	hh := helmpath.Home(tmp)
+	dest := filepath.Join(hh.String(), "dest")
+	configDirectories := []string{
+		hh.String(),
+		hh.Repository(),
+		hh.Cache(),
+		dest,
+	}
+	for _, p := range configDirectories {
+		if fi, err := os.Stat(p); err != nil {
+			if err := os.MkdirAll(p, 0755); err != nil {
+				t.Fatalf("Could not create %s: %s", p, err)
+			}
+		} else if !fi.IsDir() {
+			t.Fatalf("%s must be a directory", p)
+		}
+	}
 
 	// Set up a fake repo
-	srv := repotest.NewServer(hh)
+	srv := repotest.NewServer(tmp)
 	defer srv.Stop()
 	if _, err := srv.CopyCharts("testdata/*.tgz*"); err != nil {
 		t.Error(err)
 		return
 	}
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
 
 	c := ChartDownloader{
-		HelmHome: helmpath.Home("testdata/helmhome"),
+		HelmHome: hh,
 		Out:      os.Stderr,
 		Verify:   VerifyAlways,
 		Keyring:  "testdata/helm-test-key.pub",
@@ -178,25 +196,43 @@ func TestDownloadTo(t *testing.T) {
 }
 
 func TestDownloadTo_VerifyLater(t *testing.T) {
-	hh, err := ioutil.TempDir("", "helm-downloadto-")
+	tmp, err := ioutil.TempDir("", "helm-downloadto-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(hh)
+	defer os.RemoveAll(tmp)
 
-	dest := filepath.Join(hh, "dest")
-	os.MkdirAll(dest, 0755)
+	hh := helmpath.Home(tmp)
+	dest := filepath.Join(hh.String(), "dest")
+	configDirectories := []string{
+		hh.String(),
+		hh.Repository(),
+		hh.Cache(),
+		dest,
+	}
+	for _, p := range configDirectories {
+		if fi, err := os.Stat(p); err != nil {
+			if err := os.MkdirAll(p, 0755); err != nil {
+				t.Fatalf("Could not create %s: %s", p, err)
+			}
+		} else if !fi.IsDir() {
+			t.Fatalf("%s must be a directory", p)
+		}
+	}
 
 	// Set up a fake repo
-	srv := repotest.NewServer(hh)
+	srv := repotest.NewServer(tmp)
 	defer srv.Stop()
 	if _, err := srv.CopyCharts("testdata/*.tgz*"); err != nil {
 		t.Error(err)
 		return
 	}
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
 
 	c := ChartDownloader{
-		HelmHome: helmpath.Home("testdata/helmhome"),
+		HelmHome: hh,
 		Out:      os.Stderr,
 		Verify:   VerifyLater,
 	}

@@ -21,10 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -36,6 +33,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
+	"k8s.io/helm/pkg/urlutil"
 )
 
 var indexPath = "index.yaml"
@@ -94,6 +92,15 @@ func NewIndexFile() *IndexFile {
 	}
 }
 
+// LoadIndexFile takes a file at the given path and returns an IndexFile object
+func LoadIndexFile(path string) (*IndexFile, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return loadIndex(b)
+}
+
 // Add adds a file to the index
 // This can leave the index in an unsorted state
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
@@ -101,7 +108,7 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if baseURL != "" {
 		var err error
 		_, file := filepath.Split(filename)
-		u, err = urlJoin(baseURL, file)
+		u, err = urlutil.URLJoin(baseURL, file)
 		if err != nil {
 			u = filepath.Join(baseURL, file)
 		}
@@ -228,33 +235,10 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 	return index, nil
 }
 
-// DownloadIndexFile fetches the index from a repository.
-func DownloadIndexFile(repoName, url, indexFilePath string) error {
-	var indexURL string
-
-	indexURL = strings.TrimSuffix(url, "/") + "/index.yaml"
-	resp, err := http.Get(indexURL)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if _, err := LoadIndex(b); err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(indexFilePath, b, 0644)
-}
-
-// LoadIndex loads an index file and does minimal validity checking.
+// loadIndex loads an index file and does minimal validity checking.
 //
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
-func LoadIndex(data []byte) (*IndexFile, error) {
+func loadIndex(data []byte) (*IndexFile, error) {
 	i := &IndexFile{}
 	if err := yaml.Unmarshal(data, i); err != nil {
 		return i, err
@@ -311,31 +295,4 @@ func loadUnversionedIndex(data []byte) (*IndexFile, error) {
 		ni.Add(item.Chartfile, item.URL, "", item.Checksum)
 	}
 	return ni, nil
-}
-
-// LoadIndexFile takes a file at the given path and returns an IndexFile object
-func LoadIndexFile(path string) (*IndexFile, error) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return LoadIndex(b)
-}
-
-// urlJoin joins a base URL to one or more path components.
-//
-// It's like filepath.Join for URLs. If the baseURL is pathish, this will still
-// perform a join.
-//
-// If the URL is unparsable, this returns an error.
-func urlJoin(baseURL string, paths ...string) (string, error) {
-	u, err := url.Parse(baseURL)
-	if err != nil {
-		return "", err
-	}
-	// We want path instead of filepath because path always uses /.
-	all := []string{u.Path}
-	all = append(all, paths...)
-	u.Path = path.Join(all...)
-	return u.String(), nil
 }

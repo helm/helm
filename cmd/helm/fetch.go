@@ -92,7 +92,6 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 }
 
 func (f *fetchCmd) run() error {
-	pname := f.chartRef
 	c := downloader.ChartDownloader{
 		HelmHome: helmpath.Home(homePath()),
 		Out:      f.out,
@@ -118,7 +117,7 @@ func (f *fetchCmd) run() error {
 		defer os.RemoveAll(dest)
 	}
 
-	saved, v, err := c.DownloadTo(pname, f.version, dest)
+	saved, v, err := c.DownloadTo(f.chartRef, f.version, dest)
 	if err != nil {
 		return err
 	}

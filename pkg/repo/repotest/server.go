@@ -24,6 +24,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -69,7 +70,7 @@ func NewServer(docroot string) *Server {
 	}
 	srv.start()
 	// Add the testing repository as the only repo.
-	if err := setTestingRepository(docroot, "test", srv.URL()); err != nil {
+	if err := setTestingRepository(helmpath.Home(docroot), "test", srv.URL()); err != nil {
 		panic(err)
 	}
 	return srv
@@ -158,11 +159,13 @@ func (s *Server) LinkIndices() error {
 }
 
 // setTestingRepository sets up a testing repository.yaml with only the given name/URL.
-func setTestingRepository(helmhome, name, url string) error {
-	rf := repo.NewRepoFile()
-	rf.Add(&repo.Entry{Name: name, URL: url})
-	os.MkdirAll(filepath.Join(helmhome, "repository", name), 0755)
-	dest := filepath.Join(helmhome, "repository/repositories.yaml")
-
-	return rf.WriteFile(dest, 0644)
+func setTestingRepository(home helmpath.Home, name, url string) error {
+	r := repo.NewRepoFile()
+	r.Add(&repo.Entry{
+		Name:  name,
+		URL:   url,
+		Cache: home.CacheIndex(name),
+	})
+	os.MkdirAll(filepath.Join(home.Repository(), name), 0755)
+	return r.WriteFile(home.RepositoryFile(), 0644)
 }

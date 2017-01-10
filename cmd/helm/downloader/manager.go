@@ -35,6 +35,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/urlutil"
 )
 
 // Manager handles the lifecycle of fetching, resolving, and storing dependencies.
@@ -226,7 +227,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 			found = true
 		} else {
 			for _, repo := range repos {
-				if urlsAreEqual(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
+				if urlutil.Equal(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
 					found = true
 				}
 			}
@@ -258,7 +259,7 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 		found := false
 
 		for _, repo := range repos {
-			if urlsAreEqual(repo.URL, dd.Repository) {
+			if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
 				reposMap[dd.Name] = repo.Name
 				break
@@ -283,53 +284,35 @@ func (m *Manager) UpdateRepositories() error {
 	repos := rf.Repositories
 	if len(repos) > 0 {
 		// This prints warnings straight to out.
-		m.parallelRepoUpdate(repos)
+		if err := m.parallelRepoUpdate(repos); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) {
+func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 	out := m.Out
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
-	for _, re := range repos {
+	for _, c := range repos {
+		r, err := repo.NewChartRepository(c)
+		if err != nil {
+			return err
+		}
 		wg.Add(1)
-		go func(n, u string) {
-			if err := repo.DownloadIndexFile(n, u, m.HelmHome.CacheIndex(n)); err != nil {
-				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", n, u, err)
+		go func(r *repo.ChartRepository) {
+			if err := r.DownloadIndexFile(); err != nil {
+				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
 			} else {
-				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", n)
+				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
 			}
 			wg.Done()
-		}(re.Name, re.URL)
+		}(r)
 	}
 	wg.Wait()
 	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
-}
-
-// urlsAreEqual normalizes two URLs and then compares for equality.
-//
-// TODO: This and the urlJoin functions should really be moved to a 'urlutil' package.
-func urlsAreEqual(a, b string) bool {
-	au, err := url.Parse(a)
-	if err != nil {
-		a = filepath.Clean(a)
-		b = filepath.Clean(b)
-		// If urls are paths, return true only if they are an exact match
-		return a == b
-	}
-	bu, err := url.Parse(b)
-	if err != nil {
-		return false
-	}
-
-	for _, u := range []*url.URL{au, bu} {
-		if u.Path == "" {
-			u.Path = "/"
-		}
-		u.Path = filepath.Clean(u.Path)
-	}
-	return au.String() == bu.String()
+	return nil
 }
 
 // findChartURL searches the cache of repo data for a chart that has the name and the repoURL specified.
@@ -342,7 +325,7 @@ func urlsAreEqual(a, b string) bool {
 // If it finds a URL that is "relative", it will prepend the repoURL.
 func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (string, error) {
 	for _, cr := range repos {
-		if urlsAreEqual(repoURL, cr.URL) {
+		if urlutil.Equal(repoURL, cr.Config.URL) {
 			entry, err := findEntryByName(name, cr)
 			if err != nil {
 				return "", err
@@ -439,8 +422,9 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 			return indices, err
 		}
 
+		// TODO: use constructor
 		cr := &repo.ChartRepository{
-			URL:       re.URL,
+			Config:    re,
 			IndexFile: index,
 		}
 		indices[lname] = cr
