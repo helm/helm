@@ -31,4 +31,7 @@ message Info {
 
 	// Deleted tracks when this object was deleted.
 	google.protobuf.Timestamp deleted = 4;
+
+	// Description is human-friendly "log entry" about this release.
+	string Description = 5;
 }
