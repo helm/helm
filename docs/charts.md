@@ -305,6 +305,10 @@ sensitive_.
   files that are present. Files can be accessed using `{{index .Files "file.name"}}`
   or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. You can
   also access the contents of the file as `[]byte` using `{{.Files.GetBytes}}`
+- `Capabilities`: A map-like object that contains information about the versions
+  of Kubernetes (`{{.Capabilities.KubeVersion}}`, Tiller
+  (`{{.Capabilities.TillerVersion}}`, and the supported Kubernetes API versions
+  (`{{.Capabilities.APIVersions.Has "batch/v1"`)
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not
 be accessible inside of the `Chart` object. Thus, Chart.yaml cannot be

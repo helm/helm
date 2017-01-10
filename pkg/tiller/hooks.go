@@ -24,6 +24,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -61,21 +62,6 @@ type simpleHead struct {
 	} `json:"metadata,omitempty"`
 }
 
-type versionSet map[string]struct{}
-
-func newVersionSet(apiVersions ...string) versionSet {
-	vs := versionSet{}
-	for _, v := range apiVersions {
-		vs[v] = struct{}{}
-	}
-	return vs
-}
-
-func (v versionSet) Has(apiVersion string) bool {
-	_, ok := v[apiVersion]
-	return ok
-}
-
 // manifest represents a manifest file, which has a name and some content.
 type manifest struct {
 	name    string
@@ -104,7 +90,7 @@ type manifest struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortManifests(files map[string]string, apis versionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
+func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
 	hs := []*release.Hook{}
 	generic := []manifest{}
 
