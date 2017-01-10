@@ -227,7 +227,11 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 	}
 
 	sc := rel.Info.Status.Code
-	statusResp := &services.GetReleaseStatusResponse{Info: rel.Info, Namespace: rel.Namespace}
+	statusResp := &services.GetReleaseStatusResponse{
+		Name:      rel.Name,
+		Namespace: rel.Namespace,
+		Info:      rel.Info,
+	}
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
