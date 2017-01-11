@@ -29,8 +29,7 @@ helm upgrade [RELEASE] [CHART]
   -i, --install            if a release by this name doesn't already exist, run an install
       --keyring string     path to the keyring that contains public singing keys (default "/Users/mattbutcher/.gnupg/pubring.gpg")
       --namespace string   namespace to install the release into (only used if --install is set) (default "default")
-      --set value          set values on the command line. Separate values with commas: key1=val1,key2=val2 (default null
-)
+      --set stringArray     set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
   -f, --values string      path to a values YAML file
       --verify             verify the provenance of the chart before upgrading
       --version string     specify the exact chart version to use. If this is not specified, the latest version is used

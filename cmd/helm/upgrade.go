@@ -45,7 +45,13 @@ You can specify the '--values'/'-f' flag multiple times. The priority will be gi
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
 
-	$ helm install -f myvalues.yaml -f override.yaml ./redis
+	$ helm upgrade -f myvalues.yaml -f override.yaml redis ./redis
+
+You can specify the '--set' flag multiple times. The priority will be given to the
+last (right-most) set specified. For example, if both 'bar' and 'newbar' values are
+set for a key called 'foo', the 'newbar' value would take precedence:
+
+	$ helm upgrade --set foo=bar --set foo=newbar redis ./redis
 `
 
 type upgradeCmd struct {
@@ -57,7 +63,7 @@ type upgradeCmd struct {
 	recreate     bool
 	disableHooks bool
 	valueFiles   valueFiles
-	values       string
+	values       []string
 	verify       bool
 	keyring      string
 	install      bool
@@ -95,7 +101,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.StringVar(&upgrade.values, "set", "", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
+	f.StringArrayVar(&upgrade.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
@@ -195,8 +201,11 @@ func (u *upgradeCmd) vals() ([]byte, error) {
 		base = mergeValues(base, currentMap)
 	}
 
-	if err := strvals.ParseInto(u.values, base); err != nil {
-		return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+	// User specified a value via --set
+	for _, value := range u.values {
+		if err := strvals.ParseInto(value, base); err != nil {
+			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+		}
 	}
 
 	return yaml.Marshal(base)
