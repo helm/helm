@@ -32,7 +32,7 @@ func TestCreate(t *testing.T) {
 	}
 	defer os.RemoveAll(tdir)
 
-	cf := &chart.Metadata{Name: "foo"}
+	cf := &chart.Metadata{Name: "foo", Version: "1.0.0+a056a76"}
 
 	c, err := Create(cf, tdir)
 	if err != nil {
@@ -83,7 +83,7 @@ func TestCreateFrom(t *testing.T) {
 	}
 	defer os.RemoveAll(tdir)
 
-	cf := &chart.Metadata{Name: "foo"}
+	cf := &chart.Metadata{Name: "foo", Version: "1.0.0+a056a76"}
 	srcdir := "./testdata/mariner"
 
 	if err := CreateFrom(cf, tdir, srcdir); err != nil {
