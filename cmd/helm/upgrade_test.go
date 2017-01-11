@@ -94,6 +94,13 @@ func TestUpgradeCmd(t *testing.T) {
 			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
 		},
 		{
+			name:     "upgrade a release with --reset-values",
+			args:     []string{"funny-bunny", chartPath},
+			flags:    []string{"--reset-values", "true"},
+			resp:     releaseMock(&releaseOptions{name: "funny-bunny", version: 4, chart: ch2}),
+			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+		},
+		{
 			name:     "install a release with 'upgrade --install'",
 			args:     []string{"zany-bunny", chartPath},
 			flags:    []string{"-i"},

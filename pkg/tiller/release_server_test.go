@@ -667,6 +667,32 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release version to be %v, got %v", 2, res.Release.Version)
 	}
 }
+func TestUpdateReleaseResetValues(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+		},
+		ResetValues: true,
+	}
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
+	if res.Release.Config != nil && res.Release.Config.Raw != "" {
+		t.Errorf("Expected chart config to be empty, got %q", res.Release.Config.Raw)
+	}
+}
 
 func TestUpdateReleaseFailure(t *testing.T) {
 	c := helm.NewContext()

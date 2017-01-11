@@ -64,6 +64,8 @@ type options struct {
 	before func(context.Context, proto.Message) error
 	// release history options are applied directly to the get release history request
 	histReq rls.GetHistoryRequest
+	// resetValues instructs Tiller to reset values to their defaults.
+	resetValues bool
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -267,6 +269,12 @@ func UpgradeDisableHooks(disable bool) UpdateOption {
 func UpgradeDryRun(dry bool) UpdateOption {
 	return func(opts *options) {
 		opts.dryRun = dry
+	}
+}
+
+func ResetValues(reset bool) UpdateOption {
+	return func(opts *options) {
+		opts.resetValues = reset
 	}
 }
 

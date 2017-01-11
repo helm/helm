@@ -323,11 +323,26 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	return res, nil
 }
 
-// reuseValues copies values from the current release to a new release if the new release does not have any values.
+// reuseValues copies values from the current release to a new release if the
+// new release does not have any values.
 //
-// If the request already has values, or if there are no values in the current release, this does nothing.
+// If the request already has values, or if there are no values in the current
+// release, this does nothing.
+//
+// This is skipped if the req.ResetValues flag is set, in which case the
+// request values are not altered.
 func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
-	if (req.Values == nil || req.Values.Raw == "" || req.Values.Raw == "{}\n") && current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
+	if req.ResetValues {
+		// If ResetValues is set, we comletely ignore current.Config.
+		log.Print("Reset values to the chart's original version.")
+		return
+	}
+	// If req.Values is empty, but current. config is not, copy current into the
+	// request.
+	if (req.Values == nil || req.Values.Raw == "" || req.Values.Raw == "{}\n") &&
+		current.Config != nil &&
+		current.Config.Raw != "" &&
+		current.Config.Raw != "{}\n" {
 		log.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}
