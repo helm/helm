@@ -871,14 +871,14 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b); err != nil {
-			log.Printf("warning: Release %q pre-install %s failed: %s", name, h.Path, err)
+			log.Printf("warning: Release %q %s %s failed: %s", name, hook, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
 		b.WriteString(h.Manifest)
 		if err := kubeCli.WatchUntilReady(namespace, b, timeout); err != nil {
-			log.Printf("warning: Release %q pre-install %s could not complete: %s", name, h.Path, err)
+			log.Printf("warning: Release %q %s %s could not complete: %s", name, hook, h.Path, err)
 			return err
 		}
 		h.LastRun = timeconv.Now()
