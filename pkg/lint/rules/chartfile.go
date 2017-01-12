@@ -54,6 +54,8 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartEngine(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
+	linter.RunLinterRule(support.InfoSev, chartFileName, validateChartIconPresence(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartIconURL(chartFile))
 }
 
 func validateChartYamlNotDirectory(chartPath string) error {
@@ -149,6 +151,20 @@ func validateChartSources(cf *chart.Metadata) error {
 		if source == "" || !govalidator.IsRequestURL(source) {
 			return fmt.Errorf("invalid source URL '%s'", source)
 		}
+	}
+	return nil
+}
+
+func validateChartIconPresence(cf *chart.Metadata) error {
+	if cf.Icon == "" {
+		return errors.New("icon is recommended")
+	}
+	return nil
+}
+
+func validateChartIconURL(cf *chart.Metadata) error {
+	if cf.Icon != "" && !govalidator.IsRequestURL(cf.Icon) {
+		return fmt.Errorf("invalid icon URL '%s'", cf.Icon)
 	}
 	return nil
 }

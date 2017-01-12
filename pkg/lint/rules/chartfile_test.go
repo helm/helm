@@ -194,12 +194,39 @@ func TestValidateChartSources(t *testing.T) {
 	}
 }
 
+func TestValidateChartIconPresence(t *testing.T) {
+	err := validateChartIconPresence(badChart)
+	if err == nil {
+		t.Errorf("validateChartIconPresence to return a linter error, got no error")
+	}
+}
+
+func TestValidateChartIconURL(t *testing.T) {
+	var failTest = []string{"RiverRun", "john@winterfell", "riverrun.io"}
+	var successTest = []string{"http://riverrun.io", "https://riverrun.io", "https://riverrun.io/blackfish.png"}
+	for _, test := range failTest {
+		badChart.Icon = test
+		err := validateChartIconURL(badChart)
+		if err == nil || !strings.Contains(err.Error(), "invalid icon URL") {
+			t.Errorf("validateChartIconURL(%s) to return \"invalid icon URL\", got no error", test)
+		}
+	}
+
+	for _, test := range successTest {
+		badChart.Icon = test
+		err := validateChartSources(badChart)
+		if err != nil {
+			t.Errorf("validateChartIconURL(%s) to return no error, got %s", test, err.Error())
+		}
+	}
+}
+
 func TestChartfile(t *testing.T) {
 	linter := support.Linter{ChartDir: badChartDir}
 	Chartfile(&linter)
 	msgs := linter.Messages
 
-	if len(msgs) != 3 {
+	if len(msgs) != 4 {
 		t.Errorf("Expected 3 errors, got %d", len(msgs))
 	}
 
@@ -214,4 +241,9 @@ func TestChartfile(t *testing.T) {
 	if !strings.Contains(msgs[2].Err.Error(), "version 0.0.0 is less than or equal to 0") {
 		t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 	}
+
+	if !strings.Contains(msgs[3].Err.Error(), "icon is recommended") {
+		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
+	}
+
 }
