@@ -28,7 +28,6 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
@@ -65,15 +64,6 @@ func New(config clientcmd.ClientConfig) *Client {
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
 
-// ErrAlreadyExists can be returned where there are no changes
-type ErrAlreadyExists struct {
-	errorMsg string
-}
-
-func (e ErrAlreadyExists) Error() string {
-	return fmt.Sprintf("Looks like there are no changes for %s", e.errorMsg)
-}
-
 // Create creates kubernetes resources from an io.reader
 //
 // Namespace will set the namespace
@@ -104,8 +94,10 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 }
 
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
-func (c *Client) Build(namespace string, reader io.Reader) ([]*resource.Info, error) {
-	return c.newBuilder(namespace, reader).Infos()
+func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
+	var result Result
+	result, err := c.newBuilder(namespace, reader).Infos()
+	return result, err
 }
 
 // Get gets kubernetes resources as pretty printed string
@@ -167,22 +159,20 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, currentReader, targetReader io.Reader, recreate bool) error {
-	currentInfos, err := c.Build(namespace, currentReader)
+func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, recreate bool) error {
+	original, err := c.Build(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
-	target := c.newBuilder(namespace, targetReader)
-	if target.Err() != nil {
-		return fmt.Errorf("failed decoding reader into objects: %s", target.Err())
+	target, err := c.Build(namespace, targetReader)
+	if err != nil {
+		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
-	targetInfos := []*resource.Info{}
 	updateErrors := []string{}
 
 	err = target.Visit(func(info *resource.Info, err error) error {
-		targetInfos = append(targetInfos, info)
 		if err != nil {
 			return err
 		}
@@ -203,18 +193,19 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader,
 			return nil
 		}
 
-		currentObj, err := getCurrentObject(info, currentInfos)
+		originalInfo := original.Get(info)
+		if originalInfo == nil {
+			return fmt.Errorf("no resource with the name %s found", info.Name)
+		}
+
+		versionedObject, err := originalInfo.Mapping.ConvertToVersion(originalInfo.Object, originalInfo.Mapping.GroupVersionKind.GroupVersion())
 		if err != nil {
 			return err
 		}
 
-		if err := updateResource(c, info, currentObj, recreate); err != nil {
-			if alreadyExistErr, ok := err.(ErrAlreadyExists); ok {
-				log.Printf(alreadyExistErr.errorMsg)
-			} else {
-				log.Printf("error updating the resource %s:\n\t %v", info.Name, err)
-				updateErrors = append(updateErrors, err.Error())
-			}
+		if err := updateResource(c, info, versionedObject, recreate); err != nil {
+			log.Printf("error updating the resource %s:\n\t %v", info.Name, err)
+			updateErrors = append(updateErrors, err.Error())
 		}
 
 		return nil
@@ -225,7 +216,13 @@ func (c *Client) Update(namespace string, currentReader, targetReader io.Reader,
 	} else if len(updateErrors) != 0 {
 		return fmt.Errorf(strings.Join(updateErrors, " && "))
 	}
-	deleteUnwantedResources(currentInfos, targetInfos)
+
+	for _, info := range original.Difference(target) {
+		log.Printf("Deleting %s in %s...", info.Name, info.Namespace)
+		if err := deleteResource(info); err != nil {
+			log.Printf("Failed to delete %s, err: %s", info.Name, err)
+		}
+	}
 	return nil
 }
 
@@ -311,7 +308,7 @@ func deleteResource(info *resource.Info) error {
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, recreate bool) error {
-	encoder := api.Codecs.LegacyCodec(registered.EnabledVersions()...)
+	encoder := c.JSONEncoder()
 	original, err := runtime.Encode(encoder, currentObj)
 	if err != nil {
 		return err
@@ -323,7 +320,8 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	}
 
 	if api.Semantic.DeepEqual(original, modified) {
-		return ErrAlreadyExists{target.Name}
+		log.Printf("Looks like there are no changes for %s", target.Name)
+		return nil
 	}
 
 	patch, err := strategicpatch.CreateTwoWayMergePatch(original, modified, currentObj)
@@ -451,39 +449,6 @@ func waitForJob(e watch.Event, name string) (bool, error) {
 
 	log.Printf("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
 	return false, nil
-}
-
-func deleteUnwantedResources(currentInfos, targetInfos []*resource.Info) {
-	for _, cInfo := range currentInfos {
-		if _, ok := findMatchingInfo(cInfo, targetInfos); !ok {
-			log.Printf("Deleting %s...", cInfo.Name)
-			if err := deleteResource(cInfo); err != nil {
-				log.Printf("Failed to delete %s, err: %s", cInfo.Name, err)
-			}
-		}
-	}
-}
-
-func getCurrentObject(target *resource.Info, infos []*resource.Info) (runtime.Object, error) {
-	if found, ok := findMatchingInfo(target, infos); ok {
-		return found.Mapping.ConvertToVersion(found.Object, found.Mapping.GroupVersionKind.GroupVersion())
-	}
-	return nil, fmt.Errorf("no resource with the name %s found", target.Name)
-}
-
-// isMatchingInfo returns true if infos match on Name and Kind.
-func isMatchingInfo(a, b *resource.Info) bool {
-	return a.Name == b.Name && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind
-}
-
-// findMatchingInfo returns the first object that matches target.
-func findMatchingInfo(target *resource.Info, infos []*resource.Info) (*resource.Info, bool) {
-	for _, info := range infos {
-		if isMatchingInfo(target, info) {
-			return info, true
-		}
-	}
-	return nil, false
 }
 
 // scrubValidationError removes kubectl info from the message

@@ -40,7 +40,10 @@ func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
 
 func newPod(name string) api.Pod {
 	return api.Pod{
-		ObjectMeta: api.ObjectMeta{Name: name},
+		ObjectMeta: api.ObjectMeta{
+			Name:      name,
+			Namespace: api.NamespaceDefault,
+		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{{
 				Name:  "app:v4",
@@ -90,13 +93,13 @@ func TestUpdate(t *testing.T) {
 			p, m := req.URL.Path, req.Method
 			actions[p] = m
 			switch {
-			case p == "/namespaces/test/pods/starfish" && m == "GET":
+			case p == "/namespaces/default/pods/starfish" && m == "GET":
 				return newResponse(200, &listA.Items[0])
-			case p == "/namespaces/test/pods/otter" && m == "GET":
+			case p == "/namespaces/default/pods/otter" && m == "GET":
 				return newResponse(200, &listA.Items[1])
-			case p == "/namespaces/test/pods/dolphin" && m == "GET":
+			case p == "/namespaces/default/pods/dolphin" && m == "GET":
 				return newResponse(404, notFoundBody())
-			case p == "/namespaces/test/pods/starfish" && m == "PATCH":
+			case p == "/namespaces/default/pods/starfish" && m == "PATCH":
 				data, err := ioutil.ReadAll(req.Body)
 				if err != nil {
 					t.Fatalf("could not dump request: %s", err)
@@ -107,28 +110,28 @@ func TestUpdate(t *testing.T) {
 					t.Errorf("expected patch %s, got %s", expected, string(data))
 				}
 				return newResponse(200, &listB.Items[0])
-			case p == "/namespaces/test/pods" && m == "POST":
+			case p == "/namespaces/default/pods" && m == "POST":
 				return newResponse(200, &listB.Items[1])
-			case p == "/namespaces/test/pods/squid" && m == "DELETE":
+			case p == "/namespaces/default/pods/squid" && m == "DELETE":
 				return newResponse(200, &listB.Items[1])
 			default:
-				t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
 			}
 		}),
 	}
 
 	c := &Client{Factory: f}
-	if err := c.Update("test", objBody(codec, &listA), objBody(codec, &listB), false); err != nil {
+	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false); err != nil {
 		t.Fatal(err)
 	}
 
 	expectedActions := map[string]string{
-		"/namespaces/test/pods/dolphin":  "GET",
-		"/namespaces/test/pods/otter":    "GET",
-		"/namespaces/test/pods/starfish": "PATCH",
-		"/namespaces/test/pods":          "POST",
-		"/namespaces/test/pods/squid":    "DELETE",
+		"/namespaces/default/pods/dolphin":  "GET",
+		"/namespaces/default/pods/otter":    "GET",
+		"/namespaces/default/pods/starfish": "PATCH",
+		"/namespaces/default/pods":          "POST",
+		"/namespaces/default/pods/squid":    "DELETE",
 	}
 
 	for k, v := range expectedActions {

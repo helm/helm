@@ -134,7 +134,7 @@ type KubeClient interface {
 	// by "\n---\n").
 	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool) error
 
-	Build(namespace string, reader io.Reader) ([]*resource.Info, error)
+	Build(namespace string, reader io.Reader) (kube.Result, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -176,7 +176,7 @@ func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.
 }
 
 // Build implements KubeClient Build.
-func (p *PrintingKubeClient) Build(ns string, reader io.Reader) ([]*resource.Info, error) {
+func (p *PrintingKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
 
