@@ -181,6 +181,27 @@ func RollbackTimeout(timeout int64) RollbackOption {
 	}
 }
 
+// InstallWait specifies whether or not to wait for all resources to be ready
+func InstallWait(wait bool) InstallOption {
+	return func(opts *options) {
+		opts.instReq.Wait = wait
+	}
+}
+
+// UpgradeWait specifies whether or not to wait for all resources to be ready
+func UpgradeWait(wait bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Wait = wait
+	}
+}
+
+// RollbackWait specifies whether or not to wait for all resources to be ready
+func RollbackWait(wait bool) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.Wait = wait
+	}
+}
+
 // UpdateValueOverrides specifies a list of values to include when upgrading
 func UpdateValueOverrides(raw []byte) UpdateOption {
 	return func(opts *options) {

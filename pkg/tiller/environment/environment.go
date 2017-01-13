@@ -99,7 +99,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Create(namespace string, reader io.Reader) error
+	Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
 
 	// Get gets one or more resources. Returned string hsa the format like kubectl
 	// provides with the column headers separating the resource types.
@@ -123,7 +123,7 @@ type KubeClient interface {
 	// For Jobs, "ready" means the job ran to completion (excited without error).
 	// For all other kinds, it means the kind was created or modified without
 	// error.
-	WatchUntilReady(namespace string, reader io.Reader, timeout int64) error
+	WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist
@@ -132,7 +132,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool) error
+	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
 }
@@ -144,7 +144,7 @@ type PrintingKubeClient struct {
 }
 
 // Create prints the values of what would be created with a real KubeClient.
-func (p *PrintingKubeClient) Create(ns string, r io.Reader) error {
+func (p *PrintingKubeClient) Create(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
@@ -164,13 +164,13 @@ func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
 }
 
 // WatchUntilReady implements KubeClient WatchUntilReady.
-func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader, t int64) error {
+func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, recreate bool) error {
+func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }

@@ -30,6 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
@@ -40,6 +41,7 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/strategicpatch"
+	"k8s.io/kubernetes/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/watch"
 )
 
@@ -67,7 +69,7 @@ type ResourceActorFunc func(*resource.Info) error
 // Create creates kubernetes resources from an io.reader
 //
 // Namespace will set the namespace
-func (c *Client) Create(namespace string, reader io.Reader) error {
+func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
 	client, err := c.ClientSet()
 	if err != nil {
 		return err
@@ -75,7 +77,18 @@ func (c *Client) Create(namespace string, reader io.Reader) error {
 	if err := ensureNamespace(client, namespace); err != nil {
 		return err
 	}
-	return perform(c, namespace, reader, createResource)
+	infos, buildErr := c.Build(namespace, reader)
+	if buildErr != nil {
+		return buildErr
+	}
+	err = perform(c, namespace, infos, createResource)
+	if err != nil {
+		return err
+	}
+	if shouldWait {
+		err = c.waitForResources(time.Duration(timeout)*time.Second, infos)
+	}
+	return err
 }
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
@@ -107,7 +120,11 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come looking good (headers apply to subgroups, etc.)
 	objs := make(map[string][]runtime.Object)
-	err := perform(c, namespace, reader, func(info *resource.Info) error {
+	infos, err := c.Build(namespace, reader)
+	if err != nil {
+		return "", err
+	}
+	err = perform(c, namespace, infos, func(info *resource.Info) error {
 		log.Printf("Doing get for: '%s'", info.Name)
 		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
 		if err != nil {
@@ -159,7 +176,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, recreate bool) error {
+func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
 	original, err := c.Build(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -224,6 +241,12 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			log.Printf("Failed to delete %s, err: %s", info.Name, err)
 		}
 	}
+	if shouldWait {
+		err = c.waitForResources(time.Duration(timeout)*time.Second, target)
+	}
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -231,7 +254,11 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 //
 // Namespace will set the namespace
 func (c *Client) Delete(namespace string, reader io.Reader) error {
-	return perform(c, namespace, reader, func(info *resource.Info) error {
+	infos, err := c.Build(namespace, reader)
+	if err != nil {
+		return err
+	}
+	return perform(c, namespace, infos, func(info *resource.Info) error {
 		log.Printf("Starting delete for %s %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(c, info)
 		return skipIfNotFound(err)
@@ -264,18 +291,18 @@ func watchTimeout(t time.Duration) ResourceActorFunc {
 //   ascertained by watching the Status fields in a job's output.
 //
 // Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64) error {
+func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
+	infos, err := c.Build(namespace, reader)
+	if err != nil {
+		return err
+	}
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(c, namespace, reader, watchTimeout(time.Duration(timeout)*time.Second))
+	return perform(c, namespace, infos, watchTimeout(time.Duration(timeout)*time.Second))
 }
 
-func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc) error {
-	infos, err := c.Build(namespace, reader)
-	switch {
-	case err != nil:
-		return err
-	case len(infos) == 0:
+func perform(c *Client, namespace string, infos Result, fn ResourceActorFunc) error {
+	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
 	for _, info := range infos {
@@ -287,8 +314,12 @@ func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc
 }
 
 func createResource(info *resource.Info) error {
-	_, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
-	return err
+	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
+	if err != nil {
+		return err
+	}
+	info.Refresh(obj, true)
+	return nil
 }
 
 func deleteResource(c *Client, info *resource.Info) error {
@@ -328,7 +359,8 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	// send patch to server
 	helper := resource.NewHelper(target.Client, target.Mapping)
-	if _, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch); err != nil {
+	var obj runtime.Object
+	if obj, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch); err != nil {
 		return err
 	}
 
@@ -336,6 +368,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		client, _ := c.ClientSet()
 		return recreatePods(client, target.Namespace, extractSelector(currentObj))
 	}
+	target.Refresh(obj, true)
 	return nil
 }
 
@@ -416,6 +449,132 @@ func watchUntilReady(timeout time.Duration, info *resource.Info) error {
 		}
 	})
 	return err
+}
+
+func podsReady(pods []api.Pod) bool {
+	if len(pods) == 0 {
+		return true
+	}
+	for _, pod := range pods {
+		if !api.IsPodReady(&pod) {
+			return false
+		}
+	}
+	return true
+}
+
+func servicesReady(svc []api.Service) bool {
+	if len(svc) == 0 {
+		return true
+	}
+	for _, s := range svc {
+		if !api.IsServiceIPSet(&s) {
+			return false
+		}
+		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
+		if s.Spec.Type == api.ServiceTypeLoadBalancer && s.Status.LoadBalancer.Ingress == nil {
+			return false
+		}
+	}
+	return true
+}
+
+func volumesReady(vols []api.PersistentVolumeClaim) bool {
+	if len(vols) == 0 {
+		return true
+	}
+	for _, v := range vols {
+		if v.Status.Phase != api.ClaimBound {
+			return false
+		}
+	}
+	return true
+}
+
+func getPods(client *internalclientset.Clientset, namespace string, selector map[string]string) ([]api.Pod, error) {
+	list, err := client.Pods(namespace).List(api.ListOptions{
+		FieldSelector: fields.Everything(),
+		LabelSelector: labels.Set(selector).AsSelector(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
+}
+
+// waitForResources polls to get the current status of all pods, PVCs, and Services
+// until all are ready or a timeout is reached
+func (c *Client) waitForResources(timeout time.Duration, created Result) error {
+	log.Printf("beginning wait for resources with timeout of %v", timeout)
+	client, _ := c.ClientSet()
+	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
+		pods := []api.Pod{}
+		services := []api.Service{}
+		pvc := []api.PersistentVolumeClaim{}
+		for _, v := range created {
+			switch value := v.Object.(type) {
+			case (*api.ReplicationController):
+				list, err := getPods(client, value.Namespace, value.Spec.Selector)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
+			case (*api.Pod):
+				pod, err := client.Pods(value.Namespace).Get(value.Name)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, *pod)
+			case (*extensions.Deployment):
+				// Get the RS children first
+				rs, err := client.ReplicaSets(value.Namespace).List(api.ListOptions{
+					FieldSelector: fields.Everything(),
+					LabelSelector: labels.Set(value.Spec.Selector.MatchLabels).AsSelector(),
+				})
+				if err != nil {
+					return false, err
+				}
+				for _, r := range rs.Items {
+					list, err := getPods(client, value.Namespace, r.Spec.Selector.MatchLabels)
+					if err != nil {
+						return false, err
+					}
+					pods = append(pods, list...)
+				}
+			case (*extensions.DaemonSet):
+				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
+			case (*apps.StatefulSet):
+				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
+			case (*extensions.ReplicaSet):
+				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
+			case (*api.PersistentVolumeClaim):
+				claim, err := client.PersistentVolumeClaims(value.Namespace).Get(value.Name)
+				if err != nil {
+					return false, err
+				}
+				pvc = append(pvc, *claim)
+			case (*api.Service):
+				svc, err := client.Services(value.Namespace).Get(value.Name)
+				if err != nil {
+					return false, err
+				}
+				services = append(services, *svc)
+			}
+		}
+		return podsReady(pods) && servicesReady(services) && volumesReady(pvc), nil
+	})
 }
 
 // waitForJob is a helper that waits for a job to complete.
