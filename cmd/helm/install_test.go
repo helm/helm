@@ -52,6 +52,14 @@ func TestInstall(t *testing.T) {
 			resp:     releaseMock(&releaseOptions{name: "virgil"}),
 			expected: "virgil",
 		},
+		// Install, values from cli via multiple --set
+		{
+			name:     "install with multiple values",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--set foo=bar", "--set bar=foo"),
+			resp:     releaseMock(&releaseOptions{name: "virgil"}),
+			expected: "virgil",
+		},
 		// Install, values from yaml
 		{
 			name:     "install with values",

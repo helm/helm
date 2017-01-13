@@ -62,8 +62,7 @@ helm install [CHART]
       --namespace string       namespace to install the release into
       --no-hooks               prevent hooks from running during install
       --replace                re-use the given name, even if that name is already used. This is unsafe in production
-      --set value              set values on the command line. Separate values with commas: key1=val1,key2=val2 (default null
-)
+      --set stringArray        set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
   -f, --values string          specify values in a YAML file
       --verify                 verify the package before installing it
       --version string         specify the exact chart version to install. If this is not specified, the latest version is installed

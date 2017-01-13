@@ -61,6 +61,13 @@ contained a key called 'Test', the value set in override.yaml would take precede
 
 	$ helm install -f myvalues.yaml -f override.yaml ./redis
 
+You can specify the '--set' flag multiple times. The priority will be given to the
+last (right-most) set specified. For example, if both 'bar' and 'newbar' values are
+set for a key called 'foo', the 'newbar' value would take precedence:
+
+	$ helm install --set foo=bar --set foo=newbar ./redis
+
+
 To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined. This will still require a
 round-trip to the Tiller server.
@@ -101,7 +108,7 @@ type installCmd struct {
 	keyring      string
 	out          io.Writer
 	client       helm.Interface
-	values       string
+	values       []string
 	nameTemplate string
 	version      string
 	timeout      int64
@@ -156,7 +163,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
-	f.StringVar(&inst.values, "set", "", "set values on the command line. Separate values with commas: key1=val1,key2=val2")
+	f.StringArrayVar(&inst.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
@@ -273,8 +280,11 @@ func (i *installCmd) vals() ([]byte, error) {
 		base = mergeValues(base, currentMap)
 	}
 
-	if err := strvals.ParseInto(i.values, base); err != nil {
-		return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+	// User specified a value via --set
+	for _, value := range i.values {
+		if err := strvals.ParseInto(value, base); err != nil {
+			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+		}
 	}
 
 	return yaml.Marshal(base)
