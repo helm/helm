@@ -219,7 +219,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 
 	for _, info := range original.Difference(target) {
 		log.Printf("Deleting %s in %s...", info.Name, info.Namespace)
-		if err := deleteResource(info); err != nil {
+		if err := deleteResource(c, info); err != nil {
 			log.Printf("Failed to delete %s, err: %s", info.Name, err)
 		}
 	}
@@ -232,20 +232,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 func (c *Client) Delete(namespace string, reader io.Reader) error {
 	return perform(c, namespace, reader, func(info *resource.Info) error {
 		log.Printf("Starting delete for %s %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-
-		reaper, err := c.Reaper(info.Mapping)
-		if err != nil {
-			// If there is no reaper for this resources, delete it.
-			if kubectl.IsNoSuchReaperError(err) {
-				err := resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
-				return skipIfNotFound(err)
-			}
-
-			return err
-		}
-
-		log.Printf("Using reaper for deleting %s", info.Name)
-		err = reaper.Stop(info.Namespace, info.Name, 0, nil)
+		err := deleteResource(c, info)
 		return skipIfNotFound(err)
 	})
 }
@@ -303,8 +290,17 @@ func createResource(info *resource.Info) error {
 	return err
 }
 
-func deleteResource(info *resource.Info) error {
-	return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+func deleteResource(c *Client, info *resource.Info) error {
+	reaper, err := c.Reaper(info.Mapping)
+	if err != nil {
+		// If there is no reaper for this resources, delete it.
+		if kubectl.IsNoSuchReaperError(err) {
+			return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+		}
+		return err
+	}
+	log.Printf("Using reaper for deleting %s", info.Name)
+	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, recreate bool) error {
