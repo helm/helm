@@ -22,7 +22,10 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/kubernetes/pkg/api"
+	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	extensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
 	"k8s.io/kubernetes/pkg/util/intstr"
 
@@ -37,28 +40,64 @@ const defaultImage = "gcr.io/kubernetes-helm/tiller"
 // command failed.
 //
 // If verbose is true, this will print the manifest to stdout.
-func Install(client extensionsclient.DeploymentsGetter, namespace, image string, canary, verbose bool) error {
-	obj := deployment(namespace, image, canary)
-	_, err := client.Deployments(obj.Namespace).Create(obj)
-	return err
+func Install(client internalclientset.Interface, namespace, image string, canary, verbose bool) error {
+	if err := createDeployment(client.Extensions(), namespace, image, canary); err != nil {
+		return err
+	}
+	if err := createService(client.Core(), namespace); err != nil {
+		return err
+	}
+	return nil
 }
 
+//
 // Upgrade uses kubernetes client to upgrade tiller to current version
 //
 // Returns an error if the command failed.
-func Upgrade(client extensionsclient.DeploymentsGetter, namespace, image string, canary bool) error {
-	obj, err := client.Deployments(namespace).Get("tiller-deploy")
+func Upgrade(client internalclientset.Interface, namespace, image string, canary bool) error {
+	obj, err := client.Extensions().Deployments(namespace).Get("tiller-deploy")
 	if err != nil {
 		return err
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = selectImage(image, canary)
-	_, err = client.Deployments(namespace).Update(obj)
+	if _, err := client.Extensions().Deployments(namespace).Update(obj); err != nil {
+		return err
+	}
+	// If the service does not exists that would mean we are upgrading from a tiller version
+	// that didn't deploy the service, so install it.
+	if _, err := client.Core().Services(namespace).Get("tiller-deploy"); err != nil {
+		if !kerrors.IsNotFound(err) {
+			return err
+		}
+		if err := createService(client.Core(), namespace); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// createDeployment creates the Tiller deployment reource
+func createDeployment(client extensionsclient.DeploymentsGetter, namespace, image string, canary bool) error {
+	obj := deployment(namespace, image, canary)
+	_, err := client.Deployments(obj.Namespace).Create(obj)
 	return err
 }
 
 // deployment gets the deployment object that installs Tiller.
 func deployment(namespace, image string, canary bool) *extensions.Deployment {
 	return generateDeployment(namespace, selectImage(image, canary))
+}
+
+// createService creates the Tiller service resource
+func createService(client internalversion.ServicesGetter, namespace string) error {
+	obj := service(namespace)
+	_, err := client.Services(obj.Namespace).Create(obj)
+	return err
+}
+
+// service gets the service object that installs Tiller.
+func service(namespace string) *api.Service {
+	return generateService(namespace)
 }
 
 func selectImage(image string, canary bool) string {
@@ -75,6 +114,15 @@ func selectImage(image string, canary bool) string {
 // resource.
 func DeploymentManifest(namespace, image string, canary bool) (string, error) {
 	obj := deployment(namespace, image, canary)
+
+	buf, err := yaml.Marshal(obj)
+	return string(buf), err
+}
+
+// ServiceManifest gets the manifest (as a string) that describes the Tiller Service
+// resource.
+func ServiceManifest(namespace string) (string, error) {
+	obj := service(namespace)
 
 	buf, err := yaml.Marshal(obj)
 	return string(buf), err
@@ -138,4 +186,27 @@ func generateDeployment(namespace, image string) *extensions.Deployment {
 		},
 	}
 	return d
+}
+
+func generateService(namespace string) *api.Service {
+	labels := generateLabels(map[string]string{"name": "tiller"})
+	s := &api.Service{
+		ObjectMeta: api.ObjectMeta{
+			Namespace: namespace,
+			Name:      "tiller-deploy",
+			Labels:    labels,
+		},
+		Spec: api.ServiceSpec{
+			Type: api.ServiceTypeClusterIP,
+			Ports: []api.ServicePort{
+				{
+					Name:       "tiller",
+					Port:       44134,
+					TargetPort: intstr.FromString("tiller"),
+				},
+			},
+			Selector: labels,
+		},
+	}
+	return s
 }

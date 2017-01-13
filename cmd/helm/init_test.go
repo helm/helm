@@ -47,15 +47,21 @@ func TestInitCmd(t *testing.T) {
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
-		kubeClient: fc.Extensions(),
+		kubeClient: fc,
 		namespace:  api.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
 	}
-	action := fc.Actions()[0]
-	if !action.Matches("create", "deployments") {
-		t.Errorf("unexpected action: %v, expected create deployment", action)
+	actions := fc.Actions()
+	if len(actions) != 2 {
+		t.Errorf("Expected 2 actions, got %d", len(actions))
+	}
+	if !actions[0].Matches("create", "deployments") {
+		t.Errorf("unexpected action: %v, expected create deployment", actions[0])
+	}
+	if !actions[1].Matches("create", "services") {
+		t.Errorf("unexpected action: %v, expected create service", actions[1])
 	}
 	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
@@ -63,7 +69,7 @@ func TestInitCmd(t *testing.T) {
 	}
 }
 
-func TestInitCmd_exsits(t *testing.T) {
+func TestInitCmd_exists(t *testing.T) {
 	home, err := ioutil.TempDir("", "helm_home")
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +89,7 @@ func TestInitCmd_exsits(t *testing.T) {
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
-		kubeClient: fc.Extensions(),
+		kubeClient: fc,
 		namespace:  api.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
@@ -108,7 +114,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
-		kubeClient: fc.Extensions(),
+		kubeClient: fc,
 		clientOnly: true,
 		namespace:  api.NamespaceDefault,
 	}
@@ -142,7 +148,7 @@ func TestInitCmd_dryRun(t *testing.T) {
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
-		kubeClient: fc.Extensions(),
+		kubeClient: fc,
 		clientOnly: true,
 		dryRun:     true,
 		namespace:  api.NamespaceDefault,
