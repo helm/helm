@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
-	extensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/installer"
@@ -70,7 +70,7 @@ type initCmd struct {
 	dryRun     bool
 	out        io.Writer
 	home       helmpath.Home
-	kubeClient extensionsclient.DeploymentsGetter
+	kubeClient internalclientset.Interface
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -105,11 +105,16 @@ func newInitCmd(out io.Writer) *cobra.Command {
 // runInit initializes local config and installs tiller to Kubernetes Cluster
 func (i *initCmd) run() error {
 	if flagDebug {
-		m, err := installer.DeploymentManifest(i.namespace, i.image, i.canary)
+		dm, err := installer.DeploymentManifest(i.namespace, i.image, i.canary)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(i.out, m)
+		fmt.Fprintln(i.out, dm)
+		sm, err := installer.ServiceManifest(i.namespace)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(i.out, sm)
 	}
 
 	if i.dryRun {
