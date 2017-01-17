@@ -616,14 +616,16 @@ func scrubValidationError(err error) error {
 	return err
 }
 
-func (c *Client) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
+// and returns said phase (PodSucceeded or PodFailed qualify)
+func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
 	infos, err := c.Build(namespace, reader)
 	if err != nil {
 		return api.PodUnknown, err
 	}
 	info := infos[0]
 
-	// TODO: should we be checking kind before hand? probably yes.
+	// TODO: should we be checking kind beforehand? probably yes.
 	// TODO: add validation to linter: any manifest with a test hook has to be a pod kind?
 	kind := info.Mapping.GroupVersionKind.Kind
 	if kind != "Pod" {
