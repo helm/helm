@@ -39,8 +39,7 @@ dist:
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
 		$(DIST_DIRS) cp ../README.md {} \; && \
 		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; && \
-		mv $(APP)-${VERSION}-*.* .. \
+		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
 	)
 
 .PHONY: checksum
