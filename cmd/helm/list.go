@@ -34,7 +34,7 @@ var listHelp = `
 This command lists all of the releases.
 
 By default, it lists only releases that are deployed or failed. Flags like
-'--delete' and '--all' will alter this behavior. Such flags can be combined:
+'--deleted' and '--all' will alter this behavior. Such flags can be combined:
 '--deleted --failed'.
 
 By default, items are sorted alphabetically. Use the '-d' flag to sort by

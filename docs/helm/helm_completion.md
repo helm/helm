@@ -1,17 +1,24 @@
-## helm home
+## helm completion
 
-displays the location of HELM_HOME
+Generate bash autocompletions script
 
 ### Synopsis
 
 
 
-This command displays the location of HELM_HOME. This is where
-any helm configuration files live.
+Generate bash autocompletions script for Helm.
+
+This command can generate shell autocompletions.
+
+	$ helm completion
+
+Can be sourced as such
+
+	$ source <(helm completion)
 
 
 ```
-helm home
+helm completion
 ```
 
 ### Options inherited from parent commands

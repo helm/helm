@@ -5,29 +5,41 @@
 
 .SH NAME
 .PP
-helm\-status \- displays the status of the named release
+helm\-completion \- Generate bash autocompletions script
 
 
 .SH SYNOPSIS
 .PP
-\fBhelm status [flags] RELEASE\_NAME\fP
+\fBhelm completion\fP
 
 
 .SH DESCRIPTION
 .PP
-This command shows the status of a named release.
-The status consists of:
-\- last deployment time
-\- k8s namespace in which the release lives
-\- state of the release (can be: UNKNOWN, DEPLOYED, DELETED, SUPERSEDED, FAILED or DELETING)
-\- list of resources that this release consists of, sorted by kind
-\- additional notes provided by the chart
+Generate bash autocompletions script for Helm.
 
-
-.SH OPTIONS
 .PP
-\fB\-\-revision\fP=0
-    if set, display the status of the named release with revision
+This command can generate shell autocompletions.
+
+.PP
+.RS
+
+.nf
+$ helm completion
+
+.fi
+.RE
+
+.PP
+Can be sourced as such
+
+.PP
+.RS
+
+.nf
+$ source <(helm completion)
+
+.fi
+.RE
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS
