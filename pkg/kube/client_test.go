@@ -23,13 +23,18 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/validation"
 	"k8s.io/kubernetes/pkg/client/restclient/fake"
+	"k8s.io/kubernetes/pkg/kubectl"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/runtime"
 )
@@ -79,6 +84,24 @@ func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
+type fakeReaper struct {
+	name string
+}
+
+func (r *fakeReaper) Stop(namespace, name string, timeout time.Duration, gracePeriod *api.DeleteOptions) error {
+	r.name = name
+	return nil
+}
+
+type fakeReaperFactory struct {
+	cmdutil.Factory
+	reaper kubectl.Reaper
+}
+
+func (f *fakeReaperFactory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error) {
+	return f.reaper, nil
+}
+
 func TestUpdate(t *testing.T) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
@@ -92,6 +115,7 @@ func TestUpdate(t *testing.T) {
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
 			actions[p] = m
+			t.Logf("got request %s %s", p, m)
 			switch {
 			case p == "/namespaces/default/pods/starfish" && m == "GET":
 				return newResponse(200, &listA.Items[0])
@@ -121,7 +145,9 @@ func TestUpdate(t *testing.T) {
 		}),
 	}
 
-	c := &Client{Factory: f}
+	reaper := &fakeReaper{}
+	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
+	c := &Client{Factory: rf}
 	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false); err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +157,6 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/otter":    "GET",
 		"/namespaces/default/pods/starfish": "PATCH",
 		"/namespaces/default/pods":          "POST",
-		"/namespaces/default/pods/squid":    "DELETE",
 	}
 
 	for k, v := range expectedActions {
@@ -139,6 +164,11 @@ func TestUpdate(t *testing.T) {
 			t.Errorf("expected a %s request to %s", k, v)
 		}
 	}
+
+	if reaper.name != "squid" {
+		t.Errorf("unexpected reaper: %#v", reaper)
+	}
+
 }
 
 func TestPerform(t *testing.T) {
