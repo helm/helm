@@ -192,6 +192,8 @@ message UpdateReleaseRequest {
 	bool recreate = 6;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 7;
+	// ResetValues will cause Tiller to ignore stored values, resetting to default values.
+	bool reset_values = 8;
 }
 
 // UpdateReleaseResponse is the response to an update request.

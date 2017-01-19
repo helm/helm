@@ -134,6 +134,7 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOptio
 	req.Name = rlsName
 	req.DisableHooks = h.opts.disableHooks
 	req.Recreate = h.opts.recreate
+	req.ResetValues = h.opts.resetValues
 	ctx := NewContext()
 
 	if h.opts.before != nil {
