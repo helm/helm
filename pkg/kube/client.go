@@ -97,7 +97,7 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	var result Result
 	result, err := c.newBuilder(namespace, reader).Infos()
-	return result, err
+	return result, scrubValidationError(err)
 }
 
 // Get gets kubernetes resources as pretty printed string
@@ -126,6 +126,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		objs[objType] = append(objs[objType], obj)
 		return nil
 	})
+	if err != nil {
+		return "", err
+	}
 
 	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
 	// spin through them and print them. Printer is cool since it prints the header only when
@@ -134,23 +137,20 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	buf := new(bytes.Buffer)
 	p := kubectl.NewHumanReadablePrinter(kubectl.PrintOptions{})
 	for t, ot := range objs {
-		_, err = buf.WriteString("==> " + t + "\n")
-		if err != nil {
+		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
 			return "", err
 		}
 		for _, o := range ot {
-			err = p.PrintObj(o, buf)
-			if err != nil {
+			if err := p.PrintObj(o, buf); err != nil {
 				log.Printf("failed to print object type '%s', object: '%s' :\n %v", t, o, err)
 				return "", err
 			}
 		}
-		_, err := buf.WriteString("\n")
-		if err != nil {
+		if _, err := buf.WriteString("\n"); err != nil {
 			return "", err
 		}
 	}
-	return buf.String(), err
+	return buf.String(), nil
 }
 
 // Update reads in the current configuration and a target configuration from io.reader
@@ -211,9 +211,10 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		return nil
 	})
 
-	if err != nil {
+	switch {
+	case err != nil:
 		return err
-	} else if len(updateErrors) != 0 {
+	case len(updateErrors) != 0:
 		return fmt.Errorf(strings.Join(updateErrors, " && "))
 	}
 
@@ -238,7 +239,7 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 }
 
 func skipIfNotFound(err error) error {
-	if err != nil && errors.IsNotFound(err) {
+	if errors.IsNotFound(err) {
 		log.Printf("%v", err)
 		return nil
 	}
@@ -273,7 +274,7 @@ func perform(c *Client, namespace string, reader io.Reader, fn ResourceActorFunc
 	infos, err := c.Build(namespace, reader)
 	switch {
 	case err != nil:
-		return scrubValidationError(err)
+		return err
 	case len(infos) == 0:
 		return ErrNoObjectsVisited
 	}
@@ -327,33 +328,30 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	// send patch to server
 	helper := resource.NewHelper(target.Client, target.Mapping)
-	_, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch)
-
-	if err != nil {
+	if _, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch); err != nil {
 		return err
 	}
 
 	if recreate {
-		kind := target.Mapping.GroupVersionKind.Kind
-
 		client, _ := c.ClientSet()
-		switch kind {
-		case "ReplicationController":
-			rc := currentObj.(*v1.ReplicationController)
-			err = recreatePods(client, target.Namespace, rc.Spec.Selector)
-		case "DaemonSet":
-			daemonSet := currentObj.(*v1beta1.DaemonSet)
-			err = recreatePods(client, target.Namespace, daemonSet.Spec.Selector.MatchLabels)
-		case "StatefulSet":
-			petSet := currentObj.(*apps.StatefulSet)
-			err = recreatePods(client, target.Namespace, petSet.Spec.Selector.MatchLabels)
-		case "ReplicaSet":
-			replicaSet := currentObj.(*v1beta1.ReplicaSet)
-			err = recreatePods(client, target.Namespace, replicaSet.Spec.Selector.MatchLabels)
-		}
+		return recreatePods(client, target.Namespace, extractSelector(currentObj))
 	}
+	return nil
+}
 
-	return err
+func extractSelector(obj runtime.Object) map[string]string {
+	switch typed := obj.(type) {
+	case *v1.ReplicationController:
+		return typed.Spec.Selector
+	case *v1beta1.DaemonSet:
+		return typed.Spec.Selector.MatchLabels
+	case *apps.StatefulSet:
+		return typed.Spec.Selector.MatchLabels
+	case *v1beta1.ReplicaSet:
+		return typed.Spec.Selector.MatchLabels
+	default:
+		return nil
+	}
 }
 
 func recreatePods(client *internalclientset.Clientset, namespace string, selector map[string]string) error {
@@ -371,13 +369,7 @@ func recreatePods(client *internalclientset.Clientset, namespace string, selecto
 		log.Printf("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
-		err := client.Pods(pod.Namespace).Delete(pod.Name, &api.DeleteOptions{
-			Preconditions: &api.Preconditions{
-				UID: &pod.UID,
-			},
-		})
-
-		if err != nil {
+		if err := client.Pods(pod.Namespace).Delete(pod.Name, api.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
 			return err
 		}
 	}
@@ -449,6 +441,9 @@ func waitForJob(e watch.Event, name string) (bool, error) {
 
 // scrubValidationError removes kubectl info from the message
 func scrubValidationError(err error) error {
+	if err == nil {
+		return nil
+	}
 	const stopValidateMessage = "if you choose to ignore these errors, turn validation off with --validate=false"
 
 	if strings.Contains(err.Error(), stopValidateMessage) {
