@@ -135,7 +135,7 @@ Typically, the error is related to a missing `socat` service.
 
 **Q: Tiller crashes with a panic**
 
-When I run a command on Helm, Tiller crahes with an error like this:
+When I run a command on Helm, Tiller crashes with an error like this:
 
 ```
 Tiller is listening on :44134
