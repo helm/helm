@@ -14,27 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package portforwarder
 
 import (
 	"fmt"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+	"k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/labels"
 
 	"k8s.io/helm/pkg/kube"
 )
 
-// TODO refactor out this global var
-var tillerTunnel *kube.Tunnel
-
-func newTillerPortForwarder(namespace, context string) (*kube.Tunnel, error) {
-	config, client, err := getKubeClient(context)
-	if err != nil {
-		return nil, err
-	}
-
+func New(namespace string, client *internalclientset.Clientset, config *restclient.Config) (*kube.Tunnel, error) {
 	podName, err := getTillerPodName(client.Core(), namespace)
 	if err != nil {
 		return nil, err
