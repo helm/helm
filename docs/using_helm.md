@@ -224,7 +224,8 @@ the rest of the defaults for that chart.
 
 There are two ways to pass configuration data during install:
 
-- `--values` (or `-f`): Specify a YAML file with overrides.
+- `--values` (or `-f`): Specify a YAML file with overrides. This can be specified multiple times
+  and the rightmost file will take precedence
 - `--set`: Specify overrides on the command line.
 
 If both are used, `--set` values are merged into `--values` with higher precedence.
@@ -333,6 +334,24 @@ The above rolls back our happy-panda to its very first release version.
 A release version is an incremental revision. Every time an install,
 upgrade, or rollback happens, the revision number is incremented by 1.
 The first revision number is always 1.
+
+## Helpful Options for Install/Upgrade/Rollback
+There are several other helpful options you can specify for customizing the
+behavior of Helm during an install/upgrade/rollback. Please note that this
+is not a full list of cli flags. To see a description of all flags, just run
+`helm <command> --help`.
+
+- `--timeout`: A value in seconds to wait for Kubernetes commands to complete
+  This defaults to 300 (5 minutes)
+- `--wait`: Waits until all Pods are in a ready state, PVCs are bound, and 
+  Services have and IP address (and Ingress if a `LoadBalancer`) before 
+  marking the release as successful. It will wait for as long as the 
+  `--timeout` value. If timeout is reached, the release will be marked as 
+  `FAILED`.
+- `--no-hooks`: This skips running hooks for the command
+- `--recreate-pods` (only available for `upgrade` and `rollback`): This flag
+  will cause all pods to be recreated (with the exception of pods belonging to
+  deployments)
 
 ## 'helm delete': Deleting a Release
 
