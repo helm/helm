@@ -120,6 +120,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newCompletionCmd(out),
 		newHomeCmd(out),
 		newInitCmd(out),
+		newResetCmd(nil, out),
 		newVersionCmd(nil, out),
 
 		// Hidden documentation generator command: 'helm docs'
@@ -236,4 +237,10 @@ func getKubeClient(context string) (*restclient.Config, *internalclientset.Clien
 		return nil, nil, fmt.Errorf("could not get kubernetes client: %s", err)
 	}
 	return config, client, nil
+}
+
+// getKubeCmd is a convenience method for creating kubernetes cmd client
+// for a given kubeconfig context
+func getKubeCmd(context string) *kube.Client {
+	return kube.New(kube.GetConfig(context))
 }

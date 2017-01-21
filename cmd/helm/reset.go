@@ -1,0 +1,131 @@
+/*
+Copyright 2016 The Kubernetes Authors All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package main
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/spf13/cobra"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+
+	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/cmd/helm/installer"
+	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/proto/hapi/release"
+)
+
+const resetDesc = `
+This command uninstalls Tiller (the helm server side component) from your
+Kubernetes Cluster and optionally deletes local configuration in
+$HELM_HOME (default ~/.helm/)
+`
+
+type resetCmd struct {
+	force          bool
+	removeHelmHome bool
+	namespace      string
+	out            io.Writer
+	home           helmpath.Home
+	client         helm.Interface
+	kubeClient     internalclientset.Interface
+	kubeCmd        *kube.Client
+}
+
+func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
+	d := &resetCmd{
+		out:    out,
+		client: client,
+	}
+
+	cmd := &cobra.Command{
+		Use:               "reset",
+		Short:             "uninstalls Tiller from a cluster",
+		Long:              resetDesc,
+		PersistentPreRunE: setupConnection,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return errors.New("This command does not accept arguments")
+			}
+
+			d.namespace = tillerNamespace
+			d.home = helmpath.Home(homePath())
+			d.client = ensureHelmClient(d.client)
+
+			return d.run()
+		},
+	}
+
+	f := cmd.Flags()
+	f.BoolVarP(&d.force, "force", "f", false, "forces Tiller uninstall even if there are releases installed")
+	f.BoolVar(&d.removeHelmHome, "remove-helm-home", false, "if set deletes $HELM_HOME")
+
+	return cmd
+}
+
+// runReset uninstalls tiller from Kubernetes Cluster and deletes local config
+func (d *resetCmd) run() error {
+	if d.kubeClient == nil {
+		_, c, err := getKubeClient(kubeContext)
+		if err != nil {
+			return fmt.Errorf("could not get kubernetes client: %s", err)
+		}
+		d.kubeClient = c
+	}
+	if d.kubeCmd == nil {
+		d.kubeCmd = getKubeCmd(kubeContext)
+	}
+
+	res, err := d.client.ListReleases(
+		helm.ReleaseListStatuses([]release.Status_Code{release.Status_DEPLOYED}),
+	)
+	if err != nil {
+		return prettyError(err)
+	}
+
+	if len(res.Releases) > 0 && !d.force {
+		return fmt.Errorf("There are still %d deployed releases (Tip: use --force).", len(res.Releases))
+	}
+
+	if err := installer.Uninstall(d.kubeClient, d.kubeCmd, d.namespace, flagDebug); err != nil {
+		return fmt.Errorf("error unstalling Tiller: %s", err)
+	}
+
+	if d.removeHelmHome {
+		if err := deleteDirectories(d.home, d.out); err != nil {
+			return err
+		}
+	}
+
+	fmt.Fprintln(d.out, "Tiller (the helm server side component) has been uninstalled from your Kubernetes Cluster.")
+	return nil
+}
+
+// deleteDirectories deletes $HELM_HOME
+func deleteDirectories(home helmpath.Home, out io.Writer) error {
+	if _, err := os.Stat(home.String()); err == nil {
+		fmt.Fprintf(out, "Deleting %s \n", home.String())
+		if err := os.RemoveAll(home.String()); err != nil {
+			return fmt.Errorf("Could not remove %s: %s", home.String(), err)
+		}
+	}
+
+	return nil
+}
