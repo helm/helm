@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/urlutil"
 )
 
 // VerificationStrategy describes a strategy for determining whether to verify a chart.
@@ -48,6 +50,9 @@ const (
 	// perform verification.
 	VerifyLater
 )
+
+// ErrNoOwnerRepo indicates that a given chart URL can't be found in any repos.
+var ErrNoOwnerRepo = errors.New("could not find a repo containing the given URL")
 
 // ChartDownloader handles downloading a chart.
 //
@@ -75,6 +80,7 @@ type ChartDownloader struct {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
+	var r repo.Getter
 	u, r, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
 		return "", nil, err
@@ -121,16 +127,19 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 // ResolveChartVersion resolves a chart reference to a URL.
 //
+// It returns the URL as well as a preconfigured repo.Getter that can fetch
+// the URL.
+//
 // A reference may be an HTTP URL, a 'reponame/chartname' reference, or a local path.
 //
 // A version is a SemVer string (1.2.3-beta.1+f334a6789).
 //
-// 	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
+//	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
 //	- For a chart reference
 //		* If version is non-empty, this will return the URL for that version
 //		* If version is empty, this will return the URL for the latest version
-// 		* If no version can be found, an error is returned
-func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *repo.ChartRepository, error) {
+//		* If no version can be found, an error is returned
+func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, repo.Getter, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
@@ -138,64 +147,67 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *r
 
 	rf, err := repo.LoadRepositoriesFile(c.HelmHome.RepositoryFile())
 	if err != nil {
-		return nil, nil, err
+		return u, nil, err
 	}
 
-	var (
-		chartName string
-		rc        *repo.Entry
-	)
 	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
-		// If it has a scheme and host and path, it's a full URL
-		p := strings.SplitN(strings.TrimLeft(u.Path, "/"), "-", 2)
-		if len(p) < 2 {
-			return nil, nil, fmt.Errorf("Seems that chart path is not in form of repo_url/path_to_chart, got: %s", u)
-		}
-		chartName = p[0]
-		u.Path = ""
-		rc, err = pickChartRepositoryConfigByURL(u.String(), rf.Repositories)
+		// In this case, we have to find the parent repo that contains this chart
+		// URL. And this is an unfortunate problem, as it requires actually going
+		// through each repo cache file and finding a matching URL. But basically
+		// we want to find the repo in case we have special SSL cert config
+		// for that repo.
+		rc, err := c.scanReposForURL(ref, rf)
 		if err != nil {
-			return nil, nil, err
+			// If there is no special config, return the default HTTP client and
+			// swallow the error.
+			if err == ErrNoOwnerRepo {
+				return u, http.DefaultClient, nil
+			}
+			return u, nil, err
 		}
-	} else {
-		// See if it's of the form: repo/path_to_chart
-		p := strings.SplitN(u.Path, "/", 2)
-		if len(p) < 2 {
-			return nil, nil, fmt.Errorf("Non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
-		}
+		r, err := repo.NewChartRepository(rc)
+		// If we get here, we don't need to go through the next phase of looking
+		// up the URL. We have it already. So we just return.
+		return u, r, err
+	}
 
-		repoName := p[0]
-		chartName = p[1]
-		rc, err = pickChartRepositoryConfigByName(repoName, rf.Repositories)
-		if err != nil {
-			return nil, nil, err
-		}
+	// See if it's of the form: repo/path_to_chart
+	p := strings.SplitN(u.Path, "/", 2)
+	if len(p) < 2 {
+		return u, nil, fmt.Errorf("Non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
+	}
+
+	repoName := p[0]
+	chartName := p[1]
+	rc, err := pickChartRepositoryConfigByName(repoName, rf.Repositories)
+	if err != nil {
+		return u, nil, err
 	}
 
 	r, err := repo.NewChartRepository(rc)
 	if err != nil {
-		return nil, nil, err
+		return u, nil, err
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
 	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
 	if err != nil {
-		return nil, nil, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
+		return u, r, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
 	}
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return nil, nil, fmt.Errorf("chart %q not found in %s index. (try 'helm repo update'). %s", chartName, r.Config.Name, err)
+		return u, r, fmt.Errorf("chart %q not found in %s index. (try 'helm repo update'). %s", chartName, r.Config.Name, err)
 	}
 
 	if len(cv.URLs) == 0 {
-		return nil, nil, fmt.Errorf("chart %q has no downloadable URLs", ref)
+		return u, r, fmt.Errorf("chart %q has no downloadable URLs", ref)
 	}
 
 	// TODO: Seems that picking first URL is not fully correct
 	u, err = url.Parse(cv.URLs[0])
 	if err != nil {
-		return nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
+		return u, r, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
 	return u, r, nil
@@ -264,11 +276,48 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Ent
 	return nil, fmt.Errorf("repo %s not found", name)
 }
 
-func pickChartRepositoryConfigByURL(u string, cfgs []*repo.Entry) (*repo.Entry, error) {
-	for _, rc := range cfgs {
-		if rc.URL == u {
-			return rc, nil
+// scanReposForURL scans all repos to find which repo contains the given URL.
+//
+// This will attempt to find the given URL in all of the known repositories files.
+//
+// If the URL is found, this will return the repo entry that contained that URL.
+//
+// If all of the repos are checked, but the URL is not found, an ErrNoOwnerRepo
+// error is returned.
+//
+// Other errors may be returned when repositories cannot be loaded or searched.
+//
+// Technically, the fact that a URL is not found in a repo is not a failure indication.
+// Charts are not required to be included in an index before they are valid. So
+// be mindful of this case.
+//
+// The same URL can technically exist in two or more repositories. This algorithm
+// will return the first one it finds. Order is determined by the order of repositories
+// in the repositories.yaml file.
+func (c *ChartDownloader) scanReposForURL(u string, rf *repo.RepoFile) (*repo.Entry, error) {
+	// FIXME: This is far from optimal. Larger installations and index files will
+	// incur a performance hit for this type of scanning.
+	for _, rc := range rf.Repositories {
+		r, err := repo.NewChartRepository(rc)
+		if err != nil {
+			return nil, err
+		}
+
+		i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
+		if err != nil {
+			return nil, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
+		}
+
+		for _, entry := range i.Entries {
+			for _, ver := range entry {
+				for _, dl := range ver.URLs {
+					if urlutil.Equal(u, dl) {
+						return rc, nil
+					}
+				}
+			}
 		}
 	}
-	return nil, fmt.Errorf("repo with URL %s not found", u)
+	// This means that there is no repo file for the given URL.
+	return nil, ErrNoOwnerRepo
 }

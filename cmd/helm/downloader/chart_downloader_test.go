@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
@@ -254,5 +255,35 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dest, cname+".prov")); err != nil {
 		t.Error(err)
 		return
+	}
+}
+
+func TestScanReposForURL(t *testing.T) {
+	hh := helmpath.Home("testdata/helmhome")
+	c := ChartDownloader{
+		HelmHome: hh,
+		Out:      os.Stderr,
+		Verify:   VerifyLater,
+	}
+
+	u := "http://example.com/alpine-0.2.0.tgz"
+	rf, err := repo.LoadRepositoriesFile(c.HelmHome.RepositoryFile())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entry, err := c.scanReposForURL(u, rf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if entry.Name != "testing" {
+		t.Errorf("Unexpected repo %q for URL %q", entry.Name, u)
+	}
+
+	// A lookup failure should produce an ErrNoOwnerRepo
+	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
+	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
+		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
 	}
 }
