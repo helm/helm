@@ -17,10 +17,9 @@ set -euo pipefail
 IFS=$'\n\t'
 
 find_files() {
-  find . -not \( \
+  find ./_proto ./cmd ./pkg ./scripts ./rootfs ./docs -not \( \
     \( \
-      -wholename './vendor' \
-      -o -wholename './pkg/proto' \
+      -wholename './pkg/proto' \
       -o -wholename '*testdata*' \
     \) -prune \
   \) \
