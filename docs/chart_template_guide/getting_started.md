@@ -187,7 +187,7 @@ instead of `mychart-configmap`.
 
 You can run `helm get manifest clunky-serval` to see the entire generated YAML.
 
-At this point, we've seen templates are their most basic: YAML files that have template directives embedded in `{{` and `}}`. In the next part, we'll take a deeper look into templates. But before moving on, there's one quick trick that can make building templates faster: When you want to test the template rendering, but not actually install anything, you can use `helm install --debug --dry-run ./mychart`. This will send the chart to the Tiller server, which will render the templates. But instead of installing the chart, it will return the rendered template to you so you can see the output:
+At this point, we've seen templates at their most basic: YAML files that have template directives embedded in `{{` and `}}`. In the next part, we'll take a deeper look into templates. But before moving on, there's one quick trick that can make building templates faster: When you want to test the template rendering, but not actually install anything, you can use `helm install --debug --dry-run ./mychart`. This will send the chart to the Tiller server, which will render the templates. But instead of installing the chart, it will return the rendered template to you so you can see the output:
 
 ```console
 $ helm install --debug --dry-run ./mychart
