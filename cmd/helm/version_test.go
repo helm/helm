@@ -39,6 +39,7 @@ func TestVersion(t *testing.T) {
 		{"server", false, true, []string{"-s"}, false},
 	}
 
+	tillerHost = "fake-localhost"
 	for _, tt := range tests {
 		b := new(bytes.Buffer)
 		c := &fakeReleaseClient{}
