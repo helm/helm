@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
@@ -59,7 +60,7 @@ func (h *Client) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesRespo
 	return h.list(ctx, req)
 }
 
-// InstallRelease installs a new chart and returns the release response.
+// InstallRelease loads a chart from chstr, installs it and returns the release response.
 func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	// load the chart to install
 	chart, err := chartutil.Load(chstr)
@@ -67,6 +68,11 @@ func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.I
 		return nil, err
 	}
 
+	return h.InstallReleaseFromChart(chart, ns, opts...)
+}
+
+// InstallReleaseFromChart installs a new chart and returns the release response.
+func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	// apply the install options
 	for _, opt := range opts {
 		opt(&h.opts)
@@ -116,13 +122,19 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 	return h.delete(ctx, req)
 }
 
-// UpdateRelease updates a release to a new/different chart
+// UpdateRelease loads a chart from chstr and updates a release to a new/different chart
 func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	// load the chart to update
 	chart, err := chartutil.Load(chstr)
 	if err != nil {
 		return nil, err
 	}
+
+	return h.UpdateReleaseFromChart(rlsName, chart, opts...)
+}
+
+// UpdateReleaseFromChart updates a release to a new/different chart
+func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 
 	// apply the update options
 	for _, opt := range opts {

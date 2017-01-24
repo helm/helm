@@ -135,6 +135,12 @@ func (c *fakeReleaseClient) InstallRelease(chStr, ns string, opts ...helm.Instal
 	}, nil
 }
 
+func (c *fakeReleaseClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
+	return &rls.InstallReleaseResponse{
+		Release: c.rels[0],
+	}, nil
+}
+
 func (c *fakeReleaseClient) DeleteRelease(rlsName string, opts ...helm.DeleteOption) (*rls.UninstallReleaseResponse, error) {
 	return nil, nil
 }
@@ -159,6 +165,10 @@ func (c *fakeReleaseClient) GetVersion(opts ...helm.VersionOption) (*rls.GetVers
 }
 
 func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	return nil, nil
+}
+
+func (c *fakeReleaseClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	return nil, nil
 }
 
