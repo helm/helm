@@ -17,15 +17,18 @@ syntax = "proto3";
 package hapi.release;
 
 import "google/protobuf/timestamp.proto";
-import "hapi/release/test_result.proto";
+import "hapi/release/test_run.proto";
 
 option go_package = "release";
 
 // TestSuite comprises of the last run of the pre-defined test suite of a release version
 message TestSuite {
-        // LastRun indicates the date/time this test was last run.
-        google.protobuf.Timestamp last_run = 1;
+        // StartedAt indicates the date/time this test suite was kicked off
+        google.protobuf.Timestamp started_at = 1;
+
+        // CompletedAt indicates the date/time this test suite was completed
+        google.protobuf.Timestamp completed_at = 2;
 
         // Results are the results of each segment of the test
-        repeated hapi.release.TestResult results = 2;
+        repeated hapi.release.TestRun results = 3;
 }

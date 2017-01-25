@@ -21,7 +21,7 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "release";
 
-message TestResult {
+message TestRun {
     enum Status {
         UNKNOWN = 0;
         SUCCESS = 1;
@@ -31,5 +31,6 @@ message TestResult {
     string name = 1;
     Status status = 2;
     string info = 3;
-    google.protobuf.Timestamp last_run = 4;
+    google.protobuf.Timestamp started_at = 4;
+    google.protobuf.Timestamp completed_at = 5;
 }

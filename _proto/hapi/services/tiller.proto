@@ -22,7 +22,6 @@ import "hapi/release/release.proto";
 import "hapi/release/info.proto";
 import "hapi/release/status.proto";
 import "hapi/version/version.proto";
-import "hapi/release/test_suite.proto";
 
 option go_package = "services";
 
@@ -82,7 +81,7 @@ service ReleaseService {
 
     //TODO: move this to a test release service or rename to RunReleaseTest
     // TestRelease runs the tests for a given release
-    rpc RunReleaseTest(TestReleaseRequest) returns (TestReleaseResponse) {
+    rpc RunReleaseTest(TestReleaseRequest) returns (stream TestReleaseResponse) {
     }
 }
 
@@ -322,5 +321,5 @@ message TestReleaseRequest {
 // TestReleaseResponse
 message TestReleaseResponse {
 	// TODO: change to repeated hapi.release.Release.Test results = 1; (for stream)
-	hapi.release.TestSuite result = 1;
+	string msg = 1;
 }

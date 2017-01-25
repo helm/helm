@@ -17,6 +17,8 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"io"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -244,8 +246,8 @@ func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.Get
 	return h.history(ctx, req)
 }
 
-// ReleaseTest executes a pre-defined test on a release
-func (h *Client) ReleaseTest(rlsName string, opts ...ReleaseTestOption) (*rls.TestReleaseResponse, error) {
+//ReleaseTest executes a pre-defined test on a release
+func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
 	for _, opt := range opts {
 		opt(&h.opts)
 	}
@@ -371,13 +373,39 @@ func (h *Client) history(ctx context.Context, req *rls.GetHistoryRequest) (*rls.
 }
 
 // Executes tiller.TestRelease RPC.
-func (h *Client) test(ctx context.Context, req *rls.TestReleaseRequest) (*rls.TestReleaseResponse, error) {
+func (h *Client) test(ctx context.Context, req *rls.TestReleaseRequest) (<-chan *rls.TestReleaseResponse, <-chan error) {
+	errc := make(chan error, 1)
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
-		return nil, err
+		errc <- err
+		return nil, errc
 	}
-	defer c.Close()
 
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.RunReleaseTest(ctx, req)
+	ch := make(chan *rls.TestReleaseResponse, 1)
+	go func() {
+		defer close(errc)
+		defer close(ch)
+		defer c.Close()
+
+		rlc := rls.NewReleaseServiceClient(c)
+		s, err := rlc.RunReleaseTest(ctx, req)
+		if err != nil {
+			errc <- err
+			return
+		}
+
+		for {
+			msg, err := s.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				errc <- err
+				return
+			}
+			ch <- msg
+		}
+	}()
+
+	return ch, errc
 }

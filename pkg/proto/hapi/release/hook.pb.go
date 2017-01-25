@@ -10,7 +10,7 @@ It is generated from these files:
 	hapi/release/info.proto
 	hapi/release/release.proto
 	hapi/release/status.proto
-	hapi/release/test_result.proto
+	hapi/release/test_run.proto
 	hapi/release/test_suite.proto
 
 It has these top-level messages:
@@ -18,7 +18,7 @@ It has these top-level messages:
 	Info
 	Release
 	Status
-	TestResult
+	TestRun
 	TestSuite
 */
 package release

@@ -26,43 +26,55 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 )
 
-// change name to runReleaseTestSuite
-func runReleaseTestSuite(hooks []*release.Hook, kube environment.KubeClient, name, namespace string, timeout int64) (*release.TestSuite, error) {
+//TODO: testSuiteRunner.Run()
+//struct testSuiteRunner {
+//suite *release.TestSuite,
+//tests []string,
+//kube environemtn.KubeClient,
+//timeout int64
+////stream or output channel
+//}
 
+func runReleaseTests(tests []string, rel *release.Release, kube environment.KubeClient, stream services.ReleaseService_RunReleaseTestServer, timeout int64) (*release.TestSuite, error) {
+	results := []*release.TestRun{}
+
+	//TODO: add results to test suite
 	suite := &release.TestSuite{}
-	suite.LastRun = timeconv.Now()
-	results := []*release.TestResult{}
-
-	tests, err := prepareTests(hooks, name)
-	if err != nil {
-		return suite, err
-	}
+	suite.StartedAt = timeconv.Now()
 
 	for _, h := range tests {
 		var sh simpleHead
 		err := yaml.Unmarshal([]byte(h), &sh)
 		if err != nil {
-			//handle err better
 			return nil, err
 		}
-		ts := &release.TestResult{Name: sh.Metadata.Name}
 
-		// should this be lower? should we even be saving time to hook?
-		// TODO: should be start time really
-		ts.LastRun = timeconv.Now()
+		if sh.Kind != "Pod" {
+			return nil, fmt.Errorf("%s is not a pod", sh.Metadata.Name)
+		}
+
+		ts := &release.TestRun{Name: sh.Metadata.Name}
+		ts.StartedAt = timeconv.Now()
+		if err := streamRunning(ts.Name, stream); err != nil {
+			return nil, err
+		}
 
 		resourceCreated := true
 		b := bytes.NewBufferString(h)
-		if err := kube.Create(namespace, b); err != nil {
-			log.Printf("Could not create %s(%s): %v", ts.Name, sh.Kind, err)
-			ts.Info = err.Error()
-			//TODO: status option should be constant not random int
-			ts.Status = 2
+		if err := kube.Create(rel.Namespace, b); err != nil {
 			resourceCreated = false
+			msg := fmt.Sprintf("ERROR: %s", err)
+			log.Printf(msg)
+			ts.Info = err.Error()
+			ts.Status = release.TestRun_FAILURE
+			if streamErr := streamMessage(msg, stream); streamErr != nil {
+				return nil, err
+			}
 		}
 
 		status := api.PodUnknown
@@ -70,31 +82,41 @@ func runReleaseTestSuite(hooks []*release.Hook, kube environment.KubeClient, nam
 		if resourceCreated {
 			b.Reset()
 			b.WriteString(h)
-			status, err = kube.WaitAndGetCompletedPodStatus(namespace, b, time.Duration(timeout)*time.Second)
+			status, err = kube.WaitAndGetCompletedPodStatus(rel.Namespace, b, time.Duration(timeout)*time.Second)
 			if err != nil {
-				log.Printf("Error getting status for %s(%s): %s", ts.Name, sh.Kind, err)
-				ts.Info = err.Error()
-				ts.Status = 0
 				resourceCleanExit = false
+				log.Printf("Error getting status for pod %s: %s", ts.Name, err)
+				ts.Info = err.Error()
+				ts.Status = release.TestRun_UNKNOWN
+				if streamErr := streamFailed(ts.Name, stream); streamErr != nil {
+					return nil, err
+				}
 			}
 		}
 
 		// TODO: maybe better suited as a switch statement and include
 		//      PodUnknown, PodFailed, PodRunning, and PodPending scenarios
 		if resourceCreated && resourceCleanExit && status == api.PodSucceeded {
-			ts.Status = 1
+			ts.Status = release.TestRun_SUCCESS
+			if streamErr := streamSuccess(ts.Name, stream); streamErr != nil {
+				return nil, streamErr
+			}
 		} else if resourceCreated && resourceCleanExit && status == api.PodFailed {
-			ts.Status = 2
+			ts.Status = release.TestRun_FAILURE
+			if streamErr := streamFailed(ts.Name, stream); streamErr != nil {
+				return nil, err
+			}
 		}
 
 		results = append(results, ts)
-		log.Printf("Test %s(%s) complete", ts.Name, sh.Kind)
+		log.Printf("Test %s completed", ts.Name)
 
 		//TODO: recordTests() - add test results to configmap with standardized name
 	}
 
 	suite.Results = results
-	log.Printf("Finished running test suite for %s", name)
+	//TODO: delete flag
+	log.Printf("Finished running test suite for %s", rel.Name)
 
 	return suite, nil
 }
@@ -144,4 +166,38 @@ func prepareTests(hooks []*release.Hook, releaseName string) ([]string, error) {
 		}
 	}
 	return tests, nil
+}
+
+func streamRunning(name string, stream services.ReleaseService_RunReleaseTestServer) error {
+	msg := "RUNNING: " + name
+	if err := streamMessage(msg, stream); err != nil {
+		return err
+	}
+	return nil
+}
+
+func streamFailed(name string, stream services.ReleaseService_RunReleaseTestServer) error {
+	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s` for more info", name, name)
+	if err := streamMessage(msg, stream); err != nil {
+		return err
+	}
+	return nil
+}
+
+func streamSuccess(name string, stream services.ReleaseService_RunReleaseTestServer) error {
+	msg := fmt.Sprintf("PASSED: %s", name)
+	if err := streamMessage(msg, stream); err != nil {
+		return err
+	}
+	return nil
+}
+
+func streamMessage(msg string, stream services.ReleaseService_RunReleaseTestServer) error {
+	resp := &services.TestReleaseResponse{Msg: msg}
+	// TODO: handle err better
+	if err := stream.Send(resp); err != nil {
+		return err
+	}
+
+	return nil
 }

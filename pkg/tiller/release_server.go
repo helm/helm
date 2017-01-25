@@ -1066,27 +1066,27 @@ func validateManifest(c environment.KubeClient, ns string, manifest []byte) erro
 }
 
 // RunTestRelease runs a pre-defined test on a given release
-func (s *ReleaseServer) RunReleaseTest(c ctx.Context, req *services.TestReleaseRequest) (*services.TestReleaseResponse, error) {
+func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
 
-	res := &services.TestReleaseResponse{}
 	if !ValidName.MatchString(req.Name) {
-		return nil, errMissingRelease
+		return errMissingRelease
 	}
 
 	// finds the non-deleted release with the given name
-	r, err := s.env.Releases.Last(req.Name)
+	rel, err := s.env.Releases.Last(req.Name)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	tests, err := prepareTests(rel.Hooks, rel.Name)
 	kubeCli := s.env.KubeClient
-	testSuite, err := runReleaseTestSuite(r.Hooks, kubeCli, r.Name, r.Namespace, req.Timeout)
+
+	testSuite, err := runReleaseTests(tests, rel, kubeCli, stream, req.Timeout)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	r.TestSuite = testSuite
-	res.Result = testSuite
+	rel.TestSuite = testSuite
 
-	return res, nil
+	return nil
 }

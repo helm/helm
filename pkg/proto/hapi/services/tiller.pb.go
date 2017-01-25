@@ -42,7 +42,6 @@ import hapi_release5 "k8s.io/helm/pkg/proto/hapi/release"
 import hapi_release2 "k8s.io/helm/pkg/proto/hapi/release"
 import hapi_release1 "k8s.io/helm/pkg/proto/hapi/release"
 import hapi_version "k8s.io/helm/pkg/proto/hapi/version"
-import hapi_release4 "k8s.io/helm/pkg/proto/hapi/release"
 
 import (
 	context "golang.org/x/net/context"
@@ -507,20 +506,13 @@ func (*TestReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0
 // TestReleaseResponse
 type TestReleaseResponse struct {
 	// TODO: change to repeated hapi.release.Release.Test results = 1; (for stream)
-	Result *hapi_release4.TestSuite `protobuf:"bytes,1,opt,name=result" json:"result,omitempty"`
+	Msg string `protobuf:"bytes,1,opt,name=msg" json:"msg,omitempty"`
 }
 
 func (m *TestReleaseResponse) Reset()                    { *m = TestReleaseResponse{} }
 func (m *TestReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*TestReleaseResponse) ProtoMessage()               {}
 func (*TestReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
-
-func (m *TestReleaseResponse) GetResult() *hapi_release4.TestSuite {
-	if m != nil {
-		return m.Result
-	}
-	return nil
-}
 
 func init() {
 	proto.RegisterType((*ListReleasesRequest)(nil), "hapi.services.tiller.ListReleasesRequest")
@@ -582,7 +574,7 @@ type ReleaseServiceClient interface {
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
 	// TODO: move this to a test release service or rename to RunReleaseTest
 	// TestRelease runs the tests for a given release
-	RunReleaseTest(ctx context.Context, in *TestReleaseRequest, opts ...grpc.CallOption) (*TestReleaseResponse, error)
+	RunReleaseTest(ctx context.Context, in *TestReleaseRequest, opts ...grpc.CallOption) (ReleaseService_RunReleaseTestClient, error)
 }
 
 type releaseServiceClient struct {
@@ -697,13 +689,36 @@ func (c *releaseServiceClient) GetHistory(ctx context.Context, in *GetHistoryReq
 	return out, nil
 }
 
-func (c *releaseServiceClient) RunReleaseTest(ctx context.Context, in *TestReleaseRequest, opts ...grpc.CallOption) (*TestReleaseResponse, error) {
-	out := new(TestReleaseResponse)
-	err := grpc.Invoke(ctx, "/hapi.services.tiller.ReleaseService/RunReleaseTest", in, out, c.cc, opts...)
+func (c *releaseServiceClient) RunReleaseTest(ctx context.Context, in *TestReleaseRequest, opts ...grpc.CallOption) (ReleaseService_RunReleaseTestClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_ReleaseService_serviceDesc.Streams[1], c.cc, "/hapi.services.tiller.ReleaseService/RunReleaseTest", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &releaseServiceRunReleaseTestClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ReleaseService_RunReleaseTestClient interface {
+	Recv() (*TestReleaseResponse, error)
+	grpc.ClientStream
+}
+
+type releaseServiceRunReleaseTestClient struct {
+	grpc.ClientStream
+}
+
+func (x *releaseServiceRunReleaseTestClient) Recv() (*TestReleaseResponse, error) {
+	m := new(TestReleaseResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // Server API for ReleaseService service
@@ -732,7 +747,7 @@ type ReleaseServiceServer interface {
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
 	// TODO: move this to a test release service or rename to RunReleaseTest
 	// TestRelease runs the tests for a given release
-	RunReleaseTest(context.Context, *TestReleaseRequest) (*TestReleaseResponse, error)
+	RunReleaseTest(*TestReleaseRequest, ReleaseService_RunReleaseTestServer) error
 }
 
 func RegisterReleaseServiceServer(s *grpc.Server, srv ReleaseServiceServer) {
@@ -904,22 +919,25 @@ func _ReleaseService_GetHistory_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ReleaseService_RunReleaseTest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TestReleaseRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _ReleaseService_RunReleaseTest_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(TestReleaseRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(ReleaseServiceServer).RunReleaseTest(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/hapi.services.tiller.ReleaseService/RunReleaseTest",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReleaseServiceServer).RunReleaseTest(ctx, req.(*TestReleaseRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(ReleaseServiceServer).RunReleaseTest(m, &releaseServiceRunReleaseTestServer{stream})
+}
+
+type ReleaseService_RunReleaseTestServer interface {
+	Send(*TestReleaseResponse) error
+	grpc.ServerStream
+}
+
+type releaseServiceRunReleaseTestServer struct {
+	grpc.ServerStream
+}
+
+func (x *releaseServiceRunReleaseTestServer) Send(m *TestReleaseResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 var _ReleaseService_serviceDesc = grpc.ServiceDesc{
@@ -958,15 +976,16 @@ var _ReleaseService_serviceDesc = grpc.ServiceDesc{
 			MethodName: "GetHistory",
 			Handler:    _ReleaseService_GetHistory_Handler,
 		},
-		{
-			MethodName: "RunReleaseTest",
-			Handler:    _ReleaseService_RunReleaseTest_Handler,
-		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "ListReleases",
 			Handler:       _ReleaseService_ListReleases_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "RunReleaseTest",
+			Handler:       _ReleaseService_RunReleaseTest_Handler,
 			ServerStreams: true,
 		},
 	},

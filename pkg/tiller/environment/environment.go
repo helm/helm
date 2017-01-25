@@ -137,6 +137,7 @@ type KubeClient interface {
 	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
+
 	//TODO: insert description
 	WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error)
 }
@@ -182,6 +183,10 @@ func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.
 // Build implements KubeClient Build.
 func (p *PrintingKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
+}
+
+func (p *PrintingKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+	return "", nil
 }
 
 // Environment provides the context for executing a client request.

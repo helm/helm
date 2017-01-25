@@ -20,11 +20,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
-	//"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 const releaseTestDesc = `
@@ -69,20 +67,20 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (t *releaseTestCmd) run() error {
-	res, err := t.client.ReleaseTest(t.name, helm.ReleaseTestTimeout(t.timeout))
-	if err != nil {
-		return prettyError(err)
+func (t *releaseTestCmd) run() (err error) {
+	c, errc := t.client.RunReleaseTest(t.name, helm.ReleaseTestTimeout(t.timeout))
+
+	for {
+		select {
+		case err := <-errc:
+			return prettyError(err)
+		case res, ok := <-c:
+			if !ok {
+				break
+			}
+			fmt.Fprintf(t.out, res.Msg+"\n")
+		}
 	}
 
-	table := uitable.New()
-	table.MaxColWidth = 50
-	table.AddRow("NAME", "Result", "Info")
-	//TODO: change Result to Suite
-	for _, r := range res.Result.Results {
-		table.AddRow(r.Name, r.Status, r.Info)
-	}
-
-	fmt.Fprintln(t.out, table.String()) //TODO: or no tests found
 	return nil
 }
