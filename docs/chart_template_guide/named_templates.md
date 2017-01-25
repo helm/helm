@@ -2,7 +2,7 @@
 
 It is time to move beyond one template, and begin to create others. In this section, we will see how to define _named templates_ in one file, and then use them elsewhere. A _named template_ (sometimes called a _partial_ or a _subtemplate_) is simply a template defined inside of a file, and given a name. We'll see two ways to create them, and a few different ways to use them.
 
-In the "Conditionals and Loops" section we introduced three actions for declaring and managing templates: `define`, `template`, and `block`. In this section, we'll cover those three actions, and also introduce a special-purpose `include` function that works similarly to the `template` action.
+In the "Flow Control" section we introduced three actions for declaring and managing templates: `define`, `template`, and `block`. In this section, we'll cover those three actions, and also introduce a special-purpose `include` function that works similarly to the `template` action.
 
 ## Partials and `_` files
 
@@ -191,7 +191,7 @@ Let's start with `_helpers.tpl`:
     chart: {{ .Chart.Name }}
     version: {{ .Chart.Version }}
     {{ block "my_extra_labels" . }}extras: false{{ end }}
-{{- end `u}}
+{{- end }}
 ```
 
 Inside of our `my_labels` template, we now declare a block called `my_extra_labels`. By default, this section will have one extra label: `extras: false`. If we were to execute this using the same `configmap.yaml` file from last time, we'd get this:
