@@ -93,7 +93,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	var disableHooks = true
 	var releaseName = "test"
 	var namespace = "default"
-	var reuseName = true
+	var reuseName = false
 	var dryRun = true
 	var chartName = "alpine"
 	var overrides = []byte("key1=value1,key2=value2")

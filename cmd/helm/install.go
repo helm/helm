@@ -190,6 +190,7 @@ func (i *installCmd) run() error {
 		fmt.Printf("FINAL NAME: %s\n", i.name)
 	}
 
+
 	res, err := i.client.InstallRelease(
 		i.chartPath,
 		i.namespace,
