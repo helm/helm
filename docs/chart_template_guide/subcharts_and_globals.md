@@ -26,13 +26,13 @@ Notice that just as before, we deleted all of the base templates so that we can 
 
 ## Adding Values and a Template to the Subchart
 
-Next, let's create a simple template and values file for our `mysubchart` chart. There should already be a `values.yaml` in `mychart/charts/subchart`. We'll set it up like this:
+Next, let's create a simple template and values file for our `mysubchart` chart. There should already be a `values.yaml` in `mychart/charts/mysubchart`. We'll set it up like this:
 
 ```yaml
 dessert: cake
 ```
 
-Next, we'll create a new ConfigMap template in `mychart/charts/subchart/templates/configmap.yaml`:
+Next, we'll create a new ConfigMap template in `mychart/charts/mysubchart/templates/configmap.yaml`:
 
 ```
 apiVersion: v1
