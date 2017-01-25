@@ -1,6 +1,6 @@
 # Variables
 
-With functions, pipelines, objects, and control structures under our belts, we can turn to one of the more basic ideas in many programming languages: variables. In templates, they are less frequently used. But we will see how to use them to simply code, and to make better use of `with` and `range`.
+With functions, pipelines, objects, and control structures under our belts, we can turn to one of the more basic ideas in many programming languages: variables. In templates, they are less frequently used. But we will see how to use them to simplify code, and to make better use of `with` and `range`.
 
 In an earlier example, we saw that this code will fail:
 
