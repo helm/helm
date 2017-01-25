@@ -87,7 +87,8 @@ func main() {
 func start(c *cobra.Command, args []string) {
 	clientset, err := kube.New(nil).ClientSet()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s", err)
+		fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s\n", err)
+		os.Exit(1)
 	}
 
 	switch store {
