@@ -48,19 +48,19 @@ including installing pre-releases.
 
 ## Docs
 
-- [Quick Start](docs/quickstart.md)
-- [Installing Helm](docs/install.md)
+- [Quick Start](docs/quickstart.md) - Read me first!
+- [Installing Helm](docs/install.md) - Install Helm and Tiller
   - [Kubernetes Distribution Notes](docs/kubernetes_distros.md)
   - [Frequently Asked Questions](docs/install_faq.md)
-- [Using Helm](docs/using_helm.md)
+- [Using Helm](docs/using_helm.md) - Learn the Helm tools
   - [Plugins](docs/plugins.md)
-- [Developing Charts](docs/charts.md)
+- [Developing Charts](docs/charts.md) - An introduction to chart development
 	- [Chart Lifecycle Hooks](docs/charts_hooks.md)
 	- [Chart Tips and Tricks](docs/charts_tips_and_tricks.md)
 	- [Chart Repository Guide](docs/chart_repository.md)
 	- [Syncing your Chart Repository](docs/chart_repository_sync_example.md)
 	- [Signing Charts](docs/provenance.md)
-- [Chart Template Developer's Guide](docs/chart_template_guide/index.md)
+- [Chart Template Developer's Guide](docs/chart_template_guide/index.md) - Master Helm templates
   - [Getting Started with Templates](docs/chart_template_guide/getting_started.md)
   - [Built-in Objects](docs/chart_template_guide/builtin_objects.md)
   - [Values Files](docs/chart_template_guide/values_files.md)
@@ -75,10 +75,11 @@ including installing pre-releases.
   - [Wrapping Up](docs/chart_template_guide/wrapping_up.md)
   - [Appendix A: YAML Techniques](docs/chart_template_guide/yaml_techniques.md)
   - [Appendix B: Go Data Types](docs/chart_template_guide/data_types.md)
-- [Architecture](docs/architecture.md)
-- [Developers](docs/developers.md)
-- [History](docs/history.md)
-- [Glossary](docs/glossary.md)
+- [Related Projects](docs/related.md) - More Helm tools, articles, and plugins
+- [Architecture](docs/architecture.md) - Overview of the Helm/Tiller design
+- [Developers](docs/developers.md) - About the developers
+- [History](docs/history.md) - A brief history of the project
+- [Glossary](docs/glossary.md) - Decode the Helm vocabulary
 
 ## Community, discussion, contribution, and support
 
