@@ -43,6 +43,8 @@ This will install Tiller into the Kubernetes cluster you saw with
 **TIP:** Want to install into a different cluster? Use the
 `--kube-context` flag.
 
+**TIP:** When you want to upgrade Tiller, just run `helm init --upgrade`.
+
 ## Install an Example Chart
 
 To install a chart, you can run the `helm install` command. Helm has

@@ -169,15 +169,12 @@ Server: &version.Version{SemVer:"v2.0.0-alpha.4", GitCommit:"a5...", GitTreeStat
 Importantly, even when running locally, Tiller will store release
 configuration in ConfigMaps inside of Kubernetes.
 
-## Deleting or Reinstalling Tiller
+## Upgrading Tiller
 
-Because Tiller stores its data in Kubernetes ConfigMaps, you can safely
-delete and re-install Tiller without worrying about losing any data. The
-recommended way of deleting Tiller is with `kubectl delete deployment
-tiller-deploy --namespace kube-system`
+As of Helm 2.2.0, Tiller can be upgraded using `helm init --upgrade`.
 
-To simply update Tiller to run the latest image, you can run this
-command:
+For older versions of Helm, or for manual upgrades, you can use `kubectl` to modify
+the Tiller image:
 
 ```console
 $ export TILLER_TAG=v2.0.0-beta.1        # Or whatever version you want
@@ -186,6 +183,19 @@ deployment "tiller-deploy" image updated
 ```
 
 Setting `TILLER_TAG=canary` will get the latest snapshot of master.
+
+## Deleting or Reinstalling Tiller
+
+Because Tiller stores its data in Kubernetes ConfigMaps, you can safely
+delete and re-install Tiller without worrying about losing any data. The
+recommended way of deleting Tiller is with `kubectl delete deployment
+tiller-deploy --namespace kube-system`
+
+Tiller can then be re-installed from the client with:
+
+```console
+$ helm init
+```
 
 ## Conclusion
 
