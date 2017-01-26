@@ -33,9 +33,14 @@ import (
 	rest "k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"strconv"
+	"math/rand"
+	"time"
 )
 
 // Client manages client side of the helm-tiller protocol
+func init() {
+    rand.Seed(time.Now().UnixNano())
+}
 type Client struct {
 	opts options
 }
@@ -376,6 +381,7 @@ func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) 
 	client, err := clientset.NewForConfig(config)
 	event, err := makeEventForRollBack(req)
 	event.InvolvedObject.Name = (req.Name + "-v" + strconv.Itoa(int(req.Version)))
+	event.ObjectMeta.Name = event.InvolvedObject.Name + "-" + RandStringRunes(5)
 	if err != nil {
 		return resp, err
 	}
@@ -506,7 +512,6 @@ func makeEventForRollBack(req *rls.RollbackReleaseRequest) (*api.Event, error) {
 	}
 	event := &api.Event{
 		ObjectMeta: api.ObjectMeta{
-			Name:      "releaseRollback",
 			Namespace: "default", //TODO handle namespace
 		},
 		InvolvedObject: api.ObjectReference{
@@ -519,4 +524,15 @@ func makeEventForRollBack(req *rls.RollbackReleaseRequest) (*api.Event, error) {
 		Count:   1,
 	}
 	return event, nil
+}
+
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+    b := make([]rune, n)
+    for i := range b {
+        b[i] = letterRunes[rand.Intn(len(letterRunes))]
+    }
+    return string(b)
 }
