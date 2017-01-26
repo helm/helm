@@ -17,10 +17,9 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
-	"fmt"
 	"gopkg.in/square/go-jose.v1/json"
 	"k8s.io/helm/pkg/chartutil"
 	hapi_chart "k8s.io/helm/pkg/proto/hapi/chart"
@@ -35,21 +34,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"strconv"
 )
-
-const (
-	defaultAPIPath = "/apis"
-)
-
-type extendedCodec struct {
-	pretty bool
-	yaml   bool
-}
-
-var ExtendedCodec = &extendedCodec{}
-
-type DirectCodecFactory struct {
-	*extendedCodec
-}
 
 // Client manages client side of the helm-tiller protocol
 type Client struct {
@@ -115,8 +99,7 @@ func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.I
 			return nil, err
 		}
 	}
-	return h.install(ctx, req) /*	"k8s.io/kubernetes/pkg/api"
-		"k8s.io/kubernetes/pkg/api/unversioned"*/
+	return h.install(ctx, req)
 }
 
 // DeleteRelease uninstalls a named release and returns the response.
@@ -471,7 +454,6 @@ func makeObjectSpec(req *rls.InstallReleaseRequest) hapi.ReleaseSpec {
 	spec.Chart.Inline.Files = req.Chart.Files
 	spec.Chart.Inline.Metadata = req.Chart.Metadata
 	spec.Chart.Inline.Templates = req.Chart.Templates
-	fmt.Println(req.Chart.Values)
 	spec.Chart.Inline.Values = req.Chart.Values
 	return spec
 }
