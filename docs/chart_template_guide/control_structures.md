@@ -12,7 +12,7 @@ In addition to these, it provides a few actions for declaring and using named te
 - `template` imports a named template
 - `block` declares a special kind of fillable template area
 
-In this section, we'll talk about `if`, `with`, and `range`. The others are covered in the "Including Templates" section later in this guide.
+In this section, we'll talk about `if`, `with`, and `range`. The others are covered in the "Named Templates" section later in this guide.
 
 ## If/Else
 
