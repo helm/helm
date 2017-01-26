@@ -321,17 +321,9 @@ func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (
 			rlc := rls.NewReleaseServiceClient(c)
 			return rlc.UninstallRelease(ctx, req)*/
 	resp := &rls.UninstallReleaseResponse{}
-	c, err := getConfig()
-	config := *c
-	if err != nil {
-		return resp, err
-	}
-	//release := new(hapi.Release)
-	client, err := cs.NewExtensionsForConfig(&config)
-	if err != nil {
-		return resp, err
-	}
-	err = client.RESTClient().Delete().Namespace("default").Resource("releases").Name(req.Name).Do().Error() // TODO fix namespace
+	client, err := getRESTClient()
+	// TODO handle response
+	err = client.RESTClient().Delete().Namespace("default").Resource("releases").Name(req.Name).Do().Error() // TODO handle namespace
 	if err != nil {
 		return resp, err
 	}
@@ -340,14 +332,44 @@ func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (
 
 // Executes tiller.UpdateRelease RPC.
 func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.UpdateRelease(ctx, req)
+	return rlc.UpdateRelease(ctx, req)*/
+	resp := &rls.UpdateReleaseResponse{}
+	client, err := getRESTClient()
+	// get the release
+	release := new(hapi.Release)
+	err = client.RESTClient().Get().Namespace("default").Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+	if err != nil {
+		return resp, err
+	}
+	release.Spec.Config = req.Values
+	release.Spec.DryRun = req.DryRun
+	release.Spec.DisableHooks = req.DisableHooks
+	release.Spec.Recreate = req.Recreate
+	release.Spec.Timeout = req.Timeout
+	release.Spec.Chart.Inline = req.Chart
+	// update the release
+	updatedRelease := new(hapi.Release)
+	err = client.RESTClient().Put().Namespace(release.Namespace).Resource("releases").Name(release.Name).Body(release).Do().Into(updatedRelease)
+	if err != nil {
+		return resp, err
+	}
+	resp.Release = new(rs.Release)
+	resp.Release.Name = updatedRelease.Name
+	resp.Release.Chart = updatedRelease.Spec.Chart.Inline
+	resp.Release.Config = updatedRelease.Spec.Config
+	resp.Release.Manifest = updatedRelease.Spec.Manifest
+	resp.Release.Hooks = updatedRelease.Spec.Hooks
+	resp.Release.Version = updatedRelease.Spec.Version
+	resp.Release.Info = new(rs.Info)
+	resp.Release.Info.Status = updatedRelease.Status.Status
+	return resp, nil
 }
 
 // Executes tiller.RollbackRelease RPC.
