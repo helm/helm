@@ -279,7 +279,7 @@ func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.L
 
 // Executes tiller.InstallRelease RPC.
 func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*rls.InstallReleaseResponse, error) {
-	/*		c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+/*			c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 			if err != nil {
 				return nil, err
 			}
@@ -331,7 +331,7 @@ func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (
 	if err != nil {
 		return resp, err
 	}
-	err = client.RESTClient().Delete().Namespace("").Resource("releases").Name(req.Name).Do().Error()
+	err = client.RESTClient().Delete().Namespace("default").Resource("releases").Name(req.Name).Do().Error() // TODO fix namespace
 	if err != nil {
 		return resp, err
 	}
