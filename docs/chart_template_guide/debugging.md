@@ -20,7 +20,6 @@ apiVersion: v1
 
 The above will be rendered and returned with the comments intact:
 
-```yaml
 ```YAML
 apiVersion: v1
 # some: problem section
