@@ -17,4 +17,4 @@ Sometimes it's easier to ask a few questions and get answers from experienced de
 
 - [Kubernetes Slack](https://slack.k8s.io/): `#helm`
 
-Finally, if you find errors or omissions in this document, want to suggest some new content, or would like to contribute, visit [The Helm Project](https://github.com).
+Finally, if you find errors or omissions in this document, want to suggest some new content, or would like to contribute, visit [The Helm Project](https://github.com/kubernetes/helm).
