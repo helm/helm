@@ -21,16 +21,19 @@ import (
 	"google.golang.org/grpc"
 
 	"fmt"
+	"gopkg.in/square/go-jose.v1/json"
 	"k8s.io/helm/pkg/chartutil"
 	hapi_chart "k8s.io/helm/pkg/proto/hapi/chart"
 	rs "k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	hapi "k8s.io/helm/tillerc/api"
 	cs "k8s.io/helm/tillerc/client/clientset"
-	//clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/api"
+	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	rest "k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	"strconv"
 )
 
 const (
@@ -279,13 +282,13 @@ func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.L
 
 // Executes tiller.InstallRelease RPC.
 func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*rls.InstallReleaseResponse, error) {
-/*			c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-			if err != nil {
-				return nil, err
-			}
-			defer c.Close()
-			rlc := rls.NewReleaseServiceClient(c)
-			return rlc.InstallRelease(ctx, req)*/
+	/*			c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+				if err != nil {
+					return nil, err
+				}
+				defer c.Close()
+				rlc := rls.NewReleaseServiceClient(c)
+				return rlc.InstallRelease(ctx, req)*/
 	resp := &rls.InstallReleaseResponse{}
 	releaseObj := makeReleaseObject(req)
 	release := new(hapi.Release)
@@ -332,14 +335,14 @@ func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (
 
 // Executes tiller.UpdateRelease RPC.
 func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
-/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
+	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
 
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.UpdateRelease(ctx, req)*/
+		rlc := rls.NewReleaseServiceClient(c)
+		return rlc.UpdateRelease(ctx, req)*/
 	resp := &rls.UpdateReleaseResponse{}
 	client, err := getRESTClient()
 	// get the release
@@ -374,14 +377,31 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 
 // Executes tiller.RollbackRelease RPC.
 func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) (*rls.RollbackReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
+	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
 
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.RollbackRelease(ctx, req)
+		rlc := rls.NewReleaseServiceClient(c)
+		return rlc.RollbackRelease(ctx, req)*/
+	resp := &rls.RollbackReleaseResponse{}
+	config, err := getConfig()
+	if err != nil {
+		return resp, err
+	}
+	client, err := clientset.NewForConfig(config)
+	event, err := makeEventForRollBack(req)
+	event.InvolvedObject.Name = (req.Name + "-v" + strconv.Itoa(int(req.Version)))
+	if err != nil {
+		return resp, err
+	}
+	_, err = client.Core().Events("default").Create(event) // TODO namespace
+	if err != nil {
+		return resp, err
+	}
+	// TODO make response
+	return resp, nil
 }
 
 // Executes tiller.GetReleaseStatus RPC.
@@ -478,4 +498,43 @@ func getRESTClient() (*cs.ExtensionsClient, error) {
 		return nil, err
 	}
 	return client, nil
+}
+
+type RollbackReq struct {
+	// dry_run, if true, will run through the release logic but no create
+	DryRun bool `protobuf:"varint,2,opt,name=dry_run,json=dryRun" json:"dry_run,omitempty"`
+	// DisableHooks causes the server to skip running any hooks for the rollback
+	DisableHooks bool `protobuf:"varint,3,opt,name=disable_hooks,json=disableHooks" json:"disable_hooks,omitempty"`
+	// Performs pods restart for resources if applicable
+	Recreate bool `protobuf:"varint,5,opt,name=recreate" json:"recreate,omitempty"`
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	Timeout int64 `protobuf:"varint,6,opt,name=timeout" json:"timeout,omitempty"`
+}
+
+func makeEventForRollBack(req *rls.RollbackReleaseRequest) (*api.Event, error) {
+	r := RollbackReq{
+		DryRun:       req.DryRun,
+		Recreate:     req.Recreate,
+		DisableHooks: req.DisableHooks,
+		Timeout:      req.Timeout,
+	}
+	message, err := json.Marshal(r)
+	if err != nil {
+		return &api.Event{}, err
+	}
+	event := &api.Event{
+		ObjectMeta: api.ObjectMeta{
+			Name:      "releaseRollback",
+			Namespace: "default", //TODO handle namespace
+		},
+		InvolvedObject: api.ObjectReference{
+			Kind:      "release",
+			Namespace: "default", //TODO handle namespace
+		},
+		Reason:  "releaseRollback",
+		Message: string(message),
+		Type:    api.EventTypeNormal,
+		Count:   1,
+	}
+	return event, nil
 }
