@@ -23,14 +23,14 @@ import (
 	"fmt"
 	"k8s.io/helm/pkg/chartutil"
 	hapi_chart "k8s.io/helm/pkg/proto/hapi/chart"
+	rs "k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	hapi "k8s.io/helm/tillerc/api"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	cs "k8s.io/helm/tillerc/client/clientset"
+	//clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/restclient"
 	rest "k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	cl"k8s.io/helm/tillerc/client/clientset"
-	ss"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 const (
@@ -279,23 +279,17 @@ func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.L
 
 // Executes tiller.InstallRelease RPC.
 func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*rls.InstallReleaseResponse, error) {
-	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-
-		rlc := rls.NewReleaseServiceClient(c)
-		return rlc.InstallRelease(ctx, req)*/
+	/*		c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+			if err != nil {
+				return nil, err
+			}
+			defer c.Close()
+			rlc := rls.NewReleaseServiceClient(c)
+			return rlc.InstallRelease(ctx, req)*/
 	resp := &rls.InstallReleaseResponse{}
 	releaseObj := makeReleaseObject(req)
-	c, err := getConfig()
-	config := *c
-	if err != nil {
-		return resp, err
-	}
 	release := new(hapi.Release)
-	client, err :=  cl.NewExtensionsForConfig(&config)
+	client, err := getRESTClient()
 	if err != nil {
 		return resp, err
 	}
@@ -303,30 +297,45 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 	if err != nil {
 		return resp, err
 	}
-	resp.Release = new(ss.Release)
+	resp.Release = new(rs.Release)
 	resp.Release.Name = release.Name
 	resp.Release.Namespace = release.Namespace
 	resp.Release.Hooks = release.Spec.Hooks
-	//resp.Release.Config = new(hapi_chart.Chart)
 	resp.Release.Config = release.Spec.Config
 	resp.Release.Chart = new(hapi_chart.Chart)
 	resp.Release.Chart = release.Spec.Chart.Inline
 	resp.Release.Manifest = release.Spec.Manifest
-	resp.Release.Info = new(ss.Info)
+	resp.Release.Info = new(rs.Info)
 	resp.Release.Info.Status = release.Status.Status
 	return resp, nil
 }
 
 // Executes tiller.UninstallRelease RPC.
 func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
+	/*		c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+			if err != nil {
+				return nil, err
+			}
+			defer c.Close()
 
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.UninstallRelease(ctx, req)
+			rlc := rls.NewReleaseServiceClient(c)
+			return rlc.UninstallRelease(ctx, req)*/
+	resp := &rls.UninstallReleaseResponse{}
+	c, err := getConfig()
+	config := *c
+	if err != nil {
+		return resp, err
+	}
+	//release := new(hapi.Release)
+	client, err := cs.NewExtensionsForConfig(&config)
+	if err != nil {
+		return resp, err
+	}
+	err = client.RESTClient().Delete().Namespace("").Resource("releases").Name(req.Name).Do().Error()
+	if err != nil {
+		return resp, err
+	}
+	return resp, nil
 }
 
 // Executes tiller.UpdateRelease RPC.
@@ -420,6 +429,8 @@ func makeObjectSpec(req *rls.InstallReleaseRequest) hapi.ReleaseSpec {
 	spec.Chart.Inline.Files = req.Chart.Files
 	spec.Chart.Inline.Metadata = req.Chart.Metadata
 	spec.Chart.Inline.Templates = req.Chart.Templates
+	fmt.Println(req.Chart.Values)
+	spec.Chart.Inline.Values = req.Chart.Values
 	return spec
 }
 
@@ -434,15 +445,15 @@ func getConfig() (*restclient.Config, error) {
 	return config, nil
 }
 
-func newKubeClient() (clientset.Interface, error) {
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
-	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
-	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides).ClientConfig()
+func getRESTClient() (*cs.ExtensionsClient, error) {
+	c, err := getConfig()
+	config := *c
 	if err != nil {
-		return nil, fmt.Errorf("Could not get kubernetes config: %s", err)
+		return nil, err
 	}
-	return clientset.NewForConfig(config)
+	client, err := cs.NewExtensionsForConfig(&config)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
-
-
