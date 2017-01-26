@@ -98,6 +98,14 @@ func TestInstall(t *testing.T) {
 			expected: "foobar",
 			resp:     releaseMock(&releaseOptions{name: "foobar"}),
 		},
+		// Install, with wait
+		{
+			name:     "install with a wait",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--wait", " "),
+			expected: "apollo",
+			resp:     releaseMock(&releaseOptions{name: "apollo"}),
+		},
 		// Install, using the name-template
 		{
 			name:     "install with name-template",

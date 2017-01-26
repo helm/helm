@@ -194,6 +194,9 @@ message UpdateReleaseRequest {
 	int64 timeout = 7;
 	// ResetValues will cause Tiller to ignore stored values, resetting to default values.
 	bool reset_values = 8;
+	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
+	// before marking the release as successful. It will wait for as long as timeout
+	bool wait = 9;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -214,6 +217,9 @@ message RollbackReleaseRequest {
 	bool recreate = 5;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 6;
+	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
+	// before marking the release as successful. It will wait for as long as timeout
+	bool wait = 7;
 }
 
 // RollbackReleaseResponse is the response to an update request.
@@ -248,6 +254,9 @@ message InstallReleaseRequest {
 
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 8;
+	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
+	// before marking the release as successful. It will wait for as long as timeout
+	bool wait = 9;
 }
 
 // InstallReleaseResponse is the response from a release installation.

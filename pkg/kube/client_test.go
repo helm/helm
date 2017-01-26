@@ -105,7 +105,9 @@ func (f *fakeReaperFactory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, e
 func TestUpdate(t *testing.T) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
+	listC := newPodList("starfish", "otter", "dolphin")
 	listB.Items[0].Spec.Containers[0].Ports = []api.ContainerPort{{Name: "https", ContainerPort: 443}}
+	listC.Items[0].Spec.Containers[0].Ports = []api.ContainerPort{{Name: "https", ContainerPort: 443}}
 
 	actions := make(map[string]string)
 
@@ -148,10 +150,19 @@ func TestUpdate(t *testing.T) {
 	reaper := &fakeReaper{}
 	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
 	c := &Client{Factory: rf}
-	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false); err != nil {
+	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, 0, false); err != nil {
 		t.Fatal(err)
 	}
-
+	// TODO: Find a way to test methods that use Client Set
+	// Test with a wait
+	// if err := c.Update("test", objBody(codec, &listB), objBody(codec, &listC), false, 300, true); err != nil {
+	// 	t.Fatal(err)
+	// }
+	// Test with a wait should fail
+	// TODO: A way to make this not based off of an extremely short timeout?
+	// if err := c.Update("test", objBody(codec, &listC), objBody(codec, &listA), false, 2, true); err != nil {
+	// 	t.Fatal(err)
+	// }
 	expectedActions := map[string]string{
 		"/namespaces/default/pods/dolphin":  "GET",
 		"/namespaces/default/pods/otter":    "GET",
@@ -169,6 +180,60 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("unexpected reaper: %#v", reaper)
 	}
 
+}
+
+func TestBuild(t *testing.T) {
+	tests := []struct {
+		name        string
+		namespace   string
+		reader      io.Reader
+		count       int
+		swaggerFile string
+		err         bool
+		errMessage  string
+	}{
+		{
+			name:      "Valid input",
+			namespace: "test",
+			reader:    strings.NewReader(guestbookManifest),
+			count:     6,
+		}, {
+			name:        "Invalid schema",
+			namespace:   "test",
+			reader:      strings.NewReader(testInvalidServiceManifest),
+			swaggerFile: "../../vendor/k8s.io/kubernetes/api/swagger-spec/" + testapi.Default.GroupVersion().Version + ".json",
+			err:         true,
+			errMessage:  `error validating "": error validating data: expected type int, for field spec.ports[0].port, got string`,
+		},
+	}
+
+	for _, tt := range tests {
+		f, tf, _, _ := cmdtesting.NewAPIFactory()
+		c := &Client{Factory: f}
+		if tt.swaggerFile != "" {
+			data, err := ioutil.ReadFile(tt.swaggerFile)
+			if err != nil {
+				t.Fatalf("could not read swagger spec: %s", err)
+			}
+			validator, err := validation.NewSwaggerSchemaFromBytes(data, nil)
+			if err != nil {
+				t.Fatalf("could not load swagger spec: %s", err)
+			}
+			tf.Validator = validator
+		}
+
+		// Test for an invalid manifest
+		infos, err := c.Build(tt.namespace, tt.reader)
+		if err != nil && err.Error() != tt.errMessage {
+			t.Errorf("%q. expected error message: %v, got %v", tt.name, tt.errMessage, err)
+		} else if err != nil && !tt.err {
+			t.Errorf("%q. Got error message when no error should have occurred: %v, got %v", tt.name, tt.errMessage, err)
+		}
+
+		if len(infos) != tt.count {
+			t.Errorf("%q. expected %d result objects, got %d", tt.name, tt.count, len(infos))
+		}
+	}
 }
 
 func TestPerform(t *testing.T) {
@@ -192,13 +257,6 @@ func TestPerform(t *testing.T) {
 			reader:     strings.NewReader(""),
 			err:        true,
 			errMessage: "no objects visited",
-		}, {
-			name:        "Invalid schema",
-			namespace:   "test",
-			reader:      strings.NewReader(testInvalidServiceManifest),
-			swaggerFile: "../../vendor/k8s.io/kubernetes/api/swagger-spec/" + testapi.Default.GroupVersion().Version + ".json",
-			err:         true,
-			errMessage:  `error validating "": error validating data: expected type int, for field spec.ports[0].port, got string`,
 		},
 	}
 
@@ -228,7 +286,12 @@ func TestPerform(t *testing.T) {
 			tf.Validator = validator
 		}
 
-		err := perform(c, tt.namespace, tt.reader, fn)
+		infos, err := c.Build(tt.namespace, tt.reader)
+		if err != nil && err.Error() != tt.errMessage {
+			t.Errorf("%q. Error while building manifests: %v", tt.name, err)
+		}
+
+		err = perform(c, tt.namespace, infos, fn)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}
@@ -245,13 +308,13 @@ func TestPerform(t *testing.T) {
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)
-	if err := c.Create("test", strings.NewReader(guestbookManifest)); err != nil {
+	if err := c.Create("test", strings.NewReader(guestbookManifest), 300, false); err != nil {
 		t.Fatal(err)
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
 	c = New(nil)
-	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest)); err != nil {
+	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest), 300, false); err != nil {
 		t.Fatal(err)
 	}
 
