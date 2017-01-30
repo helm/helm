@@ -103,6 +103,7 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Status.Resources, "\t"))
 		w.Flush()
 	}
+
 	if len(res.Info.Status.Notes) > 0 {
 		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
 	}

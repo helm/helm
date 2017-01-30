@@ -22,6 +22,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -162,7 +163,7 @@ metadata:
 	// Verify the sort order
 	sorted := make([]manifest, len(data))
 	for i, s := range data {
-		var sh simpleHead
+		var sh util.SimpleHead
 		err := yaml.Unmarshal([]byte(s.manifest), &sh)
 		if err != nil {
 			// This is expected for manifests that are corrupt or empty.

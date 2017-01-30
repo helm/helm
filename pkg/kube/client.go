@@ -307,9 +307,6 @@ func perform(c *Client, namespace string, infos Result, fn ResourceActorFunc) er
 		return ErrNoObjectsVisited
 	}
 
-	if err != nil {
-		return err
-	}
 	for _, info := range infos {
 		if err := fn(info); err != nil {
 			return err

@@ -26,6 +26,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/release"
+	util "k8s.io/helm/pkg/releaseutil"
 )
 
 // hookAnno is the label name for a hook
@@ -55,20 +56,11 @@ var events = map[string]release.Hook_Event{
 	releaseTest:  release.Hook_RELEASE_TEST,
 }
 
-type simpleHead struct {
-	Version  string `json:"apiVersion"`
-	Kind     string `json:"kind,omitempty"`
-	Metadata *struct {
-		Name        string            `json:"name"`
-		Annotations map[string]string `json:"annotations"`
-	} `json:"metadata,omitempty"`
-}
-
 // manifest represents a manifest file, which has a name and some content.
 type manifest struct {
 	name    string
 	content string
-	head    *simpleHead
+	head    *util.SimpleHead
 }
 
 // sortManifests takes a map of filename/YAML contents and sorts them into hook types.
@@ -108,7 +100,7 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			continue
 		}
 
-		var sh simpleHead
+		var sh util.SimpleHead
 		err := yaml.Unmarshal([]byte(c), &sh)
 
 		if err != nil {

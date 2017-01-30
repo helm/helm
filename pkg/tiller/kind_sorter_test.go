@@ -18,6 +18,8 @@ package tiller
 
 import (
 	"testing"
+
+	"k8s.io/helm/pkg/hooks"
 )
 
 func TestKindSorter(t *testing.T) {
@@ -25,27 +27,27 @@ func TestKindSorter(t *testing.T) {
 		{
 			name:    "m",
 			content: "",
-			head:    &simpleHead{Kind: "Deployment"},
+			head:    &util.SimpleHead{Kind: "Deployment"},
 		},
 		{
 			name:    "l",
 			content: "",
-			head:    &simpleHead{Kind: "Service"},
+			head:    &util.SimpleHead{Kind: "Service"},
 		},
 		{
 			name:    "!",
 			content: "",
-			head:    &simpleHead{Kind: "HonkyTonkSet"},
+			head:    &util.SimpleHead{Kind: "HonkyTonkSet"},
 		},
 		{
 			name:    "h",
 			content: "",
-			head:    &simpleHead{Kind: "Namespace"},
+			head:    &util.SimpleHead{Kind: "Namespace"},
 		},
 		{
 			name:    "e",
 			content: "",
-			head:    &simpleHead{Kind: "ConfigMap"},
+			head:    &util.SimpleHead{Kind: "ConfigMap"},
 		},
 	}
 
