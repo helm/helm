@@ -204,12 +204,16 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 
-	rel := res.GetRelease()
+
+/*	rel := res.GetRelease()
+	if rel == nil {
+		return nil
+	}*/
+	rel := res.Release
 	if rel == nil {
 		return nil
 	}
 	i.printRelease(rel)
-
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
 		return nil

@@ -24,7 +24,7 @@ import (
 type Interface interface {
 	ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error)
 	InstallRelease(chStr, namespace string, opts ...InstallOption) (*rls.InstallReleaseResponse, error)
-	DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error)
+	DeleteRelease(rlsName string, namespace string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error)
 	ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error)
 	UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)
 	RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error)

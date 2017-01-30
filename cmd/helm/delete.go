@@ -40,6 +40,7 @@ type deleteCmd struct {
 	disableHooks bool
 	purge        bool
 	timeout      int64
+	namespace    string
 
 	out    io.Writer
 	client helm.Interface
@@ -75,6 +76,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	f.StringVar(&del.namespace, "namespace", "default", "namespace to uninstall the release")
 	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
 	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
 	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")
@@ -90,7 +92,7 @@ func (d *deleteCmd) run() error {
 		helm.DeletePurge(d.purge),
 		helm.DeleteTimeout(d.timeout),
 	}
-	res, err := d.client.DeleteRelease(d.name, opts...)
+	res, err := d.client.DeleteRelease(d.name, d.namespace, opts...)
 	if res != nil && res.Info != "" {
 		fmt.Fprintln(d.out, res.Info)
 	}

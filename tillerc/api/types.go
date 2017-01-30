@@ -92,18 +92,18 @@ type ReleaseList struct {
 type ReleaseVersion struct {
 	unversioned.TypeMeta `json:",inline,omitempty"`
 	api.ObjectMeta       `json:"metadata,omitempty"`
-	Spec                 ReleaseVersionSpec   `json:"spec,omitempty"`
-	Status               ReleaseVersionStatus `json:"status,omitempty"`
+	Spec                 ReleaseVersionSpec `json:"spec,omitempty"`
+	Status               ReleaseStatus      `json:"status,omitempty"`
 }
 
 type ReleaseVersionSpec struct {
 	ReleaseSpec ReleaseSpec `json:"inline,omitempty"`
 }
 
-type ReleaseVersionStatus struct {
+/*type ReleaseVersionStatus struct {
 	Status   *hapi_release.Status `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
 	Deployed unversioned.Time     `protobuf:"bytes,2,opt,name=deployed" json:"deployed,omitempty"`
-}
+}*/
 
 type ReleaseVersionList struct {
 	unversioned.TypeMeta `json:",inline"`

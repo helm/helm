@@ -108,7 +108,7 @@ func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.I
 }
 
 // DeleteRelease uninstalls a named release and returns the response.
-func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+func (h *Client) DeleteRelease(rlsName string, namespace string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
 	// apply the uninstall options
 	for _, opt := range opts {
 		opt(&h.opts)
@@ -133,7 +133,7 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 			return nil, err
 		}
 	}
-	return h.delete(ctx, req)
+	return h.delete(ctx, namespace, req)
 }
 
 // UpdateRelease updates a release to a new/different chart
@@ -279,12 +279,13 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 				return rlc.InstallRelease(ctx, req)*/
 	resp := &rls.InstallReleaseResponse{}
 	releaseObj := makeReleaseObject(req)
+	releaseObj.Spec.Version = 1
 	release := new(hapi.Release)
 	client, err := getRESTClient()
 	if err != nil {
 		return resp, err
 	}
-	err = client.RESTClient().Post().Namespace(releaseObj.Namespace).Resource("releases").Body(releaseObj).Do().Into(release)
+	err = client.RESTClient().Post().Namespace(req.Namespace).Resource("releases").Body(releaseObj).Do().Into(release)
 	if err != nil {
 		return resp, err
 	}
@@ -302,19 +303,19 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 }
 
 // Executes tiller.UninstallRelease RPC.
-func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
-	/*		c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+func (h *Client) delete(ctx context.Context,namespace string, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
+			c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 			if err != nil {
 				return nil, err
 			}
 			defer c.Close()
 
 			rlc := rls.NewReleaseServiceClient(c)
-			return rlc.UninstallRelease(ctx, req)*/
+			return rlc.UninstallRelease(ctx, req)
 	resp := &rls.UninstallReleaseResponse{}
 	client, err := getRESTClient()
 	// TODO handle response
-	err = client.RESTClient().Delete().Namespace("default").Resource("releases").Name(req.Name).Do().Error() // TODO handle namespace
+	err = client.RESTClient().Delete().Namespace(namespace).Resource("releases").Name(req.Name).Do().Error() // TODO handle namespace
 	if err != nil {
 		return resp, err
 	}
@@ -395,14 +396,48 @@ func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) 
 
 // Executes tiller.GetReleaseStatus RPC.
 func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.GetReleaseStatus(ctx, req)
+	return rlc.GetReleaseStatus(ctx, req)*/
+	resp := &rls.GetReleaseStatusResponse{}
+	client, err := getRESTClient()
+	if err != nil {
+		return resp, err
+	}
+	release := new(hapi.Release)
+	err = client.RESTClient().Get().Namespace("default").Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+	if err != nil {
+		return resp, err
+	}
+	v := release.Spec.Version
+	releaseVersion := new(hapi.ReleaseVersion)
+	name := req.Name + "-v" + strconv.Itoa(int(v))
+	duration :=time.Duration(5) * time.Second
+	for i:=0;i<=10;i++ {
+		time.Sleep(duration)
+		err = client.RESTClient().Get().Namespace("default").Resource("releaseversions").Name(name).Do().Into(releaseVersion) // TODO handle namespace
+		if err != nil {
+			continue
+		}else {
+			break
+		}
+	}
+	if err != nil {
+		return resp, err
+	}
+	resp.Name = release.Name
+	resp.Namespace = release.Namespace
+	resp.Info = new(rs.Info)
+	resp.Info.Status = releaseVersion.Status.Status
+/*	*resp.Info.FirstDeployed = releaseVersion.Status.FirstDeployed //TODO
+	*resp.Info.LastDeployed = releaseVersion.Status.LastDeployed
+	*resp.Info.Deleted = releaseVersion.Status.Deleted*/
+	return resp, nil
 }
 
 // Executes tiller.GetReleaseContent RPC.
