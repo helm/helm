@@ -12,16 +12,19 @@ us a chance to try to fix the issue before it is exploited in the wild.
 
 ## Contributor License Agreements
 
-We'd love to accept your patches! Before we can take them, we have to jump a couple of legal hurdles.
+We'd love to accept your patches! Before we can take them, we have to jump a
+couple of legal hurdles.
 
-Please fill out either the individual or corporate Contributor License Agreement (CLA).
+The Cloud Native Computing Foundation (CNCF) CLA [must be signed](https://github.com/kubernetes/community/blob/master/CLA.md) by all contributors.
+Please fill out either the individual or corporate Contributor License
+Agreement (CLA).
 
-  * If you are an individual writing original source code and you're sure you own the intellectual property, then you'll need to sign an [individual CLA](http://code.google.com/legal/individual-cla-v1.0.html).
-  * If you work for a company that wants to allow you to contribute your work, then you'll need to sign a [corporate CLA](http://code.google.com/legal/corporate-cla-v1.0.html).
+Once you are CLA'ed, we'll be able to accept your pull requests. For any issues that you face during this process,
+please add a comment [here](https://github.com/kubernetes/kubernetes/issues/27796) explaining the issue and we will help get it sorted out.
 
-Follow either of the two links above to access the appropriate CLA and instructions for how to sign and return it. Once we receive it, we'll be able to accept your pull requests.
-
-***NOTE***: Only original source code from you and other people that have signed the CLA can be accepted into the main repository.
+***NOTE***: Only original source code from you and other people that have
+signed the CLA can be accepted into the repository. This policy does not
+apply to [third_party](third_party/) and [vendor](vendor/).
 
 ## How to Submit a Proposal
 
