@@ -74,15 +74,37 @@ The `sha256sum` function can be used together with the `include`
 function to ensure a deployments template section is updated if another
 spec changes: 
 
-```
+```yaml
 kind: Deployment
 spec:
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Chart.Name "/templates/secret.yaml") . | sha256sum }}
-[...]    
+[...]
 ```
+
+## Tell Tiller Not To Delete a Resource
+
+Sometimes there are resources that should not be deleted when Helm runs a
+`helm delete`. Chart developers can add an annotation to a resource to prevent
+it from being deleted.
+
+```yaml
+kind: Secret
+metadata:
+  annotations:
+    "helm.sh/resource-policy": keep
+[...]
+```
+
+(Quotation marks are required)
+
+The annotation `"helm.sh/resource-policy": keep` instructs Tiller to skip this
+resource during a `helm delete` operation. _However_, this resource becomes
+orphaned. Helm will no longer manage it in any way. This can lead to problems
+if using `helm install --replace` on a release that has already been deleted, but
+has kept resources.
 
 ## Using "Partials" and Template Includes
 
