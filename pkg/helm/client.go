@@ -18,6 +18,7 @@ package helm // import "k8s.io/helm/pkg/helm"
 
 import (
 	"fmt"
+	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"gopkg.in/square/go-jose.v1/json"
@@ -138,7 +139,7 @@ func (h *Client) DeleteRelease(rlsName string, namespace string, opts ...DeleteO
 }
 
 // UpdateRelease updates a release to a new/different chart
-func (h *Client) UpdateRelease(rlsName string, chstr string,namespace string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (h *Client) UpdateRelease(rlsName string, chstr string, namespace string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	// load the chart to update
 	chart, err := chartutil.Load(chstr)
 	if err != nil {
@@ -182,7 +183,7 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 }
 
 // RollbackRelease rolls back a release to the previous version
-func (h *Client) RollbackRelease(rlsName string,namespace string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
+func (h *Client) RollbackRelease(rlsName string, namespace string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
 	for _, opt := range opts {
 		opt(&h.opts)
 	}
@@ -300,6 +301,16 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 	resp.Release.Manifest = release.Spec.Manifest
 	resp.Release.Info = new(rs.Info)
 	resp.Release.Info.Status = release.Status.Status
+	firstDeployed, err := ptypes.TimestampProto(release.Status.FirstDeployed.Time)
+	if err != nil {
+		return resp, err
+	}
+	resp.Release.Info.FirstDeployed = firstDeployed
+	lastDeployed, err := ptypes.TimestampProto(release.Status.LastDeployed.Time)
+	if err != nil {
+		return resp, err
+	}
+	resp.Release.Info.FirstDeployed = lastDeployed
 	return resp, nil
 }
 
@@ -325,7 +336,7 @@ func (h *Client) delete(ctx context.Context, namespace string, req *rls.Uninstal
 }
 
 // Executes tiller.UpdateRelease RPC.
-func (h *Client) update(ctx context.Context,namespace string, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
+func (h *Client) update(ctx context.Context, namespace string, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
 	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 		if err != nil {
 			return nil, err
@@ -348,7 +359,7 @@ func (h *Client) update(ctx context.Context,namespace string, req *rls.UpdateRel
 	release.Spec.Recreate = req.Recreate
 	release.Spec.Timeout = req.Timeout
 	release.Spec.Chart.Inline = req.Chart
-	release.Spec.Version = release.Spec.Version
+	release.Spec.Version = release.Spec.Version + 1
 	// update the release
 	updatedRelease := new(hapi.Release)
 	err = client.RESTClient().Put().Namespace(namespace).Resource("releases").Name(release.Name).Body(release).Do().Into(updatedRelease)
@@ -439,9 +450,21 @@ func (h *Client) status(ctx context.Context, namespace string, req *rls.GetRelea
 	resp.Namespace = release.Namespace
 	resp.Info = new(rs.Info)
 	resp.Info.Status = releaseVersion.Status.Status
-	/*	*resp.Info.FirstDeployed = releaseVersion.Status.FirstDeployed //TODO
-	*resp.Info.LastDeployed = releaseVersion.Status.LastDeployed
-	*resp.Info.Deleted = releaseVersion.Status.Deleted*/
+	f, err := ptypes.TimestampProto(releaseVersion.Status.FirstDeployed.Time)
+	if err != nil {
+		return resp, err
+	}
+	resp.Info.FirstDeployed = f
+	l, err := ptypes.TimestampProto(releaseVersion.Status.LastDeployed.Time)
+	if err != nil {
+		return resp, err
+	}
+	resp.Info.LastDeployed = l
+	d, err := ptypes.TimestampProto(releaseVersion.Status.LastDeployed.Time)
+	if err != nil {
+		return resp, err
+	}
+	resp.Info.Deleted = d
 	return resp, nil
 }
 
@@ -552,7 +575,7 @@ func makeEventForRollBack(req *rls.RollbackReleaseRequest) (*api.Event, error) {
 	}
 	event := &api.Event{
 		InvolvedObject: api.ObjectReference{
-			Kind:      "release",
+			Kind: "release",
 		},
 		Reason:  "releaseRollback",
 		Message: string(message),
