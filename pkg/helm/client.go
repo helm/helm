@@ -299,7 +299,7 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 			err = client.RESTClient().Get().Namespace(req.Namespace).Resource("releaseversion").Name(rv).Do().Error()
 			if err == nil {
 				fmt.Println("info: Name %q is taken. Searching again.", name)
-			}else {
+			} else {
 				break
 			}
 		}
@@ -337,19 +337,19 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 
 // Executes tiller.UninstallRelease RPC.
 func (h *Client) delete(ctx context.Context, namespace string, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.UninstallRelease(ctx, req)
+	return rlc.UninstallRelease(ctx, req)*/
 	resp := &rls.UninstallReleaseResponse{}
 	client, err := getRESTClient()
 	// TODO handle response
-	release := new(hapi.Release)
-	err = client.RESTClient().Delete().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release)
+	//release := new(hapi.Release)
+	err = client.RESTClient().Delete().Namespace(namespace).Resource("releases").Name(req.Name).Do().Error()
 	if err != nil {
 		return resp, err
 	}
@@ -433,29 +433,24 @@ func (h *Client) rollback(ctx context.Context, namespace string, req *rls.Rollba
 
 // Executes tiller.GetReleaseStatus RPC.
 func (h *Client) status(ctx context.Context, namespace string, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
-/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
+	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
 
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.GetReleaseStatus(ctx, req)*/
+		rlc := rls.NewReleaseServiceClient(c)
+		return rlc.GetReleaseStatus(ctx, req)*/
 
 	resp := &rls.GetReleaseStatusResponse{}
 	client, err := getRESTClient()
 	if err != nil {
 		return resp, err
 	}
-	duration := time.Duration(5) * time.Second
+	duration := time.Duration(2) * time.Second
 	release := new(hapi.Release)
-	for i := 0; i <= 10; i++ {
-		err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
-		if err == nil {
-			break
-		}
-		time.Sleep(duration)
-	}
+	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+
 	if err != nil {
 		return resp, err
 	}
@@ -463,7 +458,7 @@ func (h *Client) status(ctx context.Context, namespace string, req *rls.GetRelea
 	releaseVersion := new(hapi.ReleaseVersion)
 	name := req.Name + "-v" + strconv.Itoa(int(v))
 
-	for i := 0; i <= 10; i++ {
+	for i := 0; i <= 20; i++ {
 		err = client.RESTClient().Get().Namespace(namespace).Resource("releaseversions").Name(name).Do().Into(releaseVersion) // TODO handle namespace
 		if err != nil {
 			time.Sleep(duration)
