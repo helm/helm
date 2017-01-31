@@ -19,6 +19,7 @@ package helm // import "k8s.io/helm/pkg/helm"
 import (
 	"fmt"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/technosophos/moniker"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"gopkg.in/square/go-jose.v1/json"
@@ -280,13 +281,33 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 				rlc := rls.NewReleaseServiceClient(c)
 				return rlc.InstallRelease(ctx, req)*/
 	resp := &rls.InstallReleaseResponse{}
-	releaseObj := makeReleaseObject(req)
-	releaseObj.Spec.Version = 1
-	release := new(hapi.Release)
+	maxTries := 5
+	releaseNameMaxLen := 53
+	name := req.Name
 	client, err := getRESTClient()
 	if err != nil {
 		return resp, err
 	}
+	if len(name) == 0 {
+		for i := 0; i < maxTries; i++ {
+			namer := moniker.New()
+			name = namer.NameSep("-")
+			if len(name) > releaseNameMaxLen {
+				name = name[:releaseNameMaxLen]
+			}
+			rv := name + "-v1"
+			err = client.RESTClient().Get().Namespace(req.Namespace).Resource("releaseversion").Name(rv).Do().Error()
+			if err == nil {
+				fmt.Println("info: Name %q is taken. Searching again.", name)
+			}else {
+				break
+			}
+		}
+	}
+	req.Name = name
+	releaseObj := makeReleaseObject(req)
+	releaseObj.Spec.Version = 1
+	release := new(hapi.Release)
 	err = client.RESTClient().Post().Namespace(req.Namespace).Resource("releases").Body(releaseObj).Do().Into(release)
 	if err != nil {
 		return resp, err
@@ -412,32 +433,40 @@ func (h *Client) rollback(ctx context.Context, namespace string, req *rls.Rollba
 
 // Executes tiller.GetReleaseStatus RPC.
 func (h *Client) status(ctx context.Context, namespace string, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
-	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
+/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
 
-		rlc := rls.NewReleaseServiceClient(c)
-		return rlc.GetReleaseStatus(ctx, req)*/
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.GetReleaseStatus(ctx, req)*/
+
 	resp := &rls.GetReleaseStatusResponse{}
 	client, err := getRESTClient()
 	if err != nil {
 		return resp, err
 	}
+	duration := time.Duration(5) * time.Second
 	release := new(hapi.Release)
-	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+	for i := 0; i <= 10; i++ {
+		err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+		if err == nil {
+			break
+		}
+		time.Sleep(duration)
+	}
 	if err != nil {
 		return resp, err
 	}
 	v := release.Spec.Version
 	releaseVersion := new(hapi.ReleaseVersion)
 	name := req.Name + "-v" + strconv.Itoa(int(v))
-	duration := time.Duration(5) * time.Second
+
 	for i := 0; i <= 10; i++ {
-		time.Sleep(duration)
 		err = client.RESTClient().Get().Namespace(namespace).Resource("releaseversions").Name(name).Do().Into(releaseVersion) // TODO handle namespace
 		if err != nil {
+			time.Sleep(duration)
 			continue
 		} else {
 			break

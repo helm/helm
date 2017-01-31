@@ -189,8 +189,6 @@ func (i *installCmd) run() error {
 		// Print the final name so the user knows what the final name of the release is.
 		fmt.Printf("FINAL NAME: %s\n", i.name)
 	}
-
-
 	res, err := i.client.InstallRelease(
 		i.chartPath,
 		i.namespace,
