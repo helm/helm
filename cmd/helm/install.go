@@ -220,7 +220,7 @@ func (i *installCmd) run() error {
 	}
 
 	// Print the status like status command does
-	status, err := i.client.ReleaseStatus(rel.Name)
+	status, err := i.client.ReleaseStatus(rel.Name, rel.Namespace)
 	if err != nil {
 		return prettyError(err)
 	}

@@ -33,6 +33,7 @@ This command shows the status of a named release.
 
 type statusCmd struct {
 	release string
+	namespace string
 	out     io.Writer
 	client  helm.Interface
 	version int32
@@ -62,12 +63,13 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
+	cmd.PersistentFlags().StringVar(&status.namespace, "namespace", "default", "namespace of the release")
 
 	return cmd
 }
 
 func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version))
+	res, err := s.client.ReleaseStatus(s.release, s.namespace, helm.StatusReleaseVersion(s.version))
 	if err != nil {
 		return prettyError(err)
 	}

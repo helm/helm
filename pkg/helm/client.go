@@ -32,15 +32,16 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 	rest "k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	"strconv"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
 // Client manages client side of the helm-tiller protocol
 func init() {
-    rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano())
 }
+
 type Client struct {
 	opts options
 }
@@ -137,7 +138,7 @@ func (h *Client) DeleteRelease(rlsName string, namespace string, opts ...DeleteO
 }
 
 // UpdateRelease updates a release to a new/different chart
-func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (h *Client) UpdateRelease(rlsName string, chstr string,namespace string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	// load the chart to update
 	chart, err := chartutil.Load(chstr)
 	if err != nil {
@@ -161,7 +162,7 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOptio
 			return nil, err
 		}
 	}
-	return h.update(ctx, req)
+	return h.update(ctx, namespace, req)
 }
 
 // GetVersion returns the server version
@@ -181,7 +182,7 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 }
 
 // RollbackRelease rolls back a release to the previous version
-func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
+func (h *Client) RollbackRelease(rlsName string,namespace string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
 	for _, opt := range opts {
 		opt(&h.opts)
 	}
@@ -196,11 +197,11 @@ func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.R
 			return nil, err
 		}
 	}
-	return h.rollback(ctx, req)
+	return h.rollback(ctx, namespace, req)
 }
 
 // ReleaseStatus returns the given release's status.
-func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
+func (h *Client) ReleaseStatus(rlsName string, namespace string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
 	for _, opt := range opts {
 		opt(&h.opts)
 	}
@@ -213,7 +214,7 @@ func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetRe
 			return nil, err
 		}
 	}
-	return h.status(ctx, req)
+	return h.status(ctx, namespace, req)
 }
 
 // ReleaseContent returns the configuration for a given release.
@@ -303,19 +304,20 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 }
 
 // Executes tiller.UninstallRelease RPC.
-func (h *Client) delete(ctx context.Context,namespace string, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
-			c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-			if err != nil {
-				return nil, err
-			}
-			defer c.Close()
+func (h *Client) delete(ctx context.Context, namespace string, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
 
-			rlc := rls.NewReleaseServiceClient(c)
-			return rlc.UninstallRelease(ctx, req)
+	rlc := rls.NewReleaseServiceClient(c)
+	return rlc.UninstallRelease(ctx, req)
 	resp := &rls.UninstallReleaseResponse{}
 	client, err := getRESTClient()
 	// TODO handle response
-	err = client.RESTClient().Delete().Namespace(namespace).Resource("releases").Name(req.Name).Do().Error() // TODO handle namespace
+	release := new(hapi.Release)
+	err = client.RESTClient().Delete().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release)
 	if err != nil {
 		return resp, err
 	}
@@ -323,7 +325,7 @@ func (h *Client) delete(ctx context.Context,namespace string, req *rls.Uninstall
 }
 
 // Executes tiller.UpdateRelease RPC.
-func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
+func (h *Client) update(ctx context.Context,namespace string, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
 	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 		if err != nil {
 			return nil, err
@@ -336,7 +338,7 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 	client, err := getRESTClient()
 	// get the release
 	release := new(hapi.Release)
-	err = client.RESTClient().Get().Namespace("default").Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
 	if err != nil {
 		return resp, err
 	}
@@ -346,9 +348,10 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 	release.Spec.Recreate = req.Recreate
 	release.Spec.Timeout = req.Timeout
 	release.Spec.Chart.Inline = req.Chart
+	release.Spec.Version = release.Spec.Version
 	// update the release
 	updatedRelease := new(hapi.Release)
-	err = client.RESTClient().Put().Namespace(release.Namespace).Resource("releases").Name(release.Name).Body(release).Do().Into(updatedRelease)
+	err = client.RESTClient().Put().Namespace(namespace).Resource("releases").Name(release.Name).Body(release).Do().Into(updatedRelease)
 	if err != nil {
 		return resp, err
 	}
@@ -365,7 +368,7 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 }
 
 // Executes tiller.RollbackRelease RPC.
-func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) (*rls.RollbackReleaseResponse, error) {
+func (h *Client) rollback(ctx context.Context, namespace string, req *rls.RollbackReleaseRequest) (*rls.RollbackReleaseResponse, error) {
 	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 		if err != nil {
 			return nil, err
@@ -381,12 +384,14 @@ func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) 
 	}
 	client, err := clientset.NewForConfig(config)
 	event, err := makeEventForRollBack(req)
+	event.ObjectMeta.Namespace = namespace
+	event.InvolvedObject.Namespace = namespace
 	event.InvolvedObject.Name = (req.Name + "-v" + strconv.Itoa(int(req.Version)))
 	event.ObjectMeta.Name = event.InvolvedObject.Name + "-" + RandStringRunes(5)
 	if err != nil {
 		return resp, err
 	}
-	_, err = client.Core().Events("default").Create(event) // TODO namespace
+	_, err = client.Core().Events(namespace).Create(event) // TODO namespace
 	if err != nil {
 		return resp, err
 	}
@@ -395,35 +400,35 @@ func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) 
 }
 
 // Executes tiller.GetReleaseStatus RPC.
-func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
-/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
+func (h *Client) status(ctx context.Context, namespace string, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
+	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		defer c.Close()
 
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.GetReleaseStatus(ctx, req)*/
+		rlc := rls.NewReleaseServiceClient(c)
+		return rlc.GetReleaseStatus(ctx, req)*/
 	resp := &rls.GetReleaseStatusResponse{}
 	client, err := getRESTClient()
 	if err != nil {
 		return resp, err
 	}
 	release := new(hapi.Release)
-	err = client.RESTClient().Get().Namespace("default").Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
 	if err != nil {
 		return resp, err
 	}
 	v := release.Spec.Version
 	releaseVersion := new(hapi.ReleaseVersion)
 	name := req.Name + "-v" + strconv.Itoa(int(v))
-	duration :=time.Duration(5) * time.Second
-	for i:=0;i<=10;i++ {
+	duration := time.Duration(5) * time.Second
+	for i := 0; i <= 10; i++ {
 		time.Sleep(duration)
-		err = client.RESTClient().Get().Namespace("default").Resource("releaseversions").Name(name).Do().Into(releaseVersion) // TODO handle namespace
+		err = client.RESTClient().Get().Namespace(namespace).Resource("releaseversions").Name(name).Do().Into(releaseVersion) // TODO handle namespace
 		if err != nil {
 			continue
-		}else {
+		} else {
 			break
 		}
 	}
@@ -434,7 +439,7 @@ func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (
 	resp.Namespace = release.Namespace
 	resp.Info = new(rs.Info)
 	resp.Info.Status = releaseVersion.Status.Status
-/*	*resp.Info.FirstDeployed = releaseVersion.Status.FirstDeployed //TODO
+	/*	*resp.Info.FirstDeployed = releaseVersion.Status.FirstDeployed //TODO
 	*resp.Info.LastDeployed = releaseVersion.Status.LastDeployed
 	*resp.Info.Deleted = releaseVersion.Status.Deleted*/
 	return resp, nil
@@ -546,12 +551,8 @@ func makeEventForRollBack(req *rls.RollbackReleaseRequest) (*api.Event, error) {
 		return &api.Event{}, err
 	}
 	event := &api.Event{
-		ObjectMeta: api.ObjectMeta{
-			Namespace: "default", //TODO handle namespace
-		},
 		InvolvedObject: api.ObjectReference{
 			Kind:      "release",
-			Namespace: "default", //TODO handle namespace
 		},
 		Reason:  "releaseRollback",
 		Message: string(message),
@@ -561,13 +562,12 @@ func makeEventForRollBack(req *rls.RollbackReleaseRequest) (*api.Event, error) {
 	return event, nil
 }
 
-
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func RandStringRunes(n int) string {
-    b := make([]rune, n)
-    for i := range b {
-        b[i] = letterRunes[rand.Intn(len(letterRunes))]
-    }
-    return string(b)
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
