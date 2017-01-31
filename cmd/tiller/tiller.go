@@ -33,6 +33,7 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/tiller/environment"
+	"k8s.io/helm/pkg/version"
 )
 
 const (
@@ -104,8 +105,9 @@ func start(c *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Tiller is listening on %s\n", grpcAddr)
-	fmt.Printf("Probes server is listening on %s\n", probeAddr)
+	fmt.Printf("Starting Tiller %s\n", version.GetVersion())
+	fmt.Printf("GRPC listening on %s\n", grpcAddr)
+	fmt.Printf("Probes listening on %s\n", probeAddr)
 	fmt.Printf("Storage driver is %s\n", env.Releases.Name())
 
 	if enableTracing {
