@@ -95,6 +95,7 @@ func releaseMock(opts *releaseOptions) *release.Release {
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: scode},
+			Description:   "Release mock",
 		},
 		Chart:   ch,
 		Config:  &chart.Config{Raw: `name: "value"`},

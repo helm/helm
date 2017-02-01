@@ -120,6 +120,7 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: status},
+			Description:   "Named Release Stub",
 		},
 		Chart:   chartStub(),
 		Config:  &chart.Config{Raw: `name: value`},
@@ -294,6 +295,10 @@ func TestInstallRelease(t *testing.T) {
 	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
+	}
 }
 
 func TestInstallReleaseWithNotes(t *testing.T) {
@@ -358,6 +363,10 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 
 	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
+	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
 	}
 }
 
@@ -425,6 +434,10 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
+	}
 }
 
 func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
@@ -471,6 +484,10 @@ func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
 
 	if rel.Info.Status.Notes != notesText {
 		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
+	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
 	}
 }
 
@@ -520,6 +537,10 @@ func TestInstallReleaseDryRun(t *testing.T) {
 
 	if res.Release.Hooks[0].LastRun != nil {
 		t.Error("Expected hook to not be marked as run.")
+	}
+
+	if res.Release.Info.Description != "Dry run complete" {
+		t.Errorf("unexpected description: %s", res.Release.Info.Description)
 	}
 }
 
@@ -666,6 +687,11 @@ func TestUpdateRelease(t *testing.T) {
 	if res.Release.Version != 2 {
 		t.Errorf("Expected release version to be %v, got %v", 2, res.Release.Version)
 	}
+
+	edesc := "Upgrade complete"
+	if got := res.Release.Info.Description; got != edesc {
+		t.Errorf("Expected description %q, got %q", edesc, got)
+	}
 }
 func TestUpdateReleaseResetValues(t *testing.T) {
 	c := helm.NewContext()
@@ -719,6 +745,11 @@ func TestUpdateReleaseFailure(t *testing.T) {
 
 	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_FAILED {
 		t.Errorf("Expected FAILED release. Got %d", updatedStatus)
+	}
+
+	edesc := "Upgrade \"angry-panda\" failed: Failed update in kube client"
+	if got := res.Release.Info.Description; got != edesc {
+		t.Errorf("Expected description %q, got %q", edesc, got)
 	}
 
 	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
@@ -973,6 +1004,10 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
+	if res.Release.Info.Description != "Rollback to 2" {
+		t.Errorf("Expected rollback to 2, got %q", res.Release.Info.Description)
+	}
+
 }
 
 func TestUninstallRelease(t *testing.T) {
@@ -1003,6 +1038,10 @@ func TestUninstallRelease(t *testing.T) {
 
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
+	}
+
+	if res.Release.Info.Description != "Deletion complete" {
+		t.Errorf("Expected Deletion complete, got %q", res.Release.Info.Description)
 	}
 }
 
