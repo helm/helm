@@ -371,7 +371,7 @@ func (h *Client) update(ctx context.Context, namespace string, req *rls.UpdateRe
 	client, err := getRESTClient()
 	// get the release
 	release := new(hapi.Release)
-	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) // TODO handle namespace
+	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) 
 	if err != nil {
 		return resp, err
 	}
