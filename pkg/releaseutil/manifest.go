@@ -21,6 +21,7 @@ import (
 	"strings"
 )
 
+// SimpleHead defines what the structure of the head of a manifest file
 type SimpleHead struct {
 	Version  string `json:"apiVersion"`
 	Kind     string `json:"kind,omitempty"`
@@ -30,6 +31,7 @@ type SimpleHead struct {
 	} `json:"metadata,omitempty"`
 }
 
+// SplitManifests takes a string of manifest and returns a map contains individual manifests
 func SplitManifests(bigfile string) map[string]string {
 	// This is not the best way of doing things, but it's how k8s itself does it.
 	// Basically, we're quickly splitting a stream of YAML documents into an

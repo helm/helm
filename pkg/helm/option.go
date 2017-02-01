@@ -176,7 +176,7 @@ func DeleteTimeout(timeout int64) DeleteOption {
 	}
 }
 
-// TestTimeout specifies the number of seconds before kubernetes calls timeout
+// ReleaseTestTimeout specifies the number of seconds before kubernetes calls timeout
 func ReleaseTestTimeout(timeout int64) ReleaseTestOption {
 	return func(opts *options) {
 		opts.testReq.Timeout = timeout

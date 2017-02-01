@@ -83,7 +83,7 @@ data:
 
 func rsFixture() *ReleaseServer {
 	return &ReleaseServer{
-		env:       mockEnvironment(),
+		env:       MockEnvironment(),
 		clientset: fake.NewSimpleClientset(),
 	}
 }
@@ -1411,7 +1411,7 @@ func TestListReleasesFilter(t *testing.T) {
 	}
 }
 
-func mockEnvironment() *environment.Environment {
+func MockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}

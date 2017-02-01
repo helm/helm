@@ -246,7 +246,7 @@ func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.Get
 	return h.history(ctx, req)
 }
 
-//ReleaseTest executes a pre-defined test on a release
+// RunReleaseTest executes a pre-defined test on a release
 func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
 	for _, opt := range opts {
 		opt(&h.opts)

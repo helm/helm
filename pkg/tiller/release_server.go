@@ -1051,7 +1051,7 @@ func validateManifest(c environment.KubeClient, ns string, manifest []byte) erro
 	return err
 }
 
-// RunTestRelease runs a pre-defined test on a given release
+// RunReleaseTest runs pre-defined tests stored as hooks on a given release
 func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
 
 	if !ValidName.MatchString(req.Name) {
@@ -1071,7 +1071,11 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		Stream:     stream,
 	}
 
-	tSuite, err := reltesting.NewTestSuite(rel, testEnv)
+	tSuite, err := reltesting.NewTestSuite(rel)
+	if err != nil {
+		return err
+	}
+
 	if err := tSuite.Run(testEnv); err != nil {
 		return err
 	}

@@ -23,6 +23,7 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 )
 
+// Environment encapsulates information about where test suite executes and returns results
 type Environment struct {
 	Namespace  string
 	KubeClient environment.KubeClient
@@ -32,50 +33,36 @@ type Environment struct {
 
 func streamRunning(name string, stream services.ReleaseService_RunReleaseTestServer) error {
 	msg := "RUNNING: " + name
-	if err := streamMessage(msg, stream); err != nil {
-		return err
-	}
-	return nil
+	err := streamMessage(msg, stream)
+	return err
 }
 
 func streamError(info string, stream services.ReleaseService_RunReleaseTestServer) error {
 	msg := "ERROR: " + info
-	if err := streamMessage(msg, stream); err != nil {
-		return err
-	}
-	return nil
+	err := streamMessage(msg, stream)
+	return err
 }
 
 func streamFailed(name string, stream services.ReleaseService_RunReleaseTestServer) error {
 	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s` for more info", name, name)
-	if err := streamMessage(msg, stream); err != nil {
-		return err
-	}
-	return nil
+	err := streamMessage(msg, stream)
+	return err
 }
 
 func streamSuccess(name string, stream services.ReleaseService_RunReleaseTestServer) error {
 	msg := fmt.Sprintf("PASSED: %s", name)
-	if err := streamMessage(msg, stream); err != nil {
-		return err
-	}
-	return nil
+	err := streamMessage(msg, stream)
+	return err
 }
 
 func streamUnknown(name, info string, stream services.ReleaseService_RunReleaseTestServer) error {
 	msg := fmt.Sprintf("UNKNOWN: %s: %s", name, info)
-	if err := streamMessage(msg, stream); err != nil {
-		return err
-	}
-	return nil
+	err := streamMessage(msg, stream)
+	return err
 }
 
 func streamMessage(msg string, stream services.ReleaseService_RunReleaseTestServer) error {
 	resp := &services.TestReleaseResponse{Msg: msg}
-	// TODO: handle err better
-	if err := stream.Send(resp); err != nil {
-		return err
-	}
-
-	return nil
+	err := stream.Send(resp)
+	return err
 }

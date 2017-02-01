@@ -81,6 +81,4 @@ func (t *releaseTestCmd) run() (err error) {
 			fmt.Fprintf(t.out, res.Msg+"\n")
 		}
 	}
-
-	return nil
 }

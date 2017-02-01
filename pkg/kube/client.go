@@ -622,8 +622,6 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 	}
 	info := infos[0]
 
-	// TODO: should we be checking kind beforehand? probably yes.
-	// TODO: add validation to linter: any manifest with a test hook has to be a pod kind?
 	kind := info.Mapping.GroupVersionKind.Kind
 	if kind != "Pod" {
 		return api.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)

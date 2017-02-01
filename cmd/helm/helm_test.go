@@ -190,7 +190,7 @@ func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryO
 	return &rls.GetHistoryResponse{Releases: c.rels}, c.err
 }
 
-func (c *fakeReleaseClient) ReleaseTest(rlsName string, opts ...helm.ReleaseTestOption) (*rls.TestReleaseResponse, error) {
+func (c *fakeReleaseClient) RunReleaseTest(rlsName string, opts ...helm.ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
 	return nil, nil
 }
 

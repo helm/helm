@@ -19,7 +19,7 @@ package tiller
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/hooks"
+	util "k8s.io/helm/pkg/releaseutil"
 )
 
 func TestKindSorter(t *testing.T) {

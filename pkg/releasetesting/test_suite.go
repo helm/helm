@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 )
 
+// TestSuite what tests are run, results, and metadata
 type TestSuite struct {
 	StartedAt     *timestamp.Timestamp
 	CompletedAt   *timestamp.Timestamp
@@ -43,8 +45,10 @@ type test struct {
 	result   *release.TestRun
 }
 
-func NewTestSuite(rel *release.Release, env *Environment) (*TestSuite, error) {
-	testManifests, err := prepareTestManifests(rel.Hooks, rel.Name)
+// NewTestSuite takes a release object and returns a TestSuite object with test definitions
+//  extracted from the release
+func NewTestSuite(rel *release.Release) (*TestSuite, error) {
+	testManifests, err := extractTestManifestsFromHooks(rel.Hooks, rel.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -57,50 +61,7 @@ func NewTestSuite(rel *release.Release, env *Environment) (*TestSuite, error) {
 	}, nil
 }
 
-func newTest(testManifest string) (*test, error) {
-	var sh util.SimpleHead
-	err := yaml.Unmarshal([]byte(testManifest), &sh)
-	if err != nil {
-		return nil, err
-	}
-
-	if sh.Kind != "Pod" {
-		return nil, fmt.Errorf("%s is not a pod", sh.Metadata.Name)
-	}
-
-	return &test{
-		manifest: testManifest,
-		result: &release.TestRun{
-			Name: sh.Metadata.Name,
-		},
-	}, nil
-}
-
-func (t *TestSuite) createTestPod(test *test, env *Environment) error {
-	b := bytes.NewBufferString(test.manifest)
-	if err := env.KubeClient.Create(env.Namespace, b); err != nil {
-		log.Printf(err.Error())
-		test.result.Info = err.Error()
-		test.result.Status = release.TestRun_FAILURE
-		return err
-	}
-
-	return nil
-}
-
-func (t *TestSuite) getPodExitStatus(test *test, env *Environment) (api.PodPhase, error) {
-	b := bytes.NewBufferString(test.manifest)
-	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, b, time.Duration(env.Timeout)*time.Second)
-	if err != nil {
-		log.Printf("Error getting status for pod %s: %s", test.result.Name, err)
-		test.result.Info = err.Error()
-		test.result.Status = release.TestRun_UNKNOWN
-		return status, err
-	}
-
-	return status, err
-}
-
+// Run executes tests in a test suite and stores a result within the context of a given environment
 func (t *TestSuite) Run(env *Environment) error {
 	t.StartedAt = timeconv.Now()
 
@@ -126,7 +87,7 @@ func (t *TestSuite) Run(env *Environment) error {
 		resourceCleanExit := true
 		status := api.PodUnknown
 		if resourceCreated {
-			status, err = t.getPodExitStatus(test, env)
+			status, err = t.getTestPodStatus(test, env)
 			if err != nil {
 				resourceCleanExit = false
 				if streamErr := streamUnknown(test.result.Name, test.result.Info, env.Stream); streamErr != nil {
@@ -147,14 +108,16 @@ func (t *TestSuite) Run(env *Environment) error {
 			}
 		} //else if resourceCreated && resourceCleanExit && status == api.PodUnkown {
 
-		_ = append(t.Results, test.result)
+		test.result.CompletedAt = timeconv.Now()
+		t.Results = append(t.Results, test.result)
 	}
 
 	t.CompletedAt = timeconv.Now()
 	return nil
 }
 
-func filterTestHooks(hooks []*release.Hook, releaseName string) ([]*release.Hook, error) {
+// NOTE: may want to move this function to pkg/tiller in the future
+func filterHooksForTestHooks(hooks []*release.Hook, releaseName string) ([]*release.Hook, error) {
 	testHooks := []*release.Hook{}
 	notFoundErr := fmt.Errorf("no tests found for release %s", releaseName)
 
@@ -178,8 +141,9 @@ func filterTestHooks(hooks []*release.Hook, releaseName string) ([]*release.Hook
 	return testHooks, nil
 }
 
-func prepareTestManifests(hooks []*release.Hook, releaseName string) ([]string, error) {
-	testHooks, err := filterTestHooks(hooks, releaseName)
+// NOTE: may want to move this function to pkg/tiller in the future
+func extractTestManifestsFromHooks(hooks []*release.Hook, releaseName string) ([]string, error) {
+	testHooks, err := filterHooksForTestHooks(hooks, releaseName)
 	if err != nil {
 		return nil, err
 	}
@@ -192,4 +156,49 @@ func prepareTestManifests(hooks []*release.Hook, releaseName string) ([]string, 
 		}
 	}
 	return tests, nil
+}
+
+func newTest(testManifest string) (*test, error) {
+	var sh util.SimpleHead
+	err := yaml.Unmarshal([]byte(testManifest), &sh)
+	if err != nil {
+		return nil, err
+	}
+
+	if sh.Kind != "Pod" {
+		return nil, fmt.Errorf("%s is not a pod", sh.Metadata.Name)
+	}
+
+	name := strings.TrimSuffix(sh.Metadata.Name, ",")
+	return &test{
+		manifest: testManifest,
+		result: &release.TestRun{
+			Name: name,
+		},
+	}, nil
+}
+
+func (t *TestSuite) createTestPod(test *test, env *Environment) error {
+	b := bytes.NewBufferString(test.manifest)
+	if err := env.KubeClient.Create(env.Namespace, b, env.Timeout, false); err != nil {
+		log.Printf(err.Error())
+		test.result.Info = err.Error()
+		test.result.Status = release.TestRun_FAILURE
+		return err
+	}
+
+	return nil
+}
+
+func (t *TestSuite) getTestPodStatus(test *test, env *Environment) (api.PodPhase, error) {
+	b := bytes.NewBufferString(test.manifest)
+	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, b, time.Duration(env.Timeout)*time.Second)
+	if err != nil {
+		log.Printf("Error getting status for pod %s: %s", test.result.Name, err)
+		test.result.Info = err.Error()
+		test.result.Status = release.TestRun_UNKNOWN
+		return status, err
+	}
+
+	return status, err
 }
