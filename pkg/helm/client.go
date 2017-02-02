@@ -17,6 +17,8 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/technosophos/moniker"
@@ -24,6 +26,7 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/square/go-jose.v1/json"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/kube"
 	hapi_chart "k8s.io/helm/pkg/proto/hapi/chart"
 	rs "k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
@@ -34,10 +37,10 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 	rest "k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	"log"
 	"math/rand"
 	"strconv"
 	"time"
-	"errors"
 )
 
 // Client manages client side of the helm-tiller protocol
@@ -159,7 +162,6 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, namespace string, o
 	req.DisableHooks = h.opts.disableHooks
 	req.Recreate = h.opts.recreate
 	ctx := NewContext()
-
 	if h.opts.before != nil {
 		if err := h.opts.before(ctx, req); err != nil {
 			return nil, err
@@ -210,8 +212,8 @@ func (h *Client) ReleaseStatus(rlsName string, namespace string, opts ...StatusO
 	}
 	req := &h.opts.statusReq
 	req.Name = rlsName
+	req.Version = h.opts.statusReq.Version
 	ctx := NewContext()
-
 	if h.opts.before != nil {
 		if err := h.opts.before(ctx, req); err != nil {
 			return nil, err
@@ -228,7 +230,6 @@ func (h *Client) ReleaseContent(rlsName string, opts ...ContentOption) (*rls.Get
 	req := &h.opts.contentReq
 	req.Name = rlsName
 	ctx := NewContext()
-
 	if h.opts.before != nil {
 		if err := h.opts.before(ctx, req); err != nil {
 			return nil, err
@@ -289,6 +290,7 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 	if err != nil {
 		return resp, err
 	}
+	// make uniq name
 	if len(name) == 0 {
 		for i := 0; i < maxTries; i++ {
 			namer := moniker.New()
@@ -322,7 +324,10 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 	resp.Release.Chart = release.Spec.Chart.Inline
 	resp.Release.Manifest = release.Spec.Manifest
 	resp.Release.Info = new(rs.Info)
-	resp.Release.Info.Status = release.Status.Status
+	resp.Release.Info.Status = new(rs.Status)
+	resp.Release.Info.Status.Notes = release.Status.Notes
+	resp.Release.Info.Status.Code = release.Status.Code
+	resp.Release.Info.Status.Details = release.Status.Details
 	firstDeployed, err := ptypes.TimestampProto(release.Status.FirstDeployed.Time)
 	if err != nil {
 		return resp, err
@@ -371,7 +376,7 @@ func (h *Client) update(ctx context.Context, namespace string, req *rls.UpdateRe
 	client, err := getRESTClient()
 	// get the release
 	release := new(hapi.Release)
-	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release) 
+	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release)
 	if err != nil {
 		return resp, err
 	}
@@ -396,7 +401,10 @@ func (h *Client) update(ctx context.Context, namespace string, req *rls.UpdateRe
 	resp.Release.Hooks = updatedRelease.Spec.Hooks
 	resp.Release.Version = updatedRelease.Spec.Version
 	resp.Release.Info = new(rs.Info)
-	resp.Release.Info.Status = updatedRelease.Status.Status
+	resp.Release.Info.Status = new(rs.Status)
+	resp.Release.Info.Status.Code = updatedRelease.Status.Code
+	resp.Release.Info.Status.Details = updatedRelease.Status.Details
+	resp.Release.Info.Status.Notes = updatedRelease.Status.Notes
 	return resp, nil
 }
 
@@ -442,30 +450,42 @@ func (h *Client) rollback(ctx context.Context, namespace string, req *rls.Rollba
 
 // Executes tiller.GetReleaseStatus RPC.
 func (h *Client) status(ctx context.Context, namespace string, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
-	/*	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	/*
+		c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
 		defer c.Close()
 
 		rlc := rls.NewReleaseServiceClient(c)
-		return rlc.GetReleaseStatus(ctx, req)*/
+		return rlc.GetReleaseStatus(ctx, req)
 
+	*/
 	resp := &rls.GetReleaseStatusResponse{}
 	client, err := getRESTClient()
 	if err != nil {
 		return resp, err
 	}
-	duration := time.Duration(2) * time.Second
 	release := new(hapi.Release)
-	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release)
-	if err != nil {
-		return resp, err
+	resp.Info = new(rs.Info)
+	resp.Info.Status = new(rs.Status)
+	if req.Version == 0 {
+		err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release)
+		if err != nil {
+			e := client.RESTClient().Get().Namespace(namespace).Resource("releaseversions").Name(req.Name + "-v1").Do().Error()
+			if e != nil {
+				return resp, err
+			} else {
+				resp.Namespace = namespace
+				resp.Info.Status.Code = rs.Status_DELETED
+				return resp, nil
+			}
+		}
+		req.Version = release.Spec.Version
 	}
-	v := release.Spec.Version
+	duration := time.Duration(2) * time.Second
 	releaseVersion := new(hapi.ReleaseVersion)
-	name := req.Name + "-v" + strconv.Itoa(int(v))
-
+	name := req.Name + "-v" + strconv.Itoa(int(req.Version))
 	for i := 0; i <= 20; i++ {
 		err = client.RESTClient().Get().Namespace(namespace).Resource("releaseversions").Name(name).Do().Into(releaseVersion)
 		if err != nil {
@@ -478,25 +498,28 @@ func (h *Client) status(ctx context.Context, namespace string, req *rls.GetRelea
 	if err != nil {
 		return resp, err
 	}
+	err = client.RESTClient().Get().Namespace(namespace).Resource("releases").Name(req.Name).Do().Into(release)
+	if err != nil {
+		return resp, err
+	}
 	resp.Name = release.Name
 	resp.Namespace = release.Namespace
-	resp.Info = new(rs.Info)
-	resp.Info.Status = releaseVersion.Status.Status
-	f, err := ptypes.TimestampProto(releaseVersion.Status.FirstDeployed.Time)
+
+	resp.Info.Status.Code = release.Status.Code
+	resp.Info.Status.Notes = release.Status.Notes
+	resp.Info.Status.Details = release.Status.Details
+	resp.Info.Status.Resources = GetLatestResourceStatus(release.Namespace, release.Spec.Manifest)
+	f, err := ptypes.TimestampProto(release.Status.FirstDeployed.Time)
 	if err != nil {
 		return resp, err
 	}
 	resp.Info.FirstDeployed = f
-	l, err := ptypes.TimestampProto(releaseVersion.Status.LastDeployed.Time)
+	l, err := ptypes.TimestampProto(release.Status.LastDeployed.Time)
 	if err != nil {
 		return resp, err
 	}
 	resp.Info.LastDeployed = l
-	d, err := ptypes.TimestampProto(releaseVersion.Status.LastDeployed.Time)
-	if err != nil {
-		return resp, err
-	}
-	resp.Info.Deleted = d
+
 	return resp, nil
 }
 
@@ -625,4 +648,14 @@ func RandStringRunes(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func GetLatestResourceStatus(namespace, manifest string) string {
+	KubeClient := kube.New(nil)
+	resource, err := KubeClient.Get(namespace, bytes.NewBufferString(manifest))
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+	return resource
 }
