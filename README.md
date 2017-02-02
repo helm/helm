@@ -81,6 +81,10 @@ including installing pre-releases.
 - [History](docs/history.md) - A brief history of the project
 - [Glossary](docs/glossary.md) - Decode the Helm vocabulary
 
+## Roadmap
+
+The [Helm roadmap is currently located on the wiki](https://github.com/kubernetes/helm/wiki/Roadmap).
+
 ## Community, discussion, contribution, and support
 
 You can reach the Helm community and developers via the following channels:
