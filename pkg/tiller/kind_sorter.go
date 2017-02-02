@@ -24,10 +24,10 @@ import (
 type SortOrder []string
 
 // InstallOrder is the order in which manifests should be installed (by Kind)
-var InstallOrder SortOrder = []string{"Namespace", "Secret", "ConfigMap", "PersistentVolume", "ServiceAccount", "Service", "Pod", "ReplicationController", "Deployment", "DaemonSet", "Ingress", "Job"}
+var InstallOrder SortOrder = []string{"Namespace", "Secret", "ConfigMap", "PersistentVolume", "PersistentVolumeClaim", "ServiceAccount", "Service", "Pod", "ReplicationController", "Deployment", "DaemonSet", "Ingress", "Job"}
 
 // UninstallOrder is the order in which manifests should be uninstalled (by Kind)
-var UninstallOrder SortOrder = []string{"Service", "Pod", "ReplicationController", "Deployment", "DaemonSet", "ConfigMap", "Secret", "PersistentVolume", "ServiceAccount", "Ingress", "Job", "Namespace"}
+var UninstallOrder SortOrder = []string{"Service", "Pod", "ReplicationController", "Deployment", "DaemonSet", "ConfigMap", "Secret", "PersistentVolumeClaim", "PersistentVolume", "ServiceAccount", "Ingress", "Job", "Namespace"}
 
 // sortByKind does an in-place sort of manifests by Kind.
 //
