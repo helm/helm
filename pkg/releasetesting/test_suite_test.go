@@ -165,7 +165,7 @@ func releaseStub() *release.Release {
 				Path:     "finding-nemo",
 				Manifest: manifestWithTestHook,
 				Events: []release.Hook_Event{
-					release.Hook_RELEASE_TEST,
+					release.Hook_RELEASE_TEST_SUCCESS,
 				},
 			},
 			{

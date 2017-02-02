@@ -127,7 +127,7 @@ func filterHooksForTestHooks(hooks []*release.Hook, releaseName string) ([]*rele
 
 	for _, h := range hooks {
 		for _, e := range h.Events {
-			if e == release.Hook_RELEASE_TEST {
+			if e == release.Hook_RELEASE_TEST_SUCCESS {
 				testHooks = append(testHooks, h)
 				continue
 			}

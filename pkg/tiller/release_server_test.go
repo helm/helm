@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
@@ -49,6 +50,20 @@ metadata:
     "helm.sh/hook": post-install,pre-delete
 data:
   name: value
+`
+
+var manifestWithTestHook = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: finding-nemo,
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+  - name: nemo-test
+    image: fake-image
+    cmd: fake-command
 `
 
 var manifestWithKeep = `apiVersion: v1
@@ -134,6 +149,15 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 				Events: []release.Hook_Event{
 					release.Hook_POST_INSTALL,
 					release.Hook_PRE_DELETE,
+				},
+			},
+			{
+				Name:     "finding-nemo",
+				Kind:     "Pod",
+				Path:     "finding-nemo",
+				Manifest: manifestWithTestHook,
+				Events: []release.Hook_Event{
+					release.Hook_RELEASE_TEST_SUCCESS,
 				},
 			},
 		},
@@ -950,8 +974,8 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
 
-	if len(updated.Hooks) != 1 {
-		t.Fatalf("Expected 1 hook, got %d", len(updated.Hooks))
+	if len(updated.Hooks) != 2 {
+		t.Fatalf("Expected 2 hooks, got %d", len(updated.Hooks))
 	}
 
 	if updated.Hooks[0].Manifest != manifestWithHook {
@@ -1411,6 +1435,18 @@ func TestListReleasesFilter(t *testing.T) {
 	}
 }
 
+func TestRunReleaseTest(t *testing.T) {
+	rs := rsFixture()
+	rel := namedReleaseStub("nemo", release.Status_DEPLOYED)
+	rs.env.Releases.Create(rel)
+
+	req := &services.TestReleaseRequest{Name: "nemo", Timeout: 2}
+	err := rs.RunReleaseTest(req, mockRunReleaseTestServer{})
+	if err != nil {
+		t.Fatalf("failed to run release tests on %s: %s", rel.Name, err)
+	}
+}
+
 func MockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
@@ -1462,3 +1498,17 @@ func (l *mockListServer) RecvMsg(v interface{}) error    { return nil }
 func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
 func (l *mockListServer) SetTrailer(m metadata.MD)       {}
 func (l *mockListServer) SetHeader(m metadata.MD) error  { return nil }
+
+type mockRunReleaseTestServer struct {
+	stream grpc.ServerStream
+}
+
+func (rs mockRunReleaseTestServer) Send(m *services.TestReleaseResponse) error {
+	return nil
+}
+func (rs mockRunReleaseTestServer) SetHeader(m metadata.MD) error  { return nil }
+func (rs mockRunReleaseTestServer) SendHeader(m metadata.MD) error { return nil }
+func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)       {}
+func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error    { return nil }
+func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error    { return nil }
+func (rs mockRunReleaseTestServer) Context() context.Context       { return helm.NewContext() }

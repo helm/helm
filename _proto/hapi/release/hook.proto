@@ -32,7 +32,7 @@ message Hook {
         POST_UPGRADE = 6;
         PRE_ROLLBACK = 7;
         POST_ROLLBACK = 8;
-        RELEASE_TEST = 9;
+        RELEASE_TEST_SUCCESS = 9;
 	}
 	string name = 1;
 	// Kind is the Kubernetes kind.
