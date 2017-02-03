@@ -67,6 +67,8 @@ type ReleaseSpec struct {
 
 	// dry_run, if true, will run through the release logic, but neither create
 	DryRun bool `protobuf:"varint,4,opt,name=dry_run,json=dryRun" json:"dry_run,omitempty"`
+
+	Wait bool `protobuf:"varint,4,opt,name=wait,json=wait" json:"wait,omitempty"`
 }
 
 /*type ReleaseStatus struct {
