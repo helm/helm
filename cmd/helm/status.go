@@ -92,9 +92,6 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
-	if res.Info.Status.Details != nil {
-		fmt.Fprintf(out, "Details: %s\n", res.Info.Status.Details)
-	}
 	fmt.Fprintf(out, "\n")
 	if len(res.Info.Status.Resources) > 0 {
 		re := regexp.MustCompile("  +")

@@ -39,7 +39,8 @@ message Status {
 
         Code code = 1;
 
-        google.protobuf.Any details = 2;
+        // Deprecated
+        // google.protobuf.Any details = 2;
 
         // Cluster resources as kubectl would print them.
         string resources = 3;
