@@ -36,6 +36,7 @@ second is a revision (version) number. To see revision numbers, run
 
 type rollbackCmd struct {
 	name         string
+	namespace    string
 	revision     int32
 	dryRun       bool
 	recreate     bool
@@ -77,6 +78,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
+	f.StringVar(&rollback.namespace, "namespace", "default", "namespace of the release")
 	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 	f.Int64Var(&rollback.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
@@ -88,6 +90,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 func (r *rollbackCmd) run() error {
 	_, err := r.client.RollbackRelease(
 		r.name,
+		r.namespace,
 		helm.RollbackDryRun(r.dryRun),
 		helm.RollbackRecreate(r.recreate),
 		helm.RollbackDisableHooks(r.disableHooks),

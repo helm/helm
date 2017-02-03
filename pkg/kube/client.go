@@ -120,12 +120,13 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come looking good (headers apply to subgroups, etc.)
 	objs := make(map[string][]runtime.Object)
+
 	infos, err := c.Build(namespace, reader)
 	if err != nil {
 		return "", err
 	}
 	err = perform(c, namespace, infos, func(info *resource.Info) error {
-		log.Printf("Doing get for: '%s'", info.Name)
+		//log.Printf("Doing get for: '%s'", info.Name)
 		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
 		if err != nil {
 			return err
