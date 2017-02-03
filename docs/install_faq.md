@@ -51,17 +51,26 @@ with `helm repo add...`.
 
 **Q: How do I configure Helm, but not install Tiller?**
 
-By default, `helm init` will ensure that the local `$HELM_HOME` is configured,
+A: By default, `helm init` will ensure that the local `$HELM_HOME` is configured,
 and then install Tiller on your cluster. To locally configure, but not install
 Tiller, use `helm init --client-only`.
 
 **Q: How do I manually install Tiller on the cluster?**
 
-Tiller is installed as a Kubernetes `deployment`. You can get the manifest
+A: Tiller is installed as a Kubernetes `deployment`. You can get the manifest
 by running `helm init --dry-run --debug`, and then manually install it with
 `kubectl`. It is suggested that you do not remove or change the labels on that
 deployment, as they are sometimes used by supporting scripts and tools.
 
+**Q: Why do I get `Error response from daemon: target is unknown` during Tiller install?**
+
+A: Users have reported being unable to install Tiller on Kubernetes instances that
+are using Docker 1.13.0. The root cause of this was a bug in Docker that made
+that one version incompatible with images pushed to the Docker registry by
+earlier versions of Docker.
+
+This [issue](https://github.com/docker/docker/issues/30083) was fixed shortly
+after the release, and is available in Docker 1.13.1-RC1 and later.
 
 ## Getting Started
 
