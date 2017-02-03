@@ -98,7 +98,34 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Errorf("Failed hash match: expected %s, got %s", hash, h)
 	}
 
-	t.Logf("Results: %s", out.String())
+	// Now change the dependencies and update. This verifies that on update,
+	// old dependencies are cleansed and new dependencies are added.
+	reqfile := &chartutil.Requirements{
+		Dependencies: []*chartutil.Dependency{
+			{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
+			{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
+		},
+	}
+	dir := filepath.Join(hh, chartname)
+	if err := writeRequirements(dir, reqfile); err != nil {
+		t.Fatal(err)
+	}
+	if err := duc.run(); err != nil {
+		output := out.String()
+		t.Logf("Output: %s", output)
+		t.Fatal(err)
+	}
+
+	// In this second run, we should see compressedchart-0.3.0.tgz, and not
+	// the 0.1.0 version.
+	expect = filepath.Join(hh, chartname, "charts/compressedchart-0.3.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatalf("Expected %q: %s", expect, err)
+	}
+	dontExpect := filepath.Join(hh, chartname, "charts/compressedchart-0.1.0.tgz")
+	if _, err := os.Stat(dontExpect); err == nil {
+		t.Fatalf("Unexpected %q", dontExpect)
+	}
 }
 
 // createTestingChart creates a basic chart that depends on reqtest-0.1.0
@@ -117,8 +144,13 @@ func createTestingChart(dest, name, baseURL string) error {
 	req := &chartutil.Requirements{
 		Dependencies: []*chartutil.Dependency{
 			{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
+			{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
 		},
 	}
+	return writeRequirements(dir, req)
+}
+
+func writeRequirements(dir string, req *chartutil.Requirements) error {
 	data, err := yaml.Marshal(req)
 	if err != nil {
 		return err
