@@ -109,12 +109,15 @@ func (i *initCmd) run() error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(i.out, dm)
+		fm := fmt.Sprintf("apiVersion: extensions/v1beta1\nkind: Deployment\n%s", dm)
+		fmt.Fprintln(i.out, fm)
+
 		sm, err := installer.ServiceManifest(i.namespace)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(i.out, sm)
+		fm = fmt.Sprintf("apiVersion: v1\nkind: Service\n%s", sm)
+		fmt.Fprintln(i.out, fm)
 	}
 
 	if i.dryRun {
