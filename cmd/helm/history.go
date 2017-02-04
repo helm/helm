@@ -97,7 +97,7 @@ func (cmd *historyCmd) run() error {
 
 func formatHistory(rls []*release.Release) string {
 	tbl := uitable.New()
-	tbl.MaxColWidth = 30
+	tbl.MaxColWidth = 60
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "DESCRIPTION")
 	for i := len(rls) - 1; i >= 0; i-- {
 		r := rls[i]
