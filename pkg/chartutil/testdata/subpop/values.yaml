@@ -1,0 +1,7 @@
+# parent/values.yaml
+
+# switch-like
+tags:
+  front-end: true
+  back-end: false
+
