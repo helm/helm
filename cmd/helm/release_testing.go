@@ -26,7 +26,7 @@ import (
 )
 
 const releaseTestDesc = `
-Th test command runs the tests for a release.
+The test command runs the tests for a release.
 
 The argument this command takes is the name of a deployed release.
 The tests to be run are defined in the chart that was installed.

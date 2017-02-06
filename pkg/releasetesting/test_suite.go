@@ -103,10 +103,10 @@ func (t *TestSuite) Run(env *Environment) error {
 			}
 		} else if resourceCreated && resourceCleanExit && status == api.PodFailed {
 			test.result.Status = release.TestRun_FAILURE
-			if streamErr := streamFailed(test.result.Name, env.Stream); streamErr != nil {
+			if streamErr := streamFailed(test.result.Name, env.Namespace, env.Stream); streamErr != nil {
 				return err
 			}
-		} //else if resourceCreated && resourceCleanExit && status == api.PodUnkown {
+		}
 
 		test.result.CompletedAt = timeconv.Now()
 		t.Results = append(t.Results, test.result)

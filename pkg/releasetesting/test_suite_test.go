@@ -128,7 +128,7 @@ kind: Pod
 metadata:
   name: finding-nemo,
   annotations:
-    "helm.sh/hook": test
+    "helm.sh/hook": test-success
 spec:
   containers:
   - name: nemo-test

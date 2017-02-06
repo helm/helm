@@ -43,8 +43,8 @@ func streamError(info string, stream services.ReleaseService_RunReleaseTestServe
 	return err
 }
 
-func streamFailed(name string, stream services.ReleaseService_RunReleaseTestServer) error {
-	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s` for more info", name, name)
+func streamFailed(name, namespace string, stream services.ReleaseService_RunReleaseTestServer) error {
+	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s --namespace %s` for more info", name, name, namespace)
 	err := streamMessage(msg, stream)
 	return err
 }
