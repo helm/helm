@@ -34,8 +34,9 @@ func TestConfigMapName(t *testing.T) {
 func TestConfigMapGet(t *testing.T) {
 	vers := int32(1)
 	name := "smug-pigeon"
+	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
 
 	cfgmaps := newTestFixtureCfgMaps(t, []*rspb.Release{rel}...)
 
@@ -53,8 +54,9 @@ func TestConfigMapGet(t *testing.T) {
 func TestUNcompressedConfigMapGet(t *testing.T) {
 	vers := int32(1)
 	name := "smug-pigeon"
+	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
 
 	// Create a test fixture which contains an uncompressed release
 	cfgmap, err := newConfigMapsObject(key, rel, nil)
@@ -83,12 +85,12 @@ func TestUNcompressedConfigMapGet(t *testing.T) {
 
 func TestConfigMapList(t *testing.T) {
 	cfgmaps := newTestFixtureCfgMaps(t, []*rspb.Release{
-		releaseStub("key-1", 1, rspb.Status_DELETED),
-		releaseStub("key-2", 1, rspb.Status_DELETED),
-		releaseStub("key-3", 1, rspb.Status_DEPLOYED),
-		releaseStub("key-4", 1, rspb.Status_DEPLOYED),
-		releaseStub("key-5", 1, rspb.Status_SUPERSEDED),
-		releaseStub("key-6", 1, rspb.Status_SUPERSEDED),
+		releaseStub("key-1", 1, "default", rspb.Status_DELETED),
+		releaseStub("key-2", 1, "default", rspb.Status_DELETED),
+		releaseStub("key-3", 1, "default", rspb.Status_DEPLOYED),
+		releaseStub("key-4", 1, "default", rspb.Status_DEPLOYED),
+		releaseStub("key-5", 1, "default", rspb.Status_SUPERSEDED),
+		releaseStub("key-6", 1, "default", rspb.Status_SUPERSEDED),
 	}...)
 
 	// list all deleted releases
@@ -133,8 +135,9 @@ func TestConfigMapCreate(t *testing.T) {
 
 	vers := int32(1)
 	name := "smug-pigeon"
+	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
 
 	// store the release in a configmap
 	if err := cfgmaps.Create(key, rel); err != nil {
@@ -156,8 +159,9 @@ func TestConfigMapCreate(t *testing.T) {
 func TestConfigMapUpdate(t *testing.T) {
 	vers := int32(1)
 	name := "smug-pigeon"
+	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
 
 	cfgmaps := newTestFixtureCfgMaps(t, []*rspb.Release{rel}...)
 

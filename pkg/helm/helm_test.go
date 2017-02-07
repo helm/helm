@@ -51,6 +51,7 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		rls.Status_DEPLOYED,
 		rls.Status_SUPERSEDED,
 	}
+	var namespace = "namespace"
 
 	// Expected ListReleasesRequest message
 	exp := &tpb.ListReleasesRequest{
@@ -60,6 +61,7 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		SortBy:      tpb.ListSort_SortBy(sortBy),
 		SortOrder:   tpb.ListSort_SortOrder(sortOrd),
 		StatusCodes: codes,
+		Namespace:   namespace,
 	}
 
 	// Options used in ListReleases
@@ -70,6 +72,7 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		ReleaseListOffset(offset),
 		ReleaseListFilter(filter),
 		ReleaseListStatuses(codes),
+		ReleaseListNamespace(namespace),
 	}
 
 	// BeforeCall option to intercept helm client ListReleasesRequest

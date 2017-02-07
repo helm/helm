@@ -134,6 +134,13 @@ func ReleaseListStatuses(statuses []release.Status_Code) ReleaseListOption {
 	}
 }
 
+// ReleaseListNamespace specifies the namespace to list releases from
+func ReleaseListNamespace(namespace string) ReleaseListOption {
+	return func(opts *options) {
+		opts.listReq.Namespace = namespace
+	}
+}
+
 // InstallOption allows specifying various settings
 // configurable by the helm client user for overriding
 // the defaults used when running the `helm install` command.

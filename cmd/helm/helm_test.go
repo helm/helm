@@ -56,6 +56,7 @@ type releaseOptions struct {
 	version    int32
 	chart      *chart.Chart
 	statusCode release.Status_Code
+	namespace  string
 }
 
 func releaseMock(opts *releaseOptions) *release.Release {
@@ -69,6 +70,11 @@ func releaseMock(opts *releaseOptions) *release.Release {
 	var version int32 = 1
 	if opts.version != 0 {
 		version = opts.version
+	}
+
+	namespace := opts.namespace
+	if namespace == "" {
+		namespace = "default"
 	}
 
 	ch := opts.chart
@@ -97,9 +103,10 @@ func releaseMock(opts *releaseOptions) *release.Release {
 			Status:        &release.Status{Code: scode},
 			Description:   "Release mock",
 		},
-		Chart:   ch,
-		Config:  &chart.Config{Raw: `name: "value"`},
-		Version: version,
+		Chart:     ch,
+		Config:    &chart.Config{Raw: `name: "value"`},
+		Version:   version,
+		Namespace: namespace,
 		Hooks: []*release.Hook{
 			{
 				Name:     "pre-install-hook",
