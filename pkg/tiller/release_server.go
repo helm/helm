@@ -1073,10 +1073,12 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 
 	tSuite, err := reltesting.NewTestSuite(rel)
 	if err != nil {
+		log.Printf("Error creating test suite for %s", rel.Name)
 		return err
 	}
 
 	if err := tSuite.Run(testEnv); err != nil {
+		log.Printf("Error running test suite for %s", rel.Name)
 		return err
 	}
 
