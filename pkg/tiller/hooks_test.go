@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/release"
+	util "k8s.io/helm/pkg/releaseutil"
 )
 
 func TestSortManifests(t *testing.T) {
@@ -162,7 +163,7 @@ metadata:
 	// Verify the sort order
 	sorted := make([]manifest, len(data))
 	for i, s := range data {
-		var sh simpleHead
+		var sh util.SimpleHead
 		err := yaml.Unmarshal([]byte(s.manifest), &sh)
 		if err != nil {
 			// This is expected for manifests that are corrupt or empty.

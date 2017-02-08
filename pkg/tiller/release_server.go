@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	reltesting "k8s.io/helm/pkg/releasetesting"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
@@ -986,7 +987,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
-	manifests := splitManifests(rel.Manifest)
+	manifests := relutil.SplitManifests(rel.Manifest)
 	_, files, err := sortManifests(manifests, vs, UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
@@ -1044,23 +1045,48 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	return res, errs
 }
 
-func splitManifests(bigfile string) map[string]string {
-	// This is not the best way of doing things, but it's how k8s itself does it.
-	// Basically, we're quickly splitting a stream of YAML documents into an
-	// array of YAML docs. In the current implementation, the file name is just
-	// a place holder, and doesn't have any further meaning.
-	sep := "\n---\n"
-	tpl := "manifest-%d"
-	res := map[string]string{}
-	tmp := strings.Split(bigfile, sep)
-	for i, d := range tmp {
-		res[fmt.Sprintf(tpl, i)] = d
-	}
-	return res
-}
-
 func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
 	r := bytes.NewReader(manifest)
 	_, err := c.Build(ns, r)
 	return err
+}
+
+// RunReleaseTest runs pre-defined tests stored as hooks on a given release
+func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
+
+	if !ValidName.MatchString(req.Name) {
+		return errMissingRelease
+	}
+
+	// finds the non-deleted release with the given name
+	rel, err := s.env.Releases.Last(req.Name)
+	if err != nil {
+		return err
+	}
+
+	testEnv := &reltesting.Environment{
+		Namespace:  rel.Namespace,
+		KubeClient: s.env.KubeClient,
+		Timeout:    req.Timeout,
+		Stream:     stream,
+	}
+
+	tSuite, err := reltesting.NewTestSuite(rel)
+	if err != nil {
+		log.Printf("Error creating test suite for %s", rel.Name)
+		return err
+	}
+
+	if err := tSuite.Run(testEnv); err != nil {
+		log.Printf("Error running test suite for %s", rel.Name)
+		return err
+	}
+
+	rel.LastTestSuiteRun = &release.TestSuite{
+		StartedAt:   tSuite.StartedAt,
+		CompletedAt: tSuite.CompletedAt,
+		Results:     tSuite.Results,
+	}
+
+	return nil
 }

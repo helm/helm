@@ -26,47 +26,41 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/release"
+	util "k8s.io/helm/pkg/releaseutil"
 )
 
 // hookAnno is the label name for a hook
 const hookAnno = "helm.sh/hook"
 
 const (
-	preInstall   = "pre-install"
-	postInstall  = "post-install"
-	preDelete    = "pre-delete"
-	postDelete   = "post-delete"
-	preUpgrade   = "pre-upgrade"
-	postUpgrade  = "post-upgrade"
-	preRollback  = "pre-rollback"
-	postRollback = "post-rollback"
+	preInstall         = "pre-install"
+	postInstall        = "post-install"
+	preDelete          = "pre-delete"
+	postDelete         = "post-delete"
+	preUpgrade         = "pre-upgrade"
+	postUpgrade        = "post-upgrade"
+	preRollback        = "pre-rollback"
+	postRollback       = "post-rollback"
+	releaseTestSuccess = "test-success"
 )
 
 var events = map[string]release.Hook_Event{
-	preInstall:   release.Hook_PRE_INSTALL,
-	postInstall:  release.Hook_POST_INSTALL,
-	preDelete:    release.Hook_PRE_DELETE,
-	postDelete:   release.Hook_POST_DELETE,
-	preUpgrade:   release.Hook_PRE_UPGRADE,
-	postUpgrade:  release.Hook_POST_UPGRADE,
-	preRollback:  release.Hook_PRE_ROLLBACK,
-	postRollback: release.Hook_POST_ROLLBACK,
-}
-
-type simpleHead struct {
-	Version  string `json:"apiVersion"`
-	Kind     string `json:"kind,omitempty"`
-	Metadata *struct {
-		Name        string            `json:"name"`
-		Annotations map[string]string `json:"annotations"`
-	} `json:"metadata,omitempty"`
+	preInstall:         release.Hook_PRE_INSTALL,
+	postInstall:        release.Hook_POST_INSTALL,
+	preDelete:          release.Hook_PRE_DELETE,
+	postDelete:         release.Hook_POST_DELETE,
+	preUpgrade:         release.Hook_PRE_UPGRADE,
+	postUpgrade:        release.Hook_POST_UPGRADE,
+	preRollback:        release.Hook_PRE_ROLLBACK,
+	postRollback:       release.Hook_POST_ROLLBACK,
+	releaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
 }
 
 // manifest represents a manifest file, which has a name and some content.
 type manifest struct {
 	name    string
 	content string
-	head    *simpleHead
+	head    *util.SimpleHead
 }
 
 // sortManifests takes a map of filename/YAML contents and sorts them into hook types.
@@ -106,7 +100,7 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			continue
 		}
 
-		var sh simpleHead
+		var sh util.SimpleHead
 		err := yaml.Unmarshal([]byte(c), &sh)
 
 		if err != nil {

@@ -17,6 +17,8 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"io"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -244,6 +246,19 @@ func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.Get
 	return h.history(ctx, req)
 }
 
+// RunReleaseTest executes a pre-defined test on a release
+func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
+	for _, opt := range opts {
+		opt(&h.opts)
+	}
+
+	req := &h.opts.testReq
+	req.Name = rlsName
+	ctx := NewContext()
+
+	return h.test(ctx, req)
+}
+
 // Executes tiller.ListReleases RPC.
 func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.ListReleasesResponse, error) {
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
@@ -355,4 +370,42 @@ func (h *Client) history(ctx context.Context, req *rls.GetHistoryRequest) (*rls.
 
 	rlc := rls.NewReleaseServiceClient(c)
 	return rlc.GetHistory(ctx, req)
+}
+
+// Executes tiller.TestRelease RPC.
+func (h *Client) test(ctx context.Context, req *rls.TestReleaseRequest) (<-chan *rls.TestReleaseResponse, <-chan error) {
+	errc := make(chan error, 1)
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	if err != nil {
+		errc <- err
+		return nil, errc
+	}
+
+	ch := make(chan *rls.TestReleaseResponse, 1)
+	go func() {
+		defer close(errc)
+		defer close(ch)
+		defer c.Close()
+
+		rlc := rls.NewReleaseServiceClient(c)
+		s, err := rlc.RunReleaseTest(ctx, req)
+		if err != nil {
+			errc <- err
+			return
+		}
+
+		for {
+			msg, err := s.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				errc <- err
+				return
+			}
+			ch <- msg
+		}
+	}()
+
+	return ch, errc
 }

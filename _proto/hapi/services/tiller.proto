@@ -78,6 +78,10 @@ service ReleaseService {
     // ReleaseHistory retrieves a releasse's history.
     rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
     }
+
+    // RunReleaseTest executes the tests defined of a named release
+    rpc RunReleaseTest(TestReleaseRequest) returns (stream TestReleaseResponse) {
+    }
 }
 
 // ListReleasesRequest requests a list of releases.
@@ -303,4 +307,17 @@ message GetHistoryRequest {
 // GetHistoryResponse is received in response to a GetHistory rpc.
 message GetHistoryResponse {
 	repeated hapi.release.Release releases = 1;
+}
+
+// TestReleaseRequest is a request to get the status of a release.
+message TestReleaseRequest {
+	// Name is the name of the release
+	string name = 1;
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	int64 timeout = 2;
+}
+
+// TestReleaseResponse represents a message from executing a test
+message TestReleaseResponse {
+	string msg = 1;
 }

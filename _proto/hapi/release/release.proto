@@ -18,6 +18,7 @@ package hapi.release;
 
 import "hapi/release/hook.proto";
 import "hapi/release/info.proto";
+import "hapi/release/test_suite.proto";
 import "hapi/chart/config.proto";
 import "hapi/chart/chart.proto";
 
@@ -50,4 +51,7 @@ message Release {
 
 	// Namespace is the kubernetes namespace of the release.
 	string namespace = 8;
+
+	// LastTestSuiteRun provides results on the last test run on a release
+	hapi.release.TestSuite last_test_suite_run = 9;
 }
