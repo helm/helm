@@ -1,0 +1,15 @@
+metadata:
+  name: release.helm.sh
+apiVersion: extensions/v1beta1
+kind: ThirdPartyResource
+description: "A specification of Helm release"
+versions:
+  - name: v1beta1
+---
+metadata:
+  name: release-version.helm.sh
+apiVersion: extensions/v1beta1
+kind: ThirdPartyResource
+description: "A specification of Helm release version"
+versions:
+  - name: v1beta1
