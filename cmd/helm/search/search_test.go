@@ -139,6 +139,7 @@ func TestAddRepo_Sort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	SortScore(sr)
 
 	ch := sr[0]
 	expect := "1.2.3"

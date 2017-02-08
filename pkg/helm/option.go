@@ -66,6 +66,8 @@ type options struct {
 	histReq rls.GetHistoryRequest
 	// resetValues instructs Tiller to reset values to their defaults.
 	resetValues bool
+	// release test options are applied directly to the test release history request
+	testReq rls.TestReleaseRequest
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -178,6 +180,13 @@ func UpgradeTimeout(timeout int64) UpdateOption {
 func DeleteTimeout(timeout int64) DeleteOption {
 	return func(opts *options) {
 		opts.uninstallReq.Timeout = timeout
+	}
+}
+
+// ReleaseTestTimeout specifies the number of seconds before kubernetes calls timeout
+func ReleaseTestTimeout(timeout int64) ReleaseTestOption {
+	return func(opts *options) {
+		opts.testReq.Timeout = timeout
 	}
 }
 
@@ -371,3 +380,7 @@ func NewContext() context.Context {
 	md := metadata.Pairs("x-helm-api-client", version.Version)
 	return metadata.NewContext(context.TODO(), md)
 }
+
+// ReleaseTestOption allows configuring optional request data for
+// issuing a TestRelease rpc.
+type ReleaseTestOption func(*options)
