@@ -324,16 +324,17 @@ cluster. And as we can see above, it shows that our new values from
 `panda.yaml` were deployed to the cluster.
 
 Now, if something does not go as planned during a release, it is easy to
-roll back to a previous release.
+roll back to a previous release using `helm rollback [RELEASE] [REVISION]`.
 
 ```console
-$ helm rollback happy-panda --version 1
+$ helm rollback happy-panda 1
 ```
 
 The above rolls back our happy-panda to its very first release version.
 A release version is an incremental revision. Every time an install,
 upgrade, or rollback happens, the revision number is incremented by 1.
-The first revision number is always 1.
+The first revision number is always 1. And we can use `helm history [RELEASE]`
+to see revision numbers for a certain release.
 
 ## Helpful Options for Install/Upgrade/Rollback
 There are several other helpful options you can specify for customizing the

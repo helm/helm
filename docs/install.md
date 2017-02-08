@@ -189,7 +189,7 @@ Setting `TILLER_TAG=canary` will get the latest snapshot of master.
 Because Tiller stores its data in Kubernetes ConfigMaps, you can safely
 delete and re-install Tiller without worrying about losing any data. The
 recommended way of deleting Tiller is with `kubectl delete deployment
-tiller-deploy --namespace kube-system`
+tiller-deploy --namespace kube-system`, or more concisely `helm reset`.
 
 Tiller can then be re-installed from the client with:
 
