@@ -169,6 +169,9 @@ func (m *Manager) resolve(req *chartutil.Requirements, repoNames map[string]stri
 }
 
 // downloadAll takes a list of dependencies and downloads them into charts/
+//
+// It will delete versions of the chart that exist on disk and might cause
+// a conflict.
 func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
@@ -195,6 +198,9 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	for _, dep := range deps {
+		if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
+			return err
+		}
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 		// Any failure to resolve/download a chart should fail:
@@ -206,6 +212,39 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
 			return fmt.Errorf("could not download %s: %s", churl, err)
+		}
+	}
+	return nil
+}
+
+// safeDeleteDep deletes any versions of the given dependency in the given directory.
+//
+// It does this by first matching the file name to an expected pattern, then loading
+// the file to verify that it is a chart with the same name as the given name.
+//
+// Because it requires tar file introspection, it is more intensive than a basic delete.
+//
+// This will only return errors that should stop processing entirely. Other errors
+// will emit log messages or be ignored.
+func (m *Manager) safeDeleteDep(name, dir string) error {
+	files, err := filepath.Glob(filepath.Join(dir, name+"-*.tgz"))
+	if err != nil {
+		// Only for ErrBadPattern
+		return err
+	}
+	for _, fname := range files {
+		ch, err := chartutil.LoadFile(fname)
+		if err != nil {
+			fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)", fname, err)
+			continue
+		}
+		if ch.Metadata.Name != name {
+			// This is not the file you are looking for.
+			continue
+		}
+		if err := os.Remove(fname); err != nil {
+			fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
+			continue
 		}
 	}
 	return nil
