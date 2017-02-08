@@ -209,7 +209,13 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	reqs, err := LoadRequirements(c)
 	if err != nil {
-		return ErrRequirementsNotFound
+		// if not just missing requirements file, return error
+		if nerr, ok := err.(ErrNoRequirementsFile); !ok {
+			return nerr
+		} else {
+			// no requirements to process
+			return nil
+		}
 	}
 	// set all to true
 	for _, lr := range reqs.Dependencies {
@@ -223,7 +229,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	ProcessRequirementsTags(reqs, cvals)
 	ProcessRequirementsConditions(reqs, cvals)
 
-	// make a map of charts to keep
+	// make a map of charts to remove
 	rm := map[string]bool{}
 	for _, r := range reqs.Dependencies {
 		if !r.Enabled {
