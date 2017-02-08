@@ -5,6 +5,7 @@
 _dist/
 _proto/*.pb.go
 bin/
+rootfs/helm
 rootfs/tiller
 rootfs/rudder
 vendor/
