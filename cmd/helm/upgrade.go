@@ -163,6 +163,7 @@ func (u *upgradeCmd) run() error {
 	resp, err := u.client.UpdateRelease(
 		u.release,
 		chartPath,
+		u.namespace,
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
@@ -181,7 +182,7 @@ func (u *upgradeCmd) run() error {
 	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
 
 	// Print the status like status command does
-	status, err := u.client.ReleaseStatus(u.release)
+	status, err := u.client.ReleaseStatus(u.release, u.namespace)
 	if err != nil {
 		return prettyError(err)
 	}

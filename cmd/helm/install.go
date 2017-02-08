@@ -198,7 +198,6 @@ func (i *installCmd) run() error {
 		// Print the final name so the user knows what the final name of the release is.
 		fmt.Printf("FINAL NAME: %s\n", i.name)
 	}
-
 	res, err := i.client.InstallRelease(
 		i.chartPath,
 		i.namespace,
@@ -213,19 +212,23 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 
-	rel := res.GetRelease()
+
+/*	rel := res.GetRelease()
+	if rel == nil {
+		return nil
+	}*/
+	rel := res.Release
 	if rel == nil {
 		return nil
 	}
 	i.printRelease(rel)
-
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
 		return nil
 	}
 
 	// Print the status like status command does
-	status, err := i.client.ReleaseStatus(rel.Name)
+	status, err := i.client.ReleaseStatus(rel.Name, rel.Namespace, helm.StatusReleaseVersion(1))
 	if err != nil {
 		return prettyError(err)
 	}
