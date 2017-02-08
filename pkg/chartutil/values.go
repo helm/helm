@@ -386,7 +386,7 @@ func (v Values) PathValue(ypath string) (interface{}, error) {
 		return nil, error(fmt.Errorf("yaml path string cannot be zero length"))
 	}
 	yps := strings.Split(ypath, ".")
-	if len(ypath) == 1 {
+	if len(yps) == 1 {
 		// if exists must be root key not table
 		vals := v.AsMap()
 		k := yps[0]
