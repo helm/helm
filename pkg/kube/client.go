@@ -78,7 +78,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 	if err := ensureNamespace(client, namespace); err != nil {
 		return err
 	}
-	infos, buildErr := c.Build(namespace, reader)
+	infos, buildErr := c.BuildUnstructured(namespace, reader)
 	if buildErr != nil {
 		return buildErr
 	}
@@ -107,6 +107,29 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 		Do()
 }
 
+// BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
+func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
+	schema, err := c.Validator(true, c.SchemaCacheDir)
+	if err != nil {
+		log.Printf("warning: failed to load schema: %s", err)
+	}
+
+	mapper, typer, err := c.UnstructuredObject()
+	if err != nil {
+		log.Printf("warning: failed to load mapper: %s", err)
+	}
+	var result Result
+	result, err = resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(c.UnstructuredClientForMapping), runtime.UnstructuredJSONScheme).
+		ContinueOnError().
+		Schema(schema).
+		NamespaceParam(namespace).
+		DefaultNamespace().
+		Stream(reader, "").
+		Flatten().
+		Do().Infos()
+	return result, scrubValidationError(err)
+}
+
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
 func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	var result Result
@@ -121,7 +144,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come looking good (headers apply to subgroups, etc.)
 	objs := make(map[string][]runtime.Object)
-	infos, err := c.Build(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return "", err
 	}
@@ -178,12 +201,12 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //
 // Namespace will set the namespaces
 func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
-	original, err := c.Build(namespace, originalReader)
+	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
-	target, err := c.Build(namespace, targetReader)
+	target, err := c.BuildUnstructured(namespace, targetReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
@@ -255,7 +278,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 //
 // Namespace will set the namespace
 func (c *Client) Delete(namespace string, reader io.Reader) error {
-	infos, err := c.Build(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return err
 	}
@@ -585,7 +608,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 func waitForJob(e watch.Event, name string) (bool, error) {
 	o, ok := e.Object.(*batch.Job)
 	if !ok {
-		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, o)
+		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
 	}
 
 	for _, c := range o.Status.Conditions {

@@ -1047,7 +1047,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
 	r := bytes.NewReader(manifest)
-	_, err := c.Build(ns, r)
+	_, err := c.BuildUnstructured(ns, r)
 	return err
 }
 
