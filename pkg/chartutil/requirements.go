@@ -121,52 +121,55 @@ func LoadRequirementsLock(c *chart.Chart) (*RequirementsLock, error) {
 func ProcessRequirementsConditions(reqs *Requirements, cvals Values) {
 	var cond string
 	var conds []string
-
-	if reqs != nil && len(reqs.Dependencies) > 0 {
-		for _, r := range reqs.Dependencies {
-			var hasTrue, hasFalse bool
-			cond = string(r.Condition)
-			// check for list
-			if len(cond) > 0 {
-				if strings.Contains(cond, ",") {
-					conds = strings.Split(strings.TrimSpace(cond), ",")
-				} else {
-					conds = []string{strings.TrimSpace(cond)}
-				}
-				for _, c := range conds {
-					if len(c) > 0 {
-						// retrieve value
-						vv, err := cvals.PathValue(c)
-						if err == nil {
-							if vv.(bool) {
+	if reqs == nil || len(reqs.Dependencies) == 0 {
+		return
+	}
+	for _, r := range reqs.Dependencies {
+		var hasTrue, hasFalse bool
+		cond = string(r.Condition)
+		// check for list
+		if len(cond) > 0 {
+			if strings.Contains(cond, ",") {
+				conds = strings.Split(strings.TrimSpace(cond), ",")
+			} else {
+				conds = []string{strings.TrimSpace(cond)}
+			}
+			for _, c := range conds {
+				if len(c) > 0 {
+					// retrieve value
+					vv, err := cvals.PathValue(c)
+					if err == nil {
+						// if not bool, warn
+						if bv, ok := vv.(bool); ok {
+							if bv {
 								hasTrue = true
-							}
-							if !vv.(bool) {
+							} else {
 								hasFalse = true
 							}
 						} else {
-							if _, ok := err.(ErrNoValue); !ok {
-								// this is a real error
-								log.Printf("Warning: PathValue returned error %v", err)
-							}
+							log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 						}
-						if vv != nil {
-							// got first value, break loop
-							break
-						}
+					} else if _, ok := err.(ErrNoValue); !ok {
+						// this is a real error
+						log.Printf("Warning: PathValue returned error %v", err)
+
 					}
-				}
-				if !hasTrue && hasFalse {
-					r.Enabled = false
-				} else {
-					if hasTrue {
-						r.Enabled = true
+					if vv != nil {
+						// got first value, break loop
+						break
 					}
 				}
 			}
+			if !hasTrue && hasFalse {
+				r.Enabled = false
+			} else if hasTrue {
+				r.Enabled = true
 
+			}
 		}
+
 	}
+
 }
 
 // ProcessRequirementsTags disables charts based on tags in values
@@ -176,33 +179,38 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 		return
 
 	}
-	if reqs != nil && len(reqs.Dependencies) > 0 {
-		for _, r := range reqs.Dependencies {
-			if len(r.Tags) > 0 {
-				tags := r.Tags
+	if reqs == nil || len(reqs.Dependencies) == 0 {
+		return
+	}
+	for _, r := range reqs.Dependencies {
+		if len(r.Tags) > 0 {
+			tags := r.Tags
 
-				var hasTrue, hasFalse bool
-				for _, k := range tags {
-					if b, ok := vt[k]; ok {
-						if b.(bool) {
+			var hasTrue, hasFalse bool
+			for _, k := range tags {
+				if b, ok := vt[k]; ok {
+					// if not bool, warn
+					if bv, ok := b.(bool); ok {
+						if bv {
 							hasTrue = true
-						}
-						if !b.(bool) {
+						} else {
 							hasFalse = true
 						}
+					} else {
+						log.Printf("Warning: Tag '%s' for chart %s returned non-bool value", k, r.Name)
 					}
 				}
-				if !hasTrue && hasFalse {
-					r.Enabled = false
-				} else {
-					if hasTrue || !hasTrue && !hasFalse {
-						r.Enabled = true
-					}
-				}
+			}
+			if !hasTrue && hasFalse {
+				r.Enabled = false
+			} else if hasTrue || !hasTrue && !hasFalse {
+				r.Enabled = true
 
 			}
+
 		}
 	}
+
 }
 
 // ProcessRequirementsEnabled removes disabled charts from dependencies
@@ -212,10 +220,10 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 		// if not just missing requirements file, return error
 		if nerr, ok := err.(ErrNoRequirementsFile); !ok {
 			return nerr
-		} else {
-			// no requirements to process
-			return nil
 		}
+
+		// no requirements to process
+		return nil
 	}
 	// set all to true
 	for _, lr := range reqs.Dependencies {
@@ -238,7 +246,8 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 		}
 	}
 	// don't keep disabled charts in new slice
-	cd := c.Dependencies[:0]
+	cd := []*chart.Chart{}
+	copy(cd, c.Dependencies[:0])
 	for _, n := range c.Dependencies {
 		if _, ok := rm[n.Metadata.Name]; !ok {
 			cd = append(cd, n)

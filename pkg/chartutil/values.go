@@ -383,7 +383,7 @@ func istable(v interface{}) bool {
 // PathValue takes a yaml path with . notation and returns the value if exists
 func (v Values) PathValue(ypath string) (interface{}, error) {
 	if len(ypath) == 0 {
-		return nil, error(fmt.Errorf("yaml path string cannot be zero length"))
+		return nil, fmt.Errorf("yaml path string cannot be zero length")
 	}
 	yps := strings.Split(ypath, ".")
 	if len(yps) == 1 {
@@ -397,16 +397,20 @@ func (v Values) PathValue(ypath string) (interface{}, error) {
 		// key not found
 		return nil, ErrNoValue(fmt.Errorf("%v is not a value", k))
 	}
-	table := yps[:len(yps)-1]
+	// join all elements of YAML path except last to get string table path
+	ypsLen := len(yps)
+	table := yps[:ypsLen-1]
 	st := strings.Join(table, ".")
-	key := yps[len(yps)-1:]
+	// get the last element as a string key
+	key := yps[ypsLen-1:]
 	sk := string(key[0])
-
+	// get our table for table path
 	t, err := v.Table(st)
 	if err != nil {
 		//no table
 		return nil, ErrNoValue(fmt.Errorf("%v is not a value", sk))
 	}
+	// check table for key and ensure value is not a table
 	if k, ok := t[sk]; ok && !istable(k) {
 		// key found
 		return k, nil
