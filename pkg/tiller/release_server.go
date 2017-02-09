@@ -1099,11 +1099,11 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		return err
 	}
 
-	rel.LastTestSuiteRun = &release.TestSuite{
+	rel.Info.Status.LastTestSuiteRun = &release.TestSuite{
 		StartedAt:   tSuite.StartedAt,
 		CompletedAt: tSuite.CompletedAt,
 		Results:     tSuite.Results,
 	}
 
-	return nil
+	return s.env.Releases.Update(rel)
 }
