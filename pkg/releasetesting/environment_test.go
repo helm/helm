@@ -93,7 +93,7 @@ type getFailingKubeClient struct {
 }
 
 func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
-	return "", errors.New("Get failed")
+	return "", errors.New("In the end, they did not find Nemo.")
 }
 
 func newDeleteFailingKubeClient() *deleteFailingKubeClient {

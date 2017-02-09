@@ -64,6 +64,7 @@ func NewTestSuite(rel *release.Release) (*TestSuite, error) {
 // Run executes tests in a test suite and stores a result within the context of a given environment
 func (t *TestSuite) Run(env *Environment) error {
 	t.StartedAt = timeconv.Now()
+	streamer := EnvironmentStreamer{Env: env}
 
 	for _, testManifest := range t.TestManifests {
 		test, err := newTest(testManifest)
