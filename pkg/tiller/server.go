@@ -23,8 +23,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
+	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -35,6 +37,7 @@ import (
 	rest "k8s.io/kubernetes/pkg/client/restclient"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
+	utilflag "k8s.io/kubernetes/pkg/util/flag"
 )
 
 // maxMsgSize use 10MB as the default message size limit.
@@ -157,18 +160,35 @@ func checkBearerAuth(ctx context.Context) (*authenticationapi.UserInfo, *rest.Co
 	}
 	caCert, _ := getCertificateAuthority(md)
 
-	// TODO: Should be InClusterConfig() ?
-	kubeConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{DefaultClientConfig: &clientcmd.DefaultClientConfig},
-		&clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{
+	// ref: k8s.io/helm/vendor/k8s.io/kubernetes/pkg/kubectl/cmd/util#NewFactory()
+	flags := pflag.NewFlagSet("", pflag.ContinueOnError)
+	flags.SetNormalizeFunc(utilflag.WarnWordSepNormalizeFunc) // Warn for "_" flags
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	// use the standard defaults for this client command
+	// DEPRECATED: remove and replace with something more accurate
+	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
+
+	flags.StringVar(&loadingRules.ExplicitPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests.")
+
+	overrides := &clientcmd.ConfigOverrides{
+		ClusterDefaults: clientcmd.ClusterDefaults,
+		ClusterInfo: clientcmdapi.Cluster{
 			Server: apiServer,
 			CertificateAuthorityData: caCert,
-		}}).ClientConfig()
+		},
+	}
+
+	flagNames := clientcmd.RecommendedConfigOverrideFlags("")
+	// short flagnames are disabled by default.  These are here for compatibility with existing scripts
+	flagNames.ClusterOverrideFlags.APIServer.ShortName = "s"
+
+	clientcmd.BindOverrideFlags(overrides, flags, flagNames)
+	tokenConfig, err := clientcmd.NewInteractiveDeferredLoadingClientConfig(loadingRules, overrides, os.Stdin).ClientConfig()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	client, err := clientset.NewForConfig(kubeConfig)
+	client, err := clientset.NewForConfig(tokenConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,7 +206,13 @@ func checkBearerAuth(ctx context.Context) (*authenticationapi.UserInfo, *rest.Co
 	if !result.Status.Authenticated {
 		return nil, nil, errors.New("Not authenticated")
 	}
-	kubeConfig.BearerToken = token
+	kubeConfig := &rest.Config{
+		Host:        apiServer,
+		BearerToken: token,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: caCert,
+		},
+	}
 	return &result.Status.User, kubeConfig, nil
 }
 
