@@ -116,7 +116,6 @@ func (m *Manager) Update() error {
 		}
 		return err
 	}
-
 	// Check that all of the repos we're dependent on actually exist and
 	// the repo index names.
 	repoNames, err := m.getRepoNames(req.Dependencies)
@@ -201,6 +200,17 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
 			return err
 		}
+
+		if strings.HasPrefix(dep.Repository, "file://") {
+			fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
+			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
+			if err != nil {
+				return err
+			}
+			dep.Version = ver
+			continue
+		}
+
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 		// Any failure to resolve/download a chart should fail:
@@ -257,10 +267,16 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 		return err
 	}
 	repos := rf.Repositories
+
 	// Verify that all repositories referenced in the deps are actually known
 	// by Helm.
 	missing := []string{}
 	for _, dd := range deps {
+		// If repo is from local path, continue
+		if strings.HasPrefix(dd.Repository, "file://") {
+			continue
+		}
+
 		found := false
 		if dd.Repository == "" {
 			found = true
@@ -295,6 +311,22 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 	// by Helm.
 	missing := []string{}
 	for _, dd := range deps {
+		// if dep chart is from local path, verify the path is valid
+		if strings.HasPrefix(dd.Repository, "file://") {
+			depPath, err := filepath.Abs(dd.Repository[7:])
+			if err != nil {
+				return nil, err
+			}
+
+			if _, err = os.Stat(depPath); os.IsNotExist(err) {
+				return nil, fmt.Errorf("directory %s not found: %s", depPath, err)
+			}
+
+			fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
+			reposMap[dd.Name] = dd.Repository
+			continue
+		}
+
 		found := false
 
 		for _, repo := range repos {
@@ -479,4 +511,39 @@ func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 	}
 	dest := filepath.Join(chartpath, "requirements.lock")
 	return ioutil.WriteFile(dest, data, 0644)
+}
+
+// archive a dep chart from local directory and save it into charts/
+func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, error) {
+	destPath := filepath.Join(chartpath, "charts")
+	origPath, err := filepath.Abs(repo[7:])
+	if err != nil {
+		return "", err
+	}
+
+	if _, err = os.Stat(origPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("directory %s not found: %s", origPath, err)
+	}
+
+	ch, err := chartutil.LoadDir(origPath)
+	if err != nil {
+		return "", err
+	}
+
+	constraint, err := semver.NewConstraint(version)
+	if err != nil {
+		return "", fmt.Errorf("dependency %s has an invalid version/constraint format: %s", name, err)
+	}
+
+	v, err := semver.NewVersion(ch.Metadata.Version)
+	if err != nil {
+		return "", err
+	}
+
+	if constraint.Check(v) {
+		_, err = chartutil.Save(ch, destPath)
+		return ch.Metadata.Version, err
+	}
+
+	return "", fmt.Errorf("Can't get a valid version for dependency %s.", name)
 }

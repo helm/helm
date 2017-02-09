@@ -77,6 +77,15 @@ func TestResolve(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "repo from local invalid path",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "notexist", Repository: "file://../testdata/notexist", Version: "0.1.0"},
+				},
+			},
+			err: true,
+		},
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
