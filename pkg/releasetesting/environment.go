@@ -17,6 +17,7 @@ limitations under the License.
 package releasetesting
 
 import (
+	"bytes"
 	"fmt"
 
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -31,38 +32,42 @@ type Environment struct {
 	Timeout    int64
 }
 
-func streamRunning(name string, stream services.ReleaseService_RunReleaseTestServer) error {
+func (env *Environment) streamRunning(name string) error {
 	msg := "RUNNING: " + name
-	err := streamMessage(msg, stream)
-	return err
+	return env.streamMessage(msg)
 }
 
-func streamError(info string, stream services.ReleaseService_RunReleaseTestServer) error {
+func (env *Environment) streamError(info string) error {
 	msg := "ERROR: " + info
-	err := streamMessage(msg, stream)
-	return err
+	return env.streamMessage(msg)
 }
 
-func streamFailed(name, namespace string, stream services.ReleaseService_RunReleaseTestServer) error {
-	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s --namespace %s` for more info", name, name, namespace)
-	err := streamMessage(msg, stream)
-	return err
+func (env *Environment) streamFailed(name string) error {
+	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s --namespace %s` for more info", name, name, env.Namespace)
+	return env.streamMessage(msg)
 }
 
-func streamSuccess(name string, stream services.ReleaseService_RunReleaseTestServer) error {
+func (env *Environment) streamSuccess(name string) error {
 	msg := fmt.Sprintf("PASSED: %s", name)
-	err := streamMessage(msg, stream)
-	return err
+	return env.streamMessage(msg)
 }
 
-func streamUnknown(name, info string, stream services.ReleaseService_RunReleaseTestServer) error {
+func (env *Environment) streamUnknown(name, info string) error {
 	msg := fmt.Sprintf("UNKNOWN: %s: %s", name, info)
-	err := streamMessage(msg, stream)
-	return err
+	return env.streamMessage(msg)
 }
 
-func streamMessage(msg string, stream services.ReleaseService_RunReleaseTestServer) error {
+func (env *Environment) streamMessage(msg string) error {
 	resp := &services.TestReleaseResponse{Msg: msg}
-	err := stream.Send(resp)
-	return err
+	return env.Stream.Send(resp)
+}
+
+// DeleteTestPods deletes resources given in testManifests
+func (env *Environment) DeleteTestPods(testManifests []string) {
+	for _, testManifest := range testManifests {
+		err := env.KubeClient.Delete(env.Namespace, bytes.NewBufferString(testManifest))
+		if err != nil {
+			env.streamError(err.Error())
+		}
+	}
 }

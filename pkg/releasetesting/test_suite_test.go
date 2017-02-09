@@ -201,14 +201,7 @@ func testSuiteFixture() *TestSuite {
 }
 
 func testEnvFixture() *Environment {
-	tillerEnv := mockTillerEnvironment()
-
-	return &Environment{
-		Namespace:  "default",
-		KubeClient: tillerEnv.KubeClient,
-		Timeout:    5,
-		Stream:     mockStream{},
-	}
+	return newMockTestingEnvironment().Environment
 }
 
 func mockTillerEnvironment() *tillerEnv.Environment {
@@ -219,10 +212,12 @@ func mockTillerEnvironment() *tillerEnv.Environment {
 }
 
 type mockStream struct {
-	stream grpc.ServerStream
+	stream   grpc.ServerStream
+	messages []*services.TestReleaseResponse
 }
 
 func (rs mockStream) Send(m *services.TestReleaseResponse) error {
+	rs.messages = append(rs.messages, m)
 	return nil
 }
 func (rs mockStream) SetHeader(m metadata.MD) error  { return nil }
