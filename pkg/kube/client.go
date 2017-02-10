@@ -33,6 +33,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/kubectl"
@@ -305,6 +306,7 @@ func perform(c *Client, namespace string, infos Result, fn ResourceActorFunc) er
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
+
 	for _, info := range infos {
 		if err := fn(info); err != nil {
 			return err
@@ -608,5 +610,45 @@ func scrubValidationError(err error) error {
 	if strings.Contains(err.Error(), stopValidateMessage) {
 		return goerrors.New(strings.Replace(err.Error(), "; "+stopValidateMessage, "", -1))
 	}
+	return err
+}
+
+// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
+// and returns said phase (PodSucceeded or PodFailed qualify)
+func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+	infos, err := c.Build(namespace, reader)
+	if err != nil {
+		return api.PodUnknown, err
+	}
+	info := infos[0]
+
+	kind := info.Mapping.GroupVersionKind.Kind
+	if kind != "Pod" {
+		return api.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
+	}
+
+	if err := watchPodUntilComplete(timeout, info); err != nil {
+		return api.PodUnknown, err
+	}
+
+	if err := info.Get(); err != nil {
+		return api.PodUnknown, err
+	}
+	status := info.Object.(*api.Pod).Status.Phase
+
+	return status, nil
+}
+
+func watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
+	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Watching pod %s for completion with timeout of %v", info.Name, timeout)
+	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
+		return conditions.PodCompleted(e)
+	})
+
 	return err
 }

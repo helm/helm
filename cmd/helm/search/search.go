@@ -62,6 +62,7 @@ const verSep = "$$"
 
 // AddRepo adds a repository index to the search index.
 func (i *Index) AddRepo(rname string, ind *repo.IndexFile, all bool) {
+	ind.SortEntries()
 	for name, ref := range ind.Entries {
 		if len(ref) == 0 {
 			// Skip chart names that have zero releases.
@@ -175,7 +176,7 @@ func (i *Index) SearchRegexp(re string, threshold int) ([]*Result, error) {
 	return buf, nil
 }
 
-// Chart returns the ChartRef for a particular name.
+// Chart returns the ChartVersion for a particular name.
 func (i *Index) Chart(name string) (*repo.ChartVersion, error) {
 	c, ok := i.charts[name]
 	if !ok {
@@ -220,6 +221,8 @@ func (s scoreSorter) Less(a, b int) bool {
 		if err != nil {
 			return true
 		}
+		// Sort so that the newest chart is higher than the oldest chart. This is
+		// the opposite of what you'd expect in a function called Less.
 		return v1.GreaterThan(v2)
 	}
 	return first.Name < second.Name

@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	reltesting "k8s.io/helm/pkg/releasetesting"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
@@ -289,6 +290,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 
 	if req.DryRun {
 		log.Printf("Dry run for %s", updatedRelease.Name)
+		res.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
 
@@ -300,9 +302,11 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	}
 
 	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
-		log.Printf("warning: Release Upgrade %q failed: %s", updatedRelease.Name, err)
+		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
+		log.Printf("warning: %s", msg)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
 		updatedRelease.Info.Status.Code = release.Status_FAILED
+		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
 		s.recordRelease(updatedRelease, false)
 		return res, err
@@ -319,6 +323,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	s.recordRelease(originalRelease, true)
 
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
+	updatedRelease.Info.Description = "Upgrade complete"
 
 	return res, nil
 }
@@ -404,6 +409,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  ts,
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
+			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
 		Version:  revision,
 		Manifest: manifestDoc.String(),
@@ -454,9 +460,11 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	}
 
 	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
-		log.Printf("warning: Release Rollback %q failed: %s", targetRelease.Name, err)
+		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
+		log.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
 		targetRelease.Info.Status.Code = release.Status_FAILED
+		targetRelease.Info.Description = msg
 		s.recordRelease(currentRelease, true)
 		s.recordRelease(targetRelease, false)
 		return res, err
@@ -524,6 +532,9 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 				Code:  release.Status_UNKNOWN,
 				Notes: prls.Info.Status.Notes,
 			},
+			// Because we lose the reference to rbv elsewhere, we set the
+			// message here, and only override it later if we experience failure.
+			Description: fmt.Sprintf("Rollback to %d", rbv),
 		},
 		Version:  crls.Version + 1,
 		Manifest: prls.Manifest,
@@ -672,6 +683,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 				FirstDeployed: ts,
 				LastDeployed:  ts,
 				Status:        &release.Status{Code: release.Status_UNKNOWN},
+				Description:   fmt.Sprintf("Install failed: %s", err),
 			},
 			Version: 0,
 		}
@@ -691,6 +703,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 			FirstDeployed: ts,
 			LastDeployed:  ts,
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
+			Description:   "Initial install underway", // Will be overwritten.
 		},
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
@@ -793,6 +806,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 	if req.DryRun {
 		log.Printf("Dry run for %s", r.Name)
+		res.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
 
@@ -821,9 +835,11 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		r.Version = old.Version + 1
 
 		if err := s.performKubeUpdate(old, r, false, req.Timeout, req.Wait); err != nil {
-			log.Printf("warning: Release replace %q failed: %s", r.Name, err)
+			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
+			log.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
 			r.Info.Status.Code = release.Status_FAILED
+			r.Info.Description = msg
 			s.recordRelease(old, true)
 			s.recordRelease(r, false)
 			return res, err
@@ -834,8 +850,10 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// regular manifests
 		b := bytes.NewBufferString(r.Manifest)
 		if err := s.env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
-			log.Printf("warning: Release %q failed: %s", r.Name, err)
+			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
+			log.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
+			r.Info.Description = msg
 			s.recordRelease(r, false)
 			return res, fmt.Errorf("release %s failed: %s", r.Name, err)
 		}
@@ -844,13 +862,17 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	// post-install hooks
 	if !req.DisableHooks {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, postInstall, req.Timeout); err != nil {
-			log.Printf("warning: Release %q failed post-install: %s", r.Name, err)
+			msg := fmt.Sprintf("Release %q failed post-install: %s", r.Name, err)
+			log.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
+			r.Info.Description = msg
 			s.recordRelease(r, false)
 			return res, err
 		}
 	}
 
+	r.Info.Status.Code = release.Status_DEPLOYED
+	r.Info.Description = "Install complete"
 	// This is a tricky case. The release has been created, but the result
 	// cannot be recorded. The truest thing to tell the user is that the
 	// release was created. However, the user will not be able to do anything
@@ -858,7 +880,6 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	//
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
-	r.Info.Status.Code = release.Status_DEPLOYED
 	s.recordRelease(r, false)
 
 	return res, nil
@@ -946,6 +967,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	log.Printf("uninstall: Deleting %s", req.Name)
 	rel.Info.Status.Code = release.Status_DELETING
 	rel.Info.Deleted = timeconv.Now()
+	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &services.UninstallReleaseResponse{Release: rel}
 
 	if !req.DisableHooks {
@@ -965,7 +987,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
-	manifests := splitManifests(rel.Manifest)
+	manifests := relutil.SplitManifests(rel.Manifest)
 	_, files, err := sortManifests(manifests, vs, UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
@@ -1001,6 +1023,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	rel.Info.Status.Code = release.Status_DELETED
+	rel.Info.Description = "Deletion complete"
 
 	if req.Purge {
 		err := s.purgeReleases(rels...)
@@ -1022,23 +1045,48 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	return res, errs
 }
 
-func splitManifests(bigfile string) map[string]string {
-	// This is not the best way of doing things, but it's how k8s itself does it.
-	// Basically, we're quickly splitting a stream of YAML documents into an
-	// array of YAML docs. In the current implementation, the file name is just
-	// a place holder, and doesn't have any further meaning.
-	sep := "\n---\n"
-	tpl := "manifest-%d"
-	res := map[string]string{}
-	tmp := strings.Split(bigfile, sep)
-	for i, d := range tmp {
-		res[fmt.Sprintf(tpl, i)] = d
-	}
-	return res
-}
-
 func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
 	r := bytes.NewReader(manifest)
 	_, err := c.Build(ns, r)
 	return err
+}
+
+// RunReleaseTest runs pre-defined tests stored as hooks on a given release
+func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
+
+	if !ValidName.MatchString(req.Name) {
+		return errMissingRelease
+	}
+
+	// finds the non-deleted release with the given name
+	rel, err := s.env.Releases.Last(req.Name)
+	if err != nil {
+		return err
+	}
+
+	testEnv := &reltesting.Environment{
+		Namespace:  rel.Namespace,
+		KubeClient: s.env.KubeClient,
+		Timeout:    req.Timeout,
+		Stream:     stream,
+	}
+
+	tSuite, err := reltesting.NewTestSuite(rel)
+	if err != nil {
+		log.Printf("Error creating test suite for %s", rel.Name)
+		return err
+	}
+
+	if err := tSuite.Run(testEnv); err != nil {
+		log.Printf("Error running test suite for %s", rel.Name)
+		return err
+	}
+
+	rel.Info.Status.LastTestSuiteRun = &release.TestSuite{
+		StartedAt:   tSuite.StartedAt,
+		CompletedAt: tSuite.CompletedAt,
+		Results:     tSuite.Results,
+	}
+
+	return s.env.Releases.Update(rel)
 }

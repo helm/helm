@@ -95,6 +95,7 @@ func releaseMock(opts *releaseOptions) *release.Release {
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: scode},
+			Description:   "Release mock",
 		},
 		Chart:   ch,
 		Config:  &chart.Config{Raw: `name: "value"`},
@@ -187,6 +188,10 @@ func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentO
 
 func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryOption) (*rls.GetHistoryResponse, error) {
 	return &rls.GetHistoryResponse{Releases: c.rels}, c.err
+}
+
+func (c *fakeReleaseClient) RunReleaseTest(rlsName string, opts ...helm.ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
+	return nil, nil
 }
 
 func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {

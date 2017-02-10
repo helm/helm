@@ -33,6 +33,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/restclient"
 
 	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/tiller/environment"
 )
@@ -49,6 +50,8 @@ var (
 	tillerHost      string
 	tillerNamespace string
 	kubeContext     string
+	// TODO refactor out this global var
+	tillerTunnel *kube.Tunnel
 )
 
 // flagDebug is a signal that the user wants additional output.
@@ -120,7 +123,9 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newCompletionCmd(out),
 		newHomeCmd(out),
 		newInitCmd(out),
+		newResetCmd(nil, out),
 		newVersionCmd(nil, out),
+		newReleaseTestCmd(nil, out),
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
@@ -154,7 +159,12 @@ func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
 
 func setupConnection(c *cobra.Command, args []string) error {
 	if tillerHost == "" {
-		tunnel, err := newTillerPortForwarder(tillerNamespace, kubeContext)
+		config, client, err := getKubeClient(kubeContext)
+		if err != nil {
+			return err
+		}
+
+		tunnel, err := portforwarder.New(tillerNamespace, client, config)
 		if err != nil {
 			return err
 		}
@@ -236,4 +246,10 @@ func getKubeClient(context string) (*restclient.Config, *internalclientset.Clien
 		return nil, nil, fmt.Errorf("could not get kubernetes client: %s", err)
 	}
 	return config, client, nil
+}
+
+// getKubeCmd is a convenience method for creating kubernetes cmd client
+// for a given kubeconfig context
+func getKubeCmd(context string) *kube.Client {
+	return kube.New(kube.GetConfig(context))
 }

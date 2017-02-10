@@ -18,6 +18,7 @@ package kube
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -37,6 +38,8 @@ import (
 
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/runtime"
+	"k8s.io/kubernetes/pkg/watch"
+	watchjson "k8s.io/kubernetes/pkg/watch/json"
 )
 
 func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
@@ -44,10 +47,18 @@ func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
 }
 
 func newPod(name string) api.Pod {
+	return newPodWithStatus(name, api.PodStatus{}, "")
+}
+
+func newPodWithStatus(name string, status api.PodStatus, namespace string) api.Pod {
+	ns := api.NamespaceDefault
+	if namespace != "" {
+		ns = namespace
+	}
 	return api.Pod{
 		ObjectMeta: api.ObjectMeta{
 			Name:      name,
-			Namespace: api.NamespaceDefault,
+			Namespace: ns,
 		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{{
@@ -56,6 +67,7 @@ func newPod(name string) api.Pod {
 				Ports: []api.ContainerPort{{Name: "http", ContainerPort: 80}},
 			}},
 		},
+		Status: status,
 	}
 }
 
@@ -100,6 +112,32 @@ type fakeReaperFactory struct {
 
 func (f *fakeReaperFactory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error) {
 	return f.reaper, nil
+}
+
+func newEventResponse(code int, e *watch.Event) (*http.Response, error) {
+	dispatchedEvent, err := encodeAndMarshalEvent(e)
+	if err != nil {
+		return nil, err
+	}
+
+	header := http.Header{}
+	header.Set("Content-Type", runtime.ContentTypeJSON)
+	body := ioutil.NopCloser(bytes.NewReader(dispatchedEvent))
+	return &http.Response{StatusCode: 200, Header: header, Body: body}, nil
+}
+
+func encodeAndMarshalEvent(e *watch.Event) ([]byte, error) {
+	encodedEvent, err := watchjson.Object(testapi.Default.Codec(), e)
+	if err != nil {
+		return nil, err
+	}
+
+	marshaledEvent, err := json.Marshal(encodedEvent)
+	if err != nil {
+		return nil, err
+	}
+
+	return marshaledEvent, nil
 }
 
 func TestUpdate(t *testing.T) {
@@ -301,6 +339,72 @@ func TestPerform(t *testing.T) {
 
 		if len(results) != tt.count {
 			t.Errorf("%q. expected %d result objects, got %d", tt.name, tt.count, len(results))
+		}
+	}
+}
+
+func TestWaitAndGetCompletedPodPhase(t *testing.T) {
+	tests := []struct {
+		podPhase      api.PodPhase
+		expectedPhase api.PodPhase
+		err           bool
+		errMessage    string
+	}{
+		{
+			podPhase:      api.PodPending,
+			expectedPhase: api.PodUnknown,
+			err:           true,
+			errMessage:    "timed out waiting for the condition",
+		}, {
+			podPhase:      api.PodRunning,
+			expectedPhase: api.PodUnknown,
+			err:           true,
+			errMessage:    "timed out waiting for the condition",
+		}, {
+			podPhase:      api.PodSucceeded,
+			expectedPhase: api.PodSucceeded,
+		}, {
+			podPhase:      api.PodFailed,
+			expectedPhase: api.PodFailed,
+		},
+	}
+
+	for _, tt := range tests {
+		f, tf, codec, ns := cmdtesting.NewAPIFactory()
+		actions := make(map[string]string)
+
+		var testPodList api.PodList
+		testPodList.Items = append(testPodList.Items, newPodWithStatus("bestpod", api.PodStatus{Phase: tt.podPhase}, "test"))
+
+		tf.Client = &fake.RESTClient{
+			NegotiatedSerializer: ns,
+			Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+				p, m := req.URL.Path, req.Method
+				actions[p] = m
+				switch {
+				case p == "/namespaces/test/pods/bestpod" && m == "GET":
+					return newResponse(200, &testPodList.Items[0])
+				case p == "/watch/namespaces/test/pods/bestpod" && m == "GET":
+					event := watch.Event{Type: watch.Added, Object: &testPodList.Items[0]}
+					return newEventResponse(200, &event)
+				default:
+					t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+					return nil, nil
+				}
+			}),
+		}
+
+		c := &Client{Factory: f}
+
+		phase, err := c.WaitAndGetCompletedPodPhase("test", objBody(codec, &testPodList), 1*time.Second)
+		if (err != nil) != tt.err {
+			t.Fatalf("Expected error but there was none.")
+		}
+		if err != nil && err.Error() != tt.errMessage {
+			t.Fatalf("Expected error %s, got %s", tt.errMessage, err.Error())
+		}
+		if phase != tt.expectedPhase {
+			t.Fatalf("Expected pod phase %s, got %s", tt.expectedPhase, phase)
 		}
 	}
 }

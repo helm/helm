@@ -22,9 +22,12 @@ import (
 	"regexp"
 	"text/tabwriter"
 
+	"github.com/gosuri/uitable"
+	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
@@ -36,6 +39,7 @@ The status consists of:
 - k8s namespace in which the release lives
 - state of the release (can be: UNKNOWN, DEPLOYED, DELETED, SUPERSEDED, FAILED or DELETING)
 - list of resources that this release consists of, sorted by kind
+- details on last test suite run, if applicable
 - additional notes provided by the chart
 `
 
@@ -92,9 +96,6 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
-	if res.Info.Status.Details != nil {
-		fmt.Fprintf(out, "Details: %s\n", res.Info.Status.Details)
-	}
 	fmt.Fprintf(out, "\n")
 	if len(res.Info.Status.Resources) > 0 {
 		re := regexp.MustCompile("  +")
@@ -103,7 +104,31 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Status.Resources, "\t"))
 		w.Flush()
 	}
+	if res.Info.Status.LastTestSuiteRun != nil {
+		lastRun := res.Info.Status.LastTestSuiteRun
+		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
+			fmt.Sprintf("Last Started: %s", timeconv.String(lastRun.StartedAt)),
+			fmt.Sprintf("Last Completed: %s", timeconv.String(lastRun.CompletedAt)),
+			formatTestResults(lastRun.Results))
+	}
+
 	if len(res.Info.Status.Notes) > 0 {
 		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
 	}
+}
+
+func formatTestResults(results []*release.TestRun) string {
+	tbl := uitable.New()
+	tbl.MaxColWidth = 50
+	tbl.AddRow("TEST", "STATUS", "INFO", "STARTED", "COMPLETED")
+	for i := 0; i < len(results); i++ {
+		r := results[i]
+		n := r.Name
+		s := strutil.PadRight(r.Status.String(), 10, ' ')
+		i := r.Info
+		ts := timeconv.String(r.StartedAt)
+		tc := timeconv.String(r.CompletedAt)
+		tbl.AddRow(n, s, i, ts, tc)
+	}
+	return tbl.String()
 }

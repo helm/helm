@@ -27,6 +27,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
@@ -49,6 +50,20 @@ metadata:
     "helm.sh/hook": post-install,pre-delete
 data:
   name: value
+`
+
+var manifestWithTestHook = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: finding-nemo,
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+  - name: nemo-test
+    image: fake-image
+    cmd: fake-command
 `
 
 var manifestWithKeep = `apiVersion: v1
@@ -83,7 +98,7 @@ data:
 
 func rsFixture() *ReleaseServer {
 	return &ReleaseServer{
-		env:       mockEnvironment(),
+		env:       MockEnvironment(),
 		clientset: fake.NewSimpleClientset(),
 	}
 }
@@ -120,6 +135,7 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: status},
+			Description:   "Named Release Stub",
 		},
 		Chart:   chartStub(),
 		Config:  &chart.Config{Raw: `name: value`},
@@ -133,6 +149,15 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 				Events: []release.Hook_Event{
 					release.Hook_POST_INSTALL,
 					release.Hook_PRE_DELETE,
+				},
+			},
+			{
+				Name:     "finding-nemo",
+				Kind:     "Pod",
+				Path:     "finding-nemo",
+				Manifest: manifestWithTestHook,
+				Events: []release.Hook_Event{
+					release.Hook_RELEASE_TEST_SUCCESS,
 				},
 			},
 		},
@@ -294,6 +319,10 @@ func TestInstallRelease(t *testing.T) {
 	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
+	}
 }
 
 func TestInstallReleaseWithNotes(t *testing.T) {
@@ -358,6 +387,10 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 
 	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
+	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
 	}
 }
 
@@ -425,6 +458,10 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
+	}
 }
 
 func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
@@ -471,6 +508,10 @@ func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
 
 	if rel.Info.Status.Notes != notesText {
 		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
+	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
 	}
 }
 
@@ -520,6 +561,10 @@ func TestInstallReleaseDryRun(t *testing.T) {
 
 	if res.Release.Hooks[0].LastRun != nil {
 		t.Error("Expected hook to not be marked as run.")
+	}
+
+	if res.Release.Info.Description != "Dry run complete" {
+		t.Errorf("unexpected description: %s", res.Release.Info.Description)
 	}
 }
 
@@ -666,6 +711,11 @@ func TestUpdateRelease(t *testing.T) {
 	if res.Release.Version != 2 {
 		t.Errorf("Expected release version to be %v, got %v", 2, res.Release.Version)
 	}
+
+	edesc := "Upgrade complete"
+	if got := res.Release.Info.Description; got != edesc {
+		t.Errorf("Expected description %q, got %q", edesc, got)
+	}
 }
 func TestUpdateReleaseResetValues(t *testing.T) {
 	c := helm.NewContext()
@@ -719,6 +769,11 @@ func TestUpdateReleaseFailure(t *testing.T) {
 
 	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_FAILED {
 		t.Errorf("Expected FAILED release. Got %d", updatedStatus)
+	}
+
+	edesc := "Upgrade \"angry-panda\" failed: Failed update in kube client"
+	if got := res.Release.Info.Description; got != edesc {
+		t.Errorf("Expected description %q, got %q", edesc, got)
 	}
 
 	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
@@ -919,8 +974,8 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
 
-	if len(updated.Hooks) != 1 {
-		t.Fatalf("Expected 1 hook, got %d", len(updated.Hooks))
+	if len(updated.Hooks) != 2 {
+		t.Fatalf("Expected 2 hooks, got %d", len(updated.Hooks))
 	}
 
 	if updated.Hooks[0].Manifest != manifestWithHook {
@@ -973,6 +1028,10 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
+	if res.Release.Info.Description != "Rollback to 2" {
+		t.Errorf("Expected rollback to 2, got %q", res.Release.Info.Description)
+	}
+
 }
 
 func TestUninstallRelease(t *testing.T) {
@@ -1003,6 +1062,10 @@ func TestUninstallRelease(t *testing.T) {
 
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
+	}
+
+	if res.Release.Info.Description != "Deletion complete" {
+		t.Errorf("Expected Deletion complete, got %q", res.Release.Info.Description)
 	}
 }
 
@@ -1372,7 +1435,19 @@ func TestListReleasesFilter(t *testing.T) {
 	}
 }
 
-func mockEnvironment() *environment.Environment {
+func TestRunReleaseTest(t *testing.T) {
+	rs := rsFixture()
+	rel := namedReleaseStub("nemo", release.Status_DEPLOYED)
+	rs.env.Releases.Create(rel)
+
+	req := &services.TestReleaseRequest{Name: "nemo", Timeout: 2}
+	err := rs.RunReleaseTest(req, mockRunReleaseTestServer{})
+	if err != nil {
+		t.Fatalf("failed to run release tests on %s: %s", rel.Name, err)
+	}
+}
+
+func MockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
@@ -1423,3 +1498,17 @@ func (l *mockListServer) RecvMsg(v interface{}) error    { return nil }
 func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
 func (l *mockListServer) SetTrailer(m metadata.MD)       {}
 func (l *mockListServer) SetHeader(m metadata.MD) error  { return nil }
+
+type mockRunReleaseTestServer struct {
+	stream grpc.ServerStream
+}
+
+func (rs mockRunReleaseTestServer) Send(m *services.TestReleaseResponse) error {
+	return nil
+}
+func (rs mockRunReleaseTestServer) SetHeader(m metadata.MD) error  { return nil }
+func (rs mockRunReleaseTestServer) SendHeader(m metadata.MD) error { return nil }
+func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)       {}
+func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error    { return nil }
+func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error    { return nil }
+func (rs mockRunReleaseTestServer) Context() context.Context       { return helm.NewContext() }

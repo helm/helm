@@ -24,6 +24,7 @@ package environment
 
 import (
 	"io"
+	"time"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
@@ -135,6 +137,10 @@ type KubeClient interface {
 	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
+
+	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
+	// and returns said phase (PodSucceeded or PodFailed qualify)
+	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -178,6 +184,12 @@ func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.
 // Build implements KubeClient Build.
 func (p *PrintingKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
+}
+
+// WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase
+func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+	_, err := io.Copy(p.Out, reader)
+	return api.PodUnknown, err
 }
 
 // Environment provides the context for executing a client request.

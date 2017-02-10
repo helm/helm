@@ -26,14 +26,16 @@ import (
 
 func TestSortScore(t *testing.T) {
 	in := []*Result{
-		{Name: "bbb", Score: 0},
+		{Name: "bbb", Score: 0, Chart: &repo.ChartVersion{Metadata: &chart.Metadata{Version: "1.2.3"}}},
 		{Name: "aaa", Score: 5},
 		{Name: "abb", Score: 5},
 		{Name: "aab", Score: 0},
 		{Name: "bab", Score: 5},
+		{Name: "ver", Score: 5, Chart: &repo.ChartVersion{Metadata: &chart.Metadata{Version: "1.2.4"}}},
+		{Name: "ver", Score: 5, Chart: &repo.ChartVersion{Metadata: &chart.Metadata{Version: "1.2.3"}}},
 	}
-	expect := []string{"aab", "bbb", "aaa", "abb", "bab"}
-	expectScore := []int{0, 0, 5, 5, 5}
+	expect := []string{"aab", "bbb", "aaa", "abb", "bab", "ver", "ver"}
+	expectScore := []int{0, 0, 5, 5, 5, 5, 5}
 	SortScore(in)
 
 	// Test Score
@@ -47,6 +49,14 @@ func TestSortScore(t *testing.T) {
 		if expect[i] != in[i].Name {
 			t.Errorf("Sort error: expected %s, got %s", expect[i], in[i].Name)
 		}
+	}
+
+	// Test version of last two items
+	if in[5].Chart.Version != "1.2.4" {
+		t.Errorf("Expected 1.2.4, got %s", in[5].Chart.Version)
+	}
+	if in[6].Chart.Version != "1.2.3" {
+		t.Error("Expected 1.2.3 to be last")
 	}
 }
 
@@ -120,6 +130,21 @@ func TestAll(t *testing.T) {
 	all = i.All()
 	if len(all) != 5 {
 		t.Errorf("Expected 5 entries, got %d", len(all))
+	}
+}
+
+func TestAddRepo_Sort(t *testing.T) {
+	i := loadTestIndex(t, true)
+	sr, err := i.Search("testing/santa-maria", 100, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	SortScore(sr)
+
+	ch := sr[0]
+	expect := "1.2.3"
+	if ch.Chart.Version != expect {
+		t.Errorf("Expected %q, got %q", expect, ch.Chart.Version)
 	}
 }
 
