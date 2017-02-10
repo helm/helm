@@ -58,7 +58,7 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 	missing := []string{}
 	for i, d := range reqs.Dependencies {
 		if strings.HasPrefix(d.Repository, "file://") {
-			depPath, err := filepath.Abs(d.Repository[7:])
+			depPath, err := filepath.Abs(strings.TrimPrefix(d.Repository, "file://"))
 			if err != nil {
 				return nil, err
 			}

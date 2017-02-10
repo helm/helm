@@ -78,7 +78,20 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
-			name: "repo from local invalid path",
+			name: "repo from valid local path",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "signtest", Repository: "file://../testdata/testcharts/signtest", Version: "0.1.0"},
+				},
+			},
+			expect: &chartutil.RequirementsLock{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "signtest", Repository: "file://../testdata/testcharts/signtest", Version: "0.1.0"},
+				},
+			},
+		},
+		{
+			name: "repo from invalid local path",
 			req: &chartutil.Requirements{
 				Dependencies: []*chartutil.Dependency{
 					{Name: "notexist", Repository: "file://../testdata/notexist", Version: "0.1.0"},

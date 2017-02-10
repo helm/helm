@@ -313,13 +313,13 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 	for _, dd := range deps {
 		// if dep chart is from local path, verify the path is valid
 		if strings.HasPrefix(dd.Repository, "file://") {
-			depPath, err := filepath.Abs(dd.Repository[7:])
+			depPath, err := filepath.Abs(strings.TrimPrefix(dd.Repository, "file://"))
 			if err != nil {
 				return nil, err
 			}
 
 			if _, err = os.Stat(depPath); os.IsNotExist(err) {
-				return nil, fmt.Errorf("directory %s not found: %s", depPath, err)
+				return nil, fmt.Errorf("directory %s not found", depPath)
 			}
 
 			fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
