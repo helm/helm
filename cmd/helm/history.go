@@ -38,11 +38,11 @@ configures the maximum length of the revision list returned.
 The historical release set is printed as a formatted table, e.g:
 
     $ helm history angry-bird --max=4
-    REVISION   UPDATED                      STATUS           CHART        DESCRIPTION
-    1           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Initial install
-    2           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Upgraded successfully
-    3           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Rolled back to 2
-    4           Mon Oct 3 10:15:13 2016     DEPLOYED        alpine-0.1.0  Upgraded successfully
+    REVISION   UPDATED                      STATUS           CHART        DESCRIPTION               RELEASED BY
+    1           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Initial install            x
+    2           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Upgraded successfully      y
+    3           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Rolled back to 2           z
+    4           Mon Oct 3 10:15:13 2016     DEPLOYED        alpine-0.1.0  Upgraded successfully      x
 `
 
 type historyCmd struct {
@@ -98,7 +98,7 @@ func (cmd *historyCmd) run() error {
 func formatHistory(rls []*release.Release) string {
 	tbl := uitable.New()
 	tbl.MaxColWidth = 60
-	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "DESCRIPTION")
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "DESCRIPTION", "RELEASED BY")
 	for i := len(rls) - 1; i >= 0; i-- {
 		r := rls[i]
 		c := formatChartname(r.Chart)
@@ -106,7 +106,8 @@ func formatHistory(rls []*release.Release) string {
 		s := r.Info.Status.Code.String()
 		v := r.Version
 		d := r.Info.Description
-		tbl.AddRow(v, t, s, c, d)
+		u := r.Info.Username
+		tbl.AddRow(v, t, s, c, d, u)
 	}
 	return tbl.String()
 }

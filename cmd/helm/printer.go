@@ -28,6 +28,7 @@ import (
 
 var printReleaseTemplate = `REVISION: {{.Release.Version}}
 RELEASED: {{.ReleaseDate}}
+RELEASED BY: {{.ReleasedBy}}
 CHART: {{.Release.Chart.Metadata.Name}}-{{.Release.Chart.Metadata.Version}}
 USER-SUPPLIED VALUES:
 {{.Release.Config.Raw}}
@@ -61,6 +62,7 @@ func printRelease(out io.Writer, rel *release.Release) error {
 		"Release":        rel,
 		"ComputedValues": cfgStr,
 		"ReleaseDate":    timeconv.Format(rel.Info.LastDeployed, time.ANSIC),
+		"ReleasedBy":     rel.Info.Username,
 	}
 	return tpl(printReleaseTemplate, data, out)
 }

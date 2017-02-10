@@ -74,7 +74,7 @@ type Metadata struct {
 	// The condition to check to enable chart
 	Condition string `protobuf:"bytes,11,opt,name=condition" json:"condition,omitempty"`
 	// The tags to check to enable chart
-	Tags []string `protobuf:"bytes,12,opt,name=tags" json:"tags,omitempty"`
+	Tags string `protobuf:"bytes,12,opt,name=tags" json:"tags,omitempty"`
 }
 
 func (m *Metadata) Reset()                    { *m = Metadata{} }

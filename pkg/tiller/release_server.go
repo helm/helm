@@ -27,12 +27,9 @@ import (
 
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
-	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/typed/discovery"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -43,6 +40,10 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	authenticationapi "k8s.io/kubernetes/pkg/apis/authentication"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/typed/discovery"
 )
 
 // releaseNameMaxLen is the maximum length of a release name.
@@ -289,7 +290,7 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 		return nil, err
 	}
 
-	res, err := s.performUpdate(currentRelease, updatedRelease, req)
+	res, err := s.performUpdate(c, currentRelease, updatedRelease, req)
 	if err != nil {
 		return res, err
 	}
@@ -303,9 +304,10 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	return res, nil
 }
 
-func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) performUpdate(c ctx.Context, originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
 	res := &services.UpdateReleaseResponse{Release: updatedRelease}
 
+	updatedRelease.Info.Username = getUserName(c)
 	if req.DryRun {
 		log.Printf("Dry run for %s", updatedRelease.Name)
 		res.Release.Info.Description = "Dry run complete"
@@ -448,7 +450,7 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 		return nil, err
 	}
 
-	res, err := s.performRollback(currentRelease, targetRelease, req)
+	res, err := s.performRollback(c, currentRelease, targetRelease, req)
 	if err != nil {
 		return res, err
 	}
@@ -462,8 +464,10 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 	return res, nil
 }
 
-func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+func (s *ReleaseServer) performRollback(c ctx.Context, currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
 	res := &services.RollbackReleaseResponse{Release: targetRelease}
+
+	targetRelease.Info.Username = getUserName(c)
 
 	if req.DryRun {
 		log.Printf("Dry run for %s", targetRelease.Name)
@@ -634,7 +638,7 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		return res, err
 	}
 
-	res, err := s.performRelease(rel, req)
+	res, err := s.performRelease(c, rel, req)
 	if err != nil {
 		log.Printf("Failed install perform step: %s", err)
 	}
@@ -819,9 +823,10 @@ func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 }
 
 // performRelease runs a release.
-func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+func (s *ReleaseServer) performRelease(c ctx.Context, r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	res := &services.InstallReleaseResponse{Release: r}
 
+	r.Info.Username = getUserName(c)
 	if req.DryRun {
 		log.Printf("Dry run for %s", r.Name)
 		res.Release.Info.Description = "Dry run complete"
@@ -1109,4 +1114,16 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 	}
 
 	return s.env.Releases.Update(rel)
+}
+
+func getUserName(c ctx.Context) string {
+	user := c.Value(helm.K8sUser)
+	if user == nil {
+		return ""
+	}
+	userInfo, ok := user.(*authenticationapi.UserInfo)
+	if !ok {
+		return ""
+	}
+	return userInfo.Username
 }
