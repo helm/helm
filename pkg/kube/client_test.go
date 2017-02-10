@@ -169,7 +169,7 @@ func TestUpdate(t *testing.T) {
 					t.Fatalf("could not dump request: %s", err)
 				}
 				req.Body.Close()
-				expected := `{"spec":{"containers":[{"image":"abc/app:v4","name":"app:v4","ports":[{"containerPort":443,"name":"https"}],"resources":{}}]}}`
+				expected := `{"spec":{"containers":[{"name":"app:v4","ports":[{"containerPort":443,"name":"https"},{"$patch":"delete","containerPort":80}]}]}}`
 				if string(data) != expected {
 					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
 				}
