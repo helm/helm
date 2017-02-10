@@ -29,6 +29,7 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	"k8s.io/kubernetes/pkg/apis/batch"
@@ -353,18 +354,12 @@ func deleteResource(c *Client, info *resource.Info) error {
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
-func createPatch(target *resource.Info, currentObj runtime.Object) ([]byte, api.PatchType, error) {
-	// Get a versioned object
-	versionedObject, err := api.Scheme.New(target.Mapping.GroupVersionKind)
-	if err != nil {
-		return nil, api.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
-	}
-
-	oldData, err := json.Marshal(currentObj)
+func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]byte, api.PatchType, error) {
+	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, api.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
 	}
-	newData, err := json.Marshal(target.Object)
+	newData, err := json.Marshal(target)
 	if err != nil {
 		return nil, api.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
@@ -373,19 +368,24 @@ func createPatch(target *resource.Info, currentObj runtime.Object) ([]byte, api.
 		return nil, api.StrategicMergePatchType, nil
 	}
 
-	switch target.Object.(type) {
-	case *runtime.Unstructured:
+	// Get a versioned object
+	versionedObject, err := api.Scheme.New(mapping.GroupVersionKind)
+	switch {
+	case runtime.IsNotRegisteredError(err):
+		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, api.MergePatchType, err
+	case err != nil:
+		return nil, api.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
 	default:
-		log.Printf("generating strategic merge patch for %T", target.Object)
+		log.Printf("generating strategic merge patch for %T", target)
 		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
 		return patch, api.StrategicMergePatchType, err
 	}
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, recreate bool) error {
-	patch, patchType, err := createPatch(target, currentObj)
+	patch, patchType, err := createPatch(target.Mapping, target.Object, currentObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
