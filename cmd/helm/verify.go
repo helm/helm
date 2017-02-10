@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/downloader"
+	"k8s.io/helm/pkg/downloader"
 )
 
 const verifyDesc = `
