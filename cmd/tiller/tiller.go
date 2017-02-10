@@ -82,7 +82,11 @@ func main() {
 	p.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
 	p.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
 	p.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
-	rootCommand.Execute()
+
+	if err := rootCommand.Execute(); err != nil {
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
 func start(c *cobra.Command, args []string) {

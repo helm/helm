@@ -169,9 +169,9 @@ func TestUpdate(t *testing.T) {
 					t.Fatalf("could not dump request: %s", err)
 				}
 				req.Body.Close()
-				expected := `{"spec":{"containers":[{"name":"app:v4","ports":[{"containerPort":443,"name":"https","protocol":"TCP"},{"$patch":"delete","containerPort":80}]}]}}`
+				expected := `{"spec":{"containers":[{"image":"abc/app:v4","name":"app:v4","ports":[{"containerPort":443,"name":"https"}],"resources":{}}]}}`
 				if string(data) != expected {
-					t.Errorf("expected patch %s, got %s", expected, string(data))
+					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
 				}
 				return newResponse(200, &listB.Items[0])
 			case p == "/namespaces/default/pods" && m == "POST":
