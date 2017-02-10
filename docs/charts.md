@@ -203,6 +203,80 @@ Managing charts with `requirements.yaml` is a good way to easily keep
 charts updated, and also share requirements information throughout a
 team.
 
+#### Tags and Condition fields in requirements.yaml
+
+In addition to the other fields above, each requirements entry may contain 
+the optional fields `tags` and `condition`.
+
+All charts are loaded by default. If `tags` or `condition` fields are present, 
+they will be evaluated and used to control loading for the chart(s) they are applied to. 
+
+Condition - The condition field holds one or more YAML paths (delimited by commas). 
+If this path exists in the top parent's values and resolves to a boolean value, 
+the chart will be enabled or disabled based on that boolean value.  Only the first 
+valid path found in the list is evaluated and if no paths exist then the condition has no effect.
+
+Tags - The tags field is a YAML list of labels to associate with this chart. 
+In the top parent's values, all charts with tags can be enabled or disabled by 
+specifying the tag and a boolean value.
+
+````
+# parentchart/requirements.yaml
+dependencies:
+      - name: subchart1
+        repository: http://localhost:10191
+        version: 0.1.0
+        condition: subchart1.enabled, global.subchart1.enabled
+        tags:
+          - front-end
+          - subchart1
+      
+      - name: subchart2
+        repository: http://localhost:10191
+        version: 0.1.0
+        condition: subchart2.enabled, global.subchart2.enabled
+        tags:
+          - back-end
+          - subchart1
+
+````
+````
+# parentchart/values.yaml
+
+subchart1:
+  enabled: true
+tags:
+  - front-end: false
+  - back-end: true
+```` 
+
+In the above example all charts with the tag `front-end` would be disabled but since the 
+`subchart1.enabled` path evaluates to 'true' in the parent's values, the condition will override the 
+`front-end` tag and `subchart1` will be enabled.  
+
+Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be 
+enabled. Also note that although `subchart2` has a condition specified in `requirements.yaml`, there 
+is no corresponding path and value in the parent's values so that condition has no effect.  
+
+##### Using the CLI with Tags and Conditions
+
+The `--set` parameter can be used as usual to alter tag and condition values.
+
+````
+helm install --set tags.front-end=true --set subchart2.enabled=false
+
+````
+
+##### Tags and Condition Resolution
+
+
+  * **Conditions (when set in values) always override tags.** The first condition 
+    path that exists wins and subsequent ones for that chart are ignored.
+  * Tags are evaluated as 'if any of the chart's tags are true then enable the chart'.
+  * Tags and conditions values must be set in the top parent's values.
+  * The `tags:` key in values must be a top level key. Globals and nested `tags:` tables 
+    are not currently supported.
+
 ## Templates and Values
 
 Helm Chart templates are written in the
