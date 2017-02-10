@@ -320,6 +320,8 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 
 			if _, err = os.Stat(depPath); os.IsNotExist(err) {
 				return nil, fmt.Errorf("directory %s not found", depPath)
+			} else if err != nil {
+				return nil, err
 			}
 
 			fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
@@ -516,13 +518,20 @@ func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 // archive a dep chart from local directory and save it into charts/
 func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, error) {
 	destPath := filepath.Join(chartpath, "charts")
-	origPath, err := filepath.Abs(repo[7:])
+
+	if !strings.HasPrefix(repo, "file://") {
+		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
+	}
+
+	origPath, err := filepath.Abs(strings.TrimPrefix(repo, "file://"))
 	if err != nil {
 		return "", err
 	}
 
 	if _, err = os.Stat(origPath); os.IsNotExist(err) {
 		return "", fmt.Errorf("directory %s not found: %s", origPath, err)
+	} else if err != nil {
+		return "", err
 	}
 
 	ch, err := chartutil.LoadDir(origPath)

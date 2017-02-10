@@ -65,6 +65,8 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 
 			if _, err = os.Stat(depPath); os.IsNotExist(err) {
 				return nil, fmt.Errorf("directory %s not found", depPath)
+			} else if err != nil {
+				return nil, err
 			}
 
 			locked[i] = &chartutil.Dependency{
