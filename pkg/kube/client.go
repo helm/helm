@@ -18,6 +18,7 @@ package kube // import "k8s.io/helm/pkg/kube"
 
 import (
 	"bytes"
+	"encoding/json"
 	goerrors "errors"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/v1"
@@ -78,7 +80,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 	if err := ensureNamespace(client, namespace); err != nil {
 		return err
 	}
-	infos, buildErr := c.Build(namespace, reader)
+	infos, buildErr := c.BuildUnstructured(namespace, reader)
 	if buildErr != nil {
 		return buildErr
 	}
@@ -107,6 +109,30 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 		Do()
 }
 
+// BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
+func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
+	schema, err := c.Validator(true, c.SchemaCacheDir)
+	if err != nil {
+		log.Printf("warning: failed to load schema: %s", err)
+	}
+
+	mapper, typer, err := c.UnstructuredObject()
+	if err != nil {
+		log.Printf("failed to load mapper: %s", err)
+		return nil, err
+	}
+	var result Result
+	result, err = resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(c.UnstructuredClientForMapping), runtime.UnstructuredJSONScheme).
+		ContinueOnError().
+		Schema(schema).
+		NamespaceParam(namespace).
+		DefaultNamespace().
+		Stream(reader, "").
+		Flatten().
+		Do().Infos()
+	return result, scrubValidationError(err)
+}
+
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
 func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	var result Result
@@ -121,7 +147,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come looking good (headers apply to subgroups, etc.)
 	objs := make(map[string][]runtime.Object)
-	infos, err := c.Build(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return "", err
 	}
@@ -178,12 +204,12 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //
 // Namespace will set the namespaces
 func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
-	original, err := c.Build(namespace, originalReader)
+	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
-	target, err := c.Build(namespace, targetReader)
+	target, err := c.BuildUnstructured(namespace, targetReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
@@ -216,12 +242,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			return fmt.Errorf("no resource with the name %s found", info.Name)
 		}
 
-		versionedObject, err := originalInfo.Mapping.ConvertToVersion(originalInfo.Object, originalInfo.Mapping.GroupVersionKind.GroupVersion())
-		if err != nil {
-			return err
-		}
-
-		if err := updateResource(c, info, versionedObject, recreate); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, recreate); err != nil {
 			log.Printf("error updating the resource %s:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -245,17 +266,14 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	if shouldWait {
 		err = c.waitForResources(time.Duration(timeout)*time.Second, target)
 	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Delete deletes kubernetes resources from an io.reader
 //
 // Namespace will set the namespace
 func (c *Client) Delete(namespace string, reader io.Reader) error {
-	infos, err := c.Build(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return err
 	}
@@ -337,32 +355,51 @@ func deleteResource(c *Client, info *resource.Info) error {
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
+func createPatch(target *resource.Info, currentObj runtime.Object) ([]byte, api.PatchType, error) {
+	// Get a versioned object
+	versionedObject, err := api.Scheme.New(target.Mapping.GroupVersionKind)
+	if err != nil {
+		return nil, api.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
+	}
+
+	oldData, err := json.Marshal(currentObj)
+	if err != nil {
+		return nil, api.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
+	}
+	newData, err := json.Marshal(target.Object)
+	if err != nil {
+		return nil, api.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
+	}
+
+	if api.Semantic.DeepEqual(oldData, newData) {
+		return nil, api.StrategicMergePatchType, nil
+	}
+
+	switch target.Object.(type) {
+	case *runtime.Unstructured:
+		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
+		return patch, api.MergePatchType, err
+	default:
+		log.Printf("generating strategic merge patch for %T", target.Object)
+		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
+		return patch, api.StrategicMergePatchType, err
+	}
+}
+
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, recreate bool) error {
-	encoder := c.JSONEncoder()
-	original, err := runtime.Encode(encoder, currentObj)
+	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create patch: %s", err)
 	}
-
-	modified, err := runtime.Encode(encoder, target.Object)
-	if err != nil {
-		return err
-	}
-
-	if api.Semantic.DeepEqual(original, modified) {
+	if patch == nil {
 		log.Printf("Looks like there are no changes for %s", target.Name)
 		return nil
-	}
-
-	patch, err := strategicpatch.CreateTwoWayMergePatch(original, modified, currentObj)
-	if err != nil {
-		return err
 	}
 
 	// send patch to server
 	helper := resource.NewHelper(target.Client, target.Mapping)
 	var obj runtime.Object
-	if obj, err = helper.Patch(target.Namespace, target.Name, api.StrategicMergePatchType, patch); err != nil {
+	if obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch); err != nil {
 		return err
 	}
 
@@ -585,7 +622,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 func waitForJob(e watch.Event, name string) (bool, error) {
 	o, ok := e.Object.(*batch.Job)
 	if !ok {
-		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, o)
+		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
 	}
 
 	for _, c := range o.Status.Conditions {

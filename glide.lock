@@ -1,5 +1,5 @@
-hash: f59cd1f34ecf299aeb8ca9e16cfc181d8aeaf5a5762b89d76f18d08be35e4d67
-updated: 2016-12-21T11:19:14.731981344-07:00
+hash: d9b023509801b816bc80b3abd67eb80532af1625e71ad4e0ff8ef98664f96ded
+updated: 2017-02-10T11:42:12.50337033-08:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -290,7 +290,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: 5f332aab13e58173f85fd204a2c77731f7a2573f
+  version: 08e099554f3c31f6e6f07b448ab3ed78d0520507
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - cmd/kubeadm/app/apis/kubeadm/install
@@ -482,6 +482,7 @@ imports:
   - pkg/util/yaml
   - pkg/version
   - pkg/watch
+  - pkg/watch/json
   - pkg/watch/versioned
   - plugin/pkg/client/auth
   - plugin/pkg/client/auth/gcp
