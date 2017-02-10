@@ -37,6 +37,43 @@ import (
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
 )
 
+const manifestWithTestSuccessHook = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: finding-nemo,
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+  - name: nemo-test
+    image: fake-image
+    cmd: fake-command
+`
+
+const manifestWithTestFailureHook = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gold-rush,
+  annotations:
+    "helm.sh/hook": test-failure
+spec:
+  containers:
+  - name: gold-finding-test
+    image: fake-gold-finding-image
+    cmd: fake-gold-finding-command
+`
+const manifestWithInstallHooks = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    "helm.sh/hook": post-install,pre-delete
+data:
+  name: value
+`
+
 func TestNewTestSuite(t *testing.T) {
 	rel := releaseStub()
 
@@ -48,8 +85,65 @@ func TestNewTestSuite(t *testing.T) {
 
 func TestRun(t *testing.T) {
 
-	ts := testSuiteFixture()
+	testManifests := []string{manifestWithTestSuccessHook, manifestWithTestFailureHook}
+	ts := testSuiteFixture(testManifests)
 	if err := ts.Run(testEnvFixture()); err != nil {
+		t.Errorf("%s", err)
+	}
+
+	if ts.StartedAt == nil {
+		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
+	}
+
+	if ts.CompletedAt == nil {
+		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
+	}
+
+	if len(ts.Results) != 2 {
+		t.Errorf("Expected 2 test result. Got %v", len(ts.Results))
+	}
+
+	result := ts.Results[0]
+	if result.StartedAt == nil {
+		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result.StartedAt)
+	}
+
+	if result.CompletedAt == nil {
+		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result.CompletedAt)
+	}
+
+	if result.Name != "finding-nemo" {
+		t.Errorf("Expected test name to be finding-nemo. Got: %v", result.Name)
+	}
+
+	if result.Status != release.TestRun_SUCCESS {
+		t.Errorf("Expected test result to be successful, got: %v", result.Status)
+	}
+
+	result2 := ts.Results[1]
+	if result2.StartedAt == nil {
+		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result2.StartedAt)
+	}
+
+	if result2.CompletedAt == nil {
+		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result2.CompletedAt)
+	}
+
+	if result2.Name != "gold-rush" {
+		t.Errorf("Expected test name to be gold-rush, Got: %v", result2.Name)
+	}
+
+	if result2.Status != release.TestRun_FAILURE {
+		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
+	}
+
+}
+
+func TestRunSuccessWithTestFailureHook(t *testing.T) {
+	ts := testSuiteFixture([]string{manifestWithTestFailureHook})
+	env := testEnvFixture()
+	env.KubeClient = newPodFailedKubeClient()
+	if err := ts.Run(env); err != nil {
 		t.Errorf("%s", err)
 	}
 
@@ -74,33 +168,18 @@ func TestRun(t *testing.T) {
 		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result.CompletedAt)
 	}
 
-	if result.Name != "finding-nemo" {
-		t.Errorf("Expected test name to be finding-nemo. Got: %v", result.Name)
+	if result.Name != "gold-rush" {
+		t.Errorf("Expected test name to be gold-rush, Got: %v", result.Name)
 	}
 
 	if result.Status != release.TestRun_SUCCESS {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
 	}
-
-}
-
-func TestGetTestPodStatus(t *testing.T) {
-	ts := testSuiteFixture()
-
-	status, err := ts.getTestPodStatus(testFixture(), testEnvFixture())
-	if err != nil {
-		t.Errorf("Expected getTestPodStatus not to return err, Got: %s", err)
-	}
-
-	if status != api.PodSucceeded {
-		t.Errorf("Expected pod status to be succeeded, Got: %s ", status)
-	}
-
 }
 
 func TestExtractTestManifestsFromHooks(t *testing.T) {
 	rel := releaseStub()
-	testManifests, err := extractTestManifestsFromHooks(rel.Hooks, rel.Name)
+	testManifests, err := extractTestManifestsFromHooks(rel.Hooks)
 	if err != nil {
 		t.Errorf("Expected no error, Got: %s", err)
 	}
@@ -117,33 +196,10 @@ func chartStub() *chart.Chart {
 		},
 		Templates: []*chart.Template{
 			{Name: "templates/hello", Data: []byte("hello: world")},
-			{Name: "templates/hooks", Data: []byte(manifestWithTestHook)},
+			{Name: "templates/hooks", Data: []byte(manifestWithTestSuccessHook)},
 		},
 	}
 }
-
-var manifestWithTestHook = `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: finding-nemo,
-  annotations:
-    "helm.sh/hook": test-success
-spec:
-  containers:
-  - name: nemo-test
-    image: fake-image
-    cmd: fake-command
-`
-var manifestWithInstallHooks = `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-cm
-  annotations:
-    "helm.sh/hook": post-install,pre-delete
-data:
-  name: value
-`
 
 func releaseStub() *release.Release {
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
@@ -163,7 +219,7 @@ func releaseStub() *release.Release {
 				Name:     "finding-nemo",
 				Kind:     "Pod",
 				Path:     "finding-nemo",
-				Manifest: manifestWithTestHook,
+				Manifest: manifestWithTestSuccessHook,
 				Events: []release.Hook_Event{
 					release.Hook_RELEASE_TEST_SUCCESS,
 				},
@@ -184,13 +240,15 @@ func releaseStub() *release.Release {
 
 func testFixture() *test {
 	return &test{
-		manifest: manifestWithTestHook,
+		manifest: manifestWithTestSuccessHook,
 		result:   &release.TestRun{},
 	}
 }
 
-func testSuiteFixture() *TestSuite {
-	testManifests := []string{manifestWithTestHook}
+func testSuiteFixture(testManifests []string) *TestSuite {
+	if len(testManifests) == 0 {
+		testManifests = []string{manifestWithTestSuccessHook, manifestWithTestFailureHook}
+	}
 	testResults := []*release.TestRun{}
 	ts := &TestSuite{
 		TestManifests: testManifests,
@@ -227,16 +285,30 @@ func (rs mockStream) SendMsg(v interface{}) error    { return nil }
 func (rs mockStream) RecvMsg(v interface{}) error    { return nil }
 func (rs mockStream) Context() context.Context       { return helm.NewContext() }
 
+type podSucceededKubeClient struct {
+	tillerEnv.PrintingKubeClient
+}
+
 func newPodSucceededKubeClient() *podSucceededKubeClient {
 	return &podSucceededKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
 	}
 }
 
-type podSucceededKubeClient struct {
+func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (api.PodPhase, error) {
+	return api.PodSucceeded, nil
+}
+
+type podFailedKubeClient struct {
 	tillerEnv.PrintingKubeClient
 }
 
-func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (api.PodPhase, error) {
-	return api.PodSucceeded, nil
+func newPodFailedKubeClient() *podFailedKubeClient {
+	return &podFailedKubeClient{
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
+	}
+}
+
+func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (api.PodPhase, error) {
+	return api.PodFailed, nil
 }
