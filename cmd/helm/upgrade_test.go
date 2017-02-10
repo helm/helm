@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -79,6 +80,14 @@ func TestUpgradeCmd(t *testing.T) {
 		t.Errorf("Error loading updated chart: %v", err)
 	}
 
+	originalDepsPath := filepath.Join("testdata/testcharts/reqtest")
+	missingDepsPath := filepath.Join("testdata/testcharts/chart-missing-deps")
+	var ch3 *chart.Chart
+	ch3, err = chartutil.Load(originalDepsPath)
+	if err != nil {
+		t.Errorf("Error loading chart with missing dependencies: %v", err)
+	}
+
 	tests := []releaseCase{
 		{
 			name:     "upgrade a release",
@@ -120,6 +129,12 @@ func TestUpgradeCmd(t *testing.T) {
 			flags:    []string{"--wait"},
 			resp:     releaseMock(&releaseOptions{name: "crazy-bunny", version: 2, chart: ch2}),
 			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
+		},
+		{
+			name:     "upgrade a release with missing dependencies",
+			args:     []string{"bonkers-bunny", missingDepsPath},
+			resp:     releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
+			expected: "Warning: reqsubchart2 is in requirements.yaml but not in the charts/ directory!",
 		},
 	}
 

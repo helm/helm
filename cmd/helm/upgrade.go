@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/strvals"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/storage/driver"
 )
@@ -158,6 +159,13 @@ func (u *upgradeCmd) run() error {
 	rawVals, err := u.vals()
 	if err != nil {
 		return err
+	}
+
+	// Check chart requirements to make sure all dependencies are present in /charts
+	if ch, err := chartutil.Load(chartPath); err == nil {
+		if req, err := chartutil.LoadRequirements(ch); err == nil {
+			checkDependencies(ch, req, u.out)
+		}
 	}
 
 	resp, err := u.client.UpdateRelease(

@@ -35,8 +35,10 @@ import (
 	"k8s.io/helm/cmd/helm/downloader"
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/strvals"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -197,6 +199,13 @@ func (i *installCmd) run() error {
 		}
 		// Print the final name so the user knows what the final name of the release is.
 		fmt.Printf("FINAL NAME: %s\n", i.name)
+	}
+
+	// Check chart requirements to make sure all dependencies are present in /charts
+	if c, err := chartutil.Load(i.chartPath); err == nil {
+		if req, err := chartutil.LoadRequirements(c); err == nil {
+			checkDependencies(c, req, i.out)
+		}
 	}
 
 	res, err := i.client.InstallRelease(
@@ -387,4 +396,20 @@ func defaultNamespace() string {
 		return ns
 	}
 	return "default"
+}
+
+func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Writer) {
+	deps := ch.GetDependencies()
+	for _, r := range reqs.Dependencies {
+		found := false
+		for _, d := range deps {
+			if d.Metadata.Name == r.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Fprintf(out, "Warning: %s is in requirements.yaml but not in the charts/ directory!\n", r.Name)
+		}
+	}
 }

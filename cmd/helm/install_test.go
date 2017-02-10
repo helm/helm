@@ -132,6 +132,12 @@ func TestInstall(t *testing.T) {
 			args:  []string{"testdata/testcharts/signtest-0.1.0.tgz"},
 			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
 		},
+		// Install, chart with missing dependencies in /charts
+		{
+			name:     "install chart with missing dependencies",
+			args:     []string{"testdata/testcharts/chart-missing-deps"},
+			expected: "Warning: reqsubchart2 is in requirements.yaml but not in the charts/ directory!",
+		},
 	}
 
 	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {

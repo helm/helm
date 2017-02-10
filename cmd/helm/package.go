@@ -125,6 +125,10 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Metadata.Name)
 	}
 
+	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
+		checkDependencies(ch, reqs, p.out)
+	}
+
 	// Save to the current working directory.
 	cwd, err := os.Getwd()
 	if err != nil {
