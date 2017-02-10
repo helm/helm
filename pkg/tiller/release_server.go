@@ -1037,12 +1037,10 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
-	var errs error
 	if len(es) > 0 {
-		errs = fmt.Errorf("deletion completed with %d error(s): %s", len(es), strings.Join(es, "; "))
+		return res, fmt.Errorf("deletion completed with %d error(s): %s", len(es), strings.Join(es, "; "))
 	}
-
-	return res, errs
+	return res, nil
 }
 
 func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {

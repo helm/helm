@@ -84,14 +84,13 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 	if buildErr != nil {
 		return buildErr
 	}
-	err = perform(c, namespace, infos, createResource)
-	if err != nil {
+	if err := perform(c, namespace, infos, createResource); err != nil {
 		return err
 	}
 	if shouldWait {
-		err = c.waitForResources(time.Duration(timeout)*time.Second, infos)
+		return c.waitForResources(time.Duration(timeout)*time.Second, infos)
 	}
-	return err
+	return nil
 }
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
@@ -264,9 +263,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		}
 	}
 	if shouldWait {
-		err = c.waitForResources(time.Duration(timeout)*time.Second, target)
+		return c.waitForResources(time.Duration(timeout)*time.Second, target)
 	}
-	return err
+	return nil
 }
 
 // Delete deletes kubernetes resources from an io.reader
@@ -338,8 +337,7 @@ func createResource(info *resource.Info) error {
 	if err != nil {
 		return err
 	}
-	info.Refresh(obj, true)
-	return nil
+	return info.Refresh(obj, true)
 }
 
 func deleteResource(c *Client, info *resource.Info) error {
@@ -398,8 +396,8 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	// send patch to server
 	helper := resource.NewHelper(target.Client, target.Mapping)
-	var obj runtime.Object
-	if obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch); err != nil {
+	obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
+	if err != nil {
 		return err
 	}
 
@@ -407,8 +405,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		client, _ := c.ClientSet()
 		return recreatePods(client, target.Namespace, extractSelector(currentObj))
 	}
-	target.Refresh(obj, true)
-	return nil
+	return target.Refresh(obj, true)
 }
 
 func extractSelector(obj runtime.Object) map[string]string {
@@ -431,7 +428,6 @@ func recreatePods(client *internalclientset.Clientset, namespace string, selecto
 		FieldSelector: fields.Everything(),
 		LabelSelector: labels.Set(selector).AsSelector(),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -445,7 +441,6 @@ func recreatePods(client *internalclientset.Clientset, namespace string, selecto
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -491,9 +486,6 @@ func watchUntilReady(timeout time.Duration, info *resource.Info) error {
 }
 
 func podsReady(pods []api.Pod) bool {
-	if len(pods) == 0 {
-		return true
-	}
 	for _, pod := range pods {
 		if !api.IsPodReady(&pod) {
 			return false
@@ -503,9 +495,6 @@ func podsReady(pods []api.Pod) bool {
 }
 
 func servicesReady(svc []api.Service) bool {
-	if len(svc) == 0 {
-		return true
-	}
 	for _, s := range svc {
 		if !api.IsServiceIPSet(&s) {
 			return false
@@ -519,9 +508,6 @@ func servicesReady(svc []api.Service) bool {
 }
 
 func volumesReady(vols []api.PersistentVolumeClaim) bool {
-	if len(vols) == 0 {
-		return true
-	}
 	for _, v := range vols {
 		if v.Status.Phase != api.ClaimBound {
 			return false
@@ -535,10 +521,7 @@ func getPods(client *internalclientset.Clientset, namespace string, selector map
 		FieldSelector: fields.Everything(),
 		LabelSelector: labels.Set(selector).AsSelector(),
 	})
-	if err != nil {
-		return nil, err
-	}
-	return list.Items, nil
+	return list.Items, err
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
