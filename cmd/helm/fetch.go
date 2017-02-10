@@ -24,9 +24,9 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"k8s.io/helm/cmd/helm/downloader"
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/downloader"
 )
 
 const fetchDesc = `
