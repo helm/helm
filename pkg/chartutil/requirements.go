@@ -147,7 +147,7 @@ func ProcessRequirementsConditions(reqs *Requirements, cvals Values) {
 								hasFalse = true
 							}
 						} else {
-							//log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
+							log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 						}
 					} else if _, ok := err.(ErrNoValue); !ok {
 						// this is a real error
@@ -197,7 +197,7 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 							hasFalse = true
 						}
 					} else {
-						//log.Printf("Warning: Tag '%s' for chart %s returned non-bool value", k, r.Name)
+						log.Printf("Warning: Tag '%s' for chart %s returned non-bool value", k, r.Name)
 					}
 				}
 			}
