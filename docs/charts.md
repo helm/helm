@@ -234,7 +234,7 @@ dependencies:
       - name: subchart2
         repository: http://localhost:10191
         version: 0.1.0
-        condition: subchart2.enabled, global.subchart2.enabled
+        condition: subchart2.enabled,global.subchart2.enabled
         tags:
           - back-end
           - subchart1
