@@ -113,6 +113,13 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		return err
 	}
 
+	if req.Namespace != "" {
+		rels, err = filterByNamespace(req.Namespace, rels)
+		if err != nil {
+			return err
+		}
+	}
+
 	if len(req.Filter) != 0 {
 		rels, err = filterReleases(req.Filter, rels)
 		if err != nil {
@@ -177,6 +184,16 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		Releases: rels,
 	}
 	return stream.Send(res)
+}
+
+func filterByNamespace(namespace string, rels []*release.Release) ([]*release.Release, error) {
+	matches := []*release.Release{}
+	for _, r := range rels {
+		if namespace == r.Namespace {
+			matches = append(matches, r)
+		}
+	}
+	return matches, nil
 }
 
 func filterReleases(filter string, rels []*release.Release) ([]*release.Release, error) {

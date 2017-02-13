@@ -112,6 +112,8 @@ message ListReleasesRequest {
 	ListSort.SortOrder sort_order = 5;
 
 	repeated hapi.release.Status.Code status_codes = 6;
+	// Namespace is the filter to select releases only from a specific namespace.
+	string namespace = 7;
 }
 
 // ListSort defines sorting fields on a release list.

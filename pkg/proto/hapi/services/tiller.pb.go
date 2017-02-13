@@ -129,6 +129,8 @@ type ListReleasesRequest struct {
 	// SortOrder is the ordering directive used for sorting.
 	SortOrder   ListSort_SortOrder          `protobuf:"varint,5,opt,name=sort_order,json=sortOrder,enum=hapi.services.tiller.ListSort_SortOrder" json:"sort_order,omitempty"`
 	StatusCodes []hapi_release3.Status_Code `protobuf:"varint,6,rep,packed,name=status_codes,json=statusCodes,enum=hapi.release.Status_Code" json:"status_codes,omitempty"`
+	// Namespace is the filter to select releases only from a specific namespace.
+	Namespace string `protobuf:"bytes,7,opt,name=namespace" json:"namespace,omitempty"`
 }
 
 func (m *ListReleasesRequest) Reset()                    { *m = ListReleasesRequest{} }

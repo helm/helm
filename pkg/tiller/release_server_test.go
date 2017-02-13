@@ -1435,6 +1435,48 @@ func TestListReleasesFilter(t *testing.T) {
 	}
 }
 
+func TestReleasesNamespace(t *testing.T) {
+	rs := rsFixture()
+
+	names := []string{
+		"axon",
+		"dendrite",
+		"neuron",
+		"ribosome",
+	}
+
+	namespaces := []string{
+		"default",
+		"test123",
+		"test123",
+		"cerebellum",
+	}
+	num := 4
+	for i := 0; i < num; i++ {
+		rel := releaseStub()
+		rel.Name = names[i]
+		rel.Namespace = namespaces[i]
+		if err := rs.env.Releases.Create(rel); err != nil {
+			t.Fatalf("Could not store mock release: %s", err)
+		}
+	}
+
+	mrs := &mockListServer{}
+	req := &services.ListReleasesRequest{
+		Offset:    "",
+		Limit:     64,
+		Namespace: "test123",
+	}
+
+	if err := rs.ListReleases(req, mrs); err != nil {
+		t.Fatalf("Failed listing: %s", err)
+	}
+
+	if len(mrs.val.Releases) != 2 {
+		t.Errorf("Expected 2 releases, got %d", len(mrs.val.Releases))
+	}
+}
+
 func TestRunReleaseTest(t *testing.T) {
 	rs := rsFixture()
 	rel := namedReleaseStub("nemo", release.Status_DEPLOYED)

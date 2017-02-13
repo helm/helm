@@ -70,6 +70,7 @@ type listCmd struct {
 	deleting   bool
 	deployed   bool
 	failed     bool
+	namespace  string
 	superseded bool
 	client     helm.Interface
 }
@@ -108,6 +109,8 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.deleting, "deleting", false, "show releases that are currently being deleted")
 	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
+	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
+
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
 
@@ -134,6 +137,7 @@ func (l *listCmd) run() error {
 		helm.ReleaseListSort(int32(sortBy)),
 		helm.ReleaseListOrder(int32(sortOrder)),
 		helm.ReleaseListStatuses(stats),
+		helm.ReleaseListNamespace(l.namespace),
 	)
 
 	if err != nil {
@@ -198,13 +202,14 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 func formatList(rels []*release.Release) string {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART")
+	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
 		t := timeconv.String(r.Info.LastDeployed)
 		s := r.Info.Status.Code.String()
 		v := r.Version
-		table.AddRow(r.Name, v, t, s, c)
+		n := r.Namespace
+		table.AddRow(r.Name, v, t, s, c, n)
 	}
 	return table.String()
 }

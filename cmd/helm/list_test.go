@@ -45,7 +45,7 @@ func TestListCmd(t *testing.T) {
 			resp: []*release.Release{
 				releaseMock(&releaseOptions{name: "atlas"}),
 			},
-			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\n",
+			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \tNAMESPACE\natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\tdefault  \n",
 		},
 		{
 			name: "list, one deployed, one failed",
@@ -86,6 +86,16 @@ func TestListCmd(t *testing.T) {
 			},
 			// See note on previous test.
 			expected: "thomas-guide\natlas-guide",
+		},
+		{
+			name: "namespace defined, multiple flags",
+			args: []string{"--all", "-q", "--namespace test123"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "thomas-guide", namespace: "test123"}),
+				releaseMock(&releaseOptions{name: "atlas-guide", namespace: "test321"}),
+			},
+			// See note on previous test.
+			expected: "thomas-guide",
 		},
 	}
 

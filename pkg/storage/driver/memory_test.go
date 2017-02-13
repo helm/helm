@@ -37,12 +37,12 @@ func TestMemoryCreate(t *testing.T) {
 	}{
 		{
 			"create should success",
-			releaseStub("rls-c", 1, rspb.Status_DEPLOYED),
+			releaseStub("rls-c", 1, "default", rspb.Status_DEPLOYED),
 			false,
 		},
 		{
 			"create should fail (release already exists)",
-			releaseStub("rls-a", 1, rspb.Status_DEPLOYED),
+			releaseStub("rls-a", 1, "default", rspb.Status_DEPLOYED),
 			true,
 		},
 	}
@@ -116,13 +116,13 @@ func TestMemoryUpdate(t *testing.T) {
 		{
 			"update release status",
 			"rls-a.v4",
-			releaseStub("rls-a", 4, rspb.Status_SUPERSEDED),
+			releaseStub("rls-a", 4, "default", rspb.Status_SUPERSEDED),
 			false,
 		},
 		{
 			"update release does not exist",
 			"rls-z.v1",
-			releaseStub("rls-z", 1, rspb.Status_DELETED),
+			releaseStub("rls-z", 1, "default", rspb.Status_DELETED),
 			true,
 		},
 	}
