@@ -77,6 +77,28 @@ func TestResolve(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "repo from valid local path",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "signtest", Repository: "file://../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+				},
+			},
+			expect: &chartutil.RequirementsLock{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "signtest", Repository: "file://../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+				},
+			},
+		},
+		{
+			name: "repo from invalid local path",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "notexist", Repository: "file://../testdata/notexist", Version: "0.1.0"},
+				},
+			},
+			err: true,
+		},
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}

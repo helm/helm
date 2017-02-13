@@ -39,6 +39,16 @@ appending '/index.yaml' to the URL, it should be able to retrieve the chart
 repository's index. Note: 'repository' cannot be a repository alias. It must be
 a URL.
 
+Starting from 2.2.0, repository can be defined as the path to the directory of
+the dependency charts stored locally. The path should start with a prefix of "file://".
+For example,
+    # requirements.yaml
+    dependencies:
+	- name: nginx
+	  version: "1.2.3"
+	  repository: "file://../dependency_chart/nginx"
+If the dependency chart is retrieved locally, it is not required to have the repository
+added to helm by "helm add repo". Version matching is also supported for this case.
 
 ### Options inherited from parent commands
 

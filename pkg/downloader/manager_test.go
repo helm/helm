@@ -113,6 +113,13 @@ func TestGetRepoNames(t *testing.T) {
 			},
 			expect: map[string]string{"oedipus-rex": "testing"},
 		},
+		{
+			name: "repo from local path",
+			req: []*chartutil.Dependency{
+				{Name: "local-dep", Repository: "file://./testdata/signtest"},
+			},
+			expect: map[string]string{"local-dep": "file://./testdata/signtest"},
+		},
 	}
 
 	for _, tt := range tests {

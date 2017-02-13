@@ -19,6 +19,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -55,6 +57,25 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 	locked := make([]*chartutil.Dependency, len(reqs.Dependencies))
 	missing := []string{}
 	for i, d := range reqs.Dependencies {
+		if strings.HasPrefix(d.Repository, "file://") {
+			depPath, err := filepath.Abs(strings.TrimPrefix(d.Repository, "file://"))
+			if err != nil {
+				return nil, err
+			}
+
+			if _, err = os.Stat(depPath); os.IsNotExist(err) {
+				return nil, fmt.Errorf("directory %s not found", depPath)
+			} else if err != nil {
+				return nil, err
+			}
+
+			locked[i] = &chartutil.Dependency{
+				Name:       d.Name,
+				Repository: d.Repository,
+				Version:    d.Version,
+			}
+			continue
+		}
 		constraint, err := semver.NewConstraint(d.Version)
 		if err != nil {
 			return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %s", d.Name, err)
