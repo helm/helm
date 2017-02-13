@@ -32,9 +32,10 @@ import (
 	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
-	"k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
+	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
+	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
+	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
+	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
@@ -401,25 +402,36 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return err
 	}
 
-	if recreate {
-		client, _ := c.ClientSet()
-		return recreatePods(client, target.Namespace, extractSelector(currentObj))
+	target.Refresh(obj, true)
+
+	if !recreate {
+		return nil
 	}
-	return target.Refresh(obj, true)
+
+	selector, err := getSelectorFromObject(currentObj)
+	if err != nil {
+		return nil
+	}
+	client, _ := c.ClientSet()
+	return recreatePods(client, target.Namespace, selector)
 }
 
-func extractSelector(obj runtime.Object) map[string]string {
+func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 	switch typed := obj.(type) {
 	case *v1.ReplicationController:
-		return typed.Spec.Selector
-	case *v1beta1.DaemonSet:
-		return typed.Spec.Selector.MatchLabels
+		return typed.Spec.Selector, nil
+	case *extensions.ReplicaSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *extensions.Deployment:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *extensions.DaemonSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *batch.Job:
+		return typed.Spec.Selector.MatchLabels, nil
 	case *apps.StatefulSet:
-		return typed.Spec.Selector.MatchLabels
-	case *v1beta1.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels
+		return typed.Spec.Selector.MatchLabels, nil
 	default:
-		return nil
+		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
 	}
 }
 
@@ -547,7 +559,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					return false, err
 				}
 				pods = append(pods, *pod)
-			case (*extensions.Deployment):
+			case (*extensionsinternal.Deployment):
 				// Get the RS children first
 				rs, err := client.ReplicaSets(value.Namespace).List(api.ListOptions{
 					FieldSelector: fields.Everything(),
@@ -563,7 +575,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					}
 					pods = append(pods, list...)
 				}
-			case (*extensions.DaemonSet):
+			case (*extensionsinternal.DaemonSet):
 				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
@@ -575,7 +587,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					return false, err
 				}
 				pods = append(pods, list...)
-			case (*extensions.ReplicaSet):
+			case (*extensionsinternal.ReplicaSet):
 				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
@@ -603,15 +615,15 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 //
 // This operates on an event returned from a watcher.
 func waitForJob(e watch.Event, name string) (bool, error) {
-	o, ok := e.Object.(*batch.Job)
+	o, ok := e.Object.(*batchinternal.Job)
 	if !ok {
 		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
 	}
 
 	for _, c := range o.Status.Conditions {
-		if c.Type == batch.JobComplete && c.Status == api.ConditionTrue {
+		if c.Type == batchinternal.JobComplete && c.Status == api.ConditionTrue {
 			return true, nil
-		} else if c.Type == batch.JobFailed && c.Status == api.ConditionTrue {
+		} else if c.Type == batchinternal.JobFailed && c.Status == api.ConditionTrue {
 			return true, fmt.Errorf("Job failed: %s", c.Reason)
 		}
 	}
