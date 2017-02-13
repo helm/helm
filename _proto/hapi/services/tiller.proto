@@ -317,6 +317,8 @@ message TestReleaseRequest {
 	string name = 1;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 2;
+	// cleanup specifies whether or not to attempt pod deletion after test completes
+	bool cleanup = 3;
 }
 
 // TestReleaseResponse represents a message from executing a test

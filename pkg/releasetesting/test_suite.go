@@ -72,14 +72,14 @@ func (t *TestSuite) Run(env *Environment) error {
 		}
 
 		test.result.StartedAt = timeconv.Now()
-		if err := streamRunning(test.result.Name, env.Stream); err != nil {
+		if err := env.streamRunning(test.result.Name); err != nil {
 			return err
 		}
 
 		resourceCreated := true
 		if err := t.createTestPod(test, env); err != nil {
 			resourceCreated = false
-			if streamErr := streamError(test.result.Info, env.Stream); streamErr != nil {
+			if streamErr := env.streamError(test.result.Info); streamErr != nil {
 				return err
 			}
 		}
@@ -90,7 +90,7 @@ func (t *TestSuite) Run(env *Environment) error {
 			status, err = t.getTestPodStatus(test, env)
 			if err != nil {
 				resourceCleanExit = false
-				if streamErr := streamUnknown(test.result.Name, test.result.Info, env.Stream); streamErr != nil {
+				if streamErr := env.streamUnknown(test.result.Name, test.result.Info); streamErr != nil {
 					return streamErr
 				}
 			}
@@ -98,12 +98,12 @@ func (t *TestSuite) Run(env *Environment) error {
 
 		if resourceCreated && resourceCleanExit && status == api.PodSucceeded {
 			test.result.Status = release.TestRun_SUCCESS
-			if streamErr := streamSuccess(test.result.Name, env.Stream); streamErr != nil {
+			if streamErr := env.streamSuccess(test.result.Name); streamErr != nil {
 				return streamErr
 			}
 		} else if resourceCreated && resourceCleanExit && status == api.PodFailed {
 			test.result.Status = release.TestRun_FAILURE
-			if streamErr := streamFailed(test.result.Name, env.Namespace, env.Stream); streamErr != nil {
+			if streamErr := env.streamFailed(test.result.Name); streamErr != nil {
 				return err
 			}
 		}

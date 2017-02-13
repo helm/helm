@@ -190,6 +190,13 @@ func ReleaseTestTimeout(timeout int64) ReleaseTestOption {
 	}
 }
 
+// ReleaseTestCleanup is a boolean value representing whether to cleanup test pods
+func ReleaseTestCleanup(cleanup bool) ReleaseTestOption {
+	return func(opts *options) {
+		opts.testReq.Cleanup = cleanup
+	}
+}
+
 // RollbackTimeout specifies the number of seconds before kubernetes calls timeout
 func RollbackTimeout(timeout int64) RollbackOption {
 	return func(opts *options) {
