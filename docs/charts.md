@@ -246,8 +246,8 @@ dependencies:
 subchart1:
   enabled: true
 tags:
-  - front-end: false
-  - back-end: true
+  front-end: false
+  back-end: true
 ```` 
 
 In the above example all charts with the tag `front-end` would be disabled but since the 
