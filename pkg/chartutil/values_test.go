@@ -407,3 +407,37 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 }
+func TestPathValue(t *testing.T) {
+	doc := `
+title: "Moby Dick"
+chapter:
+  one:
+    title: "Loomings"
+  two:
+    title: "The Carpet-Bag"
+  three:
+    title: "The Spouter Inn"
+`
+	d, err := ReadValues([]byte(doc))
+	if err != nil {
+		t.Fatalf("Failed to parse the White Whale: %s", err)
+	}
+
+	if v, err := d.PathValue("chapter.one.title"); err != nil {
+		t.Errorf("Got error instead of title: %s\n%v", err, d)
+	} else if v != "Loomings" {
+		t.Errorf("No error but got wrong value for title: %s\n%v", err, d)
+	}
+	if _, err := d.PathValue("chapter.one.doesntexist"); err == nil {
+		t.Errorf("Non-existent key should return error: %s\n%v", err, d)
+	}
+	if _, err := d.PathValue("chapter.doesntexist.one"); err == nil {
+		t.Errorf("Non-existent key in middle of path should return error: %s\n%v", err, d)
+	}
+	if v, err := d.PathValue("title"); err == nil {
+		if v != "Moby Dick" {
+			t.Errorf("Failed to return values for root key title")
+		}
+	}
+
+}

@@ -64,4 +64,10 @@ message Metadata {
 
 	// The API Version of this chart.
 	string apiVersion = 10;
+
+	// The condition to check to enable chart
+	string condition = 11;
+
+	// The tags to check to enable chart
+	string tags = 12;
 }

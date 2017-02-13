@@ -31,6 +31,9 @@ import (
 // ErrNoTable indicates that a chart does not have a matching table.
 type ErrNoTable error
 
+// ErrNoValue indicates that Values does not contain a key with a value
+type ErrNoValue error
+
 // GlobalKey is the name of the Values key that is used for storing global vars.
 const GlobalKey = "global"
 
@@ -375,4 +378,44 @@ func ToRenderValuesCaps(chrt *chart.Chart, chrtVals *chart.Config, options Relea
 func istable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})
 	return ok
+}
+
+// PathValue takes a yaml path with . notation and returns the value if exists
+func (v Values) PathValue(ypath string) (interface{}, error) {
+	if len(ypath) == 0 {
+		return nil, fmt.Errorf("yaml path string cannot be zero length")
+	}
+	yps := strings.Split(ypath, ".")
+	if len(yps) == 1 {
+		// if exists must be root key not table
+		vals := v.AsMap()
+		k := yps[0]
+		if _, ok := vals[k]; ok && !istable(vals[k]) {
+			// key found
+			return vals[yps[0]], nil
+		}
+		// key not found
+		return nil, ErrNoValue(fmt.Errorf("%v is not a value", k))
+	}
+	// join all elements of YAML path except last to get string table path
+	ypsLen := len(yps)
+	table := yps[:ypsLen-1]
+	st := strings.Join(table, ".")
+	// get the last element as a string key
+	key := yps[ypsLen-1:]
+	sk := string(key[0])
+	// get our table for table path
+	t, err := v.Table(st)
+	if err != nil {
+		//no table
+		return nil, ErrNoValue(fmt.Errorf("%v is not a value", sk))
+	}
+	// check table for key and ensure value is not a table
+	if k, ok := t[sk]; ok && !istable(k) {
+		// key found
+		return k, nil
+	}
+
+	// key not found
+	return nil, ErrNoValue(fmt.Errorf("key not found: %s", sk))
 }
