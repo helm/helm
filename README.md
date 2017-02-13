@@ -60,6 +60,7 @@ including installing pre-releases.
 	- [Chart Repository Guide](docs/chart_repository.md)
 	- [Syncing your Chart Repository](docs/chart_repository_sync_example.md)
 	- [Signing Charts](docs/provenance.md)
+	- [Writing Tests for Charts](docs/chart_tests.md)
 - [Chart Template Developer's Guide](docs/chart_template_guide/index.md) - Master Helm templates
   - [Getting Started with Templates](docs/chart_template_guide/getting_started.md)
   - [Built-in Objects](docs/chart_template_guide/builtin_objects.md)
