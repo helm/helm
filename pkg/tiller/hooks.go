@@ -25,35 +25,22 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 )
 
-// hookAnno is the label name for a hook
-const hookAnno = "helm.sh/hook"
-
-const (
-	preInstall         = "pre-install"
-	postInstall        = "post-install"
-	preDelete          = "pre-delete"
-	postDelete         = "post-delete"
-	preUpgrade         = "pre-upgrade"
-	postUpgrade        = "post-upgrade"
-	preRollback        = "pre-rollback"
-	postRollback       = "post-rollback"
-	releaseTestSuccess = "test-success"
-)
-
 var events = map[string]release.Hook_Event{
-	preInstall:         release.Hook_PRE_INSTALL,
-	postInstall:        release.Hook_POST_INSTALL,
-	preDelete:          release.Hook_PRE_DELETE,
-	postDelete:         release.Hook_POST_DELETE,
-	preUpgrade:         release.Hook_PRE_UPGRADE,
-	postUpgrade:        release.Hook_POST_UPGRADE,
-	preRollback:        release.Hook_PRE_ROLLBACK,
-	postRollback:       release.Hook_POST_ROLLBACK,
-	releaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
+	hooks.PreInstall:         release.Hook_PRE_INSTALL,
+	hooks.PostInstall:        release.Hook_POST_INSTALL,
+	hooks.PreDelete:          release.Hook_PRE_DELETE,
+	hooks.PostDelete:         release.Hook_POST_DELETE,
+	hooks.PreUpgrade:         release.Hook_PRE_UPGRADE,
+	hooks.PostUpgrade:        release.Hook_POST_UPGRADE,
+	hooks.PreRollback:        release.Hook_PRE_ROLLBACK,
+	hooks.PostRollback:       release.Hook_POST_ROLLBACK,
+	hooks.ReleaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
+	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
 }
 
 // manifest represents a manifest file, which has a name and some content.
@@ -117,7 +104,7 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			continue
 		}
 
-		hookTypes, ok := sh.Metadata.Annotations[hookAnno]
+		hookTypes, ok := sh.Metadata.Annotations[hooks.HookAnno]
 		if !ok {
 			generic = append(generic, manifest{name: n, content: c, head: &sh})
 			continue
