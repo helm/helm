@@ -46,7 +46,7 @@ For example,
     dependencies:
 	- name: nginx
 	  version: "1.2.3"
-	  repository: "file://../depedency_chart/nginx"
+	  repository: "file://../dependency_chart/nginx"
 If the dependency chart is retrieved locally, it is not required to have the repository
 added to helm by "helm add repo". Version matching is also supported for this case.
 
