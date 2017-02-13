@@ -29,6 +29,7 @@ Tools layered on top of Helm or Tiller.
 - [Rudder](https://github.com/AcalephStorage/rudder) - RESTful (JSON) proxy for Tiller's API
 - [Helmfile](https://github.com/roboll/helmfile) - Helmfile is a declarative spec for deploying helm charts
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
+- [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system
 
 ## Helm Included
 

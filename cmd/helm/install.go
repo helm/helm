@@ -32,10 +32,10 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/downloader"
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/strvals"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"

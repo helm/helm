@@ -137,6 +137,7 @@ type KubeClient interface {
 	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
+	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify)
@@ -183,6 +184,11 @@ func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.
 
 // Build implements KubeClient Build.
 func (p *PrintingKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
+	return []*resource.Info{}, nil
+}
+
+// BuildUnstructured implements KubeClient BuildUnstructured.
+func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
 
