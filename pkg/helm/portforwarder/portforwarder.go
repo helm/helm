@@ -28,6 +28,7 @@ import (
 	"k8s.io/helm/pkg/kube"
 )
 
+// New creates a new and initialized tunnel.
 func New(namespace string, client *internalclientset.Clientset, config *restclient.Config) (*kube.Tunnel, error) {
 	podName, err := getTillerPodName(client.Core(), namespace)
 	if err != nil {

@@ -39,6 +39,7 @@ const (
 	ReleaseTestFailure = "test-failure"
 )
 
+// FilterTestHooks filters the list of hooks are returns only testing hooks.
 func FilterTestHooks(hooks []*release.Hook) ([]*release.Hook, error) {
 	testHooks := []*release.Hook{}
 	notFoundErr := errors.New("no tests found")
