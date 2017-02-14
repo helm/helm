@@ -316,6 +316,7 @@ func UpgradeDryRun(dry bool) UpdateOption {
 	}
 }
 
+// ResetValues will (if true) trigger resetting the values to their original state.
 func ResetValues(reset bool) UpdateOption {
 	return func(opts *options) {
 		opts.resetValues = reset
