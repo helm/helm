@@ -17,16 +17,14 @@ limitations under the License.
 package releasetesting
 
 import (
-	"bytes"
 	"fmt"
-	"log"
 	"strings"
-	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/kubernetes/pkg/api"
 
+	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/timeconv"
@@ -41,14 +39,15 @@ type TestSuite struct {
 }
 
 type test struct {
-	manifest string
-	result   *release.TestRun
+	manifest        string
+	expectedSuccess bool
+	result          *release.TestRun
 }
 
 // NewTestSuite takes a release object and returns a TestSuite object with test definitions
 //  extracted from the release
 func NewTestSuite(rel *release.Release) (*TestSuite, error) {
-	testManifests, err := extractTestManifestsFromHooks(rel.Hooks, rel.Name)
+	testManifests, err := extractTestManifestsFromHooks(rel.Hooks)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +60,11 @@ func NewTestSuite(rel *release.Release) (*TestSuite, error) {
 	}, nil
 }
 
-// Run executes tests in a test suite and stores a result within the context of a given environment
-func (t *TestSuite) Run(env *Environment) error {
-	t.StartedAt = timeconv.Now()
+// Run executes tests in a test suite and stores a result within a given environment
+func (ts *TestSuite) Run(env *Environment) error {
+	ts.StartedAt = timeconv.Now()
 
-	for _, testManifest := range t.TestManifests {
+	for _, testManifest := range ts.TestManifests {
 		test, err := newTest(testManifest)
 		if err != nil {
 			return err
@@ -77,7 +76,7 @@ func (t *TestSuite) Run(env *Environment) error {
 		}
 
 		resourceCreated := true
-		if err := t.createTestPod(test, env); err != nil {
+		if err := env.createTestPod(test); err != nil {
 			resourceCreated = false
 			if streamErr := env.streamError(test.result.Info); streamErr != nil {
 				return err
@@ -87,7 +86,7 @@ func (t *TestSuite) Run(env *Environment) error {
 		resourceCleanExit := true
 		status := api.PodUnknown
 		if resourceCreated {
-			status, err = t.getTestPodStatus(test, env)
+			status, err = env.getTestPodStatus(test)
 			if err != nil {
 				resourceCleanExit = false
 				if streamErr := env.streamUnknown(test.result.Name, test.result.Info); streamErr != nil {
@@ -96,54 +95,59 @@ func (t *TestSuite) Run(env *Environment) error {
 			}
 		}
 
-		if resourceCreated && resourceCleanExit && status == api.PodSucceeded {
-			test.result.Status = release.TestRun_SUCCESS
-			if streamErr := env.streamSuccess(test.result.Name); streamErr != nil {
-				return streamErr
+		if resourceCreated && resourceCleanExit {
+			if err := test.assignTestResult(status); err != nil {
+				return err
 			}
-		} else if resourceCreated && resourceCleanExit && status == api.PodFailed {
-			test.result.Status = release.TestRun_FAILURE
-			if streamErr := env.streamFailed(test.result.Name); streamErr != nil {
+
+			if err := env.streamResult(test.result); err != nil {
 				return err
 			}
 		}
 
 		test.result.CompletedAt = timeconv.Now()
-		t.Results = append(t.Results, test.result)
+		ts.Results = append(ts.Results, test.result)
 	}
 
-	t.CompletedAt = timeconv.Now()
+	ts.CompletedAt = timeconv.Now()
 	return nil
 }
 
-// NOTE: may want to move this function to pkg/tiller in the future
-func filterHooksForTestHooks(hooks []*release.Hook, releaseName string) ([]*release.Hook, error) {
-	testHooks := []*release.Hook{}
-	notFoundErr := fmt.Errorf("no tests found for release %s", releaseName)
-
-	if len(hooks) == 0 {
-		return nil, notFoundErr
-	}
-
-	for _, h := range hooks {
-		for _, e := range h.Events {
-			if e == release.Hook_RELEASE_TEST_SUCCESS {
-				testHooks = append(testHooks, h)
-				continue
-			}
+func (t *test) assignTestResult(podStatus api.PodPhase) error {
+	switch podStatus {
+	case api.PodSucceeded:
+		if t.expectedSuccess {
+			t.result.Status = release.TestRun_SUCCESS
+		} else {
+			t.result.Status = release.TestRun_FAILURE
 		}
+	case api.PodFailed:
+		if !t.expectedSuccess {
+			t.result.Status = release.TestRun_SUCCESS
+		} else {
+			t.result.Status = release.TestRun_FAILURE
+		}
+	default:
+		t.result.Status = release.TestRun_UNKNOWN
 	}
 
-	if len(testHooks) == 0 {
-		return nil, notFoundErr
-	}
-
-	return testHooks, nil
+	return nil
 }
 
-// NOTE: may want to move this function to pkg/tiller in the future
-func extractTestManifestsFromHooks(hooks []*release.Hook, releaseName string) ([]string, error) {
-	testHooks, err := filterHooksForTestHooks(hooks, releaseName)
+func expectedSuccess(hookTypes []string) (bool, error) {
+	for _, hookType := range hookTypes {
+		hookType = strings.ToLower(strings.TrimSpace(hookType))
+		if hookType == hooks.ReleaseTestSuccess {
+			return true, nil
+		} else if hookType == hooks.ReleaseTestFailure {
+			return false, nil
+		}
+	}
+	return false, fmt.Errorf("No %s or %s hook found", hooks.ReleaseTestSuccess, hooks.ReleaseTestFailure)
+}
+
+func extractTestManifestsFromHooks(h []*release.Hook) ([]string, error) {
+	testHooks, err := hooks.FilterTestHooks(h)
 	if err != nil {
 		return nil, err
 	}
@@ -169,36 +173,18 @@ func newTest(testManifest string) (*test, error) {
 		return nil, fmt.Errorf("%s is not a pod", sh.Metadata.Name)
 	}
 
+	hookTypes := sh.Metadata.Annotations[hooks.HookAnno]
+	expected, err := expectedSuccess(strings.Split(hookTypes, ","))
+	if err != nil {
+		return nil, err
+	}
+
 	name := strings.TrimSuffix(sh.Metadata.Name, ",")
 	return &test{
-		manifest: testManifest,
+		manifest:        testManifest,
+		expectedSuccess: expected,
 		result: &release.TestRun{
 			Name: name,
 		},
 	}, nil
-}
-
-func (t *TestSuite) createTestPod(test *test, env *Environment) error {
-	b := bytes.NewBufferString(test.manifest)
-	if err := env.KubeClient.Create(env.Namespace, b, env.Timeout, false); err != nil {
-		log.Printf(err.Error())
-		test.result.Info = err.Error()
-		test.result.Status = release.TestRun_FAILURE
-		return err
-	}
-
-	return nil
-}
-
-func (t *TestSuite) getTestPodStatus(test *test, env *Environment) (api.PodPhase, error) {
-	b := bytes.NewBufferString(test.manifest)
-	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, b, time.Duration(env.Timeout)*time.Second)
-	if err != nil {
-		log.Printf("Error getting status for pod %s: %s", test.result.Name, err)
-		test.result.Info = err.Error()
-		test.result.Status = release.TestRun_UNKNOWN
-		return status, err
-	}
-
-	return status, err
 }
