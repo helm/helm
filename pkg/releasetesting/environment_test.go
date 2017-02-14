@@ -23,11 +23,41 @@ import (
 	"os"
 	"testing"
 
+	"k8s.io/helm/pkg/proto/hapi/release"
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
 )
 
+func TestCreateTestPodSuccess(t *testing.T) {
+	env := testEnvFixture()
+	test := testFixture()
+
+	err := env.createTestPod(test)
+	if err != nil {
+		t.Errorf("Expected no error, got an error: %s", err)
+	}
+}
+
+func TestCreateTestPodFailure(t *testing.T) {
+	env := testEnvFixture()
+	env.KubeClient = newCreateFailingKubeClient()
+	test := testFixture()
+
+	err := env.createTestPod(test)
+	if err == nil {
+		t.Errorf("Expected error, got no error")
+	}
+
+	if test.result.Info == "" {
+		t.Errorf("Expected error to be saved in test result info but found empty string")
+	}
+
+	if test.result.Status != release.TestRun_FAILURE {
+		t.Errorf("Expected test result status to be failure but got: %v", test.result.Status)
+	}
+}
+
 func TestDeleteTestPods(t *testing.T) {
-	mockTestSuite := testSuiteFixture()
+	mockTestSuite := testSuiteFixture([]string{manifestWithTestSuccessHook})
 	mockTestEnv := newMockTestingEnvironment()
 	mockTestEnv.KubeClient = newGetFailingKubeClient()
 
@@ -46,7 +76,7 @@ func TestDeleteTestPods(t *testing.T) {
 }
 
 func TestDeleteTestPodsFailingDelete(t *testing.T) {
-	mockTestSuite := testSuiteFixture()
+	mockTestSuite := testSuiteFixture([]string{manifestWithTestSuccessHook})
 	mockTestEnv := newMockTestingEnvironment()
 	mockTestEnv.KubeClient = newDeleteFailingKubeClient()
 
@@ -82,18 +112,22 @@ func (mte MockTestingEnvironment) streamSuccess(name string) error       { retur
 func (mte MockTestingEnvironment) streamUnknown(name, info string) error { return nil }
 func (mte MockTestingEnvironment) streamMessage(msg string) error        { return nil }
 
+type getFailingKubeClient struct {
+	tillerEnv.PrintingKubeClient
+}
+
 func newGetFailingKubeClient() *getFailingKubeClient {
 	return &getFailingKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
 	}
 }
 
-type getFailingKubeClient struct {
-	tillerEnv.PrintingKubeClient
+func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
+	return "", errors.New("In the end, they did not find Nemo.")
 }
 
-func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
-	return "", errors.New("Get failed")
+type deleteFailingKubeClient struct {
+	tillerEnv.PrintingKubeClient
 }
 
 func newDeleteFailingKubeClient() *deleteFailingKubeClient {
@@ -102,10 +136,20 @@ func newDeleteFailingKubeClient() *deleteFailingKubeClient {
 	}
 }
 
-type deleteFailingKubeClient struct {
+func (p *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
+	return errors.New("delete failed")
+}
+
+type createFailingKubeClient struct {
 	tillerEnv.PrintingKubeClient
 }
 
-func (p *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
-	return errors.New("In the end, they did not find Nemo.")
+func newCreateFailingKubeClient() *createFailingKubeClient {
+	return &createFailingKubeClient{
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
+	}
+}
+
+func (p *createFailingKubeClient) Create(ns string, r io.Reader, t int64, shouldWait bool) error {
+	return errors.New("We ran out of budget and couldn't create finding-nemo")
 }
