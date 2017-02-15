@@ -1,0 +1,35 @@
+# Helm Documentation
+
+- [Quick Start](quickstart.md) - Read me first!
+- [Installing Helm](install.md) - Install Helm and Tiller
+  - [Kubernetes Distribution Notes](kubernetes_distros.md)
+  - [Frequently Asked Questions](install_faq.md)
+- [Using Helm](using_helm.md) - Learn the Helm tools
+  - [Plugins](plugins.md)
+- [Developing Charts](charts.md) - An introduction to chart development
+	- [Chart Lifecycle Hooks](charts_hooks.md)
+	- [Chart Tips and Tricks](charts_tips_and_tricks.md)
+	- [Chart Repository Guide](chart_repository.md)
+	- [Syncing your Chart Repository](chart_repository_sync_example.md)
+	- [Signing Charts](provenance.md)
+	- [Writing Tests for Charts](chart_tests.md)
+- [Chart Template Developer's Guide](chart_template_guide/index.md) - Master Helm templates
+  - [Getting Started with Templates](chart_template_guide/getting_started.md)
+  - [Built-in Objects](chart_template_guide/builtin_objects.md)
+  - [Values Files](chart_template_guide/values_files.md)
+  - [Functions and Pipelines](chart_template_guide/functions_and_pipelines.md)
+  - [Flow Control (if/else, with, range, whitespace management)](chart_template_guide/control_structures.md)
+  - [Variables](chart_template_guide/variables.md)
+  - [Named Templates (Partials)](chart_template_guide/named_templates.md)
+  - [Accessing Files Inside Templates](chart_template_guide/accessing_files.md)
+  - [Creating a NOTES.txt File](chart_template_guide/notes_files.md)
+  - [Subcharts and Global Values](chart_template_guide/subcharts_and_globals.md)
+  - [Debugging Templates](chart_template_guide/debugging.md)
+  - [Wrapping Up](chart_template_guide/wrapping_up.md)
+  - [Appendix A: YAML Techniques](chart_template_guide/yaml_techniques.md)
+  - [Appendix B: Go Data Types](chart_template_guide/data_types.md)
+- [Related Projects](related.md) - More Helm tools, articles, and plugins
+- [Architecture](architecture.md) - Overview of the Helm/Tiller design
+- [Developers](developers.md) - About the developers
+- [History](history.md) - A brief history of the project
+- [Glossary](glossary.md) - Decode the Helm vocabulary
