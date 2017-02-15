@@ -142,7 +142,7 @@ func TestDownloadIndexFile(t *testing.T) {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 	}
 
-	if err := r.DownloadIndexFile(); err != nil {
+	if err := r.DownloadIndexFile(""); err != nil {
 		t.Errorf("%#v", err)
 	}
 
