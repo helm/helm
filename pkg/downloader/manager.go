@@ -30,7 +30,10 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 
+	// FIXME: This violates the package rules. A `cmd` should not be imported by
+	// something in 'pkg'
 	"k8s.io/helm/cmd/helm/helmpath"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
@@ -375,7 +378,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
-			if err := r.DownloadIndexFile(); err != nil {
+			if err := r.DownloadIndexFile(m.HelmHome.Cache()); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)

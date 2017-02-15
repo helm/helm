@@ -129,7 +129,10 @@ func (r *ChartRepository) Load() error {
 }
 
 // DownloadIndexFile fetches the index from a repository.
-func (r *ChartRepository) DownloadIndexFile() error {
+//
+// cachePath is prepended to any index that does not have an absolute path. This
+// is for pre-2.2.0 repo files.
+func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	var indexURL string
 
 	indexURL = strings.TrimSuffix(r.Config.URL, "/") + "/index.yaml"
@@ -148,7 +151,19 @@ func (r *ChartRepository) DownloadIndexFile() error {
 		return err
 	}
 
-	return ioutil.WriteFile(r.Config.Cache, index, 0644)
+	// In Helm 2.2.0 the config.cache was accidentally switched to an absolute
+	// path, which broke backward compatibility. This fixes it by prepending a
+	// global cache path to relative paths.
+	//
+	// It is changed on DownloadIndexFile because that was the method that
+	// originally carried the cache path.
+	cp := r.Config.Cache
+	if !filepath.IsAbs(cp) {
+		cp = filepath.Join(cachePath, cp)
+	}
+	println("Writing to", cp)
+
+	return ioutil.WriteFile(cp, index, 0644)
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
