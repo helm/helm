@@ -12,6 +12,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [CI/CD with Kubernetes, Helm & Wercker ](http://www.slideshare.net/Diacode/cicd-with-kubernetes-helm-wercker-madscalability)
 - [The missing CI/CD Kubernetes component: Helm package manager](https://hackernoon.com/the-missing-ci-cd-kubernetes-component-helm-package-manager-1fe002aac680#.691sk2zhu)
 - [CI/CD with Jenkins, Kubernetes, and Helm](https://www.youtube.com/watch?v=NVoln4HdZOY)
+- [The Workflow "Umbrella" Helm Chart](https://deis.com/blog/2017/workflow-chart-assembly)
 
 ## Helm Plugins
 
