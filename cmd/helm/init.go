@@ -228,7 +228,9 @@ func initStableRepo(cacheFile string) (*repo.Entry, error) {
 		return nil, err
 	}
 
-	if err := r.DownloadIndexFile(); err != nil {
+	// In this case, the cacheFile is always absolute. So passing empty string
+	// is safe.
+	if err := r.DownloadIndexFile(""); err != nil {
 		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 

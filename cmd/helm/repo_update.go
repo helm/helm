@@ -41,7 +41,7 @@ var (
 )
 
 type repoUpdateCmd struct {
-	update func([]*repo.ChartRepository, io.Writer)
+	update func([]*repo.ChartRepository, io.Writer, helmpath.Home)
 	home   helmpath.Home
 	out    io.Writer
 }
@@ -82,11 +82,11 @@ func (u *repoUpdateCmd) run() error {
 		repos = append(repos, r)
 	}
 
-	u.update(repos, u.out)
+	u.update(repos, u.out, u.home)
 	return nil
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Home) {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	for _, re := range repos {
@@ -94,10 +94,10 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
 			if re.Config.Name == localRepository {
-				fmt.Fprintf(out, "...Skip %s chart repository", re.Config.Name)
+				fmt.Fprintf(out, "...Skip %s chart repository\n", re.Config.Name)
 				return
 			}
-			err := re.DownloadIndexFile()
+			err := re.DownloadIndexFile(home.Cache())
 			if err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {
