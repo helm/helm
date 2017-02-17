@@ -258,7 +258,7 @@ Say we've defined a simple template that looks like this:
 ```
 {{- define "mychart_app" -}}
 app_name: {{ .Chart.Name }}
-app_version: "{{ .Chart.Version} }+{{ .Release.Time.Seconds }}"
+app_version: "{{ .Chart.Version }}+{{ .Release.Time.Seconds }}"
 {{- end -}}
 ```
 
