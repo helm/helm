@@ -278,7 +278,7 @@ download_kubectl() {
 # https://github.com/kubernetes/kubernetes/issues/23197
 # code stolen from https://github.com/huggsboson/docker-compose-kubernetes/blob/SwitchToSharedMount/kube-up.sh
 clean_volumes() {
-  if [[ -n "${DOCKER_MACHINE_NAME}" ]]; then
+  if [[ -n "${DOCKER_MACHINE_NAME:-}" ]]; then
     docker-machine ssh "${DOCKER_MACHINE_NAME}" "mount | grep -o 'on /var/lib/kubelet.* type' | cut -c 4- | rev | cut -c 6- | rev | sort -r | xargs --no-run-if-empty sudo umount"
     docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo rm -Rf /var/lib/kubelet"
     docker-machine ssh "${DOCKER_MACHINE_NAME}" "sudo mkdir -p /var/lib/kubelet"
