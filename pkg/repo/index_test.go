@@ -278,27 +278,35 @@ func TestIndexDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if l := len(index.Entries); l != 2 {
-		t.Fatalf("Expected 2 entries, got %d", l)
+	if l := len(index.Entries); l != 3 {
+		t.Fatalf("Expected 3 entries, got %d", l)
 	}
 
 	// Other things test the entry generation more thoroughly. We just test a
 	// few fields.
-	cname := "frobnitz"
-	frobs, ok := index.Entries[cname]
-	if !ok {
-		t.Fatalf("Could not read chart %s", cname)
+
+	corpus := []struct{ chartName, downloadLink string }{
+		{"frobnitz", "http://localhost:8080/frobnitz-1.2.3.tgz"},
+		{"zarthal", "http://localhost:8080/universe/zarthal-1.0.0.tgz"},
 	}
 
-	frob := frobs[0]
-	if len(frob.Digest) == 0 {
-		t.Errorf("Missing digest of file %s.", frob.Name)
-	}
-	if frob.URLs[0] != "http://localhost:8080/frobnitz-1.2.3.tgz" {
-		t.Errorf("Unexpected URLs: %v", frob.URLs)
-	}
-	if frob.Name != "frobnitz" {
-		t.Errorf("Expected frobnitz, got %q", frob.Name)
+	for _, test := range corpus {
+		cname := test.chartName
+		frobs, ok := index.Entries[cname]
+		if !ok {
+			t.Fatalf("Could not read chart %s", cname)
+		}
+
+		frob := frobs[0]
+		if len(frob.Digest) == 0 {
+			t.Errorf("Missing digest of file %s.", frob.Name)
+		}
+		if frob.URLs[0] != test.downloadLink {
+			t.Errorf("Unexpected URLs: %v", frob.URLs)
+		}
+		if frob.Name != cname {
+			t.Errorf("Expected %q, got %q", cname, frob.Name)
+		}
 	}
 }
 
