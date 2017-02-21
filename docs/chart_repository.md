@@ -227,7 +227,7 @@ packaged chart to that directory.
 $ helm package docs/examples/alpine/
 $ mkdir fantastic-charts
 $ mv alpine-0.1.0.tgz fantastic-charts/
-$ helm repo index . --url https://fantastic-charts.storage.googleapis.com
+$ helm repo index fantastic-charts --url https://fantastic-charts.storage.googleapis.com
 ```
 
 The last command takes the path of the local directory that you just created and
