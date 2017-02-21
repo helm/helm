@@ -14,6 +14,8 @@
 
 FROM alpine:3.3
 
+ENV HOME /tmp
+
 COPY . /
 
 EXPOSE 44134
