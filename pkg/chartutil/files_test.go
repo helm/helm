@@ -141,3 +141,52 @@ one:
 		t.Fatal("Expected parser error")
 	}
 }
+
+func TestToJson(t *testing.T) {
+	expect := "{\"foo\":\"bar\"}"
+	v := struct {
+		Foo string `json:"foo"`
+	}{
+		Foo: "bar",
+	}
+
+	if got := ToJson(v); got != expect {
+		t.Errorf("Expected %q, got %q", expect, got)
+	}
+}
+
+func TestFromJson(t *testing.T) {
+	doc := `{
+  "hello": "world",
+  "one": {
+      "two": "three"
+  }
+}
+`
+	dict := FromJson(doc)
+	if err, ok := dict["Error"]; ok {
+		t.Fatalf("Parse error: %s", err)
+	}
+
+	if len(dict) != 2 {
+		t.Fatal("expected two elements.")
+	}
+
+	world := dict["hello"]
+	if world.(string) != "world" {
+		t.Fatal("Expected the world. Is that too much to ask?")
+	}
+
+	// This should fail because we don't currently support lists:
+	doc2 := `
+[
+ "one",
+ "two",
+ "three"
+]
+`
+	dict = FromJson(doc2)
+	if _, ok := dict["Error"]; !ok {
+		t.Fatal("Expected parser error")
+	}
+}
