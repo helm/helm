@@ -143,7 +143,7 @@ one:
 }
 
 func TestToJson(t *testing.T) {
-	expect := "{\"foo\":\"bar\"}"
+	expect := `{"foo":"bar"}`
 	v := struct {
 		Foo string `json:"foo"`
 	}{
