@@ -62,7 +62,7 @@ func authenticate(ctx context.Context) (context.Context, error) {
 	var user *authenticationapi.UserInfo
 	var kubeConfig *rest.Config
 	var err error
-	authHeader, ok := md[helm.Authorization]
+	authHeader, ok := md[string(helm.Authorization)]
 	if !ok || authHeader[0] == "" {
 		user, kubeConfig, err = checkClientCert(ctx)
 	} else {
@@ -123,7 +123,7 @@ func newStreamInterceptor() grpc.StreamServerInterceptor {
 		}
 
 		newStream := serverStreamWrapper{
-			ss: ss,
+			ss:  ss,
 			ctx: ctx,
 		}
 		return handler(srv, newStream)
@@ -170,7 +170,7 @@ func checkClientVersion(ctx context.Context) error {
 
 func checkBearerAuth(ctx context.Context) (*authenticationapi.UserInfo, *rest.Config, error) {
 	md, _ := metadata.FromContext(ctx)
-	token := md[helm.Authorization][0][len("Bearer "):]
+	token := md[string(helm.Authorization)][0][len("Bearer "):]
 
 	apiServer, err := getServerURL(md)
 	if err != nil {
@@ -236,7 +236,7 @@ func checkBearerAuth(ctx context.Context) (*authenticationapi.UserInfo, *rest.Co
 
 func checkBasicAuth(ctx context.Context) (*authenticationapi.UserInfo, *rest.Config, error) {
 	md, _ := metadata.FromContext(ctx)
-	authz := md[helm.Authorization][0]
+	authz := md[string(helm.Authorization)][0]
 
 	apiServer, err := getServerURL(md)
 	if err != nil {
@@ -335,7 +335,7 @@ func checkClientCert(ctx context.Context) (*authenticationapi.UserInfo, *rest.Co
 }
 
 func getClientCert(md metadata.MD) ([]byte, error) {
-	cert, ok := md[helm.K8sClientCertificate]
+	cert, ok := md[string(helm.K8sClientCertificate)]
 	if !ok {
 		return nil, errors.New("Client certificate not found")
 	}
@@ -347,7 +347,7 @@ func getClientCert(md metadata.MD) ([]byte, error) {
 }
 
 func getClientKey(md metadata.MD) ([]byte, error) {
-	key, ok := md[helm.K8sClientKey]
+	key, ok := md[string(helm.K8sClientKey)]
 	if !ok {
 		return nil, errors.New("Client key not found")
 	}
@@ -359,7 +359,7 @@ func getClientKey(md metadata.MD) ([]byte, error) {
 }
 
 func getCertificateAuthority(md metadata.MD) ([]byte, error) {
-	caData, ok := md[helm.K8sCertificateAuthority]
+	caData, ok := md[string(helm.K8sCertificateAuthority)]
 	if !ok {
 		return nil, errors.New("CAcert not found")
 	}
@@ -371,7 +371,7 @@ func getCertificateAuthority(md metadata.MD) ([]byte, error) {
 }
 
 func getServerURL(md metadata.MD) (string, error) {
-	apiserver, ok := md[helm.K8sServer]
+	apiserver, ok := md[string(helm.K8sServer)]
 	if !ok {
 		return "", errors.New("API server url not found")
 	}

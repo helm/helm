@@ -18,11 +18,11 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"testing"
 
 	rpb "k8s.io/helm/pkg/proto/hapi/release"
-	"fmt"
 )
 
 func TestHistoryCmd(t *testing.T) {

@@ -414,38 +414,38 @@ func extractKubeConfig() map[string]string {
 
 	// Kube APIServer URL
 	if len(c.Host) != 0 {
-		configData[K8sServer] = c.Host
+		configData[string(K8sServer)] = c.Host
 	}
 
 	if c.AuthProvider != nil {
 		switch c.AuthProvider.Name {
 		case "gcp":
-			configData[Authorization] = "Bearer " + c.AuthProvider.Config["access_token"]
+			configData[string(Authorization)] = "Bearer " + c.AuthProvider.Config["access_token"]
 		case "oidc":
-			configData[Authorization] = "Bearer " + c.AuthProvider.Config["id-token"]
+			configData[string(Authorization)] = "Bearer " + c.AuthProvider.Config["id-token"]
 		default:
 			panic("Unknown auth provider: " + c.AuthProvider.Name)
 		}
 	}
 
 	if len(c.BearerToken) != 0 {
-		configData[Authorization] = "Bearer " + c.BearerToken
+		configData[string(Authorization)] = "Bearer " + c.BearerToken
 	}
 
 	if len(c.Username) != 0 && len(c.Password) != 0 {
-		configData[Authorization] = "Basic " + base64.StdEncoding.EncodeToString([]byte(c.Username+":"+c.Password))
+		configData[string(Authorization)] = "Basic " + base64.StdEncoding.EncodeToString([]byte(c.Username+":"+c.Password))
 	}
 
 	if len(string(c.CAData)) != 0 {
-		configData[K8sCertificateAuthority] = base64.StdEncoding.EncodeToString(bytes.TrimSpace(c.CAData))
+		configData[string(K8sCertificateAuthority)] = base64.StdEncoding.EncodeToString(bytes.TrimSpace(c.CAData))
 	}
 
 	if len(string(c.TLSClientConfig.KeyData)) != 0 {
-		configData[K8sClientKey] = base64.StdEncoding.EncodeToString(c.TLSClientConfig.KeyData)
+		configData[string(K8sClientKey)] = base64.StdEncoding.EncodeToString(c.TLSClientConfig.KeyData)
 	}
 
 	if len(string(c.TLSClientConfig.CertData)) != 0 {
-		configData[K8sClientCertificate] = base64.StdEncoding.EncodeToString(c.TLSClientConfig.CertData)
+		configData[string(K8sClientCertificate)] = base64.StdEncoding.EncodeToString(c.TLSClientConfig.CertData)
 	}
 
 	if len(c.TLSClientConfig.CAFile) != 0 {
@@ -453,7 +453,7 @@ func extractKubeConfig() map[string]string {
 		if err != nil {
 			log.Println(err)
 		} else {
-			configData[K8sCertificateAuthority] = base64.StdEncoding.EncodeToString(b)
+			configData[string(K8sCertificateAuthority)] = base64.StdEncoding.EncodeToString(b)
 		}
 	}
 
@@ -462,7 +462,7 @@ func extractKubeConfig() map[string]string {
 		if err != nil {
 			log.Println(err)
 		} else {
-			configData[K8sClientCertificate] = base64.StdEncoding.EncodeToString(b)
+			configData[string(K8sClientCertificate)] = base64.StdEncoding.EncodeToString(b)
 		}
 	}
 
@@ -472,7 +472,7 @@ func extractKubeConfig() map[string]string {
 			if err != nil {
 				log.Println(err)
 			} else {
-				configData[K8sClientKey] = base64.StdEncoding.EncodeToString(b)
+				configData[string(K8sClientKey)] = base64.StdEncoding.EncodeToString(b)
 			}
 		}
 	}

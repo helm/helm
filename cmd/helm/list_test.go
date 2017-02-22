@@ -18,11 +18,11 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"testing"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
-	"fmt"
 )
 
 func TestListCmd(t *testing.T) {
