@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"github.com/facebookgo/symwalk"
 	"io"
 	"io/ioutil"
 	"os"
@@ -239,7 +240,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 	files := []*afile{}
 	topdir += string(filepath.Separator)
 
-	err = filepath.Walk(topdir, func(name string, fi os.FileInfo, err error) error {
+	err = symwalk.Walk(topdir, func(name string, fi os.FileInfo, err error) error {
 		n := strings.TrimPrefix(name, topdir)
 
 		// Normalize to / since it will also work on Windows
