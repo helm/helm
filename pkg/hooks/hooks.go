@@ -17,8 +17,6 @@ limitations under the License.
 package hooks
 
 import (
-	"errors"
-
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -40,13 +38,8 @@ const (
 )
 
 // FilterTestHooks filters the list of hooks are returns only testing hooks.
-func FilterTestHooks(hooks []*release.Hook) ([]*release.Hook, error) {
+func FilterTestHooks(hooks []*release.Hook) []*release.Hook {
 	testHooks := []*release.Hook{}
-	notFoundErr := errors.New("no tests found")
-
-	if len(hooks) == 0 {
-		return nil, notFoundErr
-	}
 
 	for _, h := range hooks {
 		for _, e := range h.Events {
@@ -57,9 +50,5 @@ func FilterTestHooks(hooks []*release.Hook) ([]*release.Hook, error) {
 		}
 	}
 
-	if len(testHooks) == 0 {
-		return nil, notFoundErr
-	}
-
-	return testHooks, nil
+	return testHooks
 }

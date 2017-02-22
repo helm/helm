@@ -139,6 +139,37 @@ func TestRun(t *testing.T) {
 
 }
 
+func TestRunEmptyTestSuite(t *testing.T) {
+	ts := testSuiteFixture([]string{})
+	mockTestEnv := testEnvFixture()
+	if err := ts.Run(mockTestEnv); err != nil {
+		t.Errorf("%s", err)
+	}
+
+	if ts.StartedAt == nil {
+		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
+	}
+
+	if ts.CompletedAt == nil {
+		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
+	}
+
+	if len(ts.Results) != 0 {
+		t.Errorf("Expected 0 test result. Got %v", len(ts.Results))
+	}
+
+	stream := mockTestEnv.Stream.(*mockStream)
+	if len(stream.messages) == 0 {
+		t.Errorf("Expected at least one message, Got: %v", len(stream.messages))
+	} else {
+		msg := stream.messages[0].Msg
+		if msg != "No Tests Found" {
+			t.Errorf("Expected message 'No Tests Found', Got: %v", msg)
+		}
+	}
+
+}
+
 func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	ts := testSuiteFixture([]string{manifestWithTestFailureHook})
 	env := testEnvFixture()
@@ -246,9 +277,6 @@ func testFixture() *test {
 }
 
 func testSuiteFixture(testManifests []string) *TestSuite {
-	if len(testManifests) == 0 {
-		testManifests = []string{manifestWithTestSuccessHook, manifestWithTestFailureHook}
-	}
 	testResults := []*release.TestRun{}
 	ts := &TestSuite{
 		TestManifests: testManifests,
@@ -274,10 +302,11 @@ type mockStream struct {
 	messages []*services.TestReleaseResponse
 }
 
-func (rs mockStream) Send(m *services.TestReleaseResponse) error {
+func (rs *mockStream) Send(m *services.TestReleaseResponse) error {
 	rs.messages = append(rs.messages, m)
 	return nil
 }
+
 func (rs mockStream) SetHeader(m metadata.MD) error  { return nil }
 func (rs mockStream) SendHeader(m metadata.MD) error { return nil }
 func (rs mockStream) SetTrailer(m metadata.MD)       {}
