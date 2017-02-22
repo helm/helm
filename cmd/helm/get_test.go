@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"fmt"
 )
 
 func TestGetCmd(t *testing.T) {
@@ -29,7 +30,7 @@ func TestGetCmd(t *testing.T) {
 			name:     "get with a release",
 			resp:     releaseMock(&releaseOptions{name: "thomas-guide"}),
 			args:     []string{"thomas-guide"},
-			expected: "REVISION: 1\nRELEASED: (.*)\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nHOOKS:\n---\n# pre-install-hook\n" + mockHookTemplate + "\nMANIFEST:",
+			expected: fmt.Sprintf("REVISION: 1\nRELEASED: (.*)\nRELEASED BY: %s\nCHART: foo-0.1.0-beta.1\nUSER-SUPPLIED VALUES:\nname: \"value\"\nCOMPUTED VALUES:\nname: value\n\nHOOKS:\n---\n# pre-install-hook\n" + mockHookTemplate + "\nMANIFEST:", username),
 		},
 		{
 			name: "get requires release name arg",

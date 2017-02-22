@@ -59,6 +59,8 @@ type releaseOptions struct {
 	namespace  string
 }
 
+var username = "John"
+
 func releaseMock(opts *releaseOptions) *release.Release {
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
 
@@ -102,6 +104,7 @@ func releaseMock(opts *releaseOptions) *release.Release {
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: scode},
 			Description:   "Release mock",
+			Username:      username,
 		},
 		Chart:     ch,
 		Config:    &chart.Config{Raw: `name: "value"`},
