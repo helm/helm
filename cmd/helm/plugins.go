@@ -37,6 +37,12 @@ const pluginEnvVar = "HELM_PLUGIN"
 // to inspect its environment and then add commands to the base command
 // as it finds them.
 func loadPlugins(baseCmd *cobra.Command, home helmpath.Home, out io.Writer) {
+
+	// If HELM_NO_PLUGINS is set to 1, do not load plugins.
+	if os.Getenv("HELM_NO_PLUGINS") == "1" {
+		return
+	}
+
 	plugdirs := os.Getenv(pluginEnvVar)
 	if plugdirs == "" {
 		plugdirs = home.Plugins()

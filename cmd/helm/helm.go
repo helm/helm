@@ -76,6 +76,7 @@ Common actions from this point include:
 Environment:
   $HELM_HOME          set an alternative location for Helm files. By default, these are stored in ~/.helm
   $HELM_HOST          set an alternative Tiller host. The format is host:port
+  $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
   $TILLER_NAMESPACE   set an alternative Tiller namespace (default "kube-namespace")
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
