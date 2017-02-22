@@ -41,3 +41,9 @@ Platforms, distributions, and services that include Helm support.
 - [Cabin](http://www.skippbox.com/cabin/) - Mobile App for Managing Kubernetes
 - [Qstack](https://qstack.com)
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes
+
+## Misc
+
+Grab bag of useful things for Chart authors and Helm users
+
+- [Await](https://github.com/saltside/await) - Docker image to "await" different conditions--especially useful for init containers. [More Info](http://blog.slashdeploy.com/2017/02/16/introducing-await/)
