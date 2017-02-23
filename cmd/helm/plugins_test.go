@@ -134,6 +134,28 @@ func TestLoadPlugins(t *testing.T) {
 	}
 }
 
+func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
+	os.Setenv("HELM_NO_PLUGINS", "1")
+	defer os.Setenv("HELM_NO_PLUGINS", "0")
+
+	// Set helm home to point to testdata
+	old := helmHome
+	helmHome = "testdata/helmhome"
+	defer func() {
+		helmHome = old
+	}()
+	hh := helmpath.Home(homePath())
+
+	out := bytes.NewBuffer(nil)
+	cmd := &cobra.Command{}
+	loadPlugins(cmd, hh, out)
+	plugins := cmd.Commands()
+
+	if len(plugins) != 0 {
+		t.Fatalf("Expected 0 plugins, got %d", len(plugins))
+	}
+}
+
 func TestSetupEnv(t *testing.T) {
 	name := "pequod"
 	hh := helmpath.Home("testdata/helmhome")
