@@ -16,6 +16,7 @@ limitations under the License.
 
 package helm
 
+//AuthHeader is key type for context
 type AuthHeader string
 
 const (
