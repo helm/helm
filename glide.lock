@@ -1,5 +1,5 @@
-hash: d9b023509801b816bc80b3abd67eb80532af1625e71ad4e0ff8ef98664f96ded
-updated: 2017-02-10T11:42:12.50337033-08:00
+hash: dc6dba0ab64a9b16ea6af2d166771cef0a62b946535b399590db00ac2fe7096f
+updated: 2017-02-16T09:14:15.738334986-08:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -290,7 +290,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: 08e099554f3c31f6e6f07b448ab3ed78d0520507
+  version: 029c3a408176b55c30846f0faedf56aae5992e9b
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - cmd/kubeadm/app/apis/kubeadm/install
