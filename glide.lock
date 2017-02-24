@@ -1,5 +1,5 @@
-hash: dc6dba0ab64a9b16ea6af2d166771cef0a62b946535b399590db00ac2fe7096f
-updated: 2017-02-16T09:14:15.738334986-08:00
+hash: b4a2318bb042d673a7843e99b9d4f096e8d0fd0a3ec94968534be4cf39101045
+updated: 2017-02-23T23:08:54.111587509Z
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -96,6 +96,8 @@ imports:
   version: 465937c80b3c07a7c7ad20cc934898646a91c1de
 - name: github.com/exponent-io/jsonpath
   version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
+- name: github.com/facebookgo/symwalk
+  version: 42004b9f322246749dd73ad71008b1f3160c0052
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
@@ -182,7 +184,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 59c29afe1a994eacb71c833025ca7acf874bb1da
 - name: github.com/Masterminds/sprig
-  version: 69011c0cd9b4d2e0733c4d9e2c8e2a5a0d0a2f2f
+  version: 2d2df7bd8bda53b5a55ed04422173cedd50500ea
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/mitchellh/go-wordwrap
@@ -225,6 +227,8 @@ imports:
   - openpgp/errors
   - openpgp/packet
   - openpgp/s2k
+  - pbkdf2
+  - scrypt
   - ssh/terminal
 - name: golang.org/x/net
   version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
@@ -290,7 +294,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: 029c3a408176b55c30846f0faedf56aae5992e9b
+  version: e9eeec655e7fdee50d4e19200f9707d1cd4a3371
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - cmd/kubeadm/app/apis/kubeadm/install

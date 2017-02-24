@@ -64,6 +64,7 @@ import:
 - package: github.com/gobwas/glob
   version: ^0.2.1
 - package: github.com/evanphx/json-patch
+- package: github.com/facebookgo/symwalk
 testImports:
 - package: github.com/stretchr/testify
   version: ^1.1.4
