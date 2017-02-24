@@ -33,11 +33,12 @@ This command starts a local chart repository server that serves charts from a lo
 
 The new server will provide HTTP access to a repository. By default, it will
 scan all of the charts in '$HELM_HOME/repository/local' and serve those over
-the a local IPv4 TCP port (default '127.0.0.1:8879').
+the local IPv4 TCP port (default '127.0.0.1:8879').
 `
 
 type serveCmd struct {
 	out      io.Writer
+	url      string
 	address  string
 	repoPath string
 }
@@ -56,6 +57,7 @@ func newServeCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&srv.repoPath, "repo-path", helmpath.Home(homePath()).LocalRepository(), "local directory path from which to serve charts")
 	f.StringVar(&srv.address, "address", "127.0.0.1:8879", "address to listen on")
+	f.StringVar(&srv.url, "url", "", "external URL of chart repository")
 
 	return cmd
 }
@@ -70,7 +72,12 @@ func (s *serveCmd) run() error {
 	}
 
 	fmt.Fprintln(s.out, "Regenerating index. This may take a moment.")
-	if err := index(repoPath, "http://"+s.address, ""); err != nil {
+	if len(s.url) > 0 {
+		err = index(repoPath, s.url, "")
+	} else {
+		err = index(repoPath, "http://"+s.address, "")
+	}
+	if err != nil {
 		return err
 	}
 
