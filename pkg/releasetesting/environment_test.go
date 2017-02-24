@@ -63,7 +63,7 @@ func TestDeleteTestPods(t *testing.T) {
 
 	mockTestEnv.DeleteTestPods(mockTestSuite.TestManifests)
 
-	stream := mockTestEnv.Stream.(mockStream)
+	stream := mockTestEnv.Stream.(*mockStream)
 	if len(stream.messages) != 0 {
 		t.Errorf("Expected 0 errors, got at least one: %v", stream.messages)
 	}
@@ -82,9 +82,9 @@ func TestDeleteTestPodsFailingDelete(t *testing.T) {
 
 	mockTestEnv.DeleteTestPods(mockTestSuite.TestManifests)
 
-	stream := mockTestEnv.Stream.(mockStream)
-	if len(stream.messages) == 1 {
-		t.Errorf("Expected 1 error, got none: %v", stream.messages)
+	stream := mockTestEnv.Stream.(*mockStream)
+	if len(stream.messages) != 1 {
+		t.Errorf("Expected 1 error, got: %v", len(stream.messages))
 	}
 }
 
@@ -100,7 +100,7 @@ func newMockTestingEnvironment() *MockTestingEnvironment {
 			Namespace:  "default",
 			KubeClient: tEnv.KubeClient,
 			Timeout:    5,
-			Stream:     mockStream{},
+			Stream:     &mockStream{},
 		},
 	}
 }

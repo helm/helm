@@ -64,6 +64,10 @@ func NewTestSuite(rel *release.Release) (*TestSuite, error) {
 func (ts *TestSuite) Run(env *Environment) error {
 	ts.StartedAt = timeconv.Now()
 
+	if len(ts.TestManifests) == 0 {
+		env.streamMessage("No Tests Found")
+	}
+
 	for _, testManifest := range ts.TestManifests {
 		test, err := newTest(testManifest)
 		if err != nil {
@@ -147,10 +151,7 @@ func expectedSuccess(hookTypes []string) (bool, error) {
 }
 
 func extractTestManifestsFromHooks(h []*release.Hook) ([]string, error) {
-	testHooks, err := hooks.FilterTestHooks(h)
-	if err != nil {
-		return nil, err
-	}
+	testHooks := hooks.FilterTestHooks(h)
 
 	tests := []string{}
 	for _, h := range testHooks {
