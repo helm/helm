@@ -41,11 +41,12 @@ in the requirements.yaml file, but (b) at the wrong version.
 
 // dependencyUpdateCmd describes a 'helm dependency update'
 type dependencyUpdateCmd struct {
-	out       io.Writer
-	chartpath string
-	helmhome  helmpath.Home
-	verify    bool
-	keyring   string
+	out         io.Writer
+	chartpath   string
+	helmhome    helmpath.Home
+	verify      bool
+	keyring     string
+	skipRefresh bool
 }
 
 // newDependencyUpdateCmd creates a new dependency update command.
@@ -80,6 +81,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&duc.verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&duc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&duc.skipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
 
 	return cmd
 }
@@ -87,10 +89,11 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 // run runs the full dependency update process.
 func (d *dependencyUpdateCmd) run() error {
 	man := &downloader.Manager{
-		Out:       d.out,
-		ChartPath: d.chartpath,
-		HelmHome:  d.helmhome,
-		Keyring:   d.keyring,
+		Out:        d.out,
+		ChartPath:  d.chartpath,
+		HelmHome:   d.helmhome,
+		Keyring:    d.keyring,
+		SkipUpdate: d.skipRefresh,
 	}
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible
