@@ -33,6 +33,7 @@ Tools layered on top of Helm or Tiller.
 - [Helmfile](https://github.com/roboll/helmfile) - Helmfile is a declarative spec for deploying helm charts
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
 - [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system
+- [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
 
 ## Helm Included
 
