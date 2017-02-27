@@ -8,7 +8,7 @@ But there are many things this guide has not covered when it comes to the practi
 - The Kubernetes [User's Guide](http://kubernetes.io/docs/user-guide/) provides detailed examples of the various resource kinds that you can use, from ConfigMaps and Secrets to DaemonSets and Deployments.
 - The Helm [Charts Guide](../charts.md) explains the workflow of using charts.
 - The Helm [Chart Hooks Guide](../charts_hooks.md) explains how to create lifecycle hooks.
-- The Helm [Charts Tips and Tricks](../charts_tips_and_tricks) article provides some useful tips for writing charts.
+- The Helm [Charts Tips and Tricks](../charts_tips_and_tricks.md) article provides some useful tips for writing charts.
 - The [Sprig documentation](https://github.com/Masterminds/sprig) documents more than sixty of the template functions.
 - The [Go template docs](https://godoc.org/text/template) explain the template syntax in detail.
 - The [Schelm tool](https://github.com/databus23/schelm) is a nice helper utility for debugging charts.
