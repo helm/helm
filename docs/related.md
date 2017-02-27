@@ -34,6 +34,7 @@ Tools layered on top of Helm or Tiller.
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
 - [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
+- [Monocular](https://github.com/helm/monocular) - Web UI for Helm Chart repositories
 
 ## Helm Included
 
