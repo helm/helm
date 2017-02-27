@@ -15,6 +15,10 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [The Workflow "Umbrella" Helm Chart](https://deis.com/blog/2017/workflow-chart-assembly)
 - [GitLab, Consumer Driven Contracts, Helm and Kubernetes](https://medium.com/@enxebre/gitlab-consumer-driven-contracts-helm-and-kubernetes-b7235a60a1cb#.xwp1y4tgi)
 
+## Videos
+
+- [KubeCon2016: Delivering Kubernetes-Native Applications by Michelle Noorali](https://www.youtube.com/watch?v=zBc1goRfk3k&index=49&list=PLj6h78yzYM2PqgIGU1Qmi8nY7dqn9PCr4)
+
 ## Helm Plugins
 
 - [helm-tiller](https://github.com/adamreese/helm-tiller) - Additional commands to work with Tiller
