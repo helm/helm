@@ -69,6 +69,8 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				if err := del.run(); err != nil {
 					return err
 				}
+
+				fmt.Fprintf(out, "release \"%s\" deleted\n", del.name)
 			}
 			return nil
 		},
