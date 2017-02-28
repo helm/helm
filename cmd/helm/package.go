@@ -31,6 +31,7 @@ import (
 
 	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/ignore"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
@@ -197,4 +198,29 @@ func promptUser(name string) ([]byte, error) {
 	pw, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	return pw, err
+}
+
+// BuildIgnoreFiles loads global helmignore file if it exists and
+// helmignore file from the current folder into a slice of strings.
+func BuildIgnoreFiles(dir string) []string {
+	ignoreFiles := []string{}
+
+	topdir, err := filepath.Abs(dir)
+	if err == nil {
+		topdir += string(filepath.Separator)
+
+		f, err := os.Open(topdir + ignore.HelmIgnore)
+		if err == nil {
+			defer f.Close()
+			ignoreFiles = append(ignoreFiles, topdir+ignore.HelmIgnore)
+		}
+	}
+	homeDir := fmt.Sprintf("%s", helmpath.Home(homePath()))
+	f, err := os.Open(homeDir + ignore.HelmIgnore)
+	if err == nil {
+		defer f.Close()
+		ignoreFiles = append(ignoreFiles, topdir+ignore.HelmIgnore)
+	}
+
+	return ignoreFiles
 }

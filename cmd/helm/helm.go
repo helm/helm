@@ -138,6 +138,19 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	// Find and add plugins
 	loadPlugins(cmd, helmpath.Home(homePath()), out)
 
+	// Load helmignore file, BuildIgnoreFiles will find helm client location
+	// for global ignore file, but it needs a current folder location to check
+	// for local helmignore file.
+	// ignoreFiles := BuildIgnoreFiles(func() string {
+	BuildIgnoreFiles(func() string {
+		// Need to figure out how to get working path
+		topdir, err := filepath.Abs("./")
+		if err == nil {
+			topdir += string(filepath.Separator)
+		}
+		return topdir
+	}())
+
 	return cmd
 }
 
