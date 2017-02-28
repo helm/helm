@@ -57,11 +57,11 @@ type Dependency struct {
 	// used to fetch the repository index.
 	Repository string `json:"repository"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
-	Condition string `json:"condition"`
+	Condition string `json:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags,omitempty"`
 	// Enabled bool determines if chart should be loaded
-	Enabled bool `json:"enabled"`
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // ErrNoRequirementsFile to detect error condition

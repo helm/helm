@@ -74,7 +74,7 @@ if it cannot find a requirements.yaml.
 
 func newDependencyCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dependency update|build|list",
+		Use:     "dependency update|build|list|create",
 		Aliases: []string{"dep", "dependencies"},
 		Short:   "manage a chart's dependencies",
 		Long:    dependencyDesc,
@@ -83,6 +83,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 	cmd.AddCommand(newDependencyListCmd(out))
 	cmd.AddCommand(newDependencyUpdateCmd(out))
 	cmd.AddCommand(newDependencyBuildCmd(out))
+	cmd.AddCommand(newDependencyCreateCmd(out))
 
 	return cmd
 }

@@ -153,6 +153,51 @@ func (m *Manager) Update() error {
 	return writeLock(m.ChartPath, lock)
 }
 
+// Create adds a new dependency for a chart.
+//
+// It first attempts to read the requirements.yaml file.  If
+// the file does not exist, it creates a new requirements.yaml
+// with the provided dependency.
+func (m *Manager) Create(name string, repo string, version string) error {
+	c, err := m.loadChartDir()
+
+	if err != nil {
+		return err
+	}
+
+	// If no requirements file is found, we will create the file and
+	// add the dependency.
+	req, err := chartutil.LoadRequirements(c)
+	if err != nil {
+		if err == chartutil.ErrRequirementsNotFound {
+			fmt.Fprintf(m.Out, "No requirements found in %s/charts, creating new requirements file\n", m.ChartPath)
+		} else {
+			return err
+		}
+	}
+
+	if req != nil {
+		deps := req.Dependencies
+		d := requirementsHasDependency(deps, name)
+		// If dep already exists, edit it.  Otherwise add to end of file
+		if d != nil {
+			d.Repository = repo
+			d.Version = version
+		} else {
+			req.Dependencies = append(req.Dependencies, &chartutil.Dependency{
+				Name: name, Version: version, Repository: repo})
+		}
+	} else {
+		req = &chartutil.Requirements{
+			Dependencies: []*chartutil.Dependency{
+				{Name: name, Version: version, Repository: repo},
+			},
+		}
+	}
+
+	return writeRequirements(m.ChartPath, req)
+}
+
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	if fi, err := os.Stat(m.ChartPath); err != nil {
 		return nil, fmt.Errorf("could not find %s: %s", m.ChartPath, err)
@@ -508,6 +553,16 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	return indices, nil
 }
 
+// writeRequirements writes a requirements.yaml
+func writeRequirements(chartpath string, reqs *chartutil.Requirements) error {
+	data, err := yaml.Marshal(reqs)
+	if err != nil {
+		return err
+	}
+	dest := filepath.Join(chartpath, "requirements.yaml")
+	return ioutil.WriteFile(dest, data, 0664)
+}
+
 // writeLock writes a lockfile to disk
 func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 	data, err := yaml.Marshal(lock)
@@ -558,4 +613,13 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 	}
 
 	return "", fmt.Errorf("Can't get a valid version for dependency %s.", name)
+}
+
+func requirementsHasDependency(deps []*chartutil.Dependency, newDepName string) *chartutil.Dependency {
+	for _, dep := range deps {
+		if dep.Name == newDepName {
+			return dep
+		}
+	}
+	return nil
 }
