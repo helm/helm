@@ -588,7 +588,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 			return "", errors.New("cannot re-use a name that is still in use")
 		}
 
-		return "", fmt.Errorf("a release named %q already exists", start)
+		return "", fmt.Errorf("a release named %q already exists.\nPlease run: helm ls --all %q; helm del --help", start, start)
 	}
 
 	maxTries := 5
