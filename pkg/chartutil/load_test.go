@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"path"
 	"testing"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -40,6 +41,83 @@ func TestLoadFile(t *testing.T) {
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyRequirements(t, c)
+}
+
+func TestLoadFiles(t *testing.T) {
+	goodFiles := []*BufferedFile{
+		{
+			Name: ChartfileName,
+			Data: []byte(`apiVersion: v1
+name: frobnitz
+description: This is a frobnitz.
+version: "1.2.3"
+keywords:
+  - frobnitz
+  - sprocket
+  - dodad
+maintainers:
+  - name: The Helm Team
+    email: helm@example.com
+  - name: Someone Else
+    email: nobody@example.com
+sources:
+  - https://example.com/foo/bar
+home: http://example.com
+icon: https://example.com/64x64.png
+`),
+		},
+		{
+			Name: ValuesfileName,
+			Data: []byte(defaultValues),
+		},
+		{
+			Name: path.Join("templates", DeploymentName),
+			Data: []byte(defaultDeployment),
+		},
+		{
+			Name: path.Join("templates", ServiceName),
+			Data: []byte(defaultService),
+		},
+	}
+
+	c, err := LoadFiles(goodFiles)
+	if err != nil {
+		t.Errorf("Expected good files to be loaded, got %v", err)
+	}
+
+	if c.Metadata.Name != "frobnitz" {
+		t.Errorf("Expected chart name to be 'frobnitz', got %s", c.Metadata.Name)
+	}
+
+	if c.Values.Raw != defaultValues {
+		t.Error("Expected chart values to be populated with default values")
+	}
+
+	if len(c.Templates) != 2 {
+		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
+	}
+
+	c, err = LoadFiles([]*BufferedFile{})
+	if err == nil {
+		t.Fatal("Expected err to be non-nil")
+	}
+	if err.Error() != "chart metadata (Chart.yaml) missing" {
+		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
+	}
+
+	// legacy check
+	c, err = LoadFiles([]*BufferedFile{
+		{
+			Name: "values.toml",
+			Data: []byte{},
+		},
+	})
+	if err == nil {
+		t.Fatal("Expected err to be non-nil")
+	}
+	if err.Error() != "values.toml is illegal as of 2.0.0-alpha.2" {
+		t.Errorf("Expected values.toml to be illegal, got '%s'", err.Error())
+	}
 }
 
 // Packaging the chart on a Windows machine will produce an
