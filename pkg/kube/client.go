@@ -391,6 +391,11 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	}
 	if patch == nil {
 		log.Printf("Looks like there are no changes for %s", target.Name)
+		// This needs to happen to make sure that tiller has the latest info from the API
+		// Otherwise there will be no labels and other functions that use labels will panic
+		if err := target.Get(); err != nil {
+			return fmt.Errorf("error trying to refresh resource information: %v", err)
+		}
 		return nil
 	}
 
