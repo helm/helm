@@ -128,6 +128,50 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 }
 
+func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
+	// Set up a testing helm home
+	oldhome := helmHome
+	hh, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	helmHome = hh
+	defer func() {
+		os.RemoveAll(hh)
+		helmHome = oldhome
+	}()
+
+	srv := repotest.NewServer(hh)
+	defer srv.Stop()
+	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Copied charts:\n%s", strings.Join(copied, "\n"))
+	t.Logf("Listening on directory %s", srv.Root())
+
+	chartname := "depup"
+	if err := createTestingChart(hh, chartname, srv.URL()); err != nil {
+		t.Fatal(err)
+	}
+
+	out := bytes.NewBuffer(nil)
+	duc := &dependencyUpdateCmd{out: out}
+	duc.helmhome = helmpath.Home(hh)
+	duc.chartpath = filepath.Join(hh, chartname)
+	duc.skipRefresh = true
+
+	if err := duc.run(); err == nil {
+		t.Fatal("Expected failure to find the repo with skipRefresh")
+	}
+
+	output := out.String()
+	// This is written directly to stdout, so we have to capture as is.
+	if strings.Contains(output, `update from the "test" chart repository`) {
+		t.Errorf("Repo was unexpectedly updated\n%s", output)
+	}
+}
+
 // createTestingChart creates a basic chart that depends on reqtest-0.1.0
 //
 // The baseURL can be used to point to a particular repository server.

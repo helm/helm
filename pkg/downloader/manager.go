@@ -53,11 +53,15 @@ type Manager struct {
 	Verify VerificationStrategy
 	// Keyring is the key ring file.
 	Keyring string
+	// SkipUpdate indicates that the repository should not be updated first.
+	SkipUpdate bool
 }
 
 // Build rebuilds a local charts directory from a lockfile.
 //
 // If the lockfile is not present, this will run a Manager.Update()
+//
+// If SkipUpdate is set, this will not update the repository.
 func (m *Manager) Build() error {
 	c, err := m.loadChartDir()
 	if err != nil {
@@ -85,9 +89,11 @@ func (m *Manager) Build() error {
 		return err
 	}
 
-	// For each repo in the file, update the cached copy of that repo
-	if err := m.UpdateRepositories(); err != nil {
-		return err
+	if !m.SkipUpdate {
+		// For each repo in the file, update the cached copy of that repo
+		if err := m.UpdateRepositories(); err != nil {
+			return err
+		}
 	}
 
 	// Now we need to fetch every package here into charts/
@@ -102,7 +108,7 @@ func (m *Manager) Build() error {
 //
 // It first reads the requirements.yaml file, and then attempts to
 // negotiate versions based on that. It will download the versions
-// from remote chart repositories.
+// from remote chart repositories unless SkipUpdate is true.
 func (m *Manager) Update() error {
 	c, err := m.loadChartDir()
 	if err != nil {
@@ -127,8 +133,10 @@ func (m *Manager) Update() error {
 	}
 
 	// For each repo in the file, update the cached copy of that repo
-	if err := m.UpdateRepositories(); err != nil {
-		return err
+	if !m.SkipUpdate {
+		if err := m.UpdateRepositories(); err != nil {
+			return err
+		}
 	}
 
 	// Now we need to find out which version of a chart best satisfies the
