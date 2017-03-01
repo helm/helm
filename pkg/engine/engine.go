@@ -70,6 +70,7 @@ func FuncMap() template.FuncMap {
 
 	// Add some extra functionality
 	extra := template.FuncMap{
+		"toToml":   chartutil.ToToml,
 		"toYaml":   chartutil.ToYaml,
 		"fromYaml": chartutil.FromYaml,
 		"toJson":   chartutil.ToJson,

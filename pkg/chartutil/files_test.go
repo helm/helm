@@ -111,6 +111,19 @@ func TestToYaml(t *testing.T) {
 	}
 }
 
+func TestToToml(t *testing.T) {
+	expect := "foo=\"bar\"\n"
+	v := struct {
+		Foo string `json:"foo"`
+	}{
+		Foo: "bar",
+	}
+
+	if got := ToToml(v); got != expect {
+		t.Errorf("Expected %q, got %q", expect, got)
+	}
+}
+
 func TestFromYaml(t *testing.T) {
 	doc := `hello: world
 one:
