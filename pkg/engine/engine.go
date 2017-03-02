@@ -63,6 +63,8 @@ func New() *Engine {
 //
 //	- "include": This is late-bound in Engine.Render(). The version
 //	   included in the FuncMap is a placeholder.
+//      - "required": This is late-bound in Engine.Render(). The version
+//	   included in thhe FuncMap is a placeholder.
 func FuncMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
@@ -79,7 +81,8 @@ func FuncMap() template.FuncMap {
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
 		// integrity of the linter.
-		"include": func(string, interface{}) string { return "not implemented" },
+		"include":  func(string, interface{}) string { return "not implemented" },
+		"required": func(string, interface{}) interface{} { return "not implemented" },
 	}
 
 	for k, v := range extra {
@@ -141,6 +144,18 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 			buf.WriteString(err.Error())
 		}
 		return buf.String()
+	}
+
+	// Add the 'required' function here
+	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
+		if val == nil {
+			return val, fmt.Errorf(warn)
+		} else if _, ok := val.(string); ok {
+			if val == "" {
+				return val, fmt.Errorf(warn)
+			}
+		}
+		return val, nil
 	}
 
 	return funcMap

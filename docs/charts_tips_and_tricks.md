@@ -14,8 +14,8 @@ First, we added almost all of the functions in the
 for security reasons: `env` and `expandenv` (which would have given chart authors
 access to Tiller's environment).
 
-We also added one special template function: `include`. The `include` function
-allows you to bring in another template, and then pass the results to other
+We also added two special template functions: `include` and `required`. The `include`
+function allows you to bring in another template, and then pass the results to other
 template functions.
 
 For example, this template snippet includes a template called `mytpl.tpl`, then
@@ -23,6 +23,17 @@ lowercases the result, then wraps that in double quotes.
 
 ```yaml
 value: {{include "mytpl.tpl" . | lower | quote}}
+```
+
+The `required` function allows you to declare a particular
+values entry as required for template rendering.  If the value is empty, the template
+rendering will fail with a user submitted error message.
+
+The following example of the `required` function declares an entry for .Values.who
+is required, and will print an error message when that entry is missing:
+
+```yaml
+value: {{required "A valid .Values.who entry required!" .Values.who }}
 ```
 
 ## Quote Strings, Don't Quote Integers
@@ -60,6 +71,30 @@ then passes the output of that template to the `indent` function.
 Because YAML ascribes significance to indentation levels and whitespace,
 this is one great way to include snippets of code, but handle
 indentation in a relevant context.
+
+## Using the 'required' function
+
+Go provides a way for setting template options to control behavior
+when a map is indexed with a key that's not present in the map. This
+is typically set with template.Options("missingkey=option"), where option
+can be default, zero, or error. While setting this option to error will
+stop execution with an arror, this would apply to every missing key in the
+map. There may be situations where a chart developer wants to enforce this
+behavior for select values in the values.yml file.
+
+The `required` function gives developers the ability to declare a value entry
+as required for template rendering. If the entry is empty in values.yml, the
+template will not render and will return an error message supplied by the
+developer.
+
+For example:
+
+```
+{{ required "A valid foo is required!" .Values.foo }}
+```
+
+The above will render the template when .Values.foo is defined, but will fail
+to render and exit when .Values.foo is undefined.
 
 ## Automatically Roll Deployments When ConfigMaps or Secrets change
 
