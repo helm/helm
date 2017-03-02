@@ -147,14 +147,14 @@ func TestUpdate(t *testing.T) {
 	listB.Items[0].Spec.Containers[0].Ports = []api.ContainerPort{{Name: "https", ContainerPort: 443}}
 	listC.Items[0].Spec.Containers[0].Ports = []api.ContainerPort{{Name: "https", ContainerPort: 443}}
 
-	actions := make(map[string]string)
+	var actions []string
 
 	f, tf, codec, ns := cmdtesting.NewAPIFactory()
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
-			actions[p] = m
+			actions = append(actions, p+":"+m)
 			t.Logf("got request %s %s", p, m)
 			switch {
 			case p == "/namespaces/default/pods/starfish" && m == "GET":
@@ -201,16 +201,21 @@ func TestUpdate(t *testing.T) {
 	// if err := c.Update("test", objBody(codec, &listC), objBody(codec, &listA), false, 2, true); err != nil {
 	// 	t.Fatal(err)
 	// }
-	expectedActions := map[string]string{
-		"/namespaces/default/pods/dolphin":  "GET",
-		"/namespaces/default/pods/otter":    "GET",
-		"/namespaces/default/pods/starfish": "PATCH",
-		"/namespaces/default/pods":          "POST",
+	expectedActions := []string{
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/starfish:PATCH",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/dolphin:GET",
+		"/namespaces/default/pods:POST",
 	}
-
+	if len(expectedActions) != len(actions) {
+		t.Errorf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
+		return
+	}
 	for k, v := range expectedActions {
-		if m, ok := actions[k]; !ok || m != v {
-			t.Errorf("expected a %s request to %s", k, v)
+		if actions[k] != v {
+			t.Errorf("expected %s request got %s", v, actions[k])
 		}
 	}
 
