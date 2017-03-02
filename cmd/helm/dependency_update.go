@@ -98,5 +98,8 @@ func (d *dependencyUpdateCmd) run() error {
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible
 	}
+	if flagDebug {
+		man.Debug = true
+	}
 	return man.Update()
 }

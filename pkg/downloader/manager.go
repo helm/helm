@@ -51,6 +51,8 @@ type Manager struct {
 	HelmHome helmpath.Home
 	// Verification indicates whether the chart should be verified.
 	Verify VerificationStrategy
+	// Debug is the global "--debug" flag
+	Debug bool
 	// Keyring is the key ring file.
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
@@ -213,7 +215,9 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		}
 
 		if strings.HasPrefix(dep.Repository, "file://") {
-			fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
+			}
 			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
 			if err != nil {
 				return err
@@ -335,7 +339,9 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 				return nil, err
 			}
 
-			fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
+			}
 			reposMap[dd.Name] = dd.Repository
 			continue
 		}
