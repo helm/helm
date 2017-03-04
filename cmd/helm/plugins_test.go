@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 
 	"github.com/spf13/cobra"
 )

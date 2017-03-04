@@ -30,11 +30,8 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 
-	// FIXME: This violates the package rules. A `cmd` should not be imported by
-	// something in 'pkg'
-	"k8s.io/helm/cmd/helm/helmpath"
-
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/resolver"
