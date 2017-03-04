@@ -40,9 +40,12 @@ func TestDependencyListCmd(t *testing.T) {
 			expect: "WARNING: no requirements at ",
 		},
 		{
-			name:   "Requirements in chart dir",
-			args:   []string{"testdata/testcharts/reqtest"},
-			expect: "NAME        \tVERSION\tREPOSITORY                \tSTATUS  \nreqsubchart \t0.1.0  \thttps://example.com/charts\tunpacked\nreqsubchart2\t0.2.0  \thttps://example.com/charts\tunpacked\n",
+			name: "Requirements in chart dir",
+			args: []string{"testdata/testcharts/reqtest"},
+			expect: "NAME        \tVERSION\tREPOSITORY                \tSTATUS  \n" +
+				"reqsubchart \t0.1.0  \thttps://example.com/charts\tunpacked\n" +
+				"reqsubchart2\t0.2.0  \thttps://example.com/charts\tunpacked\n" +
+				"reqsubchart3\t>=0.1.0\thttps://example.com/charts\tok      \n\n",
 		},
 		{
 			name:   "Requirements in chart archive",
