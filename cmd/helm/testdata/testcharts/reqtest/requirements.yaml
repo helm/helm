@@ -5,3 +5,6 @@ dependencies:
   - name: reqsubchart2
     version: 0.2.0
     repository: "https://example.com/charts"
+  - name: reqsubchart3
+    version: ">=0.1.0"
+    repository: "https://example.com/charts"

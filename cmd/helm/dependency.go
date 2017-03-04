@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Masterminds/semver"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
@@ -140,21 +141,41 @@ func (l *dependencyListCmd) run() error {
 }
 
 func (l *dependencyListCmd) dependencyStatus(dep *chartutil.Dependency) string {
-	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, dep.Version)
-	archive := filepath.Join(l.chartpath, "charts", filename)
-	if _, err := os.Stat(archive); err == nil {
-		c, err := chartutil.Load(archive)
-		if err != nil {
-			return "corrupt"
-		}
-		if c.Metadata.Name != dep.Name {
-			return "misnamed"
-		}
+	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
+	archives, err := filepath.Glob(filepath.Join(l.chartpath, "charts", filename))
+	if err != nil {
+		return "bad pattern"
+	} else if len(archives) > 1 {
+		return "too many matches"
+	} else if len(archives) == 1 {
+		archive := archives[0]
+		if _, err := os.Stat(archive); err == nil {
+			c, err := chartutil.Load(archive)
+			if err != nil {
+				return "corrupt"
+			}
+			if c.Metadata.Name != dep.Name {
+				return "misnamed"
+			}
 
-		if c.Metadata.Version != dep.Version {
-			return "wrong version"
+			if c.Metadata.Version != dep.Version {
+				constraint, err := semver.NewConstraint(dep.Version)
+				if err != nil {
+					return "invalid version"
+				}
+
+				v, err := semver.NewVersion(c.Metadata.Version)
+				if err != nil {
+					return "invalid version"
+				}
+
+				if constraint.Check(v) {
+					return "ok"
+				}
+				return "wrong version"
+			}
+			return "ok"
 		}
-		return "ok"
 	}
 
 	folder := filepath.Join(l.chartpath, "charts", dep.Name)
@@ -174,6 +195,19 @@ func (l *dependencyListCmd) dependencyStatus(dep *chartutil.Dependency) string {
 	}
 
 	if c.Metadata.Version != dep.Version {
+		constraint, err := semver.NewConstraint(dep.Version)
+		if err != nil {
+			return "invalid version"
+		}
+
+		v, err := semver.NewVersion(c.Metadata.Version)
+		if err != nil {
+			return "invalid version"
+		}
+
+		if constraint.Check(v) {
+			return "unpacked"
+		}
 		return "wrong version"
 	}
 
