@@ -25,6 +25,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [Technosophos's Helm Plugins](https://github.com/technosophos/helm-plugins) - Plugins for GitHub, Keybase, and GPG
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
 - [Helm Value Store](https://github.com/skuid/helm-value-store) - Plugin for working with Helm deployment values
+- [Helm Diff](https://github.com/databus23/helm-diff) - Preview `helm upgrade` as a coloured diff
 
 ## Additional Tools
 
