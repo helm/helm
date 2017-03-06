@@ -120,6 +120,8 @@ type renderable struct {
 	tpl string
 	// vals are the values to be supplied to the template.
 	vals chartutil.Values
+	// namespace prefix to the templates of the current chart
+	basePath string
 }
 
 // alterFuncMap takes the Engine's FuncMap and adds context-specific functions.
@@ -178,7 +180,7 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	for _, file := range files {
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[file].vals
-		vals["Template"] = map[string]interface{}{"Name": file}
+		vals["Template"] = map[string]interface{}{"Name": file, "BasePath": tpls[file].basePath}
 		if err := t.ExecuteTemplate(&buf, file, vals); err != nil {
 			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
 		}
@@ -246,8 +248,9 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 	}
 	for _, t := range c.Templates {
 		templates[path.Join(newParentID, t.Name)] = renderable{
-			tpl:  string(t.Data),
-			vals: cvals,
+			tpl:      string(t.Data),
+			vals:     cvals,
+			basePath: path.Join(newParentID, "templates"),
 		}
 	}
 }

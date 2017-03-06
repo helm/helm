@@ -4,7 +4,7 @@ Objects are passed into a template from the template engine. And your code can p
 
 Objects can be simple, and have just one value. Or they can contain other objects or functions. For example. the `Release` object contains several objects (like `Release.Name`) and the `Files` object has a few functions.
 
-In the previous section, we use `{{.Release.Name}}` to insert the name of a release into a template. `Release` is one of four top-level objects that you can access in your templates.
+In the previous section, we use `{{.Release.Name}}` to insert the name of a release into a template. `Release` is one of the top-level objects that you can access in your templates.
 
 - `Release`: This object describes the release itself. It has several objects inside of it:
   - `Release.Name`: The release name
@@ -25,6 +25,9 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
   - `Capabilities.APIVersions.Has $version` indicates whether a version (`batch/v1`) is enabled on the cluster.
   - `Capabilities.KubeVersion` provides a way to look up the Kubernetes version. It has the following values: `Major`, `Minor`, `GitVersion`, `GitCommit`, `GitTreeState`, `BuildDate`, `GoVersion`, `Compiler`, and `Platform`.
   - `Capabilities.TillerVersion` provides a way to look up the Tiller version. It has the following values: `SemVer`, `GitCommit`, and `GitTreeState`.
+- `Template`: Contains information about the current template that is being executed
+  - `Name`: A namespaced filepath to the current template (e.g. `mychart/templates/mytemplate.yaml`)
+  - `BasePath`: The namespaced path to the templates directory of the current chart (e.g. `mychart/templates`). This can be used to [include template files](https://github.com/kubernetes/helm/blob/master/docs/charts_tips_and_tricks.md#automatically-roll-deployments-when-configmaps-or-secrets-change)
 
 The values are available to any top-level template. As we will see later, this does not necessarily mean that they will be available _everywhere_.
 
