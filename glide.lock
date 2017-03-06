@@ -1,5 +1,5 @@
-hash: b4a2318bb042d673a7843e99b9d4f096e8d0fd0a3ec94968534be4cf39101045
-updated: 2017-02-23T23:08:54.111587509Z
+hash: 02bce6ea185e5047edd61974566237d990bc8aa7951608f4a3a352f70b1bc897
+updated: 2017-03-01T11:15:43.421409397-08:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -189,6 +189,12 @@ imports:
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/mitchellh/go-wordwrap
   version: ad45545899c7b13c020ea92b2072220eefad42b8
+- name: github.com/naoina/go-stringutil
+  version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
+- name: github.com/naoina/toml
+  version: 751171607256bb66e64c9f0220c00662420c38e9
+  subpackages:
+  - ast
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/PuerkitoBio/purell

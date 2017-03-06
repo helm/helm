@@ -25,6 +25,7 @@ import (
 
 	"github.com/gobwas/glob"
 	"github.com/golang/protobuf/ptypes/any"
+	"github.com/naoina/toml"
 )
 
 // Files is a map of files in a chart that can be accessed from a template.
@@ -189,6 +190,19 @@ func FromYaml(str string) map[string]interface{} {
 		m["Error"] = err.Error()
 	}
 	return m
+}
+
+// ToToml takes an interface, marshals it to toml, and returns a string. It will
+// always return a string, even on marshal error (empty string).
+//
+// This is designed to be called from a template.
+func ToToml(v interface{}) string {
+	data, err := toml.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return string(data)
 }
 
 // ToJson takes an interface, marshals it to json, and returns a string. It will
