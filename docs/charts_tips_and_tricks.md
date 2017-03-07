@@ -80,7 +80,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/templates/secret.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
 [...]
 ```
 
