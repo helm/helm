@@ -6,7 +6,7 @@ add to this list, please open an [issue](https://github.com/kubernetes/helm/issu
 or [pull request](https://github.com/kubernetes/helm/pulls).
 
 ## Article, Blogs, How-Tos, and Extra Documentation
-
+- [Using Helm to Deploy to Kubernetes](https://daemonza.github.io/2017/02/20/using-helm-to-deploy-to-kubernetes/)
 - [Honestbee's Helm Chart Conventions](https://gist.github.com/so0k/f927a4b60003cedd101a0911757c605a)
 - [Releasing backward-incompatible changes: Kubernetes, Jenkins, Prometheus Operator, Helm and Traefik](https://medium.com/@enxebre/releasing-backward-incompatible-changes-kubernetes-jenkins-plugin-prometheus-operator-helm-self-6263ca61a1b1#.e0c7elxhq)
 - [CI/CD with Kubernetes, Helm & Wercker ](http://www.slideshare.net/Diacode/cicd-with-kubernetes-helm-wercker-madscalability)
