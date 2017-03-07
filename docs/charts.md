@@ -555,6 +555,8 @@ _downward_ (to the subchart's subcharts), but not _upward_ to the parent
 chart. There is no way for a subchart to influence the values of the
 parent chart.
 
+Also, global variables of parent charts take precedence over the global variables from child charts.
+
 _Global sections are restricted to only simple key/value pairs. They do
 not support nesting._
 
