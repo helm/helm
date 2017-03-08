@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/helmpath"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"

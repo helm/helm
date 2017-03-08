@@ -27,7 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/cmd/helm/installer"
-	"k8s.io/helm/pkg/helmpath"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 

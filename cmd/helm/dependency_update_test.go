@@ -26,7 +26,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helmpath"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"

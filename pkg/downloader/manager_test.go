@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helmpath"
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 func TestVersionEquals(t *testing.T) {
