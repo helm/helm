@@ -436,6 +436,9 @@ anything.
 **NOTE:** If the `--set` flag is used on `helm install` or `helm upgrade`, those
 values are simply converted to YAML on the client side.
 
+**NOTE:** If any required entries in the values file exist, they can be declared
+as required in the chart template by using the ['required' function](charts_tips_and_tricks.md)
+
 Any of these values are then accessible inside of templates using the
 `.Values` object:
 

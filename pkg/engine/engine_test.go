@@ -49,7 +49,7 @@ func TestFuncMap(t *testing.T) {
 	}
 
 	// Test for Engine-specific template functions.
-	expect := []string{"include", "toYaml", "fromYaml", "toToml", "toJson", "fromJson"}
+	expect := []string{"include", "required", "toYaml", "fromYaml", "toToml", "toJson", "fromJson"}
 	for _, f := range expect {
 		if _, ok := fns[f]; !ok {
 			t.Errorf("Expected add-on function %q", f)
@@ -409,4 +409,40 @@ func TestAlterFuncMap(t *testing.T) {
 	if got := out["conrad/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
+
+	reqChart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "conan"},
+		Templates: []*chart.Template{
+			{Name: "templates/quote", Data: []byte(`All your base are belong to {{ required "A valid 'who' is required" .Values.who }}`)},
+			{Name: "templates/bases", Data: []byte(`All {{ required "A valid 'bases' is required" .Values.bases }} of them!`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{},
+	}
+
+	reqValues := chartutil.Values{
+		"Values": chartutil.Values{
+			"who":   "us",
+			"bases": 2,
+		},
+		"Chart": reqChart.Metadata,
+		"Release": chartutil.Values{
+			"Name": "That 90s meme",
+		},
+	}
+
+	outReq, err := New().Render(reqChart, reqValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectStr := "All your base are belong to us"
+	if gotStr := outReq["conan/templates/quote"]; gotStr != expectStr {
+		t.Errorf("Expected %q, got %q (%v)", expectStr, gotStr, outReq)
+	}
+	expectNum := "All 2 of them!"
+	if gotNum := outReq["conan/templates/bases"]; gotNum != expectNum {
+		t.Errorf("Expected %q, got %q (%v)", expectNum, gotNum, outReq)
+	}
+
 }
