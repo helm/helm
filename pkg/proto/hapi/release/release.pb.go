@@ -40,7 +40,7 @@ type Release struct {
 func (m *Release) Reset()                    { *m = Release{} }
 func (m *Release) String() string            { return proto.CompactTextString(m) }
 func (*Release) ProtoMessage()               {}
-func (*Release) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
+func (*Release) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
 
 func (m *Release) GetName() string {
 	if m != nil {
@@ -102,9 +102,9 @@ func init() {
 	proto.RegisterType((*Release)(nil), "hapi.release.Release")
 }
 
-func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor2) }
+func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor3) }
 
-var fileDescriptor2 = []byte{
+var fileDescriptor3 = []byte{
 	// 256 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x90, 0xbf, 0x4e, 0xc3, 0x40,
 	0x0c, 0xc6, 0x95, 0x36, 0x7f, 0x1a, 0xc3, 0x82, 0x07, 0xb0, 0x22, 0x86, 0x88, 0x01, 0x22, 0x86,

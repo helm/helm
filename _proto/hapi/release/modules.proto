@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package hapi.release;
+
+import "hapi/release/release.proto";
+
+option go_package = "release";
+
+service ReleaseModuleService {
+	rpc Version(VersionReleaseRequest) returns (VersionReleaseResponse)  {
+	}
+
+	// InstallRelease requests installation of a chart as a new release.
+	rpc InstallRelease(InstallReleaseRequest) returns (InstallReleaseResponse) {
+	}
+
+	// DeleteRelease requests deletion of a named release.
+	rpc DeleteRelease(DeleteReleaseRequest) returns (DeleteReleaseResponse) {
+	}
+
+	// RollbackRelease rolls back a release to a previous version.
+	rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
+	}
+
+	// UpgradeRelease updates release content.
+	rpc UpgradeRelease(UpgradeReleaseRequest) returns (UpgradeReleaseResponse) {
+	}
+}
+
+message Result {
+	enum Status {
+		// No status set
+		UNKNOWN = 0;
+		// Operation was successful
+		SUCCESS = 1;
+		// Operation had no results (e.g. upgrade identical, rollback to same, delete non-existent)
+		UNCHANGED = 2;
+		// Operation failed
+		ERROR = 3;
+	}
+	string info = 1;
+	repeated string log = 2;
+}
+
+message VersionReleaseRequest {
+}
+
+message VersionReleaseResponse {
+	string name = 1;     // The canonical name of the release module
+	string version = 2;  // The version of the release module
+}
+
+message InstallReleaseRequest {
+	hapi.release.Release release = 1;
+}
+message InstallReleaseResponse {
+	hapi.release.Release release = 1;
+	Result result = 2;
+}
+
+message DeleteReleaseRequest {
+	hapi.release.Release release = 1;
+}
+message DeleteReleaseResponse {
+	hapi.release.Release release = 1;
+	Result result = 2;
+}
+
+message UpgradeReleaseRequest{
+	hapi.release.Release release = 1;
+}
+message UpgradeReleaseResponse{
+	hapi.release.Release release = 1;
+	Result result = 2;
+}
+
+message RollbackReleaseRequest{
+	hapi.release.Release release = 1;
+}
+message RollbackReleaseResponse{
+	hapi.release.Release release = 1;
+	Result result = 2;
+}

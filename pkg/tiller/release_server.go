@@ -82,15 +82,24 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
+	ReleaseModule
 	env       *environment.Environment
 	clientset internalclientset.Interface
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, useRemote bool) *ReleaseServer {
+	var releaseModule ReleaseModule
+	if useRemote {
+		releaseModule = &RemoteReleaseModule{}
+	} else {
+		releaseModule = &LocalReleaseModule{}
+	}
+
 	return &ReleaseServer{
-		env:       env,
-		clientset: clientset,
+		env:           env,
+		clientset:     clientset,
+		ReleaseModule: releaseModule,
 	}
 }
 
@@ -907,8 +916,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	default:
 		// nothing to replace, create as normal
 		// regular manifests
-		b := bytes.NewBufferString(r.Manifest)
-		if err := s.env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
+		if err := s.ReleaseModule.Create(r, req, s.env); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED

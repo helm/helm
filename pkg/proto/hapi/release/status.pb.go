@@ -51,7 +51,7 @@ var Status_Code_value = map[string]int32{
 func (x Status_Code) String() string {
 	return proto.EnumName(Status_Code_name, int32(x))
 }
-func (Status_Code) EnumDescriptor() ([]byte, []int) { return fileDescriptor3, []int{0, 0} }
+func (Status_Code) EnumDescriptor() ([]byte, []int) { return fileDescriptor4, []int{0, 0} }
 
 // Status defines the status of a release.
 type Status struct {
@@ -67,7 +67,7 @@ type Status struct {
 func (m *Status) Reset()                    { *m = Status{} }
 func (m *Status) String() string            { return proto.CompactTextString(m) }
 func (*Status) ProtoMessage()               {}
-func (*Status) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (*Status) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 func (m *Status) GetCode() Status_Code {
 	if m != nil {
@@ -102,9 +102,9 @@ func init() {
 	proto.RegisterEnum("hapi.release.Status_Code", Status_Code_name, Status_Code_value)
 }
 
-func init() { proto.RegisterFile("hapi/release/status.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("hapi/release/status.proto", fileDescriptor4) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor4 = []byte{
 	// 291 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0xdf, 0x6a, 0xc2, 0x30,
 	0x14, 0xc6, 0x57, 0xad, 0x3a, 0x8f, 0x22, 0x21, 0x1b, 0xac, 0xca, 0x06, 0xc5, 0xab, 0xde, 0xac,

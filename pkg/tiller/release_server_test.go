@@ -99,8 +99,9 @@ data:
 
 func rsFixture() *ReleaseServer {
 	return &ReleaseServer{
-		env:       MockEnvironment(),
-		clientset: fake.NewSimpleClientset(),
+		ReleaseModule: &LocalReleaseModule{},
+		env:           MockEnvironment(),
+		clientset:     fake.NewSimpleClientset(),
 	}
 }
 
