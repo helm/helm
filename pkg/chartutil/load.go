@@ -215,10 +215,25 @@ func LoadFile(name string) (*chart.Chart, error) {
 	return LoadArchive(raw)
 }
 
+// LoadIgnoreFiles loads helmignore files and returns a reader.
+func LoadIgnoreFiles(ignoreFiles []string) *bytes.Reader {
+	buff := bytes.NewBuffer(nil)
+
+	for _, ignf := range ignoreFiles {
+		f, err := os.Open(ignf)
+		if err == nil {
+			defer f.Close()
+			io.Copy(buff, f)
+		}
+	}
+
+	return bytes.NewReader(buff.Bytes())
+}
+
 // LoadDir loads from a directory.
 //
 // This loads charts only from directories.
-func LoadDir(dir string) (*chart.Chart, error) {
+func LoadDir(dir string, ignoreFiles ...string) (*chart.Chart, error) {
 	topdir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -228,13 +243,12 @@ func LoadDir(dir string) (*chart.Chart, error) {
 	c := &chart.Chart{}
 
 	rules := ignore.Empty()
-	ifile := filepath.Join(topdir, ignore.HelmIgnore)
-	if _, err := os.Stat(ifile); err == nil {
-		r, err := ignore.ParseFile(ifile)
+	r := LoadIgnoreFiles(ignoreFiles)
+	if r.Len() > 0 {
+		rules, err = ignore.Parse(r)
 		if err != nil {
 			return c, err
 		}
-		rules = r
 	}
 	rules.AddDefaults()
 
