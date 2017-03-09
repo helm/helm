@@ -61,7 +61,9 @@ hooks, the lifecycle is altered like this:
 4. Tiller executes the `pre-install` hook (loading hook resources into
    Kubernetes)
 5. Tiller waits until the hook is "Ready"
-6. Tiller loads the resulting resources into Kubernetes
+6. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
+flag is set, Tiller will wait until all resources are in a ready state
+and will not run the `post-install` hook until they are ready.
 7. Tiller executes the `post-install` hook (loading hook resources)
 8. Tiller waits until the hook is "Ready"
 9. Tiller returns the release name (and other data) to the client
