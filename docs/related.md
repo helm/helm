@@ -40,6 +40,7 @@ Tools layered on top of Helm or Tiller.
 - [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
 - [Monocular](https://github.com/helm/monocular) - Web UI for Helm Chart repositories
+- [Helm Chart Publisher](https://github.com/luizbafilho/helm-chart-publisher) - HTTP API for publishing Helm Charts in a easy way
 
 ## Helm Included
 
