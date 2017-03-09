@@ -25,9 +25,9 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
-	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )

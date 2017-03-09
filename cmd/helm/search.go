@@ -24,8 +24,8 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/search"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 

@@ -32,7 +32,7 @@ import (
 	testcore "k8s.io/kubernetes/pkg/client/testing/core"
 	"k8s.io/kubernetes/pkg/runtime"
 
-	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 func TestInitCmd(t *testing.T) {

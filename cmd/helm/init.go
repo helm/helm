@@ -26,8 +26,8 @@ import (
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
-	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/cmd/helm/installer"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 

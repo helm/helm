@@ -26,8 +26,8 @@ import (
 
 	"github.com/Masterminds/semver"
 
-	"k8s.io/helm/cmd/helm/helmpath"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 )

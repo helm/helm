@@ -32,7 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/restclient"
 
-	"k8s.io/helm/cmd/helm/helmpath"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/tiller/environment"
