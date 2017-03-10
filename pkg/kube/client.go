@@ -520,7 +520,8 @@ func podsReady(pods []api.Pod) bool {
 
 func servicesReady(svc []api.Service) bool {
 	for _, s := range svc {
-		if !api.IsServiceIPSet(&s) {
+		// Make sure the service is not explicitly set to "None" before checking the IP
+		if s.Spec.ClusterIP != api.ClusterIPNone && !api.IsServiceIPSet(&s) {
 			return false
 		}
 		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
