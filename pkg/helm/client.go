@@ -86,7 +86,6 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	req.DisableHooks = h.opts.disableHooks
 	req.ReuseName = h.opts.reuseName
 	ctx := NewContext()
-
 	if h.opts.before != nil {
 		if err := h.opts.before(ctx, req); err != nil {
 			return nil, err
