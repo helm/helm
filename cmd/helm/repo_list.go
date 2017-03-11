@@ -59,7 +59,6 @@ func (a *repoListCmd) run() error {
 		return errors.New("no repositories to show")
 	}
 	table := uitable.New()
-	table.MaxColWidth = 50
 	table.AddRow("NAME", "URL")
 	for _, re := range f.Repositories {
 		table.AddRow(re.Name, re.URL)
