@@ -91,6 +91,7 @@ docs: build
 	bin/helm docs --dir ./docs/helm
 	bin/helm docs --dir ./docs/man/man1 --type man
 	bin/helm docs --dir ./scripts --type bash
+	scripts/docs-clean-home.sh
 
 .PHONY: clean
 clean:
