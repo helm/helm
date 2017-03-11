@@ -18,6 +18,7 @@ package helm // import "k8s.io/helm/pkg/helm"
 
 import (
 	"io"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -360,7 +361,7 @@ func (h *Client) content(ctx context.Context, req *rls.GetReleaseContentRequest)
 
 // Executes tiller.GetVersion RPC.
 func (h *Client) version(ctx context.Context, req *rls.GetVersionRequest) (*rls.GetVersionResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second), grpc.WithBlock())
 	if err != nil {
 		return nil, err
 	}
