@@ -5,22 +5,31 @@
 
 .SH NAME
 .PP
-helm\-repo\-update \- update information on available charts in the chart repositories
+helm\-test \- test a release
 
 
 .SH SYNOPSIS
 .PP
-\fBhelm repo update\fP
+\fBhelm test [RELEASE]\fP
 
 
 .SH DESCRIPTION
 .PP
-Update gets the latest information about charts from the respective chart repositories.
-Information is cached locally, where it is used by commands like 'helm search'.
+The test command runs the tests for a release.
 
 .PP
-\&'helm update' is the deprecated form of 'helm repo update'. It will be removed in
-future releases.
+The argument this command takes is the name of a deployed release.
+The tests to be run are defined in the chart that was installed.
+
+
+.SH OPTIONS
+.PP
+\fB\-\-cleanup\fP[=false]
+    delete test pods upon completion
+
+.PP
+\fB\-\-timeout\fP=300
+    time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS
@@ -47,7 +56,7 @@ future releases.
 
 .SH SEE ALSO
 .PP
-\fBhelm\-repo(1)\fP
+\fBhelm(1)\fP
 
 
 .SH HISTORY
