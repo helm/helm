@@ -6,6 +6,7 @@ _dist/
 _proto/*.pb.go
 bin/
 rootfs/tiller
+rootfs/rudder
 vendor/
 *.exe
 .idea/
