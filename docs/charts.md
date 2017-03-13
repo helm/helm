@@ -16,7 +16,7 @@ building charts with Helm.
 
 A chart is organized as a collection of files inside of a directory. The
 directory name is the name of the chart (without versioning information). Thus,
-a chart describing Wordpress would be stored in the `wordpress/` directory.
+a chart describing WordPress would be stored in the `wordpress/` directory.
 
 Inside of this directory, Helm will expect a structure that matches this:
 
@@ -132,8 +132,8 @@ Such files are ignored by the chart loader.
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
 
-For example, if the Wordpress chart depends on the Apache chart, the
-Apache chart (of the correct version) is supplied in the Wordpress
+For example, if the WordPress chart depends on the Apache chart, the
+Apache chart (of the correct version) is supplied in the WordPress
 chart's `charts/` directory:
 
 ```
@@ -150,7 +150,7 @@ wordpress:
       # ...
 ```
 
-The example above shows how the Wordpress chart expresses its dependency
+The example above shows how the WordPress chart expresses its dependency
 on Apache and MySQL by including those charts inside of its `charts/`
 directory.
 
@@ -487,12 +487,12 @@ Values files can declare values for the top-level chart, as well as for
 any of the charts that are included in that chart's `charts/` directory.
 Or, to phrase it differently, a values file can supply values to the
 chart as well as to any of its dependencies. For example, the
-demonstration Wordpress chart above has both `mysql` and `apache` as
+demonstration WordPress chart above has both `mysql` and `apache` as
 dependencies. The values file could supply values to all of these
 components:
 
 ```yaml
-title: "My Wordpress Site" # Sent to the Wordpress template
+title: "My WordPress Site" # Sent to the WordPress template
 
 mysql:
   max_connections: 100 # Sent to MySQL
@@ -503,12 +503,12 @@ apache:
 ```
 
 Charts at a higher level have access to all of the variables defined
-beneath. So the wordpress chart can access the MySQL password as
+beneath. So the WordPress chart can access the MySQL password as
 `.Values.mysql.password`. But lower level charts cannot access things in
 parent charts, so MySQL will not be able to access the `title` property. Nor,
 for that matter, can it access `apache.port`.
 
-Values are namespaced, but namespaces are pruned. So for the Wordpress
+Values are namespaced, but namespaces are pruned. So for the WordPress
 chart, it can access the MySQL password field as `.Values.mysql.password`. But
 for the MySQL chart, the scope of the values has been reduced and the
 namespace prefix removed, so it will see the password field simply as
@@ -520,10 +520,10 @@ As of 2.0.0-Alpha.2, Helm supports special "global" value. Consider
 this modified version of the previous example:
 
 ```yaml
-title: "My Wordpress Site" # Sent to the Wordpress template
+title: "My WordPress Site" # Sent to the WordPress template
 
 global:
-  app: MyWordpress
+  app: MyWordPress
 
 mysql:
   max_connections: 100 # Sent to MySQL
@@ -533,7 +533,7 @@ apache:
   port: 8080 # Passed to Apache
 ```
 
-The above adds a `global` section with the value `app: MyWordpress`.
+The above adds a `global` section with the value `app: MyWordPress`.
 This value is available to _all_ charts as `.Values.global.app`.
 
 For example, the `mysql` templates may access `app` as `{{.Values.global.app}}`, and
@@ -541,20 +541,20 @@ so can the `apache` chart. Effectively, the values file above is
 regenerated like this:
 
 ```yaml
-title: "My Wordpress Site" # Sent to the Wordpress template
+title: "My WordPress Site" # Sent to the WordPress template
 
 global:
-  app: MyWordpress
+  app: MyWordPress
 
 mysql:
   global:
-    app: MyWordpress
+    app: MyWordPress
   max_connections: 100 # Sent to MySQL
   password: "secret"
 
 apache:
   global:
-    app: MyWordpress
+    app: MyWordPress
   port: 8080 # Passed to Apache
 ```
 
