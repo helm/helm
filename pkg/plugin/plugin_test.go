@@ -74,7 +74,7 @@ func TestLoadDir(t *testing.T) {
 		t.Errorf("Expected dir %q, got %q", dirname, plug.Dir)
 	}
 
-	expect := Metadata{
+	expect := &Metadata{
 		Name:        "hello",
 		Version:     "0.1.0",
 		Usage:       "usage",
@@ -84,8 +84,8 @@ func TestLoadDir(t *testing.T) {
 		IgnoreFlags: true,
 	}
 
-	if reflect.DeepEqual(expect, plug.Metadata) {
-		t.Errorf("Expected name %v, got %v", expect, plug.Metadata)
+	if !reflect.DeepEqual(expect, plug.Metadata) {
+		t.Errorf("Expected plugin metadata %v, got %v", expect, plug.Metadata)
 	}
 }
 
