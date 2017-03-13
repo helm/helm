@@ -70,4 +70,7 @@ message Metadata {
 
 	// The tags to check to enable chart
 	string tags = 12;
+
+	// The version of the application enclosed inside of this chart.
+	string appVersion = 13;
 }

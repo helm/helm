@@ -53,6 +53,7 @@ maintainers: # (optional)
     email: The maintainer's email (optional for each maintainer)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
 icon: A URL to an SVG or PNG image to be used as an icon (optional).
+appVersion: The version of the app that this contains (optional). This needn't be SemVer.
 ```
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
@@ -90,6 +91,14 @@ package, the `helm package` command will use the version that it finds
 in the `Chart.yaml` as a token in the package name. The system assumes
 that the version number in the chart package name matches the version number in
 the `Chart.yaml`. Failure to meet this assumption will cause an error.
+
+### The appVersion field
+
+Note that the `appVersion` field is not related to the `version` field. It is
+a way of specifying the version of the application. For example, the `drupal`
+chart may have an `appVersion: 8.2.1`, indicating that the version of Drupal
+included in the chart (by default) is `8.2.1`. This field is informational, and
+has no impact on chart version calculations.
 
 ## Chart LICENSE, README and NOTES
 

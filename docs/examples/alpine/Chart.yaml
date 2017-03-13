@@ -4,3 +4,4 @@ version: 0.1.0
 home: https://k8s.io/helm
 sources:
   - https://github.com/kubernetes/helm
+appVersion: 3.3
