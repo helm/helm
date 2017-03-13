@@ -73,4 +73,7 @@ message Metadata {
 
 	// The version of the application enclosed inside of this chart.
 	string appVersion = 13;
+	
+	// Whether or not this chart is deprecated
+	bool deprecated = 14;
 }
