@@ -22,6 +22,7 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -270,9 +271,28 @@ func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-ch
 	return h.test(ctx, req)
 }
 
+// connect returns a grpc connection to tiller or error. The grpc dial options
+// are constructed here.
+func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error) {
+	opts := []grpc.DialOption{
+		grpc.WithTimeout(5 * time.Second),
+		grpc.WithBlock(),
+	}
+	switch {
+	case h.opts.useTLS:
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(h.opts.tlsConfig)))
+	default:
+		opts = append(opts, grpc.WithInsecure())
+	}
+	if conn, err = grpc.Dial(h.opts.host, opts...); err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
 // Executes tiller.ListReleases RPC.
 func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.ListReleasesResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +309,7 @@ func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.L
 
 // Executes tiller.InstallRelease RPC.
 func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*rls.InstallReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +321,7 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 
 // Executes tiller.UninstallRelease RPC.
 func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +333,7 @@ func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (
 
 // Executes tiller.UpdateRelease RPC.
 func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +345,7 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 
 // Executes tiller.RollbackRelease RPC.
 func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) (*rls.RollbackReleaseResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +357,7 @@ func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) 
 
 // Executes tiller.GetReleaseStatus RPC.
 func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (*rls.GetReleaseStatusResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +369,7 @@ func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (
 
 // Executes tiller.GetReleaseContent RPC.
 func (h *Client) content(ctx context.Context, req *rls.GetReleaseContentRequest) (*rls.GetReleaseContentResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +381,7 @@ func (h *Client) content(ctx context.Context, req *rls.GetReleaseContentRequest)
 
 // Executes tiller.GetVersion RPC.
 func (h *Client) version(ctx context.Context, req *rls.GetVersionRequest) (*rls.GetVersionResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second), grpc.WithBlock())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +393,7 @@ func (h *Client) version(ctx context.Context, req *rls.GetVersionRequest) (*rls.
 
 // Executes tiller.GetHistory RPC.
 func (h *Client) history(ctx context.Context, req *rls.GetHistoryRequest) (*rls.GetHistoryResponse, error) {
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +406,7 @@ func (h *Client) history(ctx context.Context, req *rls.GetHistoryRequest) (*rls.
 // Executes tiller.TestRelease RPC.
 func (h *Client) test(ctx context.Context, req *rls.TestReleaseRequest) (<-chan *rls.TestReleaseResponse, <-chan error) {
 	errc := make(chan error, 1)
-	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
+	c, err := h.connect(ctx)
 	if err != nil {
 		errc <- err
 		return nil, errc

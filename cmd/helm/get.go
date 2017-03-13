@@ -87,10 +87,3 @@ func (g *getCmd) run() error {
 	}
 	return printRelease(g.out, res.Release)
 }
-
-func ensureHelmClient(h helm.Interface) helm.Interface {
-	if h != nil {
-		return h
-	}
-	return helm.NewClient(helm.Host(tillerHost))
-}

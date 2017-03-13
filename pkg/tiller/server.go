@@ -32,13 +32,18 @@ import (
 // grpc library default is 4MB
 var maxMsgSize = 1024 * 1024 * 10
 
-// NewServer creates a new grpc server.
-func NewServer() *grpc.Server {
-	return grpc.NewServer(
+// DefaultServerOpts returns the set of default grpc ServerOption's that Tiller requires.
+func DefaultServerOpts() []grpc.ServerOption {
+	return []grpc.ServerOption{
 		grpc.MaxMsgSize(maxMsgSize),
 		grpc.UnaryInterceptor(newUnaryInterceptor()),
 		grpc.StreamInterceptor(newStreamInterceptor()),
-	)
+	}
+}
+
+// NewServer creates a new grpc server.
+func NewServer(opts ...grpc.ServerOption) *grpc.Server {
+	return grpc.NewServer(append(DefaultServerOpts(), opts...)...)
 }
 
 func newUnaryInterceptor() grpc.UnaryServerInterceptor {
