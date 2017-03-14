@@ -6,6 +6,12 @@ dependencies:
         tags:
           - front-end
           - subcharta
+        import-values:
+          - child: resources.limits
+            parent: imported-from-chartA.limits
+          - child: resources.requests
+            parent: imported-from-chartA.requests
+
       - name: subchartb
         repository: http://localhost:10191
         version: 0.1.0

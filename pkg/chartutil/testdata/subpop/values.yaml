@@ -1,6 +1,20 @@
 # parent/values.yaml
 
 # switch-like
+imported-from-chart1:
+  name: bathtubginx
+  type: None
+  externalPort: 25
+  notimported1: 1
+
+imported-from-chartA-via-chart1:
+  limits:
+    cpu: 100m
+    memory: 100Mi
+    notimported2: 100
+  requests:
+    truthiness: 33.3
+
 tags:
   front-end: true
   back-end: false

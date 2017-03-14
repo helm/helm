@@ -1,6 +1,7 @@
 # Default values for subchart.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+# subchartA
 replicaCount: 1
 image:
   repository: nginx
@@ -13,9 +14,12 @@ service:
   internalPort: 80
 resources:
   limits:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 300m
+    memory: 300Mi
+    plasticity: 1.7331
+    volume: 11
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 350m
+    memory: 350Mi
+    truthiness: 0.01
 

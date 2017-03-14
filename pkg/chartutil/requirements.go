@@ -62,6 +62,8 @@ type Dependency struct {
 	Tags []string `json:"tags"`
 	// Enabled bool determines if chart should be loaded
 	Enabled bool `json:"enabled"`
+	// ImportValues holds the mapping of source values to parent key to be imported
+	ImportValues []interface{} `json:"import-values"`
 }
 
 // ErrNoRequirementsFile to detect error condition
@@ -263,6 +265,130 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 		}
 	}
 	c.Dependencies = cd
+
+	return nil
+}
+
+// pathToMap creates a nested map given a YAML path in dot notation
+func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
+	ap := strings.Split(path, ".")
+	n := []map[string]interface{}{}
+	for _, v := range ap {
+		nm := make(map[string]interface{})
+		nm[v] = make(map[string]interface{})
+		n = append(n, nm)
+	}
+	for i, d := range n {
+		for k := range d {
+			z := i + 1
+			if z == len(n) {
+				n[i][k] = data
+				break
+			}
+			n[i][k] = n[z]
+		}
+	}
+
+	return n[0]
+}
+
+// getParents returns a slice of parent charts in reverse order
+func getParents(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
+	if len(out) == 0 {
+		out = []*chart.Chart{}
+		out = append(out, c)
+	}
+	for _, ch := range c.Dependencies {
+		if len(ch.Dependencies) > 0 {
+			out = append(out, ch)
+			out = getParents(ch, out)
+		}
+	}
+
+	return out
+}
+
+// processImportValues merges values from child to parent based on ImportValues field
+func processImportValues(c *chart.Chart, v *chart.Config) error {
+	reqs, err := LoadRequirements(c)
+	if err != nil {
+		log.Printf("Warning: ImportValues cannot load requirements for %s", c.Metadata.Name)
+		return nil
+	}
+	cvals, err := CoalesceValues(c, v)
+	nv := v.GetValues()
+	b := make(map[string]interface{})
+	for kk, v3 := range nv {
+		b[kk] = v3
+	}
+	for _, r := range reqs.Dependencies {
+		if len(r.ImportValues) > 0 {
+			var outiv []interface{}
+			for _, riv := range r.ImportValues {
+				switch tr := riv.(type) {
+				case map[string]interface{}:
+					if m, ok := riv.(map[string]interface{}); ok {
+						nm := make(map[string]string)
+						nm["child"] = m["child"].(string)
+						nm["parent"] = m["parent"].(string)
+						outiv = append(outiv, nm)
+						s := r.Name + "." + nm["child"]
+						vv, err := cvals.Table(s)
+						if err != nil {
+							log.Printf("Warning: ImportValues missing table %v", err)
+							continue
+						}
+						if nm["parent"] == "." {
+							coalesceTables(b, vv.AsMap())
+						} else {
+
+							vm := pathToMap(nm["parent"], vv.AsMap())
+							coalesceTables(b, vm)
+						}
+					}
+				case string:
+					log.Printf("its a string %v", tr)
+					// todo validation
+					nm := make(map[string]string)
+					nm["child"] = riv.(string)
+					nm["parent"] = "."
+					outiv = append(outiv, nm)
+					s := r.Name + "." + nm["child"]
+					vv, err := cvals.Table(s)
+					if err != nil {
+						log.Printf("Warning: ImportValues missing table %v", err)
+						continue
+					}
+					coalesceTables(b, vv.AsMap())
+				}
+			}
+			// set our formatted import values
+			r.ImportValues = outiv
+		}
+	}
+
+	cv, err := coalesceValues(c, b)
+	if err != nil {
+		log.Fatalf("Error coalescing values for ImportValues %s", err)
+	}
+	y, err := yaml.Marshal(cv)
+	if err != nil {
+		log.Printf("Warning: ImportValues could not marshall %v", err)
+	}
+	bb := &chart.Config{Raw: string(y)}
+	v = bb
+	c.Values = bb
+
+	return nil
+}
+
+// ProcessRequirementsImportValues imports specified chart values from child to parent
+func ProcessRequirementsImportValues(c *chart.Chart, v *chart.Config) error {
+	pc := getParents(c, nil)
+	for i := len(pc) - 1; i >= 0; i-- {
+		processImportValues(pc[i], v)
+
+	}
 
 	return nil
 }

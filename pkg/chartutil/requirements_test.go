@@ -18,6 +18,8 @@ import (
 	"sort"
 	"testing"
 
+	"strconv"
+
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -205,4 +207,59 @@ func extractCharts(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 		out = extractCharts(d, out)
 	}
 	return out
+}
+func TestProcessRequirementsImportValues(t *testing.T) {
+	c, err := Load("testdata/subpop")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
+	v := &chart.Config{Raw: ""}
+
+	e := make(map[string]string)
+	e["imported-from-chart1.type"] = "ClusterIP"
+	e["imported-from-chart1.name"] = "nginx"
+	e["imported-from-chart1.externalPort"] = "80"
+	// this doesn't exist in imported table. it should merge and remain unchanged
+	e["imported-from-chart1.notimported1"] = "1"
+	e["imported-from-chartA-via-chart1.limits.cpu"] = "300m"
+	e["imported-from-chartA-via-chart1.limits.memory"] = "300Mi"
+	e["imported-from-chartA-via-chart1.limits.volume"] = "11"
+	e["imported-from-chartA-via-chart1.requests.truthiness"] = "0.01"
+
+	verifyRequirementsImportValues(t, c, v, e)
+}
+func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Config, e map[string]string) {
+
+	err := ProcessRequirementsImportValues(c, v)
+	if err != nil {
+		t.Errorf("Error processing import values requirements %v", err)
+	}
+	cv := c.GetValues()
+	cc, err := ReadValues([]byte(cv.Raw))
+	if err != nil {
+		t.Errorf("Error reading import values %v", err)
+	}
+	for kk, vv := range e {
+		pv, err := cc.PathValue(kk)
+		if err != nil {
+			t.Fatalf("Error retrieving import values table %v %v", kk, err)
+			return
+		}
+
+		switch pv.(type) {
+		case float64:
+			s := strconv.FormatFloat(pv.(float64), 'f', -1, 64)
+			if s != vv {
+				t.Errorf("Failed to match imported float value %v with expected %v", s, vv)
+				return
+			}
+		default:
+			if pv.(string) != vv {
+				t.Errorf("Failed to match imported string value %v with expected %v", pv, vv)
+				return
+			}
+		}
+
+	}
 }
