@@ -316,6 +316,9 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 		return nil
 	}
 	cvals, err := CoalesceValues(c, v)
+	if err != nil {
+		log.Fatalf("Error coalescing values for ImportValues %s", err)
+	}
 	nv := v.GetValues()
 	b := make(map[string]interface{})
 	for kk, v3 := range nv {
@@ -369,7 +372,7 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 
 	cv, err := coalesceValues(c, b)
 	if err != nil {
-		log.Fatalf("Error coalescing values for ImportValues %s", err)
+		log.Fatalf("Error coalescing processed values for ImportValues %s", err)
 	}
 	y, err := yaml.Marshal(cv)
 	if err != nil {
