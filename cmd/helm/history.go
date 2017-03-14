@@ -79,11 +79,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 }
 
 func (cmd *historyCmd) run() error {
-	opts := []helm.HistoryOption{
-		helm.WithMaxHistory(cmd.max),
-	}
-
-	r, err := cmd.helmc.ReleaseHistory(cmd.rls, opts...)
+	r, err := cmd.helmc.ReleaseHistory(cmd.rls, helm.WithMaxHistory(cmd.max))
 	if err != nil {
 		return prettyError(err)
 	}
