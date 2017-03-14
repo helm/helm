@@ -328,7 +328,7 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 		if len(r.ImportValues) > 0 {
 			var outiv []interface{}
 			for _, riv := range r.ImportValues {
-				switch tr := riv.(type) {
+				switch riv.(type) {
 				case map[string]interface{}:
 					if m, ok := riv.(map[string]interface{}); ok {
 						nm := make(map[string]string)
@@ -350,8 +350,6 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 						}
 					}
 				case string:
-					log.Printf("its a string %v", tr)
-					// todo validation
 					nm := make(map[string]string)
 					nm["child"] = riv.(string)
 					nm["parent"] = "."
