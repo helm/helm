@@ -9,7 +9,7 @@ import:
 - package: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - package: github.com/Masterminds/sprig
-  version: ^2.8
+  version: ^2.10
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
   version: ~1.2.2
