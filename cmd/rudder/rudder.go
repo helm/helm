@@ -81,8 +81,12 @@ func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *re
 	return nil, nil
 }
 
-// UpgradeRelease is not implemented
+// UpgradeRelease upgrades manifests using kubernetes client
 func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *release.UpgradeReleaseRequest) (*release.UpgradeReleaseResponse, error) {
 	grpclog.Print("upgrade")
-	return nil, nil
+	c := bytes.NewBufferString(in.Current.Manifest)
+	t := bytes.NewBufferString(in.Target.Manifest)
+	err := kubeClient.Update(in.Target.Namespace, c, t, in.Recreate, in.Timeout, in.Wait)
+	// upgrade response object should be changed to include status
+	return &release.UpgradeReleaseResponse{}, err
 }

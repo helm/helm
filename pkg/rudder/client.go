@@ -40,3 +40,14 @@ func InstallRelease(rel *release.InstallReleaseRequest) (*release.InstallRelease
 	client := release.NewReleaseModuleServiceClient(conn)
 	return client.InstallRelease(context.Background(), rel)
 }
+
+// UpgradeReleas calls Rudder UpgradeRelease method which should perform update
+func UpgradeRelease(req *release.UpgradeReleaseRequest) (*release.UpgradeReleaseResponse, error) {
+	conn, err := grpc.Dial(fmt.Sprintf("127.0.0.1:%d", GrpcAddr), grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := release.NewReleaseModuleServiceClient(conn)
+	return client.UpgradeRelease(context.Background(), req)
+}
