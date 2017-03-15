@@ -957,6 +957,10 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, errMissingRelease
 	}
 
+	if len(req.Name) > releaseNameMaxLen {
+		return nil, fmt.Errorf("release name %q exceeds max length of %d", req.Name, releaseNameMaxLen)
+	}
+
 	rels, err := s.env.Releases.History(req.Name)
 	if err != nil {
 		log.Printf("uninstall: Release not loaded: %s", req.Name)
