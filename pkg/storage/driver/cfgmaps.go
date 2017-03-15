@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -31,6 +32,7 @@ import (
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	kblabels "k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/util/validation"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -119,6 +121,9 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, error) {
 	ls := kblabels.Set{}
 	for k, v := range labels {
+		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
+			return nil, fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
+		}
 		ls[k] = v
 	}
 
