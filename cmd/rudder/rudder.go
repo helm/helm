@@ -28,6 +28,7 @@ import (
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/rudder"
+	"k8s.io/helm/pkg/version"
 )
 
 var kubeClient = kube.New(nil)
@@ -51,7 +52,10 @@ type ReleaseModuleServiceServer struct{}
 // Version is not yet implemented
 func (r *ReleaseModuleServiceServer) Version(ctx context.Context, in *release.VersionReleaseRequest) (*release.VersionReleaseResponse, error) {
 	grpclog.Print("version")
-	return &release.VersionReleaseResponse{}, nil
+	return &release.VersionReleaseResponse{
+		Name:    "helm-rudder-native",
+		Version: version.Version,
+	}, nil
 }
 
 // InstallRelease creates a release using kubeClient.Create
