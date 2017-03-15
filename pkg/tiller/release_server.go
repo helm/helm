@@ -332,8 +332,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 			return res, err
 		}
 	}
-
-	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.ReleaseModule.Update(originalRelease, updatedRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -520,7 +519,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.ReleaseModule.Update(currentRelease, targetRelease, req); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -544,13 +543,6 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	targetRelease.Info.Status.Code = release.Status_DEPLOYED
 
 	return res, nil
-}
-
-func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, recreate bool, timeout int64, shouldWait bool) error {
-	kubeCli := s.env.KubeClient
-	current := bytes.NewBufferString(currentRelease.Manifest)
-	target := bytes.NewBufferString(targetRelease.Manifest)
-	return kubeCli.Update(targetRelease.Namespace, current, target, recreate, timeout, shouldWait)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -902,7 +894,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
 
-		if err := s.performKubeUpdate(old, r, false, req.Timeout, req.Wait); err != nil {
+		if err := s.ReleaseModule.Update(old, r, req, s.env); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED

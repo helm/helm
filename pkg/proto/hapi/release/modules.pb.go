@@ -158,7 +158,15 @@ func (m *DeleteReleaseResponse) GetResult() *Result {
 }
 
 type UpgradeReleaseRequest struct {
-	Release *Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Current *Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	Target  *Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
+	// Performs pods restart for resources if applicable
+	Recreate bool `protobuf:"varint,6,opt,name=recreate" json:"recreate,omitempty"`
+	// timeout specifies the max amount of time any kubernetes client command can run.
+	Timeout int64 `protobuf:"varint,7,opt,name=timeout" json:"timeout,omitempty"`
+	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
+	// before marking the release as successful. It will wait for as long as timeout
+	Wait bool `protobuf:"varint,9,opt,name=wait" json:"wait,omitempty"`
 }
 
 func (m *UpgradeReleaseRequest) Reset()                    { *m = UpgradeReleaseRequest{} }
@@ -168,7 +176,7 @@ func (*UpgradeReleaseRequest) Descriptor() ([]byte, []int) { return fileDescript
 
 func (m *UpgradeReleaseRequest) GetRelease() *Release {
 	if m != nil {
-		return m.Release
+		return m.Target
 	}
 	return nil
 }
