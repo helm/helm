@@ -54,6 +54,7 @@ maintainers: # (optional)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
 icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
+deprecated: Whether or not this chart is deprecated (optional, boolean)
 ```
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
@@ -99,6 +100,21 @@ a way of specifying the version of the application. For example, the `drupal`
 chart may have an `appVersion: 8.2.1`, indicating that the version of Drupal
 included in the chart (by default) is `8.2.1`. This field is informational, and
 has no impact on chart version calculations.
+
+### Deprecating Charts
+
+When managing charts in a Chart Repository, it is sometimes necessary to
+deprecate a chart. The optional `deprecated` field in `Chart.yaml` can be used
+to mark a chart as deprecated. If the **latest** version of a chart in the
+repository is marked as deprecated, then the chart as a whole is considered to
+be deprecated. The chart name can later be reused by publishing a newer version
+that is not marked as deprecated. The workflow for deprecating charts, as
+followed by the [kubernetes/charts](https://github.com/kubernetes/charts)
+project is:
+  - Update chart's `Chart.yaml` to mark the chart as deprecated, bumping the
+  version
+  - Release the new chart version in the Chart Repository
+  - Remove the chart from the source repository (e.g. git)
 
 ## Chart LICENSE, README and NOTES
 
@@ -214,19 +230,19 @@ team.
 
 #### Tags and Condition fields in requirements.yaml
 
-In addition to the other fields above, each requirements entry may contain 
+In addition to the other fields above, each requirements entry may contain
 the optional fields `tags` and `condition`.
 
-All charts are loaded by default. If `tags` or `condition` fields are present, 
-they will be evaluated and used to control loading for the chart(s) they are applied to. 
+All charts are loaded by default. If `tags` or `condition` fields are present,
+they will be evaluated and used to control loading for the chart(s) they are applied to.
 
-Condition - The condition field holds one or more YAML paths (delimited by commas). 
-If this path exists in the top parent's values and resolves to a boolean value, 
-the chart will be enabled or disabled based on that boolean value.  Only the first 
+Condition - The condition field holds one or more YAML paths (delimited by commas).
+If this path exists in the top parent's values and resolves to a boolean value,
+the chart will be enabled or disabled based on that boolean value.  Only the first
 valid path found in the list is evaluated and if no paths exist then the condition has no effect.
 
-Tags - The tags field is a YAML list of labels to associate with this chart. 
-In the top parent's values, all charts with tags can be enabled or disabled by 
+Tags - The tags field is a YAML list of labels to associate with this chart.
+In the top parent's values, all charts with tags can be enabled or disabled by
 specifying the tag and a boolean value.
 
 ````
@@ -239,7 +255,7 @@ dependencies:
         tags:
           - front-end
           - subchart1
-      
+
       - name: subchart2
         repository: http://localhost:10191
         version: 0.1.0
@@ -257,14 +273,14 @@ subchart1:
 tags:
   front-end: false
   back-end: true
-```` 
+````
 
-In the above example all charts with the tag `front-end` would be disabled but since the 
-`subchart1.enabled` path evaluates to 'true' in the parent's values, the condition will override the 
+In the above example all charts with the tag `front-end` would be disabled but since the
+`subchart1.enabled` path evaluates to 'true' in the parent's values, the condition will override the
 `front-end` tag and `subchart1` will be enabled.  
 
-Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be 
-enabled. Also note that although `subchart2` has a condition specified in `requirements.yaml`, there 
+Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be
+enabled. Also note that although `subchart2` has a condition specified in `requirements.yaml`, there
 is no corresponding path and value in the parent's values so that condition has no effect.  
 
 ##### Using the CLI with Tags and Conditions
@@ -279,11 +295,11 @@ helm install --set tags.front-end=true --set subchart2.enabled=false
 ##### Tags and Condition Resolution
 
 
-  * **Conditions (when set in values) always override tags.** The first condition 
+  * **Conditions (when set in values) always override tags.** The first condition
     path that exists wins and subsequent ones for that chart are ignored.
   * Tags are evaluated as 'if any of the chart's tags are true then enable the chart'.
   * Tags and conditions values must be set in the top parent's values.
-  * The `tags:` key in values must be a top level key. Globals and nested `tags:` tables 
+  * The `tags:` key in values must be a top level key. Globals and nested `tags:` tables
     are not currently supported.
 
 ## Templates and Values
