@@ -5,22 +5,29 @@
 
 .SH NAME
 .PP
-helm\-repo\-update \- update information on available charts in the chart repositories
+helm\-reset \- uninstalls Tiller from a cluster
 
 
 .SH SYNOPSIS
 .PP
-\fBhelm repo update\fP
+\fBhelm reset\fP
 
 
 .SH DESCRIPTION
 .PP
-Update gets the latest information about charts from the respective chart repositories.
-Information is cached locally, where it is used by commands like 'helm search'.
+This command uninstalls Tiller (the helm server side component) from your
+Kubernetes Cluster and optionally deletes local configuration in
+$HELM\_HOME (default \~/.helm/)
+
+
+.SH OPTIONS
+.PP
+\fB\-f\fP, \fB\-\-force\fP[=false]
+    forces Tiller uninstall even if there are releases installed
 
 .PP
-\&'helm update' is the deprecated form of 'helm repo update'. It will be removed in
-future releases.
+\fB\-\-remove\-helm\-home\fP[=false]
+    if set deletes $HELM\_HOME
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS
@@ -47,7 +54,7 @@ future releases.
 
 .SH SEE ALSO
 .PP
-\fBhelm\-repo(1)\fP
+\fBhelm(1)\fP
 
 
 .SH HISTORY
