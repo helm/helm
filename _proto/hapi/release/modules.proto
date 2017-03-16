@@ -67,7 +67,11 @@ message DeleteReleaseResponse {
 }
 
 message UpgradeReleaseRequest{
-	hapi.release.Release release = 1;
+	hapi.release.Release current = 1;
+        hapi.release.Release target = 2;
+        int64 Timeout = 3;
+        bool Wait = 4;
+        bool Recreate = 5;
 }
 message UpgradeReleaseResponse{
 	hapi.release.Release release = 1;

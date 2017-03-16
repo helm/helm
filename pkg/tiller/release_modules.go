@@ -28,6 +28,7 @@ import (
 // ReleaseModule is an interface that allows ReleaseServer to run operations on release via either local implementation or Rudder service
 type ReleaseModule interface {
 	Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error
+	Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error
 }
 
 // LocalReleaseModule is a local implementation of ReleaseModule
@@ -39,6 +40,12 @@ func (m *LocalReleaseModule) Create(r *release.Release, req *services.InstallRel
 	return env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait)
 }
 
+func (m *LocalReleaseModule) Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error {
+	c := bytes.NewBufferString(current.Manifest)
+	t := bytes.NewBufferString(target.Manifest)
+	return env.KubeClient.Update(target.Namespace, c, t, req.Recreate, req.Timeout, req.Wait)
+}
+
 // RemoteReleaseModule is a ReleaseModule which calls Rudder service to operate on a release
 type RemoteReleaseModule struct{}
 
@@ -46,5 +53,18 @@ type RemoteReleaseModule struct{}
 func (m *RemoteReleaseModule) Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error {
 	request := &release.InstallReleaseRequest{Release: r}
 	_, err := rudder.InstallRelease(request)
+	return err
+}
+
+// Update calls rudder.UpgradeRelease
+func (m *RemoteReleaseModule) Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error {
+	req := &release.UpgradeReleaseRequest{
+		Current:  current,
+		Target:   target,
+		Recreate: req.Recreate,
+		Timeout:  req.Timeout,
+		Wait:     req.Wait,
+	}
+	_, err := rudder.UpgradeRelease(req)
 	return err
 }
