@@ -282,20 +282,20 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
-// UpdateRelease takes an existing release and new information, and upgrades the release.
-func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
-	currentRelease, updatedRelease, err := s.prepareUpdate(req)
+// UpgradeRelease takes an existing release and new information, and upgrades the release.
+func (s *ReleaseServer) UpgradeRelease(c ctx.Context, req *services.UpgradeReleaseRequest) (*services.UpgradeReleaseResponse, error) {
+	currentRelease, upgradedRelease, err := s.prepareUpgrade(req)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := s.performUpdate(currentRelease, updatedRelease, req)
+	res, err := s.performUpgrade(currentRelease, upgradedRelease, req)
 	if err != nil {
 		return res, err
 	}
 
 	if !req.DryRun {
-		if err := s.env.Releases.Create(updatedRelease); err != nil {
+		if err := s.env.Releases.Create(upgradedRelease); err != nil {
 			return res, err
 		}
 	}
@@ -303,36 +303,36 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	return res, nil
 }
 
-func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
-	res := &services.UpdateReleaseResponse{Release: updatedRelease}
+func (s *ReleaseServer) performUpgrade(originalRelease, upgradedRelease *release.Release, req *services.UpgradeReleaseRequest) (*services.UpgradeReleaseResponse, error) {
+	res := &services.UpgradeReleaseResponse{Release: upgradedRelease}
 
 	if req.DryRun {
-		log.Printf("Dry run for %s", updatedRelease.Name)
+		log.Printf("Dry run for %s", upgradedRelease.Name)
 		res.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
 
 	// pre-upgrade hooks
 	if !req.DisableHooks {
-		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PreUpgrade, req.Timeout); err != nil {
+		if err := s.execHook(upgradedRelease.Hooks, upgradedRelease.Name, upgradedRelease.Namespace, hooks.PreUpgrade, req.Timeout); err != nil {
 			return res, err
 		}
 	}
 
-	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
-		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
+	if err := s.performKubeUpgrade(originalRelease, upgradedRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+		msg := fmt.Sprintf("Upgrade %q failed: %s", upgradedRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
-		updatedRelease.Info.Status.Code = release.Status_FAILED
-		updatedRelease.Info.Description = msg
+		upgradedRelease.Info.Status.Code = release.Status_FAILED
+		upgradedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
-		s.recordRelease(updatedRelease, false)
+		s.recordRelease(upgradedRelease, false)
 		return res, err
 	}
 
 	// post-upgrade hooks
 	if !req.DisableHooks {
-		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PostUpgrade, req.Timeout); err != nil {
+		if err := s.execHook(upgradedRelease.Hooks, upgradedRelease.Name, upgradedRelease.Namespace, hooks.PostUpgrade, req.Timeout); err != nil {
 			return res, err
 		}
 	}
@@ -340,8 +340,8 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	originalRelease.Info.Status.Code = release.Status_SUPERSEDED
 	s.recordRelease(originalRelease, true)
 
-	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
-	updatedRelease.Info.Description = "Upgrade complete"
+	upgradedRelease.Info.Status.Code = release.Status_DEPLOYED
+	upgradedRelease.Info.Description = "Upgrade complete"
 
 	return res, nil
 }
@@ -354,7 +354,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 //
 // This is skipped if the req.ResetValues flag is set, in which case the
 // request values are not altered.
-func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
+func (s *ReleaseServer) reuseValues(req *services.UpgradeReleaseRequest, current *release.Release) {
 	if req.ResetValues {
 		// If ResetValues is set, we comletely ignore current.Config.
 		log.Print("Reset values to the chart's original version.")
@@ -371,8 +371,8 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 	}
 }
 
-// prepareUpdate builds an updated release for an update operation.
-func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
+// prepareUpgrade builds an upgraded release for an upgrade operation.
+func (s *ReleaseServer) prepareUpgrade(req *services.UpgradeReleaseRequest) (*release.Release, *release.Release, error) {
 	if !ValidName.MatchString(req.Name) {
 		return nil, nil, errMissingRelease
 	}
@@ -417,8 +417,8 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
-	// Store an updated release.
-	updatedRelease := &release.Release{
+	// Store an upgraded release.
+	upgradedRelease := &release.Release{
 		Name:      req.Name,
 		Namespace: currentRelease.Namespace,
 		Chart:     req.Chart,
@@ -435,10 +435,10 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	if len(notesTxt) > 0 {
-		updatedRelease.Info.Status.Notes = notesTxt
+		upgradedRelease.Info.Status.Notes = notesTxt
 	}
 	err = validateManifest(s.env.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
-	return currentRelease, updatedRelease, err
+	return currentRelease, upgradedRelease, err
 }
 
 // RollbackRelease rolls back to a previous version of the given release.
@@ -477,7 +477,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.performKubeUpgrade(currentRelease, targetRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -503,7 +503,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	return res, nil
 }
 
-func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, recreate bool, timeout int64, shouldWait bool) error {
+func (s *ReleaseServer) performKubeUpgrade(currentRelease, targetRelease *release.Release, recreate bool, timeout int64, shouldWait bool) error {
 	kubeCli := s.env.KubeClient
 	current := bytes.NewBufferString(currentRelease.Manifest)
 	target := bytes.NewBufferString(targetRelease.Manifest)
@@ -810,8 +810,8 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
-		if err := s.env.Releases.Update(r); err != nil {
-			log.Printf("warning: Failed to update release %q: %s", r.Name, err)
+		if err := s.env.Releases.Upgrade(r); err != nil {
+			log.Printf("warning: Failed to upgrade release %q: %s", r.Name, err)
 		}
 	} else if err := s.env.Releases.Create(r); err != nil {
 		log.Printf("warning: Failed to record release %q: %s", r.Name, err)
@@ -844,15 +844,15 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// old release
 		old := h[0]
 
-		// update old release status
+		// upgrade old release status
 		old.Info.Status.Code = release.Status_SUPERSEDED
 		s.recordRelease(old, true)
 
-		// update new release with next revision number
+		// upgrade new release with next revision number
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
 
-		if err := s.performKubeUpdate(old, r, false, req.Timeout, req.Wait); err != nil {
+		if err := s.performKubeUpgrade(old, r, false, req.Timeout, req.Wait); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
@@ -1005,8 +1005,8 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 	// From here on out, the release is currently considered to be in Status_DELETING
 	// state.
-	if err := s.env.Releases.Update(rel); err != nil {
-		log.Printf("uninstall: Failed to store updated release: %s", err)
+	if err := s.env.Releases.Upgrade(rel); err != nil {
+		log.Printf("uninstall: Failed to store upgraded release: %s", err)
 	}
 
 	manifests := relutil.SplitManifests(rel.Manifest)
@@ -1055,8 +1055,8 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return res, err
 	}
 
-	if err := s.env.Releases.Update(rel); err != nil {
-		log.Printf("uninstall: Failed to store updated release: %s", err)
+	if err := s.env.Releases.Upgrade(rel); err != nil {
+		log.Printf("uninstall: Failed to store upgraded release: %s", err)
 	}
 
 	if len(es) > 0 {
@@ -1112,5 +1112,5 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		testEnv.DeleteTestPods(tSuite.TestManifests)
 	}
 
-	return s.env.Releases.Update(rel)
+	return s.env.Releases.Upgrade(rel)
 }

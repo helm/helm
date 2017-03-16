@@ -130,25 +130,25 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 	return h.delete(ctx, req)
 }
 
-// UpdateRelease loads a chart from chstr and updates a release to a new/different chart
-func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	// load the chart to update
+// UpgradeRelease loads a chart from chstr and upgrades a release to a new/different chart
+func (h *Client) UpgradeRelease(rlsName string, chstr string, opts ...UpgradeOption) (*rls.UpgradeReleaseResponse, error) {
+	// load the chart to upgrade
 	chart, err := chartutil.Load(chstr)
 	if err != nil {
 		return nil, err
 	}
 
-	return h.UpdateReleaseFromChart(rlsName, chart, opts...)
+	return h.UpgradeReleaseFromChart(rlsName, chart, opts...)
 }
 
-// UpdateReleaseFromChart updates a release to a new/different chart
-func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+// UpgradeReleaseFromChart upgrades a release to a new/different chart
+func (h *Client) UpgradeReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpgradeOption) (*rls.UpgradeReleaseResponse, error) {
 
-	// apply the update options
+	// apply the upgrade options
 	for _, opt := range opts {
 		opt(&h.opts)
 	}
-	req := &h.opts.updateReq
+	req := &h.opts.upgradeReq
 	req.Chart = chart
 	req.DryRun = h.opts.dryRun
 	req.Name = rlsName
@@ -167,7 +167,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 		return nil, err
 	}
 
-	return h.update(ctx, req)
+	return h.upgrade(ctx, req)
 }
 
 // GetVersion returns the server version
@@ -311,8 +311,8 @@ func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (
 	return rlc.UninstallRelease(ctx, req)
 }
 
-// Executes tiller.UpdateRelease RPC.
-func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rls.UpdateReleaseResponse, error) {
+// Executes tiller.UpgradeRelease RPC.
+func (h *Client) upgrade(ctx context.Context, req *rls.UpgradeReleaseRequest) (*rls.UpgradeReleaseResponse, error) {
 	c, err := grpc.Dial(h.opts.host, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -320,7 +320,7 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.UpdateRelease(ctx, req)
+	return rlc.UpgradeRelease(ctx, req)
 }
 
 // Executes tiller.RollbackRelease RPC.

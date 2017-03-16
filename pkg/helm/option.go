@@ -50,8 +50,8 @@ type options struct {
 	listReq rls.ListReleasesRequest
 	// release install options are applied directly to the install release request
 	instReq rls.InstallReleaseRequest
-	// release update options are applied directly to the update release request
-	updateReq rls.UpdateReleaseRequest
+	// release upgrade options are applied directly to the upgrade release request
+	upgradeReq rls.UpgradeReleaseRequest
 	// release uninstall options are applied directly to the uninstall release request
 	uninstallReq rls.UninstallReleaseRequest
 	// release get status options are applied directly to the get release status request
@@ -170,9 +170,9 @@ func InstallTimeout(timeout int64) InstallOption {
 }
 
 // UpgradeTimeout specifies the number of seconds before kubernetes calls timeout
-func UpgradeTimeout(timeout int64) UpdateOption {
+func UpgradeTimeout(timeout int64) UpgradeOption {
 	return func(opts *options) {
-		opts.updateReq.Timeout = timeout
+		opts.upgradeReq.Timeout = timeout
 	}
 }
 
@@ -212,9 +212,9 @@ func InstallWait(wait bool) InstallOption {
 }
 
 // UpgradeWait specifies whether or not to wait for all resources to be ready
-func UpgradeWait(wait bool) UpdateOption {
+func UpgradeWait(wait bool) UpgradeOption {
 	return func(opts *options) {
-		opts.updateReq.Wait = wait
+		opts.upgradeReq.Wait = wait
 	}
 }
 
@@ -225,10 +225,10 @@ func RollbackWait(wait bool) RollbackOption {
 	}
 }
 
-// UpdateValueOverrides specifies a list of values to include when upgrading
-func UpdateValueOverrides(raw []byte) UpdateOption {
+// UpgradeValueOverrides specifies a list of values to include when upgrading
+func UpgradeValueOverrides(raw []byte) UpgradeOption {
 	return func(opts *options) {
-		opts.updateReq.Values = &cpb.Config{Raw: string(raw)}
+		opts.upgradeReq.Values = &cpb.Config{Raw: string(raw)}
 	}
 }
 
@@ -303,28 +303,28 @@ func RollbackVersion(ver int32) RollbackOption {
 }
 
 // UpgradeDisableHooks will disable hooks for an upgrade operation.
-func UpgradeDisableHooks(disable bool) UpdateOption {
+func UpgradeDisableHooks(disable bool) UpgradeOption {
 	return func(opts *options) {
 		opts.disableHooks = disable
 	}
 }
 
 // UpgradeDryRun will (if true) execute an upgrade as a dry run.
-func UpgradeDryRun(dry bool) UpdateOption {
+func UpgradeDryRun(dry bool) UpgradeOption {
 	return func(opts *options) {
 		opts.dryRun = dry
 	}
 }
 
 // ResetValues will (if true) trigger resetting the values to their original state.
-func ResetValues(reset bool) UpdateOption {
+func ResetValues(reset bool) UpgradeOption {
 	return func(opts *options) {
 		opts.resetValues = reset
 	}
 }
 
 // UpgradeRecreate will (if true) recreate pods after upgrade.
-func UpgradeRecreate(recreate bool) UpdateOption {
+func UpgradeRecreate(recreate bool) UpgradeOption {
 	return func(opts *options) {
 		opts.recreate = recreate
 	}
@@ -361,10 +361,10 @@ type DeleteOption func(*options)
 // VersionOption -- TODO
 type VersionOption func(*options)
 
-// UpdateOption allows specifying various settings
+// UpgradeOption allows specifying various settings
 // configurable by the helm client user for overriding
 // the defaults used when running the `helm upgrade` command.
-type UpdateOption func(*options)
+type UpgradeOption func(*options)
 
 // RollbackOption allows specififying various settings configurable
 // by the helm client user for overriding the defaults used when

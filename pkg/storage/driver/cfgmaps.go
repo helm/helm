@@ -178,9 +178,9 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Update updates the ConfigMap holding the release. If not found
+// Upgrade upgrades the ConfigMap holding the release. If not found
 // the ConfigMap is created to hold the release.
-func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
+func (cfgmaps *ConfigMaps) Upgrade(key string, rls *rspb.Release) error {
 	// set labels for configmaps object meta data
 	var lbs labels
 
@@ -190,13 +190,13 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		logerrf(err, "update: failed to encode release %q", rls.Name)
+		logerrf(err, "upgrade: failed to encode release %q", rls.Name)
 		return err
 	}
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(obj)
 	if err != nil {
-		logerrf(err, "update: failed to update")
+		logerrf(err, "upgrade: failed to upgrade")
 		return err
 	}
 	return nil
@@ -226,7 +226,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //
 // The following labels are used within each configmap:
 //
-//    "MODIFIED_AT"    - timestamp indicating when this configmap was last modified. (set in Update)
+//    "MODIFIED_AT"    - timestamp indicating when this configmap was last modified. (set in Upgrade)
 //    "CREATED_AT"     - timestamp indicating when this configmap was created. (set in Create)
 //    "VERSION"        - version of the release.
 //    "STATUS"         - status of the release (see proto/hapi/release.status.pb.go for variants)

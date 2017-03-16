@@ -156,7 +156,7 @@ func TestConfigMapCreate(t *testing.T) {
 	}
 }
 
-func TestConfigMapUpdate(t *testing.T) {
+func TestConfigMapUpgrade(t *testing.T) {
 	vers := int32(1)
 	name := "smug-pigeon"
 	namespace := "default"
@@ -169,7 +169,7 @@ func TestConfigMapUpdate(t *testing.T) {
 	rel.Info.Status.Code = rspb.Status_SUPERSEDED
 
 	// perform the update
-	if err := cfgmaps.Update(key, rel); err != nil {
+	if err := cfgmaps.Upgrade(key, rel); err != nil {
 		t.Fatalf("Failed to update release: %s", err)
 	}
 

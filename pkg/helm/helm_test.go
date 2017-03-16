@@ -171,8 +171,8 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 	NewClient(b4c).DeleteRelease(releaseName, ops...)
 }
 
-// Verify UpdateOption's are applied to an UpdateReleaseRequest correctly.
-func TestUpdateRelease_VerifyOptions(t *testing.T) {
+// Verify UpgradeOption's are applied to an UpgradeReleaseRequest correctly.
+func TestUpgradeRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var chartName = "alpine"
 	var releaseName = "test"
@@ -180,8 +180,8 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	var overrides = []byte("key1=value1,key2=value2")
 	var dryRun = false
 
-	// Expected UpdateReleaseRequest message
-	exp := &tpb.UpdateReleaseRequest{
+	// Expected UpgradeReleaseRequest message
+	exp := &tpb.UpgradeReleaseRequest{
 		Name:         releaseName,
 		Chart:        loadChart(t, chartName),
 		Values:       &cpb.Config{Raw: string(overrides)},
@@ -189,26 +189,26 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 		DisableHooks: disableHooks,
 	}
 
-	// Options used in UpdateRelease
-	ops := []UpdateOption{
+	// Options used in UpgradeRelease
+	ops := []UpgradeOption{
 		UpgradeDryRun(dryRun),
-		UpdateValueOverrides(overrides),
+		UpgradeValueOverrides(overrides),
 		UpgradeDisableHooks(disableHooks),
 	}
 
-	// BeforeCall option to intercept helm client UpdateReleaseRequest
+	// BeforeCall option to intercept helm client UpgradeReleaseRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
-		case *tpb.UpdateReleaseRequest:
-			t.Logf("UpdateReleaseRequest: %#+v\n", act)
+		case *tpb.UpgradeReleaseRequest:
+			t.Logf("UpgradeReleaseRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:
-			t.Fatalf("expected message of type UpdateReleaseRequest, got %T\n", act)
+			t.Fatalf("expected message of type UpgradeReleaseRequest, got %T\n", act)
 		}
 		return errSkip
 	})
 
-	NewClient(b4c).UpdateRelease(releaseName, chartName, ops...)
+	NewClient(b4c).UpgradeRelease(releaseName, chartName, ops...)
 }
 
 // Verify RollbackOption's are applied to a RollbackReleaseRequest correctly.

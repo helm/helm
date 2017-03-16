@@ -39,12 +39,12 @@ type Creator interface {
 	Create(key string, rls *rspb.Release) error
 }
 
-// Updator is the interface that wraps the Update method.
+// Upgrador is the interface that wraps the Upgrade method.
 //
-// Update updates an existing release or returns
+// Upgrade upgrades an existing release or returns
 // ErrReleaseNotFound if the release does not exist.
-type Updator interface {
-	Update(key string, rls *rspb.Release) error
+type Upgrador interface {
+	Upgrade(key string, rls *rspb.Release) error
 }
 
 // Deletor is the interface that wraps the Delete method.
@@ -69,13 +69,13 @@ type Queryor interface {
 	Query(labels map[string]string) ([]*rspb.Release, error)
 }
 
-// Driver is the interface composed of Creator, Updator, Deletor, Queryor
+// Driver is the interface composed of Creator, Upgrador, Deletor, Queryor
 // interfaces. It defines the behavior for storing, updating, deleted,
 // and retrieving tiller releases from some underlying storage mechanism,
 // e.g. memory, configmaps.
 type Driver interface {
 	Creator
-	Updator
+	Upgrador
 	Deletor
 	Queryor
 	Name() string

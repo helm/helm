@@ -118,8 +118,8 @@ func (mem *Memory) Create(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Update updates a release or returns ErrReleaseNotFound.
-func (mem *Memory) Update(key string, rls *rspb.Release) error {
+// Upgrade upgrades a release or returns ErrReleaseNotFound.
+func (mem *Memory) Upgrade(key string, rls *rspb.Release) error {
 	defer unlock(mem.wlock())
 
 	if rs, ok := mem.cache[rls.Name]; ok && rs.Exists(key) {

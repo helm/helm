@@ -168,10 +168,10 @@ func (u *upgradeCmd) run() error {
 		}
 	}
 
-	resp, err := u.client.UpdateRelease(
+	resp, err := u.client.UpgradeRelease(
 		u.release,
 		chartPath,
-		helm.UpdateValueOverrides(rawVals),
+		helm.UpgradeValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
 		helm.UpgradeDisableHooks(u.disableHooks),

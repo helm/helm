@@ -106,7 +106,7 @@ func TestMemoryQuery(t *testing.T) {
 	}
 }
 
-func TestMemoryUpdate(t *testing.T) {
+func TestMemoryUpgrade(t *testing.T) {
 	var tests = []struct {
 		desc string
 		key  string
@@ -129,7 +129,7 @@ func TestMemoryUpdate(t *testing.T) {
 
 	ts := tsFixtureMemory(t)
 	for _, tt := range tests {
-		if err := ts.Update(tt.key, tt.rls); err != nil {
+		if err := ts.Upgrade(tt.key, tt.rls); err != nil {
 			if !tt.err {
 				t.Fatalf("Failed %q: %s\n", tt.desc, err)
 			}

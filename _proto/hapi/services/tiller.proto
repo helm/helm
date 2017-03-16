@@ -55,8 +55,8 @@ service ReleaseService {
 	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
 	}
 
-	// UpdateRelease updates release content.
-	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
+	// UpgradeRelease upgrades release content.
+	rpc UpgradeRelease(UpgradeReleaseRequest) returns (UpgradeReleaseResponse) {
 	}
 
 	// InstallRelease requests installation of a chart as a new release.
@@ -182,8 +182,8 @@ message GetReleaseContentResponse {
 	hapi.release.Release release = 1;
 }
 
-// UpdateReleaseRequest updates a release.
-message UpdateReleaseRequest {
+// UpgradeReleaseRequest upgrades a release.
+message UpgradeReleaseRequest {
 	// The name of the release
 	string name = 1;
 	// Chart is the protobuf representation of a chart.
@@ -205,8 +205,8 @@ message UpdateReleaseRequest {
 	bool wait = 9;
 }
 
-// UpdateReleaseResponse is the response to an update request.
-message UpdateReleaseResponse {
+// UpgradeReleaseResponse is the response to an upgrade request.
+message UpgradeReleaseResponse {
 	hapi.release.Release release = 1;
 }
 
@@ -228,7 +228,7 @@ message RollbackReleaseRequest {
 	bool wait = 7;
 }
 
-// RollbackReleaseResponse is the response to an update request.
+// RollbackReleaseResponse is the response to an upgrade request.
 message RollbackReleaseResponse {
 	hapi.release.Release release = 1;
 }

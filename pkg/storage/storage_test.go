@@ -47,7 +47,7 @@ func TestStorageCreate(t *testing.T) {
 	}
 }
 
-func TestStorageUpdate(t *testing.T) {
+func TestStorageUpgrade(t *testing.T) {
 	// initialize storage
 	storage := Init(driver.NewMemory())
 
@@ -62,9 +62,9 @@ func TestStorageUpdate(t *testing.T) {
 
 	// modify the release
 	rls.Info.Status.Code = rspb.Status_DELETED
-	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
+	assertErrNil(t.Fatal, storage.Upgrade(rls), "UpgradeRelease")
 
-	// retrieve the updated release
+	// retrieve the upgraded release
 	res, err := storage.Get(rls.Name, rls.Version)
 	assertErrNil(t.Fatal, err, "QueryRelease")
 

@@ -637,13 +637,13 @@ func TestInstallReleaseReuseName(t *testing.T) {
 	}
 }
 
-func TestUpdateRelease(t *testing.T) {
+func TestUpgradeRelease(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &services.UpgradeReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -653,9 +653,9 @@ func TestUpdateRelease(t *testing.T) {
 			},
 		},
 	}
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpgradeRelease(c, req)
 	if err != nil {
-		t.Fatalf("Failed updated: %s", err)
+		t.Fatalf("Failed upgraded: %s", err)
 	}
 
 	if res.Release.Name == "" {
@@ -663,30 +663,30 @@ func TestUpdateRelease(t *testing.T) {
 	}
 
 	if res.Release.Name != rel.Name {
-		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
+		t.Errorf("Upgraded release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
 	}
 
 	if res.Release.Namespace != rel.Namespace {
 		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Release.Namespace)
 	}
 
-	updated, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	upgraded, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
 
-	if len(updated.Hooks) != 1 {
-		t.Fatalf("Expected 1 hook, got %d", len(updated.Hooks))
+	if len(upgraded.Hooks) != 1 {
+		t.Fatalf("Expected 1 hook, got %d", len(upgraded.Hooks))
 	}
-	if updated.Hooks[0].Manifest != manifestWithUpgradeHooks {
-		t.Errorf("Unexpected manifest: %v", updated.Hooks[0].Manifest)
+	if upgraded.Hooks[0].Manifest != manifestWithUpgradeHooks {
+		t.Errorf("Unexpected manifest: %v", upgraded.Hooks[0].Manifest)
 	}
 
-	if updated.Hooks[0].Events[0] != release.Hook_POST_UPGRADE {
+	if upgraded.Hooks[0].Events[0] != release.Hook_POST_UPGRADE {
 		t.Errorf("Expected event 0 to be post upgrade")
 	}
 
-	if updated.Hooks[0].Events[1] != release.Hook_PRE_UPGRADE {
+	if upgraded.Hooks[0].Events[1] != release.Hook_PRE_UPGRADE {
 		t.Errorf("Expected event 0 to be pre upgrade")
 	}
 
@@ -700,11 +700,11 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Release.Config.Raw)
 	}
 
-	if len(updated.Manifest) == 0 {
+	if len(upgraded.Manifest) == 0 {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
+	if !strings.Contains(upgraded.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
@@ -717,13 +717,13 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected description %q, got %q", edesc, got)
 	}
 }
-func TestUpdateReleaseResetValues(t *testing.T) {
+func TestUpgradeReleaseResetValues(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &services.UpgradeReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -734,9 +734,9 @@ func TestUpdateReleaseResetValues(t *testing.T) {
 		},
 		ResetValues: true,
 	}
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpgradeRelease(c, req)
 	if err != nil {
-		t.Fatalf("Failed updated: %s", err)
+		t.Fatalf("Failed upgraded: %s", err)
 	}
 	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
 	if res.Release.Config != nil && res.Release.Config.Raw != "" {
@@ -744,14 +744,14 @@ func TestUpdateReleaseResetValues(t *testing.T) {
 	}
 }
 
-func TestUpdateReleaseFailure(t *testing.T) {
+func TestUpgradeReleaseFailure(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
-	rs.env.KubeClient = newUpdateFailingKubeClient()
+	rs.env.KubeClient = newUpgradeFailingKubeClient()
 
-	req := &services.UpdateReleaseRequest{
+	req := &services.UpgradeReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 		Chart: &chart.Chart{
@@ -762,16 +762,16 @@ func TestUpdateReleaseFailure(t *testing.T) {
 		},
 	}
 
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpgradeRelease(c, req)
 	if err == nil {
-		t.Error("Expected failed update")
+		t.Error("Expected failed upgrade")
 	}
 
-	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_FAILED {
-		t.Errorf("Expected FAILED release. Got %d", updatedStatus)
+	if upgradedStatus := res.Release.Info.Status.Code; upgradedStatus != release.Status_FAILED {
+		t.Errorf("Expected FAILED release. Got %d", upgradedStatus)
 	}
 
-	edesc := "Upgrade \"angry-panda\" failed: Failed update in kube client"
+	edesc := "Upgrade \"angry-panda\" failed: Failed upgrade in kube client"
 	if got := res.Release.Info.Description; got != edesc {
 		t.Errorf("Expected description %q, got %q", edesc, got)
 	}
@@ -791,7 +791,7 @@ func TestRollbackReleaseFailure(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
+	rs.env.Releases.Upgrade(rel)
 	rs.env.Releases.Create(upgradedRel)
 
 	req := &services.RollbackReleaseRequest{
@@ -799,7 +799,7 @@ func TestRollbackReleaseFailure(t *testing.T) {
 		DisableHooks: true,
 	}
 
-	rs.env.KubeClient = newUpdateFailingKubeClient()
+	rs.env.KubeClient = newUpgradeFailingKubeClient()
 	res, err := rs.RollbackRelease(c, req)
 	if err == nil {
 		t.Error("Expected failed rollback")
@@ -818,13 +818,13 @@ func TestRollbackReleaseFailure(t *testing.T) {
 	}
 }
 
-func TestUpdateReleaseNoHooks(t *testing.T) {
+func TestUpgradeReleaseNoHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &services.UpgradeReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 		Chart: &chart.Chart{
@@ -836,9 +836,9 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 		},
 	}
 
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpgradeRelease(c, req)
 	if err != nil {
-		t.Fatalf("Failed updated: %s", err)
+		t.Fatalf("Failed upgraded: %s", err)
 	}
 
 	if hl := res.Release.Hooks[0].LastRun; hl != nil {
@@ -847,21 +847,21 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 
 }
 
-func TestUpdateReleaseNoChanges(t *testing.T) {
+func TestUpgradeReleaseNoChanges(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &services.UpgradeReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 		Chart:        rel.GetChart(),
 	}
 
-	_, err := rs.UpdateRelease(c, req)
+	_, err := rs.UpgradeRelease(c, req)
 	if err != nil {
-		t.Fatalf("Failed updated: %s", err)
+		t.Fatalf("Failed upgraded: %s", err)
 	}
 }
 
@@ -883,7 +883,7 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 	}
 	rs.env.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
+	rs.env.Releases.Upgrade(rel)
 	rs.env.Releases.Create(upgradedRel)
 
 	req := &services.RollbackReleaseRequest{
@@ -907,7 +907,7 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
+	rs.env.Releases.Upgrade(rel)
 	rs.env.Releases.Create(upgradedRel)
 
 	req := &services.RollbackReleaseRequest{
@@ -942,7 +942,7 @@ func TestRollbackRelease(t *testing.T) {
 	}
 
 	upgradedRel.Manifest = "hello world"
-	rs.env.Releases.Update(rel)
+	rs.env.Releases.Upgrade(rel)
 	rs.env.Releases.Create(upgradedRel)
 
 	req := &services.RollbackReleaseRequest{
@@ -958,7 +958,7 @@ func TestRollbackRelease(t *testing.T) {
 	}
 
 	if res.Release.Name != rel.Name {
-		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
+		t.Errorf("Upgraded release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
 	}
 
 	if res.Release.Namespace != rel.Namespace {
@@ -969,21 +969,21 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Expected release version to be %v, got %v", 3, res.Release.Version)
 	}
 
-	updated, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	upgraded, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
 
-	if len(updated.Hooks) != 2 {
-		t.Fatalf("Expected 2 hooks, got %d", len(updated.Hooks))
+	if len(upgraded.Hooks) != 2 {
+		t.Fatalf("Expected 2 hooks, got %d", len(upgraded.Hooks))
 	}
 
-	if updated.Hooks[0].Manifest != manifestWithHook {
-		t.Errorf("Unexpected manifest: %v", updated.Hooks[0].Manifest)
+	if upgraded.Hooks[0].Manifest != manifestWithHook {
+		t.Errorf("Unexpected manifest: %v", upgraded.Hooks[0].Manifest)
 	}
 
 	anotherUpgradedRelease := upgradeReleaseVersion(upgradedRel)
-	rs.env.Releases.Update(upgradedRel)
+	rs.env.Releases.Upgrade(upgradedRel)
 	rs.env.Releases.Create(anotherUpgradedRelease)
 
 	res, err = rs.RollbackRelease(c, req)
@@ -991,28 +991,28 @@ func TestRollbackRelease(t *testing.T) {
 		t.Fatalf("Failed rollback: %s", err)
 	}
 
-	updated, err = rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	upgraded, err = rs.env.Releases.Get(res.Release.Name, res.Release.Version)
 	if err != nil {
 		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
 	}
 
-	if len(updated.Hooks) != 1 {
-		t.Fatalf("Expected 1 hook, got %d", len(updated.Hooks))
+	if len(upgraded.Hooks) != 1 {
+		t.Fatalf("Expected 1 hook, got %d", len(upgraded.Hooks))
 	}
 
-	if updated.Hooks[0].Manifest != manifestWithRollbackHooks {
-		t.Errorf("Unexpected manifest: %v", updated.Hooks[0].Manifest)
+	if upgraded.Hooks[0].Manifest != manifestWithRollbackHooks {
+		t.Errorf("Unexpected manifest: %v", upgraded.Hooks[0].Manifest)
 	}
 
 	if res.Release.Version != 4 {
 		t.Errorf("Expected release version to be %v, got %v", 3, res.Release.Version)
 	}
 
-	if updated.Hooks[0].Events[0] != release.Hook_PRE_ROLLBACK {
+	if upgraded.Hooks[0].Events[0] != release.Hook_PRE_ROLLBACK {
 		t.Errorf("Expected event 0 to be pre rollback")
 	}
 
-	if updated.Hooks[0].Events[1] != release.Hook_POST_ROLLBACK {
+	if upgraded.Hooks[0].Events[1] != release.Hook_POST_ROLLBACK {
 		t.Errorf("Expected event 1 to be post rollback")
 	}
 
@@ -1020,11 +1020,11 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("No manifest returned: %v", res.Release)
 	}
 
-	if len(updated.Manifest) == 0 {
+	if len(upgraded.Manifest) == 0 {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(updated.Manifest, "hello world") {
+	if !strings.Contains(upgraded.Manifest, "hello world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
@@ -1075,7 +1075,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
+	rs.env.Releases.Upgrade(rel)
 	rs.env.Releases.Create(upgradedRel)
 
 	req := &services.UninstallReleaseRequest{
@@ -1496,19 +1496,19 @@ func MockEnvironment() *environment.Environment {
 	return e
 }
 
-func newUpdateFailingKubeClient() *updateFailingKubeClient {
-	return &updateFailingKubeClient{
+func newUpgradeFailingKubeClient() *upgradeFailingKubeClient {
+	return &upgradeFailingKubeClient{
 		PrintingKubeClient: environment.PrintingKubeClient{Out: os.Stdout},
 	}
 
 }
 
-type updateFailingKubeClient struct {
+type upgradeFailingKubeClient struct {
 	environment.PrintingKubeClient
 }
 
-func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
-	return errors.New("Failed update in kube client")
+func (u *upgradeFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
+	return errors.New("Failed upgrade in kube client")
 }
 
 func newHookFailingKubeClient() *hookFailingKubeClient {

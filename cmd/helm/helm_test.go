@@ -172,11 +172,11 @@ func (c *fakeReleaseClient) GetVersion(opts ...helm.VersionOption) (*rls.GetVers
 	}, nil
 }
 
-func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (c *fakeReleaseClient) UpgradeRelease(rlsName string, chStr string, opts ...helm.UpgradeOption) (*rls.UpgradeReleaseResponse, error) {
 	return nil, nil
 }
 
-func (c *fakeReleaseClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (c *fakeReleaseClient) UpgradeReleaseFromChart(rlsName string, chart *chart.Chart, opts ...helm.UpgradeOption) (*rls.UpgradeReleaseResponse, error) {
 	return nil, nil
 }
 
