@@ -32,30 +32,37 @@ func (h Home) String() string {
 	return string(h)
 }
 
+// Path returns Home with elements appended.
+func (h Home) Path(elem ...string) string {
+	p := []string{string(h)}
+	p = append(p, elem...)
+	return filepath.Join(p...)
+}
+
 // Repository returns the path to the local repository.
 func (h Home) Repository() string {
-	return filepath.Join(string(h), "repository")
+	return h.Path("repository")
 }
 
 // RepositoryFile returns the path to the repositories.yaml file.
 func (h Home) RepositoryFile() string {
-	return filepath.Join(string(h), "repository/repositories.yaml")
+	return h.Path("repository", "repositories.yaml")
 }
 
 // Cache returns the path to the local cache.
 func (h Home) Cache() string {
-	return filepath.Join(string(h), "repository/cache")
+	return h.Path("repository", "cache")
 }
 
 // CacheIndex returns the path to an index for the given named repository.
 func (h Home) CacheIndex(name string) string {
 	target := fmt.Sprintf("repository/cache/%s-index.yaml", name)
-	return filepath.Join(string(h), target)
+	return h.Path(target)
 }
 
 // Starters returns the path to the Helm starter packs.
 func (h Home) Starters() string {
-	return filepath.Join(string(h), "starters")
+	return h.Path("starters")
 }
 
 // LocalRepository returns the location to the local repo.
@@ -63,12 +70,13 @@ func (h Home) Starters() string {
 // The local repo is the one used by 'helm serve'
 //
 // If additional path elements are passed, they are appended to the returned path.
-func (h Home) LocalRepository(paths ...string) string {
-	frag := append([]string{string(h), "repository/local"}, paths...)
-	return filepath.Join(frag...)
+func (h Home) LocalRepository(elem ...string) string {
+	p := []string{"repository", "local"}
+	p = append(p, elem...)
+	return h.Path(p...)
 }
 
 // Plugins returns the path to the plugins directory.
 func (h Home) Plugins() string {
-	return filepath.Join(string(h), "plugins")
+	return h.Path("plugins")
 }
