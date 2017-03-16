@@ -45,7 +45,6 @@ func TestDeploymentManifest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
 		o, err := DeploymentManifest(api.NamespaceDefault, tt.image, tt.canary)
 		if err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
@@ -109,7 +108,8 @@ func TestInstall(t *testing.T) {
 		return true, obj, nil
 	})
 
-	if err := Install(fc, api.NamespaceDefault, image, false, false); err != nil {
+	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image}
+	if err := Install(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
@@ -133,7 +133,8 @@ func TestInstall_canary(t *testing.T) {
 		return true, obj, nil
 	})
 
-	if err := Install(fc, api.NamespaceDefault, "", true, false); err != nil {
+	opts := &Options{Namespace: api.NamespaceDefault, UseCanary: true}
+	if err := Install(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
@@ -164,7 +165,8 @@ func TestUpgrade(t *testing.T) {
 		return true, existingService, nil
 	})
 
-	if err := Upgrade(fc, api.NamespaceDefault, image, false); err != nil {
+	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image}
+	if err := Upgrade(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
@@ -202,7 +204,8 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 		return true, obj, nil
 	})
 
-	if err := Upgrade(fc, api.NamespaceDefault, image, false); err != nil {
+	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image}
+	if err := Upgrade(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 

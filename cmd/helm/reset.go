@@ -104,7 +104,7 @@ func (d *resetCmd) run() error {
 		return fmt.Errorf("There are still %d deployed releases (Tip: use --force).", len(res.Releases))
 	}
 
-	if err := installer.Uninstall(d.kubeClient, d.kubeCmd, d.namespace, flagDebug); err != nil {
+	if err := installer.Uninstall(d.kubeClient, d.kubeCmd, &installer.Options{Namespace: d.namespace}); err != nil {
 		return fmt.Errorf("error unstalling Tiller: %s", err)
 	}
 

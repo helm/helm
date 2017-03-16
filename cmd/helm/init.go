@@ -143,12 +143,13 @@ func (i *initCmd) run() error {
 			}
 			i.kubeClient = c
 		}
-		if err := installer.Install(i.kubeClient, i.namespace, i.image, i.canary, flagDebug); err != nil {
+		opts := &installer.Options{Namespace: i.namespace, ImageSpec: i.image, UseCanary: i.canary}
+		if err := installer.Install(i.kubeClient, opts); err != nil {
 			if !kerrors.IsAlreadyExists(err) {
 				return fmt.Errorf("error installing: %s", err)
 			}
 			if i.upgrade {
-				if err := installer.Upgrade(i.kubeClient, i.namespace, i.image, i.canary); err != nil {
+				if err := installer.Upgrade(i.kubeClient, opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
 				fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been upgraded to the current version.")

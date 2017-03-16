@@ -34,42 +34,38 @@ import (
 
 const defaultImage = "gcr.io/kubernetes-helm/tiller"
 
-// Install uses kubernetes client to install tiller
+// Install uses kubernetes client to install tiller.
 //
-// Returns the string output received from the operation, and an error if the
-// command failed.
-//
-// If verbose is true, this will print the manifest to stdout.
-func Install(client internalclientset.Interface, namespace, image string, canary, verbose bool) error {
-	if err := createDeployment(client.Extensions(), namespace, image, canary); err != nil {
+// Returns an error if the command failed.
+func Install(client internalclientset.Interface, opts *Options) error {
+	if err := createDeployment(client.Extensions(), opts.Namespace, opts.ImageSpec, opts.UseCanary); err != nil {
 		return err
 	}
-	if err := createService(client.Core(), namespace); err != nil {
+	if err := createService(client.Core(), opts.Namespace); err != nil {
 		return err
 	}
 	return nil
 }
 
-//
-// Upgrade uses kubernetes client to upgrade tiller to current version
+// Upgrade uses kubernetes client to upgrade tiller to current version.
 //
 // Returns an error if the command failed.
-func Upgrade(client internalclientset.Interface, namespace, image string, canary bool) error {
-	obj, err := client.Extensions().Deployments(namespace).Get("tiller-deploy")
+func Upgrade(client internalclientset.Interface, opts *Options) error {
+	obj, err := client.Extensions().Deployments(opts.Namespace).Get("tiller-deploy")
 	if err != nil {
 		return err
 	}
-	obj.Spec.Template.Spec.Containers[0].Image = selectImage(image, canary)
-	if _, err := client.Extensions().Deployments(namespace).Update(obj); err != nil {
+	obj.Spec.Template.Spec.Containers[0].Image = selectImage(opts.ImageSpec, opts.UseCanary)
+	if _, err := client.Extensions().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
 	// If the service does not exists that would mean we are upgrading from a tiller version
 	// that didn't deploy the service, so install it.
-	if _, err := client.Core().Services(namespace).Get("tiller-deploy"); err != nil {
+	if _, err := client.Core().Services(opts.Namespace).Get("tiller-deploy"); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
-		if err := createService(client.Core(), namespace); err != nil {
+		if err := createService(client.Core(), opts.Namespace); err != nil {
 			return err
 		}
 	}
