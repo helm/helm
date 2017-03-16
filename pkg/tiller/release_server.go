@@ -519,7 +519,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.ReleaseModule.Update(currentRelease, targetRelease, req); err != nil {
+	if err := s.ReleaseModule.Rollback(currentRelease, targetRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -893,8 +893,12 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// update new release with next revision number
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
-
-		if err := s.ReleaseModule.Update(old, r, req, s.env); err != nil {
+		updateReq := &services.UpdateReleaseRequest{
+			Wait:     req.Wait,
+			Recreate: false,
+			Timeout:  req.Timeout,
+		}
+		if err := s.ReleaseModule.Update(old, r, updateReq, s.env); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED

@@ -78,7 +78,10 @@ func (r *ReleaseModuleServiceServer) DeleteRelease(ctx context.Context, in *rele
 // RollbackRelease is not implemented
 func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *release.RollbackReleaseRequest) (*release.RollbackReleaseResponse, error) {
 	grpclog.Print("rollback")
-	return nil, nil
+	c := bytes.NewBufferString(in.Current.Manifest)
+	t := bytes.NewBufferString(in.Target.Manifest)
+	err := kubeClient.Update(in.Target.Namespace, c, t, in.Recreate, in.Timeout, in.Wait)
+	return &release.RollbackReleaseResponse{}, err
 }
 
 // UpgradeRelease upgrades manifests using kubernetes client

@@ -29,6 +29,7 @@ import (
 type ReleaseModule interface {
 	Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error
 	Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error
+	Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error
 }
 
 // LocalReleaseModule is a local implementation of ReleaseModule
@@ -46,6 +47,12 @@ func (m *LocalReleaseModule) Update(current, target *release.Release, req *servi
 	return env.KubeClient.Update(target.Namespace, c, t, req.Recreate, req.Timeout, req.Wait)
 }
 
+func (m *LocalReleaseModule) Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error {
+	c := bytes.NewBufferString(current.Manifest)
+	t := bytes.NewBufferString(target.Manifest)
+	return env.KubeClient.Update(target.Namespace, c, t, req.Recreate, req.Timeout, req.Wait)
+}
+
 // RemoteReleaseModule is a ReleaseModule which calls Rudder service to operate on a release
 type RemoteReleaseModule struct{}
 
@@ -58,13 +65,26 @@ func (m *RemoteReleaseModule) Create(r *release.Release, req *services.InstallRe
 
 // Update calls rudder.UpgradeRelease
 func (m *RemoteReleaseModule) Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error {
-	req := &release.UpgradeReleaseRequest{
+	upgrade := &release.UpgradeReleaseRequest{
 		Current:  current,
 		Target:   target,
 		Recreate: req.Recreate,
 		Timeout:  req.Timeout,
 		Wait:     req.Wait,
 	}
-	_, err := rudder.UpgradeRelease(req)
+	_, err := rudder.UpgradeRelease(upgrade)
+	return err
+}
+
+// Rollback calls rudder.Rollback
+func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error {
+	rollback := &release.RollbackReleaseRequest{
+		Current:  current,
+		Target:   target,
+		Recreate: req.Recreate,
+		Timeout:  req.Timeout,
+		Wait:     req.Wait,
+	}
+	_, err := rudder.RollbackRelease(rollback)
 	return err
 }
