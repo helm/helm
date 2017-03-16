@@ -270,6 +270,15 @@ a backslash to escape the characters; `--set name=value1\,value2` will become:
 name: "value1,value2"
 ```
 
+Similarly, you can escape dot sequences as well, which may come in handy when charts use the
+`toYaml` function to parse annotations, labels and node selectors. The syntax for
+`--set nodeSelector."kubernetes\.io/role"=master` becomes:
+
+```yaml
+nodeSelector:
+  kubernetes.io/role: master
+```
+
 The `--set` syntax is not as expressive as YAML, especially when it comes to
 collections. And there is currently no method for expressing things such as "set
 the third item in a list to...".
