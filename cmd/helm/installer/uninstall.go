@@ -31,19 +31,19 @@ import (
 )
 
 // Uninstall uses kubernetes client to uninstall tiller
-func Uninstall(kubeClient internalclientset.Interface, kubeCmd *kube.Client, namespace string, verbose bool) error {
-	if _, err := kubeClient.Core().Services(namespace).Get("tiller-deploy"); err != nil {
+func Uninstall(kubeClient internalclientset.Interface, kubeCmd *kube.Client, opts *Options) error {
+	if _, err := kubeClient.Core().Services(opts.Namespace).Get("tiller-deploy"); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
-	} else if err := deleteService(kubeClient.Core(), namespace); err != nil {
+	} else if err := deleteService(kubeClient.Core(), opts.Namespace); err != nil {
 		return err
 	}
-	if obj, err := kubeClient.Extensions().Deployments(namespace).Get("tiller-deploy"); err != nil {
+	if obj, err := kubeClient.Extensions().Deployments(opts.Namespace).Get("tiller-deploy"); err != nil {
 		if !kerrors.IsNotFound(err) {
 			return err
 		}
-	} else if err := deleteDeployment(kubeCmd, namespace, obj); err != nil {
+	} else if err := deleteDeployment(kubeCmd, opts.Namespace, obj); err != nil {
 		return err
 	}
 	return nil

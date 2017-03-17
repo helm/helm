@@ -73,7 +73,8 @@ func TestUninstall(t *testing.T) {
 	rf := &fakeReaperFactory{Factory: f, reaper: r}
 	kc := &kube.Client{Factory: rf}
 
-	if err := Uninstall(fc, kc, api.NamespaceDefault, false); err != nil {
+	opts := &Options{Namespace: api.NamespaceDefault}
+	if err := Uninstall(fc, kc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
@@ -106,7 +107,8 @@ func TestUninstall_serviceNotFound(t *testing.T) {
 	rf := &fakeReaperFactory{Factory: f, reaper: r}
 	kc := &kube.Client{Factory: rf}
 
-	if err := Uninstall(fc, kc, api.NamespaceDefault, false); err != nil {
+	opts := &Options{Namespace: api.NamespaceDefault}
+	if err := Uninstall(fc, kc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
@@ -142,7 +144,8 @@ func TestUninstall_deploymentNotFound(t *testing.T) {
 	rf := &fakeReaperFactory{Factory: f, reaper: r}
 	kc := &kube.Client{Factory: rf}
 
-	if err := Uninstall(fc, kc, api.NamespaceDefault, false); err != nil {
+	opts := &Options{Namespace: api.NamespaceDefault}
+	if err := Uninstall(fc, kc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
