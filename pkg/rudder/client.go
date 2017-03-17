@@ -17,19 +17,25 @@ limitations under the License.
 package rudder // import "k8s.io/helm/pkg/rudder"
 
 import (
+	"fmt"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
-// GrpcAddr is an address that should be used to access Rudder service
-const GrpcAddr = "127.0.0.1:10001"
+// GrpcPort specifies port on which rudder will spawn a server
+const (
+	GrpcPort = 10001
+)
+
+var grpcAddr = fmt.Sprintf("127.0.0.1:%d", GrpcPort)
 
 // InstallRelease calls Rudder InstallRelease method which should create provided release
 func InstallRelease(rel *release.InstallReleaseRequest) (*release.InstallReleaseResponse, error) {
 	//TODO(mkwiek): parametrize this
-	conn, err := grpc.Dial(GrpcAddr, grpc.WithInsecure())
+	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +47,7 @@ func InstallRelease(rel *release.InstallReleaseRequest) (*release.InstallRelease
 
 // UpgradeRelease calls Rudder UpgradeRelease method which should perform update
 func UpgradeRelease(req *release.UpgradeReleaseRequest) (*release.UpgradeReleaseResponse, error) {
-	conn, err := grpc.Dial(GrpcAddr, grpc.WithInsecure())
+	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +58,7 @@ func UpgradeRelease(req *release.UpgradeReleaseRequest) (*release.UpgradeRelease
 
 // RollbackRelease calls Rudder RollbackRelease method which should perform update
 func RollbackRelease(req *release.RollbackReleaseRequest) (*release.RollbackReleaseResponse, error) {
-	conn, err := grpc.Dial(GrpcAddr, grpc.WithInsecure())
+	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}

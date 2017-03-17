@@ -34,7 +34,7 @@ import (
 var kubeClient = kube.New(nil)
 
 func main() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", rudder.GrpcAddr))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", rudder.GrpcPort))
 	if err != nil {
 		grpclog.Fatalf("failed to listen: %v", err)
 	}
