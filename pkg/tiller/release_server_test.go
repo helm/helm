@@ -717,7 +717,7 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected description %q, got %q", edesc, got)
 	}
 }
-func TestUpdateReleaseResetValues(t *testing.T) {
+func TestUpdateRelease_ResetValues(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
@@ -733,6 +733,71 @@ func TestUpdateReleaseResetValues(t *testing.T) {
 			},
 		},
 		ResetValues: true,
+	}
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
+	if res.Release.Config != nil && res.Release.Config.Raw != "" {
+		t.Errorf("Expected chart config to be empty, got %q", res.Release.Config.Raw)
+	}
+}
+
+func TestUpdateRelease_ReuseValues(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+			// Since reuseValues is set, this should get ignored.
+			Values: &chart.Config{Raw: "foo: bar\n"},
+		},
+		Values:      &chart.Config{Raw: "name2: val2"},
+		ReuseValues: true,
+	}
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	// This should have been overwritten with the old value.
+	expect := "name: value\n"
+	if res.Release.Chart.Values != nil && res.Release.Chart.Values.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Chart.Values.Raw)
+	}
+	// This should have the newly-passed overrides.
+	expect = "name2: val2"
+	if res.Release.Config != nil && res.Release.Config.Raw != expect {
+		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
+	}
+}
+
+func TestUpdateRelease_ResetReuseValues(t *testing.T) {
+	// This verifies that when both reset and reuse are set, reset wins.
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+		},
+		ResetValues: true,
+		ReuseValues: true,
 	}
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {

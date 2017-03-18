@@ -155,6 +155,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	req.DisableHooks = h.opts.disableHooks
 	req.Recreate = h.opts.recreate
 	req.ResetValues = h.opts.resetValues
+	req.ReuseValues = h.opts.reuseValues
 	ctx := NewContext()
 
 	if h.opts.before != nil {

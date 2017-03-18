@@ -203,6 +203,9 @@ message UpdateReleaseRequest {
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
 	bool wait = 9;
+	// ReuseValues will cause Tiller to reuse the values from the last release.
+	// This is ignored if reset_values is set.
+	bool reuse_values = 10;
 }
 
 // UpdateReleaseResponse is the response to an update request.

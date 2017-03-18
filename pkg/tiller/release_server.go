@@ -354,13 +354,33 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 //
 // This is skipped if the req.ResetValues flag is set, in which case the
 // request values are not altered.
-func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) {
+func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) error {
 	if req.ResetValues {
 		// If ResetValues is set, we comletely ignore current.Config.
 		log.Print("Reset values to the chart's original version.")
-		return
+		return nil
 	}
-	// If req.Values is empty, but current. config is not, copy current into the
+
+	// If the ReuseValues flag is set, we always copy the old values over the new config's values.
+	if req.ReuseValues {
+		log.Print("Reusing the old release's values")
+
+		// We have to regenerate the old coalesced values:
+		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
+		if err != nil {
+			err := fmt.Errorf("failed to rebuild old values: %s", err)
+			log.Print(err)
+			return err
+		}
+		nv, err := oldVals.YAML()
+		if err != nil {
+			return err
+		}
+		req.Chart.Values = &chart.Config{Raw: nv}
+		return nil
+	}
+
+	// If req.Values is empty, but current.Config is not, copy current into the
 	// request.
 	if (req.Values == nil || req.Values.Raw == "" || req.Values.Raw == "{}\n") &&
 		current.Config != nil &&
@@ -369,6 +389,7 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		log.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}
+	return nil
 }
 
 // prepareUpdate builds an updated release for an update operation.
@@ -388,7 +409,9 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 
 	// If new values were not supplied in the upgrade, re-use the existing values.
-	s.reuseValues(req, currentRelease)
+	if err := s.reuseValues(req, currentRelease); err != nil {
+		return nil, nil, err
+	}
 
 	// Increment revision count. This is passed to templates, and also stored on
 	// the release object.
