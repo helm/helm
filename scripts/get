@@ -62,9 +62,8 @@ verifySupported() {
   fi
 }
 
-# downloadFile downloads the latest binary package and also the checksum
-# for that binary.
-downloadFile() {
+# checkLatestVersion checks the latest available version.
+checkLatestVersion() {
   # Use the GitHub API to find the latest version for this project.
   local latest_url="https://api.github.com/repos/kubernetes/helm/releases/latest"
   if type "curl" > /dev/null; then
@@ -72,7 +71,28 @@ downloadFile() {
   elif type "wget" > /dev/null; then
     TAG=$(wget -q -O - $latest_url | awk '/\"tag_name\":/{gsub( /[,\"]/,"", $2); print $2}')
   fi
+}
 
+# checkHelmInstalledVersion checks which version of helm is installed and
+# if it needs to be updated.
+checkHelmInstalledVersion() {
+  if [[ -f "${HELM_INSTALL_DIR}/${PROJECT_NAME}" ]]; then
+    local version=$(helm version | grep '^Client' | cut -d'"' -f2)
+    if [[ "$version" == "$TAG" ]]; then
+      echo "Helm ${version} is up-to-date."
+      return 0
+    else
+      echo "Helm ${TAG} is available. Upgrading from version ${version}."
+      return 1
+    fi
+  else
+    return 1
+  fi
+}
+
+# downloadFile downloads the latest binary package and also the checksum
+# for that binary.
+downloadFile() {
   HELM_DIST="helm-$TAG-$OS-$ARCH.tar.gz"
   DOWNLOAD_URL="https://kubernetes-helm.storage.googleapis.com/$HELM_DIST"
   CHECKSUM_URL="$DOWNLOAD_URL.sha256"
@@ -140,6 +160,9 @@ set -e
 initArch
 initOS
 verifySupported
-downloadFile
-installFile
+checkLatestVersion
+if ! checkHelmInstalledVersion; then
+  downloadFile
+  installFile
+fi
 testVersion
