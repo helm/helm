@@ -179,7 +179,10 @@ func TestEnsureHome(t *testing.T) {
 	if err := ensureDirectories(hh, b); err != nil {
 		t.Error(err)
 	}
-	if err := ensureDefaultRepos(hh, b); err != nil {
+	if err := ensureDefaultRepos(hh, b, false); err != nil {
+		t.Error(err)
+	}
+	if err := ensureDefaultRepos(hh, b, true); err != nil {
 		t.Error(err)
 	}
 	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {

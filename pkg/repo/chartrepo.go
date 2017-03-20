@@ -161,7 +161,6 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	if !filepath.IsAbs(cp) {
 		cp = filepath.Join(cachePath, cp)
 	}
-	println("Writing to", cp)
 
 	return ioutil.WriteFile(cp, index, 0644)
 }
