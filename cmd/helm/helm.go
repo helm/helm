@@ -46,6 +46,14 @@ const (
 )
 
 var (
+	tlsCaCertFile string // path to TLS CA certificate file
+	tlsCertFile   string // path to TLS certificate file
+	tlsKeyFile    string // path to TLS key file
+	tlsVerify     bool   // enable TLS and verify remote certificates
+	tlsEnable     bool   // enable TLS
+)
+
+var (
 	helmHome        string
 	tillerHost      string
 	tillerNamespace string
