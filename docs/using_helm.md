@@ -353,11 +353,15 @@ is not a full list of cli flags. To see a description of all flags, just run
 
 - `--timeout`: A value in seconds to wait for Kubernetes commands to complete
   This defaults to 300 (5 minutes)
-- `--wait`: Waits until all Pods are in a ready state, PVCs are bound, and 
+- `--wait`: Waits until all Pods are in a ready state, PVCs are bound, Deployments
+  have minimum (`Desired` minus `maxUnavailable`) Pods in ready state and
   Services have and IP address (and Ingress if a `LoadBalancer`) before 
   marking the release as successful. It will wait for as long as the 
   `--timeout` value. If timeout is reached, the release will be marked as 
   `FAILED`.
+
+  Note: In scenario where Deployment has `replicas` set to 1 and `maxUnavailable` is not set to 0 as part of rolling
+  update strategy, `--wait` will return as ready as it has satisfied the minimum Pod in ready condition.
 - `--no-hooks`: This skips running hooks for the command
 - `--recreate-pods` (only available for `upgrade` and `rollback`): This flag
   will cause all pods to be recreated (with the exception of pods belonging to

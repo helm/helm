@@ -172,7 +172,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, and Services are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 
 	return cmd
 }
