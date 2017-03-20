@@ -226,6 +226,12 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["imported-from-chartA-via-chart1.limits.memory"] = "300Mi"
 	e["imported-from-chartA-via-chart1.limits.volume"] = "11"
 	e["imported-from-chartA-via-chart1.requests.truthiness"] = "0.01"
+	// single list items (looks for exports. parent key)
+	e["imported-from-chartB-via-chart1.databint"] = "1"
+	e["imported-from-chartB-via-chart1.databstr"] = "x.y.z"
+	e["parent1c3"] = "true"
+	// checks that a chartb value was merged in with charta values
+	e["imported-from-chartA-via-chart1.resources.limits.shares"] = "100"
 
 	verifyRequirementsImportValues(t, c, v, e)
 }
@@ -252,6 +258,12 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Confi
 			s := strconv.FormatFloat(pv.(float64), 'f', -1, 64)
 			if s != vv {
 				t.Errorf("Failed to match imported float value %v with expected %v", s, vv)
+				return
+			}
+		case bool:
+			b := strconv.FormatBool(pv.(bool))
+			if b != vv {
+				t.Errorf("Failed to match imported bool value %v with expected %v", b, vv)
 				return
 			}
 		default:

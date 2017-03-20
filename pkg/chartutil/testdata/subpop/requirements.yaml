@@ -11,6 +11,12 @@ dependencies:
             parent: imported-from-chart1
           - child: imported-from-chartA
             parent: imported-from-chartA-via-chart1
+          - convention3
+          # this merges chartb "shares" into charta "limits"
+          - child: resources.limits
+            parent: imported-from-chartA-via-chart1.resources.limits
+          - child: data
+            parent: imported-from-chartB-via-chart1
       - name: subchart2
         repository: http://localhost:10191
         version: 0.1.0

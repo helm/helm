@@ -16,6 +16,9 @@ dependencies:
         repository: http://localhost:10191
         version: 0.1.0
         condition: subchartb.enabled
+        import-values:
+          - convention1
+          - convention2
         tags:
           - front-end
           - subchartb

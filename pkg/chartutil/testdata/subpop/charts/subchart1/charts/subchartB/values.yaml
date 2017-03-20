@@ -18,4 +18,12 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
-
+exports:
+  convention1:
+    data:
+      databint: 1
+      databstr: x.y.z
+  convention2:
+    resources:
+      limits:
+        shares: 100

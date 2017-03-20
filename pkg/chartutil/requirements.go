@@ -351,7 +351,7 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 					}
 				case string:
 					nm := make(map[string]string)
-					nm["child"] = riv.(string)
+					nm["child"] = "exports." + riv.(string)
 					nm["parent"] = "."
 					outiv = append(outiv, nm)
 					s := r.Name + "." + nm["child"]
