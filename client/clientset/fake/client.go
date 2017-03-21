@@ -1,7 +1,6 @@
 package fake
 
 import (
-	_ "github.com/appscode/log"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/release_1_5/fake"
 	"k8s.io/kubernetes/pkg/runtime"
 )
