@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	rcs "k8s.io/helm/client/clientset"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
@@ -39,6 +40,7 @@ import (
 const (
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
+	storageInlineTPR = "inline-tpr"
 )
 
 // rootServer is the root gRPC server.
@@ -90,7 +92,13 @@ func main() {
 }
 
 func start(c *cobra.Command, args []string) {
-	clientset, err := kube.New(nil).ClientSet()
+	kc := kube.New(nil)
+	clientcfg, err := kc.ClientConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s\n", err)
+		os.Exit(1)
+	}
+	clientset, err := kc.ClientSet()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s\n", err)
 		os.Exit(1)
@@ -101,6 +109,9 @@ func start(c *cobra.Command, args []string) {
 		env.Releases = storage.Init(driver.NewMemory())
 	case storageConfigMap:
 		env.Releases = storage.Init(driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace())))
+	case storageInlineTPR:
+		cs := rcs.NewExtensionsForConfigOrDie(clientcfg)
+		env.Releases = storage.Init(driver.NewReleases(cs.Release(namespace())))
 	}
 
 	lstn, err := net.Listen("tcp", grpcAddr)
