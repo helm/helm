@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -109,12 +110,21 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			generic = append(generic, manifest{name: n, content: c, head: &sh})
 			continue
 		}
+
+		hw := 0
+		hws, _ := sh.Metadata.Annotations[hooks.HookWeightAnno]
+		hw, err = strconv.Atoi(hws)
+		if err != nil {
+			hw = 0
+		}
+
 		h := &release.Hook{
 			Name:     sh.Metadata.Name,
 			Kind:     sh.Kind,
 			Path:     n,
 			Manifest: c,
 			Events:   []release.Hook_Event{},
+			Weight:   hw,
 		}
 
 		isHook := false

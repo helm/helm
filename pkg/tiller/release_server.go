@@ -911,17 +911,18 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	}
 
 	log.Printf("Executing %s hooks for %s", hook, name)
+	executingHooks := []*release.Hook{}
 	for _, h := range hs {
-		found := false
 		for _, e := range h.Events {
 			if e == code {
-				found = true
+				executingHooks = append(executingHooks, h)
 			}
 		}
-		// If this doesn't implement the hook, skip it.
-		if !found {
-			continue
-		}
+	}
+
+	executingHooks = sortByHookWeight(executingHooks)
+
+	for _, h := range executingHooks {
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b, timeout, false); err != nil {
@@ -937,6 +938,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		}
 		h.LastRun = timeconv.Now()
 	}
+
 	log.Printf("Hooks complete for %s %s", hook, name)
 	return nil
 }
