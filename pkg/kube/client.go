@@ -151,11 +151,14 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	missing := []string{}
 	err = perform(c, namespace, infos, func(info *resource.Info) error {
 		log.Printf("Doing get for: '%s'", info.Name)
 		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
 		if err != nil {
-			return err
+			log.Printf("WARNING: Failed Get for resource %q: %s", info.Name, err)
+			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
+			return nil
 		}
 		// We need to grab the ObjectReference so we can correctly group the objects.
 		or, err := api.GetReference(obj)
@@ -192,6 +195,12 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		}
 		if _, err := buf.WriteString("\n"); err != nil {
 			return "", err
+		}
+	}
+	if len(missing) > 0 {
+		buf.WriteString("==> MISSING\nKIND\t\tNAME\n")
+		for _, s := range missing {
+			fmt.Fprintln(buf, s)
 		}
 	}
 	return buf.String(), nil
