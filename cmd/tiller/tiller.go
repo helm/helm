@@ -31,7 +31,10 @@ import (
 	"github.com/graymeta/stow/s3"
 	"github.com/graymeta/stow/swift"
 	"github.com/spf13/cobra"
+	kberrs "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/apis/extensions"
 
+	rapi "k8s.io/helm/api"
 	rcs "k8s.io/helm/client/clientset"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -40,6 +43,9 @@ import (
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/version"
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 const (
@@ -156,9 +162,11 @@ func start(c *cobra.Command, args []string) {
 	case storageConfigMap:
 		env.Releases = storage.Init(driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace())))
 	case storageInlineTPR:
+		ensureResource(clientset)
 		cs := rcs.NewExtensionsForConfigOrDie(clientcfg)
 		env.Releases = storage.Init(driver.NewReleases(cs.Release(namespace())))
 	case storageObjectStoreTPR:
+		ensureResource(clientset)
 		stowCfg := stow.ConfigMap{}
 		switch storageProvider {
 		case s3.Kind:
@@ -280,4 +288,29 @@ func namespace() string {
 	}
 
 	return environment.DefaultTillerNamespace
+}
+
+func ensureResource(clientset *internalclientset.Clientset) {
+	_, err := clientset.Extensions().ThirdPartyResources().Get("release." + rapi.V1beta1SchemeGroupVersion.Group)
+	if kberrs.IsNotFound(err) {
+		tpr := &extensions.ThirdPartyResource{
+			TypeMeta: unversioned.TypeMeta{
+				APIVersion: "extensions/v1beta1",
+				Kind:       "ThirdPartyResource",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name: "release." + rapi.V1beta1SchemeGroupVersion.Group,
+			},
+			Versions: []extensions.APIVersion{
+				{
+					Name: rapi.V1beta1SchemeGroupVersion.Version,
+				},
+			},
+		}
+		_, err := clientset.Extensions().ThirdPartyResources().Create(tpr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create third party resource: %s\n", err)
+			os.Exit(1)
+		}
+	}
 }
