@@ -34,19 +34,7 @@ type ReleaseSpec struct {
 	// This is modelled like Volume in Pods, which allows specifying a chart
 	// inline (like today) or pulling a chart object from a (potentially private)
 	// chart registry similar to pulling a Docker image.
-	Data ReleaseData `json:"data,omitempty"`
-}
-
-//-------------------------------------------------------------------------------------------
-// Chart represents a chart that is installed in a Release.
-// The ChartSource represents the location and type of a chart to install.
-// This is modelled like Volume in Pods, which allows specifying a chart
-// inline (like today) or pulling a chart object from a (potentially private) chart registry similar to pulling a Docker image.
-// +optional
-type ReleaseData struct {
-	// Inline charts are what is done today with Helm cli. Release request
-	// contains the chart definition in the release spec, sent by Helm cli.
-	Inline string `json:"inline,omitempty"`
+	Data string `json:"data,omitempty"`
 }
 
 type ReleaseStatus struct {

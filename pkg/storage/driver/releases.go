@@ -17,8 +17,9 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
+	"bytes"
 	"fmt"
-	rapi "k8s.io/helm/api"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +30,8 @@ import (
 	kblabels "k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/validation"
 
+	"github.com/graymeta/stow"
+	rapi "k8s.io/helm/api"
 	"k8s.io/helm/client/clientset"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -42,13 +45,23 @@ const ReleasesDriverName = "helm.sh/Release"
 // Releases is a wrapper around an implementation of a kubernetes
 // ReleasesInterface.
 type Releases struct {
-	impl clientset.ReleaseInterface
+	impl      clientset.ReleaseInterface
+	container stow.Container
+	prefix    string
 }
 
 // NewReleases initializes a new Releases wrapping an implmenetation of
 // the kubernetes ReleasesInterface.
 func NewReleases(impl clientset.ReleaseInterface) *Releases {
 	return &Releases{impl: impl}
+}
+
+func NewObjectStoreReleases(impl clientset.ReleaseInterface, c stow.Container, prefix string) *Releases {
+	p := prefix
+	if prefix == "" {
+		p = "tiller"
+	}
+	return &Releases{impl: impl, container: c, prefix: p}
 }
 
 // Name returns the name of the driver.
@@ -69,8 +82,13 @@ func (releases *Releases) Get(key string) (*rspb.Release, error) {
 		logerrf(err, "get: failed to get %q", key)
 		return nil, err
 	}
+
 	// found the release, decode the base64 data string
-	r, err := decodeRelease(obj.Spec.Data.Inline)
+	data, err := releases.getReleaseData(obj)
+	if err != nil {
+		return nil, err
+	}
+	r, err := decodeRelease(data)
 	if err != nil {
 		logerrf(err, "get: failed to decode data %q", key)
 		return nil, err
@@ -97,7 +115,11 @@ func (releases *Releases) List(filter func(*rspb.Release) bool) ([]*rspb.Release
 	// iterate over the releases object list
 	// and decode each release
 	for _, item := range list.Items {
-		rls, err := decodeRelease(item.Spec.Data.Inline)
+		data, err := releases.getReleaseData(&item)
+		if err != nil {
+			return nil, err
+		}
+		rls, err := decodeRelease(data)
 		if err != nil {
 			logerrf(err, "list: failed to decode release: %v", item)
 			continue
@@ -134,7 +156,11 @@ func (releases *Releases) Query(labels map[string]string) ([]*rspb.Release, erro
 
 	var results []*rspb.Release
 	for _, item := range list.Items {
-		rls, err := decodeRelease(item.Spec.Data.Inline)
+		data, err := releases.getReleaseData(&item)
+		if err != nil {
+			return nil, err
+		}
+		rls, err := decodeRelease(data)
 		if err != nil {
 			logerrf(err, "query: failed to decode release: %s", err)
 			continue
@@ -155,6 +181,12 @@ func (releases *Releases) Create(key string, rls *rspb.Release) error {
 
 	// create a new release to hold the release
 	obj, err := newReleasesObject(key, rls, lbs)
+	if err != nil {
+		logerrf(err, "create: failed to encode release %q", rls.Name)
+		return err
+	}
+	// push the release object data to object store if configured
+	err = releases.writeReleaseData(obj)
 	if err != nil {
 		logerrf(err, "create: failed to encode release %q", rls.Name)
 		return err
@@ -186,6 +218,12 @@ func (releases *Releases) Update(key string, rls *rspb.Release) error {
 		logerrf(err, "update: failed to encode release %q", rls.Name)
 		return err
 	}
+	// push the release object data to object store if configured
+	err = releases.writeReleaseData(obj)
+	if err != nil {
+		logerrf(err, "create: failed to encode release %q", rls.Name)
+		return err
+	}
 	// push the release object out into the kubiverse
 	_, err = releases.impl.Update(obj)
 	if err != nil {
@@ -207,10 +245,97 @@ func (releases *Releases) Delete(key string) (rls *rspb.Release, err error) {
 		return nil, err
 	}
 	// delete the release
+	if err = releases.deleteReleaseData(rls); err != nil {
+		return rls, err
+	}
 	if err = releases.impl.Delete(key); err != nil {
 		return rls, err
 	}
 	return rls, nil
+}
+
+func (releases *Releases) itemIDFromTPR(rls *rapi.Release) string {
+	return fmt.Sprintf("%v/releases/%v/versions%v", releases.prefix, rls.Name, rls.Spec.Version)
+}
+
+func (releases *Releases) itemIDFromProto(rls *rspb.Release) string {
+	return fmt.Sprintf("%v/releases/%v/versions%v", releases.prefix, rls.Name, rls.Version)
+}
+
+func (releases *Releases) deleteReleaseData(rls *rspb.Release) error {
+	if releases.container != nil {
+		return releases.container.RemoveItem(releases.itemIDFromProto(rls))
+	}
+	return nil
+}
+
+func (releases *Releases) writeReleaseData(rls *rapi.Release) error {
+	if releases.container != nil {
+		b := bytes.NewBufferString(rls.Spec.Data)
+		sz := len(rls.Spec.Data)
+		rls.Spec.Data = ""
+		_, err := releases.container.Put(releases.itemIDFromTPR(rls), b, int64(sz), nil)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (releases *Releases) getReleaseData(rls *rapi.Release) (string, error) {
+	if rls.Spec.Data != "" {
+		return rls.Spec.Data, nil
+	} else if releases.container != nil {
+		item, err := releases.container.Item(releases.itemIDFromTPR(rls))
+		if err != nil {
+			return "", err
+		}
+
+		f, err := item.Open()
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
+		// It's a good but not certain bet that FileInfo will tell us exactly how much to
+		// read, so let's try it but be prepared for the answer to be wrong.
+		var n int64
+		// Don't preallocate a huge buffer, just in case.
+		if size, err := item.Size(); err != nil && size < 1e9 {
+			n = size
+		}
+		// As initial capacity for readAll, use n + a little extra in case Size is zero,
+		// and to avoid another allocation after Read has filled the buffer. The readAll
+		// call will read into its allocated internal buffer cheaply. If the size was
+		// wrong, we'll either waste some space off the end or reallocate as needed, but
+		// in the overwhelmingly common case we'll get it just right.
+		b, err := readAll(f, n+bytes.MinRead)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+	return "", fmt.Errorf("Missing release data for %v", rls.Name)
+}
+
+// readAll reads from r until an error or EOF and returns the data it read
+// from the internal buffer allocated with a specified capacity.
+func readAll(r io.Reader, capacity int64) (b []byte, err error) {
+	buf := bytes.NewBuffer(make([]byte, 0, capacity))
+	// If the buffer overflows, we will get bytes.ErrTooLarge.
+	// Return that as an error. Any other panic remains.
+	defer func() {
+		e := recover()
+		if e == nil {
+			return
+		}
+		if panicErr, ok := e.(error); ok && panicErr == bytes.ErrTooLarge {
+			err = panicErr
+		} else {
+			panic(e)
+		}
+	}()
+	_, err = buf.ReadFrom(r)
+	return buf.Bytes(), err
 }
 
 // newReleasesObject constructs a kubernetes Release object
@@ -254,9 +379,7 @@ func newReleasesObject(key string, rls *rspb.Release, lbs labels) (*rapi.Release
 		Spec: rapi.ReleaseSpec{
 			Config:  rls.Config,
 			Version: rls.Version,
-			Data: rapi.ReleaseData{
-				Inline: s,
-			},
+			Data:    s,
 		},
 		Status: rapi.ReleaseStatus{
 			FirstDeployed: toKubeTime(rls.Info.FirstDeployed),

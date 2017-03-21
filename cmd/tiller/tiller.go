@@ -25,6 +25,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/graymeta/stow"
+	"github.com/graymeta/stow/azure"
+	gcs "github.com/graymeta/stow/google"
+	"github.com/graymeta/stow/s3"
+	"github.com/graymeta/stow/swift"
 	"github.com/spf13/cobra"
 
 	rcs "k8s.io/helm/client/clientset"
@@ -38,9 +43,10 @@ import (
 )
 
 const (
-	storageMemory    = "memory"
-	storageConfigMap = "configmap"
-	storageInlineTPR = "inline-tpr"
+	storageMemory         = "memory"
+	storageConfigMap      = "configmap"
+	storageInlineTPR      = "inline-tpr"
+	storageObjectStoreTPR = "object-store-tpr"
 )
 
 // rootServer is the root gRPC server.
@@ -59,6 +65,24 @@ var (
 	traceAddr     = ":44136"
 	enableTracing = false
 	store         = storageConfigMap
+
+	storageProvider          string
+	s3ConfigAccessKeyID      string
+	s3ConfigEndpoint         string
+	s3ConfigRegion           string
+	s3ConfigSecretKey        string
+	gcsConfigJSONKeyPath     string
+	gcsConfigProjectId       string
+	gcsConfigScopes          string
+	azureConfigAccount       string
+	azureConfigKey           string
+	swiftConfigKey           string
+	swiftConfigTenantAuthURL string
+	swiftConfigTenantName    string
+	swiftConfigUsername      string
+
+	container     string
+	storagePrefix string
 )
 
 const globalUsage = `The Kubernetes Helm server.
@@ -84,6 +108,28 @@ func main() {
 	p.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
 	p.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
 	p.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
+
+	p.StringVar(&storageProvider, "provider", "", "Cloud storage provider")
+
+	p.StringVar(&s3ConfigAccessKeyID, s3.Kind+"."+s3.ConfigAccessKeyID, "", "S3 config access key id")
+	p.StringVar(&s3ConfigEndpoint, s3.Kind+"."+s3.ConfigEndpoint, "", "S3 config endpoint")
+	p.StringVar(&s3ConfigRegion, s3.Kind+"."+s3.ConfigRegion, "", "S3 config region")
+	p.StringVar(&s3ConfigSecretKey, s3.Kind+"."+s3.ConfigSecretKey, "", "S3 config secret key")
+
+	p.StringVar(&gcsConfigJSONKeyPath, gcs.Kind+".json_key_path", "", "GCS config json key path")
+	p.StringVar(&gcsConfigProjectId, gcs.Kind+"."+gcs.ConfigProjectId, "", "GCS config project id")
+	p.StringVar(&gcsConfigScopes, gcs.Kind+"."+gcs.ConfigScopes, "", "GCS config scopes")
+
+	p.StringVar(&azureConfigAccount, azure.Kind+"."+azure.ConfigAccount, "", "Azure config account")
+	p.StringVar(&azureConfigKey, azure.Kind+"."+azure.ConfigKey, "", "Azure config key")
+
+	p.StringVar(&swiftConfigKey, swift.Kind+"."+swift.ConfigKey, "", "Swift config key")
+	p.StringVar(&swiftConfigTenantAuthURL, swift.Kind+"."+swift.ConfigTenantAuthURL, "", "Swift teanant auth url")
+	p.StringVar(&swiftConfigTenantName, swift.Kind+"."+swift.ConfigTenantName, "", "Swift tenant name")
+	p.StringVar(&swiftConfigUsername, swift.Kind+"."+swift.ConfigUsername, "", "Swift username")
+
+	p.StringVar(&container, "container", "", "Name of container")
+	p.StringVar(&storagePrefix, "storage-prefix", "tiller", "Prefix to container key where release data is stored")
 
 	if err := rootCommand.Execute(); err != nil {
 		fmt.Fprint(os.Stderr, err)
@@ -112,6 +158,71 @@ func start(c *cobra.Command, args []string) {
 	case storageInlineTPR:
 		cs := rcs.NewExtensionsForConfigOrDie(clientcfg)
 		env.Releases = storage.Init(driver.NewReleases(cs.Release(namespace())))
+	case storageObjectStoreTPR:
+		stowCfg := stow.ConfigMap{}
+		switch storageProvider {
+		case s3.Kind:
+			if s3ConfigAccessKeyID != "" {
+				stowCfg[s3.ConfigAccessKeyID] = s3ConfigAccessKeyID
+			}
+			if s3ConfigEndpoint != "" {
+				stowCfg[s3.ConfigEndpoint] = s3ConfigEndpoint
+			}
+			if s3ConfigRegion != "" {
+				stowCfg[s3.ConfigRegion] = s3ConfigRegion
+			}
+			if s3ConfigSecretKey != "" {
+				stowCfg[s3.ConfigSecretKey] = s3ConfigSecretKey
+			}
+		case gcs.Kind:
+			if gcsConfigJSONKeyPath != "" {
+				jsonKey, err := ioutil.ReadFile(gcsConfigJSONKeyPath)
+				fmt.Fprintf(os.Stderr, "Cannot read json key file: %s\n", err)
+				os.Exit(1)
+				stowCfg[gcs.ConfigJSON] = string(jsonKey)
+			}
+			if gcsConfigProjectId != "" {
+				stowCfg[gcs.ConfigProjectId] = gcsConfigProjectId
+			}
+			if gcsConfigScopes != "" {
+				stowCfg[gcs.ConfigScopes] = gcsConfigScopes
+			}
+		case azure.Kind:
+			if azureConfigAccount != "" {
+				stowCfg[azure.ConfigAccount] = azureConfigAccount
+			}
+			if azureConfigKey != "" {
+				stowCfg[azure.ConfigKey] = azureConfigKey
+			}
+		case swift.Kind:
+			if swiftConfigKey != "" {
+				stowCfg[swift.ConfigKey] = swiftConfigKey
+			}
+			if swiftConfigTenantAuthURL != "" {
+				stowCfg[swift.ConfigTenantAuthURL] = swiftConfigTenantAuthURL
+			}
+			if swiftConfigTenantName != "" {
+				stowCfg[swift.ConfigTenantName] = swiftConfigTenantName
+			}
+			if swiftConfigUsername != "" {
+				stowCfg[swift.ConfigUsername] = swiftConfigUsername
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "Unknown provider: %s\n", storageProvider)
+			os.Exit(1)
+		}
+		loc, err := stow.Dial(storageProvider, stowCfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot connect to object store: %s\n", err)
+			os.Exit(1)
+		}
+		c, err := loc.Container(container)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Cannot find container: %s\n", err)
+			os.Exit(1)
+		}
+		cs := rcs.NewExtensionsForConfigOrDie(clientcfg)
+		env.Releases = storage.Init(driver.NewObjectStoreReleases(cs.Release(namespace()), c, storagePrefix))
 	}
 
 	lstn, err := net.Listen("tcp", grpcAddr)
