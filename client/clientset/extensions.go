@@ -56,19 +56,19 @@ func NewExtensionsForConfigOrDie(c *rest.Config) *ExtensionsClient {
 	return client
 }
 
-// New creates a new ExtensionsV1beta1Client for the given RESTClient.
+// New creates a new ExtensionsV1alpha1Client for the given RESTClient.
 func NewNewExtensions(c rest.Interface) *ExtensionsClient {
 	return &ExtensionsClient{c}
 }
 
 func setExtensionsDefaults(config *rest.Config) error {
-	gv, err := schema.ParseGroupVersion("helm.sh/v1beta1")
+	gv, err := schema.ParseGroupVersion("helm.sh/v1alpha1")
 	if err != nil {
 		return err
 	}
-	// if helm.sh/v1beta1 is not enabled, return an error
+	// if helm.sh/v1alpha1 is not enabled, return an error
 	if !registered.IsEnabledVersion(gv) {
-		return fmt.Errorf("helm.sh/v1beta1 is not enabled")
+		return fmt.Errorf("helm.sh/v1alpha1 is not enabled")
 	}
 	config.APIPath = defaultAPIPath
 	if config.UserAgent == "" {

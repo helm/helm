@@ -145,8 +145,8 @@ func (c *extendedCodec) EncodeParameters(obj runtime.Object, to schema.GroupVers
 func setDefaultVersionKind(obj runtime.Object) {
 	// Check the values can are In type Extended Ingress
 	defaultGVK := schema.GroupVersionKind{
-		Group:   aci.V1beta1SchemeGroupVersion.Group,
-		Version: aci.V1beta1SchemeGroupVersion.Version,
+		Group:   aci.V1alpha1SchemeGroupVersion.Group,
+		Version: aci.V1alpha1SchemeGroupVersion.Version,
 	}
 
 	fullyQualifiedKind := reflect.ValueOf(obj).Type().String()

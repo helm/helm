@@ -14,7 +14,7 @@ type FakeRelease struct {
 	ns   string
 }
 
-var certResource = schema.GroupVersionResource{Group: "helm.sh", Version: "v1beta1", Resource: "releases"}
+var certResource = schema.GroupVersionResource{Group: "helm.sh", Version: "v1alpha1", Resource: "releases"}
 
 // Get returns the Release by name.
 func (mock *FakeRelease) Get(name string) (*aci.Release, error) {

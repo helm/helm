@@ -291,19 +291,19 @@ func namespace() string {
 }
 
 func ensureResource(clientset *internalclientset.Clientset) {
-	_, err := clientset.Extensions().ThirdPartyResources().Get("release." + rapi.V1beta1SchemeGroupVersion.Group)
+	_, err := clientset.Extensions().ThirdPartyResources().Get("release." + rapi.V1alpha1SchemeGroupVersion.Group)
 	if kberrs.IsNotFound(err) {
 		tpr := &extensions.ThirdPartyResource{
 			TypeMeta: unversioned.TypeMeta{
-				APIVersion: "extensions/v1beta1",
+				APIVersion: "extensions/v1alpha1",
 				Kind:       "ThirdPartyResource",
 			},
 			ObjectMeta: api.ObjectMeta{
-				Name: "release." + rapi.V1beta1SchemeGroupVersion.Group,
+				Name: "release." + rapi.V1alpha1SchemeGroupVersion.Group,
 			},
 			Versions: []extensions.APIVersion{
 				{
-					Name: rapi.V1beta1SchemeGroupVersion.Version,
+					Name: rapi.V1alpha1SchemeGroupVersion.Version,
 				},
 			},
 		}
