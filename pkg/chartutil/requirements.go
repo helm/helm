@@ -269,15 +269,20 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	return nil
 }
 
-// pathToMap creates a nested map given a YAML path in dot notation
+// pathToMap creates a nested map given a YAML path in dot notation.
 func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
 	ap := strings.Split(path, ".")
+	if len(ap) == 0 {
+		return nil
+	}
 	n := []map[string]interface{}{}
+	// created nested map for each key, adding to slice
 	for _, v := range ap {
 		nm := make(map[string]interface{})
 		nm[v] = make(map[string]interface{})
 		n = append(n, nm)
 	}
+	// find the last key (map) and set our data
 	for i, d := range n {
 		for k := range d {
 			z := i + 1
@@ -292,11 +297,10 @@ func pathToMap(path string, data map[string]interface{}) map[string]interface{} 
 	return n[0]
 }
 
-// getParents returns a slice of parent charts in reverse order
+// getParents returns a slice of parent charts in reverse order.
 func getParents(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 	if len(out) == 0 {
-		out = []*chart.Chart{}
-		out = append(out, c)
+		out = []*chart.Chart{c}
 	}
 	for _, ch := range c.Dependencies {
 		if len(ch.Dependencies) > 0 {
@@ -308,16 +312,15 @@ func getParents(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 	return out
 }
 
-// processImportValues merges values from child to parent based on ImportValues field
+// processImportValues merges values from child to parent based on ImportValues field.
 func processImportValues(c *chart.Chart, v *chart.Config) error {
 	reqs, err := LoadRequirements(c)
 	if err != nil {
-		log.Printf("Warning: ImportValues cannot load requirements for %s", c.Metadata.Name)
-		return nil
+		return err
 	}
 	cvals, err := CoalesceValues(c, v)
 	if err != nil {
-		log.Fatalf("Error coalescing values for ImportValues %s", err)
+		return err
 	}
 	nv := v.GetValues()
 	b := make(map[string]interface{})
@@ -328,30 +331,29 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 		if len(r.ImportValues) > 0 {
 			var outiv []interface{}
 			for _, riv := range r.ImportValues {
-				switch riv.(type) {
+				switch iv := riv.(type) {
 				case map[string]interface{}:
-					if m, ok := riv.(map[string]interface{}); ok {
-						nm := make(map[string]string)
-						nm["child"] = m["child"].(string)
-						nm["parent"] = m["parent"].(string)
-						outiv = append(outiv, nm)
-						s := r.Name + "." + nm["child"]
-						vv, err := cvals.Table(s)
-						if err != nil {
-							log.Printf("Warning: ImportValues missing table %v", err)
-							continue
-						}
-						if nm["parent"] == "." {
-							coalesceTables(b, vv.AsMap())
-						} else {
+					nm := map[string]string{
+						"child":  iv["child"].(string),
+						"parent": iv["parent"].(string),
+					}
+					outiv = append(outiv, nm)
+					s := r.Name + "." + nm["child"]
+					vv, err := cvals.Table(s)
+					if err != nil {
+						log.Printf("Warning: ImportValues missing table %v", err)
+						continue
+					}
+					if nm["parent"] == "." {
+						coalesceTables(b, vv.AsMap())
+					} else {
 
-							vm := pathToMap(nm["parent"], vv.AsMap())
-							coalesceTables(b, vm)
-						}
+						vm := pathToMap(nm["parent"], vv.AsMap())
+						coalesceTables(b, vm)
 					}
 				case string:
 					nm := make(map[string]string)
-					nm["child"] = "exports." + riv.(string)
+					nm["child"] = "exports." + iv
 					nm["parent"] = "."
 					outiv = append(outiv, nm)
 					s := r.Name + "." + nm["child"]
@@ -367,14 +369,13 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 			r.ImportValues = outiv
 		}
 	}
-
 	cv, err := coalesceValues(c, b)
 	if err != nil {
-		log.Fatalf("Error coalescing processed values for ImportValues %s", err)
+		return err
 	}
 	y, err := yaml.Marshal(cv)
 	if err != nil {
-		log.Printf("Warning: ImportValues could not marshall %v", err)
+		return err
 	}
 	bb := &chart.Config{Raw: string(y)}
 	v = bb
@@ -383,12 +384,11 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 	return nil
 }
 
-// ProcessRequirementsImportValues imports specified chart values from child to parent
+// ProcessRequirementsImportValues imports specified chart values from child to parent.
 func ProcessRequirementsImportValues(c *chart.Chart, v *chart.Config) error {
 	pc := getParents(c, nil)
 	for i := len(pc) - 1; i >= 0; i-- {
 		processImportValues(pc[i], v)
-
 	}
 
 	return nil
