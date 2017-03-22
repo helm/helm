@@ -368,6 +368,7 @@ func readAll(r io.Reader, capacity int64) (b []byte, err error) {
 func newReleasesObject(key string, rls *rspb.Release, lbs labels) (*rapi.Release, error) {
 	const owner = "TILLER"
 
+	// TODO(tamal): Just store the proto bytes directly in cloud bucket.
 	// encode the release
 	s, err := encodeRelease(rls)
 	if err != nil {
