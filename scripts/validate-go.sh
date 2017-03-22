@@ -30,7 +30,6 @@ gometalinter.v1 \
   --enable deadcode \
   --severity deadcode:error \
   --enable gofmt \
-  --enable gosimple \
   --enable ineffassign \
   --enable misspell \
   --enable vet \
