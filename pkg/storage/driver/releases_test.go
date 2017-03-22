@@ -19,11 +19,11 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
+	"k8s.io/kubernetes/pkg/runtime"
 
 	_ "k8s.io/helm/api/install"
 	"k8s.io/helm/client/clientset/fake"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/kubernetes/pkg/runtime"
 )
 
 // newTestFixture initializes a FakeReleaseInterface.
@@ -42,6 +42,7 @@ func initFakeTPRs(t *testing.T, releases ...*rspb.Release) []runtime.Object {
 		if err != nil {
 			t.Fatalf("Failed to create configmap: %s", err)
 		}
+		r.Namespace = "default"
 		var obj runtime.Object = r
 		objects = append(objects, obj)
 	}
@@ -83,7 +84,7 @@ func TestUNcompressedReleaseGet(t *testing.T) {
 	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
 
 	// Create a test fixture which contains an uncompressed release
-	cfgmap, err := newReleasesObject(key, rel, nil)
+	r, err := newReleasesObject(key, rel, nil)
 	if err != nil {
 		t.Fatalf("Failed to create configmap: %s", err)
 	}
@@ -91,8 +92,8 @@ func TestUNcompressedReleaseGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to marshal release: %s", err)
 	}
-	cfgmap.Spec.Data.Inline = base64.StdEncoding.EncodeToString(b)
-	releases := NewReleases(fake.NewFakeExtensionClient(initFakeTPRs(t, rel)...).Releases("test"))
+	r.Spec.Data = base64.StdEncoding.EncodeToString(b)
+	releases := NewReleases(fake.NewFakeExtensionClient(initFakeTPRs(t, rel)...).Releases("default"))
 
 	// get release with key
 	got, err := releases.Get(key)

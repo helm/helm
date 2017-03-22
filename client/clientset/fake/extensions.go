@@ -1,12 +1,13 @@
 package fake
 
 import (
-	"k8s.io/helm/client/clientset"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
 	testing "k8s.io/kubernetes/pkg/client/testing/core"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/watch"
+
+	"k8s.io/helm/client/clientset"
 )
 
 type FakeExtensionClient struct {

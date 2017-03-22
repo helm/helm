@@ -12,7 +12,7 @@ var V1alpha1SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: 
 
 var (
 	V1alpha1SchemeBuilder = runtime.NewSchemeBuilder(v1addKnownTypes)
-	V1betaAddToScheme    = V1alpha1SchemeBuilder.AddToScheme
+	V1betaAddToScheme     = V1alpha1SchemeBuilder.AddToScheme
 )
 
 // Adds the list of known types to api.Scheme.

@@ -372,6 +372,10 @@ func newReleasesObject(key string, rls *rspb.Release, lbs labels) (*rapi.Release
 
 	// create and return release object
 	r := &rapi.Release{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Release",
+			APIVersion: "helm.sh/v1alpha1",
+		},
 		ObjectMeta: api.ObjectMeta{
 			Name:   key,
 			Labels: lbs.toMap(),

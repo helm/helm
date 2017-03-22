@@ -50,9 +50,12 @@ func (mock *FakeRelease) List(opts api.ListOptions) (*aci.ReleaseList, error) {
 }
 
 // Create creates a new Release.
-func (mock *FakeRelease) Create(svc *aci.Release) (*aci.Release, error) {
+func (mock *FakeRelease) Create(r *aci.Release) (*aci.Release, error) {
+	if r != nil {
+		r.Namespace = mock.ns
+	}
 	obj, err := mock.Fake.
-		Invokes(testing.NewCreateAction(certResource, mock.ns, svc), &aci.Release{})
+		Invokes(testing.NewCreateAction(certResource, mock.ns, r), &aci.Release{})
 
 	if obj == nil {
 		return nil, err
@@ -61,9 +64,12 @@ func (mock *FakeRelease) Create(svc *aci.Release) (*aci.Release, error) {
 }
 
 // Update updates a Release.
-func (mock *FakeRelease) Update(svc *aci.Release) (*aci.Release, error) {
+func (mock *FakeRelease) Update(r *aci.Release) (*aci.Release, error) {
+	if r != nil {
+		r.Namespace = mock.ns
+	}
 	obj, err := mock.Fake.
-		Invokes(testing.NewUpdateAction(certResource, mock.ns, svc), &aci.Release{})
+		Invokes(testing.NewUpdateAction(certResource, mock.ns, r), &aci.Release{})
 
 	if obj == nil {
 		return nil, err
@@ -79,9 +85,12 @@ func (mock *FakeRelease) Delete(name string) error {
 	return err
 }
 
-func (mock *FakeRelease) UpdateStatus(srv *aci.Release) (*aci.Release, error) {
+func (mock *FakeRelease) UpdateStatus(r *aci.Release) (*aci.Release, error) {
+	if r != nil {
+		r.Namespace = mock.ns
+	}
 	obj, err := mock.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(certResource, "status", mock.ns, srv), &aci.Release{})
+		Invokes(testing.NewUpdateSubresourceAction(certResource, "status", mock.ns, r), &aci.Release{})
 
 	if obj == nil {
 		return nil, err
