@@ -395,7 +395,7 @@ func newReleasesObject(key string, rls *rspb.Release, lbs labels) (*rapi.Release
 			Labels: lbs.toMap(),
 		},
 		Spec: rapi.ReleaseSpec{
-			Config:  rls.Config,
+			Config:  map[string]string{},
 			Version: rls.Version,
 			Data:    s,
 		},
@@ -415,6 +415,11 @@ func newReleasesObject(key string, rls *rspb.Release, lbs labels) (*rapi.Release
 	}
 	if rls.Chart != nil {
 		r.Spec.ChartMetadata = rls.Chart.Metadata
+	}
+	if rls.Config != nil {
+		for k, v := range rls.Config.Values {
+			r.Spec.Config[k] = v.Value
+		}
 	}
 	return r, nil
 }

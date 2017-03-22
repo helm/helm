@@ -22,7 +22,7 @@ type ReleaseSpec struct {
 	ChartMetadata *hapi_chart.Metadata `json:"chartMetadata,omitempty"`
 	// Config is the set of extra Values added to the chart.
 	// These values override the default values inside of the chart.
-	Config *hapi_chart.Config `json:"config,omitempty"`
+	Config  map[string]string `json:"config,omitempty"`
 	// Version is an int32 which represents the version of the release.
 	Version int32 `json:"version,omitempty"`
 
