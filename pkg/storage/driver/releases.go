@@ -256,11 +256,11 @@ func (releases *Releases) Delete(key string) (rls *rspb.Release, err error) {
 }
 
 func (releases *Releases) itemIDFromTPR(rls *rapi.Release) string {
-	return fmt.Sprintf("%v/releases/%v/versions%v", releases.prefix, rls.Name, rls.Spec.Version)
+	return fmt.Sprintf("%v/releases/%v", releases.prefix, rls.Name)
 }
 
 func (releases *Releases) itemIDFromProto(rls *rspb.Release) string {
-	return fmt.Sprintf("%v/releases/%v/versions%v", releases.prefix, rls.Name, rls.Version)
+	return fmt.Sprintf("%v/releases/%v", releases.prefix, toTPRSafeKey(rls.Name))
 }
 
 func (releases *Releases) deleteReleaseData(rls *rspb.Release) error {

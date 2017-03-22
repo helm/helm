@@ -183,8 +183,10 @@ func start(c *cobra.Command, args []string) {
 		case gcs.Kind:
 			if gcsConfigJSONKeyPath != "" {
 				jsonKey, err := ioutil.ReadFile(gcsConfigJSONKeyPath)
-				fmt.Fprintf(os.Stderr, "Cannot read json key file: %s\n", err)
-				os.Exit(1)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Cannot read json key file: %v\n", err)
+					os.Exit(1)
+				}
 				stowCfg[gcs.ConfigJSON] = string(jsonKey)
 			}
 			if gcsConfigProjectId != "" {
@@ -211,17 +213,17 @@ func start(c *cobra.Command, args []string) {
 				stowCfg[swift.ConfigUsername] = swiftConfigUsername
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "Unknown provider: %s\n", storageProvider)
+			fmt.Fprintf(os.Stderr, "Unknown provider: %v\n", storageProvider)
 			os.Exit(1)
 		}
 		loc, err := stow.Dial(storageProvider, stowCfg)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot connect to object store: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Cannot connect to object store: %v\n", err)
 			os.Exit(1)
 		}
 		c, err := loc.Container(container)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Cannot find container: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Cannot find container: %v\n", err)
 			os.Exit(1)
 		}
 		cs := rcs.NewExtensionsForConfigOrDie(clientcfg)
@@ -230,7 +232,7 @@ func start(c *cobra.Command, args []string) {
 
 	lstn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Server died: %v\n", err)
 		os.Exit(1)
 	}
 
