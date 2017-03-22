@@ -36,7 +36,7 @@ var TestRun_Status_value = map[string]int32{
 func (x TestRun_Status) String() string {
 	return proto.EnumName(TestRun_Status_name, int32(x))
 }
-func (TestRun_Status) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{0, 0} }
+func (TestRun_Status) EnumDescriptor() ([]byte, []int) { return fileDescriptor4, []int{0, 0} }
 
 type TestRun struct {
 	Name        string                     `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -49,7 +49,7 @@ type TestRun struct {
 func (m *TestRun) Reset()                    { *m = TestRun{} }
 func (m *TestRun) String() string            { return proto.CompactTextString(m) }
 func (*TestRun) ProtoMessage()               {}
-func (*TestRun) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*TestRun) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 func (m *TestRun) GetName() string {
 	if m != nil {
@@ -91,11 +91,11 @@ func init() {
 	proto.RegisterEnum("hapi.release.TestRun_Status", TestRun_Status_name, TestRun_Status_value)
 }
 
-func init() { proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor4) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor4 = []byte{
 	// 265 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x8f, 0x41, 0x4b, 0xfb, 0x40,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0x41, 0x4b, 0xfb, 0x40,
 	0x14, 0xc4, 0xff, 0xc9, 0xbf, 0x26, 0x64, 0x53, 0x24, 0xec, 0x29, 0x54, 0xc1, 0xd0, 0x53, 0x4e,
 	0xbb, 0x50, 0xbd, 0x78, 0xf0, 0x10, 0x4b, 0x05, 0x51, 0x22, 0x6c, 0x1a, 0x04, 0x2f, 0x65, 0xab,
 	0xaf, 0x35, 0x90, 0x64, 0x43, 0xf6, 0xe5, 0x8b, 0xf8, 0x89, 0x65, 0x93, 0xad, 0x78, 0xf3, 0xf6,

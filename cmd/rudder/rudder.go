@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/grpclog"
 
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/proto/hapi/release"
+	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
 	"k8s.io/helm/pkg/rudder"
 	"k8s.io/helm/pkg/version"
 )
@@ -39,57 +39,63 @@ func main() {
 		grpclog.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	release.RegisterReleaseModuleServiceServer(grpcServer, &ReleaseModuleServiceServer{})
+	rudderAPI.RegisterReleaseModuleServiceServer(grpcServer, &ReleaseModuleServiceServer{})
 
 	grpclog.Print("Server starting")
 	grpcServer.Serve(lis)
 	grpclog.Print("Server started")
 }
 
-// ReleaseModuleServiceServer provides implementation for release.ReleaseModuleServiceServer
+// ReleaseModuleServiceServer provides implementation for rudderAPI.ReleaseModuleServiceServer
 type ReleaseModuleServiceServer struct{}
 
 // Version is not yet implemented
-func (r *ReleaseModuleServiceServer) Version(ctx context.Context, in *release.VersionReleaseRequest) (*release.VersionReleaseResponse, error) {
+func (r *ReleaseModuleServiceServer) Version(ctx context.Context, in *rudderAPI.VersionReleaseRequest) (*rudderAPI.VersionReleaseResponse, error) {
 	grpclog.Print("version")
-	return &release.VersionReleaseResponse{
+	return &rudderAPI.VersionReleaseResponse{
 		Name:    "helm-rudder-native",
 		Version: version.Version,
 	}, nil
 }
 
 // InstallRelease creates a release using kubeClient.Create
-func (r *ReleaseModuleServiceServer) InstallRelease(ctx context.Context, in *release.InstallReleaseRequest) (*release.InstallReleaseResponse, error) {
+func (r *ReleaseModuleServiceServer) InstallRelease(ctx context.Context, in *rudderAPI.InstallReleaseRequest) (*rudderAPI.InstallReleaseResponse, error) {
 	grpclog.Print("install")
 	b := bytes.NewBufferString(in.Release.Manifest)
 	err := kubeClient.Create(in.Release.Namespace, b, 500, false)
 	if err != nil {
 		grpclog.Printf("error when creating release: %s", err)
 	}
-	return &release.InstallReleaseResponse{}, err
+	return &rudderAPI.InstallReleaseResponse{}, err
 }
 
 // DeleteRelease is not implemented
-func (r *ReleaseModuleServiceServer) DeleteRelease(ctx context.Context, in *release.DeleteReleaseRequest) (*release.DeleteReleaseResponse, error) {
+func (r *ReleaseModuleServiceServer) DeleteRelease(ctx context.Context, in *rudderAPI.DeleteReleaseRequest) (*rudderAPI.DeleteReleaseResponse, error) {
 	grpclog.Print("delete")
 	return nil, nil
 }
 
 // RollbackRelease is not implemented
-func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *release.RollbackReleaseRequest) (*release.RollbackReleaseResponse, error) {
+func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *rudderAPI.RollbackReleaseRequest) (*rudderAPI.RollbackReleaseResponse, error) {
 	grpclog.Print("rollback")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
 	err := kubeClient.Update(in.Target.Namespace, c, t, in.Recreate, in.Timeout, in.Wait)
-	return &release.RollbackReleaseResponse{}, err
+	return &rudderAPI.RollbackReleaseResponse{}, err
 }
 
 // UpgradeRelease upgrades manifests using kubernetes client
-func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *release.UpgradeReleaseRequest) (*release.UpgradeReleaseResponse, error) {
+func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *rudderAPI.UpgradeReleaseRequest) (*rudderAPI.UpgradeReleaseResponse, error) {
 	grpclog.Print("upgrade")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
 	err := kubeClient.Update(in.Target.Namespace, c, t, in.Recreate, in.Timeout, in.Wait)
 	// upgrade response object should be changed to include status
-	return &release.UpgradeReleaseResponse{}, err
+	return &rudderAPI.UpgradeReleaseResponse{}, err
+}
+
+func (r *ReleaseModuleServiceServer) ReleaseStatus(context.Context, *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
+	grpclog.Print("status")
+
+	return &rudderAPI.ReleaseStatusResponse{}, nil
 }

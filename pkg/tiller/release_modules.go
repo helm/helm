@@ -20,6 +20,7 @@ import (
 	"bytes"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
+	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/rudder"
 	"k8s.io/helm/pkg/tiller/environment"
@@ -58,14 +59,14 @@ type RemoteReleaseModule struct{}
 
 // Create calls rudder.InstallRelease
 func (m *RemoteReleaseModule) Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error {
-	request := &release.InstallReleaseRequest{Release: r}
+	request := &rudderAPI.InstallReleaseRequest{Release: r}
 	_, err := rudder.InstallRelease(request)
 	return err
 }
 
 // Update calls rudder.UpgradeRelease
 func (m *RemoteReleaseModule) Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error {
-	upgrade := &release.UpgradeReleaseRequest{
+	upgrade := &rudderAPI.UpgradeReleaseRequest{
 		Current:  current,
 		Target:   target,
 		Recreate: req.Recreate,
@@ -78,7 +79,7 @@ func (m *RemoteReleaseModule) Update(current, target *release.Release, req *serv
 
 // Rollback calls rudder.Rollback
 func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error {
-	rollback := &release.RollbackReleaseRequest{
+	rollback := &rudderAPI.RollbackReleaseRequest{
 		Current:  current,
 		Target:   target,
 		Recreate: req.Recreate,

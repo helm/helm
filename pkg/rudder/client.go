@@ -22,7 +22,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
+	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
 )
 
 // GrpcPort specifies port on which rudder will spawn a server
@@ -33,7 +33,7 @@ const (
 var grpcAddr = fmt.Sprintf("127.0.0.1:%d", GrpcPort)
 
 // InstallRelease calls Rudder InstallRelease method which should create provided release
-func InstallRelease(rel *release.InstallReleaseRequest) (*release.InstallReleaseResponse, error) {
+func InstallRelease(rel *rudderAPI.InstallReleaseRequest) (*rudderAPI.InstallReleaseResponse, error) {
 	//TODO(mkwiek): parametrize this
 	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
@@ -41,28 +41,28 @@ func InstallRelease(rel *release.InstallReleaseRequest) (*release.InstallRelease
 	}
 
 	defer conn.Close()
-	client := release.NewReleaseModuleServiceClient(conn)
+	client := rudderAPI.NewReleaseModuleServiceClient(conn)
 	return client.InstallRelease(context.Background(), rel)
 }
 
 // UpgradeRelease calls Rudder UpgradeRelease method which should perform update
-func UpgradeRelease(req *release.UpgradeReleaseRequest) (*release.UpgradeReleaseResponse, error) {
+func UpgradeRelease(req *rudderAPI.UpgradeReleaseRequest) (*rudderAPI.UpgradeReleaseResponse, error) {
 	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	client := release.NewReleaseModuleServiceClient(conn)
+	client := rudderAPI.NewReleaseModuleServiceClient(conn)
 	return client.UpgradeRelease(context.Background(), req)
 }
 
 // RollbackRelease calls Rudder RollbackRelease method which should perform update
-func RollbackRelease(req *release.RollbackReleaseRequest) (*release.RollbackReleaseResponse, error) {
+func RollbackRelease(req *rudderAPI.RollbackReleaseRequest) (*rudderAPI.RollbackReleaseResponse, error) {
 	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	client := release.NewReleaseModuleServiceClient(conn)
+	client := rudderAPI.NewReleaseModuleServiceClient(conn)
 	return client.RollbackRelease(context.Background(), req)
 }

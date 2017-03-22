@@ -8,7 +8,6 @@ Package release is a generated protocol buffer package.
 It is generated from these files:
 	hapi/release/hook.proto
 	hapi/release/info.proto
-	hapi/release/modules.proto
 	hapi/release/release.proto
 	hapi/release/status.proto
 	hapi/release/test_run.proto
@@ -17,17 +16,6 @@ It is generated from these files:
 It has these top-level messages:
 	Hook
 	Info
-	Result
-	VersionReleaseRequest
-	VersionReleaseResponse
-	InstallReleaseRequest
-	InstallReleaseResponse
-	DeleteReleaseRequest
-	DeleteReleaseResponse
-	UpgradeReleaseRequest
-	UpgradeReleaseResponse
-	RollbackReleaseRequest
-	RollbackReleaseResponse
 	Release
 	Status
 	TestRun
