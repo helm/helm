@@ -3,17 +3,18 @@ package clientset
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/url"
 	"reflect"
 	"strings"
 
 	"github.com/ghodss/yaml"
-	aci "k8s.io/helm/api"
 	"k8s.io/kubernetes/pkg/api"
 	schema "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
 	kubejson "k8s.io/kubernetes/pkg/runtime/serializer/json"
-	"log"
+
+	aci "k8s.io/helm/api"
 )
 
 // TODO(@sadlil): Find a better way to replace ExtendedCodec to encode and decode objects.

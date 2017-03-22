@@ -20,21 +20,22 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/graymeta/stow"
 	"k8s.io/kubernetes/pkg/api"
 	kberrs "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	kblabels "k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/validation"
 
-	"github.com/graymeta/stow"
 	rapi "k8s.io/helm/api"
 	"k8s.io/helm/client/clientset"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 var _ Driver = (*Releases)(nil)
@@ -73,7 +74,7 @@ func (releases *Releases) Name() string {
 // or error if not found.
 func (releases *Releases) Get(key string) (*rspb.Release, error) {
 	// fetch the release holding the release named by key
-	obj, err := releases.impl.Get(key)
+	obj, err := releases.impl.Get(toTPRSafeKey(key))
 	if err != nil {
 		if kberrs.IsNotFound(err) {
 			return nil, ErrReleaseNotFound
@@ -180,7 +181,7 @@ func (releases *Releases) Create(key string, rls *rspb.Release) error {
 	lbs.set("CREATED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new release to hold the release
-	obj, err := newReleasesObject(key, rls, lbs)
+	obj, err := newReleasesObject(toTPRSafeKey(key), rls, lbs)
 	if err != nil {
 		logerrf(err, "create: failed to encode release %q", rls.Name)
 		return err
@@ -213,7 +214,7 @@ func (releases *Releases) Update(key string, rls *rspb.Release) error {
 	lbs.set("MODIFIED_AT", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new release object to hold the release
-	obj, err := newReleasesObject(key, rls, lbs)
+	obj, err := newReleasesObject(toTPRSafeKey(key), rls, lbs)
 	if err != nil {
 		logerrf(err, "update: failed to encode release %q", rls.Name)
 		return err
@@ -236,7 +237,7 @@ func (releases *Releases) Update(key string, rls *rspb.Release) error {
 // Delete deletes the Release holding the release named by key.
 func (releases *Releases) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
-	if rls, err = releases.Get(key); err != nil {
+	if rls, err = releases.Get(toTPRSafeKey(key)); err != nil {
 		if kberrs.IsNotFound(err) {
 			return nil, ErrReleaseNotFound
 		}
@@ -315,6 +316,19 @@ func (releases *Releases) getReleaseData(rls *rapi.Release) (string, error) {
 		return string(b), nil
 	}
 	return "", fmt.Errorf("Missing release data for %v", rls.Name)
+}
+
+var (
+	protoRegex = regexp.MustCompile(`^[a-z0-9][-a-z0-9]*.v[0-9]+$`)
+)
+
+func toTPRSafeKey(key string) string {
+	if protoRegex.MatchString(key) {
+		i := strings.LastIndex(key, ".v")
+		return key[:i] + "-" + key[i+1:]
+	} else {
+		return key
+	}
 }
 
 // readAll reads from r until an error or EOF and returns the data it read
