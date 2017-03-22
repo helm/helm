@@ -79,7 +79,6 @@ var (
 	s3ConfigSecretKey        string
 	gcsConfigJSONKeyPath     string
 	gcsConfigProjectId       string
-	gcsConfigScopes          string
 	azureConfigAccount       string
 	azureConfigKey           string
 	swiftConfigKey           string
@@ -115,26 +114,25 @@ func main() {
 	p.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
 	p.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
 
-	p.StringVar(&storageProvider, "provider", "", "Cloud storage provider")
+	p.StringVar(&storageProvider, "storage-provider", os.Getenv("STORAGE_PROVIDER"), "Cloud storage provider")
 
-	p.StringVar(&s3ConfigAccessKeyID, s3.Kind+"."+s3.ConfigAccessKeyID, "", "S3 config access key id")
-	p.StringVar(&s3ConfigEndpoint, s3.Kind+"."+s3.ConfigEndpoint, "", "S3 config endpoint")
-	p.StringVar(&s3ConfigRegion, s3.Kind+"."+s3.ConfigRegion, "", "S3 config region")
-	p.StringVar(&s3ConfigSecretKey, s3.Kind+"."+s3.ConfigSecretKey, "", "S3 config secret key")
+	p.StringVar(&s3ConfigAccessKeyID, s3.Kind+"."+s3.ConfigAccessKeyID, os.Getenv("S3_ACCESS_KEY_ID"), "S3 config access key id")
+	p.StringVar(&s3ConfigEndpoint, s3.Kind+"."+s3.ConfigEndpoint, os.Getenv("S3_ENDPOINT"), "S3 config endpoint")
+	p.StringVar(&s3ConfigRegion, s3.Kind+"."+s3.ConfigRegion, os.Getenv("S3_REGION"), "S3 config region")
+	p.StringVar(&s3ConfigSecretKey, s3.Kind+"."+s3.ConfigSecretKey, os.Getenv("S3_SECRET_KEY"), "S3 config secret key")
 
-	p.StringVar(&gcsConfigJSONKeyPath, gcs.Kind+".json_key_path", "", "GCS config json key path")
-	p.StringVar(&gcsConfigProjectId, gcs.Kind+"."+gcs.ConfigProjectId, "", "GCS config project id")
-	p.StringVar(&gcsConfigScopes, gcs.Kind+"."+gcs.ConfigScopes, "", "GCS config scopes")
+	p.StringVar(&gcsConfigJSONKeyPath, gcs.Kind+".json_key_path", os.Getenv("GOOGLE_JSON_KEY_PATH"), "GCS config json key path")
+	p.StringVar(&gcsConfigProjectId, gcs.Kind+"."+gcs.ConfigProjectId, os.Getenv("GOOGLE_PROJECT_ID"), "GCS config project id")
 
-	p.StringVar(&azureConfigAccount, azure.Kind+"."+azure.ConfigAccount, "", "Azure config account")
-	p.StringVar(&azureConfigKey, azure.Kind+"."+azure.ConfigKey, "", "Azure config key")
+	p.StringVar(&azureConfigAccount, azure.Kind+"."+azure.ConfigAccount, os.Getenv("AZURE_ACCOUNT"), "Azure config account")
+	p.StringVar(&azureConfigKey, azure.Kind+"."+azure.ConfigKey, os.Getenv("AZURE_KEY"), "Azure config key")
 
-	p.StringVar(&swiftConfigKey, swift.Kind+"."+swift.ConfigKey, "", "Swift config key")
-	p.StringVar(&swiftConfigTenantAuthURL, swift.Kind+"."+swift.ConfigTenantAuthURL, "", "Swift teanant auth url")
-	p.StringVar(&swiftConfigTenantName, swift.Kind+"."+swift.ConfigTenantName, "", "Swift tenant name")
-	p.StringVar(&swiftConfigUsername, swift.Kind+"."+swift.ConfigUsername, "", "Swift username")
+	p.StringVar(&swiftConfigKey, swift.Kind+"."+swift.ConfigKey, os.Getenv("SWIFT_KEY"), "Swift config key")
+	p.StringVar(&swiftConfigTenantAuthURL, swift.Kind+"."+swift.ConfigTenantAuthURL, os.Getenv("SWIFT_TENANT_AUTH_URL"), "Swift teanant auth url")
+	p.StringVar(&swiftConfigTenantName, swift.Kind+"."+swift.ConfigTenantName, os.Getenv("SWIFT_TENANT_NAME"), "Swift tenant name")
+	p.StringVar(&swiftConfigUsername, swift.Kind+"."+swift.ConfigUsername, os.Getenv("SWIFT_USERNAME"), "Swift username")
 
-	p.StringVar(&container, "container", "", "Name of container")
+	p.StringVar(&container, "storage-container", os.Getenv("STORAGE_CONTAINER"), "Name of container")
 	p.StringVar(&storagePrefix, "storage-prefix", "tiller", "Prefix to container key where release data is stored")
 
 	if err := rootCommand.Execute(); err != nil {
@@ -191,9 +189,6 @@ func start(c *cobra.Command, args []string) {
 			}
 			if gcsConfigProjectId != "" {
 				stowCfg[gcs.ConfigProjectId] = gcsConfigProjectId
-			}
-			if gcsConfigScopes != "" {
-				stowCfg[gcs.ConfigScopes] = gcsConfigScopes
 			}
 		case azure.Kind:
 			if azureConfigAccount != "" {
