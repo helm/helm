@@ -43,10 +43,10 @@ type ReleaseStatus struct {
 	Resources string `json:"resources,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes         string           `json:"notes,omitempty"`
-	FirstDeployed unversioned.Time `json:"first_deployed,omitempty"`
-	LastDeployed  unversioned.Time `json:"last_deployed,omitempty"`
+	FirstDeployed *unversioned.Time `json:"first_deployed,omitempty"`
+	LastDeployed  *unversioned.Time `json:"last_deployed,omitempty"`
 	// Deleted tracks when this object was deleted.
-	Deleted unversioned.Time `json:"deleted,omitempty"`
+	Deleted *unversioned.Time `json:"deleted,omitempty"`
 }
 
 type ReleaseList struct {

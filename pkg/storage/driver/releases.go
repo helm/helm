@@ -419,10 +419,10 @@ func newReleasesObject(key string, rls *rspb.Release, lbs labels) (*rapi.Release
 	return r, nil
 }
 
-func toKubeTime(pbt *google_protobuf.Timestamp) unversioned.Time {
-	var t unversioned.Time
+func toKubeTime(pbt *google_protobuf.Timestamp) *unversioned.Time {
 	if pbt != nil {
-		t = unversioned.NewTime(time.Unix(pbt.Seconds, int64(pbt.Nanos)))
+		t := unversioned.NewTime(time.Unix(pbt.Seconds, int64(pbt.Nanos)))
+		return &t
 	}
-	return t
+	return nil
 }
