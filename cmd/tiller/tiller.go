@@ -19,7 +19,6 @@ package main // import "k8s.io/helm/cmd/tiller"
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -27,7 +26,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	log "github.com/Sirupsen/logrus"
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/logutil"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
@@ -40,6 +41,9 @@ const (
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
 )
+
+// Variable for the string log level
+var level string
 
 // rootServer is the root gRPC server.
 //
@@ -73,8 +77,15 @@ var rootCommand = &cobra.Command{
 	Run:   start,
 }
 
+// logger with base fields for this package
+var logger *log.Entry
+
 func init() {
-	log.SetFlags(log.Flags() | log.Lshortfile)
+	logger = log.WithFields(log.Fields{
+		"_package": "main",
+	})
+	// Makes the logger use a full timestamp
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 }
 
 func main() {
@@ -82,6 +93,7 @@ func main() {
 	p.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
 	p.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
 	p.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
+	p.StringVar(&level, "log-level", "INFO", "level to log at. One of 'ERROR', 'INFO', 'DEBUG'")
 
 	if err := rootCommand.Execute(); err != nil {
 		fmt.Fprint(os.Stderr, err)
@@ -90,12 +102,36 @@ func main() {
 }
 
 func start(c *cobra.Command, args []string) {
-	clientset, err := kube.New(nil).ClientSet()
+	// Set the log level first
+	logLevel, err := logutil.GetLevel(level)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s\n", err)
+		logger.WithFields(log.Fields{
+			"_module":  "tiller",
+			"_context": "start",
+			"error":    err,
+		}).Error("Unable to get log level")
 		os.Exit(1)
 	}
-
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+		"level":    level,
+	}).Debug("Setting log level")
+	log.SetLevel(logLevel)
+	clientset, err := kube.New(nil).ClientSet()
+	if err != nil {
+		logger.WithFields(log.Fields{
+			"_module":  "tiller",
+			"_context": "start",
+			"error":    err,
+		}).Error("Cannot initialize Kubernetes connection")
+		os.Exit(1)
+	}
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+		"driver":   store,
+	}).Debug("Setting storage driver")
 	switch store {
 	case storageMemory:
 		env.Releases = storage.Init(driver.NewMemory())
@@ -103,23 +139,54 @@ func start(c *cobra.Command, args []string) {
 		env.Releases = storage.Init(driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace())))
 	}
 
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+		"address":  grpcAddr,
+	}).Debug("Starting GRPC server")
 	lstn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
+		logger.WithFields(log.Fields{
+			"_module":  "tiller",
+			"_context": "start",
+			"error":    err,
+		}).Error("Server died")
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Starting Tiller %s\n", version.GetVersion())
-	fmt.Printf("GRPC listening on %s\n", grpcAddr)
-	fmt.Printf("Probes listening on %s\n", probeAddr)
-	fmt.Printf("Storage driver is %s\n", env.Releases.Name())
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+	}).Infof("Tiller %s running", version.GetVersion())
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+	}).Infof("GRPC listening on %s", grpcAddr)
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+	}).Infof("Probes listening on %s", probeAddr)
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+	}).Infof("Storage driver is %s", env.Releases.Name())
 
 	if enableTracing {
+		logger.WithFields(log.Fields{
+			"_module":  "tiller",
+			"_context": "start",
+			"address":  grpcAddr,
+		}).Debug("Starting GRPC trace")
 		startTracing(traceAddr)
 	}
 
 	srvErrCh := make(chan error)
 	probeErrCh := make(chan error)
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+	}).Debug("Starting release server")
 	go func() {
 		svc := tiller.NewReleaseServer(env, clientset)
 		services.RegisterReleaseServiceServer(rootServer, svc)
@@ -127,7 +194,10 @@ func start(c *cobra.Command, args []string) {
 			srvErrCh <- err
 		}
 	}()
-
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "start",
+	}).Debug("Starting probes server")
 	go func() {
 		mux := newProbesMux()
 		if err := http.ListenAndServe(probeAddr, mux); err != nil {
@@ -137,25 +207,57 @@ func start(c *cobra.Command, args []string) {
 
 	select {
 	case err := <-srvErrCh:
-		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
+		logger.WithFields(log.Fields{
+			"_module":  "tiller",
+			"_context": "start",
+			"error":    err,
+		}).Error("Release server died")
 		os.Exit(1)
 	case err := <-probeErrCh:
-		fmt.Fprintf(os.Stderr, "Probes server died: %s\n", err)
+		logger.WithFields(log.Fields{
+			"_module":  "tiller",
+			"_context": "start",
+			"error":    err,
+		}).Error("Probes server died")
 	}
 }
 
 // namespace returns the namespace of tiller
 func namespace() string {
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "namespace",
+	}).Debug("Getting tiller namespace")
 	if ns := os.Getenv("TILLER_NAMESPACE"); ns != "" {
+		logger.WithFields(log.Fields{
+			"_module":   "tiller",
+			"_context":  "namespace",
+			"namespace": ns,
+		}).Debug("Found TILLER_NAMESPACE environment variable")
 		return ns
 	}
 
+	logger.WithFields(log.Fields{
+		"_module":  "tiller",
+		"_context": "namespace",
+	}).Debug("No namespace variable set. Attempting to get namespace from service account token")
 	// Fall back to the namespace associated with the service account token, if available
 	if data, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
 		if ns := strings.TrimSpace(string(data)); len(ns) > 0 {
+			logger.WithFields(log.Fields{
+				"_module":   "tiller",
+				"_context":  "namespace",
+				"namespace": ns,
+			}).Debug("Found service account token namespace")
 			return ns
 		}
 	}
+
+	logger.WithFields(log.Fields{
+		"_module":   "tiller",
+		"_context":  "namespace",
+		"namespace": environment.DefaultTillerNamespace,
+	}).Debug("No namespaces found. Returning default namespace")
 
 	return environment.DefaultTillerNamespace
 }

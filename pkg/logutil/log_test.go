@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright 2017 The Kubernetes Authors All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,24 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube
+package logutil
 
 import (
-	"flag"
-	"fmt"
-	"os"
-
-	log "github.com/Sirupsen/logrus"
+	"testing"
 )
 
-var logger *log.Entry
-
-func init() {
-	if level := os.Getenv("KUBE_LOG_LEVEL"); level != "" {
-		flag.Set("vmodule", fmt.Sprintf("loader=%s,round_trippers=%s,request=%s", level, level, level))
-		flag.Set("logtostderr", "true")
+func TestValidGetLevel(t *testing.T) {
+	_, err := GetLevel("ERROR")
+	if err != nil {
+		t.Errorf("Should have gotten valid log level. Got error instead: %v", err)
 	}
-	logger = log.WithFields(log.Fields{
-		"_package": "kube",
-	})
+}
+
+func TestInvalidGetLevel(t *testing.T) {
+	logLevel, err := GetLevel("BLAH")
+	if err == nil {
+		t.Errorf("Should have gotten error. Got log level instead: %v", logLevel)
+	}
 }

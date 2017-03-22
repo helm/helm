@@ -69,3 +69,5 @@ import:
   version: ~0.1.0
 - package: github.com/naoina/go-stringutil
   version: ~0.1.0
+- package: github.com/Sirupsen/logrus
+  version: ~0.11.5
