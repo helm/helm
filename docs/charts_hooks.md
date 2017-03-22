@@ -58,16 +58,18 @@ hooks, the lifecycle is altered like this:
 1. User runs `helm install foo`
 2. Chart is loaded into Tiller
 3. After some verification, Tiller renders the `foo` templates
-4. Tiller executes the `pre-install` hook (loading hook resources into
+4. Tiller prepares to execute the `pre-install` hooks (loading hook resources into
    Kubernetes)
-5. Tiller waits until the hook is "Ready"
-6. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
+5. Tiller sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
+6. Tiller then loads the hook with the lowest weight first (negative to positive)
+7. Tiller waits until the hook is "Ready"
+8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
 flag is set, Tiller will wait until all resources are in a ready state
 and will not run the `post-install` hook until they are ready.
-7. Tiller executes the `post-install` hook (loading hook resources)
-8. Tiller waits until the hook is "Ready"
-9. Tiller returns the release name (and other data) to the client
-10. The client exits
+9. Tiller executes the `post-install` hook (loading hook resources)
+10. Tiller waits until the hook is "Ready"
+11. Tiller returns the release name (and other data) to the client
+12. The client exits
 
 What does it mean to wait until a hook is ready? This depends on the
 resource declared in the hook. If the resources is a `Job` kind, Tiller
@@ -114,6 +116,7 @@ metadata:
     # This is what defines this resource as a hook. Without this line, the
     # job is considered part of the release.
     "helm.sh/hook": post-install
+    "helm.sh/hookWeight": "-5"
 spec:
   template:
     metadata:
@@ -153,4 +156,13 @@ though, that there are no ordering guarantees about hooks.
 When subcharts declare hooks, those are also evaluated. There is no way
 for a top-level chart to disable the hooks declared by subcharts. And
 again, there is no guaranteed ordering.
+
+It is also possible to define a weight for a hook which will help build a deterministic executing order. Weights are defined using the following annotation:
+
+```
+  annotations:
+    "helm.sh/hookWeight": "5"
+```
+
+Hook weights can be positive or negative numbers but must be represented as strings. When Tiller starts the execution cycle of hooks of a particular Kind it will sort those hooks in ascending order. 
 
