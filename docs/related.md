@@ -33,6 +33,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 
 Tools layered on top of Helm or Tiller.
 
+- [Quay App Registry](https://coreos.com/blog/quay-application-registry-for-kubernetes.html) - Open Kubernetes application registry, including a Helm access client
 - [Chartify](https://github.com/appscode/chartify) - Generate Helm charts from existing Kubernetes resources.
 - [VIM-Kubernetes](https://github.com/andrewstuart/vim-kubernetes) - VIM plugin for Kubernetes and Helm
 - [Landscaper](https://github.com/Eneco/landscaper/) - "Landscaper takes a set of Helm Chart references with values (a desired state), and realizes this in a Kubernetes cluster."
