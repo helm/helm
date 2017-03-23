@@ -31,6 +31,7 @@ type ReleaseModule interface {
 	Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error
 	Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error
 	Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error
+	Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error)
 }
 
 // LocalReleaseModule is a local implementation of ReleaseModule
@@ -52,6 +53,10 @@ func (m *LocalReleaseModule) Rollback(current, target *release.Release, req *ser
 	c := bytes.NewBufferString(current.Manifest)
 	t := bytes.NewBufferString(target.Manifest)
 	return env.KubeClient.Update(target.Namespace, c, t, req.Recreate, req.Timeout, req.Wait)
+}
+
+func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
+	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
 }
 
 // RemoteReleaseModule is a ReleaseModule which calls Rudder service to operate on a release
@@ -88,4 +93,10 @@ func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *se
 	}
 	_, err := rudder.RollbackRelease(rollback)
 	return err
+}
+
+func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
+	statusRequest := &rudderAPI.ReleaseStatusRequest{Release: r}
+	resp, err := rudder.ReleaseStatus(statusRequest)
+	return resp.Info.Status.Resources, err
 }

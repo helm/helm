@@ -94,8 +94,13 @@ func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *rud
 	return &rudderAPI.UpgradeReleaseResponse{}, err
 }
 
-func (r *ReleaseModuleServiceServer) ReleaseStatus(context.Context, *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
+func (r *ReleaseModuleServiceServer) ReleaseStatus(ctx context.Context, in *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
 	grpclog.Print("status")
 
-	return &rudderAPI.ReleaseStatusResponse{}, nil
+	resp, err := kubeClient.Get(in.Release.Namespace, bytes.NewBufferString(in.Release.Manifest))
+	in.Release.Info.Status.Resources = resp
+	return &rudderAPI.ReleaseStatusResponse{
+		Release: in.Release,
+		Info:    in.Release.Info,
+	}, err
 }

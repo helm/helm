@@ -66,3 +66,14 @@ func RollbackRelease(req *rudderAPI.RollbackReleaseRequest) (*rudderAPI.Rollback
 	client := rudderAPI.NewReleaseModuleServiceClient(conn)
 	return client.RollbackRelease(context.Background(), req)
 }
+
+// ReleaseStatus calls Rudder ReleaseStatus method which should perform update
+func ReleaseStatus(req *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
+	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	client := rudderAPI.NewReleaseModuleServiceClient(conn)
+	return client.ReleaseStatus(context.Background(), req)
+}
