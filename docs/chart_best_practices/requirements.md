@@ -16,6 +16,8 @@ This will match version 1.2.0 and any patches to that release (1.2.1, 1.2.999, a
 
 Where possible, use `https://` repository URLs, followed by `http://` URLs.
 
+If the repository has been added to the repository index file, the repository name can be used as an alias of URL. Use `alias:` or `@` followed by repository names.
+
 File URLs (`file://...`) are considered a "special case" for charts that are assembled by a fixed deployment pipeline. Charts that use `file://` in a `requirements.yaml` file are not allowed in the official Helm repository.
 
 ## Conditions and Tags

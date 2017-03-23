@@ -124,6 +124,13 @@ func (m *Manager) Update() error {
 		}
 		return err
 	}
+
+	// Hash requirements.yaml
+	hash, err := resolver.HashReq(req)
+	if err != nil {
+		return err
+	}
+
 	// Check that all of the repos we're dependent on actually exist and
 	// the repo index names.
 	repoNames, err := m.getRepoNames(req.Dependencies)
@@ -140,7 +147,7 @@ func (m *Manager) Update() error {
 
 	// Now we need to find out which version of a chart best satisfies the
 	// requirements the requirements.yaml
-	lock, err := m.resolve(req, repoNames)
+	lock, err := m.resolve(req, repoNames, hash)
 	if err != nil {
 		return err
 	}
@@ -172,9 +179,9 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 // resolve takes a list of requirements and translates them into an exact version to download.
 //
 // This returns a lock file, which has all of the requirements normalized to a specific version.
-func (m *Manager) resolve(req *chartutil.Requirements, repoNames map[string]string) (*chartutil.RequirementsLock, error) {
+func (m *Manager) resolve(req *chartutil.Requirements, repoNames map[string]string, hash string) (*chartutil.RequirementsLock, error) {
 	res := resolver.New(m.ChartPath, m.HelmHome)
-	return res.Resolve(req, repoNames)
+	return res.Resolve(req, repoNames, hash)
 }
 
 // downloadAll takes a list of dependencies and downloads them into charts/
@@ -346,7 +353,13 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 		found := false
 
 		for _, repo := range repos {
-			if urlutil.Equal(repo.URL, dd.Repository) {
+			if (strings.HasPrefix(dd.Repository, "@") && strings.TrimPrefix(dd.Repository, "@") == repo.Name) ||
+				(strings.HasPrefix(dd.Repository, "alias:") && strings.TrimPrefix(dd.Repository, "alias:") == repo.Name) {
+				found = true
+				dd.Repository = repo.URL
+				reposMap[dd.Name] = repo.Name
+				break
+			} else if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
 				reposMap[dd.Name] = repo.Name
 				break
