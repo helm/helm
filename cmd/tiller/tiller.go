@@ -25,7 +25,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -55,6 +58,7 @@ var (
 	grpcAddr      = ":44134"
 	probeAddr     = ":44135"
 	traceAddr     = ":44136"
+	gatewayAddr   = ":44137"
 	enableTracing = false
 	store         = storageConfigMap
 )
@@ -111,6 +115,7 @@ func start(c *cobra.Command, args []string) {
 
 	fmt.Printf("Starting Tiller %s\n", version.GetVersion())
 	fmt.Printf("GRPC listening on %s\n", grpcAddr)
+	fmt.Printf("Gateway listening on %s\n", gatewayAddr)
 	fmt.Printf("Probes listening on %s\n", probeAddr)
 	fmt.Printf("Storage driver is %s\n", env.Releases.Name())
 
@@ -118,13 +123,31 @@ func start(c *cobra.Command, args []string) {
 		startTracing(traceAddr)
 	}
 
-	srvErrCh := make(chan error)
+	grpcErrCh := make(chan error)
+	gwErrCh := make(chan error)
 	probeErrCh := make(chan error)
 	go func() {
 		svc := tiller.NewReleaseServer(env, clientset)
 		services.RegisterReleaseServiceServer(rootServer, svc)
 		if err := rootServer.Serve(lstn); err != nil {
-			srvErrCh <- err
+			grpcErrCh <- err
+		}
+	}()
+
+	go func() {
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		mux := runtime.NewServeMux(runtime.EqualFoldMatcher("x-helm-api-client"))
+		opts := []grpc.DialOption{grpc.WithInsecure()}
+		err := services.RegisterReleaseServiceHandlerFromEndpoint(ctx, mux, "localhost"+grpcAddr, opts)
+		if err != nil {
+			gwErrCh <- err
+			return
+		}
+		if err := http.ListenAndServe(gatewayAddr, mux); err != nil {
+			gwErrCh <- err
 		}
 	}()
 
@@ -136,8 +159,11 @@ func start(c *cobra.Command, args []string) {
 	}()
 
 	select {
-	case err := <-srvErrCh:
-		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
+	case err := <-grpcErrCh:
+		fmt.Fprintf(os.Stderr, "gRPC server died: %s\n", err)
+		os.Exit(1)
+	case err := <-gwErrCh:
+		fmt.Fprintf(os.Stderr, "Gateway server died: %s\n", err)
 		os.Exit(1)
 	case err := <-probeErrCh:
 		fmt.Fprintf(os.Stderr, "Probes server died: %s\n", err)

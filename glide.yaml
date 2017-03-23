@@ -15,13 +15,13 @@ import:
   version: ~1.2.2
 - package: github.com/technosophos/moniker
 - package: github.com/golang/protobuf
-  version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
+  version: 24f28ae800abfde9310e779f94be606b1a98a3fc
   subpackages:
   - proto
   - ptypes/any
   - ptypes/timestamp
 - package: google.golang.org/grpc
-  version: 1.0.3
+  version: 1.2.0
 - package: k8s.io/kubernetes
   version: ~1.5.0
   subpackages:
@@ -69,3 +69,8 @@ import:
   version: ~0.1.0
 - package: github.com/naoina/go-stringutil
   version: ~0.1.0
+- package: google.golang.org/genproto
+  version: master
+- package: github.com/grpc-ecosystem/grpc-gateway
+  repo: https://github.com/appscode/grpc-gateway.git
+  version: header-pass
