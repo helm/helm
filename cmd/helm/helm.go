@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/restclient"
 
+	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
@@ -56,10 +57,11 @@ var (
 )
 
 var (
-	helmHome        string
-	tillerHost      string
-	tillerNamespace string
-	kubeContext     string
+	helmHome         string
+	tillerHost       string
+	usesHostedTiller bool
+	tillerNamespace  string
+	kubeContext      string
 	// TODO refactor out this global var
 	tillerTunnel *kube.Tunnel
 )
@@ -184,14 +186,22 @@ func setupConnection(c *cobra.Command, args []string) error {
 			return err
 		}
 
-		tunnel, err := portforwarder.New(tillerNamespace, client, config)
-		if err != nil {
+		if externalName, err := installer.GetTillerExternalName(client, tillerNamespace); err != nil {
 			return err
-		}
+		} else if externalName != "" {
+			tillerHost = externalName
+			usesHostedTiller = true
+		} else {
+			tunnel, err := portforwarder.New(tillerNamespace, client, config)
+			if err != nil {
+				return err
+			}
+			tillerTunnel = tunnel
 
-		tillerHost = fmt.Sprintf("localhost:%d", tunnel.Local)
-		if flagDebug {
-			fmt.Printf("Created tunnel using local port: '%d'\n", tunnel.Local)
+			tillerHost = fmt.Sprintf("localhost:%d", tunnel.Local)
+			if flagDebug {
+				fmt.Printf("Created tunnel using local port: '%d'\n", tunnel.Local)
+			}
 		}
 	}
 

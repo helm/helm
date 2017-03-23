@@ -17,6 +17,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
+	"errors"
 	"io/ioutil"
 
 	"github.com/ghodss/yaml"
@@ -34,10 +35,11 @@ import (
 //
 // Returns an error if the command failed.
 func Install(client internalclientset.Interface, opts *Options) error {
-	if err := createDeployment(client.Extensions(), opts); err != nil {
+	// create service first. If cluster is using hosted Tiller, this will error out and actual deployment will not be created.
+	if err := createService(client.Core(), opts.Namespace); err != nil {
 		return err
 	}
-	if err := createService(client.Core(), opts.Namespace); err != nil {
+	if err := createDeployment(client.Extensions(), opts); err != nil {
 		return err
 	}
 	if opts.tls() {
@@ -90,6 +92,19 @@ func createService(client internalversion.ServicesGetter, namespace string) erro
 	obj := service(namespace)
 	_, err := client.Services(obj.Namespace).Create(obj)
 	return err
+}
+
+// GetTillerExternalName returns the configured external name of a hosted Tiller server.
+func GetTillerExternalName(client internalclientset.Interface, namespace string) (string, error) {
+	if svc, err := client.Core().Services(namespace).Get("tiller-deploy"); err != nil {
+		return "", err
+	} else if svc.Spec.Type == api.ServiceTypeExternalName {
+		if svc.Spec.ExternalName == "" {
+			return "", errors.New("Missing external name of hosted Tiller")
+		}
+		return svc.Spec.ExternalName, nil
+	}
+	return "", nil
 }
 
 // service gets the service object that installs Tiller.

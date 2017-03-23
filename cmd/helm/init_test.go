@@ -57,11 +57,11 @@ func TestInitCmd(t *testing.T) {
 	if len(actions) != 2 {
 		t.Errorf("Expected 2 actions, got %d", len(actions))
 	}
-	if !actions[0].Matches("create", "deployments") {
-		t.Errorf("unexpected action: %v, expected create deployment", actions[0])
+	if !actions[0].Matches("create", "services") {
+		t.Errorf("unexpected action: %v, expected create service", actions[0])
 	}
-	if !actions[1].Matches("create", "services") {
-		t.Errorf("unexpected action: %v, expected create service", actions[1])
+	if !actions[1].Matches("create", "deployments") {
+		t.Errorf("unexpected action: %v, expected create deployment", actions[1])
 	}
 	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {

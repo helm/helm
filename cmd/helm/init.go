@@ -230,10 +230,16 @@ func (i *initCmd) run() error {
 				return fmt.Errorf("error installing: %s", err)
 			}
 			if i.upgrade {
-				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
-					return fmt.Errorf("error when upgrading: %s", err)
+				if externalName, err := installer.GetTillerExternalName(i.kubeClient, i.opts.Namespace); err != nil {
+					return fmt.Errorf("error detecting tiller mode: %s", err)
+				} else if externalName != "" {
+					fmt.Fprintf(i.out, "\nThis cluster uses hosted Tiller (the helm server side component) %v. Contact cluster operators regarding upgrading Tiller.\n", externalName)
+				} else {
+					if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
+						return fmt.Errorf("error when upgrading: %s", err)
+					}
+					fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been upgraded to the current version.")
 				}
-				fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been upgraded to the current version.")
 			} else {
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
