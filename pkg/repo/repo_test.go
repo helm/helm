@@ -17,6 +17,8 @@ limitations under the License.
 package repo
 
 import "testing"
+import "io/ioutil"
+import "os"
 
 const testRepositoriesFile = "testdata/repositories.yaml"
 
@@ -114,5 +116,102 @@ func TestNewPreV1RepositoriesFile(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected the best charts ever. Got %#v", r.Repositories)
+	}
+}
+
+func TestRemoveRepository(t *testing.T) {
+	sampleRepository := NewRepoFile()
+	sampleRepository.Add(
+		&Entry{
+			Name:  "stable",
+			URL:   "https://example.com/stable/charts",
+			Cache: "stable-index.yaml",
+		},
+		&Entry{
+			Name:  "incubator",
+			URL:   "https://example.com/incubator",
+			Cache: "incubator-index.yaml",
+		},
+	)
+
+	removeRepository := "stable"
+	found := sampleRepository.Remove(removeRepository)
+	if !found {
+		t.Errorf("expected repository %s not found", removeRepository)
+	}
+
+	found = sampleRepository.Has(removeRepository)
+	if found {
+		t.Errorf("repository %s not deleted", removeRepository)
+	}
+}
+
+func TestUpdateRepository(t *testing.T) {
+	sampleRepository := NewRepoFile()
+	sampleRepository.Add(
+		&Entry{
+			Name:  "stable",
+			URL:   "https://example.com/stable/charts",
+			Cache: "stable-index.yaml",
+		},
+		&Entry{
+			Name:  "incubator",
+			URL:   "https://example.com/incubator",
+			Cache: "incubator-index.yaml",
+		},
+	)
+	newRepoName := "sample"
+	sampleRepository.Update(&Entry{Name: newRepoName,
+		URL:   "https://example.com/sample",
+		Cache: "sample-index.yaml",
+	})
+
+	if !sampleRepository.Has(newRepoName) {
+		t.Errorf("expected repository %s not found", newRepoName)
+	}
+	repoCount := len(sampleRepository.Repositories)
+
+	sampleRepository.Update(&Entry{Name: newRepoName,
+		URL:   "https://example.com/sample",
+		Cache: "sample-index.yaml",
+	})
+
+	if repoCount != len(sampleRepository.Repositories) {
+		t.Errorf("invalid number of repositories found %d, expected number of repositories %d", len(sampleRepository.Repositories), repoCount)
+	}
+}
+
+func TestWriteFile(t *testing.T) {
+	sampleRepository := NewRepoFile()
+	sampleRepository.Add(
+		&Entry{
+			Name:  "stable",
+			URL:   "https://example.com/stable/charts",
+			Cache: "stable-index.yaml",
+		},
+		&Entry{
+			Name:  "incubator",
+			URL:   "https://example.com/incubator",
+			Cache: "incubator-index.yaml",
+		},
+	)
+
+	repoFile, err := ioutil.TempFile("", "helm-repo")
+	if err != nil {
+		t.Errorf("failed to create test-file (%v)", err)
+	}
+	defer os.Remove(repoFile.Name())
+	if err := sampleRepository.WriteFile(repoFile.Name(), 744); err != nil {
+		t.Errorf("failed to write file (%v)", err)
+	}
+
+	repos, err := LoadRepositoriesFile(repoFile.Name())
+	if err != nil {
+		t.Errorf("failed to load file (%v)", err)
+	}
+	for _, repo := range sampleRepository.Repositories {
+		if !repos.Has(repo.Name) {
+			t.Errorf("expected repository %s not found", repo.Name)
+		}
 	}
 }
