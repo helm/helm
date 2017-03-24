@@ -47,6 +47,13 @@ service ReleaseService {
 	rpc ListReleases(ListReleasesRequest) returns (stream ListReleasesResponse) {
 	}
 
+	// SummarizeReleases retrieves summary of release history.
+	// TODO: Allow filtering the set of releases by
+	// release status. By default, SummarizeReleases returns the releases who
+	// current status is "Active".
+	rpc SummarizeReleases(SummarizeReleasesRequest) returns (SummarizeReleasesResponse) {
+	}
+
 	// GetReleasesStatus retrieves status information for the specified release.
 	rpc GetReleaseStatus(GetReleaseStatusRequest) returns (GetReleaseStatusResponse) {
 	}
@@ -146,6 +153,32 @@ message ListReleasesResponse {
 
 	// Releases is the list of found release objects.
 	repeated hapi.release.Release releases = 4;
+}
+
+// SummarizeReleasesRequest requests a list of release summaries.
+//
+// Releases can be sorted according to a few pre-determined sort stategies.
+message SummarizeReleasesRequest {
+	// SortBy is the sort field that the ListReleases server should sort data before returning.
+	ListSort.SortBy sort_by = 1;
+
+	// Filter is a regular expression used to filter which releases should be listed.
+	//
+	// Anything that matches the regexp will be included in the results.
+	string filter = 2;
+
+	// SortOrder is the ordering directive used for sorting.
+	ListSort.SortOrder sort_order = 3;
+
+	repeated hapi.release.Status.Code status_codes = 6;
+	// Namespace is the filter to select releases only from a specific namespace.
+	string namespace = 4;
+}
+
+// SummarizeReleasesResponse is a list of release summaries.
+message SummarizeReleasesResponse {
+	// Releases is the list of found release objects.
+	repeated hapi.release.ReleaseSummary releases = 1;
 }
 
 // GetReleaseStatusRequest is a request to get the status of a release.
