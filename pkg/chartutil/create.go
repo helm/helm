@@ -36,6 +36,8 @@ const (
 	ChartsDir = "charts"
 	// IgnorefileName is the name of the Helm ignore file.
 	IgnorefileName = ".helmignore"
+	// IngressFileName is the name of the example ingress file.
+	IngressFileName = "ingress.yaml"
 	// DeploymentName is the name of the example deployment file.
 	DeploymentName = "deployment.yaml"
 	// ServiceName is the name of the example service file.
@@ -59,6 +61,18 @@ service:
   type: ClusterIP
   externalPort: 80
   internalPort: 80
+ingress:
+  enabled: false
+  # Used to create Ingress record (should used with service.type: ClusterIP).
+  # hostname: chart-example.local
+  annotations:
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  tls:
+    # Secrets must be manually created in the namespace.
+    # - secretName: chart-example.local
+    #   hosts:
+    #   	- chart-example.local
 resources:
   limits:
     cpu: 100m
@@ -90,6 +104,36 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 .project
 .idea/
 *.tmproj
+`
+
+const defaultIngress = `{{- if .Values.ingress.enabled -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+  app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  rules:
+    - host: {{ .Values.ingress.hostname }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ template "fullname" . }}
+              servicePort: 80
+{{- if .Values.ingress.tls }}
+  tls:
+{{ toYaml .Values.ingress.tls | indent 4 }}
+{{- end -}}
+{{- end -}}
 `
 
 const defaultDeployment = `apiVersion: extensions/v1beta1
@@ -141,7 +185,9 @@ spec:
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
-{{- if contains "NodePort" .Values.service.type }}
+{{- if .Values.ingress.hostname }}
+  http://{{- .Values.ingress.hostname }}
+{{- else if contains "NodePort" .Values.service.type }}
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ template "fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
   echo http://$NODE_IP:$NODE_PORT/login
@@ -246,6 +292,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 			// .helmignore
 			path:    filepath.Join(cdir, IgnorefileName),
 			content: []byte(defaultIgnore),
+		},
+		{
+			// ingress.yaml
+			path:    filepath.Join(cdir, TemplatesDir, IngressFileName),
+			content: []byte(defaultIngress),
 		},
 		{
 			// deployment.yaml
