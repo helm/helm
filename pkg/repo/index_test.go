@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	testfile = "testdata/local-index.yaml"
+	testfile          = "testdata/local-index.yaml"
 	unorderedTestfile = "testdata/local-index-unordered.yaml"
-	testRepo = "test-repo"
+	testRepo          = "test-repo"
 )
 
 func TestIndexFile(t *testing.T) {
