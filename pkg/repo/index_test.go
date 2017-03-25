@@ -29,6 +29,7 @@ import (
 
 const (
 	testfile = "testdata/local-index.yaml"
+	unorderedTestfile = "testdata/local-index-unordered.yaml"
 	testRepo = "test-repo"
 )
 
@@ -76,6 +77,18 @@ func TestLoadIndex(t *testing.T) {
 
 func TestLoadIndexFile(t *testing.T) {
 	i, err := LoadIndexFile(testfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyLocalIndex(t, i)
+}
+
+func TestLoadUnorderedIndex(t *testing.T) {
+	b, err := ioutil.ReadFile(unorderedTestfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i, err := loadIndex(b)
 	if err != nil {
 		t.Fatal(err)
 	}

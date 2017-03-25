@@ -1,0 +1,39 @@
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - https://kubernetes-charts.storage.googleapis.com/nginx-0.1.0.tgz
+      name: nginx
+      description: string
+      version: 0.1.0
+      home: https://github.com/something
+      digest: "sha256:1234567890abcdef"
+      keywords:
+        - popular
+        - web server
+        - proxy
+    - urls:
+        - https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+      keywords:
+        - popular
+        - web server
+        - proxy
+  alpine:
+    - urls:
+        - https://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      version: 1.0.0
+      home: https://github.com/something
+      keywords:
+        - linux
+        - alpine
+        - small
+        - sumtin
+      digest: "sha256:1234567890abcdef"
