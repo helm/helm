@@ -72,7 +72,7 @@ ingress:
     # Secrets must be manually created in the namespace.
     # - secretName: chart-example.local
     #   hosts:
-    #   	- chart-example.local
+    #     - chart-example.local
 resources:
   limits:
     cpu: 100m
