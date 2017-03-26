@@ -152,7 +152,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 	err = perform(c, namespace, infos, func(info *resource.Info) error {
-		log.Printf("Doing get for: '%s'", info.Name)
+		log.Printf("Doing get for %s: '%s'", info.Mapping.GroupVersionKind.Kind, info.Name)
 		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
 		if err != nil {
 			return err
@@ -390,7 +390,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
 	if patch == nil {
-		log.Printf("Looks like there are no changes for %s", target.Name)
+		log.Printf("Looks like there are no changes for %s %s", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
