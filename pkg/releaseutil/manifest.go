@@ -40,7 +40,9 @@ func SplitManifests(bigfile string) map[string]string {
 	sep := "\n---\n"
 	tpl := "manifest-%d"
 	res := map[string]string{}
-	tmp := strings.Split(bigfile, sep)
+	// Making sure yaml formatting doesn't matter when generating manifest from string.
+	bigFileTmp := strings.TrimSpace(bigfile)
+	tmp := strings.Split(bigFileTmp, sep)
 	for i, d := range tmp {
 		res[fmt.Sprintf(tpl, i)] = d
 	}
