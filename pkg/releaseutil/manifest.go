@@ -18,6 +18,7 @@ package releaseutil
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -37,12 +38,12 @@ func SplitManifests(bigfile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. In the current implementation, the file name is just
 	// a place holder, and doesn't have any further meaning.
-	sep := "\n---\n"
+	sep := regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 	tpl := "manifest-%d"
 	res := map[string]string{}
-	// Making sure yaml formatting doesn't matter when generating manifest from string.
+	// Making sure YAML formatting doesn't matter when generating manifest from string.
 	bigFileTmp := strings.TrimSpace(bigfile)
-	tmp := strings.Split(bigFileTmp, sep)
+	tmp := sep.Split(bigFileTmp, -1)
 	for i, d := range tmp {
 		res[fmt.Sprintf(tpl, i)] = d
 	}
