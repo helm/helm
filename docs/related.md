@@ -28,6 +28,9 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
 - [Helm Value Store](https://github.com/skuid/helm-value-store) - Plugin for working with Helm deployment values
 - [Helm Diff](https://github.com/databus23/helm-diff) - Preview `helm upgrade` as a coloured diff
+- [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
+- [helm-last](https://github.com/adamreese/helm-last) - Plugin to show the latest release
+- [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
 
 ## Additional Tools
 
