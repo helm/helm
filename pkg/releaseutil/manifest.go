@@ -19,7 +19,6 @@ package releaseutil
 import (
 	"fmt"
 	"regexp"
-	"strings"
 )
 
 // SimpleHead defines what the structure of the head of a manifest file
