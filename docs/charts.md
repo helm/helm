@@ -302,6 +302,98 @@ helm install --set tags.front-end=true --set subchart2.enabled=false
   * The `tags:` key in values must be a top level key. Globals and nested `tags:` tables
     are not currently supported.
 
+#### Importing Child Values via requirements.yaml
+
+In some cases it is desirable to allow a child chart's values to propagate to the parent chart and be shared 
+as common defaults. The values to be imported can be specified in the parent chart's requirements.yaml 
+using a YAML list format that contains the source of the values to be imported (child) and the 
+destination path in the parent chart's values (parent).
+
+The optional `import-values` in the example below instructs Helm to take any values found at `child:` 
+path and copy them to the path at `parent:`
+
+````
+# parent's requirements.yaml
+dependencies:
+      - name: subchart1
+        repository: http://localhost:10191
+        version: 0.1.0
+        ...
+        import-values:
+          - child: default.data
+            parent: myimports
+````
+In the above example, values found at `default.data` in the subchart1's values will be imported
+to the `myimports` key in the parent chart's values as detailed below: 
+
+````
+# parent's values
+
+myimports:
+  myint: 0
+  mybool: false
+  mystring: "helm rocks"
+  
+
+````
+````
+# subchart1's values.yaml
+
+default:
+  data:
+    myint: 999
+    mybool: true
+    
+````
+The parent chart's resulting values would be:
+
+````
+# parent's final values
+
+myimports:
+  myint: 999
+  mybool: true
+  mystring: "helm rocks"
+
+````
+
+The parent's final values now contains the `myint` and `mybool` fields imported from subchart1.
+
+##### Using the exports convention
+
+If a values.yaml contains an `exports` field at the root, it's contents may be imported 
+directly into the parent's values by using a simple string format as in the example below:
+
+````
+# parent's requirements.yaml
+    ...
+    import-values:
+      - data
+````  
+````
+# child values
+
+...
+exports:
+  data:
+    myint:99
+````  
+
+Since we are using the simple string `data` in our import list, Helm looks in the the `exports` 
+field of the child chart for `data` key and imports its contents.   
+
+The final parent values would contain our exported field.
+
+````
+# parent's values
+...
+myint: 99
+
+````
+
+Please note the parent key `data` is not contained in the parent's final values. If 
+you need to specify the parent key, use the 'child/parent' format.
+
 ## Templates and Values
 
 Helm Chart templates are written in the

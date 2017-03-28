@@ -271,6 +271,9 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 
 // pathToMap creates a nested map given a YAML path in dot notation.
 func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
+	if path == "." {
+		return data
+	}
 	ap := strings.Split(path, ".")
 	if len(ap) == 0 {
 		return nil
@@ -318,15 +321,18 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 	if err != nil {
 		return err
 	}
+	// combine chart values and its dependencies' values
 	cvals, err := CoalesceValues(c, v)
 	if err != nil {
 		return err
 	}
 	nv := v.GetValues()
 	b := make(map[string]interface{})
-	for kk, v3 := range nv {
-		b[kk] = v3
+	// convert values to map
+	for kk, vvv := range nv {
+		b[kk] = vvv
 	}
+	// import values from each dependency if specified in import-values
 	for _, r := range reqs.Dependencies {
 		if len(r.ImportValues) > 0 {
 			var outiv []interface{}
@@ -339,47 +345,40 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 					}
 					outiv = append(outiv, nm)
 					s := r.Name + "." + nm["child"]
+					// get child table
 					vv, err := cvals.Table(s)
 					if err != nil {
 						log.Printf("Warning: ImportValues missing table %v", err)
 						continue
 					}
-					if nm["parent"] == "." {
-						coalesceTables(b, vv.AsMap())
-					} else {
-
-						vm := pathToMap(nm["parent"], vv.AsMap())
-						coalesceTables(b, vm)
-					}
+					// create value map from child to be merged into parent
+					vm := pathToMap(nm["parent"], vv.AsMap())
+					b = coalesceTables(cvals, vm)
 				case string:
 					nm := make(map[string]string)
 					nm["child"] = "exports." + iv
 					nm["parent"] = "."
 					outiv = append(outiv, nm)
 					s := r.Name + "." + nm["child"]
-					vv, err := cvals.Table(s)
+					vm, err := cvals.Table(s)
 					if err != nil {
 						log.Printf("Warning: ImportValues missing table %v", err)
 						continue
 					}
-					coalesceTables(b, vv.AsMap())
+					b = coalesceTables(b, vm.AsMap())
 				}
 			}
 			// set our formatted import values
 			r.ImportValues = outiv
 		}
 	}
-	cv, err := coalesceValues(c, b)
+	b = coalesceTables(b, cvals)
+	y, err := yaml.Marshal(b)
 	if err != nil {
 		return err
 	}
-	y, err := yaml.Marshal(cv)
-	if err != nil {
-		return err
-	}
-	bb := &chart.Config{Raw: string(y)}
-	v = bb
-	c.Values = bb
+	// set the new values
+	c.Values.Raw = string(y)
 
 	return nil
 }

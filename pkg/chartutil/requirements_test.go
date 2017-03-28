@@ -217,21 +217,65 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	v := &chart.Config{Raw: ""}
 
 	e := make(map[string]string)
-	e["imported-from-chart1.type"] = "ClusterIP"
-	e["imported-from-chart1.name"] = "nginx"
-	e["imported-from-chart1.externalPort"] = "80"
-	// this doesn't exist in imported table. it should merge and remain unchanged
-	e["imported-from-chart1.notimported1"] = "1"
-	e["imported-from-chartA-via-chart1.limits.cpu"] = "300m"
-	e["imported-from-chartA-via-chart1.limits.memory"] = "300Mi"
-	e["imported-from-chartA-via-chart1.limits.volume"] = "11"
-	e["imported-from-chartA-via-chart1.requests.truthiness"] = "0.01"
-	// single list items (looks for exports. parent key)
-	e["imported-from-chartB-via-chart1.databint"] = "1"
-	e["imported-from-chartB-via-chart1.databstr"] = "x.y.z"
-	e["parent1c3"] = "true"
-	// checks that a chartb value was merged in with charta values
-	e["imported-from-chartA-via-chart1.resources.limits.shares"] = "100"
+
+	e["imported-chart1.SC1bool"] = "true"
+	e["imported-chart1.SC1float"] = "3.14"
+	e["imported-chart1.SC1int"] = "100"
+	e["imported-chart1.SC1string"] = "dollywood"
+	e["imported-chart1.SC1extra1"] = "11"
+	e["imported-chart1.SPextra1"] = "helm rocks"
+	e["imported-chart1.SC1extra1"] = "11"
+
+	e["imported-chartA.SCAbool"] = "false"
+	e["imported-chartA.SCAfloat"] = "3.1"
+	e["imported-chartA.SCAint"] = "55"
+	e["imported-chartA.SCAstring"] = "jabba"
+	e["imported-chartA.SPextra3"] = "1.337"
+	e["imported-chartA.SC1extra2"] = "1.337"
+	e["imported-chartA.SCAnested1.SCAnested2"] = "true"
+
+	e["imported-chartA-B.SCAbool"] = "false"
+	e["imported-chartA-B.SCAfloat"] = "3.1"
+	e["imported-chartA-B.SCAint"] = "55"
+	e["imported-chartA-B.SCAstring"] = "jabba"
+
+	e["imported-chartA-B.SCBbool"] = "true"
+	e["imported-chartA-B.SCBfloat"] = "7.77"
+	e["imported-chartA-B.SCBint"] = "33"
+	e["imported-chartA-B.SCBstring"] = "boba"
+	e["imported-chartA-B.SPextra5"] = "k8s"
+	e["imported-chartA-B.SC1extra5"] = "tiller"
+
+	e["overridden-chart1.SC1bool"] = "false"
+	e["overridden-chart1.SC1float"] = "3.141592"
+	e["overridden-chart1.SC1int"] = "99"
+	e["overridden-chart1.SC1string"] = "pollywog"
+	e["overridden-chart1.SPextra2"] = "42"
+
+	e["overridden-chartA.SCAbool"] = "true"
+	e["overridden-chartA.SCAfloat"] = "41.3"
+	e["overridden-chartA.SCAint"] = "808"
+	e["overridden-chartA.SCAstring"] = "jaberwocky"
+	e["overridden-chartA.SPextra4"] = "true"
+
+	e["overridden-chartA-B.SCAbool"] = "true"
+	e["overridden-chartA-B.SCAfloat"] = "41.3"
+	e["overridden-chartA-B.SCAint"] = "808"
+	e["overridden-chartA-B.SCAstring"] = "jaberwocky"
+	e["overridden-chartA-B.SCBbool"] = "false"
+	e["overridden-chartA-B.SCBfloat"] = "1.99"
+	e["overridden-chartA-B.SCBint"] = "77"
+	e["overridden-chartA-B.SCBstring"] = "jango"
+	e["overridden-chartA-B.SPextra6"] = "111"
+	e["overridden-chartA-B.SCAextra1"] = "23"
+	e["overridden-chartA-B.SCBextra1"] = "13"
+	e["overridden-chartA-B.SC1extra6"] = "77"
+
+	// `exports` style
+	e["SCBexported1B"] = "1965"
+	e["SC1extra7"] = "true"
+	e["SCBexported2A"] = "blaster"
+	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
 	verifyRequirementsImportValues(t, c, v, e)
 }

@@ -2,24 +2,16 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 # subchartA
-replicaCount: 1
-image:
-  repository: nginx
-  tag: stable
-  pullPolicy: IfNotPresent
 service:
   name: nginx
   type: ClusterIP
   externalPort: 80
   internalPort: 80
-resources:
-  limits:
-    cpu: 300m
-    memory: 300Mi
-    plasticity: 1.7331
-    volume: 11
-  requests:
-    cpu: 350m
-    memory: 350Mi
-    truthiness: 0.01
+SCAdata:
+  SCAbool: false
+  SCAfloat: 3.1
+  SCAint: 55
+  SCAstring: "jabba"
+  SCAnested1:
+    SCAnested2: true
 

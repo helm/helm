@@ -7,16 +7,21 @@ dependencies:
           - front-end
           - subchart1
         import-values:
-          - child: service
-            parent: imported-from-chart1
-          - child: imported-from-chartA
-            parent: imported-from-chartA-via-chart1
-          - convention3
-          # this merges chartb "shares" into charta "limits"
-          - child: resources.limits
-            parent: imported-from-chartA-via-chart1.resources.limits
-          - child: data
-            parent: imported-from-chartB-via-chart1
+          - child: SC1data
+            parent: imported-chart1
+          - child: SC1data
+            parent: overridden-chart1
+          - child: imported-chartA
+            parent: imported-chartA
+          - child: imported-chartA-B
+            parent: imported-chartA-B
+          - child: overridden-chartA-B
+            parent: overridden-chartA-B
+          - child: SCBexported1A
+            parent: .
+          - SCBexported2
+          - SC1exported1
+
       - name: subchart2
         repository: http://localhost:10191
         version: 0.1.0
