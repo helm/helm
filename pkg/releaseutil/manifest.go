@@ -32,19 +32,19 @@ type SimpleHead struct {
 	} `json:"metadata,omitempty"`
 }
 
+var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
+
 // SplitManifests takes a string of manifest and returns a map contains individual manifests
 func SplitManifests(bigfile string) map[string]string {
 	// This is not the best way of doing things, but it's how k8s itself does it.
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. In the current implementation, the file name is just
 	// a place holder, and doesn't have any further meaning.
-	sep := regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 	tpl := "manifest-%d"
 	res := map[string]string{}
-	// Making sure YAML formatting doesn't matter when generating manifest from string.
-	bigFileTmp := strings.TrimSpace(bigfile)
-	tmp := sep.Split(bigFileTmp, -1)
-	for i, d := range tmp {
+	// Making sure that any extra whitespace in YAML stream doesn't interfere in splitting documents correctly.
+	docs := sep.Split(bigfile, -1)
+	for i, d := range docs {
 		res[fmt.Sprintf(tpl, i)] = d
 	}
 	return res
