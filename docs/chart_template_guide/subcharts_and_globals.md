@@ -137,7 +137,7 @@ data:
   salad: {{ .Values.global.salad }}
 ```
 
-`mysubchart/tempaltes/configmap.yaml`:
+`mysubchart/templates/configmap.yaml`:
 
 ```yaml
 apiVersion: v1
