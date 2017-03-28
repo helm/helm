@@ -17,17 +17,15 @@ limitations under the License.
 package main // import "k8s.io/helm/cmd/tiller"
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 
 	_ "net/http/pprof"
 
+	log "github.com/Sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
 func startTracing(addr string) {
-	fmt.Printf("Tracing server is listening on %s\n", addr)
 	grpc.EnableTracing = true
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -41,9 +39,18 @@ func startTracing(addr string) {
 
 	go func() {
 		if err := http.ListenAndServe(addr, nil); err != nil {
-			log.Printf("tracing error: %s", err)
+			logger.WithFields(log.Fields{
+				"_module":  "trace",
+				"_context": "startTracing",
+				"error":    err,
+			}).Error("Tracing error")
 		}
 	}()
+	logger.WithFields(log.Fields{
+		"_module":  "trace",
+		"_context": "startTracing",
+		"address":  addr,
+	}).Info("Tracing server listening")
 }
 
 const traceIndexHTML = `<!DOCTYPE html>

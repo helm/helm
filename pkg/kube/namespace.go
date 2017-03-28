@@ -17,12 +17,18 @@ limitations under the License.
 package kube // import "k8s.io/helm/pkg/kube"
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 func createNamespace(client internalclientset.Interface, namespace string) error {
+	logger.WithFields(log.Fields{
+		"_module":   "namespace",
+		"_context":  "createNamespace",
+		"namespace": namespace,
+	}).Debug("Creating new namespace")
 	ns := &api.Namespace{
 		ObjectMeta: api.ObjectMeta{
 			Name: namespace,
@@ -37,8 +43,18 @@ func getNamespace(client internalclientset.Interface, namespace string) (*api.Na
 }
 
 func ensureNamespace(client internalclientset.Interface, namespace string) error {
+	logger.WithFields(log.Fields{
+		"_module":   "namespace",
+		"_context":  "ensureNamespace",
+		"namespace": namespace,
+	}).Debug("Ensuring that namespace exists")
 	_, err := getNamespace(client, namespace)
 	if err != nil && errors.IsNotFound(err) {
+		logger.WithFields(log.Fields{
+			"_module":   "namespace",
+			"_context":  "ensureNamespace",
+			"namespace": namespace,
+		}).Debug("Namespace does not exist, creating")
 		return createNamespace(client, namespace)
 	}
 	return err
