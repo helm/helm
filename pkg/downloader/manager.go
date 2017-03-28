@@ -325,14 +325,7 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 	for _, dd := range deps {
 		// if dep chart is from local path, verify the path is valid
 		if strings.HasPrefix(dd.Repository, "file://") {
-			depPath, err := filepath.Abs(strings.TrimPrefix(dd.Repository, "file://"))
-			if err != nil {
-				return nil, err
-			}
-
-			if _, err = os.Stat(depPath); os.IsNotExist(err) {
-				return nil, fmt.Errorf("directory %s not found", depPath)
-			} else if err != nil {
+			if _, err := resolver.GetLocalPath(dd.Repository, m.ChartPath); err != nil {
 				return nil, err
 			}
 
@@ -537,14 +530,8 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
-	origPath, err := filepath.Abs(strings.TrimPrefix(repo, "file://"))
+	origPath, err := resolver.GetLocalPath(repo, chartpath)
 	if err != nil {
-		return "", err
-	}
-
-	if _, err = os.Stat(origPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("directory %s not found: %s", origPath, err)
-	} else if err != nil {
 		return "", err
 	}
 
