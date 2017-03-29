@@ -152,7 +152,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 	err = perform(c, namespace, infos, func(info *resource.Info) error {
-		log.Printf("Doing get for: '%s'", info.Name)
+		log.Printf("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
 		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
 		if err != nil {
 			return err
@@ -186,7 +186,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		}
 		for _, o := range ot {
 			if err := p.PrintObj(o, buf); err != nil {
-				log.Printf("failed to print object type '%s', object: '%s' :\n %v", t, o, err)
+				log.Printf("failed to print object type %s, object: %q :\n %v", t, o, err)
 				return "", err
 			}
 		}
@@ -233,17 +233,17 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			log.Printf("Created a new %s called %s\n", kind, info.Name)
+			log.Printf("Created a new %s called %q\n", kind, info.Name)
 			return nil
 		}
 
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
-			return fmt.Errorf("no resource with the name %s found", info.Name)
+			return fmt.Errorf("no resource with the name %q found", info.Name)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, recreate); err != nil {
-			log.Printf("error updating the resource %s:\n\t %v", info.Name, err)
+			log.Printf("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
 
@@ -258,9 +258,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	}
 
 	for _, info := range original.Difference(target) {
-		log.Printf("Deleting %s in %s...", info.Name, info.Namespace)
+		log.Printf("Deleting %q in %s...", info.Name, info.Namespace)
 		if err := deleteResource(c, info); err != nil {
-			log.Printf("Failed to delete %s, err: %s", info.Name, err)
+			log.Printf("Failed to delete %q, err: %s", info.Name, err)
 		}
 	}
 	if shouldWait {
@@ -278,7 +278,7 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 		return err
 	}
 	return perform(c, namespace, infos, func(info *resource.Info) error {
-		log.Printf("Starting delete for %s %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		log.Printf("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(c, info)
 		return skipIfNotFound(err)
 	})
@@ -350,7 +350,7 @@ func deleteResource(c *Client, info *resource.Info) error {
 		}
 		return err
 	}
-	log.Printf("Using reaper for deleting %s", info.Name)
+	log.Printf("Using reaper for deleting %q", info.Name)
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
@@ -390,7 +390,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
 	if patch == nil {
-		log.Printf("Looks like there are no changes for %s", target.Name)
+		log.Printf("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
