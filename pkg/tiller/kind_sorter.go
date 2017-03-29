@@ -23,11 +23,47 @@ import (
 // SortOrder is an ordering of Kinds.
 type SortOrder []string
 
-// InstallOrder is the order in which manifests should be installed (by Kind)
-var InstallOrder SortOrder = []string{"Namespace", "Secret", "ConfigMap", "PersistentVolume", "PersistentVolumeClaim", "ServiceAccount", "Service", "Pod", "ReplicationController", "Deployment", "DaemonSet", "Ingress", "Job"}
+// InstallOrder is the order in which manifests should be installed (by Kind).
+var InstallOrder SortOrder = []string{
+	"Namespace",
+	"Secret",
+	"ConfigMap",
+	"PersistentVolume",
+	"PersistentVolumeClaim",
+	"ServiceAccount",
+	"ClusterRole",
+	"ClusterRoleBinding",
+	"Role",
+	"RoleBinding",
+	"Service",
+	"Pod",
+	"ReplicationController",
+	"Deployment",
+	"DaemonSet",
+	"Ingress",
+	"Job",
+}
 
-// UninstallOrder is the order in which manifests should be uninstalled (by Kind)
-var UninstallOrder SortOrder = []string{"Service", "Pod", "ReplicationController", "Deployment", "DaemonSet", "ConfigMap", "Secret", "PersistentVolumeClaim", "PersistentVolume", "ServiceAccount", "Ingress", "Job", "Namespace"}
+// UninstallOrder is the order in which manifests should be uninstalled (by Kind).
+var UninstallOrder SortOrder = []string{
+	"Service",
+	"Pod",
+	"ReplicationController",
+	"Deployment",
+	"DaemonSet",
+	"ConfigMap",
+	"Secret",
+	"PersistentVolumeClaim",
+	"PersistentVolume",
+	"RoleBinding",
+	"Role",
+	"ClusterRoleBinding",
+	"ClusterRole",
+	"ServiceAccount",
+	"Ingress",
+	"Job",
+	"Namespace",
+}
 
 // sortByKind does an in-place sort of manifests by Kind.
 //
