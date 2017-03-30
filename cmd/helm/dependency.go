@@ -47,10 +47,10 @@ For example, this requirements file declares two dependencies:
     dependencies:
     - name: nginx
       version: "1.2.3"
-    repository: "https://example.com/charts"
+      repository: "https://example.com/charts"
     - name: memcached
       version: "3.2.1"
-    repository: "https://another.example.com/charts"
+      repository: "https://another.example.com/charts"
 
 The 'name' should be the name of a chart, where that name must match the name
 in that chart's 'Chart.yaml' file.
