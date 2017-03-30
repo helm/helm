@@ -145,27 +145,58 @@ func (i *initCmd) run() error {
 	i.opts.ImageSpec = i.image
 
 	if flagDebug {
-		var mfs string
-		var err error
-
-		// write deployment manifest
-		if mfs, err = installer.DeploymentManifest(&i.opts); err != nil {
-			return err
-		}
-		fmt.Fprintln(i.out, fmt.Sprintf("apiVersion: extensions/v1beta1\nkind: Deployment\n%s", mfs))
-
-		// write service manifest
-		if mfs, err = installer.ServiceManifest(i.namespace); err != nil {
-			return err
-		}
-		fmt.Fprintln(i.out, fmt.Sprintf("apiVersion: v1\nkind: Service\n%s", mfs))
-
-		// write secret manifest
-		if i.opts.EnableTLS {
-			if mfs, err = installer.SecretManifest(&i.opts); err != nil {
+		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
+			w := i.out
+			if !first {
+				// YAML starting document boundary marker
+				if _, err := fmt.Fprintln(w, "---"); err != nil {
+					return err
+				}
+			}
+			if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
 				return err
 			}
-			fmt.Fprintln(i.out, fmt.Sprintf("apiVersion: v1\nkind: Secret\n%s", mfs))
+			if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprint(w, body); err != nil {
+				return err
+			}
+			if !last {
+				return nil
+			}
+			// YAML ending document boundary marker
+			_, err := fmt.Fprintln(w, "...")
+			return err
+		}
+
+		var body string
+		var err error
+
+		// write Deployment manifest
+		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
+			return err
+		}
+		if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
+			return err
+		}
+
+		// write Service manifest
+		if body, err = installer.ServiceManifest(i.namespace); err != nil {
+			return err
+		}
+		if err := writeYAMLManifest("v1", "Service", body, false, !i.opts.EnableTLS); err != nil {
+			return err
+		}
+
+		// write Secret manifest
+		if i.opts.EnableTLS {
+			if body, err = installer.SecretManifest(&i.opts); err != nil {
+				return err
+			}
+			if err := writeYAMLManifest("v1", "Secret", body, false, true); err != nil {
+				return err
+			}
 		}
 	}
 
