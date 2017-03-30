@@ -81,12 +81,12 @@ func TestResolve(t *testing.T) {
 			name: "repo from valid local path",
 			req: &chartutil.Requirements{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "signtest", Repository: "file://../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},
 			},
 			expect: &chartutil.RequirementsLock{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "signtest", Repository: "file://../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},
 			},
 		},
