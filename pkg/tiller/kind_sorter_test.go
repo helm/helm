@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"testing"
 
 	util "k8s.io/helm/pkg/releaseutil"
@@ -27,12 +28,22 @@ func TestKindSorter(t *testing.T) {
 		{
 			name:    "m",
 			content: "",
-			head:    &util.SimpleHead{Kind: "Deployment"},
+			head:    &util.SimpleHead{Kind: "ClusterRole"},
 		},
 		{
-			name:    "l",
+			name:    " ",
 			content: "",
-			head:    &util.SimpleHead{Kind: "Service"},
+			head:    &util.SimpleHead{Kind: "ClusterRoleBinding"},
+		},
+		{
+			name:    "e",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ConfigMap"},
+		},
+		{
+			name:    "k",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Deployment"},
 		},
 		{
 			name:    "!",
@@ -40,35 +51,54 @@ func TestKindSorter(t *testing.T) {
 			head:    &util.SimpleHead{Kind: "HonkyTonkSet"},
 		},
 		{
+			name:    "s",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Job"},
+		},
+		{
 			name:    "h",
 			content: "",
 			head:    &util.SimpleHead{Kind: "Namespace"},
 		},
 		{
-			name:    "e",
+			name:    "w",
 			content: "",
-			head:    &util.SimpleHead{Kind: "ConfigMap"},
+			head:    &util.SimpleHead{Kind: "Role"},
+		},
+		{
+			name:    "o",
+			content: "",
+			head:    &util.SimpleHead{Kind: "RoleBinding"},
+		},
+		{
+			name:    "r",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Service"},
+		},
+		{
+			name:    "l",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ServiceAccount"},
 		},
 	}
 
-	res := sortByKind(manifests, InstallOrder)
-	got := ""
-	expect := "helm!"
-	for _, r := range res {
-		got += r.name
+	for _, test := range []struct {
+		description string
+		order       SortOrder
+		expected    string
+	}{
+		{"install", InstallOrder, "helm works!"},
+		{"uninstall", UninstallOrder, "rkeow mlsh!"},
+	} {
+		var buf bytes.Buffer
+		t.Run(test.description, func(t *testing.T) {
+			defer buf.Reset()
+			for _, r := range sortByKind(manifests, test.order) {
+				buf.WriteString(r.name)
+			}
+			if got := buf.String(); got != test.expected {
+				t.Errorf("Expected %q, got %q", test.expected, got)
+			}
+		})
 	}
-	if got != expect {
-		t.Errorf("Expected %q, got %q", expect, got)
-	}
-
-	expect = "lmeh!"
-	got = ""
-	res = sortByKind(manifests, UninstallOrder)
-	for _, r := range res {
-		got += r.name
-	}
-	if got != expect {
-		t.Errorf("Expected %q, got %q", expect, got)
-	}
-
 }
