@@ -22,16 +22,14 @@ exports:
       SCBexported2A: "blaster"
 
 global:
-    kolla:
-        nova:
-            api:
-                all:
-                    port: 8774
-            metadata:
-                all:
-                    port: 8775
-test:
-  dummy: 1
+  kolla:
+    nova:
+      api:
+        all:
+          port: 8774
+      metadata:
+        all:
+          port: 8775
 
 
 

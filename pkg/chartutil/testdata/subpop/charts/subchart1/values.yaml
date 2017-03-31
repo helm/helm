@@ -48,8 +48,8 @@ SCBexported1A:
   SC1extra7: true
 
 exports:
-    SC1exported1:
-      global:
-        SC1exported2:
-          all:
-            SC1exported3: "SC1expstr"
+  SC1exported1:
+    global:
+      SC1exported2:
+        all:
+          SC1exported3: "SC1expstr"

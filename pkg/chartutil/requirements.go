@@ -62,7 +62,8 @@ type Dependency struct {
 	Tags []string `json:"tags"`
 	// Enabled bool determines if chart should be loaded
 	Enabled bool `json:"enabled"`
-	// ImportValues holds the mapping of source values to parent key to be imported
+	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
+	// string or pair of child/parent sublist items.
 	ImportValues []interface{} `json:"import-values"`
 }
 
@@ -315,7 +316,7 @@ func getParents(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 	return out
 }
 
-// processImportValues merges values from child to parent based on ImportValues field.
+// processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
 func processImportValues(c *chart.Chart, v *chart.Config) error {
 	reqs, err := LoadRequirements(c)
 	if err != nil {
@@ -327,7 +328,7 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 		return err
 	}
 	nv := v.GetValues()
-	b := make(map[string]interface{})
+	b := make(map[string]interface{}, len(nv))
 	// convert values to map
 	for kk, vvv := range nv {
 		b[kk] = vvv
@@ -348,21 +349,25 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 					// get child table
 					vv, err := cvals.Table(s)
 					if err != nil {
-						log.Printf("Warning: ImportValues missing table %v", err)
+						log.Printf("Warning: ImportValues missing table: %v", err)
 						continue
 					}
 					// create value map from child to be merged into parent
 					vm := pathToMap(nm["parent"], vv.AsMap())
 					b = coalesceTables(cvals, vm)
 				case string:
-					nm := make(map[string]string)
+					nm := map[string]string{
+						"child":  "exports." + iv,
+						"parent": ".",
+					}
+					/*nm := make(map[string]string)
 					nm["child"] = "exports." + iv
-					nm["parent"] = "."
+					nm["parent"] = "."*/
 					outiv = append(outiv, nm)
 					s := r.Name + "." + nm["child"]
 					vm, err := cvals.Table(s)
 					if err != nil {
-						log.Printf("Warning: ImportValues missing table %v", err)
+						log.Printf("Warning: ImportValues missing table: %v", err)
 						continue
 					}
 					b = coalesceTables(b, vm.AsMap())
