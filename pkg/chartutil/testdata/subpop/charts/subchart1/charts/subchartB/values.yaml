@@ -19,7 +19,7 @@ exports:
       SCBexported1B: 1965
 
   SCBexported2:
-      SCBexported2A: "blaster"
+    SCBexported2A: "blaster"
 
 global:
   kolla:
