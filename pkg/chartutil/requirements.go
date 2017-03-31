@@ -360,9 +360,6 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 						"child":  "exports." + iv,
 						"parent": ".",
 					}
-					/*nm := make(map[string]string)
-					nm["child"] = "exports." + iv
-					nm["parent"] = "."*/
 					outiv = append(outiv, nm)
 					s := r.Name + "." + nm["child"]
 					vm, err := cvals.Table(s)
