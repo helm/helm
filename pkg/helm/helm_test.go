@@ -87,7 +87,9 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	NewClient(b4c).ListReleases(ops...)
+	if _, err := NewClient(b4c).ListReleases(ops...); err != errSkip {
+		t.Fatalf("did not expect error but got (%v)\n``", err)
+	}
 }
 
 // Verify InstallOption's are applied to an InstallReleaseRequest correctly.
@@ -99,6 +101,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	var reuseName = true
 	var dryRun = true
 	var chartName = "alpine"
+	var chartPath = filepath.Join(chartsDir, chartName)
 	var overrides = []byte("key1=value1,key2=value2")
 
 	// Expected InstallReleaseRequest message
@@ -133,7 +136,9 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	NewClient(b4c).InstallRelease(chartName, namespace, ops...)
+	if _, err := NewClient(b4c).InstallRelease(chartPath, namespace, ops...); err != errSkip {
+		t.Fatalf("did not expect error but got (%v)\n``", err)
+	}
 }
 
 // Verify DeleteOptions's are applied to an UninstallReleaseRequest correctly.
@@ -168,13 +173,16 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	NewClient(b4c).DeleteRelease(releaseName, ops...)
+	if _, err := NewClient(b4c).DeleteRelease(releaseName, ops...); err != errSkip {
+		t.Fatalf("did not expect error but got (%v)\n``", err)
+	}
 }
 
 // Verify UpdateOption's are applied to an UpdateReleaseRequest correctly.
 func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var chartName = "alpine"
+	var chartPath = filepath.Join(chartsDir, chartName)
 	var releaseName = "test"
 	var disableHooks = true
 	var overrides = []byte("key1=value1,key2=value2")
@@ -208,7 +216,9 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	NewClient(b4c).UpdateRelease(releaseName, chartName, ops...)
+	if _, err := NewClient(b4c).UpdateRelease(releaseName, chartPath, ops...); err != errSkip {
+		t.Fatalf("did not expect error but got (%v)\n``", err)
+	}
 }
 
 // Verify RollbackOption's are applied to a RollbackReleaseRequest correctly.
@@ -246,7 +256,9 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	NewClient(b4c).RollbackRelease(releaseName, ops...)
+	if _, err := NewClient(b4c).RollbackRelease(releaseName, ops...); err != errSkip {
+		t.Fatalf("did not expect error but got (%v)\n``", err)
+	}
 }
 
 // Verify StatusOption's are applied to a GetReleaseStatusRequest correctly.
@@ -273,7 +285,9 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	NewClient(b4c).ReleaseStatus(releaseName, StatusReleaseVersion(revision))
+	if _, err := NewClient(b4c).ReleaseStatus(releaseName, StatusReleaseVersion(revision)); err != errSkip {
+		t.Fatalf("did not expect error but got (%v)\n``", err)
+	}
 }
 
 // Verify ContentOption's are applied to a GetReleaseContentRequest correctly.
@@ -300,7 +314,9 @@ func TestReleaseContent_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	NewClient(b4c).ReleaseContent(releaseName, ContentReleaseVersion(revision))
+	if _, err := NewClient(b4c).ReleaseContent(releaseName, ContentReleaseVersion(revision)); err != errSkip {
+		t.Fatalf("did not expect error but got (%v)\n``", err)
+	}
 }
 
 func assert(t *testing.T, expect, actual interface{}) {
