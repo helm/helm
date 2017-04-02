@@ -35,7 +35,6 @@ var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 
 // SplitManifests takes a string of manifest and returns a map contains individual manifests
 func SplitManifests(bigfile string) map[string]string {
-	// This is not the best way of doing things, but it's how k8s itself does it.
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. In the current implementation, the file name is just
 	// a place holder, and doesn't have any further meaning.
