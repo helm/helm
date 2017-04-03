@@ -1,5 +1,5 @@
-hash: 0d1c5b7304a853820dcaa296d3aa1f5f3466a8491dcef80cbcaf43c954acb2a8
-updated: 2017-03-20T15:26:55.446524716-07:00
+hash: dc4840b17b6bc23402af21a169321335f4fb35598f43358a582afe575f48dc58
+updated: 2017-03-23T14:39:37.785507869-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -99,7 +99,7 @@ imports:
 - name: github.com/facebookgo/symwalk
   version: 42004b9f322246749dd73ad71008b1f3160c0052
 - name: github.com/ghodss/yaml
-  version: 04f313413ffd65ce25f2541bfd2b2ceec5c0908c
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -153,9 +153,11 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
+  version: 24f28ae800abfde9310e779f94be606b1a98a3fc
   subpackages:
+  - jsonpb
   - proto
+  - protoc-gen-go/descriptor
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/gofuzz
@@ -165,6 +167,13 @@ imports:
   subpackages:
   - util/strutil
   - util/wordwrap
+- name: github.com/grpc-ecosystem/grpc-gateway
+  version: ba94bf40bd539529f3ff953e6c7eb3612b4c8df6
+  repo: https://github.com/appscode/grpc-gateway.git
+  subpackages:
+  - runtime
+  - runtime/internal
+  - utilities
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
@@ -186,7 +195,7 @@ imports:
 - name: github.com/Masterminds/sprig
   version: 23597e5f6ad0e4d590e71314bfd0251a4a3cf849
 - name: github.com/mattn/go-runewidth
-  version: 14207d285c6c197daabb5c9793d63e7af9ab2d50
+  version: e882a96ec18dd43fa283187b66af74497c9101c0
 - name: github.com/mitchellh/go-wordwrap
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/naoina/go-stringutil
@@ -284,23 +293,30 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
+- name: google.golang.org/genproto
+  version: de9f5e90fe9b278809363f08c2072d2f2a429de7
+  subpackages:
+  - googleapis/api/annotations
 - name: google.golang.org/grpc
-  version: b7f1379d3cbbbeb2ca3405852012e237aa05459e
+  version: cdee119ee21e61eef7093a41ba148fa83585e143
   subpackages:
   - codes
   - credentials
   - grpclog
   - internal
+  - keepalive
   - metadata
   - naming
   - peer
+  - stats
+  - tap
   - transport
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
-  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 - name: k8s.io/kubernetes
-  version: 00a1fb254bd8e5235575fba1398b958943e39078
+  version: 894ff23729bbc0055907dd3a496afb725396adda
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - cmd/kubeadm/app/apis/kubeadm/install
@@ -507,8 +523,6 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: e3a8ff8ce36581f87a15341206f205b1da467059
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
-  - mock
-  - require

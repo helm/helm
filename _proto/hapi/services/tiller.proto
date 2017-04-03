@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package hapi.services.tiller;
 
+import "google/api/annotations.proto";
+
 import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
@@ -45,42 +47,75 @@ service ReleaseService {
 	// release status. By default, ListAllReleases returns the releases who
 	// current status is "Active".
 	rpc ListReleases(ListReleasesRequest) returns (stream ListReleasesResponse) {
+		option (google.api.http) = {
+			get: "/tiller/v2/releases/json"
+		};
 	}
 
 	// GetReleasesStatus retrieves status information for the specified release.
 	rpc GetReleaseStatus(GetReleaseStatusRequest) returns (GetReleaseStatusResponse) {
+		option (google.api.http) = {
+			get: "/tiller/v2/releases/{name}/versions/{version}/status/json"
+		};
 	}
 
 	// GetReleaseContent retrieves the release content (chart + value) for the specified release.
 	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
+		option (google.api.http) = {
+			get: "/tiller/v2/releases/{name}/versions/{version}/content/json"
+		};
 	}
 
 	// UpdateRelease updates release content.
 	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
+		option (google.api.http) = {
+			put: "/tiller/v2/releases/{name}/json"
+			body: "*"
+		};
 	}
 
 	// InstallRelease requests installation of a chart as a new release.
 	rpc InstallRelease(InstallReleaseRequest) returns (InstallReleaseResponse) {
+		option (google.api.http) = {
+			post: "/tiller/v2/releases/{name}/json"
+			body: "*"
+		};
 	}
 
 	// UninstallRelease requests deletion of a named release.
 	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
+		option (google.api.http) = {
+			delete : "/tiller/v2/releases/{name}/json"
+		};
 	}
 
     // GetVersion returns the current version of the server.
     rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
+		option (google.api.http) = {
+			get: "/tiller/v2/version/json"
+		};
     }
 
     // RollbackRelease rolls back a release to a previous version.
     rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
+		option (google.api.http) = {
+			delete : "/tiller/v2/releases/{name}/versions/{version}/content/json"
+		};
     }
 
     // ReleaseHistory retrieves a releasse's history.
     rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
+		option (google.api.http) = {
+			get: "/tiller/v2/releases/{name}/json"
+		};
     }
 
     // RunReleaseTest executes the tests defined of a named release
     rpc RunReleaseTest(TestReleaseRequest) returns (stream TestReleaseResponse) {
+		option (google.api.http) = {
+			post: "/tiller/v2/releases/{name}/actions/test/json"
+			body: "*"
+		};
     }
 }
 
