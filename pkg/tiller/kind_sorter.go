@@ -24,8 +24,12 @@ import (
 type SortOrder []string
 
 // InstallOrder is the order in which manifests should be installed (by Kind).
+//
+// Those occurring earlier in the list get installed before those occurring later in the list.
 var InstallOrder SortOrder = []string{
 	"Namespace",
+	"ResourceQuota",
+	"LimitRange",
 	"Secret",
 	"ConfigMap",
 	"PersistentVolume",
@@ -36,32 +40,42 @@ var InstallOrder SortOrder = []string{
 	"Role",
 	"RoleBinding",
 	"Service",
+	"DaemonSet",
 	"Pod",
 	"ReplicationController",
+	"ReplicaSet",
 	"Deployment",
-	"DaemonSet",
-	"Ingress",
+	"StatefulSet",
 	"Job",
+	"CronJob",
+	"Ingress",
 }
 
 // UninstallOrder is the order in which manifests should be uninstalled (by Kind).
+//
+// Those occurring earlier in the list get uninstalled before those occurring later in the list.
 var UninstallOrder SortOrder = []string{
+	"Ingress",
 	"Service",
-	"Pod",
-	"ReplicationController",
+	"CronJob",
+	"Job",
+	"StatefulSet",
 	"Deployment",
+	"ReplicaSet",
+	"ReplicationController",
+	"Pod",
 	"DaemonSet",
-	"ConfigMap",
-	"Secret",
-	"PersistentVolumeClaim",
-	"PersistentVolume",
 	"RoleBinding",
 	"Role",
 	"ClusterRoleBinding",
 	"ClusterRole",
 	"ServiceAccount",
-	"Ingress",
-	"Job",
+	"PersistentVolumeClaim",
+	"PersistentVolume",
+	"ConfigMap",
+	"Secret",
+	"LimitRange",
+	"ResourceQuota",
 	"Namespace",
 }
 

@@ -26,12 +26,12 @@ import (
 func TestKindSorter(t *testing.T) {
 	manifests := []manifest{
 		{
-			name:    "m",
+			name:    "i",
 			content: "",
 			head:    &util.SimpleHead{Kind: "ClusterRole"},
 		},
 		{
-			name:    " ",
+			name:    "j",
 			content: "",
 			head:    &util.SimpleHead{Kind: "ClusterRoleBinding"},
 		},
@@ -41,7 +41,17 @@ func TestKindSorter(t *testing.T) {
 			head:    &util.SimpleHead{Kind: "ConfigMap"},
 		},
 		{
-			name:    "k",
+			name:    "u",
+			content: "",
+			head:    &util.SimpleHead{Kind: "CronJob"},
+		},
+		{
+			name:    "n",
+			content: "",
+			head:    &util.SimpleHead{Kind: "DaemonSet"},
+		},
+		{
+			name:    "r",
 			content: "",
 			head:    &util.SimpleHead{Kind: "Deployment"},
 		},
@@ -51,34 +61,84 @@ func TestKindSorter(t *testing.T) {
 			head:    &util.SimpleHead{Kind: "HonkyTonkSet"},
 		},
 		{
-			name:    "s",
+			name:    "v",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Ingress"},
+		},
+		{
+			name:    "t",
 			content: "",
 			head:    &util.SimpleHead{Kind: "Job"},
 		},
 		{
-			name:    "h",
+			name:    "c",
+			content: "",
+			head:    &util.SimpleHead{Kind: "LimitRange"},
+		},
+		{
+			name:    "a",
 			content: "",
 			head:    &util.SimpleHead{Kind: "Namespace"},
 		},
 		{
-			name:    "w",
+			name:    "f",
 			content: "",
-			head:    &util.SimpleHead{Kind: "Role"},
+			head:    &util.SimpleHead{Kind: "PersistentVolume"},
+		},
+		{
+			name:    "g",
+			content: "",
+			head:    &util.SimpleHead{Kind: "PersistentVolumeClaim"},
 		},
 		{
 			name:    "o",
 			content: "",
-			head:    &util.SimpleHead{Kind: "RoleBinding"},
+			head:    &util.SimpleHead{Kind: "Pod"},
 		},
 		{
-			name:    "r",
+			name:    "q",
 			content: "",
-			head:    &util.SimpleHead{Kind: "Service"},
+			head:    &util.SimpleHead{Kind: "ReplicaSet"},
+		},
+		{
+			name:    "p",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ReplicationController"},
+		},
+		{
+			name:    "b",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ResourceQuota"},
+		},
+		{
+			name:    "k",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Role"},
 		},
 		{
 			name:    "l",
 			content: "",
+			head:    &util.SimpleHead{Kind: "RoleBinding"},
+		},
+		{
+			name:    "d",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Secret"},
+		},
+		{
+			name:    "m",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Service"},
+		},
+		{
+			name:    "h",
+			content: "",
 			head:    &util.SimpleHead{Kind: "ServiceAccount"},
+		},
+		{
+			name:    "s",
+			content: "",
+			head:    &util.SimpleHead{Kind: "StatefulSet"},
 		},
 	}
 
@@ -87,11 +147,14 @@ func TestKindSorter(t *testing.T) {
 		order       SortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "helm works!"},
-		{"uninstall", UninstallOrder, "rkeow mlsh!"},
+		{"install", InstallOrder, "abcdefghijklmnopqrstuv!"},
+		{"uninstall", UninstallOrder, "vmutsrqponlkjihgfedcba!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
+			if got, want := len(test.expected), len(manifests); got != want {
+				t.Fatalf("Expected %d names in order, got %d", want, got)
+			}
 			defer buf.Reset()
 			for _, r := range sortByKind(manifests, test.order) {
 				buf.WriteString(r.name)
