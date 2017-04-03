@@ -116,7 +116,7 @@ metadata:
     # This is what defines this resource as a hook. Without this line, the
     # job is considered part of the release.
     "helm.sh/hook": post-install
-    "helm.sh/hookWeight": "-5"
+    "helm.sh/hook-weight": "-5"
 spec:
   template:
     metadata:
@@ -161,7 +161,7 @@ It is also possible to define a weight for a hook which will help build a determ
 
 ```
   annotations:
-    "helm.sh/hookWeight": "5"
+    "helm.sh/hook-weight": "5"
 ```
 
 Hook weights can be positive or negative numbers but must be represented as strings. When Tiller starts the execution cycle of hooks of a particular Kind it will sort those hooks in ascending order. 
