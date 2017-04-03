@@ -23,6 +23,9 @@ import (
 // HookAnno is the label name for a hook
 const HookAnno = "helm.sh/hook"
 
+// HookWeightAnno is the label name for a hook weight
+const HookWeightAnno = "helm.sh/hook-weight"
+
 // Types of hooks
 const (
 	PreInstall         = "pre-install"

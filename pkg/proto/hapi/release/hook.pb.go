@@ -100,6 +100,8 @@ type Hook struct {
 	Events []Hook_Event `protobuf:"varint,5,rep,packed,name=events,enum=hapi.release.Hook_Event" json:"events,omitempty"`
 	// LastRun indicates the date/time this was last run.
 	LastRun *google_protobuf.Timestamp `protobuf:"bytes,6,opt,name=last_run,json=lastRun" json:"last_run,omitempty"`
+	// Weight indicates the sort order for execution among similar Hook types
+	Weight int `protobuf:"bytes,7,opt,name=weight" json:"weight,omitempty"`
 }
 
 func (m *Hook) Reset()                    { *m = Hook{} }
