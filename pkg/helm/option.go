@@ -66,6 +66,8 @@ type options struct {
 	histReq rls.GetHistoryRequest
 	// resetValues instructs Tiller to reset values to their defaults.
 	resetValues bool
+	// reuseValues instructs Tiller to reuse the values from the last release.
+	reuseValues bool
 	// release test options are applied directly to the test release history request
 	testReq rls.TestReleaseRequest
 }
@@ -320,6 +322,13 @@ func UpgradeDryRun(dry bool) UpdateOption {
 func ResetValues(reset bool) UpdateOption {
 	return func(opts *options) {
 		opts.resetValues = reset
+	}
+}
+
+// ReuseValues will (if true) trigger resetting the values to their original state.
+func ReuseValues(reuse bool) UpdateOption {
+	return func(opts *options) {
+		opts.reuseValues = reuse
 	}
 }
 
