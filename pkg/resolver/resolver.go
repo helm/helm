@@ -47,11 +47,7 @@ func New(chartpath string, helmhome helmpath.Home) *Resolver {
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]string) (*chartutil.RequirementsLock, error) {
-	d, err := HashReq(reqs)
-	if err != nil {
-		return nil, err
-	}
+func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]string, d string) (*chartutil.RequirementsLock, error) {
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chartutil.Dependency, len(reqs.Dependencies))
