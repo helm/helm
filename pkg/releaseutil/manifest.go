@@ -19,6 +19,8 @@ package releaseutil
 import (
 	"fmt"
 	"strings"
+
+	"github.com/ghodss/yaml"
 )
 
 // SimpleHead defines what the structure of the head of a manifest file
@@ -38,11 +40,39 @@ func SplitManifests(bigfile string) map[string]string {
 	// array of YAML docs. In the current implementation, the file name is just
 	// a place holder, and doesn't have any further meaning.
 	sep := "\n---\n"
+	cutset := " \n\t"
 	tpl := "manifest-%d"
 	res := map[string]string{}
 	tmp := strings.Split(bigfile, sep)
 	for i, d := range tmp {
-		res[fmt.Sprintf(tpl, i)] = d
+		if len(strings.Trim(d, cutset)) > 0 {
+			res[fmt.Sprintf(tpl, i)] = d
+		}
 	}
 	return res
+}
+
+// Manifest reperestens a single manifest content with SimpleHead added for additional metadata
+type Manifest struct {
+	SimpleHead
+	Content string
+}
+
+// SplitManifestsWithHeads
+func SplitManifestsWithHeads(bigfile string) ([]Manifest, error) {
+	raws := SplitManifests(bigfile)
+
+	result := make([]Manifest, 0, len(raws))
+	var err error
+
+	for _, raw := range raws {
+		var head SimpleHead
+		err = yaml.Unmarshal([]byte(raw), &head)
+
+		result = append(result, Manifest{
+			Content:    raw,
+			SimpleHead: head,
+		})
+	}
+	return result, err
 }

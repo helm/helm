@@ -501,6 +501,10 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
   - third_party/forked/golang/template
+- name: github.com/Mirantis/k8s-appcontroller
+  version: cfc62d2de68d9e7f52c9c84f976dc93502bf59ab
+  subpackages:
+  - cmd/format
 testImports:
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d

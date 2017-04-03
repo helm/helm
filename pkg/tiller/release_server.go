@@ -83,15 +83,24 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
+	ReleaseModule
 	env       *environment.Environment
 	clientset internalclientset.Interface
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, useRemote bool) *ReleaseServer {
+	var releaseModule ReleaseModule
+	if useRemote {
+		releaseModule = &RemoteReleaseModule{}
+	} else {
+		releaseModule = &LocalReleaseModule{}
+	}
+
 	return &ReleaseServer{
-		env:       env,
-		clientset: clientset,
+		env:           env,
+		clientset:     clientset,
+		ReleaseModule: releaseModule,
 	}
 }
 
@@ -318,8 +327,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 			return res, err
 		}
 	}
-
-	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.ReleaseModule.Update(originalRelease, updatedRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -477,7 +485,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.ReleaseModule.Rollback(currentRelease, targetRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -501,13 +509,6 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	targetRelease.Info.Status.Code = release.Status_DEPLOYED
 
 	return res, nil
-}
-
-func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, recreate bool, timeout int64, shouldWait bool) error {
-	kubeCli := s.env.KubeClient
-	current := bytes.NewBufferString(currentRelease.Manifest)
-	target := bytes.NewBufferString(targetRelease.Manifest)
-	return kubeCli.Update(targetRelease.Namespace, current, target, recreate, timeout, shouldWait)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -851,8 +852,12 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// update new release with next revision number
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
-
-		if err := s.performKubeUpdate(old, r, false, req.Timeout, req.Wait); err != nil {
+		updateReq := &services.UpdateReleaseRequest{
+			Wait:     req.Wait,
+			Recreate: false,
+			Timeout:  req.Timeout,
+		}
+		if err := s.ReleaseModule.Update(old, r, updateReq, s.env); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
@@ -866,8 +871,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	default:
 		// nothing to replace, create as normal
 		// regular manifests
-		b := bytes.NewBufferString(r.Manifest)
-		if err := s.env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
+		if err := s.ReleaseModule.Create(r, req, s.env); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
