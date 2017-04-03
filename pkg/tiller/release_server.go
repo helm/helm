@@ -95,57 +95,22 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 	}
 }
 
+type ListRequest interface {
+	GetSortBy() services.ListSort_SortBy
+	GetFilter() string
+	GetSortOrder() services.ListSort_SortOrder
+	GetStatusCodes() []release.Status_Code
+	GetNamespace() string
+}
+
 // ListReleases lists the releases found by the server.
 func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream services.ReleaseService_ListReleasesServer) error {
-	if len(req.StatusCodes) == 0 {
-		req.StatusCodes = []release.Status_Code{release.Status_DEPLOYED}
-	}
-
-	//rels, err := s.env.Releases.ListDeployed()
-	rels, err := s.env.Releases.ListFilterAll(func(r *release.Release) bool {
-		for _, sc := range req.StatusCodes {
-			if sc == r.Info.Status.Code {
-				return true
-			}
-		}
-		return false
-	})
+	rels, err := s.listReleases(req)
 	if err != nil {
 		return err
 	}
 
-	if req.Namespace != "" {
-		rels, err = filterByNamespace(req.Namespace, rels)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(req.Filter) != 0 {
-		rels, err = filterReleases(req.Filter, rels)
-		if err != nil {
-			return err
-		}
-	}
-
 	total := int64(len(rels))
-
-	switch req.SortBy {
-	case services.ListSort_NAME:
-		relutil.SortByName(rels)
-	case services.ListSort_LAST_RELEASED:
-		relutil.SortByDate(rels)
-	}
-
-	if req.SortOrder == services.ListSort_DESC {
-		ll := len(rels)
-		rr := make([]*release.Release, ll)
-		for i, item := range rels {
-			rr[ll-i-1] = item
-		}
-		rels = rr
-	}
-
 	l := int64(len(rels))
 	if req.Offset != "" {
 
@@ -185,6 +150,84 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		Releases: rels,
 	}
 	return stream.Send(res)
+}
+
+// func (s *ReleaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
+
+// ListReleases lists the releases found by the server.
+func (s *ReleaseServer) SummarizeReleases(c ctx.Context, req *services.SummarizeReleasesRequest) (*services.SummarizeReleasesResponse, error) {
+	rels, err := s.listReleases(req)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]*release.ReleaseSummary, len(rels))
+	for i, rel := range rels {
+		s := &release.ReleaseSummary{
+			Name:          rel.Name,
+			Info:          rel.Info,
+			ChartMetadata: rel.Chart.Metadata,
+			Config:        rel.Config,
+			Version:       rel.Version,
+			Namespace:     rel.Namespace,
+		}
+		summaries[i] = s
+	}
+
+	res := &services.SummarizeReleasesResponse{
+		Releases: summaries,
+	}
+	return res, nil
+}
+
+func (s *ReleaseServer) listReleases(req ListRequest) ([]*release.Release, error) {
+	statusCodes := req.GetStatusCodes()
+	if len(statusCodes) == 0 {
+		statusCodes = []release.Status_Code{release.Status_DEPLOYED}
+	}
+
+	//rels, err := s.env.Releases.ListDeployed()
+	rels, err := s.env.Releases.ListFilterAll(func(r *release.Release) bool {
+		for _, sc := range statusCodes {
+			if sc == r.Info.Status.Code {
+				return true
+			}
+		}
+		return false
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if req.GetNamespace() != "" {
+		rels, err = filterByNamespace(req.GetNamespace(), rels)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(req.GetFilter()) != 0 {
+		rels, err = filterReleases(req.GetFilter(), rels)
+		if err != nil {
+			return nil, err
+		}
+	}
+	switch req.GetSortBy() {
+	case services.ListSort_NAME:
+		relutil.SortByName(rels)
+	case services.ListSort_LAST_RELEASED:
+		relutil.SortByDate(rels)
+	}
+
+	if req.GetSortOrder() == services.ListSort_DESC {
+		ll := len(rels)
+		rr := make([]*release.Release, ll)
+		for i, item := range rels {
+			rr[ll-i-1] = item
+		}
+		rels = rr
+	}
+	return rels, nil
 }
 
 func filterByNamespace(namespace string, rels []*release.Release) ([]*release.Release, error) {
