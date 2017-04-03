@@ -1,5 +1,5 @@
-hash: 0d1c5b7304a853820dcaa296d3aa1f5f3466a8491dcef80cbcaf43c954acb2a8
-updated: 2017-03-20T15:26:55.446524716-07:00
+hash: df0fa621e6a6f80dbfeb815d9d8aa308c50346a9821e401b19b6f10782da3774
+updated: 2017-04-03T17:00:07.670429885-06:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -99,7 +99,7 @@ imports:
 - name: github.com/facebookgo/symwalk
   version: 42004b9f322246749dd73ad71008b1f3160c0052
 - name: github.com/ghodss/yaml
-  version: 04f313413ffd65ce25f2541bfd2b2ceec5c0908c
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -182,11 +182,11 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/Masterminds/semver
-  version: 59c29afe1a994eacb71c833025ca7acf874bb1da
+  version: 3f0ab6d4ab4bed1c61caf056b63a6e62190c7801
 - name: github.com/Masterminds/sprig
   version: 23597e5f6ad0e4d590e71314bfd0251a4a3cf849
 - name: github.com/mattn/go-runewidth
-  version: 14207d285c6c197daabb5c9793d63e7af9ab2d50
+  version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/mitchellh/go-wordwrap
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/naoina/go-stringutil
@@ -216,7 +216,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/technosophos/moniker
-  version: ab470f5e105a44d0c87ea21bacd6a335c4816d83
+  version: 9f956786b91d9786ca11aa5be6104542fa911546
 - name: github.com/ugorji/go
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:
@@ -298,9 +298,9 @@ imports:
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
-  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/kubernetes
-  version: 00a1fb254bd8e5235575fba1398b958943e39078
+  version: ea8f6637b639246faa14a8d5c6f864100fcb77a9
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - cmd/kubeadm/app/apis/kubeadm/install
@@ -510,5 +510,3 @@ testImports:
   version: e3a8ff8ce36581f87a15341206f205b1da467059
   subpackages:
   - assert
-  - mock
-  - require
