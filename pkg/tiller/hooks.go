@@ -111,9 +111,8 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			continue
 		}
 
-		hw := 0
 		hws, _ := sh.Metadata.Annotations[hooks.HookWeightAnno]
-		hw, err = strconv.Atoi(hws)
+		hw, err := strconv.Atoi(hws)
 		if err != nil {
 			hw = 0
 		}
