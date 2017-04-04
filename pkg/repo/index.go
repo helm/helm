@@ -243,6 +243,7 @@ func loadIndex(data []byte) (*IndexFile, error) {
 	if err := yaml.Unmarshal(data, i); err != nil {
 		return i, err
 	}
+	i.SortEntries()
 	if i.APIVersion == "" {
 		// When we leave Beta, we should remove legacy support and just
 		// return this error:

@@ -48,14 +48,16 @@ Versioned chart archives are used by Helm package repositories.
 `
 
 type packageCmd struct {
-	save    bool
-	sign    bool
-	path    string
-	key     string
-	keyring string
-	version string
-	out     io.Writer
-	home    helmpath.Home
+	save        bool
+	sign        bool
+	path        string
+	key         string
+	keyring     string
+	version     string
+	destination string
+
+	out  io.Writer
+	home helmpath.Home
 }
 
 func newPackageCmd(out io.Writer) *cobra.Command {
@@ -96,6 +98,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&pkg.key, "key", "", "name of the key to use when signing. Used if --sign is true")
 	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
 	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
+	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
 
 	return cmd
 }
@@ -129,12 +132,19 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		checkDependencies(ch, reqs, p.out)
 	}
 
-	// Save to the current working directory.
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
+	var dest string
+	if p.destination == "." {
+		// Save to the current working directory.
+		dest, err = os.Getwd()
+		if err != nil {
+			return err
+		}
+	} else {
+		// Otherwise save to set destination
+		dest = p.destination
 	}
-	name, err := chartutil.Save(ch, cwd)
+
+	name, err := chartutil.Save(ch, dest)
 	if err == nil && flagDebug {
 		fmt.Fprintf(p.out, "Saved %s to current directory\n", name)
 	}

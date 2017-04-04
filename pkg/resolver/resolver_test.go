@@ -81,12 +81,12 @@ func TestResolve(t *testing.T) {
 			name: "repo from valid local path",
 			req: &chartutil.Requirements{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "signtest", Repository: "file://../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},
 			},
 			expect: &chartutil.RequirementsLock{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "signtest", Repository: "file://../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},
 			},
 		},
@@ -104,7 +104,12 @@ func TestResolve(t *testing.T) {
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
 	r := New("testdata/chartpath", "testdata/helmhome")
 	for _, tt := range tests {
-		l, err := r.Resolve(tt.req, repoNames)
+		hash, err := HashReq(tt.req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		l, err := r.Resolve(tt.req, repoNames, hash)
 		if err != nil {
 			if tt.err {
 				continue
@@ -141,7 +146,7 @@ func TestResolve(t *testing.T) {
 }
 
 func TestHashReq(t *testing.T) {
-	expect := "sha256:c8250374210bd909cef274be64f871bd4e376d4ecd34a1589b5abf90b68866ba"
+	expect := "sha256:1feffe2016ca113f64159d91c1f77d6a83bcd23510b171d9264741bf9d63f741"
 	req := &chartutil.Requirements{
 		Dependencies: []*chartutil.Dependency{
 			{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},

@@ -17,7 +17,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
-	"fmt"
+	"io/ioutil"
 
 	"github.com/ghodss/yaml"
 
@@ -28,21 +28,22 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	extensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
 	"k8s.io/kubernetes/pkg/util/intstr"
-
-	"k8s.io/helm/pkg/version"
 )
-
-const defaultImage = "gcr.io/kubernetes-helm/tiller"
 
 // Install uses kubernetes client to install tiller.
 //
 // Returns an error if the command failed.
 func Install(client internalclientset.Interface, opts *Options) error {
-	if err := createDeployment(client.Extensions(), opts.Namespace, opts.ImageSpec, opts.UseCanary); err != nil {
+	if err := createDeployment(client.Extensions(), opts); err != nil {
 		return err
 	}
 	if err := createService(client.Core(), opts.Namespace); err != nil {
 		return err
+	}
+	if opts.tls() {
+		if err := createSecret(client.Core(), opts); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -55,7 +56,7 @@ func Upgrade(client internalclientset.Interface, opts *Options) error {
 	if err != nil {
 		return err
 	}
-	obj.Spec.Template.Spec.Containers[0].Image = selectImage(opts.ImageSpec, opts.UseCanary)
+	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
 	if _, err := client.Extensions().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
@@ -73,15 +74,15 @@ func Upgrade(client internalclientset.Interface, opts *Options) error {
 }
 
 // createDeployment creates the Tiller deployment reource
-func createDeployment(client extensionsclient.DeploymentsGetter, namespace, image string, canary bool) error {
-	obj := deployment(namespace, image, canary)
+func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) error {
+	obj := deployment(opts)
 	_, err := client.Deployments(obj.Namespace).Create(obj)
 	return err
 }
 
 // deployment gets the deployment object that installs Tiller.
-func deployment(namespace, image string, canary bool) *extensions.Deployment {
-	return generateDeployment(namespace, selectImage(image, canary))
+func deployment(opts *Options) *extensions.Deployment {
+	return generateDeployment(opts)
 }
 
 // createService creates the Tiller service resource
@@ -96,21 +97,10 @@ func service(namespace string) *api.Service {
 	return generateService(namespace)
 }
 
-func selectImage(image string, canary bool) string {
-	switch {
-	case canary:
-		image = defaultImage + ":canary"
-	case image == "":
-		image = fmt.Sprintf("%s:%s", defaultImage, version.Version)
-	}
-	return image
-}
-
 // DeploymentManifest gets the manifest (as a string) that describes the Tiller Deployment
 // resource.
-func DeploymentManifest(namespace, image string, canary bool) (string, error) {
-	obj := deployment(namespace, image, canary)
-
+func DeploymentManifest(opts *Options) (string, error) {
+	obj := deployment(opts)
 	buf, err := yaml.Marshal(obj)
 	return string(buf), err
 }
@@ -129,11 +119,11 @@ func generateLabels(labels map[string]string) map[string]string {
 	return labels
 }
 
-func generateDeployment(namespace, image string) *extensions.Deployment {
+func generateDeployment(opts *Options) *extensions.Deployment {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	d := &extensions.Deployment{
 		ObjectMeta: api.ObjectMeta{
-			Namespace: namespace,
+			Namespace: opts.Namespace,
 			Name:      "tiller-deploy",
 			Labels:    labels,
 		},
@@ -147,13 +137,13 @@ func generateDeployment(namespace, image string) *extensions.Deployment {
 					Containers: []api.Container{
 						{
 							Name:            "tiller",
-							Image:           image,
+							Image:           opts.selectImage(),
 							ImagePullPolicy: "IfNotPresent",
 							Ports: []api.ContainerPort{
 								{ContainerPort: 44134, Name: "tiller"},
 							},
 							Env: []api.EnvVar{
-								{Name: "TILLER_NAMESPACE", Value: namespace},
+								{Name: "TILLER_NAMESPACE", Value: opts.Namespace},
 							},
 							LivenessProbe: &api.Probe{
 								Handler: api.Handler{
@@ -181,6 +171,37 @@ func generateDeployment(namespace, image string) *extensions.Deployment {
 			},
 		},
 	}
+
+	if opts.tls() {
+		const certsDir = "/etc/certs"
+
+		var tlsVerify, tlsEnable = "", "1"
+		if opts.VerifyTLS {
+			tlsVerify = "1"
+		}
+
+		// Mount secret to "/etc/certs"
+		d.Spec.Template.Spec.Containers[0].VolumeMounts = append(d.Spec.Template.Spec.Containers[0].VolumeMounts, api.VolumeMount{
+			Name:      "tiller-certs",
+			ReadOnly:  true,
+			MountPath: certsDir,
+		})
+		// Add environment variable required for enabling TLS
+		d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, []api.EnvVar{
+			{Name: "TILLER_TLS_VERIFY", Value: tlsVerify},
+			{Name: "TILLER_TLS_ENABLE", Value: tlsEnable},
+			{Name: "TILLER_TLS_CERTS", Value: certsDir},
+		}...)
+		// Add secret volume to deployment
+		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, api.Volume{
+			Name: "tiller-certs",
+			VolumeSource: api.VolumeSource{
+				Secret: &api.SecretVolumeSource{
+					SecretName: "tiller-secret",
+				},
+			},
+		})
+	}
 	return d
 }
 
@@ -206,3 +227,54 @@ func generateService(namespace string) *api.Service {
 	}
 	return s
 }
+
+// SecretManifest gets the manifest (as a string) that describes the Tiller Secret resource.
+func SecretManifest(opts *Options) (string, error) {
+	o, err := generateSecret(opts)
+	if err != nil {
+		return "", err
+	}
+	buf, err := yaml.Marshal(o)
+	return string(buf), err
+}
+
+// createSecret creates the Tiller secret resource.
+func createSecret(client internalversion.SecretsGetter, opts *Options) error {
+	o, err := generateSecret(opts)
+	if err != nil {
+		return err
+	}
+	_, err = client.Secrets(o.Namespace).Create(o)
+	return err
+}
+
+// generateSecret builds the secret object that hold Tiller secrets.
+func generateSecret(opts *Options) (*api.Secret, error) {
+	const secretName = "tiller-secret"
+
+	labels := generateLabels(map[string]string{"name": "tiller"})
+	secret := &api.Secret{
+		Type: api.SecretTypeOpaque,
+		Data: make(map[string][]byte),
+		ObjectMeta: api.ObjectMeta{
+			Name:      secretName,
+			Labels:    labels,
+			Namespace: opts.Namespace,
+		},
+	}
+	var err error
+	if secret.Data["tls.key"], err = read(opts.TLSKeyFile); err != nil {
+		return nil, err
+	}
+	if secret.Data["tls.crt"], err = read(opts.TLSCertFile); err != nil {
+		return nil, err
+	}
+	if opts.VerifyTLS {
+		if secret.Data["ca.crt"], err = read(opts.TLSCaCertFile); err != nil {
+			return nil, err
+		}
+	}
+	return secret, nil
+}
+
+func read(path string) (b []byte, err error) { return ioutil.ReadFile(path) }

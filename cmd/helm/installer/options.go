@@ -16,6 +16,13 @@ limitations under the License.
 
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
+import (
+	"fmt"
+	"k8s.io/helm/pkg/version"
+)
+
+const defaultImage = "gcr.io/kubernetes-helm/tiller"
+
 // Options control how to install tiller into a cluster, upgrade, and uninstall tiller from a cluster.
 type Options struct {
 	// EnableTLS instructs tiller to serve with TLS enabled.
@@ -43,7 +50,7 @@ type Options struct {
 	// key tiller should use.
 	//
 	// Required and valid if and only if EnableTLS or VerifyTLS is set.
-	TLSKey string
+	TLSKeyFile string
 
 	// TLSCertFile identifies the file containing the pem encoded TLS
 	// certificate tiller should use.
@@ -57,3 +64,16 @@ type Options struct {
 	// Required and valid if and only if VerifyTLS is set.
 	TLSCaCertFile string
 }
+
+func (opts *Options) selectImage() string {
+	switch {
+	case opts.UseCanary:
+		return defaultImage + ":canary"
+	case opts.ImageSpec == "":
+		return fmt.Sprintf("%s:%s", defaultImage, version.Version)
+	default:
+		return opts.ImageSpec
+	}
+}
+
+func (opts *Options) tls() bool { return opts.EnableTLS || opts.VerifyTLS }

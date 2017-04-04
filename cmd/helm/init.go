@@ -62,15 +62,17 @@ const (
 )
 
 type initCmd struct {
-	image      string
-	clientOnly bool
-	canary     bool
-	upgrade    bool
-	namespace  string
-	dryRun     bool
-	out        io.Writer
-	home       helmpath.Home
-	kubeClient internalclientset.Interface
+	image       string
+	clientOnly  bool
+	canary      bool
+	upgrade     bool
+	namespace   string
+	dryRun      bool
+	skipRefresh bool
+	out         io.Writer
+	home        helmpath.Home
+	opts        installer.Options
+	kubeClient  internalclientset.Interface
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -98,26 +100,106 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if tiller is already installed")
 	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
+	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
+
+	// f.BoolVar(&tlsEnable, "tiller-tls", false, "install tiller with TLS enabled")
+	// f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install tiller with TLS enabled and to verify remote certificates")
+	// f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with tiller")
+	// f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with tiller")
+	// f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
 
 	return cmd
 }
 
+// tlsOptions sanitizes the tls flags as well as checks for the existence of required
+// tls files indicated by those flags, if any.
+func (i *initCmd) tlsOptions() error {
+	i.opts.EnableTLS = tlsEnable || tlsVerify
+	i.opts.VerifyTLS = tlsVerify
+
+	if i.opts.EnableTLS {
+		missing := func(file string) bool {
+			_, err := os.Stat(file)
+			return os.IsNotExist(err)
+		}
+		if i.opts.TLSKeyFile = tlsKeyFile; i.opts.TLSKeyFile == "" || missing(i.opts.TLSKeyFile) {
+			return errors.New("missing required TLS key file")
+		}
+		if i.opts.TLSCertFile = tlsCertFile; i.opts.TLSCertFile == "" || missing(i.opts.TLSCertFile) {
+			return errors.New("missing required TLS certificate file")
+		}
+		if i.opts.VerifyTLS {
+			if i.opts.TLSCaCertFile = tlsCaCertFile; i.opts.TLSCaCertFile == "" || missing(i.opts.TLSCaCertFile) {
+				return errors.New("missing required TLS CA file")
+			}
+		}
+	}
+	return nil
+}
+
 // runInit initializes local config and installs tiller to Kubernetes Cluster
 func (i *initCmd) run() error {
-	if flagDebug {
-		dm, err := installer.DeploymentManifest(i.namespace, i.image, i.canary)
-		if err != nil {
-			return err
-		}
-		fm := fmt.Sprintf("apiVersion: extensions/v1beta1\nkind: Deployment\n%s", dm)
-		fmt.Fprintln(i.out, fm)
+	if err := i.tlsOptions(); err != nil {
+		return err
+	}
+	i.opts.Namespace = i.namespace
+	i.opts.UseCanary = i.canary
+	i.opts.ImageSpec = i.image
 
-		sm, err := installer.ServiceManifest(i.namespace)
-		if err != nil {
+	if flagDebug {
+		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
+			w := i.out
+			if !first {
+				// YAML starting document boundary marker
+				if _, err := fmt.Fprintln(w, "---"); err != nil {
+					return err
+				}
+			}
+			if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprint(w, body); err != nil {
+				return err
+			}
+			if !last {
+				return nil
+			}
+			// YAML ending document boundary marker
+			_, err := fmt.Fprintln(w, "...")
 			return err
 		}
-		fm = fmt.Sprintf("apiVersion: v1\nkind: Service\n%s", sm)
-		fmt.Fprintln(i.out, fm)
+
+		var body string
+		var err error
+
+		// write Deployment manifest
+		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
+			return err
+		}
+		if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
+			return err
+		}
+
+		// write Service manifest
+		if body, err = installer.ServiceManifest(i.namespace); err != nil {
+			return err
+		}
+		if err := writeYAMLManifest("v1", "Service", body, false, !i.opts.EnableTLS); err != nil {
+			return err
+		}
+
+		// write Secret manifest
+		if i.opts.EnableTLS {
+			if body, err = installer.SecretManifest(&i.opts); err != nil {
+				return err
+			}
+			if err := writeYAMLManifest("v1", "Secret", body, false, true); err != nil {
+				return err
+			}
+		}
 	}
 
 	if i.dryRun {
@@ -127,7 +209,7 @@ func (i *initCmd) run() error {
 	if err := ensureDirectories(i.home, i.out); err != nil {
 		return err
 	}
-	if err := ensureDefaultRepos(i.home, i.out); err != nil {
+	if err := ensureDefaultRepos(i.home, i.out, i.skipRefresh); err != nil {
 		return err
 	}
 	if err := ensureRepoFileFormat(i.home.RepositoryFile(), i.out); err != nil {
@@ -143,13 +225,12 @@ func (i *initCmd) run() error {
 			}
 			i.kubeClient = c
 		}
-		opts := &installer.Options{Namespace: i.namespace, ImageSpec: i.image, UseCanary: i.canary}
-		if err := installer.Install(i.kubeClient, opts); err != nil {
+		if err := installer.Install(i.kubeClient, &i.opts); err != nil {
 			if !kerrors.IsAlreadyExists(err) {
 				return fmt.Errorf("error installing: %s", err)
 			}
 			if i.upgrade {
-				if err := installer.Upgrade(i.kubeClient, opts); err != nil {
+				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
 				fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been upgraded to the current version.")
@@ -194,12 +275,12 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func ensureDefaultRepos(home helmpath.Home, out io.Writer) error {
+func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) error {
 	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository))
+		sr, err := initStableRepo(home.CacheIndex(stableRepository), skipRefresh)
 		if err != nil {
 			return err
 		}
@@ -218,7 +299,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func initStableRepo(cacheFile string) (*repo.Entry, error) {
+func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
 	c := repo.Entry{
 		Name:  stableRepository,
 		URL:   stableRepositoryURL,
@@ -227,6 +308,10 @@ func initStableRepo(cacheFile string) (*repo.Entry, error) {
 	r, err := repo.NewChartRepository(&c)
 	if err != nil {
 		return nil, err
+	}
+
+	if skipRefresh {
+		return &c, nil
 	}
 
 	// In this case, the cacheFile is always absolute. So passing empty string

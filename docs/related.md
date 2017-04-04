@@ -8,17 +8,20 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 ## Article, Blogs, How-Tos, and Extra Documentation
 - [Using Helm to Deploy to Kubernetes](https://daemonza.github.io/2017/02/20/using-helm-to-deploy-to-kubernetes/)
 - [Honestbee's Helm Chart Conventions](https://gist.github.com/so0k/f927a4b60003cedd101a0911757c605a)
+- [Deploying Kubernetes Applications with Helm](http://cloudacademy.com/blog/deploying-kubernetes-applications-with-helm/)
 - [Releasing backward-incompatible changes: Kubernetes, Jenkins, Prometheus Operator, Helm and Traefik](https://medium.com/@enxebre/releasing-backward-incompatible-changes-kubernetes-jenkins-plugin-prometheus-operator-helm-self-6263ca61a1b1#.e0c7elxhq)
 - [CI/CD with Kubernetes, Helm & Wercker ](http://www.slideshare.net/Diacode/cicd-with-kubernetes-helm-wercker-madscalability)
 - [The missing CI/CD Kubernetes component: Helm package manager](https://hackernoon.com/the-missing-ci-cd-kubernetes-component-helm-package-manager-1fe002aac680#.691sk2zhu)
-- [CI/CD with Jenkins, Kubernetes, and Helm](https://www.youtube.com/watch?v=NVoln4HdZOY)
 - [The Workflow "Umbrella" Helm Chart](https://deis.com/blog/2017/workflow-chart-assembly)
 - [GitLab, Consumer Driven Contracts, Helm and Kubernetes](https://medium.com/@enxebre/gitlab-consumer-driven-contracts-helm-and-kubernetes-b7235a60a1cb#.xwp1y4tgi)
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
+- [Creating a Helm Plugin in 3 Steps](http://technosophos.com/2017/03/21/creating-a-helm-plugin.html)
 
-## Videos
+## Video, Audio, and Podcast
 
+- [CI/CD with Jenkins, Kubernetes, and Helm](https://www.youtube.com/watch?v=NVoln4HdZOY): AKA "The Infamous Croc Hunter Video".
 - [KubeCon2016: Delivering Kubernetes-Native Applications by Michelle Noorali](https://www.youtube.com/watch?v=zBc1goRfk3k&index=49&list=PLj6h78yzYM2PqgIGU1Qmi8nY7dqn9PCr4)
+- [Helm with Michelle Noorali and Matthew Butcher](https://gcppodcast.com/post/episode-50-helm-with-michelle-noorali-and-matthew-butcher/): The official Google CloudPlatform Podcast interviews Michelle and Matt about Helm.
 
 ## Helm Plugins
 
@@ -32,6 +35,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 
 Tools layered on top of Helm or Tiller.
 
+- [Quay App Registry](https://coreos.com/blog/quay-application-registry-for-kubernetes.html) - Open Kubernetes application registry, including a Helm access client
 - [Chartify](https://github.com/appscode/chartify) - Generate Helm charts from existing Kubernetes resources.
 - [VIM-Kubernetes](https://github.com/andrewstuart/vim-kubernetes) - VIM plugin for Kubernetes and Helm
 - [Landscaper](https://github.com/Eneco/landscaper/) - "Landscaper takes a set of Helm Chart references with values (a desired state), and realizes this in a Kubernetes cluster."

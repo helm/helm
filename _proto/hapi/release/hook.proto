@@ -46,4 +46,6 @@ message Hook {
 	repeated Event events = 5;
 	// LastRun indicates the date/time this was last run.
 	google.protobuf.Timestamp last_run = 6;
+	// Weight indicates the sort order for execution among similar Hook type
+	int32 weight = 7;
 }

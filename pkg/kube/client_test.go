@@ -59,6 +59,7 @@ func newPodWithStatus(name string, status api.PodStatus, namespace string) api.P
 		ObjectMeta: api.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
+			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
 		},
 		Spec: api.PodSpec{
 			Containers: []api.Container{{
@@ -276,6 +277,49 @@ func TestBuild(t *testing.T) {
 		if len(infos) != tt.count {
 			t.Errorf("%q. expected %d result objects, got %d", tt.name, tt.count, len(infos))
 		}
+	}
+}
+
+func TestGet(t *testing.T) {
+	list := newPodList("starfish", "otter")
+	f, tf, _, ns := cmdtesting.NewAPIFactory()
+	tf.Client = &fake.RESTClient{
+		NegotiatedSerializer: ns,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			//actions = append(actions, p+":"+m)
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/starfish" && m == "GET":
+				return newResponse(404, notFoundBody())
+			case p == "/namespaces/default/pods/otter" && m == "GET":
+				return newResponse(200, &list.Items[1])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+	c := &Client{Factory: f}
+
+	// Test Success
+	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
+	o, err := c.Get("default", data)
+	if err != nil {
+		t.Errorf("Expected missing results, got %q", err)
+	}
+	if !strings.Contains(o, "==> v1/Pod") && !strings.Contains(o, "otter") {
+		t.Errorf("Expected v1/Pod otter, got %s", o)
+	}
+
+	// Test failure
+	data = strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: starfish")
+	o, err = c.Get("default", data)
+	if err != nil {
+		t.Errorf("Expected missing results, got %q", err)
+	}
+	if !strings.Contains(o, "MISSING") && !strings.Contains(o, "pods\t\tstarfish") {
+		t.Errorf("Expected missing starfish, got %s", o)
 	}
 }
 

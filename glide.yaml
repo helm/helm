@@ -12,7 +12,7 @@ import:
   version: ^2.10
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
-  version: ~1.2.2
+  version: ~1.2.3
 - package: github.com/technosophos/moniker
 - package: github.com/golang/protobuf
   version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e

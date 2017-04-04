@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"testing"
 
 	util "k8s.io/helm/pkg/releaseutil"
@@ -25,14 +26,34 @@ import (
 func TestKindSorter(t *testing.T) {
 	manifests := []manifest{
 		{
-			name:    "m",
+			name:    "i",
 			content: "",
-			head:    &util.SimpleHead{Kind: "Deployment"},
+			head:    &util.SimpleHead{Kind: "ClusterRole"},
 		},
 		{
-			name:    "l",
+			name:    "j",
 			content: "",
-			head:    &util.SimpleHead{Kind: "Service"},
+			head:    &util.SimpleHead{Kind: "ClusterRoleBinding"},
+		},
+		{
+			name:    "e",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ConfigMap"},
+		},
+		{
+			name:    "u",
+			content: "",
+			head:    &util.SimpleHead{Kind: "CronJob"},
+		},
+		{
+			name:    "n",
+			content: "",
+			head:    &util.SimpleHead{Kind: "DaemonSet"},
+		},
+		{
+			name:    "r",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Deployment"},
 		},
 		{
 			name:    "!",
@@ -40,35 +61,107 @@ func TestKindSorter(t *testing.T) {
 			head:    &util.SimpleHead{Kind: "HonkyTonkSet"},
 		},
 		{
-			name:    "h",
+			name:    "v",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Ingress"},
+		},
+		{
+			name:    "t",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Job"},
+		},
+		{
+			name:    "c",
+			content: "",
+			head:    &util.SimpleHead{Kind: "LimitRange"},
+		},
+		{
+			name:    "a",
 			content: "",
 			head:    &util.SimpleHead{Kind: "Namespace"},
 		},
 		{
-			name:    "e",
+			name:    "f",
 			content: "",
-			head:    &util.SimpleHead{Kind: "ConfigMap"},
+			head:    &util.SimpleHead{Kind: "PersistentVolume"},
+		},
+		{
+			name:    "g",
+			content: "",
+			head:    &util.SimpleHead{Kind: "PersistentVolumeClaim"},
+		},
+		{
+			name:    "o",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Pod"},
+		},
+		{
+			name:    "q",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ReplicaSet"},
+		},
+		{
+			name:    "p",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ReplicationController"},
+		},
+		{
+			name:    "b",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ResourceQuota"},
+		},
+		{
+			name:    "k",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Role"},
+		},
+		{
+			name:    "l",
+			content: "",
+			head:    &util.SimpleHead{Kind: "RoleBinding"},
+		},
+		{
+			name:    "d",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Secret"},
+		},
+		{
+			name:    "m",
+			content: "",
+			head:    &util.SimpleHead{Kind: "Service"},
+		},
+		{
+			name:    "h",
+			content: "",
+			head:    &util.SimpleHead{Kind: "ServiceAccount"},
+		},
+		{
+			name:    "s",
+			content: "",
+			head:    &util.SimpleHead{Kind: "StatefulSet"},
 		},
 	}
 
-	res := sortByKind(manifests, InstallOrder)
-	got := ""
-	expect := "helm!"
-	for _, r := range res {
-		got += r.name
+	for _, test := range []struct {
+		description string
+		order       SortOrder
+		expected    string
+	}{
+		{"install", InstallOrder, "abcdefghijklmnopqrstuv!"},
+		{"uninstall", UninstallOrder, "vmutsrqponlkjihgfedcba!"},
+	} {
+		var buf bytes.Buffer
+		t.Run(test.description, func(t *testing.T) {
+			if got, want := len(test.expected), len(manifests); got != want {
+				t.Fatalf("Expected %d names in order, got %d", want, got)
+			}
+			defer buf.Reset()
+			for _, r := range sortByKind(manifests, test.order) {
+				buf.WriteString(r.name)
+			}
+			if got := buf.String(); got != test.expected {
+				t.Errorf("Expected %q, got %q", test.expected, got)
+			}
+		})
 	}
-	if got != expect {
-		t.Errorf("Expected %q, got %q", expect, got)
-	}
-
-	expect = "lmeh!"
-	got = ""
-	res = sortByKind(manifests, UninstallOrder)
-	for _, r := range res {
-		got += r.name
-	}
-	if got != expect {
-		t.Errorf("Expected %q, got %q", expect, got)
-	}
-
 }

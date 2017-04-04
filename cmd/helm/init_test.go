@@ -156,13 +156,19 @@ func TestInitCmd_dryRun(t *testing.T) {
 	if err := cmd.run(); err != nil {
 		t.Fatal(err)
 	}
-	if len(fc.Actions()) != 0 {
-		t.Error("expected no server calls")
+	if got := len(fc.Actions()); got != 0 {
+		t.Errorf("expected no server calls, got %d", got)
 	}
 
-	var y map[string]interface{}
-	if err := yaml.Unmarshal(buf.Bytes(), &y); err != nil {
-		t.Errorf("Expected parseable YAML, got %q\n\t%s", buf.String(), err)
+	docs := bytes.Split(buf.Bytes(), []byte("\n---"))
+	if got, want := len(docs), 2; got != want {
+		t.Fatalf("Expected document count of %d, got %d", want, got)
+	}
+	for _, doc := range docs {
+		var y map[string]interface{}
+		if err := yaml.Unmarshal(doc, &y); err != nil {
+			t.Errorf("Expected parseable YAML, got %q\n\t%s", doc, err)
+		}
 	}
 }
 
@@ -179,7 +185,10 @@ func TestEnsureHome(t *testing.T) {
 	if err := ensureDirectories(hh, b); err != nil {
 		t.Error(err)
 	}
-	if err := ensureDefaultRepos(hh, b); err != nil {
+	if err := ensureDefaultRepos(hh, b, false); err != nil {
+		t.Error(err)
+	}
+	if err := ensureDefaultRepos(hh, b, true); err != nil {
 		t.Error(err)
 	}
 	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {

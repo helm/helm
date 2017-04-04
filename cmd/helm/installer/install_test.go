@@ -45,7 +45,7 @@ func TestDeploymentManifest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		o, err := DeploymentManifest(api.NamespaceDefault, tt.image, tt.canary)
+		o, err := DeploymentManifest(&Options{Namespace: api.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary})
 		if err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
@@ -146,7 +146,11 @@ func TestInstall_canary(t *testing.T) {
 func TestUpgrade(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
-	existingDeployment := deployment(api.NamespaceDefault, "imageToReplace", false)
+	existingDeployment := deployment(&Options{
+		Namespace: api.NamespaceDefault,
+		ImageSpec: "imageToReplace",
+		UseCanary: false,
+	})
 	existingService := service(api.NamespaceDefault)
 
 	fc := &fake.Clientset{}
@@ -178,7 +182,11 @@ func TestUpgrade(t *testing.T) {
 func TestUpgrade_serviceNotFound(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
-	existingDeployment := deployment(api.NamespaceDefault, "imageToReplace", false)
+	existingDeployment := deployment(&Options{
+		Namespace: api.NamespaceDefault,
+		ImageSpec: "imageToReplace",
+		UseCanary: false,
+	})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {

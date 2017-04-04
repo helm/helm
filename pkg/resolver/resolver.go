@@ -47,25 +47,15 @@ func New(chartpath string, helmhome helmpath.Home) *Resolver {
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]string) (*chartutil.RequirementsLock, error) {
-	d, err := HashReq(reqs)
-	if err != nil {
-		return nil, err
-	}
+func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]string, d string) (*chartutil.RequirementsLock, error) {
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chartutil.Dependency, len(reqs.Dependencies))
 	missing := []string{}
 	for i, d := range reqs.Dependencies {
 		if strings.HasPrefix(d.Repository, "file://") {
-			depPath, err := filepath.Abs(strings.TrimPrefix(d.Repository, "file://"))
-			if err != nil {
-				return nil, err
-			}
 
-			if _, err = os.Stat(depPath); os.IsNotExist(err) {
-				return nil, fmt.Errorf("directory %s not found", depPath)
-			} else if err != nil {
+			if _, err := GetLocalPath(d.Repository, r.chartpath); err != nil {
 				return nil, err
 			}
 
@@ -135,4 +125,29 @@ func HashReq(req *chartutil.Requirements) (string, error) {
 	}
 	s, err := provenance.Digest(bytes.NewBuffer(data))
 	return "sha256:" + s, err
+}
+
+// GetLocalPath generates absolute local path when use
+// "file://" in repository of requirements
+func GetLocalPath(repo string, chartpath string) (string, error) {
+	var depPath string
+	var err error
+	p := strings.TrimPrefix(repo, "file://")
+
+	// root path is absolute
+	if strings.HasPrefix(p, "/") {
+		if depPath, err = filepath.Abs(p); err != nil {
+			return "", err
+		}
+	} else {
+		depPath = filepath.Join(chartpath, p)
+	}
+
+	if _, err = os.Stat(depPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("directory %s not found", depPath)
+	} else if err != nil {
+		return "", err
+	}
+
+	return depPath, nil
 }

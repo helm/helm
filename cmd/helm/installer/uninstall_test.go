@@ -55,7 +55,11 @@ func (f *fakeReaperFactory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, e
 
 func TestUninstall(t *testing.T) {
 	existingService := service(api.NamespaceDefault)
-	existingDeployment := deployment(api.NamespaceDefault, "image", false)
+	existingDeployment := deployment(&Options{
+		Namespace: api.NamespaceDefault,
+		ImageSpec: "image",
+		UseCanary: false,
+	})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -92,7 +96,7 @@ func TestUninstall(t *testing.T) {
 }
 
 func TestUninstall_serviceNotFound(t *testing.T) {
-	existingDeployment := deployment(api.NamespaceDefault, "imageToReplace", false)
+	existingDeployment := deployment(&Options{Namespace: api.NamespaceDefault, ImageSpec: "imageToReplace", UseCanary: false})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
