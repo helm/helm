@@ -34,10 +34,12 @@ import (
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
+	ext "k8s.io/kubernetes/pkg/apis/extensions"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -57,6 +59,12 @@ type Client struct {
 	cmdutil.Factory
 	// SchemaCacheDir is the path for loading cached schema.
 	SchemaCacheDir string
+}
+
+// deployment holds associated replicaSets for a deployment
+type deployment struct {
+	replicaSets *ext.ReplicaSet
+	deployment  *ext.Deployment
 }
 
 // New create a new Client
@@ -550,6 +558,15 @@ func volumesReady(vols []api.PersistentVolumeClaim) bool {
 	return true
 }
 
+func deploymentsReady(deployments []deployment) bool {
+	for _, v := range deployments {
+		if !(v.replicaSets.Status.ReadyReplicas >= v.deployment.Spec.Replicas-deploymentutil.MaxUnavailable(*v.deployment)) {
+			return false
+		}
+	}
+	return true
+}
+
 func getPods(client *internalclientset.Clientset, namespace string, selector map[string]string) ([]api.Pod, error) {
 	list, err := client.Pods(namespace).List(api.ListOptions{
 		FieldSelector: fields.Everything(),
@@ -578,6 +595,8 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		pods := []api.Pod{}
 		services := []api.Service{}
 		pvc := []api.PersistentVolumeClaim{}
+		replicaSets := []*ext.ReplicaSet{}
+		deployments := []deployment{}
 		for _, v := range created {
 			obj, err := c.AsVersionedObject(v.Object)
 			if err != nil && !runtime.IsNotRegisteredError(err) {
@@ -605,13 +624,25 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				if err != nil {
 					return false, err
 				}
-				for _, r := range rs.Items {
-					list, err := getPods(client, value.Namespace, r.Spec.Selector.MatchLabels)
-					if err != nil {
-						return false, err
-					}
-					pods = append(pods, list...)
+
+				for i := range rs.Items {
+					replicaSets = append(replicaSets, &rs.Items[i])
 				}
+
+				currentDeployment, err := client.Deployments(value.Namespace).Get(value.Name)
+				if err != nil {
+					return false, err
+				}
+				// Find RS associated with deployment
+				newReplicaSet, err := deploymentutil.FindNewReplicaSet(currentDeployment, replicaSets)
+				if err != nil {
+					return false, err
+				}
+				newDeployment := deployment{
+					newReplicaSet,
+					currentDeployment,
+				}
+				deployments = append(deployments, newDeployment)
 			case (*extensions.DaemonSet):
 				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
@@ -644,7 +675,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				services = append(services, *svc)
 			}
 		}
-		return podsReady(pods) && servicesReady(services) && volumesReady(pvc), nil
+		return podsReady(pods) && servicesReady(services) && volumesReady(pvc) && deploymentsReady(deployments), nil
 	})
 }
 
