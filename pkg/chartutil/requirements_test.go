@@ -18,6 +18,8 @@ import (
 	"sort"
 	"testing"
 
+	"strconv"
+
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -205,4 +207,115 @@ func extractCharts(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 		out = extractCharts(d, out)
 	}
 	return out
+}
+func TestProcessRequirementsImportValues(t *testing.T) {
+	c, err := Load("testdata/subpop")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
+	v := &chart.Config{Raw: ""}
+
+	e := make(map[string]string)
+
+	e["imported-chart1.SC1bool"] = "true"
+	e["imported-chart1.SC1float"] = "3.14"
+	e["imported-chart1.SC1int"] = "100"
+	e["imported-chart1.SC1string"] = "dollywood"
+	e["imported-chart1.SC1extra1"] = "11"
+	e["imported-chart1.SPextra1"] = "helm rocks"
+	e["imported-chart1.SC1extra1"] = "11"
+
+	e["imported-chartA.SCAbool"] = "false"
+	e["imported-chartA.SCAfloat"] = "3.1"
+	e["imported-chartA.SCAint"] = "55"
+	e["imported-chartA.SCAstring"] = "jabba"
+	e["imported-chartA.SPextra3"] = "1.337"
+	e["imported-chartA.SC1extra2"] = "1.337"
+	e["imported-chartA.SCAnested1.SCAnested2"] = "true"
+
+	e["imported-chartA-B.SCAbool"] = "false"
+	e["imported-chartA-B.SCAfloat"] = "3.1"
+	e["imported-chartA-B.SCAint"] = "55"
+	e["imported-chartA-B.SCAstring"] = "jabba"
+
+	e["imported-chartA-B.SCBbool"] = "true"
+	e["imported-chartA-B.SCBfloat"] = "7.77"
+	e["imported-chartA-B.SCBint"] = "33"
+	e["imported-chartA-B.SCBstring"] = "boba"
+	e["imported-chartA-B.SPextra5"] = "k8s"
+	e["imported-chartA-B.SC1extra5"] = "tiller"
+
+	e["overridden-chart1.SC1bool"] = "false"
+	e["overridden-chart1.SC1float"] = "3.141592"
+	e["overridden-chart1.SC1int"] = "99"
+	e["overridden-chart1.SC1string"] = "pollywog"
+	e["overridden-chart1.SPextra2"] = "42"
+
+	e["overridden-chartA.SCAbool"] = "true"
+	e["overridden-chartA.SCAfloat"] = "41.3"
+	e["overridden-chartA.SCAint"] = "808"
+	e["overridden-chartA.SCAstring"] = "jaberwocky"
+	e["overridden-chartA.SPextra4"] = "true"
+
+	e["overridden-chartA-B.SCAbool"] = "true"
+	e["overridden-chartA-B.SCAfloat"] = "41.3"
+	e["overridden-chartA-B.SCAint"] = "808"
+	e["overridden-chartA-B.SCAstring"] = "jaberwocky"
+	e["overridden-chartA-B.SCBbool"] = "false"
+	e["overridden-chartA-B.SCBfloat"] = "1.99"
+	e["overridden-chartA-B.SCBint"] = "77"
+	e["overridden-chartA-B.SCBstring"] = "jango"
+	e["overridden-chartA-B.SPextra6"] = "111"
+	e["overridden-chartA-B.SCAextra1"] = "23"
+	e["overridden-chartA-B.SCBextra1"] = "13"
+	e["overridden-chartA-B.SC1extra6"] = "77"
+
+	// `exports` style
+	e["SCBexported1B"] = "1965"
+	e["SC1extra7"] = "true"
+	e["SCBexported2A"] = "blaster"
+	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
+
+	verifyRequirementsImportValues(t, c, v, e)
+}
+func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Config, e map[string]string) {
+
+	err := ProcessRequirementsImportValues(c, v)
+	if err != nil {
+		t.Errorf("Error processing import values requirements %v", err)
+	}
+	cv := c.GetValues()
+	cc, err := ReadValues([]byte(cv.Raw))
+	if err != nil {
+		t.Errorf("Error reading import values %v", err)
+	}
+	for kk, vv := range e {
+		pv, err := cc.PathValue(kk)
+		if err != nil {
+			t.Fatalf("Error retrieving import values table %v %v", kk, err)
+			return
+		}
+
+		switch pv.(type) {
+		case float64:
+			s := strconv.FormatFloat(pv.(float64), 'f', -1, 64)
+			if s != vv {
+				t.Errorf("Failed to match imported float value %v with expected %v", s, vv)
+				return
+			}
+		case bool:
+			b := strconv.FormatBool(pv.(bool))
+			if b != vv {
+				t.Errorf("Failed to match imported bool value %v with expected %v", b, vv)
+				return
+			}
+		default:
+			if pv.(string) != vv {
+				t.Errorf("Failed to match imported string value %v with expected %v", pv, vv)
+				return
+			}
+		}
+
+	}
 }

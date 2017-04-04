@@ -62,6 +62,9 @@ type Dependency struct {
 	Tags []string `json:"tags"`
 	// Enabled bool determines if chart should be loaded
 	Enabled bool `json:"enabled"`
+	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
+	// string or pair of child/parent sublist items.
+	ImportValues []interface{} `json:"import-values"`
 }
 
 // ErrNoRequirementsFile to detect error condition
@@ -263,6 +266,131 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 		}
 	}
 	c.Dependencies = cd
+
+	return nil
+}
+
+// pathToMap creates a nested map given a YAML path in dot notation.
+func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
+	if path == "." {
+		return data
+	}
+	ap := strings.Split(path, ".")
+	if len(ap) == 0 {
+		return nil
+	}
+	n := []map[string]interface{}{}
+	// created nested map for each key, adding to slice
+	for _, v := range ap {
+		nm := make(map[string]interface{})
+		nm[v] = make(map[string]interface{})
+		n = append(n, nm)
+	}
+	// find the last key (map) and set our data
+	for i, d := range n {
+		for k := range d {
+			z := i + 1
+			if z == len(n) {
+				n[i][k] = data
+				break
+			}
+			n[i][k] = n[z]
+		}
+	}
+
+	return n[0]
+}
+
+// getParents returns a slice of parent charts in reverse order.
+func getParents(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
+	if len(out) == 0 {
+		out = []*chart.Chart{c}
+	}
+	for _, ch := range c.Dependencies {
+		if len(ch.Dependencies) > 0 {
+			out = append(out, ch)
+			out = getParents(ch, out)
+		}
+	}
+
+	return out
+}
+
+// processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
+func processImportValues(c *chart.Chart, v *chart.Config) error {
+	reqs, err := LoadRequirements(c)
+	if err != nil {
+		return err
+	}
+	// combine chart values and its dependencies' values
+	cvals, err := CoalesceValues(c, v)
+	if err != nil {
+		return err
+	}
+	nv := v.GetValues()
+	b := make(map[string]interface{}, len(nv))
+	// convert values to map
+	for kk, vvv := range nv {
+		b[kk] = vvv
+	}
+	// import values from each dependency if specified in import-values
+	for _, r := range reqs.Dependencies {
+		if len(r.ImportValues) > 0 {
+			var outiv []interface{}
+			for _, riv := range r.ImportValues {
+				switch iv := riv.(type) {
+				case map[string]interface{}:
+					nm := map[string]string{
+						"child":  iv["child"].(string),
+						"parent": iv["parent"].(string),
+					}
+					outiv = append(outiv, nm)
+					s := r.Name + "." + nm["child"]
+					// get child table
+					vv, err := cvals.Table(s)
+					if err != nil {
+						log.Printf("Warning: ImportValues missing table: %v", err)
+						continue
+					}
+					// create value map from child to be merged into parent
+					vm := pathToMap(nm["parent"], vv.AsMap())
+					b = coalesceTables(cvals, vm)
+				case string:
+					nm := map[string]string{
+						"child":  "exports." + iv,
+						"parent": ".",
+					}
+					outiv = append(outiv, nm)
+					s := r.Name + "." + nm["child"]
+					vm, err := cvals.Table(s)
+					if err != nil {
+						log.Printf("Warning: ImportValues missing table: %v", err)
+						continue
+					}
+					b = coalesceTables(b, vm.AsMap())
+				}
+			}
+			// set our formatted import values
+			r.ImportValues = outiv
+		}
+	}
+	b = coalesceTables(b, cvals)
+	y, err := yaml.Marshal(b)
+	if err != nil {
+		return err
+	}
+	// set the new values
+	c.Values.Raw = string(y)
+
+	return nil
+}
+
+// ProcessRequirementsImportValues imports specified chart values from child to parent.
+func ProcessRequirementsImportValues(c *chart.Chart, v *chart.Config) error {
+	pc := getParents(c, nil)
+	for i := len(pc) - 1; i >= 0; i-- {
+		processImportValues(pc[i], v)
+	}
 
 	return nil
 }
