@@ -74,15 +74,16 @@ func TestRequirementsTagsEnabledL1(t *testing.T) {
 
 	verifyRequirementsEnabled(t, c, v, e)
 }
+
 func TestRequirementsTagsDisabledL2(t *testing.T) {
 	c, err := Load("testdata/subpop")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	// tags disabling only children
+	// tags disabling only children, children still enabled since tag front-end=true in values.yaml
 	v := &chart.Config{Raw: "tags:\n  subcharta: false\n\n  subchartb: false\n"}
 	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1"}
+	e := []string{"parentchart", "subchart1", "subcharta", "subchartb"}
 
 	verifyRequirementsEnabled(t, c, v, e)
 }
@@ -115,10 +116,10 @@ func TestRequirementsConditionsEnabledL1Both(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	// conditions enabling the parent charts, effectively enabling children
+	// conditions enabling the parent charts, but back-end (b, c) is still disabled via values.yaml
 	v := &chart.Config{Raw: "subchart1:\n  enabled: true\nsubchart2:\n  enabled: true\n"}
 	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb", "subchartb", "subchartc"}
+	e := []string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb"}
 
 	verifyRequirementsEnabled(t, c, v, e)
 }

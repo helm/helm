@@ -236,10 +236,15 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	if err != nil {
 		return err
 	}
+	// convert our values back into config
+	yvals, err := cvals.YAML()
+	if err != nil {
+		return err
+	}
+	cc := chart.Config{Raw: yvals}
 	// flag dependencies as enabled/disabled
 	ProcessRequirementsTags(reqs, cvals)
 	ProcessRequirementsConditions(reqs, cvals)
-
 	// make a map of charts to remove
 	rm := map[string]bool{}
 	for _, r := range reqs.Dependencies {
@@ -259,7 +264,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	}
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
-		err := ProcessRequirementsEnabled(t, v)
+		err := ProcessRequirementsEnabled(t, &cc)
 		// if its not just missing requirements file, return error
 		if nerr, ok := err.(ErrNoRequirementsFile); !ok && err != nil {
 			return nerr
