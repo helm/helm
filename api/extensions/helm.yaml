@@ -1,0 +1,7 @@
+metadata:
+  name: release.helm.sh
+apiVersion: extensions/v1alpha1
+kind: ThirdPartyResource
+description: "A specification of Helm release"
+versions:
+  - name: v1alpha1
