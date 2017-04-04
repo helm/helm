@@ -62,16 +62,17 @@ const (
 )
 
 type initCmd struct {
-	image      string
-	clientOnly bool
-	canary     bool
-	upgrade    bool
-	namespace  string
-	dryRun     bool
-	out        io.Writer
-	home       helmpath.Home
-	opts       installer.Options
-	kubeClient internalclientset.Interface
+	image       string
+	clientOnly  bool
+	canary      bool
+	upgrade     bool
+	namespace   string
+	dryRun      bool
+	skipRefresh bool
+	out         io.Writer
+	home        helmpath.Home
+	opts        installer.Options
+	kubeClient  internalclientset.Interface
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -99,6 +100,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if tiller is already installed")
 	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
+	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 
 	// f.BoolVar(&tlsEnable, "tiller-tls", false, "install tiller with TLS enabled")
 	// f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install tiller with TLS enabled and to verify remote certificates")
@@ -207,7 +209,7 @@ func (i *initCmd) run() error {
 	if err := ensureDirectories(i.home, i.out); err != nil {
 		return err
 	}
-	if err := ensureDefaultRepos(i.home, i.out); err != nil {
+	if err := ensureDefaultRepos(i.home, i.out, i.skipRefresh); err != nil {
 		return err
 	}
 	if err := ensureRepoFileFormat(i.home.RepositoryFile(), i.out); err != nil {
@@ -273,12 +275,12 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func ensureDefaultRepos(home helmpath.Home, out io.Writer) error {
+func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) error {
 	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository))
+		sr, err := initStableRepo(home.CacheIndex(stableRepository), skipRefresh)
 		if err != nil {
 			return err
 		}
@@ -297,7 +299,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func initStableRepo(cacheFile string) (*repo.Entry, error) {
+func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
 	c := repo.Entry{
 		Name:  stableRepository,
 		URL:   stableRepositoryURL,
@@ -306,6 +308,10 @@ func initStableRepo(cacheFile string) (*repo.Entry, error) {
 	r, err := repo.NewChartRepository(&c)
 	if err != nil {
 		return nil, err
+	}
+
+	if skipRefresh {
+		return &c, nil
 	}
 
 	// In this case, the cacheFile is always absolute. So passing empty string
