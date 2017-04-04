@@ -123,7 +123,7 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			Path:     n,
 			Manifest: c,
 			Events:   []release.Hook_Event{},
-			Weight:   hw,
+			Weight:   int32(hw),
 		}
 
 		isHook := false
