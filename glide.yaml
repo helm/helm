@@ -43,6 +43,8 @@ import:
 - package: github.com/naoina/go-stringutil
   version: ~0.1.0
 - package: github.com/chai2010/gettext-go
+- package: github.com/prometheus/client_golang
+  version: v0.8.0
 testImports:
 - package: github.com/stretchr/testify
   version: ^1.1.4

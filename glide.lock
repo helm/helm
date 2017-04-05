@@ -1,6 +1,8 @@
-hash: 49990f9ca1f3798070c44afc1c35657422125d3a03948856cc5f644020b1e3c2
-updated: 2017-04-07T12:07:21.608950484-07:00
+hash: 59f320c07649cfd057b84f1044074670230fa3ca27b32632eb77a16a972adc8e
+updated: 2017-04-13T09:30:07.067775284+06:00
 imports:
+- name: bitbucket.org/ww/goautoneg
+  version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
@@ -14,8 +16,12 @@ imports:
   version: 70b2c90b260171e829f1ebd7c17f600c11858dbe
   subpackages:
   - winterm
+- name: github.com/beorn7/perks
+  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
+  subpackages:
+  - quantile
 - name: github.com/chai2010/gettext-go
-  version: c6fed771bfd517099caf0f7a961671fa8ed08723
+  version: bf70f2a70fb1b1f36d90d671a72795984eab0fcb
 - name: github.com/coreos/go-oidc
   version: be73733bb8cc830d0205609b95d125215f8e9c70
   subpackages:
@@ -140,6 +146,8 @@ imports:
   subpackages:
   - util/strutil
   - util/wordwrap
+- name: github.com/grpc-ecosystem/go-grpc-prometheus
+  version: 34abd90a014618f61222a1b0a7b7eb834a2d0dc3
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
@@ -164,6 +172,10 @@ imports:
   version: 795e20f901c3d561de52811fb3488a2cb2c8588b
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
+  subpackages:
+  - pbutil
 - name: github.com/mitchellh/go-wordwrap
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/naoina/go-stringutil
@@ -174,6 +186,22 @@ imports:
   - ast
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- name: github.com/prometheus/client_golang
+  version: c5b7fccd204277076155f10851dad72b76a49317
+  subpackages:
+  - prometheus
+  - prometheus/promhttp
+- name: github.com/prometheus/client_model
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: ffe929a3f4c4faeaa10f2b9535c2b1be3ad15650
+  subpackages:
+  - expfmt
+  - model
+- name: github.com/prometheus/procfs
+  version: 454a56f35412459b5e684fd5ec0f9211b94f002a
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -281,7 +309,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: k8s.io/apimachinery
-  version: 20e10d54608f05c3059443a6c0afb9979641e88d
+  version: c1c4a7fe832857c75cc1d79c8e40d71d5da15fc6
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -333,7 +361,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: dcf548fbe26dacc3a78d18e1135adf17006552e9
+  version: 2308857ad3b8b18abf74ff734853973eda9da94d
   subpackages:
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
@@ -344,7 +372,7 @@ imports:
   - pkg/util/flag
   - pkg/util/wsstream
 - name: k8s.io/client-go
-  version: dabf37f5df16a224729883d9f616ce4a2c282e95
+  version: 5b0e11b577b35539f05523c47e94ed96a17f992b
   subpackages:
   - discovery
   - discovery/fake
@@ -439,7 +467,7 @@ imports:
   - util/integer
   - util/jsonpath
 - name: k8s.io/kubernetes
-  version: b0b7a323cc5a4a2019b2e9520c21c7830b7f708e
+  version: aaf9ea07f519a2c3f4769dc8d10b807ad1a8d279
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install
@@ -453,14 +481,11 @@ imports:
   - federation/client/clientset_generated/federation_internalclientset/typed/federation/internalversion
   - pkg/api
   - pkg/api/annotations
-  - pkg/api/errors
   - pkg/api/events
   - pkg/api/install
-  - pkg/api/meta
   - pkg/api/pod
   - pkg/api/service
   - pkg/api/testapi
-  - pkg/api/unversioned
   - pkg/api/util
   - pkg/api/v1
   - pkg/api/validation
@@ -575,18 +600,15 @@ imports:
   - pkg/kubelet/qos
   - pkg/kubelet/server/remotecommand
   - pkg/kubelet/types
-  - pkg/labels
   - pkg/master/ports
   - pkg/printers
   - pkg/printers/internalversion
-  - pkg/runtime
   - pkg/security/apparmor
   - pkg/serviceaccount
   - pkg/util
   - pkg/util/exec
   - pkg/util/hash
   - pkg/util/interrupt
-  - pkg/util/intstr
   - pkg/util/labels
   - pkg/util/net/sets
   - pkg/util/node

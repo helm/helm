@@ -42,3 +42,17 @@ func TestProbesServer(t *testing.T) {
 		t.Fatalf("GET /liveness returned status code %d, expected %d", resp.StatusCode, http.StatusOK)
 	}
 }
+
+func TestPrometheus(t *testing.T) {
+	mux := http.NewServeMux()
+	addPrometheusHandler(mux)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/metrics")
+	if err != nil {
+		t.Fatalf("GET /metrics returned an error (%s)", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /metrics returned status code %d, expected %d", resp.StatusCode, http.StatusOK)
+	}
+}

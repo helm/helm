@@ -18,6 +18,8 @@ package main
 
 import (
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func readinessProbe(w http.ResponseWriter, r *http.Request) {
@@ -33,4 +35,9 @@ func newProbesMux() *http.ServeMux {
 	mux.HandleFunc("/readiness", readinessProbe)
 	mux.HandleFunc("/liveness", livenessProbe)
 	return mux
+}
+
+func addPrometheusHandler(mux *http.ServeMux) {
+	// Register HTTP handler for the global Prometheus registry.
+	mux.Handle("/metrics", promhttp.Handler())
 }
