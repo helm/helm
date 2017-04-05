@@ -17,15 +17,20 @@ limitations under the License.
 package main // import "k8s.io/helm/cmd/tiller"
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -33,7 +38,19 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/tiller/environment"
+	"k8s.io/helm/pkg/tlsutil"
 	"k8s.io/helm/pkg/version"
+)
+
+const (
+	// tlsEnableEnvVar names the environment variable that enables TLS.
+	tlsEnableEnvVar = "TILLER_TLS_ENABLE"
+	// tlsVerifyEnvVar names the environment variable that enables
+	// TLS, as well as certificate verification of the remote.
+	tlsVerifyEnvVar = "TILLER_TLS_VERIFY"
+	// tlsCertsEnvVar names the environment variable that points to
+	// the directory where Tiller's TLS certificates are located.
+	tlsCertsEnvVar = "TILLER_TLS_CERTS"
 )
 
 const (
@@ -44,7 +61,7 @@ const (
 // rootServer is the root gRPC server.
 //
 // Each gRPC service registers itself to this server during init().
-var rootServer = tiller.NewServer()
+var rootServer *grpc.Server
 
 // env is the default environment.
 //
@@ -57,6 +74,14 @@ var (
 	traceAddr     = ":44136"
 	enableTracing = false
 	store         = storageConfigMap
+)
+
+var (
+	tlsEnable  bool
+	tlsVerify  bool
+	keyFile    string
+	certFile   string
+	caCertFile string
 )
 
 const globalUsage = `The Kubernetes Helm server.
@@ -83,6 +108,12 @@ func main() {
 	p.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
 	p.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
 
+	p.BoolVar(&tlsEnable, "tls", tlsEnableEnvVarDefault(), "enable TLS")
+	p.BoolVar(&tlsVerify, "tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
+	p.StringVar(&keyFile, "tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
+	p.StringVar(&certFile, "tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
+	p.StringVar(&caCertFile, "tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
+
 	if err := rootCommand.Execute(); err != nil {
 		fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
@@ -103,13 +134,33 @@ func start(c *cobra.Command, args []string) {
 		env.Releases = storage.Init(driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace())))
 	}
 
+	if tlsEnable || tlsVerify {
+		opts := tlsutil.Options{CertFile: certFile, KeyFile: keyFile}
+		if tlsVerify {
+			opts.CaCertFile = caCertFile
+		}
+
+	}
+
+	var opts []grpc.ServerOption
+	if tlsEnable || tlsVerify {
+		cfg, err := tlsutil.ServerConfig(tlsOptions())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not create server TLS configuration: %v\n", err)
+			os.Exit(1)
+		}
+		opts = append(opts, grpc.Creds(credentials.NewTLS(cfg)))
+	}
+
+	rootServer = tiller.NewServer(opts...)
+
 	lstn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Starting Tiller %s\n", version.GetVersion())
+	fmt.Printf("Starting Tiller %s (tls=%t)\n", version.GetVersion(), tlsEnable || tlsVerify)
 	fmt.Printf("GRPC listening on %s\n", grpcAddr)
 	fmt.Printf("Probes listening on %s\n", probeAddr)
 	fmt.Printf("Storage driver is %s\n", env.Releases.Name())
@@ -159,3 +210,27 @@ func namespace() string {
 
 	return environment.DefaultTillerNamespace
 }
+
+func tlsOptions() tlsutil.Options {
+	opts := tlsutil.Options{CertFile: certFile, KeyFile: keyFile}
+	if tlsVerify {
+		opts.CaCertFile = caCertFile
+		opts.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+	return opts
+}
+
+func tlsDefaultsFromEnv(name string) (value string) {
+	switch certsDir := os.Getenv(tlsCertsEnvVar); name {
+	case "tls-key":
+		return filepath.Join(certsDir, "tls.key")
+	case "tls-cert":
+		return filepath.Join(certsDir, "tls.crt")
+	case "tls-ca-cert":
+		return filepath.Join(certsDir, "ca.crt")
+	}
+	return ""
+}
+
+func tlsEnableEnvVarDefault() bool { return os.Getenv(tlsEnableEnvVar) != "" }
+func tlsVerifyEnvVarDefault() bool { return os.Getenv(tlsVerifyEnvVar) != "" }

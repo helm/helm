@@ -102,11 +102,11 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 
-	// f.BoolVar(&tlsEnable, "tiller-tls", false, "install tiller with TLS enabled")
-	// f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install tiller with TLS enabled and to verify remote certificates")
-	// f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with tiller")
-	// f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with tiller")
-	// f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
+	f.BoolVar(&tlsEnable, "tiller-tls", false, "install tiller with TLS enabled")
+	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install tiller with TLS enabled and to verify remote certificates")
+	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with tiller")
+	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with tiller")
+	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
 
 	return cmd
 }
