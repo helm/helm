@@ -33,7 +33,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -93,7 +92,9 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 	if useRemote {
 		releaseModule = &RemoteReleaseModule{}
 	} else {
-		releaseModule = &LocalReleaseModule{}
+		releaseModule = &LocalReleaseModule{
+			clientset: clientset,
+		}
 	}
 
 	return &ReleaseServer{
@@ -681,7 +682,7 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 	if err != nil {
 		return nil, err
 	}
-	vs, err := getVersionSet(disc)
+	vs, err := GetVersionSet(disc)
 	if err != nil {
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
@@ -769,7 +770,8 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, err
 }
 
-func getVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
+// GetVersionSet retrieves a set of available k8s API versions
+func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
 	groups, err := client.ServerGroups()
 	if err != nil {
 		return chartutil.DefaultVersionSet, err
@@ -1050,47 +1052,19 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	vs, err := getVersionSet(s.clientset.Discovery())
-	if err != nil {
-		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
-	}
-
 	// From here on out, the release is currently considered to be in Status_DELETING
 	// state.
 	if err := s.env.Releases.Update(rel); err != nil {
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
-	manifests := relutil.SplitManifests(rel.Manifest)
-	_, files, err := sortManifests(manifests, vs, UninstallOrder)
-	if err != nil {
-		// We could instead just delete everything in no particular order.
-		// FIXME: One way to delete at this point would be to try a label-based
-		// deletion. The problem with this is that we could get a false positive
-		// and delete something that was not legitimately part of this release.
-		return nil, fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)
-	}
+	kept, errs := s.ReleaseModule.Delete(rel, req, s.env)
+	res.Info = kept
 
-	filesToKeep, filesToDelete := filterManifestsToKeep(files)
-	if len(filesToKeep) > 0 {
-		res.Info = summarizeKeptManifests(filesToKeep)
-	}
-
-	// Collect the errors, and return them later.
-	es := []string{}
-	for _, file := range filesToDelete {
-		b := bytes.NewBufferString(strings.TrimSpace(file.content))
-		if b.Len() == 0 {
-			continue
-		}
-		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
-			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
-			if err == kube.ErrNoObjectsVisited {
-				// Rewrite the message from "no objects visited"
-				err = errors.New("object not found, skipping delete")
-			}
-			es = append(es, err.Error())
-		}
+	es := make([]string, 0, len(errs))
+	for _, e := range errs {
+		log.Printf("error: %v", e)
+		es = append(es, e.Error())
 	}
 
 	if !req.DisableHooks {

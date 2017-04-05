@@ -18,10 +18,19 @@ package tiller
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"log"
+	"strings"
 
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/rudder"
 	"k8s.io/helm/pkg/tiller/environment"
 )
@@ -32,10 +41,13 @@ type ReleaseModule interface {
 	Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error
 	Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error
 	Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error)
+	Delete(r *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (string, []error)
 }
 
 // LocalReleaseModule is a local implementation of ReleaseModule
-type LocalReleaseModule struct{}
+type LocalReleaseModule struct {
+	clientset internalclientset.Interface
+}
 
 // Create creates a release via kubeclient from provided environment
 func (m *LocalReleaseModule) Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error {
@@ -57,6 +69,15 @@ func (m *LocalReleaseModule) Rollback(current, target *release.Release, req *ser
 
 func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
 	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
+}
+
+// Delete deletes the release and returns manifests that were kept in the deletion process
+func (m *LocalReleaseModule) Delete(rel *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (kept string, errs []error) {
+	vs, err := GetVersionSet(m.clientset.Discovery())
+	if err != nil {
+		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}
+	}
+	return DeleteRelease(rel, vs, env.KubeClient)
 }
 
 // RemoteReleaseModule is a ReleaseModule which calls Rudder service to operate on a release
@@ -99,4 +120,49 @@ func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleas
 	statusRequest := &rudderAPI.ReleaseStatusRequest{Release: r}
 	resp, err := rudder.ReleaseStatus(statusRequest)
 	return resp.Info.Status.Resources, err
+}
+
+// Delete calls rudder.DeleteRelease
+func (m *RemoteReleaseModule) Delete(r *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (string, []error) {
+	deleteRequest := &rudderAPI.DeleteReleaseRequest{Release: r}
+	resp, err := rudder.DeleteRelease(deleteRequest)
+	if err != nil {
+		return resp.Release.Manifest, []error{err}
+	}
+	return resp.Release.Manifest, []error{}
+}
+
+// DeleteRelease is a helper that allows Rudder to delete a release without exposing most of Tiller inner functions
+func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient environment.KubeClient) (kept string, errs []error) {
+	manifests := relutil.SplitManifests(rel.Manifest)
+	_, files, err := sortManifests(manifests, vs, UninstallOrder)
+	if err != nil {
+		// We could instead just delete everything in no particular order.
+		// FIXME: One way to delete at this point would be to try a label-based
+		// deletion. The problem with this is that we could get a false positive
+		// and delete something that was not legitimately part of this release.
+		return rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)}
+	}
+
+	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	if len(filesToKeep) > 0 {
+		kept = summarizeKeptManifests(filesToKeep)
+	}
+
+	errs = []error{}
+	for _, file := range filesToDelete {
+		b := bytes.NewBufferString(strings.TrimSpace(file.content))
+		if b.Len() == 0 {
+			continue
+		}
+		if err := kubeClient.Delete(rel.Namespace, b); err != nil {
+			log.Printf("uninstall: Failed deletion of %q: %s", rel.Name, err)
+			if err == kube.ErrNoObjectsVisited {
+				// Rewrite the message from "no objects visited"
+				err = errors.New("object not found, skipping delete")
+			}
+			errs = append(errs, err)
+		}
+	}
+	return kept, errs
 }

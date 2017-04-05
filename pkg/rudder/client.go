@@ -77,3 +77,15 @@ func ReleaseStatus(req *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatu
 	client := rudderAPI.NewReleaseModuleServiceClient(conn)
 	return client.ReleaseStatus(context.Background(), req)
 }
+
+// DeleteRelease calls Rudder DeleteRelease method which should uninstall provided release
+func DeleteRelease(rel *rudderAPI.DeleteReleaseRequest) (*rudderAPI.DeleteReleaseResponse, error) {
+	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+
+	defer conn.Close()
+	client := rudderAPI.NewReleaseModuleServiceClient(conn)
+	return client.DeleteRelease(context.Background(), rel)
+}

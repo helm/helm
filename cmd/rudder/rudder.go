@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "k8s.io/helm/cmd/rudder"
+package main
 
 import (
 	"bytes"
@@ -24,16 +24,26 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/pkg/kube"
 	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
 	"k8s.io/helm/pkg/rudder"
+	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/version"
 )
 
-var kubeClient = kube.New(nil)
+var kubeClient *kube.Client
+var clientset internalclientset.Interface
 
 func main() {
+	var err error
+	kubeClient = kube.New(nil)
+	clientset, err = kubeClient.ClientSet()
+	if err != nil {
+		grpclog.Fatalf("Cannot initialize Kubernetes connection: %s", err)
+	}
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", rudder.GrpcPort))
 	if err != nil {
 		grpclog.Fatalf("failed to listen: %v", err)
@@ -64,18 +74,42 @@ func (r *ReleaseModuleServiceServer) InstallRelease(ctx context.Context, in *rud
 	b := bytes.NewBufferString(in.Release.Manifest)
 	err := kubeClient.Create(in.Release.Namespace, b, 500, false)
 	if err != nil {
-		grpclog.Printf("error when creating release: %s", err)
+		grpclog.Printf("error when creating release: %v", err)
 	}
 	return &rudderAPI.InstallReleaseResponse{}, err
 }
 
-// DeleteRelease is not implemented
+// DeleteRelease deletes a provided release
 func (r *ReleaseModuleServiceServer) DeleteRelease(ctx context.Context, in *rudderAPI.DeleteReleaseRequest) (*rudderAPI.DeleteReleaseResponse, error) {
 	grpclog.Print("delete")
-	return nil, nil
+
+	resp := &rudderAPI.DeleteReleaseResponse{}
+	rel := in.Release
+	vs, err := tiller.GetVersionSet(clientset.Discovery())
+	if err != nil {
+		return resp, fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)
+	}
+
+	kept, errs := tiller.DeleteRelease(rel, vs, kubeClient)
+	rel.Manifest = kept
+
+	allErrors := ""
+	for _, e := range errs {
+		allErrors = allErrors + "\n" + e.Error()
+	}
+
+	if len(allErrors) > 0 {
+		err = fmt.Errorf(allErrors)
+	} else {
+		err = nil
+	}
+
+	return &rudderAPI.DeleteReleaseResponse{
+		Release: rel,
+	}, err
 }
 
-// RollbackRelease is not implemented
+// RollbackRelease rolls back the release
 func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *rudderAPI.RollbackReleaseRequest) (*rudderAPI.RollbackReleaseResponse, error) {
 	grpclog.Print("rollback")
 	c := bytes.NewBufferString(in.Current.Manifest)
