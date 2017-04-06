@@ -33,6 +33,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
 - [helm-last](https://github.com/adamreese/helm-last) - Plugin to show the latest release
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
+- [App Registry](https://github.com/app-registry/helm-plugin) - Plugin to manage charts via the [App Registry specification](https://github.com/app-registry/spec)
 
 ## Additional Tools
 
