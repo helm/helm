@@ -41,3 +41,26 @@ func TestIsCompatible(t *testing.T) {
 		}
 	}
 }
+
+func TestIsCompatibleRange(t *testing.T) {
+	tests := []struct {
+		constraint string
+		ver        string
+		expected   bool
+	}{
+		{"v2.0.0-alpha.4", "v2.0.0-alpha.4", true},
+		{"v2.0.0-alpha.3", "v2.0.0-alpha.4", false},
+		{"v2.0.0", "v2.0.0-alpha.4", false},
+		{"v2.0.0-alpha.4", "v2.0.0", false},
+		{"~v2.0.0", "v2.0.1", true},
+		{"v2", "v2.0.0", true},
+		{">2.0.0", "v2.1.1", true},
+		{"v2.1.*", "v2.1.1", true},
+	}
+
+	for _, tt := range tests {
+		if IsCompatibleRange(tt.constraint, tt.ver) != tt.expected {
+			t.Errorf("expected constraint %s to be %v for %s", tt.constraint, tt.expected, tt.ver)
+		}
+	}
+}
