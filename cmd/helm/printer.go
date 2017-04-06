@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"text/template"
 	"time"
@@ -71,4 +72,11 @@ func tpl(t string, vals map[string]interface{}, out io.Writer) error {
 		return err
 	}
 	return tt.Execute(out, vals)
+}
+
+func debug(format string, args ...interface{}) {
+	if flagDebug {
+		format = fmt.Sprintf("[debug] %s\n", format)
+		fmt.Printf(format, args...)
+	}
 }
