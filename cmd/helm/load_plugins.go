@@ -31,6 +31,13 @@ import (
 
 const pluginEnvVar = "HELM_PLUGIN"
 
+func pluginDirs(home helmpath.Home) string {
+	if dirs := os.Getenv(pluginEnvVar); dirs != "" {
+		return dirs
+	}
+	return home.Plugins()
+}
+
 // loadPlugins loads plugins into the command list.
 //
 // This follows a different pattern than the other commands because it has
@@ -43,11 +50,7 @@ func loadPlugins(baseCmd *cobra.Command, home helmpath.Home, out io.Writer) {
 		return
 	}
 
-	plugdirs := os.Getenv(pluginEnvVar)
-	if plugdirs == "" {
-		plugdirs = home.Plugins()
-	}
-
+	plugdirs := pluginDirs(home)
 	found, err := findPlugins(plugdirs)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)

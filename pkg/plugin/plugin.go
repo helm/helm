@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package plugin
+package plugin // import "k8s.io/helm/pkg/plugin"
 
 import (
 	"io/ioutil"
@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/vcs"
 	"github.com/ghodss/yaml"
 )
 
@@ -64,6 +65,9 @@ type Metadata struct {
 	// Setting this will cause a number of side effects, such as the
 	// automatic setting of HELM_HOST.
 	UseTunnel bool `json:"useTunnel"`
+
+	// Hooks are commands that will run on events.
+	Hooks Hooks
 }
 
 // Plugin represents a plugin.
@@ -72,6 +76,17 @@ type Plugin struct {
 	Metadata *Metadata
 	// Dir is the string path to the directory that holds the plugin.
 	Dir string
+	// Remote is the remote repo location.
+	Remote string
+}
+
+func detectSource(dirname string) (string, error) {
+	if repo, err := vcs.NewRepo("", dirname); err == nil {
+		if repo.CheckLocal() {
+			return repo.Remote(), nil
+		}
+	}
+	return os.Readlink(dirname)
 }
 
 // PrepareCommand takes a Plugin.Command and prepares it for execution.
@@ -101,6 +116,10 @@ func LoadDir(dirname string) (*Plugin, error) {
 	}
 
 	plug := &Plugin{Dir: dirname}
+	if src, err := detectSource(dirname); err == nil {
+		plug.Remote = src
+	}
+
 	if err := yaml.Unmarshal(data, &plug.Metadata); err != nil {
 		return nil, err
 	}

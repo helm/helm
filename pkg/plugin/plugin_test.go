@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package plugin
+package plugin // import "k8s.io/helm/pkg/plugin"
 
 import (
 	"reflect"
@@ -82,6 +82,9 @@ func TestLoadDir(t *testing.T) {
 		Command:     "$HELM_PLUGIN_SELF/hello.sh",
 		UseTunnel:   true,
 		IgnoreFlags: true,
+		Hooks: map[string]string{
+			Install: "echo installing...",
+		},
 	}
 
 	if !reflect.DeepEqual(expect, plug.Metadata) {
