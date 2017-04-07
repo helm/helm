@@ -139,12 +139,10 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		addFlagsTLS(newReleaseTestCmd(nil, out)),
 		addFlagsTLS(newResetCmd(nil, out)),
 		addFlagsTLS(newVersionCmd(nil, out)),
+
 		newCompletionCmd(out),
 		newHomeCmd(out),
 		newInitCmd(out),
-		newResetCmd(nil, out),
-		newVersionCmd(nil, out),
-		newReleaseTestCmd(nil, out),
 		newPluginCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'
