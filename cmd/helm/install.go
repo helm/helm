@@ -202,14 +202,17 @@ func (i *installCmd) run() error {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	if c, err := chartutil.Load(i.chartPath); err == nil {
-		if req, err := chartutil.LoadRequirements(c); err == nil {
-			checkDependencies(c, req, i.out)
-		}
+	chartRequested, err := chartutil.Load(i.chartPath)
+	if err != nil {
+		return prettyError(err)
 	}
 
-	res, err := i.client.InstallRelease(
-		i.chartPath,
+	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
+		checkDependencies(chartRequested, req, i.out)
+	}
+
+	res, err := i.client.InstallReleaseFromChart(
+		chartRequested,
 		i.namespace,
 		helm.ValueOverrides(rawVals),
 		helm.ReleaseName(i.name),
