@@ -50,7 +50,7 @@ func TestStatusCmd(t *testing.T) {
 		{
 			name:     "get status of a deployed release",
 			args:     []string{"flummoxed-chickadee"},
-			expected: outputWithStatus("DEPLOYED\n\n"),
+			expected: outputWithStatus("DEPLOYED", username+"\n\n"),
 			rel: releaseMockWithStatus(&release.Status{
 				Code: release.Status_DEPLOYED,
 			}),
@@ -58,7 +58,7 @@ func TestStatusCmd(t *testing.T) {
 		{
 			name:     "get status of a deployed release with notes",
 			args:     []string{"flummoxed-chickadee"},
-			expected: outputWithStatus("DEPLOYED\n\nNOTES:\nrelease notes\n"),
+			expected: outputWithStatus("DEPLOYED", username+"\n\nNOTES:\nrelease notes\n"),
 			rel: releaseMockWithStatus(&release.Status{
 				Code:  release.Status_DEPLOYED,
 				Notes: "release notes",
@@ -67,7 +67,7 @@ func TestStatusCmd(t *testing.T) {
 		{
 			name:     "get status of a deployed release with resources",
 			args:     []string{"flummoxed-chickadee"},
-			expected: outputWithStatus("DEPLOYED\n\nRESOURCES:\nresource A\nresource B\n\n"),
+			expected: outputWithStatus("DEPLOYED", username+"\n\nRESOURCES:\nresource A\nresource B\n\n"),
 			rel: releaseMockWithStatus(&release.Status{
 				Code:      release.Status_DEPLOYED,
 				Resources: "resource A\nresource B\n",
@@ -131,10 +131,11 @@ func TestStatusCmd(t *testing.T) {
 	}
 }
 
-func outputWithStatus(status string) string {
-	return fmt.Sprintf("LAST DEPLOYED: %s\nNAMESPACE: \nSTATUS: %s",
+func outputWithStatus(status string, username string) string {
+	return fmt.Sprintf("LAST DEPLOYED: %s\nNAMESPACE: \nSTATUS: %s\nRELEASED BY: %s",
 		dateString,
-		status)
+		status,
+		username)
 }
 
 func releaseMockWithStatus(status *release.Status) *release.Release {
@@ -144,6 +145,7 @@ func releaseMockWithStatus(status *release.Status) *release.Release {
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        status,
+			Username:      username,
 		},
 	}
 }

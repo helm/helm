@@ -293,7 +293,6 @@ func testEnvFixture() *Environment {
 func mockTillerEnvironment() *tillerEnv.Environment {
 	e := tillerEnv.New()
 	e.Releases = storage.Init(driver.NewMemory())
-	e.KubeClient = newPodSucceededKubeClient()
 	return e
 }
 

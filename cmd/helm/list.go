@@ -92,7 +92,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				list.filter = strings.Join(args, " ")
 			}
 			if list.client == nil {
-				list.client = helm.NewClient(helm.Host(settings.TillerHost))
+				list.client = helm.NewClient(helm.Host(settings.TillerHost), helm.WithContext(loadAuthHeaders))
 			}
 			return list.run()
 		},
@@ -202,14 +202,15 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 func formatList(rels []*release.Release) string {
 	table := uitable.New()
 	table.MaxColWidth = 60
-	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
+	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE", "RELEASED BY")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
 		t := timeconv.String(r.Info.LastDeployed)
 		s := r.Info.Status.Code.String()
 		v := r.Version
 		n := r.Namespace
-		table.AddRow(r.Name, v, t, s, c, n)
+		u := r.Info.Username
+		table.AddRow(r.Name, v, t, s, c, n, u)
 	}
 	return table.String()
 }

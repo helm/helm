@@ -44,6 +44,7 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		}
 		return res, err
 	}
+	rel.Info.Username = getUserName(c)
 
 	s.Log("performing install for %s", req.Name)
 	res, err := s.performRelease(rel, req)

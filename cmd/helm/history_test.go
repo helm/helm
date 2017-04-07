@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -50,7 +51,7 @@ func TestHistoryCmd(t *testing.T) {
 				mk("angry-bird", 2, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 1, rpb.Status_SUPERSEDED),
 			},
-			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n1       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n2       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
+			xout: fmt.Sprintf("REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \tRELEASED BY\n1       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\t%s       \n2       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\t%s       \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\t%s       \n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\t%s       \n", username, username, username, username),
 		},
 		{
 			cmds: "helm history --max=MAX RELEASE_NAME",
@@ -60,7 +61,7 @@ func TestHistoryCmd(t *testing.T) {
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
+			xout: fmt.Sprintf("REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \tRELEASED BY\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\t%s       \n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\t%s       \n", username, username),
 		},
 	}
 

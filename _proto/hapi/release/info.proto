@@ -34,4 +34,7 @@ message Info {
 
 	// Description is human-friendly "log entry" about this release.
 	string Description = 5;
+
+	// Username is the authenticated user who performed this release.
+	string Username = 6;
 }
