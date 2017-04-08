@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Masterminds/vcs"
 	"github.com/ghodss/yaml"
 )
 
@@ -76,17 +75,6 @@ type Plugin struct {
 	Metadata *Metadata
 	// Dir is the string path to the directory that holds the plugin.
 	Dir string
-	// Remote is the remote repo location.
-	Remote string
-}
-
-func detectSource(dirname string) (string, error) {
-	if repo, err := vcs.NewRepo("", dirname); err == nil {
-		if repo.CheckLocal() {
-			return repo.Remote(), nil
-		}
-	}
-	return os.Readlink(dirname)
 }
 
 // PrepareCommand takes a Plugin.Command and prepares it for execution.
@@ -116,10 +104,6 @@ func LoadDir(dirname string) (*Plugin, error) {
 	}
 
 	plug := &Plugin{Dir: dirname}
-	if src, err := detectSource(dirname); err == nil {
-		plug.Remote = src
-	}
-
 	if err := yaml.Unmarshal(data, &plug.Metadata); err != nil {
 		return nil, err
 	}

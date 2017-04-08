@@ -92,7 +92,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 		return "", err
 	}
 
-	// Get the tags and branches (in that order)
+	// Get the tags
 	refs, err := repo.Tags()
 	if err != nil {
 		return "", err
@@ -136,8 +136,7 @@ func (i *VCSInstaller) sync(repo vcs.Repo) error {
 func getSemVers(refs []string) []*semver.Version {
 	var sv []*semver.Version
 	for _, r := range refs {
-		v, err := semver.NewVersion(r)
-		if err == nil {
+		if v, err := semver.NewVersion(r); err == nil {
 			sv = append(sv, v)
 		}
 	}
