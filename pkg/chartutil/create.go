@@ -64,7 +64,8 @@ service:
 ingress:
   enabled: false
   # Used to create Ingress record (should used with service.type: ClusterIP).
-  # hostname: chart-example.local
+  hosts:
+    - chart-example.local
   annotations:
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
@@ -107,13 +108,15 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 `
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
+{{- $serviceName := include "fullname" . -}}
+{{- $servicePort := .Values.service.externalPort -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ template "fullname" . }}
   labels:
-  app: {{ template "fullname" . }}
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
   annotations:
@@ -122,17 +125,19 @@ metadata:
     {{- end }}
 spec:
   rules:
-    - host: {{ .Values.ingress.hostname }}
+    {{- range $host := .Values.ingress.hosts }}
+    - host: {{ $host }}
       http:
         paths:
           - path: /
             backend:
-              serviceName: {{ template "fullname" . }}
-              servicePort: 80
-{{- if .Values.ingress.tls }}
+              serviceName: {{ $serviceName }}
+              servicePort: {{ $servicePort }}
+    {{- end -}}
+  {{- if .Values.ingress.tls }}
   tls:
 {{ toYaml .Values.ingress.tls | indent 4 }}
-{{- end -}}
+  {{- end -}}
 {{- end -}}
 `
 
