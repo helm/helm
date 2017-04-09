@@ -71,7 +71,7 @@ ingress:
     # kubernetes.io/tls-acme: "true"
   tls:
     # Secrets must be manually created in the namespace.
-    # - secretName: chart-example.local
+    # - secretName: chart-example-tls
     #   hosts:
     #     - chart-example.local
 resources:
