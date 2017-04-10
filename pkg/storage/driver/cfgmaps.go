@@ -70,7 +70,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 	obj, err := cfgmaps.impl.Get(key)
 	if err != nil {
 		if kberrs.IsNotFound(err) {
-			return nil, ErrReleaseNotFound
+			return nil, ErrReleaseNotFound(key)
 		}
 
 		logerrf(err, "get: failed to get %q", key)
@@ -136,7 +136,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	}
 
 	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound
+		return nil, ErrReleaseNotFound(labels["NAME"])
 	}
 
 	var results []*rspb.Release
@@ -169,7 +169,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	// push the configmap object out into the kubiverse
 	if _, err := cfgmaps.impl.Create(obj); err != nil {
 		if kberrs.IsAlreadyExists(err) {
-			return ErrReleaseExists
+			return ErrReleaseExists(rls.Name)
 		}
 
 		logerrf(err, "create: failed to create")
@@ -207,7 +207,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
 		if kberrs.IsNotFound(err) {
-			return nil, ErrReleaseNotFound
+			return nil, ErrReleaseNotFound(key)
 		}
 
 		logerrf(err, "delete: failed to get release %q", key)
