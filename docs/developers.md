@@ -19,6 +19,8 @@ We use Make to build our programs. The simplest way to get started is:
 $ make bootstrap build
 ```
 
+NOTE: This will fail if not run from the path: `$GOPATH/src/k8s.io/helm`.
+
 This will build both Helm and Tiller. `make bootstrap` will attempt to
 install certain tools if they are missing.
 
