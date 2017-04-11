@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 
 	"github.com/ghodss/yaml"
-
 	"k8s.io/kubernetes/pkg/api"
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -57,6 +56,7 @@ func Upgrade(client internalclientset.Interface, opts *Options) error {
 		return err
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
+	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
 	if _, err := client.Extensions().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func generateDeployment(opts *Options) *extensions.Deployment {
 						{
 							Name:            "tiller",
 							Image:           opts.selectImage(),
-							ImagePullPolicy: "IfNotPresent",
+							ImagePullPolicy: opts.pullPolicy(),
 							Ports: []api.ContainerPort{
 								{ContainerPort: 44134, Name: "tiller"},
 							},

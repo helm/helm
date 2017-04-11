@@ -18,7 +18,9 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
 	"fmt"
+
 	"k8s.io/helm/pkg/version"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 const defaultImage = "gcr.io/kubernetes-helm/tiller"
@@ -74,6 +76,13 @@ func (opts *Options) selectImage() string {
 	default:
 		return opts.ImageSpec
 	}
+}
+
+func (opts *Options) pullPolicy() api.PullPolicy {
+	if opts.UseCanary {
+		return api.PullAlways
+	}
+	return api.PullIfNotPresent
 }
 
 func (opts *Options) tls() bool { return opts.EnableTLS || opts.VerifyTLS }
