@@ -39,7 +39,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/services"
 	reltesting "k8s.io/helm/pkg/releasetesting"
 	relutil "k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
@@ -621,7 +620,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		if len(name) > releaseNameMaxLen {
 			name = name[:releaseNameMaxLen]
 		}
-		if _, err := s.env.Releases.Get(name, 1); err == driver.ErrReleaseNotFound {
+		if _, err := s.env.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
 			return name, nil
 		}
 		log.Printf("info: Name %q is taken. Searching again.", name)

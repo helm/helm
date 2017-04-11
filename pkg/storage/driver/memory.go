@@ -53,16 +53,16 @@ func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	case 2:
 		name, ver := elems[0], elems[1]
 		if _, err := strconv.Atoi(ver); err != nil {
-			return nil, ErrInvalidKey
+			return nil, ErrInvalidKey(key)
 		}
 		if recs, ok := mem.cache[name]; ok {
 			if r := recs.Get(key); r != nil {
 				return r.rls, nil
 			}
 		}
-		return nil, ErrReleaseNotFound
+		return nil, ErrReleaseNotFound(key)
 	default:
-		return nil, ErrInvalidKey
+		return nil, ErrInvalidKey(key)
 	}
 }
 
@@ -126,7 +126,7 @@ func (mem *Memory) Update(key string, rls *rspb.Release) error {
 		rs.Replace(key, newRecord(key, rls))
 		return nil
 	}
-	return ErrReleaseNotFound
+	return ErrReleaseNotFound(rls.Name)
 }
 
 // Delete deletes a release or returns ErrReleaseNotFound.
@@ -137,16 +137,16 @@ func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	case 2:
 		name, ver := elems[0], elems[1]
 		if _, err := strconv.Atoi(ver); err != nil {
-			return nil, ErrInvalidKey
+			return nil, ErrInvalidKey(key)
 		}
 		if recs, ok := mem.cache[name]; ok {
 			if r := recs.Remove(key); r != nil {
 				return r.rls, nil
 			}
 		}
-		return nil, ErrReleaseNotFound
+		return nil, ErrReleaseNotFound(key)
 	default:
-		return nil, ErrInvalidKey
+		return nil, ErrInvalidKey(key)
 	}
 }
 
