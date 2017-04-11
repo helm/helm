@@ -73,7 +73,11 @@ message Metadata {
 
 	// The version of the application enclosed inside of this chart.
 	string appVersion = 13;
-	
+
 	// Whether or not this chart is deprecated
 	bool deprecated = 14;
+
+	// TillerVersion is a SemVer constraints on what version of Tiller is required.
+	// See SemVer ranges here: https://github.com/Masterminds/semver#basic-comparisons
+	string tillerVersion = 15;
 }

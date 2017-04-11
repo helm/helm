@@ -325,7 +325,7 @@ func TestInstallRelease(t *testing.T) {
 	}
 }
 
-func TestInstallReleaseWithNotes(t *testing.T) {
+func TestInstallRelease_WithNotes(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 
@@ -394,7 +394,7 @@ func TestInstallReleaseWithNotes(t *testing.T) {
 	}
 }
 
-func TestInstallReleaseWithNotesRendered(t *testing.T) {
+func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 
@@ -464,7 +464,54 @@ func TestInstallReleaseWithNotesRendered(t *testing.T) {
 	}
 }
 
-func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
+func TestInstallRelease_TillerVersion(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello", TillerVersion: ">=2.2.0"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+		},
+	}
+	_, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Fatalf("Expected valid range. Got %q", err)
+	}
+}
+
+func TestInstallRelease_WrongTillerVersion(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello", TillerVersion: "<2.0.0"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+		},
+	}
+	_, err := rs.InstallRelease(c, req)
+	if err == nil {
+		t.Fatalf("Expected to fail because of wrong version")
+	}
+
+	expect := "Chart incompatible with Tiller"
+	if !strings.Contains(err.Error(), expect) {
+		t.Errorf("Expected %q to contain %q", err.Error(), expect)
+	}
+}
+
+func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 
@@ -515,7 +562,7 @@ func TestInstallReleaseWithChartAndDependencyNotes(t *testing.T) {
 	}
 }
 
-func TestInstallReleaseDryRun(t *testing.T) {
+func TestInstallRelease_DryRun(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 
@@ -568,7 +615,7 @@ func TestInstallReleaseDryRun(t *testing.T) {
 	}
 }
 
-func TestInstallReleaseNoHooks(t *testing.T) {
+func TestInstallRelease_NoHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
@@ -587,7 +634,7 @@ func TestInstallReleaseNoHooks(t *testing.T) {
 	}
 }
 
-func TestInstallReleaseFailedHooks(t *testing.T) {
+func TestInstallRelease_FailedHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
@@ -606,7 +653,7 @@ func TestInstallReleaseFailedHooks(t *testing.T) {
 	}
 }
 
-func TestInstallReleaseReuseName(t *testing.T) {
+func TestInstallRelease_ReuseName(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
