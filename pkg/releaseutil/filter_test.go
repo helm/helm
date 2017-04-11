@@ -17,8 +17,9 @@ limitations under the License.
 package releaseutil // import "k8s.io/helm/pkg/releaseutil"
 
 import (
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"testing"
+
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestFilterAny(t *testing.T) {

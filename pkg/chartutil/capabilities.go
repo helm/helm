@@ -16,8 +16,8 @@ limitations under the License.
 package chartutil
 
 import (
+	"k8s.io/apimachinery/pkg/version"
 	tversion "k8s.io/helm/pkg/proto/hapi/version"
-	"k8s.io/kubernetes/pkg/version"
 )
 
 // DefaultVersionSet is the default version set, which includes only Core V1 ("v1").

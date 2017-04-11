@@ -19,13 +19,13 @@ package kube // import "k8s.io/helm/pkg/kube"
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 func TestResult(t *testing.T) {
-	mapping, err := testapi.Default.RESTMapper().RESTMapping(unversioned.GroupKind{Kind: "Pod"})
+	mapping, err := testapi.Default.RESTMapper().RESTMapping(schema.GroupKind{Kind: "Pod"})
 	if err != nil {
 		t.Fatal(err)
 	}

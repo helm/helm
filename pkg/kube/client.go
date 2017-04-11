@@ -27,28 +27,28 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
-	ext "k8s.io/kubernetes/pkg/apis/extensions"
-	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	conditions "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
-	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
-	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/util/strategicpatch"
-	"k8s.io/kubernetes/pkg/util/wait"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/kubernetes/pkg/printers"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -59,12 +59,6 @@ type Client struct {
 	cmdutil.Factory
 	// SchemaCacheDir is the path for loading cached schema.
 	SchemaCacheDir string
-}
-
-// deployment holds associated replicaSets for a deployment
-type deployment struct {
-	replicaSets *ext.ReplicaSet
-	deployment  *ext.Deployment
 }
 
 // New create a new Client
@@ -93,7 +87,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 	if buildErr != nil {
 		return buildErr
 	}
-	if err := perform(c, namespace, infos, createResource); err != nil {
+	if err := perform(infos, createResource); err != nil {
 		return err
 	}
 	if shouldWait {
@@ -130,7 +124,7 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 		return nil, err
 	}
 	var result Result
-	result, err = resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(c.UnstructuredClientForMapping), runtime.UnstructuredJSONScheme).
+	result, err = resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(c.UnstructuredClientForMapping), unstructured.UnstructuredJSONScheme).
 		ContinueOnError().
 		Schema(schema).
 		NamespaceParam(namespace).
@@ -160,25 +154,19 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 	missing := []string{}
-	err = perform(c, namespace, infos, func(info *resource.Info) error {
+	err = perform(infos, func(info *resource.Info) error {
 		log.Printf("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
-		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
-		if err != nil {
+		if err := info.Get(); err != nil {
 			log.Printf("WARNING: Failed Get for resource %q: %s", info.Name, err)
 			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
 			return nil
 		}
-		// We need to grab the ObjectReference so we can correctly group the objects.
-		or, err := api.GetReference(obj)
-		if err != nil {
-			log.Printf("FAILED GetReference for: %#v\n%v", obj, err)
-			return err
-		}
 
 		// Use APIVersion/Kind as grouping mechanism. I'm not sure if you can have multiple
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
-		objType := or.APIVersion + "/" + or.Kind
-		objs[objType] = append(objs[objType], obj)
+		gvk := info.ResourceMapping().GroupVersionKind
+		vk := gvk.Version + "/" + gvk.Kind
+		objs[vk] = append(objs[vk], info.Object)
 		return nil
 	})
 	if err != nil {
@@ -190,7 +178,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths
 	buf := new(bytes.Buffer)
-	p := kubectl.NewHumanReadablePrinter(kubectl.PrintOptions{})
+	p, _ := c.Printer(nil, printers.PrintOptions{})
 	for t, ot := range objs {
 		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
 			return "", err
@@ -294,7 +282,7 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 	if err != nil {
 		return err
 	}
-	return perform(c, namespace, infos, func(info *resource.Info) error {
+	return perform(infos, func(info *resource.Info) error {
 		log.Printf("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(c, info)
 		return skipIfNotFound(err)
@@ -334,10 +322,10 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int
 	}
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(c, namespace, infos, watchTimeout(time.Duration(timeout)*time.Second))
+	return perform(infos, watchTimeout(time.Duration(timeout)*time.Second))
 }
 
-func perform(c *Client, namespace string, infos Result, fn ResourceActorFunc) error {
+func perform(infos Result, fn ResourceActorFunc) error {
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
@@ -371,18 +359,18 @@ func deleteResource(c *Client, info *resource.Info) error {
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
-func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]byte, api.PatchType, error) {
+func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
-		return nil, api.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
+		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
 	}
 	newData, err := json.Marshal(target)
 	if err != nil {
-		return nil, api.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
+		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
 
 	if api.Semantic.DeepEqual(oldData, newData) {
-		return nil, api.StrategicMergePatchType, nil
+		return nil, types.StrategicMergePatchType, nil
 	}
 
 	// Get a versioned object
@@ -391,13 +379,13 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 	case runtime.IsNotRegisteredError(err):
 		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
-		return patch, api.MergePatchType, err
+		return patch, types.MergePatchType, err
 	case err != nil:
-		return nil, api.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
+		return nil, types.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
 	default:
 		log.Printf("generating strategic merge patch for %T", target)
 		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
-		return patch, api.StrategicMergePatchType, err
+		return patch, types.StrategicMergePatchType, err
 	}
 }
 
@@ -442,32 +430,10 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 	client, _ := c.ClientSet()
-	return recreatePods(client, target.Namespace, selector)
-}
 
-func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
-	switch typed := obj.(type) {
-	case *v1.ReplicationController:
-		return typed.Spec.Selector, nil
-	case *extensions.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *extensions.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *extensions.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *batch.Job:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *apps.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	default:
-		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
-	}
-}
-
-func recreatePods(client *internalclientset.Clientset, namespace string, selector map[string]string) error {
-	pods, err := client.Pods(namespace).List(api.ListOptions{
-		FieldSelector: fields.Everything(),
-		LabelSelector: labels.Set(selector).AsSelector(),
+	pods, err := client.Core().Pods(target.Namespace).List(metav1.ListOptions{
+		FieldSelector: fields.Everything().String(),
+		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
 	if err != nil {
 		return err
@@ -478,11 +444,30 @@ func recreatePods(client *internalclientset.Clientset, namespace string, selecto
 		log.Printf("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
-		if err := client.Pods(pod.Namespace).Delete(pod.Name, api.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
+		if err := client.Core().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
+	switch typed := obj.(type) {
+	case *v1.ReplicationController:
+		return typed.Spec.Selector, nil
+	case *v1beta1.ReplicaSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *v1beta1.Deployment:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *v1beta1.DaemonSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *batch.Job:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *apps.StatefulSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	default:
+		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
+	}
 }
 
 func watchUntilReady(timeout time.Duration, info *resource.Info) error {
@@ -526,157 +511,15 @@ func watchUntilReady(timeout time.Duration, info *resource.Info) error {
 	return err
 }
 
-func podsReady(pods []api.Pod) bool {
-	for _, pod := range pods {
-		if !api.IsPodReady(&pod) {
-			return false
-		}
-	}
-	return true
-}
-
-func servicesReady(svc []api.Service) bool {
-	for _, s := range svc {
-		// Make sure the service is not explicitly set to "None" before checking the IP
-		if s.Spec.ClusterIP != api.ClusterIPNone && !api.IsServiceIPSet(&s) {
-			return false
-		}
-		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
-		if s.Spec.Type == api.ServiceTypeLoadBalancer && s.Status.LoadBalancer.Ingress == nil {
-			return false
-		}
-	}
-	return true
-}
-
-func volumesReady(vols []api.PersistentVolumeClaim) bool {
-	for _, v := range vols {
-		if v.Status.Phase != api.ClaimBound {
-			return false
-		}
-	}
-	return true
-}
-
-func deploymentsReady(deployments []deployment) bool {
-	for _, v := range deployments {
-		if !(v.replicaSets.Status.ReadyReplicas >= v.deployment.Spec.Replicas-deploymentutil.MaxUnavailable(*v.deployment)) {
-			return false
-		}
-	}
-	return true
-}
-
-func getPods(client *internalclientset.Clientset, namespace string, selector map[string]string) ([]api.Pod, error) {
-	list, err := client.Pods(namespace).List(api.ListOptions{
-		FieldSelector: fields.Everything(),
-		LabelSelector: labels.Set(selector).AsSelector(),
-	})
-	return list.Items, err
-}
-
 // AsVersionedObject converts a runtime.object to a versioned object.
 func (c *Client) AsVersionedObject(obj runtime.Object) (runtime.Object, error) {
-	json, err := runtime.Encode(runtime.UnstructuredJSONScheme, obj)
+	json, err := runtime.Encode(unstructured.UnstructuredJSONScheme, obj)
 	if err != nil {
 		return nil, err
 	}
 	versions := &runtime.VersionedObjects{}
 	err = runtime.DecodeInto(c.Decoder(true), json, versions)
 	return versions.First(), err
-}
-
-// waitForResources polls to get the current status of all pods, PVCs, and Services
-// until all are ready or a timeout is reached
-func (c *Client) waitForResources(timeout time.Duration, created Result) error {
-	log.Printf("beginning wait for resources with timeout of %v", timeout)
-	client, _ := c.ClientSet()
-	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
-		pods := []api.Pod{}
-		services := []api.Service{}
-		pvc := []api.PersistentVolumeClaim{}
-		replicaSets := []*ext.ReplicaSet{}
-		deployments := []deployment{}
-		for _, v := range created {
-			obj, err := c.AsVersionedObject(v.Object)
-			if err != nil && !runtime.IsNotRegisteredError(err) {
-				return false, err
-			}
-			switch value := obj.(type) {
-			case (*v1.ReplicationController):
-				list, err := getPods(client, value.Namespace, value.Spec.Selector)
-				if err != nil {
-					return false, err
-				}
-				pods = append(pods, list...)
-			case (*v1.Pod):
-				pod, err := client.Pods(value.Namespace).Get(value.Name)
-				if err != nil {
-					return false, err
-				}
-				pods = append(pods, *pod)
-			case (*extensions.Deployment):
-				// Get the RS children first
-				rs, err := client.ReplicaSets(value.Namespace).List(api.ListOptions{
-					FieldSelector: fields.Everything(),
-					LabelSelector: labels.Set(value.Spec.Selector.MatchLabels).AsSelector(),
-				})
-				if err != nil {
-					return false, err
-				}
-
-				for i := range rs.Items {
-					replicaSets = append(replicaSets, &rs.Items[i])
-				}
-
-				currentDeployment, err := client.Deployments(value.Namespace).Get(value.Name)
-				if err != nil {
-					return false, err
-				}
-				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.FindNewReplicaSet(currentDeployment, replicaSets)
-				if err != nil {
-					return false, err
-				}
-				newDeployment := deployment{
-					newReplicaSet,
-					currentDeployment,
-				}
-				deployments = append(deployments, newDeployment)
-			case (*extensions.DaemonSet):
-				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
-				if err != nil {
-					return false, err
-				}
-				pods = append(pods, list...)
-			case (*apps.StatefulSet):
-				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
-				if err != nil {
-					return false, err
-				}
-				pods = append(pods, list...)
-			case (*extensions.ReplicaSet):
-				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
-				if err != nil {
-					return false, err
-				}
-				pods = append(pods, list...)
-			case (*v1.PersistentVolumeClaim):
-				claim, err := client.PersistentVolumeClaims(value.Namespace).Get(value.Name)
-				if err != nil {
-					return false, err
-				}
-				pvc = append(pvc, *claim)
-			case (*v1.Service):
-				svc, err := client.Services(value.Namespace).Get(value.Name)
-				if err != nil {
-					return false, err
-				}
-				services = append(services, *svc)
-			}
-		}
-		return podsReady(pods) && servicesReady(services) && volumesReady(pvc) && deploymentsReady(deployments), nil
-	})
 }
 
 // waitForJob is a helper that waits for a job to complete.

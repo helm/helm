@@ -29,8 +29,8 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/restclient"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -258,7 +258,7 @@ func defaultTillerNamespace() string {
 
 // getKubeClient is a convenience method for creating kubernetes config and client
 // for a given kubeconfig context
-func getKubeClient(context string) (*restclient.Config, *internalclientset.Clientset, error) {
+func getKubeClient(context string) (*rest.Config, *internalclientset.Clientset, error) {
 	config, err := kube.GetConfig(context).ClientConfig()
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get kubernetes config for context '%s': %s", context, err)
@@ -268,12 +268,6 @@ func getKubeClient(context string) (*restclient.Config, *internalclientset.Clien
 		return nil, nil, fmt.Errorf("could not get kubernetes client: %s", err)
 	}
 	return config, client, nil
-}
-
-// getKubeCmd is a convenience method for creating kubernetes cmd client
-// for a given kubeconfig context
-func getKubeCmd(context string) *kube.Client {
-	return kube.New(kube.GetConfig(context))
 }
 
 // ensureHelmClient returns a new helm client impl. if h is not nil.

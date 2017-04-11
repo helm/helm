@@ -20,13 +20,14 @@ import (
 	"io/ioutil"
 
 	"github.com/ghodss/yaml"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/api"
-	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	extensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/extensions/internalversion"
-	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
 // Install uses kubernetes client to install tiller.
@@ -51,7 +52,7 @@ func Install(client internalclientset.Interface, opts *Options) error {
 //
 // Returns an error if the command failed.
 func Upgrade(client internalclientset.Interface, opts *Options) error {
-	obj, err := client.Extensions().Deployments(opts.Namespace).Get("tiller-deploy")
+	obj, err := client.Extensions().Deployments(opts.Namespace).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -62,15 +63,11 @@ func Upgrade(client internalclientset.Interface, opts *Options) error {
 	}
 	// If the service does not exists that would mean we are upgrading from a tiller version
 	// that didn't deploy the service, so install it.
-	if _, err := client.Core().Services(opts.Namespace).Get("tiller-deploy"); err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-		if err := createService(client.Core(), opts.Namespace); err != nil {
-			return err
-		}
+	_, err = client.Core().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return createService(client.Core(), opts.Namespace)
 	}
-	return nil
+	return err
 }
 
 // createDeployment creates the Tiller deployment reource
@@ -122,15 +119,15 @@ func generateLabels(labels map[string]string) map[string]string {
 func generateDeployment(opts *Options) *extensions.Deployment {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	d := &extensions.Deployment{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace: opts.Namespace,
-			Name:      "tiller-deploy",
+			Name:      deploymentName,
 			Labels:    labels,
 		},
 		Spec: extensions.DeploymentSpec{
 			Replicas: 1,
 			Template: api.PodTemplateSpec{
-				ObjectMeta: api.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
 				Spec: api.PodSpec{
@@ -208,9 +205,9 @@ func generateDeployment(opts *Options) *extensions.Deployment {
 func generateService(namespace string) *api.Service {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	s := &api.Service{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      "tiller-deploy",
+			Name:      serviceName,
 			Labels:    labels,
 		},
 		Spec: api.ServiceSpec{
@@ -256,7 +253,7 @@ func generateSecret(opts *Options) (*api.Secret, error) {
 	secret := &api.Secret{
 		Type: api.SecretTypeOpaque,
 		Data: make(map[string][]byte),
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Labels:    labels,
 			Namespace: opts.Namespace,
