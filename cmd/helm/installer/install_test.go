@@ -34,14 +34,15 @@ import (
 func TestDeploymentManifest(t *testing.T) {
 
 	tests := []struct {
-		name   string
-		image  string
-		canary bool
-		expect string
+		name            string
+		image           string
+		canary          bool
+		expect          string
+		imagePullPolicy api.PullPolicy
 	}{
-		{"default", "", false, "gcr.io/kubernetes-helm/tiller:" + version.Version},
-		{"canary", "example.com/tiller", true, "gcr.io/kubernetes-helm/tiller:canary"},
-		{"custom", "example.com/tiller:latest", false, "example.com/tiller:latest"},
+		{"default", "", false, "gcr.io/kubernetes-helm/tiller:" + version.Version, "IfNotPresent"},
+		{"canary", "example.com/tiller", true, "gcr.io/kubernetes-helm/tiller:canary", "Always"},
+		{"custom", "example.com/tiller:latest", false, "example.com/tiller:latest", "IfNotPresent"},
 	}
 
 	for _, tt := range tests {
@@ -56,6 +57,10 @@ func TestDeploymentManifest(t *testing.T) {
 
 		if got := dep.Spec.Template.Spec.Containers[0].Image; got != tt.expect {
 			t.Errorf("%s: expected image %q, got %q", tt.name, tt.expect, got)
+		}
+
+		if got := dep.Spec.Template.Spec.Containers[0].ImagePullPolicy; got != tt.imagePullPolicy {
+			t.Errorf("%s: expected imagePullPolicy %q, got %q", tt.name, tt.imagePullPolicy, got)
 		}
 
 		if got := dep.Spec.Template.Spec.Containers[0].Env[0].Value; got != api.NamespaceDefault {
