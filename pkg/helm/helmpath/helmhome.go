@@ -56,8 +56,8 @@ func (h Home) Cache() string {
 
 // CacheIndex returns the path to an index for the given named repository.
 func (h Home) CacheIndex(name string) string {
-	target := fmt.Sprintf("repository/cache/%s-index.yaml", name)
-	return h.Path(target)
+	target := fmt.Sprintf("%s-index.yaml", name)
+	return h.Path("repository", "cache", target)
 }
 
 // Starters returns the path to the Helm starter packs.
