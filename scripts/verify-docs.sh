@@ -29,6 +29,8 @@ fi
 
 kube::util::ensure-temp-dir
 
+export HELM_NO_PLUGINS=1
+
 mkdir -p ${KUBE_TEMP}/docs/helm ${KUBE_TEMP}/docs/man/man1 ${KUBE_TEMP}/scripts
 bin/helm docs --dir ${KUBE_TEMP}/docs/helm
 bin/helm docs --dir ${KUBE_TEMP}/docs/man/man1 --type man
