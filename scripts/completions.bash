@@ -1184,33 +1184,6 @@ _helm_reset()
     local_nonpersistent_flags+=("--force")
     flags+=("--remove-helm-home")
     local_nonpersistent_flags+=("--remove-helm-home")
-    flags+=("--debug")
-    flags+=("--home=")
-    flags+=("--host=")
-    flags+=("--kube-context=")
-    flags+=("--tiller-namespace=")
-
-    must_have_one_flag=()
-    must_have_one_noun=()
-    noun_aliases=()
-}
-
-_helm_reset()
-{
-    last_command="helm_reset"
-    commands=()
-
-    flags=()
-    two_word_flags=()
-    local_nonpersistent_flags=()
-    flags_with_completion=()
-    flags_completion=()
-
-    flags+=("--force")
-    flags+=("-f")
-    local_nonpersistent_flags+=("--force")
-    flags+=("--remove-helm-home")
-    local_nonpersistent_flags+=("--remove-helm-home")
     flags+=("--tls")
     local_nonpersistent_flags+=("--tls")
     flags+=("--tls-ca-cert=")
@@ -1399,32 +1372,6 @@ _helm_test()
     noun_aliases=()
 }
 
-_helm_test()
-{
-    last_command="helm_test"
-    commands=()
-
-    flags=()
-    two_word_flags=()
-    local_nonpersistent_flags=()
-    flags_with_completion=()
-    flags_completion=()
-
-    flags+=("--cleanup")
-    local_nonpersistent_flags+=("--cleanup")
-    flags+=("--timeout=")
-    local_nonpersistent_flags+=("--timeout=")
-    flags+=("--debug")
-    flags+=("--home=")
-    flags+=("--host=")
-    flags+=("--kube-context=")
-    flags+=("--tiller-namespace=")
-
-    must_have_one_flag=()
-    must_have_one_noun=()
-    noun_aliases=()
-}
-
 _helm_upgrade()
 {
     last_command="helm_upgrade"
@@ -1532,36 +1479,6 @@ _helm_version()
     local_nonpersistent_flags+=("--server")
     flags+=("--short")
     local_nonpersistent_flags+=("--short")
-    flags+=("--debug")
-    flags+=("--home=")
-    flags+=("--host=")
-    flags+=("--kube-context=")
-    flags+=("--tiller-namespace=")
-
-    must_have_one_flag=()
-    must_have_one_noun=()
-    noun_aliases=()
-}
-
-_helm_version()
-{
-    last_command="helm_version"
-    commands=()
-
-    flags=()
-    two_word_flags=()
-    local_nonpersistent_flags=()
-    flags_with_completion=()
-    flags_completion=()
-
-    flags+=("--client")
-    flags+=("-c")
-    local_nonpersistent_flags+=("--client")
-    flags+=("--server")
-    flags+=("-s")
-    local_nonpersistent_flags+=("--server")
-    flags+=("--short")
-    local_nonpersistent_flags+=("--short")
     flags+=("--tls")
     local_nonpersistent_flags+=("--tls")
     flags+=("--tls-ca-cert=")
@@ -1604,16 +1521,13 @@ _helm()
     commands+=("plugin")
     commands+=("repo")
     commands+=("reset")
-    commands+=("reset")
     commands+=("rollback")
     commands+=("search")
     commands+=("serve")
     commands+=("status")
     commands+=("test")
-    commands+=("test")
     commands+=("upgrade")
     commands+=("verify")
-    commands+=("version")
     commands+=("version")
 
     flags=()
