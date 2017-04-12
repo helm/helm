@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/api"
-	kberrs "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -96,16 +97,16 @@ func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Releas
 }
 
 // Get returns the ConfigMap by name.
-func (mock *MockConfigMapsInterface) Get(name string) (*api.ConfigMap, error) {
+func (mock *MockConfigMapsInterface) Get(name string, options metav1.GetOptions) (*api.ConfigMap, error) {
 	object, ok := mock.objects[name]
 	if !ok {
-		return nil, kberrs.NewNotFound(api.Resource("tests"), name)
+		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
 	}
 	return object, nil
 }
 
 // List returns the a of ConfigMaps.
-func (mock *MockConfigMapsInterface) List(opts api.ListOptions) (*api.ConfigMapList, error) {
+func (mock *MockConfigMapsInterface) List(opts metav1.ListOptions) (*api.ConfigMapList, error) {
 	var list api.ConfigMapList
 	for _, cfgmap := range mock.objects {
 		list.Items = append(list.Items, *cfgmap)
@@ -117,7 +118,7 @@ func (mock *MockConfigMapsInterface) List(opts api.ListOptions) (*api.ConfigMapL
 func (mock *MockConfigMapsInterface) Create(cfgmap *api.ConfigMap) (*api.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if object, ok := mock.objects[name]; ok {
-		return object, kberrs.NewAlreadyExists(api.Resource("tests"), name)
+		return object, apierrors.NewAlreadyExists(api.Resource("tests"), name)
 	}
 	mock.objects[name] = cfgmap
 	return cfgmap, nil
@@ -127,16 +128,16 @@ func (mock *MockConfigMapsInterface) Create(cfgmap *api.ConfigMap) (*api.ConfigM
 func (mock *MockConfigMapsInterface) Update(cfgmap *api.ConfigMap) (*api.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
-		return nil, kberrs.NewNotFound(api.Resource("tests"), name)
+		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
 	}
 	mock.objects[name] = cfgmap
 	return cfgmap, nil
 }
 
 // Delete deletes a ConfigMap by name.
-func (mock *MockConfigMapsInterface) Delete(name string, opts *api.DeleteOptions) error {
+func (mock *MockConfigMapsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
-		return kberrs.NewNotFound(api.Resource("tests"), name)
+		return apierrors.NewNotFound(api.Resource("tests"), name)
 	}
 	delete(mock.objects, name)
 	return nil

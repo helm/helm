@@ -27,9 +27,9 @@ import (
 
 	"github.com/technosophos/moniker"
 	ctx "golang.org/x/net/context"
-	"k8s.io/kubernetes/pkg/api/unversioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/discovery"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/typed/discovery"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
@@ -771,7 +771,7 @@ func getVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 		return chartutil.DefaultVersionSet, nil
 	}
 
-	versions := unversioned.ExtractGroupVersions(groups)
+	versions := metav1.ExtractGroupVersions(groups)
 	return chartutil.NewVersionSet(versions...), nil
 }
 

@@ -28,7 +28,6 @@ import (
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
-	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -46,7 +45,6 @@ type resetCmd struct {
 	home           helmpath.Home
 	client         helm.Interface
 	kubeClient     internalclientset.Interface
-	kubeCmd        *kube.Client
 }
 
 func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -89,9 +87,6 @@ func (d *resetCmd) run() error {
 		}
 		d.kubeClient = c
 	}
-	if d.kubeCmd == nil {
-		d.kubeCmd = getKubeCmd(kubeContext)
-	}
 
 	res, err := d.client.ListReleases(
 		helm.ReleaseListStatuses([]release.Status_Code{release.Status_DEPLOYED}),
@@ -104,7 +99,7 @@ func (d *resetCmd) run() error {
 		return fmt.Errorf("There are still %d deployed releases (Tip: use --force).", len(res.Releases))
 	}
 
-	if err := installer.Uninstall(d.kubeClient, d.kubeCmd, &installer.Options{Namespace: d.namespace}); err != nil {
+	if err := installer.Uninstall(d.kubeClient, &installer.Options{Namespace: d.namespace}); err != nil {
 		return fmt.Errorf("error unstalling Tiller: %s", err)
 	}
 

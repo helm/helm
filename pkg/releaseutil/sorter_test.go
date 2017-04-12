@@ -17,10 +17,11 @@ limitations under the License.
 package releaseutil // import "k8s.io/helm/pkg/releaseutil"
 
 import (
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/timeconv"
 	"testing"
 	"time"
+
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 // note: this test data is shared with filter_test.go.

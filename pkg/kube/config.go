@@ -16,7 +16,7 @@ limitations under the License.
 
 package kube // import "k8s.io/helm/pkg/kube"
 
-import "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+import "k8s.io/client-go/tools/clientcmd"
 
 // GetConfig returns a kubernetes client config for a given context.
 func GetConfig(context string) clientcmd.ClientConfig {

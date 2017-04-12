@@ -19,17 +19,18 @@ package portforwarder
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/labels"
 
 	"k8s.io/helm/pkg/kube"
 )
 
 // New creates a new and initialized tunnel.
-func New(namespace string, client *internalclientset.Clientset, config *restclient.Config) (*kube.Tunnel, error) {
+func New(namespace string, client *internalclientset.Clientset, config *rest.Config) (*kube.Tunnel, error) {
 	podName, err := getTillerPodName(client.Core(), namespace)
 	if err != nil {
 		return nil, err
@@ -50,7 +51,7 @@ func getTillerPodName(client internalversion.PodsGetter, namespace string) (stri
 }
 
 func getFirstRunningPod(client internalversion.PodsGetter, namespace string, selector labels.Selector) (*api.Pod, error) {
-	options := api.ListOptions{LabelSelector: selector}
+	options := metav1.ListOptions{LabelSelector: selector.String()}
 	pods, err := client.Pods(namespace).List(options)
 	if err != nil {
 		return nil, err

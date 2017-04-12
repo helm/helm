@@ -23,8 +23,8 @@ import (
 	"net"
 	"strconv"
 
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned/portforward"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 )
 
@@ -37,12 +37,12 @@ type Tunnel struct {
 	Out       io.Writer
 	stopChan  chan struct{}
 	readyChan chan struct{}
-	config    *restclient.Config
-	client    restclient.Interface
+	config    *rest.Config
+	client    rest.Interface
 }
 
 // NewTunnel creates a new tunnel
-func NewTunnel(client restclient.Interface, config *restclient.Config, namespace, podName string, remote int) *Tunnel {
+func NewTunnel(client rest.Interface, config *rest.Config, namespace, podName string, remote int) *Tunnel {
 	return &Tunnel{
 		config:    config,
 		client:    client,

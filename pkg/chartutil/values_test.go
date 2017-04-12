@@ -25,10 +25,10 @@ import (
 
 	"github.com/golang/protobuf/ptypes/any"
 
+	kversion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
-	kversion "k8s.io/kubernetes/pkg/version"
 )
 
 func TestReadValues(t *testing.T) {

@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/cmd/helm/installer"
@@ -226,7 +226,7 @@ func (i *initCmd) run() error {
 			i.kubeClient = c
 		}
 		if err := installer.Install(i.kubeClient, &i.opts); err != nil {
-			if !kerrors.IsAlreadyExists(err) {
+			if !apierrors.IsAlreadyExists(err) {
 				return fmt.Errorf("error installing: %s", err)
 			}
 			if i.upgrade {

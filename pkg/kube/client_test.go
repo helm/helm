@@ -19,6 +19,7 @@ package kube
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -26,19 +27,20 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest/fake"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/api/validation"
-	"k8s.io/kubernetes/pkg/client/restclient/fake"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-
 	"k8s.io/kubernetes/pkg/kubectl/resource"
-	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/watch"
+	"k8s.io/kubernetes/pkg/printers"
 	watchjson "k8s.io/kubernetes/pkg/watch/json"
 )
 
@@ -56,7 +58,7 @@ func newPodWithStatus(name string, status api.PodStatus, namespace string) api.P
 		ns = namespace
 	}
 	return api.Pod{
-		ObjectMeta: api.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
 			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
@@ -80,13 +82,13 @@ func newPodList(names ...string) api.PodList {
 	return list
 }
 
-func notFoundBody() *unversioned.Status {
-	return &unversioned.Status{
+func notFoundBody() *metav1.Status {
+	return &metav1.Status{
 		Code:    http.StatusNotFound,
-		Status:  unversioned.StatusFailure,
-		Reason:  unversioned.StatusReasonNotFound,
+		Status:  metav1.StatusFailure,
+		Reason:  metav1.StatusReasonNotFound,
 		Message: " \"\" not found",
-		Details: &unversioned.StatusDetails{},
+		Details: &metav1.StatusDetails{},
 	}
 }
 
@@ -101,7 +103,7 @@ type fakeReaper struct {
 	name string
 }
 
-func (r *fakeReaper) Stop(namespace, name string, timeout time.Duration, gracePeriod *api.DeleteOptions) error {
+func (r *fakeReaper) Stop(namespace, name string, timeout time.Duration, gracePeriod *metav1.DeleteOptions) error {
 	r.name = name
 	return nil
 }
@@ -124,7 +126,7 @@ func newEventResponse(code int, e *watch.Event) (*http.Response, error) {
 	header := http.Header{}
 	header.Set("Content-Type", runtime.ContentTypeJSON)
 	body := ioutil.NopCloser(bytes.NewReader(dispatchedEvent))
-	return &http.Response{StatusCode: 200, Header: header, Body: body}, nil
+	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
 func encodeAndMarshalEvent(e *watch.Event) ([]byte, error) {
@@ -133,12 +135,7 @@ func encodeAndMarshalEvent(e *watch.Event) ([]byte, error) {
 		return nil, err
 	}
 
-	marshaledEvent, err := json.Marshal(encodedEvent)
-	if err != nil {
-		return nil, err
-	}
-
-	return marshaledEvent, nil
+	return json.Marshal(encodedEvent)
 }
 
 func TestUpdate(t *testing.T) {
@@ -150,9 +147,10 @@ func TestUpdate(t *testing.T) {
 
 	var actions []string
 
-	f, tf, codec, ns := cmdtesting.NewAPIFactory()
-	tf.Client = &fake.RESTClient{
-		NegotiatedSerializer: ns,
+	f, tf, codec, _ := cmdtesting.NewAPIFactory()
+	tf.UnstructuredClient = &fake.RESTClient{
+		APIRegistry:          api.Registry,
+		NegotiatedSerializer: dynamic.ContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
 			actions = append(actions, p+":"+m)
@@ -280,11 +278,33 @@ func TestBuild(t *testing.T) {
 	}
 }
 
+type testPrinter struct {
+	Objects []runtime.Object
+	Err     error
+	printers.ResourcePrinter
+}
+
+func (t *testPrinter) PrintObj(obj runtime.Object, out io.Writer) error {
+	t.Objects = append(t.Objects, obj)
+	fmt.Fprintf(out, "%#v", obj)
+	return t.Err
+}
+
+func (t *testPrinter) HandledResources() []string {
+	return []string{}
+}
+
+func (t *testPrinter) AfterPrint(io.Writer, string) error {
+	return t.Err
+}
+
 func TestGet(t *testing.T) {
 	list := newPodList("starfish", "otter")
-	f, tf, _, ns := cmdtesting.NewAPIFactory()
-	tf.Client = &fake.RESTClient{
-		NegotiatedSerializer: ns,
+	f, tf, _, _ := cmdtesting.NewAPIFactory()
+	tf.Printer = &testPrinter{}
+	tf.UnstructuredClient = &fake.RESTClient{
+		APIRegistry:          api.Registry,
+		NegotiatedSerializer: dynamic.ContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
 			//actions = append(actions, p+":"+m)
@@ -378,7 +398,7 @@ func TestPerform(t *testing.T) {
 			t.Errorf("%q. Error while building manifests: %v", tt.name, err)
 		}
 
-		err = perform(c, tt.namespace, infos, fn)
+		err = perform(infos, fn)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}
@@ -403,12 +423,12 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 			podPhase:      api.PodPending,
 			expectedPhase: api.PodUnknown,
 			err:           true,
-			errMessage:    "timed out waiting for the condition",
+			errMessage:    "watch closed before Until timeout",
 		}, {
 			podPhase:      api.PodRunning,
 			expectedPhase: api.PodUnknown,
 			err:           true,
-			errMessage:    "timed out waiting for the condition",
+			errMessage:    "watch closed before Until timeout",
 		}, {
 			podPhase:      api.PodSucceeded,
 			expectedPhase: api.PodSucceeded,
@@ -426,6 +446,7 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 		testPodList.Items = append(testPodList.Items, newPodWithStatus("bestpod", api.PodStatus{Phase: tt.podPhase}, "test"))
 
 		tf.Client = &fake.RESTClient{
+			APIRegistry:          api.Registry,
 			NegotiatedSerializer: ns,
 			Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 				p, m := req.URL.Path, req.Method
@@ -433,7 +454,7 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 				switch {
 				case p == "/namespaces/test/pods/bestpod" && m == "GET":
 					return newResponse(200, &testPodList.Items[0])
-				case p == "/watch/namespaces/test/pods/bestpod" && m == "GET":
+				case p == "/namespaces/test/pods" && m == "GET":
 					event := watch.Event{Type: watch.Added, Object: &testPodList.Items[0]}
 					return newEventResponse(200, &event)
 				default:

@@ -21,12 +21,12 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	testcore "k8s.io/client-go/testing"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
-	testcore "k8s.io/kubernetes/pkg/client/testing/core"
-	"k8s.io/kubernetes/pkg/runtime"
 
 	"k8s.io/helm/pkg/version"
 )
@@ -206,7 +206,7 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 		return true, obj, nil
 	})
 	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
-		return true, nil, errors.NewNotFound(api.Resource("services"), "1")
+		return true, nil, apierrors.NewNotFound(api.Resource("services"), "1")
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
 		obj := action.(testcore.CreateAction).GetObject().(*api.Service)

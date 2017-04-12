@@ -17,67 +17,45 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
-	"strings"
-
-	"github.com/ghodss/yaml"
-
-	"k8s.io/kubernetes/pkg/api"
-	kerrors "k8s.io/kubernetes/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+	"k8s.io/kubernetes/pkg/kubectl"
+)
 
-	"k8s.io/helm/pkg/kube"
+const (
+	deploymentName = "tiller-deploy"
+	serviceName    = "tiller-deploy"
 )
 
 // Uninstall uses kubernetes client to uninstall tiller
-func Uninstall(kubeClient internalclientset.Interface, kubeCmd *kube.Client, opts *Options) error {
-	if _, err := kubeClient.Core().Services(opts.Namespace).Get("tiller-deploy"); err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	} else if err := deleteService(kubeClient.Core(), opts.Namespace); err != nil {
+func Uninstall(client internalclientset.Interface, opts *Options) error {
+	if err := deleteService(client.Core(), opts.Namespace); err != nil {
 		return err
 	}
-	if obj, err := kubeClient.Extensions().Deployments(opts.Namespace).Get("tiller-deploy"); err != nil {
-		if !kerrors.IsNotFound(err) {
-			return err
-		}
-	} else if err := deleteDeployment(kubeCmd, opts.Namespace, obj); err != nil {
-		return err
-	}
-	return nil
+	return deleteDeployment(client, opts.Namespace)
 }
 
 // deleteService deletes the Tiller Service resource
 func deleteService(client internalversion.ServicesGetter, namespace string) error {
-	return client.Services(namespace).Delete("tiller-deploy", &api.DeleteOptions{})
+	err := client.Services(namespace).Delete(serviceName, &metav1.DeleteOptions{})
+	return ingoreNotFound(err)
 }
 
 // deleteDeployment deletes the Tiller Deployment resource
-// We need to use the kubeCmd reaper instead of the kube API because GC for deployment dependents
+// We need to use the reaper instead of the kube API because GC for deployment dependents
 // is not yet supported at the k8s server level (<= 1.5)
-func deleteDeployment(kubeCmd *kube.Client, namespace string, obj *extensions.Deployment) error {
-	obj.Kind = "Deployment"
-	obj.APIVersion = "extensions/v1beta1"
-	buf, err := yaml.Marshal(obj)
-	if err != nil {
-		return err
+func deleteDeployment(client internalclientset.Interface, namespace string) error {
+	reaper, _ := kubectl.ReaperFor(extensions.Kind("Deployment"), client)
+	err := reaper.Stop(namespace, deploymentName, 0, nil)
+	return ingoreNotFound(err)
+}
+
+func ingoreNotFound(err error) error {
+	if apierrors.IsNotFound(err) {
+		return nil
 	}
-	reader := strings.NewReader(string(buf))
-	infos, err := kubeCmd.Build(namespace, reader)
-	if err != nil {
-		return err
-	}
-	for _, info := range infos {
-		reaper, err := kubeCmd.Reaper(info.Mapping)
-		if err != nil {
-			return err
-		}
-		err = reaper.Stop(info.Namespace, info.Name, 0, nil)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return err
 }
