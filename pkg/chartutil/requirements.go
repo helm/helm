@@ -384,8 +384,9 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 	if err != nil {
 		return err
 	}
+
 	// set the new values
-	c.Values.Raw = string(y)
+	c.Values = &chart.Config{Raw: string(y)}
 
 	return nil
 }
