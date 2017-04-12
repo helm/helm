@@ -27,7 +27,7 @@ run_unit_test() {
     echo "Running unit tests with coverage'"
     ./scripts/coverage.sh --coveralls
   else
-    echo "Running unit tests'"
+    echo "Running 'unit tests'"
     make test-unit
   fi
 }
@@ -37,6 +37,11 @@ run_style_check() {
   make test-style
 }
 
+run_docs_check() {
+  echo "Running 'make verify-docs'"
+  make verify-docs
+}
+
 # Build to ensure packages are compiled
 echo "Running 'make build'"
 make build
@@ -44,4 +49,5 @@ make build
 case "${CIRCLE_NODE_INDEX-0}" in
   0) run_unit_test   ;;
   1) run_style_check ;;
+  2) run_docs_check  ;;
 esac
