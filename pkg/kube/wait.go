@@ -25,33 +25,34 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/api/v1"
-	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
+	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
+	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	core "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/core/v1"
-	extensions "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/extensions/v1beta1"
+	extensionsclient "k8s.io/kubernetes/pkg/client/clientset_generated/clientset/typed/extensions/v1beta1"
 	internalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 )
 
 // deployment holds associated replicaSets for a deployment
 type deployment struct {
-	replicaSets *v1beta1.ReplicaSet
-	deployment  *v1beta1.Deployment
+	replicaSets *extensions.ReplicaSet
+	deployment  *extensions.Deployment
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
 // until all are ready or a timeout is reached
 func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 	log.Printf("beginning wait for resources with timeout of %v", timeout)
+
 	cs, _ := c.ClientSet()
 	client := versionedClientsetForDeployment(cs)
 	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
 		pods := []v1.Pod{}
 		services := []v1.Service{}
 		pvc := []v1.PersistentVolumeClaim{}
-		replicaSets := []*v1beta1.ReplicaSet{}
+		replicaSets := []*extensions.ReplicaSet{}
 		deployments := []deployment{}
 		for _, v := range created {
 			obj, err := c.AsVersionedObject(v.Object)
@@ -71,7 +72,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					return false, err
 				}
 				pods = append(pods, *pod)
-			case (*v1beta1.Deployment):
+			case (*extensions.Deployment):
 				// Get the RS children first
 				rs, err := client.Extensions().ReplicaSets(value.Namespace).List(metav1.ListOptions{
 					FieldSelector: fields.Everything().String(),
@@ -99,7 +100,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					currentDeployment,
 				}
 				deployments = append(deployments, newDeployment)
-			case (*v1beta1.DaemonSet):
+			case (*extensions.DaemonSet):
 				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
@@ -111,7 +112,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					return false, err
 				}
 				pods = append(pods, list...)
-			case (*v1beta1.ReplicaSet):
+			case (*extensions.ReplicaSet):
 				list, err := getPods(client, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
@@ -190,6 +191,6 @@ func versionedClientsetForDeployment(internalClient internalclientset.Interface)
 	}
 	return &clientset.Clientset{
 		CoreV1Client:            core.New(internalClient.Core().RESTClient()),
-		ExtensionsV1beta1Client: extensions.New(internalClient.Extensions().RESTClient()),
+		ExtensionsV1beta1Client: extensionsclient.New(internalClient.Extensions().RESTClient()),
 	}
 }
