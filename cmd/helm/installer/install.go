@@ -164,6 +164,9 @@ func generateDeployment(opts *Options) *extensions.Deployment {
 							},
 						},
 					},
+					SecurityContext: &api.PodSecurityContext{
+						HostNetwork: opts.EnableHostNetwork,
+					},
 				},
 			},
 		},
