@@ -21,6 +21,7 @@ import (
 	"log"
 	"strings"
 
+	goprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -55,7 +56,7 @@ func newUnaryInterceptor() grpc.UnaryServerInterceptor {
 				return nil, err
 			}
 		}
-		return handler(ctx, req)
+		return goprom.UnaryServerInterceptor(ctx, req, info, handler)
 	}
 }
 
@@ -65,7 +66,7 @@ func newStreamInterceptor() grpc.StreamServerInterceptor {
 			log.Println(err)
 			return err
 		}
-		return handler(srv, ss)
+		return goprom.StreamServerInterceptor(srv, ss, info, handler)
 	}
 }
 
