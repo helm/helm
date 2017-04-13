@@ -53,8 +53,11 @@ To dump a manifest containing the Tiller deployment YAML, combine the
 `
 
 const (
-	stableRepository    = "stable"
-	localRepository     = "local"
+	stableRepository = "stable"
+	localRepository  = "local"
+)
+
+var (
 	stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
 	// This is the IPv4 loopback, not localhost, because we have to force IPv4
 	// for Dockerized Helm: https://github.com/kubernetes/helm/issues/1410
@@ -107,6 +110,9 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with tiller")
 	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with tiller")
 	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
+
+	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
+	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
 	return cmd
 }
