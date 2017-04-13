@@ -1058,7 +1058,10 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	// Collect the errors, and return them later.
 	es := []string{}
 	for _, file := range filesToDelete {
-		b := bytes.NewBufferString(file.content)
+		b := bytes.NewBufferString(strings.TrimSpace(file.content))
+		if b.Len() == 0 {
+			continue
+		}
 		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
 			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
 			if err == kube.ErrNoObjectsVisited {
