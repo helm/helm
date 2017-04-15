@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/cmd/helm/installer"
+	"k8s.io/helm/pkg/getter/defaultgetters"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -91,8 +92,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return errors.New("This command does not accept arguments")
 			}
-			i.namespace = tillerNamespace
-			i.home = helmpath.Home(homePath())
+			i.namespace = settings.TillerNamespace
+			i.home = settings.Home
 			return i.run()
 		},
 	}
@@ -152,7 +153,7 @@ func (i *initCmd) run() error {
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
 
-	if flagDebug {
+	if settings.FlagDebug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
 			w := i.out
 			if !first {
@@ -221,7 +222,7 @@ func (i *initCmd) run() error {
 	if err := ensureRepoFileFormat(i.home.RepositoryFile(), i.out); err != nil {
 		return err
 	}
-	fmt.Fprintf(i.out, "$HELM_HOME has been configured at %s.\n", helmHome)
+	fmt.Fprintf(i.out, "$HELM_HOME has been configured at %s.\n", settings.Home)
 
 	if !i.clientOnly {
 		if i.kubeClient == nil {
@@ -311,7 +312,7 @@ func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
 		URL:   stableRepositoryURL,
 		Cache: cacheFile,
 	}
-	r, err := repo.NewChartRepository(&c)
+	r, err := repo.NewChartRepository(&c, defaultgetters.Get(settings))
 	if err != nil {
 		return nil, err
 	}

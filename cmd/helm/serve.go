@@ -24,7 +24,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -62,7 +61,7 @@ func newServeCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&srv.repoPath, "repo-path", helmpath.Home(homePath()).LocalRepository(), "local directory path from which to serve charts")
+	f.StringVar(&srv.repoPath, "repo-path", settings.Home.LocalRepository(), "local directory path from which to serve charts")
 	f.StringVar(&srv.address, "address", "127.0.0.1:8879", "address to listen on")
 	f.StringVar(&srv.url, "url", "", "external URL of chart repository")
 

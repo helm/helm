@@ -185,7 +185,7 @@ func (u *upgradeCmd) run() error {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
 
-	if flagDebug {
+	if settings.FlagDebug {
 		printRelease(u.out, resp.Release)
 	}
 

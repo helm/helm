@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/getter/defaultgetters"
 )
 
 const fetchDesc = `
@@ -93,10 +93,11 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 
 func (f *fetchCmd) run() error {
 	c := downloader.ChartDownloader{
-		HelmHome: helmpath.Home(homePath()),
+		HelmHome: settings.Home,
 		Out:      f.out,
 		Keyring:  f.keyring,
 		Verify:   downloader.VerifyNever,
+		Getters:  defaultgetters.Get(settings),
 	}
 
 	if f.verify {

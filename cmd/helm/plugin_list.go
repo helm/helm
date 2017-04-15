@@ -36,7 +36,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		Use:   "list",
 		Short: "list installed Helm plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pcmd.home = helmpath.Home(homePath())
+			pcmd.home = settings.Home
 			return pcmd.run()
 		},
 	}

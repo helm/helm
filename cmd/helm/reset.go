@@ -63,8 +63,8 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				return errors.New("This command does not accept arguments")
 			}
 
-			d.namespace = tillerNamespace
-			d.home = helmpath.Home(homePath())
+			d.namespace = settings.TillerNamespace
+			d.home = settings.Home
 			d.client = ensureHelmClient(d.client)
 
 			return d.run()

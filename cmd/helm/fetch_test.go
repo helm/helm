@@ -24,6 +24,8 @@ import (
 	"regexp"
 	"testing"
 
+	"k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
@@ -32,11 +34,11 @@ func TestFetchCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := homePath()
-	helmHome = hh
+	old := helmpath.Home(environment.DefaultHelmHome())
+	settings.Home = hh
 	defer func() {
-		helmHome = old
-		os.RemoveAll(hh)
+		settings.Home = old
+		os.RemoveAll(hh.String())
 	}()
 
 	// all flags will get "--home=TMDIR -d outdir" appended.
@@ -105,7 +107,7 @@ func TestFetchCmd(t *testing.T) {
 		},
 	}
 
-	srv := repotest.NewServer(hh)
+	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
 
 	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz*"); err != nil {
@@ -116,7 +118,7 @@ func TestFetchCmd(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		outdir := filepath.Join(hh, "testout")
+		outdir := filepath.Join(hh.String(), "testout")
 		os.RemoveAll(outdir)
 		os.Mkdir(outdir, 0755)
 

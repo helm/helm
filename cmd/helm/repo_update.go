@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/getter/defaultgetters"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -57,7 +58,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Short:   "update information on available charts in the chart repositories",
 		Long:    updateDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			u.home = helmpath.Home(homePath())
+			u.home = settings.Home
 			return u.run()
 		},
 	}
@@ -75,7 +76,7 @@ func (u *repoUpdateCmd) run() error {
 	}
 	var repos []*repo.ChartRepository
 	for _, cfg := range f.Repositories {
-		r, err := repo.NewChartRepository(cfg)
+		r, err := repo.NewChartRepository(cfg, defaultgetters.Get(settings))
 		if err != nil {
 			return err
 		}

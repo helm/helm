@@ -143,10 +143,10 @@ func TestPackage(t *testing.T) {
 	}
 
 	ensureTestHome(helmpath.Home(tmp), t)
-	oldhome := homePath()
-	helmHome = tmp
+	oldhome := settings.Home
+	settings.Home = helmpath.Home(tmp)
 	defer func() {
-		helmHome = oldhome
+		settings.Home = oldhome
 		os.Chdir(origDir)
 		os.RemoveAll(tmp)
 	}()

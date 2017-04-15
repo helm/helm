@@ -70,7 +70,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		Short: "package a chart directory into a chart archive",
 		Long:  packageDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pkg.home = helmpath.Home(homePath())
+			pkg.home = settings.Home
 			if len(args) == 0 {
 				return fmt.Errorf("This command needs at least one argument, the path to the chart.")
 			}
@@ -119,7 +119,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		if err := setVersion(ch, p.version); err != nil {
 			return err
 		}
-		if flagDebug {
+		if settings.FlagDebug {
 			fmt.Fprintf(p.out, "Setting version to %s", p.version)
 		}
 	}
@@ -145,7 +145,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	name, err := chartutil.Save(ch, dest)
-	if err == nil && flagDebug {
+	if err == nil && settings.FlagDebug {
 		fmt.Fprintf(p.out, "Saved %s to current directory\n", name)
 	}
 
@@ -155,7 +155,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		lr := p.home.LocalRepository()
 		if err := repo.AddChartToLocalRepo(ch, lr); err != nil {
 			return err
-		} else if flagDebug {
+		} else if settings.FlagDebug {
 			fmt.Fprintf(p.out, "Saved %s to %s\n", name, lr)
 		}
 	}
@@ -194,7 +194,7 @@ func (p *packageCmd) clearsign(filename string) error {
 		return err
 	}
 
-	if flagDebug {
+	if settings.FlagDebug {
 		fmt.Fprintln(p.out, sig)
 	}
 

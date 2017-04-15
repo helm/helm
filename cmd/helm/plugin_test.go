@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/plugin"
 
 	"github.com/spf13/cobra"
 )
@@ -64,16 +65,17 @@ func TestManuallyProcessArgs(t *testing.T) {
 
 func TestLoadPlugins(t *testing.T) {
 	// Set helm home to point to testdata
-	old := helmHome
-	helmHome = "testdata/helmhome"
+	old := settings.Home
+	settings.Home = "testdata/helmhome"
 	defer func() {
-		helmHome = old
+		settings.Home = old
 	}()
-	hh := helmpath.Home(homePath())
+	hh := settings.Home
+	settings.PlugDirs = hh.Plugins()
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
-	loadPlugins(cmd, hh, out)
+	loadPlugins(cmd, out)
 
 	envs := strings.Join([]string{
 		"fullenv",
@@ -135,20 +137,19 @@ func TestLoadPlugins(t *testing.T) {
 }
 
 func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
-	os.Setenv("HELM_NO_PLUGINS", "1")
-	defer os.Setenv("HELM_NO_PLUGINS", "0")
-
 	// Set helm home to point to testdata
-	old := helmHome
-	helmHome = "testdata/helmhome"
+	old := settings.Home
+	oldPlugDirs := settings.PlugDirs
+	settings.Home = "testdata/helmhome"
+	settings.PlugDirs = ""
 	defer func() {
-		helmHome = old
+		settings.Home = old
+		settings.PlugDirs = oldPlugDirs
 	}()
-	hh := helmpath.Home(homePath())
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
-	loadPlugins(cmd, hh, out)
+	loadPlugins(cmd, out)
 	plugins := cmd.Commands()
 
 	if len(plugins) != 0 {
@@ -158,31 +159,31 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 
 func TestSetupEnv(t *testing.T) {
 	name := "pequod"
-	hh := helmpath.Home("testdata/helmhome")
-	base := filepath.Join(hh.Plugins(), name)
-	plugdirs := hh.Plugins()
-	flagDebug = true
+	settings.Home = helmpath.Home("testdata/helmhome")
+	base := filepath.Join(settings.Home.Plugins(), name)
+	settings.PlugDirs = settings.Home.Plugins()
+	settings.FlagDebug = true
 	defer func() {
-		flagDebug = false
+		settings.FlagDebug = false
 	}()
 
-	setupEnv(name, base, plugdirs, hh)
+	plugin.SetupPluginEnv(settings, name, base)
 	for _, tt := range []struct {
 		name   string
 		expect string
 	}{
 		{"HELM_PLUGIN_NAME", name},
 		{"HELM_PLUGIN_DIR", base},
-		{"HELM_PLUGIN", hh.Plugins()},
+		{"HELM_PLUGIN", settings.Home.Plugins()},
 		{"HELM_DEBUG", "1"},
-		{"HELM_HOME", hh.String()},
-		{"HELM_PATH_REPOSITORY", hh.Repository()},
-		{"HELM_PATH_REPOSITORY_FILE", hh.RepositoryFile()},
-		{"HELM_PATH_CACHE", hh.Cache()},
-		{"HELM_PATH_LOCAL_REPOSITORY", hh.LocalRepository()},
-		{"HELM_PATH_STARTER", hh.Starters()},
-		{"TILLER_HOST", tillerHost},
-		{"TILLER_NAMESPACE", tillerNamespace},
+		{"HELM_HOME", settings.Home.String()},
+		{"HELM_PATH_REPOSITORY", settings.Home.Repository()},
+		{"HELM_PATH_REPOSITORY_FILE", settings.Home.RepositoryFile()},
+		{"HELM_PATH_CACHE", settings.Home.Cache()},
+		{"HELM_PATH_LOCAL_REPOSITORY", settings.Home.LocalRepository()},
+		{"HELM_PATH_STARTER", settings.Home.Starters()},
+		{"TILLER_HOST", settings.TillerHost},
+		{"TILLER_NAMESPACE", settings.TillerNamespace},
 	} {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)

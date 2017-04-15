@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/getter/defaultgetters"
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
@@ -53,7 +54,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 		Short: "rebuild the charts/ directory based on the requirements.lock file",
 		Long:  dependencyBuildDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dbc.helmhome = helmpath.Home(homePath())
+			dbc.helmhome = settings.Home
 			dbc.chartpath = "."
 
 			if len(args) > 0 {
@@ -76,6 +77,7 @@ func (d *dependencyBuildCmd) run() error {
 		ChartPath: d.chartpath,
 		HelmHome:  d.helmhome,
 		Keyring:   d.keyring,
+		Getters:   defaultgetters.Get(settings),
 	}
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible

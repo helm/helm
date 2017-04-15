@@ -68,9 +68,9 @@ func TestSearchCmd(t *testing.T) {
 		},
 	}
 
-	oldhome := helmHome
-	helmHome = "testdata/helmhome"
-	defer func() { helmHome = oldhome }()
+	oldhome := settings.Home
+	settings.Home = "testdata/helmhome"
+	defer func() { settings.Home = oldhome }()
 
 	for _, tt := range tests {
 		buf := bytes.NewBuffer(nil)

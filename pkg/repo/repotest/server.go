@@ -35,21 +35,22 @@ import (
 //
 // The caller is responsible for destroying the temp directory as well as stopping
 // the server.
-func NewTempServer(glob string) (*Server, string, error) {
+func NewTempServer(glob string) (*Server, helmpath.Home, error) {
 	tdir, err := ioutil.TempDir("", "helm-repotest-")
+	tdirh := helmpath.Home(tdir)
 	if err != nil {
-		return nil, tdir, err
+		return nil, tdirh, err
 	}
 	srv := NewServer(tdir)
 
 	if glob != "" {
 		if _, err := srv.CopyCharts(glob); err != nil {
 			srv.Stop()
-			return srv, tdir, err
+			return srv, tdirh, err
 		}
 	}
 
-	return srv, tdir, nil
+	return srv, tdirh, nil
 }
 
 // NewServer creates a repository server for testing.

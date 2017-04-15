@@ -42,7 +42,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Use:   "list [flags]",
 		Short: "list chart repositories",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			list.home = helmpath.Home(homePath())
+			list.home = settings.Home
 			return list.run()
 		},
 	}

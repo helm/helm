@@ -21,7 +21,6 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
 )
@@ -34,14 +33,14 @@ func TestRepoAddCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := homePath()
-	helmHome = thome
+	oldhome := settings.Home
+	settings.Home = thome
 	defer func() {
 		srv.Stop()
-		helmHome = oldhome
-		os.Remove(thome)
+		settings.Home = oldhome
+		os.Remove(thome.String())
 	}()
-	if err := ensureTestHome(helmpath.Home(thome), t); err != nil {
+	if err := ensureTestHome(thome, t); err != nil {
 		t.Fatal(err)
 	}
 
@@ -68,13 +67,13 @@ func TestRepoAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := homePath()
-	helmHome = thome
-	hh := helmpath.Home(thome)
+	oldhome := settings.Home
+	settings.Home = thome
+	hh := thome
 	defer func() {
 		ts.Stop()
-		helmHome = oldhome
-		os.Remove(thome)
+		settings.Home = oldhome
+		os.Remove(thome.String())
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
 		t.Fatal(err)
