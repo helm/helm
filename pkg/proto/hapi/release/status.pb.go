@@ -69,6 +69,27 @@ func (m *Status) String() string            { return proto.CompactTextString(m) 
 func (*Status) ProtoMessage()               {}
 func (*Status) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
 
+func (m *Status) GetCode() Status_Code {
+	if m != nil {
+		return m.Code
+	}
+	return Status_UNKNOWN
+}
+
+func (m *Status) GetResources() string {
+	if m != nil {
+		return m.Resources
+	}
+	return ""
+}
+
+func (m *Status) GetNotes() string {
+	if m != nil {
+		return m.Notes
+	}
+	return ""
+}
+
 func (m *Status) GetLastTestSuiteRun() *TestSuite {
 	if m != nil {
 		return m.LastTestSuiteRun

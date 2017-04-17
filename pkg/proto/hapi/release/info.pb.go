@@ -58,6 +58,13 @@ func (m *Info) GetDeleted() *google_protobuf.Timestamp {
 	return nil
 }
 
+func (m *Info) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*Info)(nil), "hapi.release.Info")
 }

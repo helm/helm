@@ -29,15 +29,19 @@ google_deps	 = Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptype
 .PHONY: all
 all: chart release services version
 
+.PHONY: chart
 chart:
 	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(chart_pbs)
 
+.PHONY: release
 release:
 	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(version_ias):$(dst) $(release_pbs)
 
+.PHONY: services
 services:
 	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(version_ias),$(release_ias):$(dst) $(services_pbs)
 
+.PHONY: version
 version:
 	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps):$(dst) $(version_pbs)
 

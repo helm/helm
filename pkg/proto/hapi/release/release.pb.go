@@ -42,6 +42,13 @@ func (m *Release) String() string            { return proto.CompactTextString(m)
 func (*Release) ProtoMessage()               {}
 func (*Release) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
+func (m *Release) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func (m *Release) GetInfo() *Info {
 	if m != nil {
 		return m.Info
@@ -63,11 +70,32 @@ func (m *Release) GetConfig() *hapi_chart.Config {
 	return nil
 }
 
+func (m *Release) GetManifest() string {
+	if m != nil {
+		return m.Manifest
+	}
+	return ""
+}
+
 func (m *Release) GetHooks() []*Hook {
 	if m != nil {
 		return m.Hooks
 	}
 	return nil
+}
+
+func (m *Release) GetVersion() int32 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
+
+func (m *Release) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
 }
 
 func init() {
