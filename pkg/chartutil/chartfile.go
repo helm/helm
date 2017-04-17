@@ -17,7 +17,11 @@ limitations under the License.
 package chartutil
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/ghodss/yaml"
 
@@ -57,4 +61,38 @@ func SaveChartfile(filename string, cf *chart.Metadata) error {
 		return err
 	}
 	return ioutil.WriteFile(filename, out, 0644)
+}
+
+// IsChartDir validate a chart directory.
+//
+// Checks for a valid Chart.yaml.
+func IsChartDir(dirName string) (bool, error) {
+	if fi, err := os.Stat(dirName); err != nil {
+		return false, err
+	} else if !fi.IsDir() {
+		return false, fmt.Errorf("%q is not a directory", dirName)
+	}
+
+	chartYaml := filepath.Join(dirName, "Chart.yaml")
+	if _, err := os.Stat(chartYaml); os.IsNotExist(err) {
+		return false, fmt.Errorf("no Chart.yaml exists in directory %q", dirName)
+	}
+
+	chartYamlContent, err := ioutil.ReadFile(chartYaml)
+	if err != nil {
+		return false, fmt.Errorf("cannot read Chart.Yaml in directory %q", dirName)
+	}
+
+	chartContent, err := UnmarshalChartfile(chartYamlContent)
+	if err != nil {
+		return false, err
+	}
+	if chartContent == nil {
+		return false, errors.New("chart metadata (Chart.yaml) missing")
+	}
+	if chartContent.Name == "" {
+		return false, errors.New("invalid chart (Chart.yaml): name must not be empty")
+	}
+
+	return true, nil
 }
