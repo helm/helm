@@ -1,0 +1,8 @@
+- name: rabbitmq
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/rabbitmq/v1/rabbitmq.jinja
+  properties:
+    # Replace with your information
+    username: rabbit
+    password: rabbit-password
+    ips:
+    - 10.240.0.8

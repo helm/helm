@@ -1,0 +1,31 @@
+{% set PROJECT = properties['project'] %}
+{% set RABBITMQ = properties['rabbitmq'] or {} %}
+{% set RABBITMQ_USERNAME = RABBITMQ['username'] %}
+{% set RABBITMQ_PASSWORD = RABBITMQ['password'] %}
+
+resources:
+- name: rabbitmq
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/rabbitmq/v1/rabbitmq.jinja
+  properties:
+    {{ RABBITMQ }}
+- name: http-frontend
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/replicatedservice/v2/replicatedservice.py
+  properties:
+    service_port: 80
+    container_port: 80
+    replicas: 2
+    external_service: true
+    image: gcr.io/dm-k8s-testing/http-frontend:latest
+    env:
+      - name: RABBITMQ_SERVER
+        value: rabbitmq-service
+      - name: RABBITMQ_USERNAME
+        value: {{ RABBITMQ_USERNAME }}
+      - name: RABBITMQ_PASSWORD
+        value: {{ RABBITMQ_PASSWORD }}
+- name: storm
+  type: https://raw.githubusercontent.com/kubernetes/deployment-manager/master/templates/storm/v1/storm.jinja
+  properties:
+{% if PROJECT is defined %}
+    project: {{ PROJECT }}
+{% endif %}

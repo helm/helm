@@ -1,0 +1,32 @@
+{% set PROJECT = properties['project'] or 'dm-k8s-testing' %}
+{% set DATASET = properties['dataset'] or 'messages_dataset' %}
+{% set TABLE = properties['table'] or 'messages_dataset_table' %}
+{% set DB_FIELDS = properties['db-fields'] %}
+{% set RABBITMQ = properties['rabbitmq'] or {} %}
+{% set RABBITMQ_DISK = RABBITMQ['disk'] or {} %}
+{% set RABBITMQ_DISK_NAME = RABBITMQ_DISK['disk'] or 'rabbitmq-disk' %}
+{% set RABBITMQ_DISK_SIZE = RABBITMQ_DISK['size'] or 200 %}
+
+resources:
+- name: {{ RABBITMQ_DISK_NAME }}
+  type: compute.v1.disk
+  properties:
+    zone: us-central1-b
+    sizeGb: {{ RABBITMQ_DISK_SIZE }}
+- name: {{ DATASET }}
+  type: bigquery.v2.dataset
+  properties:
+    datasetReference:
+      projectId: {{ PROJECT }}
+      datasetId: {{ DATASET }}
+- name: {{ TABLE }}
+  type: bigquery.v2.table
+  properties:
+    # Need to use a reference below so that the dataset gets created before the table
+    datasetId: $(ref.{{ DATASET }}.datasetReference.datasetId)
+    tableReference:
+      projectId: {{ PROJECT }}
+      datasetId: {{ DATASET }}
+      tableId: {{ TABLE }}
+    schema:
+      fields: {{ DB_FIELDS }}
