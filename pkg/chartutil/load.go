@@ -48,6 +48,9 @@ func Load(name string) (*chart.Chart, error) {
 		return nil, err
 	}
 	if fi.IsDir() {
+		if validChart, err := IsChartDir(name); !validChart {
+			return nil, err
+		}
 		return LoadDir(name)
 	}
 	return LoadFile(name)
