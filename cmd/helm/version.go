@@ -105,7 +105,7 @@ func (v *versionCmd) run() error {
 		if grpc.Code(err) == codes.Unimplemented {
 			return errors.New("server is too old to know its version")
 		}
-		if flagDebug {
+		if settings.FlagDebug {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		return errors.New("cannot connect to Tiller")

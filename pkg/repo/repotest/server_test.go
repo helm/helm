@@ -110,10 +110,10 @@ func TestNewTempServer(t *testing.T) {
 	}
 	defer func() {
 		srv.Stop()
-		os.RemoveAll(tdir)
+		os.RemoveAll(tdir.String())
 	}()
 
-	if _, err := os.Stat(tdir); err != nil {
+	if _, err := os.Stat(tdir.String()); err != nil {
 		t.Fatal(err)
 	}
 

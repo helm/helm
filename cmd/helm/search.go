@@ -48,7 +48,7 @@ type searchCmd struct {
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
-	sc := &searchCmd{out: out, helmhome: helmpath.Home(homePath())}
+	sc := &searchCmd{out: out, helmhome: settings.Home}
 
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",

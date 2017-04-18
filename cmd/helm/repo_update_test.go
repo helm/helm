@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/helm/pkg/getter/defaultgetters"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
@@ -33,11 +34,11 @@ func TestUpdateCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	oldhome := homePath()
-	helmHome = thome
+	oldhome := settings.Home
+	settings.Home = thome
 	defer func() {
-		helmHome = oldhome
-		os.Remove(thome)
+		settings.Home = oldhome
+		os.Remove(thome.String())
 	}()
 
 	out := bytes.NewBuffer(nil)
@@ -68,13 +69,13 @@ func TestUpdateCharts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := homePath()
-	helmHome = thome
+	oldhome := settings.Home
+	settings.Home = thome
 	hh := helmpath.Home(thome)
 	defer func() {
 		ts.Stop()
-		helmHome = oldhome
-		os.Remove(thome)
+		settings.Home = oldhome
+		os.Remove(thome.String())
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
 		t.Fatal(err)
@@ -84,7 +85,7 @@ func TestUpdateCharts(t *testing.T) {
 		Name:  "charts",
 		URL:   ts.URL(),
 		Cache: hh.CacheIndex("charts"),
-	})
+	}, defaultgetters.Get(settings))
 	if err != nil {
 		t.Error(err)
 	}

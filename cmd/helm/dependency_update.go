@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/getter/defaultgetters"
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
@@ -72,7 +73,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
-			duc.helmhome = helmpath.Home(homePath())
+			duc.helmhome = settings.Home
 
 			return duc.run()
 		},
@@ -94,11 +95,12 @@ func (d *dependencyUpdateCmd) run() error {
 		HelmHome:   d.helmhome,
 		Keyring:    d.keyring,
 		SkipUpdate: d.skipRefresh,
+		Getters:    defaultgetters.Get(settings),
 	}
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible
 	}
-	if flagDebug {
+	if settings.FlagDebug {
 		man.Debug = true
 	}
 	return man.Update()

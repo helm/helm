@@ -244,19 +244,19 @@ type releaseCase struct {
 //
 // This does not clean up the directory. You must do that yourself.
 // You  must also set helmHome yourself.
-func tempHelmHome(t *testing.T) (string, error) {
-	oldhome := helmHome
+func tempHelmHome(t *testing.T) (helmpath.Home, error) {
+	oldhome := settings.Home
 	dir, err := ioutil.TempDir("", "helm_home-")
 	if err != nil {
-		return "n/", err
+		return helmpath.Home("n/"), err
 	}
 
-	helmHome = dir
-	if err := ensureTestHome(helmpath.Home(helmHome), t); err != nil {
-		return "n/", err
+	settings.Home = helmpath.Home(dir)
+	if err := ensureTestHome(settings.Home, t); err != nil {
+		return helmpath.Home("n/"), err
 	}
-	helmHome = oldhome
-	return dir, nil
+	settings.Home = oldhome
+	return helmpath.Home(dir), nil
 }
 
 // ensureTestHome creates a home directory like ensureHome, but without remote references.
@@ -312,6 +312,6 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		return fmt.Errorf("%s must be a file, not a directory", localRepoIndexFile)
 	}
 
-	t.Logf("$HELM_HOME has been configured at %s.\n", helmHome)
+	t.Logf("$HELM_HOME has been configured at %s.\n", settings.Home.String())
 	return nil
 }

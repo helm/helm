@@ -137,11 +137,11 @@ func TestInitCmd_dryRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dbg := flagDebug
-	flagDebug = true
+	dbg := settings.FlagDebug
+	settings.FlagDebug = true
 	defer func() {
 		os.Remove(home)
-		flagDebug = dbg
+		settings.FlagDebug = dbg
 	}()
 
 	var buf bytes.Buffer
@@ -182,7 +182,7 @@ func TestEnsureHome(t *testing.T) {
 
 	b := bytes.NewBuffer(nil)
 	hh := helmpath.Home(home)
-	helmHome = home
+	settings.Home = hh
 	if err := ensureDirectories(hh, b); err != nil {
 		t.Error(err)
 	}

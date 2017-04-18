@@ -21,11 +21,23 @@ import (
 	"path/filepath"
 	"strings"
 
+	helm_env "k8s.io/helm/pkg/helm/environment"
+	tiller_env "k8s.io/helm/pkg/tiller/environment"
+
 	"github.com/ghodss/yaml"
 )
 
-// PluginFileName is the name of a plugin file.
-const PluginFileName = "plugin.yaml"
+const pluginFileName = "plugin.yaml"
+
+// Downloaders represents the plugins capability if it can retrieve
+// charts from special sources
+type Downloaders struct {
+	// Protocols are the list of schemes from the charts URL.
+	Protocols []string `json:"protocols"`
+	// Command is the executable path with which the plugin performs
+	// the actual download for the corresponding Protocols
+	Command string `json:"command"`
+}
 
 // Metadata describes a plugin.
 //
@@ -67,6 +79,10 @@ type Metadata struct {
 
 	// Hooks are commands that will run on events.
 	Hooks Hooks
+
+	// Downloaders field is used if the plugin supply downloader mechanism
+	// for special protocols.
+	Downloaders []Downloaders `json:"downloaders"`
 }
 
 // Plugin represents a plugin.
@@ -98,7 +114,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string) {
 
 // LoadDir loads a plugin from the given directory.
 func LoadDir(dirname string) (*Plugin, error) {
-	data, err := ioutil.ReadFile(filepath.Join(dirname, PluginFileName))
+	data, err := ioutil.ReadFile(filepath.Join(dirname, pluginFileName))
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +132,7 @@ func LoadDir(dirname string) (*Plugin, error) {
 func LoadAll(basedir string) ([]*Plugin, error) {
 	plugins := []*Plugin{}
 	// We want basedir/*/plugin.yaml
-	scanpath := filepath.Join(basedir, "*", PluginFileName)
+	scanpath := filepath.Join(basedir, "*", pluginFileName)
 	matches, err := filepath.Glob(scanpath)
 	if err != nil {
 		return plugins, err
@@ -135,4 +151,51 @@ func LoadAll(basedir string) ([]*Plugin, error) {
 		plugins = append(plugins, p)
 	}
 	return plugins, nil
+}
+
+// FindPlugins returns a list of YAML files that describe plugins.
+func FindPlugins(plugdirs string) ([]*Plugin, error) {
+	found := []*Plugin{}
+	// Let's get all UNIXy and allow path separators
+	for _, p := range filepath.SplitList(plugdirs) {
+		matches, err := LoadAll(p)
+		if err != nil {
+			return matches, err
+		}
+		found = append(found, matches...)
+	}
+	return found, nil
+}
+
+// SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
+// the plugin subsystem itself needs access to the environment variables
+// created here.
+func SetupPluginEnv(settings helm_env.EnvSettings,
+	shortName, base string) {
+	for key, val := range map[string]string{
+		"HELM_PLUGIN_NAME": shortName,
+		"HELM_PLUGIN_DIR":  base,
+		"HELM_BIN":         os.Args[0],
+
+		// Set vars that may not have been set, and save client the
+		// trouble of re-parsing.
+		helm_env.PluginEnvVar: settings.PlugDirs,
+		helm_env.HomeEnvVar:   settings.Home.String(),
+
+		// Set vars that convey common information.
+		"HELM_PATH_REPOSITORY":       settings.Home.Repository(),
+		"HELM_PATH_REPOSITORY_FILE":  settings.Home.RepositoryFile(),
+		"HELM_PATH_CACHE":            settings.Home.Cache(),
+		"HELM_PATH_LOCAL_REPOSITORY": settings.Home.LocalRepository(),
+		"HELM_PATH_STARTER":          settings.Home.Starters(),
+
+		"TILLER_HOST":                    settings.TillerHost,
+		tiller_env.TillerNamespaceEnvVar: settings.TillerNamespace,
+	} {
+		os.Setenv(key, val)
+	}
+
+	if settings.FlagDebug {
+		os.Setenv("HELM_DEBUG", "1")
+	}
 }

@@ -47,7 +47,7 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 			remove.name = args[0]
-			remove.home = helmpath.Home(homePath())
+			remove.home = settings.Home
 
 			return remove.run()
 		},

@@ -31,6 +31,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/repo"
@@ -54,6 +55,8 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
+	// Getter collection for the operation
+	Getters []getter.Prop
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -199,6 +202,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		Verify:   m.Verify,
 		Keyring:  m.Keyring,
 		HelmHome: m.HelmHome,
+		Getters:  m.Getters,
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
@@ -389,7 +393,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	for _, c := range repos {
-		r, err := repo.NewChartRepository(c)
+		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
 			return err
 		}

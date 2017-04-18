@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -33,18 +32,16 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/pkg/helm"
+	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/tiller/environment"
+	tiller_env "k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/tlsutil"
 )
 
 const (
 	localRepoIndexFilePath = "index.yaml"
-	homeEnvVar             = "HELM_HOME"
-	hostEnvVar             = "HELM_HOST"
-	tillerNamespaceEnvVar  = "TILLER_NAMESPACE"
 )
 
 var (
@@ -56,16 +53,11 @@ var (
 )
 
 var (
-	helmHome        string
-	tillerHost      string
-	tillerNamespace string
-	kubeContext     string
+	kubeContext string
+	settings    helm_env.EnvSettings
 	// TODO refactor out this global var
 	tillerTunnel *kube.Tunnel
 )
-
-// flagDebug is a signal that the user wants additional output.
-var flagDebug bool
 
 var globalUsage = `The Kubernetes package manager
 
@@ -92,6 +84,8 @@ Environment:
 `
 
 func newRootCmd(out io.Writer) *cobra.Command {
+	var helmHomeTemp string
+
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -107,11 +101,19 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		},
 	}
 	p := cmd.PersistentFlags()
-	p.StringVar(&helmHome, "home", defaultHelmHome(), "location of your Helm config. Overrides $HELM_HOME")
-	p.StringVar(&tillerHost, "host", defaultHelmHost(), "address of tiller. Overrides $HELM_HOST")
+	p.StringVar(&helmHomeTemp, "home", helm_env.DefaultHelmHome(), "location of your Helm config. Overrides $HELM_HOME")
+	settings.Home = helmpath.Home(helmHomeTemp)
+	p.StringVar(&settings.TillerHost, "host", helm_env.DefaultHelmHost(), "address of tiller. Overrides $HELM_HOST")
 	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	p.BoolVar(&flagDebug, "debug", false, "enable verbose output")
-	p.StringVar(&tillerNamespace, "tiller-namespace", defaultTillerNamespace(), "namespace of tiller")
+	p.BoolVar(&settings.FlagDebug, "debug", false, "enable verbose output")
+	p.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.GetTillerNamespace(), "namespace of tiller")
+
+	if os.Getenv(helm_env.PluginDisableEnvVar) != "1" {
+		settings.PlugDirs = os.Getenv(helm_env.PluginEnvVar)
+		if settings.PlugDirs == "" {
+			settings.PlugDirs = settings.Home.Plugins()
+		}
+	}
 
 	cmd.AddCommand(
 		// chart commands
@@ -153,7 +155,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	)
 
 	// Find and add plugins
-	loadPlugins(cmd, helmpath.Home(homePath()), out)
+	loadPlugins(cmd, out)
 
 	return cmd
 }
@@ -176,26 +178,26 @@ func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
 }
 
 func setupConnection(c *cobra.Command, args []string) error {
-	if tillerHost == "" {
+	if settings.TillerHost == "" {
 		config, client, err := getKubeClient(kubeContext)
 		if err != nil {
 			return err
 		}
 
-		tunnel, err := portforwarder.New(tillerNamespace, client, config)
+		tunnel, err := portforwarder.New(settings.TillerNamespace, client, config)
 		if err != nil {
 			return err
 		}
 
-		tillerHost = fmt.Sprintf("localhost:%d", tunnel.Local)
-		if flagDebug {
+		settings.TillerHost = fmt.Sprintf("localhost:%d", tunnel.Local)
+		if settings.FlagDebug {
 			fmt.Printf("Created tunnel using local port: '%d'\n", tunnel.Local)
 		}
 	}
 
 	// Set up the gRPC config.
-	if flagDebug {
-		fmt.Printf("SERVER: %q\n", tillerHost)
+	if settings.FlagDebug {
+		fmt.Printf("SERVER: %q\n", settings.TillerHost)
 	}
 	// Plugin support.
 	return nil
@@ -230,30 +232,6 @@ func prettyError(err error) error {
 	return errors.New(grpc.ErrorDesc(err))
 }
 
-func defaultHelmHome() string {
-	if home := os.Getenv(homeEnvVar); home != "" {
-		return home
-	}
-	return filepath.Join(os.Getenv("HOME"), ".helm")
-}
-
-func homePath() string {
-	s := os.ExpandEnv(helmHome)
-	os.Setenv(homeEnvVar, s)
-	return s
-}
-
-func defaultHelmHost() string {
-	return os.Getenv(hostEnvVar)
-}
-
-func defaultTillerNamespace() string {
-	if ns := os.Getenv(tillerNamespaceEnvVar); ns != "" {
-		return ns
-	}
-	return environment.DefaultTillerNamespace
-}
-
 // getKubeClient is a convenience method for creating kubernetes config and client
 // for a given kubeconfig context
 func getKubeClient(context string) (*rest.Config, *internalclientset.Clientset, error) {
@@ -277,7 +255,7 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 }
 
 func newClient() helm.Interface {
-	options := []helm.Option{helm.Host(tillerHost)}
+	options := []helm.Option{helm.Host(settings.TillerHost)}
 
 	if tlsVerify || tlsEnable {
 		tlsopts := tlsutil.Options{KeyFile: tlsKeyFile, CertFile: tlsCertFile, InsecureSkipVerify: true}

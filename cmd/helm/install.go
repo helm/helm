@@ -34,8 +34,8 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/getter/defaultgetters"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -178,7 +178,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (i *installCmd) run() error {
-	if flagDebug {
+	if settings.FlagDebug {
 		fmt.Fprintf(i.out, "CHART PATH: %s\n", i.chartPath)
 	}
 
@@ -312,7 +312,7 @@ func (i *installCmd) printRelease(rel *release.Release) {
 	}
 	// TODO: Switch to text/template like everything else.
 	fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
-	if flagDebug {
+	if settings.FlagDebug {
 		printRelease(i.out, rel)
 	}
 }
@@ -350,15 +350,16 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		return name, fmt.Errorf("path %q not found", name)
 	}
 
-	crepo := filepath.Join(helmpath.Home(homePath()).Repository(), name)
+	crepo := filepath.Join(settings.Home.Repository(), name)
 	if _, err := os.Stat(crepo); err == nil {
 		return filepath.Abs(crepo)
 	}
 
 	dl := downloader.ChartDownloader{
-		HelmHome: helmpath.Home(homePath()),
+		HelmHome: settings.Home,
 		Out:      os.Stdout,
 		Keyring:  keyring,
+		Getters:  defaultgetters.Get(settings),
 	}
 	if verify {
 		dl.Verify = downloader.VerifyAlways
@@ -370,11 +371,11 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		if err != nil {
 			return filename, err
 		}
-		if flagDebug {
+		if settings.FlagDebug {
 			fmt.Printf("Fetched %s to %s\n", name, filename)
 		}
 		return lname, nil
-	} else if flagDebug {
+	} else if settings.FlagDebug {
 		return filename, err
 	}
 

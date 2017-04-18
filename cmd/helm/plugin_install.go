@@ -54,12 +54,12 @@ func (pcmd *pluginInstallCmd) complete(args []string) error {
 		return err
 	}
 	pcmd.source = args[0]
-	pcmd.home = helmpath.Home(homePath())
+	pcmd.home = settings.Home
 	return nil
 }
 
 func (pcmd *pluginInstallCmd) run() error {
-	installer.Debug = flagDebug
+	installer.Debug = settings.FlagDebug
 
 	i, err := installer.NewForSource(pcmd.source, pcmd.version, pcmd.home)
 	if err != nil {

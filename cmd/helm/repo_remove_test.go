@@ -33,13 +33,13 @@ func TestRepoRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := homePath()
-	helmHome = thome
+	oldhome := settings.Home
+	settings.Home = thome
 	hh := helmpath.Home(thome)
 	defer func() {
 		ts.Stop()
-		helmHome = oldhome
-		os.Remove(thome)
+		settings.Home = oldhome
+		os.Remove(thome.String())
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
 		t.Fatal(err)

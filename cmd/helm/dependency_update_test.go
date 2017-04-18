@@ -35,18 +35,18 @@ import (
 
 func TestDependencyUpdateCmd(t *testing.T) {
 	// Set up a testing helm home
-	oldhome := helmHome
+	oldhome := settings.Home
 	hh, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
 	}
-	helmHome = hh
+	settings.Home = hh
 	defer func() {
-		os.RemoveAll(hh)
-		helmHome = oldhome
+		os.RemoveAll(hh.String())
+		settings.Home = oldhome
 	}()
 
-	srv := repotest.NewServer(hh)
+	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
 	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
 	if err != nil {
@@ -56,14 +56,14 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	t.Logf("Listening on directory %s", srv.Root())
 
 	chartname := "depup"
-	if err := createTestingChart(hh, chartname, srv.URL()); err != nil {
+	if err := createTestingChart(hh.String(), chartname, srv.URL()); err != nil {
 		t.Fatal(err)
 	}
 
 	out := bytes.NewBuffer(nil)
 	duc := &dependencyUpdateCmd{out: out}
 	duc.helmhome = helmpath.Home(hh)
-	duc.chartpath = filepath.Join(hh, chartname)
+	duc.chartpath = filepath.Join(hh.String(), chartname)
 
 	if err := duc.run(); err != nil {
 		output := out.String()
@@ -78,7 +78,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 
 	// Make sure the actual file got downloaded.
-	expect := filepath.Join(hh, chartname, "charts/reqtest-0.1.0.tgz")
+	expect := filepath.Join(hh.String(), chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 			{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 		},
 	}
-	dir := filepath.Join(hh, chartname)
+	dir := filepath.Join(hh.String(), chartname)
 	if err := writeRequirements(dir, reqfile); err != nil {
 		t.Fatal(err)
 	}
@@ -118,11 +118,11 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	// In this second run, we should see compressedchart-0.3.0.tgz, and not
 	// the 0.1.0 version.
-	expect = filepath.Join(hh, chartname, "charts/compressedchart-0.3.0.tgz")
+	expect = filepath.Join(hh.String(), chartname, "charts/compressedchart-0.3.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatalf("Expected %q: %s", expect, err)
 	}
-	dontExpect := filepath.Join(hh, chartname, "charts/compressedchart-0.1.0.tgz")
+	dontExpect := filepath.Join(hh.String(), chartname, "charts/compressedchart-0.1.0.tgz")
 	if _, err := os.Stat(dontExpect); err == nil {
 		t.Fatalf("Unexpected %q", dontExpect)
 	}
@@ -130,18 +130,18 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 	// Set up a testing helm home
-	oldhome := helmHome
+	oldhome := settings.Home
 	hh, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
 	}
-	helmHome = hh
+	settings.Home = hh
 	defer func() {
-		os.RemoveAll(hh)
-		helmHome = oldhome
+		os.RemoveAll(hh.String())
+		settings.Home = oldhome
 	}()
 
-	srv := repotest.NewServer(hh)
+	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
 	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
 	if err != nil {
@@ -151,14 +151,14 @@ func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 	t.Logf("Listening on directory %s", srv.Root())
 
 	chartname := "depup"
-	if err := createTestingChart(hh, chartname, srv.URL()); err != nil {
+	if err := createTestingChart(hh.String(), chartname, srv.URL()); err != nil {
 		t.Fatal(err)
 	}
 
 	out := bytes.NewBuffer(nil)
 	duc := &dependencyUpdateCmd{out: out}
 	duc.helmhome = helmpath.Home(hh)
-	duc.chartpath = filepath.Join(hh, chartname)
+	duc.chartpath = filepath.Join(hh.String(), chartname)
 	duc.skipRefresh = true
 
 	if err := duc.run(); err == nil {

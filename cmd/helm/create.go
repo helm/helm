@@ -71,7 +71,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		Short: "create a new chart with the given name",
 		Long:  createDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cc.home = helmpath.Home(homePath())
+			cc.home = settings.Home
 			if len(args) == 0 {
 				return errors.New("the name of the new chart is required")
 			}

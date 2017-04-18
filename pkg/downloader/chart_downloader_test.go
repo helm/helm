@@ -25,6 +25,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter/http"
+	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
@@ -49,6 +52,7 @@ func TestResolveChartRef(t *testing.T) {
 	c := ChartDownloader{
 		HelmHome: helmpath.Home("testdata/helmhome"),
 		Out:      os.Stderr,
+		Getters:  defaultgetters.Get(environment.EnvSettings{}),
 	}
 
 	for _, tt := range tests {
@@ -85,7 +89,11 @@ func TestDownload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	got, err := download(srv.URL, http.DefaultClient)
+	getter, err := httpgetter.New(srv.URL, "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := getter.Get(srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +114,7 @@ func TestDownload(t *testing.T) {
 
 	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
 	u.User = url.UserPassword("username", "password")
-	got, err = download(u.String(), http.DefaultClient)
+	got, err = getter.Get(u.String())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,6 +182,7 @@ func TestDownloadTo(t *testing.T) {
 		Out:      os.Stderr,
 		Verify:   VerifyAlways,
 		Keyring:  "testdata/helm-test-key.pub",
+		Getters:  defaultgetters.Get(environment.EnvSettings{}),
 	}
 	cname := "/signtest-0.1.0.tgz"
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
@@ -236,6 +245,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		HelmHome: hh,
 		Out:      os.Stderr,
 		Verify:   VerifyLater,
+		Getters:  defaultgetters.Get(environment.EnvSettings{}),
 	}
 	cname := "/signtest-0.1.0.tgz"
 	where, _, err := c.DownloadTo(srv.URL()+cname, "", dest)
@@ -264,6 +274,7 @@ func TestScanReposForURL(t *testing.T) {
 		HelmHome: hh,
 		Out:      os.Stderr,
 		Verify:   VerifyLater,
+		Getters:  defaultgetters.Get(environment.EnvSettings{}),
 	}
 
 	u := "http://example.com/alpine-0.2.0.tgz"

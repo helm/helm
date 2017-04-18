@@ -52,7 +52,7 @@ func (pcmd *pluginRemoveCmd) complete(args []string) error {
 		return err
 	}
 	pcmd.names = args
-	pcmd.home = helmpath.Home(homePath())
+	pcmd.home = settings.Home
 	return nil
 }
 

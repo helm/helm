@@ -59,7 +59,7 @@ func runHook(p *plugin.Plugin, event string, home helmpath.Home) error {
 
 	debug("running %s hook: %s", event, prog)
 
-	setupEnv(p.Metadata.Name, p.Dir, home.Plugins(), home)
+	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
 	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
