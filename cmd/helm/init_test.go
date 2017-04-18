@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -33,6 +35,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
+	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
@@ -215,5 +218,87 @@ func TestEnsureHome(t *testing.T) {
 		t.Errorf("%s", err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
+	}
+}
+
+func TestInitCmd_tlsOptions(t *testing.T) {
+	const testDir = "../../testdata"
+
+	// tls certificates in testDir
+	var (
+		testCaCertFile = filepath.Join(testDir, "ca.pem")
+		testCertFile   = filepath.Join(testDir, "crt.pem")
+		testKeyFile    = filepath.Join(testDir, "key.pem")
+	)
+
+	// these tests verify the effects of permuting the "--tls" and "--tls-verify" flags
+	// and the install options yieled as a result of (*initCmd).tlsOptions()
+	// during helm init.
+	var tests = []struct {
+		certFile string
+		keyFile  string
+		caFile   string
+		enable   bool
+		verify   bool
+		describe string
+	}{
+		{ // --tls and --tls-verify specified (--tls=true,--tls-verify=true)
+			certFile: testCertFile,
+			keyFile:  testKeyFile,
+			caFile:   testCaCertFile,
+			enable:   true,
+			verify:   true,
+			describe: "--tls and --tls-verify specified (--tls=true,--tls-verify=true)",
+		},
+		{ // --tls-verify implies --tls (--tls=false,--tls-verify=true)
+			certFile: testCertFile,
+			keyFile:  testKeyFile,
+			caFile:   testCaCertFile,
+			enable:   false,
+			verify:   true,
+			describe: "--tls-verify implies --tls (--tls=false,--tls-verify=true)",
+		},
+		{ // no --tls-verify (--tls=true,--tls-verify=false)
+			certFile: testCertFile,
+			keyFile:  testKeyFile,
+			caFile:   "",
+			enable:   true,
+			verify:   false,
+			describe: "no --tls-verify (--tls=true,--tls-verify=false)",
+		},
+		{ // tls is disabled (--tls=false,--tls-verify=false)
+			certFile: "",
+			keyFile:  "",
+			caFile:   "",
+			enable:   false,
+			verify:   false,
+			describe: "tls is disabled (--tls=false,--tls-verify=false)",
+		},
+	}
+
+	for _, tt := range tests {
+		// emulate tls file specific flags
+		tlsCaCertFile, tlsCertFile, tlsKeyFile = tt.caFile, tt.certFile, tt.keyFile
+
+		// emulate tls enable/verify flags
+		tlsEnable, tlsVerify = tt.enable, tt.verify
+
+		cmd := &initCmd{}
+		if err := cmd.tlsOptions(); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// expected result options
+		expect := installer.Options{
+			TLSCaCertFile: tt.caFile,
+			TLSCertFile:   tt.certFile,
+			TLSKeyFile:    tt.keyFile,
+			VerifyTLS:     tt.verify,
+			EnableTLS:     tt.enable || tt.verify,
+		}
+
+		if !reflect.DeepEqual(cmd.opts, expect) {
+			t.Errorf("%s: got %#+v, want %#+v", tt.describe, cmd.opts, expect)
+		}
 	}
 }
