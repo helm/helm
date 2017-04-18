@@ -155,12 +155,25 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	if len(vs) == 0 {
 		return nil, ErrNoChartVersion
 	}
+
+	var constraint *semver.Constraints
 	if len(version) == 0 {
-		return vs[0], nil
+		constraint, _ = semver.NewConstraint("*")
+	} else {
+		var err error
+		constraint, err = semver.NewConstraint(version)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	for _, ver := range vs {
-		// TODO: Do we need to normalize the version field with the SemVer lib?
-		if ver.Version == version {
+		test, err := semver.NewVersion(ver.Version)
+		if err != nil {
+			continue
+		}
+
+		if constraint.Check(test) {
 			return ver, nil
 		}
 	}
