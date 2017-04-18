@@ -21,6 +21,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
@@ -45,6 +46,7 @@ type searchCmd struct {
 
 	versions bool
 	regexp   bool
+	version  string
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -62,6 +64,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&sc.regexp, "regexp", "r", false, "use regular expressions for searching")
 	f.BoolVarP(&sc.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line")
+	f.StringVarP(&sc.version, "version", "v", "", "search using semantic versioning constraints")
 
 	return cmd
 }
@@ -72,27 +75,47 @@ func (s *searchCmd) run(args []string) error {
 		return err
 	}
 
+	var res []*search.Result
 	if len(args) == 0 {
-		s.showAllCharts(index)
-		return nil
+		res = index.All()
+	} else {
+		q := strings.Join(args, " ")
+		res, err = index.Search(q, searchMaxScore, s.regexp)
+		if err != nil {
+			return nil
+		}
 	}
 
-	q := strings.Join(args, " ")
-	res, err := index.Search(q, searchMaxScore, s.regexp)
-	if err != nil {
-		return nil
-	}
 	search.SortScore(res)
+	data, err := s.applyConstraint(res)
+	if err != nil {
+		return err
+	}
 
-	fmt.Fprintln(s.out, s.formatSearchResults(res))
+	fmt.Fprintln(s.out, s.formatSearchResults(data))
 
 	return nil
 }
 
-func (s *searchCmd) showAllCharts(i *search.Index) {
-	res := i.All()
-	search.SortScore(res)
-	fmt.Fprintln(s.out, s.formatSearchResults(res))
+func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, error) {
+	if len(s.version) == 0 {
+		return res, nil
+	}
+
+	constraint, err := semver.NewConstraint(s.version)
+	if err != nil {
+		return res, fmt.Errorf("an invalid version/constraint format: %s", err)
+	}
+
+	data := res[:0]
+	for _, r := range res {
+		v, err := semver.NewVersion(r.Chart.Version)
+		if err != nil || constraint.Check(v) {
+			data = append(data, r)
+		}
+	}
+
+	return data, nil
 }
 
 func (s *searchCmd) formatSearchResults(res []*search.Result) string {
