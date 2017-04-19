@@ -65,6 +65,9 @@ type Options struct {
 	//
 	// Required and valid if and only if VerifyTLS is set.
 	TLSCaCertFile string
+
+	// EnableHostNetwork installs Tiller with net=host
+	EnableHostNetwork bool
 }
 
 func (opts *Options) selectImage() string {

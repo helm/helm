@@ -115,6 +115,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
+	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install tiller with net=host")
+
 	return cmd
 }
 
