@@ -27,6 +27,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/repo"
 )
 
 const fetchDesc = `
@@ -50,10 +51,15 @@ type fetchCmd struct {
 	chartRef string
 	destdir  string
 	version  string
+	repoURL  string
 
 	verify      bool
 	verifyLater bool
 	keyring     string
+
+	certFile string
+	keyFile  string
+	caFile   string
 
 	out io.Writer
 }
@@ -87,6 +93,10 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&fch.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
 	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.StringVarP(&fch.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
+	f.StringVar(&fch.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&fch.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&fch.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&fch.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }
@@ -116,6 +126,14 @@ func (f *fetchCmd) run() error {
 			return fmt.Errorf("Failed to untar: %s", err)
 		}
 		defer os.RemoveAll(dest)
+	}
+
+	if f.repoURL != "" {
+		chartURL, err := repo.FindChartInRepoURL(f.repoURL, f.chartRef, f.version, f.certFile, f.keyFile, f.caFile, getter.All(settings))
+		if err != nil {
+			return err
+		}
+		f.chartRef = chartURL
 	}
 
 	saved, v, err := c.DownloadTo(f.chartRef, f.version, dest)

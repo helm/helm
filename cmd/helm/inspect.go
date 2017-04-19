@@ -50,6 +50,11 @@ type inspectCmd struct {
 	keyring   string
 	out       io.Writer
 	version   string
+	repoURL   string
+
+	certFile string
+	keyFile  string
+	caFile   string
 }
 
 const (
@@ -72,7 +77,8 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0], insp.version, insp.verify, insp.keyring)
+			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
 			}
@@ -90,7 +96,8 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0], insp.version, insp.verify, insp.keyring)
+			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
 			}
@@ -108,7 +115,8 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0], insp.version, insp.verify, insp.keyring)
+			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
 			}
@@ -135,6 +143,30 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	inspectCommand.Flags().StringVar(&insp.version, verflag, "", verdesc)
 	valuesSubCmd.Flags().StringVar(&insp.version, verflag, "", verdesc)
 	chartSubCmd.Flags().StringVar(&insp.version, verflag, "", verdesc)
+
+	repoURL := "repo"
+	repoURLdesc := "chart repository url where to locate the requested chart"
+	inspectCommand.Flags().StringVar(&insp.repoURL, repoURL, "", repoURLdesc)
+	valuesSubCmd.Flags().StringVar(&insp.repoURL, repoURL, "", repoURLdesc)
+	chartSubCmd.Flags().StringVar(&insp.repoURL, repoURL, "", repoURLdesc)
+
+	certFile := "cert-file"
+	certFiledesc := "verify certificates of HTTPS-enabled servers using this CA bundle"
+	inspectCommand.Flags().StringVar(&insp.certFile, certFile, "", certFiledesc)
+	valuesSubCmd.Flags().StringVar(&insp.certFile, certFile, "", certFiledesc)
+	chartSubCmd.Flags().StringVar(&insp.certFile, certFile, "", certFiledesc)
+
+	keyFile := "key-file"
+	keyFiledesc := "identify HTTPS client using this SSL key file"
+	inspectCommand.Flags().StringVar(&insp.keyFile, keyFile, "", keyFiledesc)
+	valuesSubCmd.Flags().StringVar(&insp.keyFile, keyFile, "", keyFiledesc)
+	chartSubCmd.Flags().StringVar(&insp.keyFile, keyFile, "", keyFiledesc)
+
+	caFile := "ca-file"
+	caFiledesc := "chart repository url where to locate the requested chart"
+	inspectCommand.Flags().StringVar(&insp.caFile, caFile, "", caFiledesc)
+	valuesSubCmd.Flags().StringVar(&insp.caFile, caFile, "", caFiledesc)
+	chartSubCmd.Flags().StringVar(&insp.caFile, caFile, "", caFiledesc)
 
 	inspectCommand.AddCommand(valuesSubCmd)
 	inspectCommand.AddCommand(chartSubCmd)
