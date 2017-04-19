@@ -169,7 +169,7 @@ spec:
             path: /
             port: {{ .Values.service.internalPort }}
         resources:
-{{ toYaml .Values.resources | indent 12 }}
+{{ toYaml .Values.resources | indent 10 }}
 `
 
 const defaultService = `apiVersion: v1
