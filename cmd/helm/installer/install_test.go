@@ -17,6 +17,8 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -32,7 +34,6 @@ import (
 )
 
 func TestDeploymentManifest(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		image           string
@@ -69,6 +70,52 @@ func TestDeploymentManifest(t *testing.T) {
 	}
 }
 
+func TestDeploymentManifest_WithTLS(t *testing.T) {
+	tests := []struct {
+		opts   Options
+		name   string
+		enable string
+		verify string
+	}{
+		{
+			Options{Namespace: api.NamespaceDefault, EnableTLS: true, VerifyTLS: true},
+			"tls enable (true), tls verify (true)",
+			"1",
+			"1",
+		},
+		{
+			Options{Namespace: api.NamespaceDefault, EnableTLS: true, VerifyTLS: false},
+			"tls enable (true), tls verify (false)",
+			"1",
+			"",
+		},
+		{
+			Options{Namespace: api.NamespaceDefault, EnableTLS: false, VerifyTLS: true},
+			"tls enable (false), tls verify (true)",
+			"1",
+			"1",
+		},
+	}
+	for _, tt := range tests {
+		o, err := DeploymentManifest(&tt.opts)
+		if err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+
+		var d extensions.Deployment
+		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+		// verify environment variable in deployment reflect the use of tls being enabled.
+		if got := d.Spec.Template.Spec.Containers[0].Env[1].Value; got != tt.verify {
+			t.Errorf("%s: expected tls verify env value %q, got %q", tt.name, tt.verify, got)
+		}
+		if got := d.Spec.Template.Spec.Containers[0].Env[2].Value; got != tt.enable {
+			t.Errorf("%s: expected tls enable env value %q, got %q", tt.name, tt.enable, got)
+		}
+	}
+}
+
 func TestServiceManifest(t *testing.T) {
 	o, err := ServiceManifest(api.NamespaceDefault)
 	if err != nil {
@@ -81,6 +128,39 @@ func TestServiceManifest(t *testing.T) {
 
 	if got := svc.ObjectMeta.Namespace; got != api.NamespaceDefault {
 		t.Errorf("expected namespace %s, got %s", api.NamespaceDefault, got)
+	}
+}
+
+func TestSecretManifest(t *testing.T) {
+	o, err := SecretManifest(&Options{
+		VerifyTLS:     true,
+		EnableTLS:     true,
+		Namespace:     api.NamespaceDefault,
+		TLSKeyFile:    tlsTestFile(t, "key.pem"),
+		TLSCertFile:   tlsTestFile(t, "crt.pem"),
+		TLSCaCertFile: tlsTestFile(t, "ca.pem"),
+	})
+
+	if err != nil {
+		t.Fatalf("error %q", err)
+	}
+
+	var obj api.Secret
+	if err := yaml.Unmarshal([]byte(o), &obj); err != nil {
+		t.Fatalf("error %q", err)
+	}
+
+	if got := obj.ObjectMeta.Namespace; got != api.NamespaceDefault {
+		t.Errorf("expected namespace %s, got %s", api.NamespaceDefault, got)
+	}
+	if _, ok := obj.Data["tls.key"]; !ok {
+		t.Errorf("missing 'tls.key' in generated secret object")
+	}
+	if _, ok := obj.Data["tls.crt"]; !ok {
+		t.Errorf("missing 'tls.crt' in generated secret object")
+	}
+	if _, ok := obj.Data["ca.crt"]; !ok {
+		t.Errorf("missing 'ca.crt' in generated secret object")
 	}
 }
 
@@ -120,6 +200,77 @@ func TestInstall(t *testing.T) {
 
 	if actions := fc.Actions(); len(actions) != 2 {
 		t.Errorf("unexpected actions: %v, expected 2 actions got %d", actions, len(actions))
+	}
+}
+
+func TestInstall_WithTLS(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	name := "tiller-secret"
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
+		l := obj.GetLabels()
+		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
+			t.Errorf("expected labels = '', got '%s'", l)
+		}
+		i := obj.Spec.Template.Spec.Containers[0].Image
+		if i != image {
+			t.Errorf("expected image = '%s', got '%s'", image, i)
+		}
+		return true, obj, nil
+	})
+	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*api.Service)
+		l := obj.GetLabels()
+		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
+			t.Errorf("expected labels = '', got '%s'", l)
+		}
+		n := obj.ObjectMeta.Namespace
+		if n != api.NamespaceDefault {
+			t.Errorf("expected namespace = '%s', got '%s'", api.NamespaceDefault, n)
+		}
+		return true, obj, nil
+	})
+	fc.AddReactor("create", "secrets", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*api.Secret)
+		if l := obj.GetLabels(); reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
+			t.Errorf("expected labels = '', got '%s'", l)
+		}
+		if n := obj.ObjectMeta.Namespace; n != api.NamespaceDefault {
+			t.Errorf("expected namespace = '%s', got '%s'", api.NamespaceDefault, n)
+		}
+		if s := obj.ObjectMeta.Name; s != name {
+			t.Errorf("expected name = '%s', got '%s'", name, s)
+		}
+		if _, ok := obj.Data["tls.key"]; !ok {
+			t.Errorf("missing 'tls.key' in generated secret object")
+		}
+		if _, ok := obj.Data["tls.crt"]; !ok {
+			t.Errorf("missing 'tls.crt' in generated secret object")
+		}
+		if _, ok := obj.Data["ca.crt"]; !ok {
+			t.Errorf("missing 'ca.crt' in generated secret object")
+		}
+		return true, obj, nil
+	})
+
+	opts := &Options{
+		Namespace:     api.NamespaceDefault,
+		ImageSpec:     image,
+		EnableTLS:     true,
+		VerifyTLS:     true,
+		TLSKeyFile:    tlsTestFile(t, "key.pem"),
+		TLSCertFile:   tlsTestFile(t, "crt.pem"),
+		TLSCaCertFile: tlsTestFile(t, "ca.pem"),
+	}
+
+	if err := Install(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expected 3 actions got %d", actions, len(actions))
 	}
 }
 
@@ -225,4 +376,13 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 	if actions := fc.Actions(); len(actions) != 4 {
 		t.Errorf("unexpected actions: %v, expected 4 actions got %d", actions, len(actions))
 	}
+}
+
+func tlsTestFile(t *testing.T, path string) string {
+	const tlsTestDir = "../../../testdata"
+	path = filepath.Join(tlsTestDir, path)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		t.Fatalf("tls test file %s does not exist", path)
+	}
+	return path
 }
