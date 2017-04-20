@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 
 	"time"
 
@@ -25,6 +26,8 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 
 	"strings"
+
+	"bytes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -42,9 +45,15 @@ type HelmManager interface {
 	// DeleteTiller removes tiller pod from k8s
 	DeleteTiller(removeHelmHome bool) error
 	// Install chart, returns releaseName and error
-	Install(chartName string) (string, error)
+	Install(chartName string, values map[string]string) (string, error)
 	// Status verifies state of installed release
 	Status(releaseName string) error
+	// Delete release
+	Delete(releaseName string) error
+	// Upgrade release
+	Upgrade(chartName, releaseName string, values map[string]string) error
+	// Rollback release
+	Rollback(releaseName string, revision int) error
 }
 
 // BinaryHelmManager uses helm binary to work with helm server
@@ -74,7 +83,7 @@ func (m *BinaryHelmManager) InstallTiller() error {
 
 func (m *BinaryHelmManager) DeleteTiller(removeHelmHome bool) error {
 	arg := make([]string, 0, 4)
-	arg = append(arg, "reset", "--tiller-namespace", m.Namespace)
+	arg = append(arg, "reset", "--tiller-namespace", m.Namespace, "--force")
 	if removeHelmHome {
 		arg = append(arg, "--remove-helm-home")
 	}
@@ -88,8 +97,8 @@ func (m *BinaryHelmManager) DeleteTiller(removeHelmHome bool) error {
 	return nil
 }
 
-func (m *BinaryHelmManager) Install(chartName string) (string, error) {
-	stdout, err := m.executeUsingHelmInNamespace("install", chartName)
+func (m *BinaryHelmManager) Install(chartName string, values map[string]string) (string, error) {
+	stdout, err := m.executeCommandWithValues(chartName, "install", values)
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +107,7 @@ func (m *BinaryHelmManager) Install(chartName string) (string, error) {
 
 // Status reports nil if release is considered to be succesfull
 func (m *BinaryHelmManager) Status(releaseName string) error {
-	stdout, err := m.executeUsingHelmInNamespace("status", releaseName)
+	stdout, err := m.executeUsingHelm("status", releaseName, "--tiller-namespace", m.Namespace)
 	if err != nil {
 		return err
 	}
@@ -109,21 +118,59 @@ func (m *BinaryHelmManager) Status(releaseName string) error {
 	return fmt.Errorf("Expected status is DEPLOYED. But got %v for release %v.", status, releaseName)
 }
 
+func (m *BinaryHelmManager) Delete(releaseName string) error {
+	_, err := m.executeUsingHelm("delete", releaseName, "--tiller-namespace", m.Namespace)
+	return err
+}
+
+func (m *BinaryHelmManager) Upgrade(chartName, releaseName string, values map[string]string) error {
+	arg := make([]string, 0, 9)
+	arg = append(arg, "upgrade", releaseName, chartName)
+	if len(values) > 0 {
+		arg = append(arg, "--set", prepareArgsFromValues(values))
+	}
+	_, err := m.executeUsingHelmInNamespace(arg...)
+	return err
+}
+
+func (m *BinaryHelmManager) Rollback(releaseName string, revision int) error {
+	arg := make([]string, 0, 6)
+	arg = append(arg, "rollback", releaseName, strconv.Itoa(revision), "--tiller-namespace", m.Namespace)
+	_, err := m.executeUsingHelm(arg...)
+	return err
+}
+
 func (m *BinaryHelmManager) executeUsingHelmInNamespace(arg ...string) (string, error) {
 	arg = append(arg, "--namespace", m.Namespace, "--tiller-namespace", m.Namespace)
 	return m.executeUsingHelm(arg...)
 }
 
 func (m *BinaryHelmManager) executeUsingHelm(arg ...string) (string, error) {
-	Logf("Running command %+v\n", arg)
 	cmd := exec.Command(m.HelmBin, arg...)
+	Logf("Running command %+v\n", cmd.Args)
 	stdout, err := cmd.Output()
 	if err != nil {
 		stderr := err.(*exec.ExitError)
-		Logf("Ccommand %+v, Err %s\n", arg, stderr.Stderr)
+		Logf("Command %+v, Err %s\n", cmd.Args, stderr.Stderr)
 		return "", err
 	}
 	return string(stdout), nil
+}
+
+func (m *BinaryHelmManager) executeCommandWithValues(releaseName, command string, values map[string]string) (string, error) {
+	arg := make([]string, 0, 8)
+	arg = append(arg, command, releaseName)
+	if len(values) > 0 {
+		var b bytes.Buffer
+		for key, val := range values {
+			b.WriteString(key)
+			b.WriteString("=")
+			b.WriteString(val)
+			b.WriteString(",")
+		}
+		arg = append(arg, "--set", b.String())
+	}
+	return m.executeUsingHelmInNamespace(arg...)
 }
 
 func regexpKeyFromStructuredOutput(key, output string) string {
@@ -191,4 +238,15 @@ func waitTillerPod(clientset kubernetes.Interface, namespace string) {
 		}
 		return false
 	}, 2*time.Minute, 5*time.Second).Should(BeTrue(), "tiller pod is not running in namespace "+namespace)
+}
+
+func prepareArgsFromValues(values map[string]string) string {
+	var b bytes.Buffer
+	for key, val := range values {
+		b.WriteString(key)
+		b.WriteString("=")
+		b.WriteString(val)
+		b.WriteString(",")
+	}
+	return b.String()
 }
