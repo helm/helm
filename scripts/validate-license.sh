@@ -22,6 +22,7 @@ find_files() {
       -wholename './vendor' \
       -o -wholename './pkg/proto' \
       -o -wholename '*testdata*' \
+      -o -wholename './_*' \
     \) -prune \
   \) \
   \( -name '*.go' -o -name '*.sh' -o -name 'Dockerfile' \)
