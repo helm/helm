@@ -27,6 +27,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"fmt"
 )
 
 // Client manages client side of the helm-tiller protocol
@@ -215,6 +216,14 @@ func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.R
 	return h.rollback(ctx, req)
 }
 
+// ReleaseLogs returns a channel streaming log data from the release
+func (h *Client) ReleaseLogs(rlsName string, done <-chan struct{}) (<-chan *rls.GetReleaseLogsResponse, error) {
+	ctx := NewContext()
+	req := &rls.GetReleaseLogsRequest{Name: rlsName}
+
+	return h.logs(ctx, req, done)
+}
+
 // ReleaseStatus returns the given release's status.
 func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
 	for _, opt := range opts {
@@ -374,6 +383,42 @@ func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (
 
 	rlc := rls.NewReleaseServiceClient(c)
 	return rlc.GetReleaseStatus(ctx, req)
+}
+
+// Executes tiller.GetReleaseLogs RPC.
+func (h *Client) logs(ctx context.Context, req *rls.GetReleaseLogsRequest, done <-chan struct{}) (<-chan *rls.GetReleaseLogsResponse, error) {
+	c, err := h.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rlc := rls.NewReleaseServiceClient(c)
+	s, err := rlc.GetReleaseLogs(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(chan *rls.GetReleaseLogsResponse)
+
+	go func() {
+		defer close(out)
+		defer c.Close()
+		select {
+		case rs := s.Recv():
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
+				return
+			}
+			out <- rs
+		case <-done:
+			return
+		}
+	}()
+
+	return out, nil
 }
 
 // Executes tiller.GetReleaseContent RPC.
