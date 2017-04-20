@@ -105,7 +105,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 	settings.Home = helmpath.Home(helmHomeTemp)
 	p.StringVar(&settings.TillerHost, "host", helm_env.DefaultHelmHost(), "address of tiller. Overrides $HELM_HOST")
 	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	p.BoolVar(&settings.FlagDebug, "debug", false, "enable verbose output")
+	p.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
 	p.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.GetTillerNamespace(), "namespace of tiller")
 
 	if os.Getenv(helm_env.PluginDisableEnvVar) != "1" {
@@ -190,15 +190,12 @@ func setupConnection(c *cobra.Command, args []string) error {
 		}
 
 		settings.TillerHost = fmt.Sprintf("localhost:%d", tunnel.Local)
-		if settings.FlagDebug {
-			fmt.Printf("Created tunnel using local port: '%d'\n", tunnel.Local)
-		}
+		debug("Created tunnel using local port: '%d'\n", tunnel.Local)
 	}
 
 	// Set up the gRPC config.
-	if settings.FlagDebug {
-		fmt.Printf("SERVER: %q\n", settings.TillerHost)
-	}
+	debug("SERVER: %q\n", settings.TillerHost)
+
 	// Plugin support.
 	return nil
 }

@@ -100,7 +100,7 @@ func (d *dependencyUpdateCmd) run() error {
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible
 	}
-	if settings.FlagDebug {
+	if settings.Debug {
 		man.Debug = true
 	}
 	return man.Update()

@@ -155,7 +155,7 @@ func (i *initCmd) run() error {
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
 
-	if settings.FlagDebug {
+	if settings.Debug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
 			w := i.out
 			if !first {

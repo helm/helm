@@ -195,7 +195,7 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 		os.Setenv(key, val)
 	}
 
-	if settings.FlagDebug {
+	if settings.Debug {
 		os.Setenv("HELM_DEBUG", "1")
 	}
 }

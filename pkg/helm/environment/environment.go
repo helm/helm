@@ -52,5 +52,5 @@ type EnvSettings struct {
 	TillerNamespace string
 	Home            helmpath.Home
 	PlugDirs        string
-	FlagDebug       bool
+	Debug           bool
 }

@@ -178,9 +178,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (i *installCmd) run() error {
-	if settings.FlagDebug {
-		fmt.Fprintf(i.out, "CHART PATH: %s\n", i.chartPath)
-	}
+	debug("CHART PATH: %s\n", i.chartPath)
 
 	if i.namespace == "" {
 		i.namespace = defaultNamespace()
@@ -305,14 +303,14 @@ func (i *installCmd) vals() ([]byte, error) {
 	return yaml.Marshal(base)
 }
 
-// printRelease prints info about a release if the flagDebug is true.
+// printRelease prints info about a release if the Debug is true.
 func (i *installCmd) printRelease(rel *release.Release) {
 	if rel == nil {
 		return
 	}
 	// TODO: Switch to text/template like everything else.
 	fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
-	if settings.FlagDebug {
+	if settings.Debug {
 		printRelease(i.out, rel)
 	}
 }
@@ -371,11 +369,9 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		if err != nil {
 			return filename, err
 		}
-		if settings.FlagDebug {
-			fmt.Printf("Fetched %s to %s\n", name, filename)
-		}
+		debug("Fetched %s to %s\n", name, filename)
 		return lname, nil
-	} else if settings.FlagDebug {
+	} else if settings.Debug {
 		return filename, err
 	}
 
