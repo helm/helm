@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	experimentalTillerImage string = "nebril/tiller-experimental"
-	rudderAppcontroller     string = "rudderAppcontroller"
+	experimentalTillerImage string = "nebril/tiller"
+	rudderAppcontroller     string = "rudder"
 )
 
 // HelmManager provides functionality to install client/server helm and use it
@@ -76,7 +76,8 @@ func (m *BinaryHelmManager) InstallTiller() error {
 	By("Waiting for tiller pod")
 	waitTillerPod(m.Clientset, m.Namespace)
 	if enableRudder {
-		return prepareRudder(m.Clientset, m.Namespace)
+		By("Enabling rudder pod")
+		prepareRudder(m.Clientset, m.Namespace)
 	}
 	return nil
 }
@@ -183,7 +184,7 @@ func regexpKeyFromStructuredOutput(key, output string) string {
 	return result[1]
 }
 
-func prepareRudder(clientset kubernetes.Interface, namespace string) error {
+func prepareRudder(clientset kubernetes.Interface, namespace string) {
 	rudder := &v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name: rudderAppcontroller,
@@ -193,14 +194,15 @@ func prepareRudder(clientset kubernetes.Interface, namespace string) error {
 			Containers: []v1.Container{
 				{
 					Name:            "rudder-appcontroller",
-					Image:           "mirantis/k8s-appcontroller",
+					Image:           "mirantis/rudder-appcontroller",
 					ImagePullPolicy: v1.PullNever,
 				},
 			},
 		},
 	}
 	_, err := clientset.Core().Pods(namespace).Create(rudder)
-	return err
+	Expect(err).NotTo(HaveOccurred())
+	WaitForPod(clientset, namespace, rudderAppcontroller, v1.PodRunning)
 }
 
 func deleteRudder(clientset kubernetes.Interface, namespace string) error {

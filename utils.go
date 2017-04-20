@@ -21,13 +21,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"time"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// TODO move this variables under single object
+// TODO move this variables under single object TestContext
 var url string
 var enableRudder bool
 
@@ -75,6 +77,6 @@ func WaitForPod(clientset kubernetes.Interface, namespace string, name string, p
 			return fmt.Errorf("pod %v is not %v phase: %v", podUpdated.Name, phase, podUpdated.Status.Phase)
 		}
 		return nil
-	}).Should(BeNil())
+	}, 1*time.Minute, 3*time.Second).Should(BeNil())
 	return podUpdated
 }
