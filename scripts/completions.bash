@@ -323,6 +323,8 @@ _helm_dependency_build()
 
     flags+=("--keyring=")
     local_nonpersistent_flags+=("--keyring=")
+    flags+=("--recursive")
+    local_nonpersistent_flags+=("--recursive")
     flags+=("--verify")
     local_nonpersistent_flags+=("--verify")
     flags+=("--debug")

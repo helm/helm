@@ -57,6 +57,8 @@ type Manager struct {
 	SkipUpdate bool
 	// Getter collection for the operation
 	Getters []getter.Prop
+	// Recursive mode collects the dependencies to the lowest level
+	Recursive bool
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -64,46 +66,66 @@ type Manager struct {
 // If the lockfile is not present, this will run a Manager.Update()
 //
 // If SkipUpdate is set, this will not update the repository.
-func (m *Manager) Build() error {
+func (m *Manager) Build() (int, error) {
 	c, err := m.loadChartDir()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// If a lock file is found, run a build from that. Otherwise, just do
 	// an update.
 	lock, err := chartutil.LoadRequirementsLock(c)
 	if err != nil {
-		return m.Update()
+		return 0, m.Update()
 	}
 
 	// A lock must accompany a requirements.yaml file.
-	req, err := chartutil.LoadRequirements(c)
+	reqs, err := chartutil.LoadRequirements(c)
 	if err != nil {
-		return fmt.Errorf("requirements.yaml cannot be opened: %s", err)
+		return 0, fmt.Errorf("requirements.yaml cannot be opened: %s", err)
 	}
-	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
-		return fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
+	if sum, err := resolver.HashReq(reqs); err != nil || sum != lock.Digest {
+		return 0, fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
 	if err := m.hasAllRepos(lock.Dependencies); err != nil {
-		return err
+		return 0, err
 	}
 
 	if !m.SkipUpdate {
 		// For each repo in the file, update the cached copy of that repo
 		if err := m.UpdateRepositories(); err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	// Now we need to fetch every package here into charts/
 	if err := m.downloadAll(lock.Dependencies); err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	myDeps := len(reqs.Dependencies)
+	if m.Recursive {
+		depM := *m
+		for _, dep := range reqs.Dependencies {
+			depM.ChartPath = filepath.Join(m.ChartPath, "charts", dep.Name)
+			depM.SkipUpdate = true
+			fmt.Fprintln(m.Out, "Getting requirements recursively for:", depM.ChartPath)
+			depOfDeps, err := depM.Build()
+			if err != nil {
+				return 0, err
+			}
+			myDeps += depOfDeps
+			if myDeps > 100 {
+				return 0, fmt.Errorf("Loop prevention kicked in.")
+			}
+		}
+	}
+	if m.Debug {
+		fmt.Fprintln(m.Out, "Done with", m.ChartPath, ", deps:", myDeps)
+	}
+	return myDeps, nil
 }
 
 // Update updates a local charts directory.
@@ -245,6 +267,13 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
 			return fmt.Errorf("could not download %s: %s", churl, err)
+		}
+		if m.Recursive == true {
+			tarPath := filepath.Join(destPath, filepath.Base(churl))
+			fmt.Fprintln(m.Out, "Unpacking:", tarPath)
+			if err = chartutil.ExpandFile(destPath, tarPath); err != nil {
+				return fmt.Errorf("Error while unpacking: %s", err)
+			}
 		}
 	}
 	return nil

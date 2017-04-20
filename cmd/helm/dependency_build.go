@@ -42,6 +42,7 @@ type dependencyBuildCmd struct {
 	verify    bool
 	keyring   string
 	helmhome  helmpath.Home
+	recursive bool
 }
 
 func newDependencyBuildCmd(out io.Writer) *cobra.Command {
@@ -67,6 +68,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&dbc.verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&dbc.recursive, "recursive", false, "recursive mode")
 
 	return cmd
 }
@@ -78,10 +80,13 @@ func (d *dependencyBuildCmd) run() error {
 		HelmHome:  d.helmhome,
 		Keyring:   d.keyring,
 		Getters:   defaultgetters.Get(settings),
+		Recursive: d.recursive,
+		Debug:     settings.FlagDebug,
 	}
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible
 	}
 
-	return man.Build()
+	_, err := man.Build()
+	return err
 }
