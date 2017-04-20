@@ -4,6 +4,8 @@ Helm 2.1.0 introduced the concept of a client-side Helm _plugin_. A plugin is a
 tool that can be accessed through the `helm` CLI, but which is not part of the
 built-in Helm codebase.
 
+Existing plugins can be found on [related](related.md#helm-plugins) section or by searching [Github](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories).
+
 This guide explains how to use and create plugins.
 
 ## An Overview
@@ -170,4 +172,3 @@ these flags are _not_ passed on to the plugin.
 
 Plugins _should_ display help text and then exit for `-h` and `--help`. In all
 other cases, plugins may use flags as appropriate.
-
