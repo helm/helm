@@ -140,11 +140,11 @@ func TestInitCmd_dryRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dbg := settings.FlagDebug
-	settings.FlagDebug = true
+	dbg := settings.Debug
+	settings.Debug = true
 	defer func() {
 		os.Remove(home)
-		settings.FlagDebug = dbg
+		settings.Debug = dbg
 	}()
 
 	var buf bytes.Buffer

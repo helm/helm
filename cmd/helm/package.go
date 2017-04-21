@@ -119,9 +119,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		if err := setVersion(ch, p.version); err != nil {
 			return err
 		}
-		if settings.FlagDebug {
-			fmt.Fprintf(p.out, "Setting version to %s", p.version)
-		}
+		debug("Setting version to %s", p.version)
 	}
 
 	if filepath.Base(path) != ch.Metadata.Name {
@@ -145,8 +143,8 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	name, err := chartutil.Save(ch, dest)
-	if err == nil && settings.FlagDebug {
-		fmt.Fprintf(p.out, "Saved %s to current directory\n", name)
+	if err == nil {
+		debug("Saved %s to current directory\n", name)
 	}
 
 	// Save to $HELM_HOME/local directory. This is second, because we don't want
@@ -155,9 +153,8 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		lr := p.home.LocalRepository()
 		if err := repo.AddChartToLocalRepo(ch, lr); err != nil {
 			return err
-		} else if settings.FlagDebug {
-			fmt.Fprintf(p.out, "Saved %s to %s\n", name, lr)
 		}
+		debug("Saved %s to %s\n", name, lr)
 	}
 
 	if p.sign {
@@ -194,9 +191,7 @@ func (p *packageCmd) clearsign(filename string) error {
 		return err
 	}
 
-	if settings.FlagDebug {
-		fmt.Fprintln(p.out, sig)
-	}
+	debug(sig)
 
 	return ioutil.WriteFile(filename+".prov", []byte(sig), 0755)
 }

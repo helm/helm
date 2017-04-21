@@ -36,7 +36,7 @@ func newHomeCmd(out io.Writer) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			h := settings.Home
 			fmt.Fprintf(out, "%s\n", h)
-			if settings.FlagDebug {
+			if settings.Debug {
 				fmt.Fprintf(out, "Repository: %s\n", h.Repository())
 				fmt.Fprintf(out, "RepositoryFile: %s\n", h.RepositoryFile())
 				fmt.Fprintf(out, "Cache: %s\n", h.Cache())

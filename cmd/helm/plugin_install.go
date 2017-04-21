@@ -59,7 +59,7 @@ func (pcmd *pluginInstallCmd) complete(args []string) error {
 }
 
 func (pcmd *pluginInstallCmd) run() error {
-	installer.Debug = settings.FlagDebug
+	installer.Debug = settings.Debug
 
 	i, err := installer.NewForSource(pcmd.source, pcmd.version, pcmd.home)
 	if err != nil {

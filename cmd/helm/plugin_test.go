@@ -162,9 +162,9 @@ func TestSetupEnv(t *testing.T) {
 	settings.Home = helmpath.Home("testdata/helmhome")
 	base := filepath.Join(settings.Home.Plugins(), name)
 	settings.PlugDirs = settings.Home.Plugins()
-	settings.FlagDebug = true
+	settings.Debug = true
 	defer func() {
-		settings.FlagDebug = false
+		settings.Debug = false
 	}()
 
 	plugin.SetupPluginEnv(settings, name, base)
