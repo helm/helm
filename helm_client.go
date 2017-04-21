@@ -194,7 +194,7 @@ func prepareRudder(clientset kubernetes.Interface, namespace string) {
 			Containers: []v1.Container{
 				{
 					Name:            "rudder-appcontroller",
-					Image:           "mirantis/rudder-appcontroller",
+					Image:           "helm/rudder-appcontroller",
 					ImagePullPolicy: v1.PullNever,
 				},
 			},
