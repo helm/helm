@@ -62,6 +62,7 @@ type upgradeCmd struct {
 	client       helm.Interface
 	dryRun       bool
 	recreate     bool
+	force        bool
 	disableHooks bool
 	valueFiles   valueFiles
 	values       []string
@@ -116,6 +117,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
 	f.StringArrayVar(&upgrade.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
@@ -198,6 +200,7 @@ func (u *upgradeCmd) run() error {
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
+		helm.UpgradeForce(u.force),
 		helm.UpgradeDisableHooks(u.disableHooks),
 		helm.UpgradeTimeout(u.timeout),
 		helm.ResetValues(u.resetValues),

@@ -211,7 +211,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
+func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -250,7 +250,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			return fmt.Errorf("no resource with the name %q found", info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, recreate); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -392,7 +392,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 	}
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, recreate bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
 	patch, patchType, err := createPatch(target.Mapping, target.Object, currentObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)
@@ -409,12 +409,36 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	// send patch to server
 	helper := resource.NewHelper(target.Client, target.Mapping)
+
 	obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
 	if err != nil {
-		return err
-	}
+		kind := target.Mapping.GroupVersionKind.Kind
+		log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
 
-	target.Refresh(obj, true)
+		if force {
+			// Attempt to delete...
+			if err := deleteResource(c, target); err != nil {
+				return err
+			}
+			log.Printf("Deleted %s: %q", kind, target.Name)
+
+			// ... and recreate
+			if err := createResource(target); err != nil {
+				return fmt.Errorf("Failed to recreate resource: %s", err)
+			}
+			log.Printf("Created a new %s called %q\n", kind, target.Name)
+
+			// No need to refresh the target, as we recreated the resource based
+			// on it. In addition, it might not exist yet and a call to `Refresh`
+			// may fail.
+		} else {
+			log.Print("Use --force to force recreation of the resource")
+			return err
+		}
+	} else {
+		// When patch succeeds without needing to recreate, refresh target.
+		target.Refresh(obj, true)
+	}
 
 	if !recreate {
 		return nil

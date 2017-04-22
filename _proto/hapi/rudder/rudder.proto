@@ -91,6 +91,7 @@ message UpgradeReleaseRequest{
         int64 Timeout = 3;
         bool Wait = 4;
         bool Recreate = 5;
+        bool Force = 6;
 }
 message UpgradeReleaseResponse{
 	hapi.release.Release release = 1;
@@ -103,6 +104,7 @@ message RollbackReleaseRequest{
         int64 Timeout = 3;
         bool Wait = 4;
         bool Recreate = 5;
+        bool Force = 6;
 }
 message RollbackReleaseResponse{
 	hapi.release.Release release = 1;

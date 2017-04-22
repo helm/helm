@@ -159,6 +159,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	req.Name = rlsName
 	req.DisableHooks = h.opts.disableHooks
 	req.Recreate = h.opts.recreate
+	req.Force = h.opts.force
 	req.ResetValues = h.opts.resetValues
 	req.ReuseValues = h.opts.reuseValues
 	ctx := NewContext()
@@ -202,6 +203,8 @@ func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.R
 		opt(&h.opts)
 	}
 	req := &h.opts.rollbackReq
+	req.Recreate = h.opts.recreate
+	req.Force = h.opts.force
 	req.DisableHooks = h.opts.disableHooks
 	req.DryRun = h.opts.dryRun
 	req.Name = rlsName
