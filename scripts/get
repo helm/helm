@@ -104,12 +104,12 @@ downloadFile() {
   HELM_SUM_FILE="/tmp/$HELM_DIST.sha256"
   echo "Downloading $DOWNLOAD_URL"
   if type "curl" > /dev/null; then
-    curl -Ls "$CHECKSUM_URL" -o "$HELM_SUM_FILE"
+    curl -SsL "$CHECKSUM_URL" -o "$HELM_SUM_FILE"
   elif type "wget" > /dev/null; then
     wget -q -O "$HELM_SUM_FILE" "$CHECKSUM_URL"
   fi
   if type "curl" > /dev/null; then
-    curl -L "$DOWNLOAD_URL" -o "$HELM_TMP_FILE"
+    curl -SsL "$DOWNLOAD_URL" -o "$HELM_TMP_FILE"
   elif type "wget" > /dev/null; then
     wget -q -O "$HELM_TMP_FILE" "$DOWNLOAD_URL"
   fi
