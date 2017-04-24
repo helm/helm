@@ -16,7 +16,7 @@ FROM alpine:3.3
 
 ENV HOME /tmp
 
-COPY . /
+COPY rudder /rudder
 
 EXPOSE 10001
 

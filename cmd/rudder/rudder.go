@@ -59,7 +59,7 @@ func main() {
 // ReleaseModuleServiceServer provides implementation for rudderAPI.ReleaseModuleServiceServer
 type ReleaseModuleServiceServer struct{}
 
-// Version is not yet implemented
+// Version returns Rudder version based on helm version
 func (r *ReleaseModuleServiceServer) Version(ctx context.Context, in *rudderAPI.VersionReleaseRequest) (*rudderAPI.VersionReleaseResponse, error) {
 	grpclog.Print("version")
 	return &rudderAPI.VersionReleaseResponse{
@@ -100,8 +100,6 @@ func (r *ReleaseModuleServiceServer) DeleteRelease(ctx context.Context, in *rudd
 
 	if len(allErrors) > 0 {
 		err = fmt.Errorf(allErrors)
-	} else {
-		err = nil
 	}
 
 	return &rudderAPI.DeleteReleaseResponse{

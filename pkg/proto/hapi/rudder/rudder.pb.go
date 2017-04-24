@@ -88,6 +88,20 @@ func (m *Result) String() string            { return proto.CompactTextString(m) 
 func (*Result) ProtoMessage()               {}
 func (*Result) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *Result) GetInfo() string {
+	if m != nil {
+		return m.Info
+	}
+	return ""
+}
+
+func (m *Result) GetLog() []string {
+	if m != nil {
+		return m.Log
+	}
+	return nil
+}
+
 type VersionReleaseRequest struct {
 }
 
@@ -105,6 +119,20 @@ func (m *VersionReleaseResponse) Reset()                    { *m = VersionReleas
 func (m *VersionReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*VersionReleaseResponse) ProtoMessage()               {}
 func (*VersionReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *VersionReleaseResponse) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *VersionReleaseResponse) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
 
 type InstallReleaseRequest struct {
 	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
@@ -213,6 +241,27 @@ func (m *UpgradeReleaseRequest) GetTarget() *hapi_release5.Release {
 	return nil
 }
 
+func (m *UpgradeReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *UpgradeReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
+
+func (m *UpgradeReleaseRequest) GetRecreate() bool {
+	if m != nil {
+		return m.Recreate
+	}
+	return false
+}
+
 type UpgradeReleaseResponse struct {
 	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 	Result  *Result                `protobuf:"bytes,2,opt,name=result" json:"result,omitempty"`
@@ -262,6 +311,27 @@ func (m *RollbackReleaseRequest) GetTarget() *hapi_release5.Release {
 		return m.Target
 	}
 	return nil
+}
+
+func (m *RollbackReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *RollbackReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
+
+func (m *RollbackReleaseRequest) GetRecreate() bool {
+	if m != nil {
+		return m.Recreate
+	}
+	return false
 }
 
 type RollbackReleaseResponse struct {
@@ -351,7 +421,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for ReleaseModuleService service
 
@@ -589,14 +659,14 @@ var _ReleaseModuleService_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptor0,
+	Metadata: "hapi/rudder/rudder.proto",
 }
 
 func init() { proto.RegisterFile("hapi/rudder/rudder.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
 	// 584 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xd4, 0x56, 0xd1, 0x8e, 0xd2, 0x40,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xd4, 0x56, 0xd1, 0x8e, 0xd2, 0x40,
 	0x14, 0xa5, 0xcb, 0x52, 0xe0, 0x92, 0x55, 0x32, 0xd9, 0x42, 0xd3, 0xf8, 0x40, 0xfa, 0x60, 0x88,
 	0xeb, 0x96, 0x04, 0x7d, 0xf4, 0x45, 0x59, 0xdc, 0xdd, 0x18, 0xd9, 0x64, 0x2a, 0x6e, 0xe2, 0x5b,
 	0x17, 0x2e, 0x58, 0x2d, 0x6d, 0x9d, 0x4e, 0xf7, 0x51, 0xfd, 0x1a, 0xff, 0x43, 0xbf, 0xcc, 0xb4,

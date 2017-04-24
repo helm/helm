@@ -55,18 +55,21 @@ func (m *LocalReleaseModule) Create(r *release.Release, req *services.InstallRel
 	return env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait)
 }
 
+// Update performs an update from current to target release
 func (m *LocalReleaseModule) Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error {
 	c := bytes.NewBufferString(current.Manifest)
 	t := bytes.NewBufferString(target.Manifest)
 	return env.KubeClient.Update(target.Namespace, c, t, req.Recreate, req.Timeout, req.Wait)
 }
 
+// Rollback performs a rollback from current to target release
 func (m *LocalReleaseModule) Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error {
 	c := bytes.NewBufferString(current.Manifest)
 	t := bytes.NewBufferString(target.Manifest)
 	return env.KubeClient.Update(target.Namespace, c, t, req.Recreate, req.Timeout, req.Wait)
 }
 
+// Status returns kubectl-like formatted status of release objects
 func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
 	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
 }
@@ -116,6 +119,7 @@ func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *se
 	return err
 }
 
+// Status returns status retrieved from rudder.ReleaseStatus
 func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
 	statusRequest := &rudderAPI.ReleaseStatusRequest{Release: r}
 	resp, err := rudder.ReleaseStatus(statusRequest)

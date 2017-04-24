@@ -16,7 +16,7 @@ FROM alpine:3.3
 
 ENV HOME /tmp
 
-COPY . /
+COPY tiller /tiller
 
 EXPOSE 44134
 
