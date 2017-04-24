@@ -1,5 +1,5 @@
 hash: 59f320c07649cfd057b84f1044074670230fa3ca27b32632eb77a16a972adc8e
-updated: 2017-04-13T09:30:07.067775284+06:00
+updated: 2017-04-20T16:44:51.583176673-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -103,7 +103,7 @@ imports:
 - name: github.com/facebookgo/symwalk
   version: 42004b9f322246749dd73ad71008b1f3160c0052
 - name: github.com/ghodss/yaml
-  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+  version: 04f313413ffd65ce25f2541bfd2b2ceec5c0908c
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -123,7 +123,7 @@ imports:
   - util/runes
   - util/strings
 - name: github.com/gogo/protobuf
-  version: e18d7aa8f8c624c915db340349aad4c49b10d173
+  version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
   subpackages:
   - proto
   - sortkeys
@@ -147,7 +147,7 @@ imports:
   - util/strutil
   - util/wordwrap
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
-  version: 34abd90a014618f61222a1b0a7b7eb834a2d0dc3
+  version: 2500245aa6110c562d17020fb31a2c133d737799
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
@@ -171,7 +171,7 @@ imports:
 - name: github.com/Masterminds/vcs
   version: 795e20f901c3d561de52811fb3488a2cb2c8588b
 - name: github.com/mattn/go-runewidth
-  version: d6bea18f789704b5f83375793155289da36a3c7f
+  version: 14207d285c6c197daabb5c9793d63e7af9ab2d50
 - name: github.com/matttproud/golang_protobuf_extensions
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
@@ -221,7 +221,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/technosophos/moniker
-  version: 9f956786b91d9786ca11aa5be6104542fa911546
+  version: ab470f5e105a44d0c87ea21bacd6a335c4816d83
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -307,9 +307,9 @@ imports:
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
+  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
 - name: k8s.io/apimachinery
-  version: c1c4a7fe832857c75cc1d79c8e40d71d5da15fc6
+  version: 9c89140a45325f83409e90359888133478207c7a
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -361,7 +361,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 2308857ad3b8b18abf74ff734853973eda9da94d
+  version: ee4918ace59d6e34fee56afe56aae4fe355e96f5
   subpackages:
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
@@ -372,7 +372,7 @@ imports:
   - pkg/util/flag
   - pkg/util/wsstream
 - name: k8s.io/client-go
-  version: 5b0e11b577b35539f05523c47e94ed96a17f992b
+  version: f64a115c809b7dbd30bd787d9557b7926dbba81e
   subpackages:
   - discovery
   - discovery/fake
@@ -400,6 +400,7 @@ imports:
   - pkg/api
   - pkg/api/install
   - pkg/api/v1
+  - pkg/api/v1/ref
   - pkg/apis/apps
   - pkg/apis/apps/install
   - pkg/apis/apps/v1beta1
@@ -467,7 +468,7 @@ imports:
   - util/integer
   - util/jsonpath
 - name: k8s.io/kubernetes
-  version: aaf9ea07f519a2c3f4769dc8d10b807ad1a8d279
+  version: 477efc3cbe6a7effca06bd1452fa356e2201e1ee
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install
