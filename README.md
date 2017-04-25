@@ -58,7 +58,9 @@ The [Helm roadmap is currently located on the wiki](https://github.com/kubernete
 
 You can reach the Helm community and developers via the following channels:
 
-- [Kubernetes Slack](https://slack.k8s.io): #helm
+- [Kubernetes Slack](https://slack.k8s.io):
+  - #helm-users
+  - #helm-dev
 - Mailing List: https://groups.google.com/forum/#!forum/kubernetes-sig-apps
 - Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/4526666954](https://zoom.us/j/4526666954)
 
