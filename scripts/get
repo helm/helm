@@ -64,7 +64,7 @@ verifySupported() {
 
 # checkLatestVersion checks the latest available version.
 checkLatestVersion() {
-  # Use the GitHub API to find the latest version for this project.
+  # Use the GitHub releases webpage for the project to find the latest version for this project.
   local latest_url="https://github.com/kubernetes/helm/releases/latest"
   if type "curl" > /dev/null; then
     TAG=$(curl -SsL $latest_url | awk '/\/tag\//' | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}')
