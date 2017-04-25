@@ -403,18 +403,20 @@ func (h *Client) logs(ctx context.Context, req *rls.GetReleaseLogsRequest, done 
 	go func() {
 		defer close(out)
 		defer c.Close()
-		select {
-		case rs := s.Recv():
-			if err == io.EOF {
+		for {
+			select {
+			case rs := s.Recv():
+				if err == io.EOF {
+					return
+				}
+				if err != nil {
+					fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
+					return
+				}
+				out <- rs
+			case <-done:
 				return
 			}
-			if err != nil {
-				fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
-				return
-			}
-			out <- rs
-		case <-done:
-			return
 		}
 	}()
 

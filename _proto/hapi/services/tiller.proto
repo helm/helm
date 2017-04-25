@@ -194,10 +194,7 @@ message GetReleaseLogsRequest {
 }
 
 message GetReleaseLogsResponse {
-	// Source is the name of the release that generated the log
-	string source = 1;
-	// Log is a single log line
-	string log = 2;
+    hapi.release.Log log = 1;
 }
 
 // UpdateReleaseRequest updates a release.
