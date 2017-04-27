@@ -138,10 +138,10 @@ func TestUpgradeCmd(t *testing.T) {
 			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
 		},
 		{
-			name:     "upgrade a release with missing dependencies",
-			args:     []string{"bonkers-bunny", missingDepsPath},
-			resp:     releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
-			expected: "Warning: reqsubchart2 is in requirements.yaml but not in the charts/ directory!",
+			name: "upgrade a release with missing dependencies",
+			args: []string{"bonkers-bunny", missingDepsPath},
+			resp: releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
+			err:  true,
 		},
 	}
 

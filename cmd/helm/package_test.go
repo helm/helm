@@ -118,8 +118,8 @@ func TestPackage(t *testing.T) {
 		{
 			name:    "package testdata/testcharts/chart-missing-deps",
 			args:    []string{"testdata/testcharts/chart-missing-deps"},
-			expect:  "Warning: reqsubchart2 is in requirements.yaml but not in the charts/ directory!\n",
 			hasfile: "chart-missing-deps-0.1.0.tgz",
+			err:     true,
 		},
 	}
 

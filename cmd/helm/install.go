@@ -206,7 +206,12 @@ func (i *installCmd) run() error {
 	}
 
 	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
-		checkDependencies(chartRequested, req, i.out)
+		// If checkDependencies returns an error, we have unfullfilled dependencies.
+		// As of Helm 2.4.0, this is treated as a stopping condition:
+		// https://github.com/kubernetes/helm/issues/2209
+		if err := checkDependencies(chartRequested, req, i.out); err != nil {
+			return prettyError(err)
+		}
 	}
 
 	res, err := i.client.InstallReleaseFromChart(
@@ -398,7 +403,9 @@ func defaultNamespace() string {
 	return "default"
 }
 
-func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Writer) {
+func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Writer) error {
+	missing := []string{}
+
 	deps := ch.GetDependencies()
 	for _, r := range reqs.Dependencies {
 		found := false
@@ -409,7 +416,12 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Wri
 			}
 		}
 		if !found {
-			fmt.Fprintf(out, "Warning: %s is in requirements.yaml but not in the charts/ directory!\n", r.Name)
+			missing = append(missing, r.Name)
 		}
 	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+	}
+	return nil
 }
