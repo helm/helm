@@ -3,40 +3,87 @@ package logdistributor
 import (
 	"testing"
 	"fmt"
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
-func TestDistributor_WriteLog(t *testing.T) {
-	d := &Distributor{}
-	l := &Log{Log: "Test log"}
-	d.WriteLog(l, "testrelease")
+func TestPubsub_Subscribe(t *testing.T) {
+	ps := New()
+	rlsName := "testrls"
 
-	if len(d.listeners) != 1 {
-		t.Errorf("Invalid number of listeners present: %d (expecting 1)", len(d.listeners))
+	ps.Subscribe(rlsName, rspb.Log_WARNING, rspb.Log_HOOK)
+	if len(ps.releases[rlsName].sourceMappings) != 1 {
+		t.Error("testrls should have one log source entry")
+	}
+	ps.Subscribe(rlsName, rspb.Log_WARNING, rspb.Log_POD)
+	if len(ps.releases[rlsName].sourceMappings) != 2 {
+		t.Error("testrls should have two log source entries")
+	}
+
+	if len(ps.releases[rlsName].sourceMappings[rspb.Log_HOOK]) != 1 {
+		t.Error("testrls should have one subscription to the Log_HOOK event stream")
+	}
+	if len(ps.releases[rlsName].sourceMappings[rspb.Log_POD]) != 1 {
+		t.Error("testrls should have one subscription to the Log_POD event stream")
+	}
+	if len(ps.releases[rlsName].sourceMappings[rspb.Log_SYSTEM]) != 0 {
+		t.Error("testrls should have no subscriptions to the Log_SYSTEM event stream")
 	}
 }
 
-func BenchmarkDistributor_WriteLog(b *testing.B) {
+func TestPubsub_Unsubscribe(t *testing.T) {
+	ps := New()
+	rlsName := "testrls"
+
+	sub := ps.Subscribe(rlsName, rspb.Log_WARNING, rspb.Log_HOOK)
+	if len(ps.releases[rlsName].sourceMappings) != 1 {
+		t.Error("testrls should have one log source entry")
+	}
+
+	ps.Unsubscribe(sub)
+	if _, ok := ps.releases[rlsName]; ok {
+		t.Error("pubsub should have no entry for testrls")
+	}
+
+	sub2 := ps.Subscribe(rlsName, rspb.Log_WARNING, rspb.Log_HOOK)
+	sub3 := ps.Subscribe(rlsName, rspb.Log_WARNING, rspb.Log_POD)
+
+	if len(ps.releases[rlsName].sourceMappings) != 2 {
+		t.Error("testrls should have two log source entries")
+	}
+
+	ps.Unsubscribe(sub3)
+
+	if len(ps.releases[rlsName].sourceMappings) != 1 {
+		t.Error("testrls should have one log source entry")
+	}
+
+	ps.Unsubscribe(sub2)
+	if _, ok := ps.releases[rlsName]; ok {
+		t.Error("pubsub should have no entry for testrls")
+	}
+
 }
 
-func ExampleDistributor_WriteLog() {
-	sub := &Subscription{}
-	c := make(chan *Log)
-	sub.c = c
+func TestPubsub_PubLog(t *testing.T) {
 
-	go func(){
-		for l := range c {
-			fmt.Println(l.Log)
-		}
+}
 
+func Example() {
+	ps := New()
+	sub := ps.Subscribe("testrls", rspb.Log_WARNING, rspb.Log_HOOK, rspb.Log_POD)
+
+	go func() {
 		for {
 			select {
-			case l := <-c:
+			case l := <-sub.C:
 				fmt.Println(l.Log)
 			}
 		}
 	}()
 
-	sub.c <- &Log{Log: "Test log!"}
+	// No output as log level is too low for the configured subscription
+	ps.PubLog("testrls", rspb.Log_POD, rspb.Log_DEBUG, "Test log!")
+	// Picked up by the subscription
+	ps.PubLog("testrls", rspb.Log_POD, rspb.Log_ERR, "Test log!")
 	// Output: Test log!
 }
-

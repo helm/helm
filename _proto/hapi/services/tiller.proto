@@ -19,6 +19,7 @@ package hapi.services.tiller;
 import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
+import "hapi/release/log.proto";
 import "hapi/release/info.proto";
 import "hapi/release/status.proto";
 import "hapi/version/version.proto";

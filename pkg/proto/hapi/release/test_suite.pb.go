@@ -27,7 +27,7 @@ type TestSuite struct {
 func (m *TestSuite) Reset()                    { *m = TestSuite{} }
 func (m *TestSuite) String() string            { return proto.CompactTextString(m) }
 func (*TestSuite) ProtoMessage()               {}
-func (*TestSuite) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*TestSuite) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func (m *TestSuite) GetStartedAt() *google_protobuf.Timestamp {
 	if m != nil {
@@ -54,9 +54,9 @@ func init() {
 	proto.RegisterType((*TestSuite)(nil), "hapi.release.TestSuite")
 }
 
-func init() { proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 207 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0xc1, 0x4a, 0x86, 0x40,
 	0x14, 0x85, 0x31, 0x21, 0x71, 0x74, 0x35, 0x10, 0x88, 0x11, 0x49, 0x2b, 0x57, 0x33, 0x60, 0xab,

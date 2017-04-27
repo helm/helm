@@ -31,7 +31,7 @@ message Log {
     }
 
     // Syslog log levels
-    enum LogLevel {
+    enum Level {
         EMERG = 0;
         ALERT = 1;
         CRIT = 2;
@@ -43,7 +43,8 @@ message Log {
     }
 
     Source source = 1;
-    string release = 2;
-    string log = 3;
-    google.protobuf.Timestamp timestamp = 4;
+    Level level = 2;
+    string release = 3;
+    string log = 4;
+    google.protobuf.Timestamp timestamp = 5;
 }
