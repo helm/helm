@@ -125,7 +125,7 @@ func generateDeployment(opts *Options) *extensions.Deployment {
 			Labels:    labels,
 		},
 		Spec: extensions.DeploymentSpec{
-			Replicas: 1,
+			Replicas: 2,
 			Template: api.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
