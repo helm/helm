@@ -17,118 +17,69 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
-	"regexp"
-	"text/tabwriter"
-
-	"github.com/gosuri/uitable"
-	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
-	"k8s.io/helm/pkg/timeconv"
+	"fmt"
 )
 
-var statusHelp = `
-This command shows the status of a named release.
-The status consists of:
-- last deployment time
-- k8s namespace in which the release lives
-- state of the release (can be: UNKNOWN, DEPLOYED, DELETED, SUPERSEDED, FAILED or DELETING)
-- list of resources that this release consists of, sorted by kind
-- details on last test suite run, if applicable
-- additional notes provided by the chart
+var logsHelp = `
+This command gets logs for a named release
 `
 
-type statusCmd struct {
+type logsCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
 	version int32
 }
 
-func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	status := &statusCmd{
+func newLogsCmd(client helm.Interface, out io.Writer) *cobra.Command {
+	logs := &logsCmd{
 		out:    out,
 		client: client,
 	}
 
 	cmd := &cobra.Command{
-		Use:               "status [flags] RELEASE_NAME",
-		Short:             "displays the status of the named release",
-		Long:              statusHelp,
+		Use:               "logs [flags] RELEASE_NAME",
+		Short:             "Streams logs for the given release",
+		Long:              logsHelp,
 		PersistentPreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			status.release = args[0]
-			if status.client == nil {
-				status.client = helm.NewClient(helm.Host(settings.TillerHost))
+			logs.release = args[0]
+			if logs.client == nil {
+				logs.client = helm.NewClient(helm.Host(settings.TillerHost))
 			}
-			return status.run()
+			return logs.run()
 		},
 	}
-
-	cmd.PersistentFlags().Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
 
 	return cmd
 }
 
-func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version))
+func (l *logsCmd) run() error {
+	done := make(chan struct{})
+	stream, err := l.client.ReleaseLogs(l.release, done)
+
+	fmt.Println("Listening for logs")
+	for {
+		select {
+		case l, ok := <-stream:
+			if !ok {
+				return nil
+			}
+			fmt.Println(l)
+		}
+	}
+
 	if err != nil {
 		return prettyError(err)
 	}
 
-	PrintStatus(s.out, res)
 	return nil
 }
 
-// PrintStatus prints out the status of a release. Shared because also used by
-// install / upgrade
-func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
-	if res.Info.LastDeployed != nil {
-		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
-	}
-	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
-	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
-	fmt.Fprintf(out, "\n")
-	if len(res.Info.Status.Resources) > 0 {
-		re := regexp.MustCompile("  +")
-
-		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
-		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Status.Resources, "\t"))
-		w.Flush()
-	}
-	if res.Info.Status.LastTestSuiteRun != nil {
-		lastRun := res.Info.Status.LastTestSuiteRun
-		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
-			fmt.Sprintf("Last Started: %s", timeconv.String(lastRun.StartedAt)),
-			fmt.Sprintf("Last Completed: %s", timeconv.String(lastRun.CompletedAt)),
-			formatTestResults(lastRun.Results))
-	}
-
-	if len(res.Info.Status.Notes) > 0 {
-		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
-	}
-}
-
-func formatTestResults(results []*release.TestRun) string {
-	tbl := uitable.New()
-	tbl.MaxColWidth = 50
-	tbl.AddRow("TEST", "STATUS", "INFO", "STARTED", "COMPLETED")
-	for i := 0; i < len(results); i++ {
-		r := results[i]
-		n := r.Name
-		s := strutil.PadRight(r.Status.String(), 10, ' ')
-		i := r.Info
-		ts := timeconv.String(r.StartedAt)
-		tc := timeconv.String(r.CompletedAt)
-		tbl.AddRow(n, s, i, ts, tc)
-	}
-	return tbl.String()
-}

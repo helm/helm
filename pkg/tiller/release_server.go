@@ -42,6 +42,8 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
+	"k8s.io/helm/pkg/tiller/logdistributor"
+	"time"
 )
 
 // releaseNameMaxLen is the maximum length of a release name.
@@ -84,6 +86,7 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 type ReleaseServer struct {
 	env       *environment.Environment
 	clientset internalclientset.Interface
+	logs      *logdistributor.Pubsub
 }
 
 // NewReleaseServer creates a new release server.
@@ -91,6 +94,7 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 	return &ReleaseServer{
 		env:       env,
 		clientset: clientset,
+		logs:      logdistributor.New(),
 	}
 }
 
@@ -279,6 +283,23 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 
 	rel, err := s.env.Releases.Get(req.Name, req.Version)
 	return &services.GetReleaseContentResponse{Release: rel}, err
+}
+
+func (s *ReleaseServer) GetReleaseLogs(req *services.GetReleaseLogsRequest, stream services.ReleaseService_GetReleaseLogsServer) error {
+	t := time.NewTicker(time.Second)
+	//go func() {
+	for {
+		select {
+		case <-t.C:
+			fmt.Println("Sending a log")
+			stream.Send(&services.GetReleaseLogsResponse{Log: &release.Log{Log: "Test log!"}})
+		}
+	}
+	//}()
+	fmt.Println("Out of the for loop")
+
+	stream.Send(&services.GetReleaseLogsResponse{Log: &release.Log{Log: "Starting to stream logs!"}})
+	return nil
 }
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.

@@ -134,6 +134,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		addFlagsTLS(newHistoryCmd(nil, out)),
 		addFlagsTLS(newInstallCmd(nil, out)),
 		addFlagsTLS(newListCmd(nil, out)),
+		addFlagsTLS(newLogsCmd(nil, out)),
 		addFlagsTLS(newRollbackCmd(nil, out)),
 		addFlagsTLS(newStatusCmd(nil, out)),
 		addFlagsTLS(newUpgradeCmd(nil, out)),

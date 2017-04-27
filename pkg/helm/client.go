@@ -404,19 +404,28 @@ func (h *Client) logs(ctx context.Context, req *rls.GetReleaseLogsRequest, done 
 		defer close(out)
 		defer c.Close()
 		for {
-			select {
-			case rs := s.Recv():
-				if err == io.EOF {
-					return
-				}
-				if err != nil {
-					fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
-					return
-				}
-				out <- rs
-			case <-done:
+			rs, err := s.Recv()
+			if err == io.EOF {
 				return
 			}
+			if err != nil {
+				fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
+				return
+			}
+			out <- rs
+			//select {
+			////case rs, err := s.Recv():
+			////	if err == io.EOF {
+			////		return
+			////	}
+			////	if err != nil {
+			////		fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
+			////		return
+			////	}
+			////	out <- rs
+			//case <-done:
+			//	return
+			//}
 		}
 	}()
 
