@@ -285,20 +285,32 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 	return &services.GetReleaseContentResponse{Release: rel}, err
 }
 
-func (s *ReleaseServer) GetReleaseLogs(req *services.GetReleaseLogsRequest, stream services.ReleaseService_GetReleaseLogsServer) error {
+func (s *ReleaseServer) GetReleaseLogs(svc services.ReleaseService_GetReleaseLogsServer) error {
 	t := time.NewTicker(time.Second)
-	//go func() {
-	for {
-		select {
-		case <-t.C:
-			fmt.Println("Sending a log")
-			stream.Send(&services.GetReleaseLogsResponse{Log: &release.Log{Log: "Test log!"}})
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-t.C:
+				fmt.Println("Sending a log")
+				svc.Send(&services.GetReleaseLogsResponse{Log: &release.Log{Log: "Test log!"}})
+			case <-done:
+				return
+			}
 		}
-	}
-	//}()
-	fmt.Println("Out of the for loop")
+	}()
 
-	stream.Send(&services.GetReleaseLogsResponse{Log: &release.Log{Log: "Starting to stream logs!"}})
+	for {
+		rq, err := svc.Recv()
+		fmt.Println("Req: ", rq, " Error: ", err)
+		if err != nil {
+			done <- struct{}{}
+			break
+		}
+		s.logs.Subscribe(rq.Name, )
+		rq.Name
+	}
+
 	return nil
 }
 
