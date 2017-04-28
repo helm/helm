@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -98,7 +98,7 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 		CAFile:   caFile,
 	}
 
-	r, err := repo.NewChartRepository(&c, defaultgetters.Get(settings))
+	r, err := repo.NewChartRepository(&c, getter.All(settings))
 	if err != nil {
 		return err
 	}

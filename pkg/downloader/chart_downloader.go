@@ -66,7 +66,7 @@ type ChartDownloader struct {
 	// HelmHome is the $HELM_HOME.
 	HelmHome helmpath.Home
 	// Getter collection for the operation
-	Getters []getter.Prop
+	Getters getter.Providers
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -161,7 +161,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 			// If there is no special config, return the default HTTP client and
 			// swallow the error.
 			if err == ErrNoOwnerRepo {
-				getterConstructor, err := getter.ConstructorByScheme(c.Getters, u.Scheme)
+				getterConstructor, err := c.Getters.ByScheme(u.Scheme)
 				if err != nil {
 					return u, nil, err
 				}

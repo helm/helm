@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
@@ -85,7 +85,7 @@ func TestUpdateCharts(t *testing.T) {
 		Name:  "charts",
 		URL:   ts.URL(),
 		Cache: hh.CacheIndex("charts"),
-	}, defaultgetters.Get(settings))
+	}, getter.All(settings))
 	if err != nil {
 		t.Error(err)
 	}

@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -76,7 +76,7 @@ func (u *repoUpdateCmd) run() error {
 	}
 	var repos []*repo.ChartRepository
 	for _, cfg := range f.Repositories {
-		r, err := repo.NewChartRepository(cfg, defaultgetters.Get(settings))
+		r, err := repo.NewChartRepository(cfg, getter.All(settings))
 		if err != nil {
 			return err
 		}

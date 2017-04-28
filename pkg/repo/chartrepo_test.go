@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -37,7 +37,7 @@ func TestLoadChartRepository(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
-	}, defaultgetters.Get(environment.EnvSettings{}))
+	}, getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
@@ -69,7 +69,7 @@ func TestIndex(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
-	}, defaultgetters.Get(environment.EnvSettings{}))
+	}, getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
