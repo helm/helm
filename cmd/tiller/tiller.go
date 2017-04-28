@@ -221,7 +221,7 @@ func tlsOptions() tlsutil.Options {
 	opts := tlsutil.Options{CertFile: certFile, KeyFile: keyFile}
 	if tlsVerify {
 		opts.CaCertFile = caCertFile
-		opts.ClientAuth = tls.RequireAndVerifyClientCert
+		opts.ClientAuth = tls.VerifyClientCertIfGiven
 	}
 	return opts
 }

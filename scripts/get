@@ -64,12 +64,16 @@ verifySupported() {
 
 # checkLatestVersion checks the latest available version.
 checkLatestVersion() {
-  # Use the GitHub API to find the latest version for this project.
-  local latest_url="https://api.github.com/repos/kubernetes/helm/releases/latest"
+  # Use the GitHub releases webpage for the project to find the latest version for this project.
+  local latest_url="https://github.com/kubernetes/helm/releases/latest"
   if type "curl" > /dev/null; then
-    TAG=$(curl -s $latest_url | awk '/\"tag_name\":/{gsub( /[,\"]/,"", $2); print $2}')
+    TAG=$(curl -SsL $latest_url | awk '/\/tag\//' | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}')
   elif type "wget" > /dev/null; then
-    TAG=$(wget -q -O - $latest_url | awk '/\"tag_name\":/{gsub( /[,\"]/,"", $2); print $2}')
+    TAG=$(wget -q -O - $latest_url | awk '/\/tag\//' | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}')
+  fi
+  if [ "x$TAG" == "x" ]; then
+    echo "Cannot determine latest tag."
+    exit 1
   fi
 }
 
@@ -100,12 +104,12 @@ downloadFile() {
   HELM_SUM_FILE="/tmp/$HELM_DIST.sha256"
   echo "Downloading $DOWNLOAD_URL"
   if type "curl" > /dev/null; then
-    curl -Ls "$CHECKSUM_URL" -o "$HELM_SUM_FILE"
+    curl -SsL "$CHECKSUM_URL" -o "$HELM_SUM_FILE"
   elif type "wget" > /dev/null; then
     wget -q -O "$HELM_SUM_FILE" "$CHECKSUM_URL"
   fi
   if type "curl" > /dev/null; then
-    curl -L "$DOWNLOAD_URL" -o "$HELM_TMP_FILE"
+    curl -SsL "$DOWNLOAD_URL" -o "$HELM_TMP_FILE"
   elif type "wget" > /dev/null; then
     wget -q -O "$HELM_TMP_FILE" "$DOWNLOAD_URL"
   fi
@@ -134,7 +138,7 @@ fail_trap() {
   result=$?
   if [ "$result" != "0" ]; then
     echo "Failed to install $PROJECT_NAME"
-    echo "\tFor support, go to https://github.com/kubernetes/helm."
+    echo -e "\tFor support, go to https://github.com/kubernetes/helm."
   fi
   exit $result
 }
