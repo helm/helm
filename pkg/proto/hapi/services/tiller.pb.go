@@ -138,6 +138,55 @@ func (m *ListReleasesRequest) String() string            { return proto.CompactT
 func (*ListReleasesRequest) ProtoMessage()               {}
 func (*ListReleasesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *ListReleasesRequest) GetLimit() int64 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+func (m *ListReleasesRequest) GetOffset() string {
+	if m != nil {
+		return m.Offset
+	}
+	return ""
+}
+
+func (m *ListReleasesRequest) GetSortBy() ListSort_SortBy {
+	if m != nil {
+		return m.SortBy
+	}
+	return ListSort_UNKNOWN
+}
+
+func (m *ListReleasesRequest) GetFilter() string {
+	if m != nil {
+		return m.Filter
+	}
+	return ""
+}
+
+func (m *ListReleasesRequest) GetSortOrder() ListSort_SortOrder {
+	if m != nil {
+		return m.SortOrder
+	}
+	return ListSort_ASC
+}
+
+func (m *ListReleasesRequest) GetStatusCodes() []hapi_release3.Status_Code {
+	if m != nil {
+		return m.StatusCodes
+	}
+	return nil
+}
+
+func (m *ListReleasesRequest) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
+}
+
 // ListSort defines sorting fields on a release list.
 type ListSort struct {
 }
@@ -165,6 +214,27 @@ func (m *ListReleasesResponse) String() string            { return proto.Compact
 func (*ListReleasesResponse) ProtoMessage()               {}
 func (*ListReleasesResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
+func (m *ListReleasesResponse) GetCount() int64 {
+	if m != nil {
+		return m.Count
+	}
+	return 0
+}
+
+func (m *ListReleasesResponse) GetNext() string {
+	if m != nil {
+		return m.Next
+	}
+	return ""
+}
+
+func (m *ListReleasesResponse) GetTotal() int64 {
+	if m != nil {
+		return m.Total
+	}
+	return 0
+}
+
 func (m *ListReleasesResponse) GetReleases() []*hapi_release5.Release {
 	if m != nil {
 		return m.Releases
@@ -185,6 +255,20 @@ func (m *GetReleaseStatusRequest) String() string            { return proto.Comp
 func (*GetReleaseStatusRequest) ProtoMessage()               {}
 func (*GetReleaseStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
+func (m *GetReleaseStatusRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetReleaseStatusRequest) GetVersion() int32 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
+
 // GetReleaseStatusResponse is the response indicating the status of the named release.
 type GetReleaseStatusResponse struct {
 	// Name is the name of the release.
@@ -200,11 +284,25 @@ func (m *GetReleaseStatusResponse) String() string            { return proto.Com
 func (*GetReleaseStatusResponse) ProtoMessage()               {}
 func (*GetReleaseStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
+func (m *GetReleaseStatusResponse) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func (m *GetReleaseStatusResponse) GetInfo() *hapi_release4.Info {
 	if m != nil {
 		return m.Info
 	}
 	return nil
+}
+
+func (m *GetReleaseStatusResponse) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
 }
 
 // GetReleaseContentRequest is a request to get the contents of a release.
@@ -219,6 +317,20 @@ func (m *GetReleaseContentRequest) Reset()                    { *m = GetReleaseC
 func (m *GetReleaseContentRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetReleaseContentRequest) ProtoMessage()               {}
 func (*GetReleaseContentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *GetReleaseContentRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetReleaseContentRequest) GetVersion() int32 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
 
 // GetReleaseContentResponse is a response containing the contents of a release.
 type GetReleaseContentResponse struct {
@@ -269,6 +381,13 @@ func (m *UpdateReleaseRequest) String() string            { return proto.Compact
 func (*UpdateReleaseRequest) ProtoMessage()               {}
 func (*UpdateReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
+func (m *UpdateReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func (m *UpdateReleaseRequest) GetChart() *hapi_chart3.Chart {
 	if m != nil {
 		return m.Chart
@@ -281,6 +400,55 @@ func (m *UpdateReleaseRequest) GetValues() *hapi_chart.Config {
 		return m.Values
 	}
 	return nil
+}
+
+func (m *UpdateReleaseRequest) GetDryRun() bool {
+	if m != nil {
+		return m.DryRun
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetRecreate() bool {
+	if m != nil {
+		return m.Recreate
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *UpdateReleaseRequest) GetResetValues() bool {
+	if m != nil {
+		return m.ResetValues
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetReuseValues() bool {
+	if m != nil {
+		return m.ReuseValues
+	}
+	return false
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -322,6 +490,55 @@ func (m *RollbackReleaseRequest) Reset()                    { *m = RollbackRelea
 func (m *RollbackReleaseRequest) String() string            { return proto.CompactTextString(m) }
 func (*RollbackReleaseRequest) ProtoMessage()               {}
 func (*RollbackReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+
+func (m *RollbackReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *RollbackReleaseRequest) GetDryRun() bool {
+	if m != nil {
+		return m.DryRun
+	}
+	return false
+}
+
+func (m *RollbackReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *RollbackReleaseRequest) GetVersion() int32 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
+
+func (m *RollbackReleaseRequest) GetRecreate() bool {
+	if m != nil {
+		return m.Recreate
+	}
+	return false
+}
+
+func (m *RollbackReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *RollbackReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
 
 // RollbackReleaseResponse is the response to an update request.
 type RollbackReleaseResponse struct {
@@ -386,6 +603,55 @@ func (m *InstallReleaseRequest) GetValues() *hapi_chart.Config {
 	return nil
 }
 
+func (m *InstallReleaseRequest) GetDryRun() bool {
+	if m != nil {
+		return m.DryRun
+	}
+	return false
+}
+
+func (m *InstallReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *InstallReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *InstallReleaseRequest) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
+}
+
+func (m *InstallReleaseRequest) GetReuseName() bool {
+	if m != nil {
+		return m.ReuseName
+	}
+	return false
+}
+
+func (m *InstallReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *InstallReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
+
 // InstallReleaseResponse is the response from a release installation.
 type InstallReleaseResponse struct {
 	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
@@ -420,6 +686,34 @@ func (m *UninstallReleaseRequest) String() string            { return proto.Comp
 func (*UninstallReleaseRequest) ProtoMessage()               {}
 func (*UninstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
+func (m *UninstallReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *UninstallReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *UninstallReleaseRequest) GetPurge() bool {
+	if m != nil {
+		return m.Purge
+	}
+	return false
+}
+
+func (m *UninstallReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
 // UninstallReleaseResponse represents a successful response to an uninstall request.
 type UninstallReleaseResponse struct {
 	// Release is the release that was marked deleted.
@@ -438,6 +732,13 @@ func (m *UninstallReleaseResponse) GetRelease() *hapi_release5.Release {
 		return m.Release
 	}
 	return nil
+}
+
+func (m *UninstallReleaseResponse) GetInfo() string {
+	if m != nil {
+		return m.Info
+	}
+	return ""
 }
 
 // GetVersionRequest requests for version information.
@@ -478,6 +779,20 @@ func (m *GetHistoryRequest) String() string            { return proto.CompactTex
 func (*GetHistoryRequest) ProtoMessage()               {}
 func (*GetHistoryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
 
+func (m *GetHistoryRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetHistoryRequest) GetMax() int32 {
+	if m != nil {
+		return m.Max
+	}
+	return 0
+}
+
 // GetHistoryResponse is received in response to a GetHistory rpc.
 type GetHistoryResponse struct {
 	Releases []*hapi_release5.Release `protobuf:"bytes,1,rep,name=releases" json:"releases,omitempty"`
@@ -510,6 +825,27 @@ func (m *TestReleaseRequest) String() string            { return proto.CompactTe
 func (*TestReleaseRequest) ProtoMessage()               {}
 func (*TestReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
 
+func (m *TestReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *TestReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *TestReleaseRequest) GetCleanup() bool {
+	if m != nil {
+		return m.Cleanup
+	}
+	return false
+}
+
 // TestReleaseResponse represents a message from executing a test
 type TestReleaseResponse struct {
 	Msg string `protobuf:"bytes,1,opt,name=msg" json:"msg,omitempty"`
@@ -519,6 +855,13 @@ func (m *TestReleaseResponse) Reset()                    { *m = TestReleaseRespo
 func (m *TestReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*TestReleaseResponse) ProtoMessage()               {}
 func (*TestReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{20} }
+
+func (m *TestReleaseResponse) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
 
 func init() {
 	proto.RegisterType((*ListReleasesRequest)(nil), "hapi.services.tiller.ListReleasesRequest")
@@ -552,7 +895,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for ReleaseService service
 
@@ -993,7 +1336,7 @@ var _ReleaseService_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: fileDescriptor0,
+	Metadata: "hapi/services/tiller.proto",
 }
 
 func init() { proto.RegisterFile("hapi/services/tiller.proto", fileDescriptor0) }

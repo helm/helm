@@ -40,6 +40,27 @@ func (m *Version) String() string            { return proto.CompactTextString(m)
 func (*Version) ProtoMessage()               {}
 func (*Version) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *Version) GetSemVer() string {
+	if m != nil {
+		return m.SemVer
+	}
+	return ""
+}
+
+func (m *Version) GetGitCommit() string {
+	if m != nil {
+		return m.GitCommit
+	}
+	return ""
+}
+
+func (m *Version) GetGitTreeState() string {
+	if m != nil {
+		return m.GitTreeState
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*Version)(nil), "hapi.version.Version")
 }

@@ -109,11 +109,53 @@ func (m *Hook) String() string            { return proto.CompactTextString(m) }
 func (*Hook) ProtoMessage()               {}
 func (*Hook) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *Hook) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Hook) GetKind() string {
+	if m != nil {
+		return m.Kind
+	}
+	return ""
+}
+
+func (m *Hook) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
+func (m *Hook) GetManifest() string {
+	if m != nil {
+		return m.Manifest
+	}
+	return ""
+}
+
+func (m *Hook) GetEvents() []Hook_Event {
+	if m != nil {
+		return m.Events
+	}
+	return nil
+}
+
 func (m *Hook) GetLastRun() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.LastRun
 	}
 	return nil
+}
+
+func (m *Hook) GetWeight() int32 {
+	if m != nil {
+		return m.Weight
+	}
+	return 0
 }
 
 func init() {

@@ -51,6 +51,27 @@ func (m *TestRun) String() string            { return proto.CompactTextString(m)
 func (*TestRun) ProtoMessage()               {}
 func (*TestRun) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
+func (m *TestRun) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *TestRun) GetStatus() TestRun_Status {
+	if m != nil {
+		return m.Status
+	}
+	return TestRun_UNKNOWN
+}
+
+func (m *TestRun) GetInfo() string {
+	if m != nil {
+		return m.Info
+	}
+	return ""
+}
+
 func (m *TestRun) GetStartedAt() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.StartedAt
