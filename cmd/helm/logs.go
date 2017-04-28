@@ -22,6 +22,7 @@ import (
 
 	"k8s.io/helm/pkg/helm"
 	"fmt"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 var logsHelp = `
@@ -63,7 +64,7 @@ func newLogsCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 func (l *logsCmd) run() error {
 	done := make(chan struct{})
-	stream, err := l.client.ReleaseLogs(l.release, done)
+	stream, err := l.client.ReleaseLogs(l.release, release.LogLevel_DEBUG, done, release.LogSource_SYSTEM, release.LogSource_POD)
 
 	fmt.Println("Listening for logs")
 	for {
@@ -77,6 +78,7 @@ func (l *logsCmd) run() error {
 	}
 
 	if err != nil {
+		done <- struct{}{}
 		return prettyError(err)
 	}
 

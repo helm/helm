@@ -17,6 +17,7 @@ It is generated from these files:
 It has these top-level messages:
 	Hook
 	Info
+	LogSubscription
 	Log
 	Release
 	Status

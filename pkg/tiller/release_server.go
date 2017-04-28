@@ -43,7 +43,6 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
 	"k8s.io/helm/pkg/tiller/logdistributor"
-	"time"
 )
 
 // releaseNameMaxLen is the maximum length of a release name.
@@ -255,6 +254,8 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		Info:      rel.Info,
 	}
 
+	s.logs.PubLog(req.Name, release.LogSource_SYSTEM, release.LogLevel_INFO, "Got release status for the release")
+
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
 	kubeCli := s.env.KubeClient
@@ -286,29 +287,29 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 }
 
 func (s *ReleaseServer) GetReleaseLogs(svc services.ReleaseService_GetReleaseLogsServer) error {
-	t := time.NewTicker(time.Second)
 	done := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-t.C:
-				fmt.Println("Sending a log")
-				svc.Send(&services.GetReleaseLogsResponse{Log: &release.Log{Log: "Test log!"}})
-			case <-done:
-				return
-			}
-		}
-	}()
 
 	for {
 		rq, err := svc.Recv()
-		fmt.Println("Req: ", rq, " Error: ", err)
 		if err != nil {
+			fmt.Println("Errored: ", err, ", Closing stream")
 			done <- struct{}{}
 			break
 		}
-		s.logs.Subscribe(rq.Name, )
-		rq.Name
+
+		sub := s.logs.Subscribe(rq.Subscription.Release, rq.Subscription.Level, rq.Subscription.Sources...)
+		go func() {
+			for {
+				select {
+				case l := <-sub.C:
+					fmt.Println("Sending a log")
+					svc.Send(&services.GetReleaseLogsResponse{Log: l})
+				case <-done:
+					s.logs.Unsubscribe(sub)
+					return
+				}
+			}
+		}()
 	}
 
 	return nil

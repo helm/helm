@@ -28,6 +28,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	"fmt"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 // Client manages client side of the helm-tiller protocol
@@ -217,9 +218,10 @@ func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.R
 }
 
 // ReleaseLogs returns a channel streaming log data from the release
-func (h *Client) ReleaseLogs(rlsName string, done <-chan struct{}) (<-chan *rls.GetReleaseLogsResponse, error) {
+func (h *Client) ReleaseLogs(rlsName string, level release.LogLevel, done <-chan struct{}, sources ...release.LogSource) (<-chan *rls.GetReleaseLogsResponse, error) {
 	ctx := NewContext()
-	req := &rls.GetReleaseLogsRequest{Name: rlsName}
+	sub := &release.LogSubscription{Release: rlsName, Level: level, Sources: sources}
+	req := &rls.GetReleaseLogsRequest{Subscription: sub}
 
 	return h.logs(ctx, req, done)
 }

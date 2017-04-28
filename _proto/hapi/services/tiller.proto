@@ -57,7 +57,7 @@ service ReleaseService {
 	}
 
 	// GetReleaseLogs returns a stream of logging information from the release
-	rpc GetReleaseLogs(GetReleaseLogsRequest) returns (stream GetReleaseLogsResponse) {
+	rpc GetReleaseLogs(stream GetReleaseLogsRequest) returns (stream GetReleaseLogsResponse) {
 	}
 
     // UpdateRelease updates release content.
@@ -188,10 +188,7 @@ message GetReleaseContentResponse {
 }
 
 message GetReleaseLogsRequest {
-	// Name is the name of the release
-	string name = 1;
-	// Version is the version of the release
-	int32 version = 2;
+	hapi.release.LogSubscription subscription = 1;
 }
 
 message GetReleaseLogsResponse {
