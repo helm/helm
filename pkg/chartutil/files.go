@@ -16,6 +16,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"path"
@@ -23,9 +24,9 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/BurntSushi/toml"
 	"github.com/gobwas/glob"
 	"github.com/golang/protobuf/ptypes/any"
-	"github.com/naoina/toml"
 )
 
 // Files is a map of files in a chart that can be accessed from a template.
@@ -197,12 +198,13 @@ func FromYaml(str string) map[string]interface{} {
 //
 // This is designed to be called from a template.
 func ToToml(v interface{}) string {
-	data, err := toml.Marshal(v)
+	b := bytes.NewBuffer(nil)
+	e := toml.NewEncoder(b)
+	err := e.Encode(v)
 	if err != nil {
-		// Swallow errors inside of a template.
-		return ""
+		return err.Error()
 	}
-	return string(data)
+	return b.String()
 }
 
 // ToJson takes an interface, marshals it to json, and returns a string. It will

@@ -1,5 +1,5 @@
-hash: e9366bddb36a7120a832959c89f72f75d56b9f10f84820420795c668d9cb0987
-updated: 2017-04-27T14:23:27.66000871-06:00
+hash: 1933241d076be316f3ef64e587e5400c2c884ebaa68565339796c7803619c8a4
+updated: 2017-04-28T15:58:28.450420107-06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -20,6 +20,8 @@ imports:
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
+- name: github.com/BurntSushi/toml
+  version: b26d9c308763d68093482582cea63d69be07a0f0
 - name: github.com/chai2010/gettext-go
   version: bf70f2a70fb1b1f36d90d671a72795984eab0fcb
 - name: github.com/coreos/go-oidc
@@ -169,7 +171,7 @@ imports:
 - name: github.com/Masterminds/sprig
   version: 23597e5f6ad0e4d590e71314bfd0251a4a3cf849
 - name: github.com/Masterminds/vcs
-  version: 795e20f901c3d561de52811fb3488a2cb2c8588b
+  version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -180,10 +182,6 @@ imports:
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/naoina/go-stringutil
   version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
-- name: github.com/naoina/toml
-  version: 751171607256bb66e64c9f0220c00662420c38e9
-  subpackages:
-  - ast
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/prometheus/client_golang

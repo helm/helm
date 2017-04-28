@@ -38,8 +38,8 @@ import:
   version: ^0.2.1
 - package: github.com/evanphx/json-patch
 - package: github.com/facebookgo/symwalk
-- package: github.com/naoina/toml
-  version: ~0.1.0
+- package: github.com/BurntSushi/toml
+  version: ~0.3.0
 - package: github.com/naoina/go-stringutil
   version: ~0.1.0
 - package: github.com/chai2010/gettext-go
