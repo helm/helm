@@ -134,9 +134,9 @@ func TestInstall(t *testing.T) {
 		},
 		// Install, chart with missing dependencies in /charts
 		{
-			name:     "install chart with missing dependencies",
-			args:     []string{"testdata/testcharts/chart-missing-deps"},
-			expected: "Warning: reqsubchart2 is in requirements.yaml but not in the charts/ directory!",
+			name: "install chart with missing dependencies",
+			args: []string{"testdata/testcharts/chart-missing-deps"},
+			err:  true,
 		},
 	}
 
