@@ -64,7 +64,9 @@ func New() *Engine {
 //	- "include": This is late-bound in Engine.Render(). The version
 //	   included in the FuncMap is a placeholder.
 //      - "required": This is late-bound in Engine.Render(). The version
-//	   included in thhe FuncMap is a placeholder.
+//	   included in the FuncMap is a placeholder.
+//      - "tpl": This is late-bound in Engine.Render(). The version
+//	   included in the FuncMap is a placeholder.
 func FuncMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
@@ -83,6 +85,7 @@ func FuncMap() template.FuncMap {
 		// integrity of the linter.
 		"include":  func(string, interface{}) string { return "not implemented" },
 		"required": func(string, interface{}) interface{} { return "not implemented" },
+		"tpl":      func(string, interface{}) interface{} { return "not implemented" },
 	}
 
 	for k, v := range extra {
@@ -156,6 +159,23 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 			}
 		}
 		return val, nil
+	}
+
+	// Add the 'tpl' function here
+	funcMap["tpl"] = func(tpl string, vals chartutil.Values) string {
+		r := renderable{
+			tpl:  tpl,
+			vals: vals,
+		}
+
+		templates := map[string]renderable{}
+		templates["template"] = r
+
+		result, err := e.render(templates)
+		if err != nil {
+			return fmt.Errorf("Error during tpl function execution for %q", tpl).Error()
+		}
+		return result["template"]
 	}
 
 	return funcMap
