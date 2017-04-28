@@ -70,6 +70,34 @@ func TestDeploymentManifest(t *testing.T) {
 	}
 }
 
+func TestDeploymentManifestForServiceAccount(t *testing.T) {
+	tests := []struct {
+		name            string
+		image           string
+		canary          bool
+		expect          string
+		imagePullPolicy api.PullPolicy
+		serviceAccount  string
+	}{
+		{"withSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", "service-account"},
+		{"withoutSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", ""},
+	}
+	for _, tt := range tests {
+		o, err := DeploymentManifest(&Options{Namespace: api.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary, ServiceAccount: tt.serviceAccount})
+		if err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+
+		var d extensions.Deployment
+		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+		if got := d.Spec.Template.Spec.ServiceAccountName; got != tt.serviceAccount {
+			t.Errorf("%s: expected service account value %q, got %q", tt.name, tt.serviceAccount, got)
+		}
+	}
+}
+
 func TestDeploymentManifest_WithTLS(t *testing.T) {
 	tests := []struct {
 		opts   Options
