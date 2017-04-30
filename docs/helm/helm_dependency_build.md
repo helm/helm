@@ -24,7 +24,7 @@ helm dependency build [flags] CHART
 
 ```
       --keyring string   keyring containing public keys (default "~/.gnupg/pubring.gpg")
-      --recursive        recursive mode
+      --recursive        run the dependency build also for the dependent charts recursively
       --verify           verify the packages against signatures
 ```
 

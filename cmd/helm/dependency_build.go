@@ -66,7 +66,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&dbc.verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.BoolVar(&dbc.recursive, "recursive", false, "recursive mode")
+	f.BoolVar(&dbc.recursive, "recursive", false, "run the dependency build also for the dependent charts recursively")
 
 	return cmd
 }
