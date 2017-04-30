@@ -61,9 +61,16 @@ type Manager struct {
 	Recursive bool
 }
 
+// MaxDepsPerChart is the limit of chart hierarchy in case of recursive mode
+// If it is exceeded, it is treated as loop between the chart dependencies.
+var MaxDepsPerChart = 100
+
 // Build rebuilds a local charts directory from a lockfile.
 //
 // If the lockfile is not present, this will run a Manager.Update()
+//
+// The integer return value indicates the dependency sum. It is used to
+// detect loops in case of recirsive mode.
 //
 // If SkipUpdate is set, this will not update the repository.
 func (m *Manager) Build() (int, error) {
@@ -105,7 +112,7 @@ func (m *Manager) Build() (int, error) {
 		return 0, err
 	}
 
-	myDeps := len(reqs.Dependencies)
+	myDeps := 1 + len(reqs.Dependencies)
 	if m.Recursive {
 		depM := *m
 		for _, dep := range reqs.Dependencies {
@@ -117,7 +124,7 @@ func (m *Manager) Build() (int, error) {
 				return 0, err
 			}
 			myDeps += depOfDeps
-			if myDeps > 100 {
+			if myDeps > MaxDepsPerChart {
 				return 0, fmt.Errorf("Loop prevention kicked in.")
 			}
 		}
