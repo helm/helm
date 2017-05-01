@@ -193,6 +193,11 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	rendered := make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
+		// Don't render partials. We don't care out the direct output of partials.
+		// They are only included from other templates.
+		if strings.HasPrefix(path.Base(file), "_") {
+			continue
+		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[file].vals
 		vals["Template"] = map[string]interface{}{"Name": file, "BasePath": tpls[file].basePath}
