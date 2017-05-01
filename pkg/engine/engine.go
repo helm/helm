@@ -138,12 +138,12 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 	}
 
 	// Add the 'include' function here so we can close over t.
-	funcMap["include"] = func(name string, data interface{}) string {
+	funcMap["include"] = func(name string, data interface{}) (string, error) {
 		buf := bytes.NewBuffer(nil)
 		if err := t.ExecuteTemplate(buf, name, data); err != nil {
-			buf.WriteString(err.Error())
+			return "", err
 		}
-		return buf.String()
+		return buf.String(), nil
 	}
 
 	// Add the 'required' function here
