@@ -242,6 +242,8 @@ _helm_completion()
 
     must_have_one_flag=()
     must_have_one_noun=()
+    must_have_one_noun+=("bash")
+    must_have_one_noun+=("zsh")
     noun_aliases=()
 }
 

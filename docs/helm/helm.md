@@ -40,7 +40,7 @@ Environment:
 ```
 
 ### SEE ALSO
-* [helm completion](helm_completion.md)	 - Generate bash autocompletions script
+* [helm completion](helm_completion.md)	 - Generate autocompletions script for the specified shell (bash or zsh)
 * [helm create](helm_create.md)	 - create a new chart with the given name
 * [helm delete](helm_delete.md)	 - given a release name, delete the release from Kubernetes
 * [helm dependency](helm_dependency.md)	 - manage a chart's dependencies

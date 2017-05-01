@@ -1,24 +1,24 @@
 ## helm completion
 
-Generate bash autocompletions script
+Generate autocompletions script for the specified shell (bash or zsh)
 
 ### Synopsis
 
 
 
-Generate bash autocompletions script for Helm.
+Generate autocompletions script for Helm for the specified shell (bash or zsh).
 
-This command can generate shell autocompletions.
+This command can generate shell autocompletions. e.g.
 
-	$ helm completion
+	$ helm completion bash
 
 Can be sourced as such
 
-	$ source <(helm completion)
+	$ source <(helm completion bash)
 
 
 ```
-helm completion
+helm completion SHELL
 ```
 
 ### Options inherited from parent commands
