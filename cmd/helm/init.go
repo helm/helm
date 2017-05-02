@@ -66,17 +66,18 @@ var (
 )
 
 type initCmd struct {
-	image       string
-	clientOnly  bool
-	canary      bool
-	upgrade     bool
-	namespace   string
-	dryRun      bool
-	skipRefresh bool
-	out         io.Writer
-	home        helmpath.Home
-	opts        installer.Options
-	kubeClient  internalclientset.Interface
+	image          string
+	clientOnly     bool
+	canary         bool
+	upgrade        bool
+	namespace      string
+	dryRun         bool
+	skipRefresh    bool
+	out            io.Writer
+	home           helmpath.Home
+	opts           installer.Options
+	kubeClient     internalclientset.Interface
+	serviceAccount string
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -116,6 +117,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install tiller with net=host")
+	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
 	return cmd
 }
@@ -154,6 +156,7 @@ func (i *initCmd) run() error {
 	i.opts.Namespace = i.namespace
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
+	i.opts.ServiceAccount = i.serviceAccount
 
 	if settings.Debug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
