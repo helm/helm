@@ -40,6 +40,8 @@ func TestFetchCmd(t *testing.T) {
 		settings.Home = old
 		os.RemoveAll(hh.String())
 	}()
+	srv := repotest.NewServer(hh.String())
+	defer srv.Stop()
 
 	// all flags will get "--home=TMDIR -d outdir" appended.
 	tests := []struct {
@@ -105,10 +107,33 @@ func TestFetchCmd(t *testing.T) {
 			expectDir:    true,
 			expectVerify: true,
 		},
+		{
+			name:       "Chart fetch using repo URL",
+			chart:      "signtest",
+			expectFile: "./signtest-0.1.0.tgz",
+			flags:      []string{"--repo", srv.URL()},
+		},
+		{
+			name:       "Fail fetching non-existent chart on repo URL",
+			chart:      "someChart",
+			flags:      []string{"--repo", srv.URL()},
+			failExpect: "Failed to fetch chart",
+			fail:       true,
+		},
+		{
+			name:       "Specific version chart fetch using repo URL",
+			chart:      "signtest",
+			expectFile: "./signtest-0.1.0.tgz",
+			flags:      []string{"--repo", srv.URL(), "--version", "0.1.0"},
+		},
+		{
+			name:       "Specific version chart fetch using repo URL",
+			chart:      "signtest",
+			flags:      []string{"--repo", srv.URL(), "--version", "0.2.0"},
+			failExpect: "Failed to fetch chart version",
+			fail:       true,
+		},
 	}
-
-	srv := repotest.NewServer(hh.String())
-	defer srv.Stop()
 
 	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz*"); err != nil {
 		t.Fatal(err)
