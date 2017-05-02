@@ -18,12 +18,16 @@ package version // import "k8s.io/helm/pkg/version"
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/semver"
 )
 
 // IsCompatible tests if a client and server version are compatible.
 func IsCompatible(client, server string) bool {
+	if isUnreleased(client) || isUnreleased(server) {
+		return true
+	}
 	cv, err := semver.NewVersion(client)
 	if err != nil {
 		return false
@@ -54,4 +58,8 @@ func IsCompatibleRange(constraint, ver string) bool {
 		return false
 	}
 	return c.Check(sv)
+}
+
+func isUnreleased(v string) bool {
+	return strings.HasSuffix(v, "unreleased")
 }
