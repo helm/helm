@@ -92,7 +92,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.FindNewReplicaSet(currentDeployment, replicaSets)
-				if err != nil {
+				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
 				newDeployment := deployment{
