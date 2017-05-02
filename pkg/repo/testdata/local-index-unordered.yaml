@@ -37,3 +37,12 @@ entries:
         - small
         - sumtin
       digest: "sha256:1234567890abcdef"
+  chartWithNoURL:
+    - name: chartWithNoURL
+      description: string
+      version: 1.0.0
+      home: https://github.com/something
+      keywords:
+        - small
+        - sumtin
+      digest: "sha256:1234567890abcdef"
