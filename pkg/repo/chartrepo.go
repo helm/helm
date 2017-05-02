@@ -177,3 +177,50 @@ func (r *ChartRepository) generateIndex() error {
 	r.IndexFile.SortEntries()
 	return nil
 }
+
+// FindChartInRepoURL finds chart in chart repository pointed by repoURL
+// without adding repo to repostiories
+func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
+
+	// Download and write the index file to a temporary location
+	tempIndexFile, err := ioutil.TempFile("", "tmp-repo-file")
+	if err != nil {
+		return "", fmt.Errorf("cannot write index file for repository requested")
+	}
+	defer os.Remove(tempIndexFile.Name())
+
+	c := Entry{
+		URL:      repoURL,
+		CertFile: certFile,
+		KeyFile:  keyFile,
+		CAFile:   caFile,
+	}
+	r, err := NewChartRepository(&c, getters)
+	if err != nil {
+		return "", err
+	}
+	if err := r.DownloadIndexFile(tempIndexFile.Name()); err != nil {
+		return "", fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", repoURL, err)
+	}
+
+	// Read the index file for the repository to get chart information and return chart URL
+	repoIndex, err := LoadIndexFile(tempIndexFile.Name())
+	if err != nil {
+		return "", err
+	}
+
+	errMsg := fmt.Sprintf("chart %q", chartName)
+	if chartVersion != "" {
+		errMsg = fmt.Sprintf("%s version %q", errMsg, chartVersion)
+	}
+	cv, err := repoIndex.Get(chartName, chartVersion)
+	if err != nil {
+		return "", fmt.Errorf("%s not found in %s repository", errMsg, repoURL)
+	}
+
+	if len(cv.URLs) == 0 {
+		return "", fmt.Errorf("%s has no downloadable URLs", errMsg)
+	}
+
+	return cv.URLs[0], nil
+}
