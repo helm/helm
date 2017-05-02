@@ -19,6 +19,7 @@ package storage // import "k8s.io/helm/pkg/storage"
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
@@ -28,6 +29,11 @@ import (
 // Storage represents a storage engine for a Release.
 type Storage struct {
 	driver.Driver
+
+	// releaseLocks are for locking releases to make sure that only one operation at a time is executed on each release
+	releaseLocks map[string]*sync.Mutex
+	// releaseLocksLock is a mutex for accessing releaseLocks
+	releaseLocksLock *sync.Mutex
 }
 
 // Get retrieves the release from storage. An error is returned
@@ -153,6 +159,51 @@ func (s *Storage) Last(name string) (*rspb.Release, error) {
 	return h[0], nil
 }
 
+// LockRelease gains a mutually exclusive access to a release via a mutex.
+func (s *Storage) LockRelease(name string) error {
+	s.releaseLocksLock.Lock()
+	defer s.releaseLocksLock.Unlock()
+
+	var lock *sync.Mutex
+	lock, exists := s.releaseLocks[name]
+
+	if !exists {
+		releases, err := s.ListReleases()
+		if err != nil {
+			return err
+		}
+
+		found := false
+		for _, release := range releases {
+			if release.Name == name {
+				found = true
+			}
+		}
+		if !found {
+			return fmt.Errorf("Unable to lock release %s: release not found", name)
+		}
+
+		lock = &sync.Mutex{}
+		s.releaseLocks[name] = lock
+	}
+	lock.Lock()
+	return nil
+}
+
+// UnlockRelease releases a mutually exclusive access to a release.
+// If release doesn't exist or wasn't previously locked - the unlock will pass
+func (s *Storage) UnlockRelease(name string) {
+	s.releaseLocksLock.Lock()
+	defer s.releaseLocksLock.Unlock()
+
+	var lock *sync.Mutex
+	lock, exists := s.releaseLocks[name]
+	if !exists {
+		return
+	}
+	lock.Unlock()
+}
+
 // makeKey concatenates a release name and version into
 // a string with format ```<release_name>#v<version>```.
 // This key is used to uniquely identify storage objects.
@@ -167,5 +218,9 @@ func Init(d driver.Driver) *Storage {
 	if d == nil {
 		d = driver.NewMemory()
 	}
-	return &Storage{Driver: d}
+	return &Storage{
+		Driver:           d,
+		releaseLocks:     make(map[string]*sync.Mutex),
+		releaseLocksLock: &sync.Mutex{},
+	}
 }
