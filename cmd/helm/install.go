@@ -34,7 +34,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -362,7 +362,7 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		HelmHome: settings.Home,
 		Out:      os.Stdout,
 		Keyring:  keyring,
-		Getters:  defaultgetters.Get(settings),
+		Getters:  getter.All(settings),
 	}
 	if verify {
 		dl.Verify = downloader.VerifyAlways

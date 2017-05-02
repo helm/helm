@@ -56,7 +56,7 @@ type Manager struct {
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
 	// Getter collection for the operation
-	Getters []getter.Prop
+	Getters []getter.Provider
 }
 
 // Build rebuilds a local charts directory from a lockfile.

@@ -50,13 +50,13 @@ type ChartRepository struct {
 }
 
 // NewChartRepository constructs ChartRepository
-func NewChartRepository(cfg *Entry, getters []getter.Prop) (*ChartRepository, error) {
+func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository, error) {
 	u, err := url.Parse(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid chart URL format: %s", cfg.URL)
 	}
 
-	getterConstructor, err := getter.ConstructorByScheme(getters, u.Scheme)
+	getterConstructor, err := getters.ByScheme(u.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("Could not find protocol handler for: %s", u.Scheme)
 	}

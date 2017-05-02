@@ -27,7 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/cmd/helm/installer"
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -317,7 +317,7 @@ func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
 		URL:   stableRepositoryURL,
 		Cache: cacheFile,
 	}
-	r, err := repo.NewChartRepository(&c, defaultgetters.Get(settings))
+	r, err := repo.NewChartRepository(&c, getter.All(settings))
 	if err != nil {
 		return nil, err
 	}
