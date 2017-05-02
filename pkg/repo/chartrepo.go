@@ -187,9 +187,7 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 	if err != nil {
 		return "", fmt.Errorf("cannot write index file for repository requested")
 	}
-	defer func() {
-		os.Remove(tempIndexFile.Name())
-	}()
+	defer os.Remove(tempIndexFile.Name())
 
 	c := Entry{
 		URL:      repoURL,
