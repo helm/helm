@@ -112,15 +112,27 @@ func TestToYaml(t *testing.T) {
 }
 
 func TestToToml(t *testing.T) {
-	expect := "foo=\"bar\"\n"
+	expect := "foo = \"bar\"\n"
 	v := struct {
-		Foo string `json:"foo"`
+		Foo string `toml:"foo"`
 	}{
 		Foo: "bar",
 	}
 
 	if got := ToToml(v); got != expect {
 		t.Errorf("Expected %q, got %q", expect, got)
+	}
+
+	// Regression for https://github.com/kubernetes/helm/issues/2271
+	dict := map[string]map[string]string{
+		"mast": {
+			"sail": "white",
+		},
+	}
+	got := ToToml(dict)
+	expect = "[mast]\n  sail = \"white\"\n"
+	if got != expect {
+		t.Errorf("Expected:\n%s\nGot\n%s\n", expect, got)
 	}
 }
 
