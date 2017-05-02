@@ -474,4 +474,33 @@ func TestAlterFuncMap(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expectTplStr, gotStrTpl, outTpl)
 	}
 
+	tplChartWithFunction := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplFunction"},
+		Templates: []*chart.Template{
+			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | quote}}" .}}`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{},
+	}
+
+	tplValuesWithFunction := chartutil.Values{
+		"Values": chartutil.Values{
+			"value": "myvalue",
+		},
+		"Chart": tplChartWithFunction.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	outTplWithFunction, err := New().Render(tplChartWithFunction, tplValuesWithFunction)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectTplStrWithFunction := "Evaluate tpl Value: \"myvalue\""
+	if gotStrTplWithFunction := outTplWithFunction["TplFunction/templates/base"]; gotStrTplWithFunction != expectTplStrWithFunction {
+		t.Errorf("Expected %q, got %q (%v)", expectTplStrWithFunction, gotStrTplWithFunction, outTplWithFunction)
+	}
+
 }

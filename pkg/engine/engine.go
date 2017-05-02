@@ -162,7 +162,7 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 	}
 
 	// Add the 'tpl' function here
-	funcMap["tpl"] = func(tpl string, vals chartutil.Values) string {
+	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
 		r := renderable{
 			tpl:  tpl,
 			vals: vals,
@@ -173,9 +173,9 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 
 		result, err := e.render(templates)
 		if err != nil {
-			return fmt.Errorf("Error during tpl function execution for %q", tpl).Error()
+			return "", fmt.Errorf("Error during tpl function execution for %q: %s", tpl, err.Error())
 		}
-		return result["template"]
+		return result["template"], nil
 	}
 
 	return funcMap
