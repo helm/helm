@@ -1,5 +1,5 @@
-hash: 1933241d076be316f3ef64e587e5400c2c884ebaa68565339796c7803619c8a4
-updated: 2017-04-28T15:58:28.450420107-06:00
+hash: 0098f4e67e62df017349dfc51afcb25c4a7927b3cc032c0fb983d6e0c86942b9
+updated: 2017-05-02T12:34:53.4235593-06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -153,7 +153,7 @@ imports:
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo
-  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
+  version: 3e95a51e0639b4cf372f2ccf74c86749d747fbdc
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jonboulle/clockwork
@@ -169,7 +169,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 3f0ab6d4ab4bed1c61caf056b63a6e62190c7801
 - name: github.com/Masterminds/sprig
-  version: 23597e5f6ad0e4d590e71314bfd0251a4a3cf849
+  version: a48f46e0125cf60347eda24fccf1b09f1a0d681f
 - name: github.com/Masterminds/vcs
   version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth

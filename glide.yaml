@@ -11,7 +11,7 @@ import:
 - package: github.com/Masterminds/vcs
   version: ~1.11.0
 - package: github.com/Masterminds/sprig
-  version: ^2.10
+  version: ^2.11
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
   version: ~1.2.3
