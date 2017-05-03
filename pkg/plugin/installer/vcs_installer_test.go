@@ -18,6 +18,7 @@ package installer // import "k8s.io/helm/pkg/plugin/installer"
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -53,7 +54,7 @@ func TestVCSInstaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(hh)
+	defer os.RemoveAll(hh)
 
 	home := helmpath.Home(hh)
 	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
@@ -61,8 +62,9 @@ func TestVCSInstaller(t *testing.T) {
 	}
 
 	source := "https://github.com/adamreese/helm-env"
+	testRepoPath, _ := filepath.Abs("../testdata/plugdir/echo")
 	repo := &testRepo{
-		local: "../testdata/plugdir/echo",
+		local: testRepoPath,
 		tags:  []string{"0.1.0", "0.1.1"},
 	}
 
@@ -89,6 +91,13 @@ func TestVCSInstaller(t *testing.T) {
 	if i.Path() != home.Path("plugins", "helm-env") {
 		t.Errorf("expected path '$HELM_HOME/plugins/helm-env', got %q", i.Path())
 	}
+
+	// Install again to test plugin exists error
+	if err := Install(i); err == nil {
+		t.Error("expected error for plugin exists, got none")
+	} else if err.Error() != "plugin already exists" {
+		t.Errorf("expected error for plugin exists, got (%v)", err)
+	}
 }
 
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
@@ -96,7 +105,7 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(hh)
+	defer os.RemoveAll(hh)
 
 	home := helmpath.Home(hh)
 	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
