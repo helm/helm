@@ -17,6 +17,8 @@ limitations under the License.
 package kube // import "k8s.io/helm/pkg/kube"
 
 import (
+	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -25,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
@@ -43,9 +46,8 @@ type deployment struct {
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
 // until all are ready or a timeout is reached
-func (c *Client) waitForResources(timeout time.Duration, created Result) error {
+func (c *Client) waitForResources(timeout time.Duration, created Result, writer io.Writer) error {
 	log.Printf("beginning wait for resources with timeout of %v", timeout)
-
 	cs, _ := c.ClientSet()
 	client := versionedClientsetForDeployment(cs)
 	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
@@ -132,6 +134,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				services = append(services, *svc)
 			}
 		}
+		writeEvents(client, writer, pods, services, pvc, deployments)
 		return podsReady(pods) && servicesReady(services) && volumesReady(pvc) && deploymentsReady(deployments), nil
 	})
 }
@@ -192,5 +195,50 @@ func versionedClientsetForDeployment(internalClient internalclientset.Interface)
 	return &clientset.Clientset{
 		CoreV1Client:            core.New(internalClient.Core().RESTClient()),
 		ExtensionsV1beta1Client: extensionsclient.New(internalClient.Extensions().RESTClient()),
+	}
+}
+
+func writeEvents(
+	client clientset.Interface,
+	writer io.Writer,
+	pods []v1.Pod,
+	services []v1.Service,
+	pvcs []v1.PersistentVolumeClaim,
+	deployments []deployment,
+) {
+	// Aggregate all events from k8s on each poll:
+	// Pods:
+	for _, pod := range pods {
+		events, _ := client.Core().Events(pod.Namespace).Search(api.Scheme, runtime.Object(&pod))
+		write(writer, events, "Pod")
+	}
+	// Services:
+	for _, service := range services {
+		events, _ := client.Core().Events(service.Namespace).Search(api.Scheme, runtime.Object(&service))
+		write(writer, events, "Service")
+	}
+	// PVCs:
+	for _, pvc := range pvcs {
+		events, _ := client.Core().Events(pvc.Namespace).Search(api.Scheme, runtime.Object(&pvc))
+		write(writer, events, "PVC")
+	}
+	// Deployments:
+	for _, deployment := range deployments {
+		events, _ := client.Core().Events(deployment.deployment.Namespace).Search(api.Scheme, runtime.Object(deployment.deployment))
+		write(writer, events, "Deployment")
+	}
+}
+
+func write(writer io.Writer, events *v1.EventList, resource string) {
+	for _, event := range events.Items {
+		fmt.Fprintf(
+			writer,
+			"[%s] [%s] [Type]: %s [Reason]: %s [Message]: %s\n",
+			time.Now().Format("2006/01/02 15:04:05"),
+			resource,
+			event.Type,
+			event.Reason,
+			event.Message,
+		)
 	}
 }

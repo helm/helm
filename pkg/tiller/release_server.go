@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"path"
 	"regexp"
@@ -318,7 +319,8 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	eventsLog := bytes.NewBuffer(nil)
+	if err := s.performKubeUpdate(originalRelease, updatedRelease, eventsLog, req.Recreate, req.Timeout, req.Wait); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -326,7 +328,12 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
 		s.recordRelease(updatedRelease, false)
-		return res, err
+		return res, fmt.Errorf(
+			"\nTiller log:\n%s\nupdate %s failed: %s",
+			eventsLog,
+			originalRelease.Name,
+			err,
+		)
 	}
 
 	// post-upgrade hooks
@@ -499,7 +506,8 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	eventsLog := bytes.NewBuffer(nil)
+	if err := s.performKubeUpdate(currentRelease, targetRelease, eventsLog, req.Recreate, req.Timeout, req.Wait); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -507,7 +515,12 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		targetRelease.Info.Description = msg
 		s.recordRelease(currentRelease, true)
 		s.recordRelease(targetRelease, false)
-		return res, err
+		return res, fmt.Errorf(
+			"\nTiller log:\n%s\nrollback %s failed: %s",
+			eventsLog,
+			currentRelease.Name,
+			err,
+		)
 	}
 
 	// post-rollback hooks
@@ -525,11 +538,11 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	return res, nil
 }
 
-func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, recreate bool, timeout int64, shouldWait bool) error {
+func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, writer io.Writer, recreate bool, timeout int64, shouldWait bool) error {
 	kubeCli := s.env.KubeClient
 	current := bytes.NewBufferString(currentRelease.Manifest)
 	target := bytes.NewBufferString(targetRelease.Manifest)
-	return kubeCli.Update(targetRelease.Namespace, current, target, recreate, timeout, shouldWait)
+	return kubeCli.Update(targetRelease.Namespace, current, target, writer, recreate, timeout, shouldWait)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -864,6 +877,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		}
 	}
 
+	eventsLog := bytes.NewBuffer(nil)
 	switch h, err := s.env.Releases.History(req.Name); {
 	// if this is a replace operation, append to the release history
 	case req.ReuseName && err == nil && len(h) >= 1:
@@ -881,7 +895,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
 
-		if err := s.performKubeUpdate(old, r, false, req.Timeout, req.Wait); err != nil {
+		if err := s.performKubeUpdate(old, r, eventsLog, false, req.Timeout, req.Wait); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
@@ -889,20 +903,30 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Description = msg
 			s.recordRelease(old, true)
 			s.recordRelease(r, false)
-			return res, err
+			return res, fmt.Errorf(
+				"\nTiller log:\n%s\nrelease %s failed: %s",
+				eventsLog,
+				r.Name,
+				err,
+			)
 		}
 
 	default:
 		// nothing to replace, create as normal
 		// regular manifests
 		b := bytes.NewBufferString(r.Manifest)
-		if err := s.env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
+		if err := s.env.KubeClient.Create(r.Namespace, b, eventsLog, req.Timeout, req.Wait); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, false)
-			return res, fmt.Errorf("release %s failed: %s", r.Name, err)
+			return res, fmt.Errorf(
+				"\nTiller log:\n%s\nrelease %s failed: %s",
+				eventsLog,
+				r.Name,
+				err,
+			) // add resourse statuses here
 		}
 	}
 
@@ -954,7 +978,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	for _, h := range executingHooks {
 
 		b := bytes.NewBufferString(h.Manifest)
-		if err := kubeCli.Create(namespace, b, timeout, false); err != nil {
+		if err := kubeCli.Create(namespace, b, nil, timeout, false); err != nil {
 			log.Printf("warning: Release %q %s %s failed: %s", name, hook, h.Path, err)
 			return err
 		}

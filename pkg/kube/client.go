@@ -75,7 +75,7 @@ type ResourceActorFunc func(*resource.Info) error
 // Create creates kubernetes resources from an io.reader
 //
 // Namespace will set the namespace
-func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
+func (c *Client) Create(namespace string, reader io.Reader, writer io.Writer, timeout int64, shouldWait bool) error {
 	client, err := c.ClientSet()
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 		return err
 	}
 	if shouldWait {
-		return c.waitForResources(time.Duration(timeout)*time.Second, infos)
+		return c.waitForResources(time.Duration(timeout)*time.Second, infos, writer)
 	}
 	return nil
 }
@@ -208,7 +208,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //  not present in the target configuration
 //
 // Namespace will set the namespaces
-func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
+func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, writer io.Writer, recreate bool, timeout int64, shouldWait bool) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -269,7 +269,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		}
 	}
 	if shouldWait {
-		return c.waitForResources(time.Duration(timeout)*time.Second, target)
+		return c.waitForResources(time.Duration(timeout)*time.Second, target, writer)
 	}
 	return nil
 }
