@@ -19,6 +19,8 @@ BINARIES  := helm tiller
 # Required for globs to work correctly
 SHELL=/bin/bash
 
+export PATH   :=   $(GOPATH)/bin:$(PATH)
+
 .PHONY: all
 all: build
 
@@ -26,10 +28,10 @@ all: build
 build:
 	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
 
-# usage: make clean build-cross dist APP=helm|tiller VERSION=v2.0.0-alpha.3
+# usage: make clean bootstrap build-cross dist APP=helm|tiller VERSION=v2.0.0-alpha.3
 .PHONY: build-cross
-build-cross: LDFLAGS += -extldflags "-static"
-build-cross:
+build-cross:  LDFLAGS += -extldflags "-static"
+build-cross:  bootstrap
 	CGO_ENABLED=0 gox -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/$(APP)
 
 .PHONY: dist
