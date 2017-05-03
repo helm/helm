@@ -22,6 +22,8 @@ import (
 
 	"k8s.io/helm/pkg/helm/helmpath"
 
+	"fmt"
+
 	"github.com/Masterminds/vcs"
 )
 
@@ -86,5 +88,38 @@ func TestVCSInstaller(t *testing.T) {
 	}
 	if i.Path() != home.Path("plugins", "helm-env") {
 		t.Errorf("expected path '$HELM_HOME/plugins/helm-env', got %q", i.Path())
+	}
+}
+
+func TestVCSInstallerNonExistentVersion(t *testing.T) {
+	hh, err := ioutil.TempDir("", "helm-home-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(hh)
+
+	home := helmpath.Home(hh)
+	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
+	}
+
+	source := "https://github.com/adamreese/helm-env"
+	version := "0.2.0"
+
+	i, err := NewForSource(source, version, home)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+
+	// ensure a VCSInstaller was returned
+	_, ok := i.(*VCSInstaller)
+	if !ok {
+		t.Error("expected a VCSInstaller")
+	}
+
+	if err := Install(i); err == nil {
+		t.Error("expected error for version does not exists, got none")
+	} else if err.Error() != fmt.Sprintf("requested version %q does not exist for plugin %q", version, source) {
+		t.Errorf("expected error for version does not exists, got (%v)", err)
 	}
 }
