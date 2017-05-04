@@ -10,20 +10,24 @@ import:
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - package: github.com/Masterminds/vcs
   version: ~1.11.0
+
+  # Pin version of mergo that is compatible with both sprig and Kubernetes
+- package: github.com/imdario/mergo
+  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - package: github.com/Masterminds/sprig
-  version: ^2.10
+  version: ^2.11
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
   version: ~1.2.3
 - package: github.com/technosophos/moniker
 - package: github.com/golang/protobuf
-  version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
+  version: 2bba0603135d7d7f5cb73b2125beeda19c09f4ef
   subpackages:
   - proto
   - ptypes/any
   - ptypes/timestamp
 - package: google.golang.org/grpc
-  version: 1.0.3
+  version: 1.2.1
 - package: k8s.io/apimachinery
 - package: k8s.io/client-go
 - package: k8s.io/kubernetes
@@ -38,8 +42,8 @@ import:
   version: ^0.2.1
 - package: github.com/evanphx/json-patch
 - package: github.com/facebookgo/symwalk
-- package: github.com/naoina/toml
-  version: ~0.1.0
+- package: github.com/BurntSushi/toml
+  version: ~0.3.0
 - package: github.com/naoina/go-stringutil
   version: ~0.1.0
 - package: github.com/chai2010/gettext-go

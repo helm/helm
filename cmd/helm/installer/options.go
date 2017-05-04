@@ -43,6 +43,9 @@ type Options struct {
 	// Namespace is the kubernetes namespace to use to deploy tiller.
 	Namespace string
 
+	// ServiceAccount is the Kubernetes service account to add to tiller
+	ServiceAccount string
+
 	// ImageSpec indentifies the image tiller will use when deployed.
 	//
 	// Valid if and only if UseCanary is false.

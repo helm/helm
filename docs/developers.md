@@ -10,6 +10,8 @@ Helm and Tiller.
 - kubectl 1.2 or later
 - A Kubernetes cluster (optional)
 - The gRPC toolchain
+- Git
+- Mercurial
 
 ## Building Helm/Tiller
 

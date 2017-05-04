@@ -131,6 +131,7 @@ func generateDeployment(opts *Options) *extensions.Deployment {
 					Labels: labels,
 				},
 				Spec: api.PodSpec{
+					ServiceAccountName: opts.ServiceAccount,
 					Containers: []api.Container{
 						{
 							Name:            "tiller",

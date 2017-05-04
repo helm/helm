@@ -5,26 +5,26 @@
 
 .SH NAME
 .PP
-helm\-completion \- Generate bash autocompletions script
+helm\-completion \- Generate autocompletions script for the specified shell (bash or zsh)
 
 
 .SH SYNOPSIS
 .PP
-\fBhelm completion\fP
+\fBhelm completion SHELL\fP
 
 
 .SH DESCRIPTION
 .PP
-Generate bash autocompletions script for Helm.
+Generate autocompletions script for Helm for the specified shell (bash or zsh).
 
 .PP
-This command can generate shell autocompletions.
+This command can generate shell autocompletions. e.g.
 
 .PP
 .RS
 
 .nf
-$ helm completion
+$ helm completion bash
 
 .fi
 .RE
@@ -36,7 +36,7 @@ Can be sourced as such
 .RS
 
 .nf
-$ source <(helm completion)
+$ source <(helm completion bash)
 
 .fi
 .RE

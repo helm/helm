@@ -127,7 +127,9 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
-		checkDependencies(ch, reqs, p.out)
+		if err := checkDependencies(ch, reqs, p.out); err != nil {
+			return err
+		}
 	}
 
 	var dest string

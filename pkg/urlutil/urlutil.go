@@ -17,10 +17,10 @@ limitations under the License.
 package urlutil
 
 import (
-	"net"
 	"net/url"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 // URLJoin joins a base URL to one or more path components.
@@ -70,10 +70,18 @@ func ExtractHostname(addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return stripPort(u.Host), nil
+}
 
-	host, _, err := net.SplitHostPort(u.Host)
-	if err != nil {
-		return "", err
+// Backported from Go 1.8 because Circle is still on 1.7
+func stripPort(hostport string) string {
+	colon := strings.IndexByte(hostport, ':')
+	if colon == -1 {
+		return hostport
 	}
-	return host, nil
+	if i := strings.IndexByte(hostport, ']'); i != -1 {
+		return strings.TrimPrefix(hostport[:i], "[")
+	}
+	return hostport[:colon]
+
 }

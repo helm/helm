@@ -215,7 +215,7 @@ You can then override any of these settings in a YAML formatted file,
 and then pass that file during installation.
 
 ```console
-$ echo 'mariadbUser: user0` > config.yaml
+$ echo 'mariadbUser: user0' > config.yaml
 $ helm install -f config.yaml stable/mariadb
 ```
 

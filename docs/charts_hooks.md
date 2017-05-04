@@ -79,8 +79,13 @@ Helm client will pause while the Job is run.
 
 For all other kinds, as soon as Kubernetes marks the resource as loaded
 (added or updated), the resource is considered "Ready". When many
-resources are declared in a hook, the resources are executed serially,
-but the order of their execution is not guaranteed.
+resources are declared in a hook, the resources are executed serially. If they
+have hook weights (see below), they are executed in weighted order. Otherwise,
+ordering is not guaranteed. (In Helm 2.3.0 and after, they are sorted
+alphabetically. That behavior, though, is not considered binding and could change
+in the future.) It is considered good practice to add a hook weight, and set it
+to `0` if weight is not important.
+
 
 ### Hook resources are unmanaged
 
@@ -150,19 +155,20 @@ One resource can implement multiple hooks:
 
 Similarly, there is no limit to the number of different resources that
 may implement a given hook. For example, one could declare both a secret
-and a config map as a pre-install hook. It is important to keep in mind,
-though, that there are no ordering guarantees about hooks.
+and a config map as a pre-install hook.
 
 When subcharts declare hooks, those are also evaluated. There is no way
-for a top-level chart to disable the hooks declared by subcharts. And
-again, there is no guaranteed ordering.
+for a top-level chart to disable the hooks declared by subcharts.
 
-It is also possible to define a weight for a hook which will help build a deterministic executing order. Weights are defined using the following annotation:
+It is also possible to define a weight for a hook which will help build a
+deterministic executing order. Weights are defined using the following annotation:
 
 ```
   annotations:
     "helm.sh/hook-weight": "5"
 ```
 
-Hook weights can be positive or negative numbers but must be represented as strings. When Tiller starts the execution cycle of hooks of a particular Kind it will sort those hooks in ascending order. 
+Hook weights can be positive or negative numbers but must be represented as
+strings. When Tiller starts the execution cycle of hooks of a particular Kind it
+will sort those hooks in ascending order. 
 

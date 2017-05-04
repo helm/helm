@@ -1,0 +1,15 @@
+name: "testgetter"
+version: "0.1.0"
+usage: "Fetch a package from a test:// source"
+description: |-
+  Print the environment that the plugin was given, then exit.
+
+  This registers the test:// protocol.
+
+command: "$HELM_PLUGIN_DIR/get.sh"
+ignoreFlags: true
+downloaders:
+#- command: "$HELM_PLUGIN_DIR/get.sh"
+- command: "echo"
+  protocols:
+    - "test"

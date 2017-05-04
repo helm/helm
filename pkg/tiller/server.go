@@ -88,8 +88,8 @@ func versionFromContext(ctx context.Context) string {
 
 func checkClientVersion(ctx context.Context) error {
 	clientVersion := versionFromContext(ctx)
-	if !version.IsCompatible(clientVersion, version.Version) {
-		return fmt.Errorf("incompatible versions client: %s server: %s", clientVersion, version.Version)
+	if !version.IsCompatible(clientVersion, version.GetVersion()) {
+		return fmt.Errorf("incompatible versions client[%s] server[%s]", clientVersion, version.GetVersion())
 	}
 	return nil
 }

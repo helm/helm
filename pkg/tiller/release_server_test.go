@@ -38,6 +38,7 @@ import (
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
+	"k8s.io/helm/pkg/version"
 )
 
 const notesText = "my notes here"
@@ -465,6 +466,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 }
 
 func TestInstallRelease_TillerVersion(t *testing.T) {
+	version.Version = "2.2.0"
 	c := helm.NewContext()
 	rs := rsFixture()
 
@@ -486,6 +488,7 @@ func TestInstallRelease_TillerVersion(t *testing.T) {
 }
 
 func TestInstallRelease_WrongTillerVersion(t *testing.T) {
+	version.Version = "2.2.0"
 	c := helm.NewContext()
 	rs := rsFixture()
 

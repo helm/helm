@@ -24,6 +24,13 @@ func (m *Config) String() string            { return proto.CompactTextString(m) 
 func (*Config) ProtoMessage()               {}
 func (*Config) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
+func (m *Config) GetRaw() string {
+	if m != nil {
+		return m.Raw
+	}
+	return ""
+}
+
 func (m *Config) GetValues() map[string]*Value {
 	if m != nil {
 		return m.Values
@@ -40,6 +47,13 @@ func (m *Value) Reset()                    { *m = Value{} }
 func (m *Value) String() string            { return proto.CompactTextString(m) }
 func (*Value) ProtoMessage()               {}
 func (*Value) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+
+func (m *Value) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
 
 func init() {
 	proto.RegisterType((*Config)(nil), "hapi.chart.Config")

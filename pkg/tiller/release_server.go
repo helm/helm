@@ -317,6 +317,12 @@ func (s *ReleaseServer) GetReleaseLogs(svc services.ReleaseService_GetReleaseLog
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
 func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+	err := s.env.Releases.LockRelease(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer s.env.Releases.UnlockRelease(req.Name)
+
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
 		return nil, err
@@ -499,6 +505,12 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 
 // RollbackRelease rolls back to a previous version of the given release.
 func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
+	err := s.env.Releases.LockRelease(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer s.env.Releases.UnlockRelease(req.Name)
+
 	currentRelease, targetRelease, err := s.prepareRollback(req)
 	if err != nil {
 		return nil, err
@@ -1017,6 +1029,12 @@ func (s *ReleaseServer) purgeReleases(rels ...*release.Release) error {
 
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
 func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
+	err := s.env.Releases.LockRelease(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer s.env.Releases.UnlockRelease(req.Name)
+
 	if !ValidName.MatchString(req.Name) {
 		log.Printf("uninstall: Release not found: %s", req.Name)
 		return nil, errMissingRelease

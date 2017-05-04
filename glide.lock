@@ -1,5 +1,5 @@
-hash: 59f320c07649cfd057b84f1044074670230fa3ca27b32632eb77a16a972adc8e
-updated: 2017-04-24T14:43:55.783514424-07:00
+hash: e323e66f9aba77578f7dcc0886e3117ebc373bc391374b2d5ddd293c276c8966
+updated: 2017-05-02T22:27:03.674351365-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -20,6 +20,8 @@ imports:
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
+- name: github.com/BurntSushi/toml
+  version: b26d9c308763d68093482582cea63d69be07a0f0
 - name: github.com/chai2010/gettext-go
   version: bf70f2a70fb1b1f36d90d671a72795984eab0fcb
 - name: github.com/coreos/go-oidc
@@ -134,7 +136,7 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: df1d3ca07d2d07bba352d5b73c4313b4e2a6203e
+  version: 2bba0603135d7d7f5cb73b2125beeda19c09f4ef
   subpackages:
   - proto
   - ptypes/any
@@ -167,9 +169,9 @@ imports:
 - name: github.com/Masterminds/semver
   version: 3f0ab6d4ab4bed1c61caf056b63a6e62190c7801
 - name: github.com/Masterminds/sprig
-  version: 23597e5f6ad0e4d590e71314bfd0251a4a3cf849
+  version: a48f46e0125cf60347eda24fccf1b09f1a0d681f
 - name: github.com/Masterminds/vcs
-  version: 795e20f901c3d561de52811fb3488a2cb2c8588b
+  version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
   version: 14207d285c6c197daabb5c9793d63e7af9ab2d50
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -180,10 +182,6 @@ imports:
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/naoina/go-stringutil
   version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
-- name: github.com/naoina/toml
-  version: 751171607256bb66e64c9f0220c00662420c38e9
-  subpackages:
-  - ast
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/prometheus/client_golang
@@ -294,20 +292,23 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/grpc
-  version: b7f1379d3cbbbeb2ca3405852012e237aa05459e
+  version: 8050b9cbc271307e5a716a9d782803d09b0d6f2d
   subpackages:
   - codes
   - credentials
   - grpclog
   - internal
+  - keepalive
   - metadata
   - naming
   - peer
+  - stats
+  - tap
   - transport
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
-  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+  version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/apimachinery
   version: 9c89140a45325f83409e90359888133478207c7a
   subpackages:

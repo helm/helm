@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -152,7 +152,7 @@ func TestDownloadIndexFile(t *testing.T) {
 		Name:  testRepo,
 		URL:   srv.URL,
 		Cache: indexFilePath,
-	}, defaultgetters.Get(environment.EnvSettings{}))
+	}, getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 	}
