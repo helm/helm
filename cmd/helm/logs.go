@@ -65,6 +65,10 @@ func newLogsCmd(client helm.Interface, out io.Writer) *cobra.Command {
 func (l *logsCmd) run() error {
 	done := make(chan struct{})
 	stream, err := l.client.ReleaseLogs(l.release, release.LogLevel_DEBUG, done, release.LogSource_SYSTEM, release.LogSource_POD)
+	if err != nil {
+		done <- struct{}{}
+		return prettyError(err)
+	}
 
 	fmt.Println("Listening for logs")
 	for {
@@ -73,13 +77,8 @@ func (l *logsCmd) run() error {
 			if !ok {
 				return nil
 			}
-			fmt.Println(l)
+			fmt.Println(l.Log.Log)
 		}
-	}
-
-	if err != nil {
-		done <- struct{}{}
-		return prettyError(err)
 	}
 
 	return nil
