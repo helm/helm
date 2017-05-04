@@ -42,7 +42,7 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
-	"k8s.io/helm/pkg/tiller/logdistributor"
+	"k8s.io/helm/pkg/tiller/logs"
 )
 
 // releaseNameMaxLen is the maximum length of a release name.
@@ -85,7 +85,7 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 type ReleaseServer struct {
 	env       *environment.Environment
 	clientset internalclientset.Interface
-	logs      *logdistributor.Pubsub
+	logs      *logs.Pubsub
 }
 
 // NewReleaseServer creates a new release server.
@@ -93,7 +93,7 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 	return &ReleaseServer{
 		env:       env,
 		clientset: clientset,
-		logs:      logdistributor.New(),
+		logs:      logs.New(),
 	}
 }
 
@@ -254,7 +254,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		Info:      rel.Info,
 	}
 
-	s.logs.PubLog(req.Name, release.LogSource_SYSTEM, release.LogLevel_INFO, "Got release status for the release")
+	s.logs.PubLog(req.Name, release.Log_SYSTEM, release.Log_INFO, "Got release status for the release")
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.

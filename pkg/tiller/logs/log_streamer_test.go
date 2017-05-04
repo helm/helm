@@ -1,4 +1,4 @@
-package logdistributor
+package logs
 
 import (
 	"testing"

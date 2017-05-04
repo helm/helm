@@ -64,7 +64,7 @@ func newLogsCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 func (l *logsCmd) run() error {
 	done := make(chan struct{})
-	stream, err := l.client.ReleaseLogs(l.release, release.LogLevel_DEBUG, done, release.LogSource_SYSTEM, release.LogSource_POD)
+	stream, err := l.client.ReleaseLogs(l.release, release.Log_DEBUG, done, release.Log_SYSTEM, release.Log_POD)
 	if err != nil {
 		done <- struct{}{}
 		return prettyError(err)
