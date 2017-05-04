@@ -21,38 +21,39 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "release";
 
-// Allows filtering by log event source
-enum LogSource {
-    UNIVERSAL = 0;
-    HOOK = 1;
-    TEST = 2;
-    POD = 3;
-    SYSTEM = 4;
-}
-
-// Syslog log levels
-enum LogLevel {
-    UNIVERSAL = 0;
-    EMERG = 1;
-    ALERT = 2;
-    CRIT = 3;
-    ERR = 4;
-    WARNING = 5;
-    NOTICE = 6;
-    INFO = 7;
-    DEBUG = 8;
-}
 
 message LogSubscription {
     string release = 1;
-    LogLevel level = 2;
-    repeated LogSource sources = 3;
+    Log.Level level = 2;
+    repeated Log.Source sources = 3;
 }
 
 message Log {
+    // Allows filtering by log event source
+    enum Source {
+        UNKNOWN = 0;
+        HOOK = 1;
+        TEST = 2;
+        POD = 3;
+        SYSTEM = 4;
+    }
+
+    // Syslog log levels
+    enum Level {
+        UNIVERSAL = 0;
+        EMERG = 1;
+        ALERT = 2;
+        CRIT = 3;
+        ERR = 4;
+        WARNING = 5;
+        NOTICE = 6;
+        INFO = 7;
+        DEBUG = 8;
+    }
+
     string release = 1;
-    LogLevel level = 2;
-    LogSource source = 3;
+    Level level = 2;
+    Source source = 3;
     string log = 4;
     google.protobuf.Timestamp timestamp = 5;
 }
