@@ -23,22 +23,24 @@ option go_package = "release";
 
 // Allows filtering by log event source
 enum LogSource {
-    HOOK = 0;
-    TEST = 1;
-    POD = 2;
-    SYSTEM = 3;
+    UNIVERSAL = 0;
+    HOOK = 1;
+    TEST = 2;
+    POD = 3;
+    SYSTEM = 4;
 }
 
 // Syslog log levels
 enum LogLevel {
-    EMERG = 0;
-    ALERT = 1;
-    CRIT = 2;
-    ERR = 3;
-    WARNING = 4;
-    NOTICE = 5;
-    INFO = 6;
-    DEBUG = 7;
+    UNIVERSAL = 0;
+    EMERG = 1;
+    ALERT = 2;
+    CRIT = 3;
+    ERR = 4;
+    WARNING = 5;
+    NOTICE = 6;
+    INFO = 7;
+    DEBUG = 8;
 }
 
 message LogSubscription {
