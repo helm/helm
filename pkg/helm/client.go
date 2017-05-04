@@ -396,45 +396,34 @@ func (h *Client) logs(ctx context.Context, req *rls.GetReleaseLogsRequest, done 
 
 	rlc := rls.NewReleaseServiceClient(c)
 	s, err := rlc.GetReleaseLogs(ctx)
-	fmt.Println("Got s: ", s, " err: ", err)
 	if err != nil {
 		return nil, err
 	}
 
-	s.Send(req)
-	fmt.Println("Sent req")
-
 	out := make(chan *rls.GetReleaseLogsResponse)
+
+	go func() {
+		<-done
+		s.CloseSend()
+	}()
 
 	go func() {
 		defer close(out)
 		defer c.Close()
 		for {
-			fmt.Println("Waiting on recv")
 			rs, err := s.Recv()
-			fmt.Println("Got rs: ", s, " err: ", err)
 			if err == io.EOF {
 				return
 			}
 			if err != nil {
-				fmt.Println()
+				fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
+				return
 			}
 			out <- rs
-			//select {
-			////case rs, err := s.Recv():
-			////	if err == io.EOF {
-			////		return
-			////	}
-			////	if err != nil {
-			////		fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
-			////		return
-			////	}
-			////	out <- rs
-			//case <-done:
-			//	return
-			//}
 		}
 	}()
+
+	s.Send(req)
 
 	return out, nil
 }

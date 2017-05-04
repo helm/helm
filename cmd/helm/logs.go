@@ -78,6 +78,7 @@ func (l *logsCmd) run() error {
 				return nil
 			}
 			fmt.Println(l.Log.Log)
+			done<- struct{}{}
 		}
 	}
 
