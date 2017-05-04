@@ -155,12 +155,10 @@ One resource can implement multiple hooks:
 
 Similarly, there is no limit to the number of different resources that
 may implement a given hook. For example, one could declare both a secret
-and a config map as a pre-install hook. It is important to keep in mind,
-though, that there are no ordering guarantees about hooks.
+and a config map as a pre-install hook.
 
 When subcharts declare hooks, those are also evaluated. There is no way
-for a top-level chart to disable the hooks declared by subcharts. And
-again, there is no guaranteed ordering.
+for a top-level chart to disable the hooks declared by subcharts.
 
 It is also possible to define a weight for a hook which will help build a
 deterministic executing order. Weights are defined using the following annotation:
