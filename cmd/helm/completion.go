@@ -36,7 +36,7 @@ Can be sourced as such
 `
 
 var (
-	completion_shells = map[string]func(out io.Writer, cmd *cobra.Command) error{
+	completionShells = map[string]func(out io.Writer, cmd *cobra.Command) error{
 		"bash": runCompletionBash,
 		"zsh":  runCompletionZsh,
 	}
@@ -44,7 +44,7 @@ var (
 
 func newCompletionCmd(out io.Writer) *cobra.Command {
 	shells := []string{}
-	for s := range completion_shells {
+	for s := range completionShells {
 		shells = append(shells, s)
 	}
 
@@ -68,7 +68,7 @@ func RunCompletion(out io.Writer, cmd *cobra.Command, args []string) error {
 	if len(args) > 1 {
 		return fmt.Errorf("Too many arguments. Expected only the shell type.")
 	}
-	run, found := completion_shells[args[0]]
+	run, found := completionShells[args[0]]
 	if !found {
 		return fmt.Errorf("Unsupported shell type %q.", args[0])
 	}
@@ -81,7 +81,7 @@ func runCompletionBash(out io.Writer, cmd *cobra.Command) error {
 }
 
 func runCompletionZsh(out io.Writer, cmd *cobra.Command) error {
-	zsh_initialization := `
+	zshInitialization := `
 __helm_bash_source() {
 	alias shopt=':'
 	alias _expand=_bash_expand
@@ -213,17 +213,17 @@ __helm_convert_bash_to_zsh() {
 	-e "s/\\\$(type${RWORD}/\$(__helm_type/g" \
 	<<'BASH_COMPLETION_EOF'
 `
-	out.Write([]byte(zsh_initialization))
+	out.Write([]byte(zshInitialization))
 
 	buf := new(bytes.Buffer)
 	cmd.Root().GenBashCompletion(buf)
 	out.Write(buf.Bytes())
 
-	zsh_tail := `
+	zshTail := `
 BASH_COMPLETION_EOF
 }
 __helm_bash_source <(__helm_convert_bash_to_zsh)
 `
-	out.Write([]byte(zsh_tail))
+	out.Write([]byte(zshTail))
 	return nil
 }
