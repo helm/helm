@@ -58,6 +58,7 @@ Tools layered on top of Helm or Tiller.
 
 Platforms, distributions, and services that include Helm support.
 
+- [Kubernetic](https://kubernetic.com/) - Kubernetes Desktop Client
 - [Cabin](http://www.skippbox.com/cabin/) - Mobile App for Managing Kubernetes
 - [Qstack](https://qstack.com)
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes
