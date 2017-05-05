@@ -129,7 +129,7 @@ func TestMerge(t *testing.T) {
 }
 
 func TestDownloadIndexFile(t *testing.T) {
-	srv, err := StartLocalServerForTests(nil)
+	srv, err := startLocalServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -190,8 +190,8 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 	}
 }
 
-// StartLocalServerForTests Start the local helm server
-func StartLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
+// startLocalServerForTests Start the local helm server
+func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
 		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
 		if err != nil {
@@ -206,7 +206,7 @@ func StartLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 }
 
 func TestFindChartInRepoURL(t *testing.T) {
-	srv, err := StartLocalServerForTests(nil)
+	srv, err := startLocalServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
 	}
 
-	srv, err := StartLocalServerForTests(nil)
+	srv, err := startLocalServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
