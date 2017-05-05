@@ -114,7 +114,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
+	Create(namespace string, reader io.Reader, writer io.Writer, timeout int64, shouldWait bool) error
 
 	// Get gets one or more resources. Returned string hsa the format like kubectl
 	// provides with the column headers separating the resource types.
@@ -147,7 +147,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error
+	Update(namespace string, originalReader, modifiedReader io.Reader, writer io.Writer, recreate bool, timeout int64, shouldWait bool) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
 	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)

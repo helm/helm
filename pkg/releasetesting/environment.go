@@ -39,7 +39,8 @@ type Environment struct {
 
 func (env *Environment) createTestPod(test *test) error {
 	b := bytes.NewBufferString(test.manifest)
-	if err := env.KubeClient.Create(env.Namespace, b, env.Timeout, false); err != nil {
+	eventsLog := bytes.NewBuffer(nil)
+	if err := env.KubeClient.Create(env.Namespace, b, eventsLog, env.Timeout, false); err != nil {
 		log.Printf(err.Error())
 		test.result.Info = err.Error()
 		test.result.Status = release.TestRun_FAILURE
