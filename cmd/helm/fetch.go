@@ -55,6 +55,8 @@ type fetchCmd struct {
 	verifyLater bool
 	keyring     string
 
+	devel bool
+
 	out io.Writer
 }
 
@@ -69,6 +71,12 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return fmt.Errorf("This command needs at least one argument, url or repo/name of the chart.")
 			}
+
+			if fch.version == "" && fch.devel {
+				debug("setting version to >0.0.0-a")
+				fch.version = ">0.0.0-a"
+			}
+
 			for i := 0; i < len(args); i++ {
 				fch.chartRef = args[i]
 				if err := fch.run(); err != nil {
@@ -87,6 +95,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&fch.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
 	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.StringVarP(&fch.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
+	f.BoolVar(&fch.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	return cmd
 }

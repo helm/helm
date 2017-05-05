@@ -115,6 +115,7 @@ type installCmd struct {
 	version      string
 	timeout      int64
 	wait         bool
+	devel        bool
 }
 
 type valueFiles []string
@@ -149,7 +150,14 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
+
+			debug("Original chart version: %q", inst.version)
+			if inst.version == "" && inst.devel {
+				debug("setting version to >0.0.0-a")
+				inst.version = ">0.0.0-a"
+			}
 			cp, err := locateChartPath(args[0], inst.version, inst.verify, inst.keyring)
+
 			if err != nil {
 				return err
 			}
@@ -173,6 +181,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	return cmd
 }

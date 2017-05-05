@@ -74,6 +74,7 @@ type upgradeCmd struct {
 	resetValues  bool
 	reuseValues  bool
 	wait         bool
+	devel        bool
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -91,6 +92,11 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "chart path"); err != nil {
 				return err
+			}
+
+			if upgrade.version == "" && upgrade.devel {
+				debug("setting version to >0.0.0-a")
+				upgrade.version = ">0.0.0-a"
 			}
 
 			upgrade.release = args[0]
@@ -117,6 +123,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values, and merge in any new values. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
