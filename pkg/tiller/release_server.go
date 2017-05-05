@@ -33,7 +33,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -82,15 +81,26 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
+	ReleaseModule
 	env       *environment.Environment
 	clientset internalclientset.Interface
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, useRemote bool) *ReleaseServer {
+	var releaseModule ReleaseModule
+	if useRemote {
+		releaseModule = &RemoteReleaseModule{}
+	} else {
+		releaseModule = &LocalReleaseModule{
+			clientset: clientset,
+		}
+	}
+
 	return &ReleaseServer{
-		env:       env,
-		clientset: clientset,
+		env:           env,
+		clientset:     clientset,
+		ReleaseModule: releaseModule,
 	}
 }
 
@@ -253,8 +263,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
-	kubeCli := s.env.KubeClient
-	resp, err := kubeCli.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
+	resp, err := s.ReleaseModule.Status(rel, req, s.env)
 	if sc == release.Status_DELETED || sc == release.Status_FAILED {
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil
@@ -323,8 +332,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 			return res, err
 		}
 	}
-
-	if err := s.performKubeUpdate(originalRelease, updatedRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.ReleaseModule.Update(originalRelease, updatedRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -511,7 +519,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	if err := s.performKubeUpdate(currentRelease, targetRelease, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.ReleaseModule.Rollback(currentRelease, targetRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		log.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -535,13 +543,6 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	targetRelease.Info.Status.Code = release.Status_DEPLOYED
 
 	return res, nil
-}
-
-func (s *ReleaseServer) performKubeUpdate(currentRelease, targetRelease *release.Release, recreate bool, timeout int64, shouldWait bool) error {
-	kubeCli := s.env.KubeClient
-	current := bytes.NewBufferString(currentRelease.Manifest)
-	target := bytes.NewBufferString(targetRelease.Manifest)
-	return kubeCli.Update(targetRelease.Namespace, current, target, recreate, timeout, shouldWait)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -681,7 +682,7 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 	if err != nil {
 		return nil, err
 	}
-	vs, err := getVersionSet(disc)
+	vs, err := GetVersionSet(disc)
 	if err != nil {
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
@@ -769,7 +770,8 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	return rel, err
 }
 
-func getVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
+// GetVersionSet retrieves a set of available k8s API versions
+func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
 	groups, err := client.ServerGroups()
 	if err != nil {
 		return chartutil.DefaultVersionSet, err
@@ -892,8 +894,12 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// update new release with next revision number
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
-
-		if err := s.performKubeUpdate(old, r, false, req.Timeout, req.Wait); err != nil {
+		updateReq := &services.UpdateReleaseRequest{
+			Wait:     req.Wait,
+			Recreate: false,
+			Timeout:  req.Timeout,
+		}
+		if err := s.ReleaseModule.Update(old, r, updateReq, s.env); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
@@ -907,8 +913,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	default:
 		// nothing to replace, create as normal
 		// regular manifests
-		b := bytes.NewBufferString(r.Manifest)
-		if err := s.env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
+		if err := s.ReleaseModule.Create(r, req, s.env); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			log.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
@@ -1047,47 +1052,19 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	vs, err := getVersionSet(s.clientset.Discovery())
-	if err != nil {
-		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
-	}
-
 	// From here on out, the release is currently considered to be in Status_DELETING
 	// state.
 	if err := s.env.Releases.Update(rel); err != nil {
 		log.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
-	manifests := relutil.SplitManifests(rel.Manifest)
-	_, files, err := sortManifests(manifests, vs, UninstallOrder)
-	if err != nil {
-		// We could instead just delete everything in no particular order.
-		// FIXME: One way to delete at this point would be to try a label-based
-		// deletion. The problem with this is that we could get a false positive
-		// and delete something that was not legitimately part of this release.
-		return nil, fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)
-	}
+	kept, errs := s.ReleaseModule.Delete(rel, req, s.env)
+	res.Info = kept
 
-	filesToKeep, filesToDelete := filterManifestsToKeep(files)
-	if len(filesToKeep) > 0 {
-		res.Info = summarizeKeptManifests(filesToKeep)
-	}
-
-	// Collect the errors, and return them later.
-	es := []string{}
-	for _, file := range filesToDelete {
-		b := bytes.NewBufferString(strings.TrimSpace(file.content))
-		if b.Len() == 0 {
-			continue
-		}
-		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
-			log.Printf("uninstall: Failed deletion of %q: %s", req.Name, err)
-			if err == kube.ErrNoObjectsVisited {
-				// Rewrite the message from "no objects visited"
-				err = errors.New("object not found, skipping delete")
-			}
-			es = append(es, err.Error())
-		}
+	es := make([]string, 0, len(errs))
+	for _, e := range errs {
+		log.Printf("error: %v", e)
+		es = append(es, e.Error())
 	}
 
 	if !req.DisableHooks {

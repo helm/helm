@@ -98,9 +98,13 @@ data:
 `
 
 func rsFixture() *ReleaseServer {
+	clientset := fake.NewSimpleClientset()
 	return &ReleaseServer{
+		ReleaseModule: &LocalReleaseModule{
+			clientset: clientset,
+		},
 		env:       MockEnvironment(),
-		clientset: fake.NewSimpleClientset(),
+		clientset: clientset,
 	}
 }
 
@@ -206,7 +210,7 @@ func TestValidName(t *testing.T) {
 
 func TestGetVersionSet(t *testing.T) {
 	rs := rsFixture()
-	vs, err := getVersionSet(rs.clientset.Discovery())
+	vs, err := GetVersionSet(rs.clientset.Discovery())
 	if err != nil {
 		t.Error(err)
 	}

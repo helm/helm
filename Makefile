@@ -1,9 +1,10 @@
-DOCKER_REGISTRY ?= gcr.io
-IMAGE_PREFIX    ?= kubernetes-helm
-SHORT_NAME      ?= tiller
-TARGETS         = darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
-DIST_DIRS       = find * -type d -exec
-APP             = helm
+DOCKER_REGISTRY   ?= gcr.io
+IMAGE_PREFIX      ?= kubernetes-helm
+SHORT_NAME        ?= tiller
+SHORT_NAME_RUDDER ?= rudder
+TARGETS           = darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+DIST_DIRS         = find * -type d -exec
+APP               = helm
 
 # go option
 GO        ?= go
@@ -65,6 +66,19 @@ docker-binary:
 docker-build: check-docker docker-binary
 	docker build --rm -t ${IMAGE} rootfs
 	docker tag ${IMAGE} ${MUTABLE_IMAGE}
+
+.PHONY: docker-binary-rudder
+docker-binary-rudder: BINDIR = ./rootfs
+docker-binary-rudder: GOFLAGS += -a -installsuffix cgo
+docker-binary-rudder:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/rudder $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/rudder
+
+.PHONY: docker-build-experimental
+docker-build-experimental: check-docker docker-binary docker-binary-rudder
+	docker build --rm -t ${IMAGE} rootfs -f rootfs/Dockerfile.experimental
+	docker tag ${IMAGE} ${MUTABLE_IMAGE}
+	docker build --rm -t ${IMAGE_RUDDER} rootfs -f rootfs/Dockerfile.rudder
+	docker tag ${IMAGE_RUDDER} ${MUTABLE_IMAGE_RUDDER}
 
 .PHONY: test
 test: build
