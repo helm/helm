@@ -117,6 +117,7 @@ type installCmd struct {
 	timeout      int64
 	wait         bool
 	repoURL      string
+	devel        bool
 
 	certFile string
 	keyFile  string
@@ -155,6 +156,13 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
+
+			debug("Original chart version: %q", inst.version)
+			if inst.version == "" && inst.devel {
+				debug("setting version to >0.0.0-a")
+				inst.version = ">0.0.0-a"
+			}
+
 			cp, err := locateChartPath(inst.repoURL, args[0], inst.version, inst.verify, inst.keyring,
 				inst.certFile, inst.keyFile, inst.caFile)
 			if err != nil {
@@ -184,6 +192,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	return cmd
 }
