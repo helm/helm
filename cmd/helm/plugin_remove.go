@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -48,8 +49,8 @@ func newPluginRemoveCmd(out io.Writer) *cobra.Command {
 }
 
 func (pcmd *pluginRemoveCmd) complete(args []string) error {
-	if err := checkArgsLength(len(args), "plugin"); err != nil {
-		return err
+	if len(args) == 0 {
+		return errors.New("please provide plugin name to remove")
 	}
 	pcmd.names = args
 	pcmd.home = settings.Home
@@ -67,9 +68,12 @@ func (pcmd *pluginRemoveCmd) run() error {
 	for _, name := range pcmd.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := removePlugin(found, pcmd.home); err != nil {
-				return err
+				fmt.Fprintf(pcmd.out, "Failed to remove plugin %s, got error (%v)\n", name, err)
+			} else {
+				fmt.Fprintf(pcmd.out, "Removed plugin: %s\n", name)
 			}
-			fmt.Fprintf(pcmd.out, "Removed plugin: %s\n", name)
+		} else {
+			fmt.Fprintf(pcmd.out, "Plugin: %s not found\n", name)
 		}
 	}
 	return nil
