@@ -42,7 +42,7 @@ func TestRepositoryServer(t *testing.T) {
 	}
 
 	s := &RepositoryServer{RepoPath: "testdata/server"}
-	srv, err := StartLocalServerForTests(s)
+	srv, err := startLocalServerForTests(s)
 	if err != nil {
 		t.Fatal(err)
 	}
