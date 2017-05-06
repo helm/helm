@@ -16,14 +16,13 @@ limitations under the License.
 package installer // import "k8s.io/helm/pkg/plugin/installer"
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"k8s.io/helm/pkg/helm/helmpath"
-
-	"fmt"
 
 	"github.com/Masterminds/vcs"
 )
