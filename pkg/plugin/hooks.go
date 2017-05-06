@@ -21,7 +21,7 @@ const (
 	Install = "install"
 	// Delete is executed after the plugin is removed.
 	Delete = "delete"
-	// Update is executed after the plugin is removed.
+	// Update is executed after the plugin is updated.
 	Update = "update"
 )
 

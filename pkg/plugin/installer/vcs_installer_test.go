@@ -107,9 +107,9 @@ func TestVCSInstaller(t *testing.T) {
 
 	// Testing update for error
 	if err := Update(i); err == nil {
-		t.Error("expected error for plugin does not exists, got none")
-	} else if err.Error() != "plugin does not exists" {
-		t.Errorf("expected error for plugin does not exists, got (%v)", err)
+		t.Error("expected error for plugin does not exist, got none")
+	} else if err.Error() != "plugin does not exist" {
+		t.Errorf("expected error for plugin does not exist, got (%v)", err)
 	}
 }
 
@@ -172,9 +172,9 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	}
 
 	if err := Update(i); err == nil {
-		t.Error("expected error for plugin does not exists, got none")
-	} else if err.Error() != "plugin does not exists" {
-		t.Errorf("expected error for plugin does not exists, got (%v)", err)
+		t.Error("expected error for plugin does not exist, got none")
+	} else if err.Error() != "plugin does not exist" {
+		t.Errorf("expected error for plugin does not exist, got (%v)", err)
 	}
 
 	// Install plugin before update

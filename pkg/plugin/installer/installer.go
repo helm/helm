@@ -49,10 +49,10 @@ func Install(i Installer) error {
 	return i.Install()
 }
 
-// Update updates a plugin to $HELM_HOME.
+// Update updates a plugin in $HELM_HOME.
 func Update(i Installer) error {
 	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
-		return errors.New("plugin does not exists")
+		return errors.New("plugin does not exist")
 	}
 
 	return i.Update()
