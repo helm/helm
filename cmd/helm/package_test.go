@@ -64,7 +64,7 @@ func TestPackage(t *testing.T) {
 			name:   "package without chart path",
 			args:   []string{},
 			flags:  map[string]string{},
-			expect: "This command needs at least one argument, the path to the chart.",
+			expect: "need at least one argument, the path to the chart",
 			err:    true,
 		},
 		{

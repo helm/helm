@@ -85,7 +85,7 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 	}
 
 	if noUpdate && f.Has(name) {
-		return fmt.Errorf("The repository name you provided (%s) already exists. Please specify a different name.", name)
+		return fmt.Errorf("repository name (%s) already exists, please specify a different name", name)
 	}
 
 	cif := home.CacheIndex(name)

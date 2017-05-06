@@ -120,7 +120,7 @@ func TestReset_deployedReleases(t *testing.T) {
 		namespace:  api.NamespaceDefault,
 	}
 	err = cmd.run()
-	expected := "There are still 1 deployed releases (Tip: use --force)"
+	expected := "there are still 1 deployed releases (Tip: use --force)"
 	if !strings.Contains(err.Error(), expected) {
 		t.Errorf("unexpected error: %v", err)
 	}

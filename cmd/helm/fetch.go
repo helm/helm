@@ -73,7 +73,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 		Long:  fetchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return fmt.Errorf("This command needs at least one argument, url or repo/name of the chart.")
+				return fmt.Errorf("need at least one argument, url or repo/name of the chart")
 			}
 			for i := 0; i < len(args); i++ {
 				fch.chartRef = args[i]

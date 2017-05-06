@@ -53,7 +53,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Short: "Generate autocompletions script for the specified shell (bash or zsh)",
 		Long:  completionDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunCompletion(out, cmd, args)
+			return runCompletion(out, cmd, args)
 		},
 		ValidArgs: shells,
 	}
@@ -61,16 +61,16 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func RunCompletion(out io.Writer, cmd *cobra.Command, args []string) error {
+func runCompletion(out io.Writer, cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("Shell not specified.")
+		return fmt.Errorf("shell not specified")
 	}
 	if len(args) > 1 {
-		return fmt.Errorf("Too many arguments. Expected only the shell type.")
+		return fmt.Errorf("too many arguments, expected only the shell type")
 	}
 	run, found := completionShells[args[0]]
 	if !found {
-		return fmt.Errorf("Unsupported shell type %q.", args[0])
+		return fmt.Errorf("unsupported shell type %q", args[0])
 	}
 
 	return run(out, cmd)

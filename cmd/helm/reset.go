@@ -96,7 +96,7 @@ func (d *resetCmd) run() error {
 	}
 
 	if len(res.Releases) > 0 && !d.force {
-		return fmt.Errorf("There are still %d deployed releases (Tip: use --force).", len(res.Releases))
+		return fmt.Errorf("there are still %d deployed releases (Tip: use --force)", len(res.Releases))
 	}
 
 	if err := installer.Uninstall(d.kubeClient, &installer.Options{Namespace: d.namespace}); err != nil {

@@ -88,6 +88,8 @@ test: test-unit
 
 .PHONY: test-unit
 test-unit:
+	@echo
+	@echo "==> Running unit tests <=="
 	HELM_HOME=/no/such/dir $(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 
 .PHONY: test-style
