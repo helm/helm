@@ -40,7 +40,7 @@ type ReleaseModule interface {
 	Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error
 	Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error
 	Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error
-	Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error)
+	Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment,filter kube.FilterStruct) (string, error)
 	Delete(r *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (string, []error)
 }
 
