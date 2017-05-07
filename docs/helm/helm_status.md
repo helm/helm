@@ -29,6 +29,9 @@ helm status [flags] RELEASE_NAME
       --tls-cert string      path to TLS certificate file (default "$HELM_HOME/cert.pem")
       --tls-key string       path to TLS key file (default "$HELM_HOME/key.pem")
       --tls-verify           enable TLS for request and verify remote
+      --kind string          if set, display status of an assigned kind resource (The kind of resorce is kubeneters
+                             resource such as : service,ingress,deployment,pod,replicaset and so on)
+      --instance string      if set, display status of an instance in assigned kind.(The paramater must along with "--kind")
 ```
 
 ### Options inherited from parent commands

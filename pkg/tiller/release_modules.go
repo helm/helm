@@ -70,8 +70,8 @@ func (m *LocalReleaseModule) Rollback(current, target *release.Release, req *ser
 }
 
 // Status returns kubectl-like formatted status of release objects
-func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
-	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
+func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment, filter kube.FilterStruct) (string, error) {
+	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest),filter)
 }
 
 // Delete deletes the release and returns manifests that were kept in the deletion process
@@ -120,7 +120,7 @@ func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *se
 }
 
 // Status returns status retrieved from rudder.ReleaseStatus
-func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
+func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment, filter kube.FilterStruct) (string, error) {
 	statusRequest := &rudderAPI.ReleaseStatusRequest{Release: r}
 	resp, err := rudder.ReleaseStatus(statusRequest)
 	return resp.Info.Status.Resources, err

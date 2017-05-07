@@ -123,7 +123,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Get(namespace string, reader io.Reader) (string, error)
+	Get(namespace string, reader io.Reader, filter kube.FilterStruct) (string, error)
 
 	// Delete destroys one or more resources.
 	//

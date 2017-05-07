@@ -41,6 +41,7 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
+	"k8s.io/helm/pkg/kube"
 )
 
 // releaseNameMaxLen is the maximum length of a release name.
@@ -261,9 +262,13 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		Info:      rel.Info,
 	}
 
+
+	var filter kube.FilterStruct = kube.FilterStruct{Kind:req.Kind,Instance:req.Instance}
+
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
-	resp, err := s.ReleaseModule.Status(rel, req, s.env)
+	resp, err := s.ReleaseModule.Status(rel, req, s.env,filter)
+
 	if sc == release.Status_DELETED || sc == release.Status_FAILED {
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil

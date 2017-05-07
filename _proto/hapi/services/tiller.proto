@@ -154,6 +154,10 @@ message GetReleaseStatusRequest {
 	string name = 1;
 	// Version is the version of the release
 	int32 version = 2;
+	// Kind is the kind of the resource to display
+	string kind = 3;
+	// Instance is the instance of the resource to display
+	string instance = 4;
 }
 
 // GetReleaseStatusResponse is the response indicating the status of the named release.
