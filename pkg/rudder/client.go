@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc"
 
 	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
-	"k8s.io/helm/pkg/kube"
+
 )
 
 // GrpcPort specifies port on which rudder will spawn a server
@@ -69,14 +69,14 @@ func RollbackRelease(req *rudderAPI.RollbackReleaseRequest) (*rudderAPI.Rollback
 }
 
 // ReleaseStatus calls Rudder ReleaseStatus method which should perform update
-func ReleaseStatus(req *rudderAPI.ReleaseStatusRequest, filter kube.FilterStruct) (*rudderAPI.ReleaseStatusResponse, error) {
+func ReleaseStatus(req *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
 	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	client := rudderAPI.NewReleaseModuleServiceClient(conn)
-	return client.ReleaseStatus(context.Background(), req,filter)
+	return client.ReleaseStatus(context.Background(), req)
 }
 
 // DeleteRelease calls Rudder DeleteRelease method which should uninstall provided release

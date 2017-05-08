@@ -120,9 +120,9 @@ func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *se
 }
 
 // Status returns status retrieved from rudder.ReleaseStatus
-func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment, filter kube.FilterStruct) (string, error) {
+func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
 	statusRequest := &rudderAPI.ReleaseStatusRequest{Release: r}
-	resp, err := rudder.ReleaseStatus(statusRequest,filter)
+	resp, err := rudder.ReleaseStatus(statusRequest)
 	return resp.Info.Status.Resources, err
 }
 
