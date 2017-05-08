@@ -41,7 +41,6 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
-	"k8s.io/helm/pkg/kube"
 )
 
 // releaseNameMaxLen is the maximum length of a release name.
