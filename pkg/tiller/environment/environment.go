@@ -170,7 +170,7 @@ func (p *PrintingKubeClient) Create(ns string, r io.Reader, timeout int64, shoul
 }
 
 // Get prints the values of what would be created with a real KubeClient.
-func (p *PrintingKubeClient) Get(ns string, r io.Reader) (string, error) {
+func (p *PrintingKubeClient) Get(ns string, r io.Reader,filter kube.FilterStruct) (string, error) {
 	_, err := io.Copy(p.Out, r)
 	return "", err
 }
