@@ -83,31 +83,31 @@ func (env *Environment) streamResult(r *release.TestRun) error {
 
 func (env *Environment) streamRunning(name string) error {
 	msg := "RUNNING: " + name
-	return env.streamMessage(msg)
+	return env.streamMessage(msg, release.TestRun_RUNNING)
 }
 
 func (env *Environment) streamError(info string) error {
 	msg := "ERROR: " + info
-	return env.streamMessage(msg)
+	return env.streamMessage(msg, release.TestRun_FAILURE)
 }
 
 func (env *Environment) streamFailed(name string) error {
 	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s --namespace %s` for more info", name, name, env.Namespace)
-	return env.streamMessage(msg)
+	return env.streamMessage(msg, release.TestRun_FAILURE)
 }
 
 func (env *Environment) streamSuccess(name string) error {
 	msg := fmt.Sprintf("PASSED: %s", name)
-	return env.streamMessage(msg)
+	return env.streamMessage(msg, release.TestRun_SUCCESS)
 }
 
 func (env *Environment) streamUnknown(name, info string) error {
 	msg := fmt.Sprintf("UNKNOWN: %s: %s", name, info)
-	return env.streamMessage(msg)
+	return env.streamMessage(msg, release.TestRun_UNKNOWN)
 }
 
-func (env *Environment) streamMessage(msg string) error {
-	resp := &services.TestReleaseResponse{Msg: msg}
+func (env *Environment) streamMessage(msg string, status release.TestRun_Status) error {
+	resp := &services.TestReleaseResponse{Msg: msg, Status: status}
 	return env.Stream.Send(resp)
 }
 
