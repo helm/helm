@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
@@ -64,17 +65,20 @@ func (pcmd *pluginRemoveCmd) run() error {
 	if err != nil {
 		return err
 	}
-
+	var errorPlugins []string
 	for _, name := range pcmd.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := removePlugin(found, pcmd.home); err != nil {
-				fmt.Fprintf(pcmd.out, "Failed to remove plugin %s, got error (%v)\n", name, err)
+				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to remove plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(pcmd.out, "Removed plugin: %s\n", name)
 			}
 		} else {
-			fmt.Fprintf(pcmd.out, "Plugin: %s not found\n", name)
+			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))
 		}
+	}
+	if len(errorPlugins) > 0 {
+		return fmt.Errorf(strings.Join(errorPlugins, "\n"))
 	}
 	return nil
 }
