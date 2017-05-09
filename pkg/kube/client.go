@@ -145,32 +145,65 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 // Get gets kubernetes resources as pretty printed string
 //
 // Namespace will set the namespace
-func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
+func (c *Client) Get(namespace string, reader io.Reader, filter FilterStruct) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come looking good (headers apply to subgroups, etc.)
 	objs := make(map[string][]runtime.Object)
-	infos, err := c.BuildUnstructured(namespace, reader)
+
+	infoAllKinds, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return "", err
 	}
-	missing := []string{}
-	err = perform(infos, func(info *resource.Info) error {
-		log.Printf("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
-		if err := info.Get(); err != nil {
-			log.Printf("WARNING: Failed Get for resource %q: %s", info.Name, err)
-			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
-			return nil
-		}
 
-		// Use APIVersion/Kind as grouping mechanism. I'm not sure if you can have multiple
-		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
-		gvk := info.ResourceMapping().GroupVersionKind
-		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], info.Object)
-		return nil
-	})
-	if err != nil {
-		return "", err
+	infos := infoAllKinds.Filter(filter.Filter)
+
+	var objPods map[string][]api.Pod
+	if (!filter.IsFilter()) || filter.IsPodType() {
+		objPods = c.getRelationPods(infoAllKinds)
+	}
+
+	log.Printf("objPods %+v\n", objPods)
+
+	missing := []string{}
+	if len(infos) !=0 {
+		err = perform(infos, func(info *resource.Info) error {
+		
+			if err := info.Get(); err != nil {
+				log.Printf("WARNING: Failed Get for resource %q: %s", info.Name, err)
+				missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
+				return nil
+			}
+
+			// Use APIVersion/Kind as grouping mechanism. I'm not sure if you can have multiple
+			// versions per cluster, but this certainly won't hurt anything, so let's be safe.
+			gvk := info.ResourceMapping().GroupVersionKind
+			vk := gvk.Version + "/" + gvk.Kind
+
+			if gvk.Kind != "Pod" {
+				objs[vk] = append(objs[vk], info.Object)
+			} else {
+				if !IsFoundPodInfo(objPods[vk], info) {
+					objs[vk] = append(objs[vk], info.Object)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return "", err
+		}
+	}else{
+		if !filter.IsFilter(){
+			return "",ErrNoObjectsVisited
+		}else if (!filter.IsPodType()) || (len(objPods) == 0) {
+			return "",nil
+		}
+	}
+
+	//here, we will add the objPods to the objs
+	for key,podItems := range objPods{
+		for _,pod := range podItems {
+			objs[key] = append(objs[key],&pod)
+		}
 	}
 
 	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
@@ -595,3 +628,89 @@ func watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
 
 	return err
 }
+
+func (c *Client) getRelationPods(infos []*resource.Info)(map[string][]api.Pod){
+	var objPods  = make(map[string][]api.Pod)
+
+	for _, value := range  infos {
+		objPods , _ = c.getSelectRelationPod(value,objPods)
+	}
+	return objPods
+}
+
+func (c *Client) getSelectRelationPod(info *resource.Info,objPods map[string][]api.Pod)(map[string][]api.Pod,error){
+        log.Printf("1222getSelectRelationPod Info: %+v",info)
+	log.Printf("222222getSelectRelationPod object: %+v",info.Object)
+
+	err := info.Get()
+	if err != nil {
+		return objPods, err
+	}
+
+	log.Printf("getSelectRelationPod object: %+v",info.Object)
+
+	versioned, err := c.AsVersionedObject(info.Object)
+	if runtime.IsNotRegisteredError(err) {
+		return objPods,nil
+	}
+	if err != nil {
+		return objPods,err
+	}
+
+	selector, err := getSelectorFromObject(versioned)
+
+	log.Printf("getSelectRelationPod selector: %+v",selector)
+	if err != nil {
+		return objPods,err
+	}
+	client, _ := c.ClientSet()
+
+	pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
+		FieldSelector: fields.Everything().String(),
+		LabelSelector: labels.Set(selector).AsSelector().String(),
+	})
+	if err != nil {
+		return objPods,err
+	}
+
+	for _, pod := range pods.Items {
+
+		log.Printf("get select relation pod: %v/%v", pod.Namespace, pod.Name)
+
+                if pod.APIVersion == "" {
+			pod.APIVersion = "v1"
+		}
+
+		if pod.Kind == "" {
+			pod.Kind = "Pod"
+		}
+
+		vk := pod.GroupVersionKind().Version + "/" + pod.GroupVersionKind().Kind
+
+		if !IsFoundPod(objPods[vk], pod) {
+			objPods[vk] = append(objPods[vk], pod)
+		}
+	}
+
+	return objPods,nil
+}
+
+func IsFoundPod(podItem []api.Pod,pod api.Pod) bool {
+	for _,value := range podItem {
+		if (value.Namespace == pod.Namespace) && (value.Name==pod.Name) {
+			 return true
+		}
+	}
+
+	return  false
+}
+func IsFoundPodInfo(podItem []api.Pod,podInfo *resource.Info) bool {
+	for _, value := range podItem {
+		if (value.Namespace == podInfo.Namespace) && (value.Name == podInfo.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+

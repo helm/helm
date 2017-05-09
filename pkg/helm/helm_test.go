@@ -285,7 +285,7 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 		return errSkip
 	})
 
-	if _, err := NewClient(b4c).ReleaseStatus(releaseName, StatusReleaseVersion(revision)); err != errSkip {
+	if _, err := NewClient(b4c).ReleaseStatus(releaseName, StatusReleaseVersion(revision,"","")); err != errSkip {
 		t.Fatalf("did not expect error but got (%v)\n``", err)
 	}
 }

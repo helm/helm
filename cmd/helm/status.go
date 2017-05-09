@@ -47,7 +47,9 @@ type statusCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
-	version int32
+	kind     string
+	instance string
+	version  int32
 }
 
 func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -73,13 +75,18 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().StringVar(&status.instance, "instance","","if set, display status of an instance in assigned kind.")
+	cmd.PersistentFlags().StringVar(&status.kind, "kind","","if set, display status of an assigned kind resource")
 	cmd.PersistentFlags().Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
 
 	return cmd
 }
 
 func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version))
+
+	fmt.Printf("Kind=%s,instnace=%s",s.kind,s.instance)
+
+	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version,s.kind,s.instance))
 	if err != nil {
 		return prettyError(err)
 	}

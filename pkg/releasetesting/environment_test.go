@@ -23,6 +23,7 @@ import (
 	"os"
 	"testing"
 
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
 )
@@ -68,8 +69,9 @@ func TestDeleteTestPods(t *testing.T) {
 		t.Errorf("Expected 0 errors, got at least one: %v", stream.messages)
 	}
 
+	var filter kube.FilterStruct
 	for _, testManifest := range mockTestSuite.TestManifests {
-		if _, err := mockTestEnv.KubeClient.Get(mockTestEnv.Namespace, bytes.NewBufferString(testManifest)); err == nil {
+		if _, err := mockTestEnv.KubeClient.Get(mockTestEnv.Namespace, bytes.NewBufferString(testManifest),filter); err == nil {
 			t.Error("Expected error, got nil")
 		}
 	}
@@ -122,7 +124,7 @@ func newGetFailingKubeClient() *getFailingKubeClient {
 	}
 }
 
-func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
+func (p *getFailingKubeClient) Get(ns string, r io.Reader,filter kube.FilterStruct) (string, error) {
 	return "", errors.New("In the end, they did not find Nemo.")
 }
 

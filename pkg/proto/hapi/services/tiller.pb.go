@@ -248,6 +248,10 @@ type GetReleaseStatusRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	// Version is the version of the release
 	Version int32 `protobuf:"varint,2,opt,name=version" json:"version,omitempty"`
+	// Kind is the kind of the resource to display
+	Kind string `protobuf:"bytes,3,opt,name=kind" json:"kind,omitempty"`
+	// Instance is the instance of the resource to display
+	Instance string `protobuf:"bytes,4,opt,name=instance" json:"instance,omitempty"`
 }
 
 func (m *GetReleaseStatusRequest) Reset()                    { *m = GetReleaseStatusRequest{} }

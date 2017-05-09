@@ -123,7 +123,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Get(namespace string, reader io.Reader) (string, error)
+	Get(namespace string, reader io.Reader, filter kube.FilterStruct) (string, error)
 
 	// Delete destroys one or more resources.
 	//
@@ -170,7 +170,7 @@ func (p *PrintingKubeClient) Create(ns string, r io.Reader, timeout int64, shoul
 }
 
 // Get prints the values of what would be created with a real KubeClient.
-func (p *PrintingKubeClient) Get(ns string, r io.Reader) (string, error) {
+func (p *PrintingKubeClient) Get(ns string, r io.Reader,filter kube.FilterStruct) (string, error) {
 	_, err := io.Copy(p.Out, r)
 	return "", err
 }

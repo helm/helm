@@ -21,6 +21,35 @@ import "k8s.io/kubernetes/pkg/kubectl/resource"
 // Result provides convenience methods for comparing collections of Infos.
 type Result []*resource.Info
 
+type FilterStruct struct {
+	Kind string
+	Instance string
+}
+
+func (fs *FilterStruct) Filter (info *resource.Info) bool{
+	if info  != nil {
+		if (fs.Kind == "") || (fs.Kind == info.Mapping.GroupVersionKind.Kind)  {
+			if  (fs.Instance == "") || (fs.Instance == info.Name) {
+				return  true
+			}
+		}
+	}
+	return false
+}
+func (fs *FilterStruct) IsFilter() bool{
+	if  (fs.Kind == "") && (fs.Instance == "") {
+		return false
+	}
+	return true
+}
+
+func (fs *FilterStruct) IsPodType() bool {
+	if (fs.Kind == "Pod") {
+		return true
+	}
+	return false
+}
+
 // Append adds an Info to the Result.
 func (r *Result) Append(val *resource.Info) {
 	*r = append(*r, val)

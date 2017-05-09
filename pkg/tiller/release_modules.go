@@ -71,7 +71,9 @@ func (m *LocalReleaseModule) Rollback(current, target *release.Release, req *ser
 
 // Status returns kubectl-like formatted status of release objects
 func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
-	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
+	var filter kube.FilterStruct = kube.FilterStruct{Kind:req.Kind,Instance:req.Instance}
+
+	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest),filter)
 }
 
 // Delete deletes the release and returns manifests that were kept in the deletion process

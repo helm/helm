@@ -371,9 +371,11 @@ type StatusOption func(*options)
 
 // StatusReleaseVersion will instruct Tiller to retrieve the status
 // of a particular version of a release.
-func StatusReleaseVersion(version int32) StatusOption {
+func StatusReleaseVersion(version int32,kind string,instance string) StatusOption {
 	return func(opts *options) {
 		opts.statusReq.Version = version
+		opts.statusReq.Kind = kind
+		opts.statusReq.Instance = instance
 	}
 }
 
