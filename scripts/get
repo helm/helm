@@ -164,14 +164,14 @@ set -e
 initArch
 initOS
 verifySupported
-if [[ "$1" =~ ^v[0-9].[0-9].[0-9]$ ]];
+if [[ "$1" =~ ^v[0-9]+.[0-9]+.[0-9]+$ ]];
 then
   TAG="$1"
 elif [ ! $1 ];
 then
   checkLatestVersion
 else
-  echo "Version tag $1 not match"
+  echo "Version tag $1 not match. Get tag from https://github.com/kubernetes/helm/releases"
   exit 1
 fi
 if ! checkHelmInstalledVersion; then
