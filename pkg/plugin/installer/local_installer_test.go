@@ -31,7 +31,7 @@ func TestLocalInstaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(hh)
+	defer os.RemoveAll(hh)
 
 	home := helmpath.Home(hh)
 	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
@@ -43,7 +43,7 @@ func TestLocalInstaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tdir)
+	defer os.RemoveAll(tdir)
 	if err := ioutil.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
 		t.Fatal(err)
 	}

@@ -16,9 +16,11 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
@@ -48,8 +50,8 @@ func newPluginRemoveCmd(out io.Writer) *cobra.Command {
 }
 
 func (pcmd *pluginRemoveCmd) complete(args []string) error {
-	if err := checkArgsLength(len(args), "plugin"); err != nil {
-		return err
+	if len(args) == 0 {
+		return errors.New("please provide plugin name to remove")
 	}
 	pcmd.names = args
 	pcmd.home = settings.Home
@@ -63,14 +65,20 @@ func (pcmd *pluginRemoveCmd) run() error {
 	if err != nil {
 		return err
 	}
-
+	var errorPlugins []string
 	for _, name := range pcmd.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := removePlugin(found, pcmd.home); err != nil {
-				return err
+				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to remove plugin %s, got error (%v)", name, err))
+			} else {
+				fmt.Fprintf(pcmd.out, "Removed plugin: %s\n", name)
 			}
-			fmt.Fprintf(pcmd.out, "Removed plugin: %s\n", name)
+		} else {
+			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))
 		}
+	}
+	if len(errorPlugins) > 0 {
+		return fmt.Errorf(strings.Join(errorPlugins, "\n"))
 	}
 	return nil
 }

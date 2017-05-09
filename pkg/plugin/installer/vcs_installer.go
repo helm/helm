@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/pkg/plugin/installer"
 
 import (
+	"fmt"
 	"os"
 	"sort"
 
@@ -112,7 +113,8 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 			return ver, nil
 		}
 	}
-	return "", nil
+
+	return "", fmt.Errorf("requested version %q does not exist for plugin %q", i.Version, i.Repo.Remote())
 }
 
 // setVersion attempts to checkout the version
