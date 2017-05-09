@@ -323,8 +323,9 @@ func TestGet(t *testing.T) {
 	c := &Client{Factory: f}
 
 	// Test Success
+	var filter FilterStruct
 	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
-	o, err := c.Get("default", data)
+	o, err := c.Get("default", data,filter)
 	if err != nil {
 		t.Errorf("Expected missing results, got %q", err)
 	}
@@ -334,7 +335,7 @@ func TestGet(t *testing.T) {
 
 	// Test failure
 	data = strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: starfish")
-	o, err = c.Get("default", data)
+	o, err = c.Get("default", data,filter)
 	if err != nil {
 		t.Errorf("Expected missing results, got %q", err)
 	}
