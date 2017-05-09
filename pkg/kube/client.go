@@ -153,6 +153,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
 		log.Printf("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
