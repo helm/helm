@@ -104,13 +104,6 @@ func TestVCSInstaller(t *testing.T) {
 	} else if err.Error() != "cannot get information about plugin source" {
 		t.Errorf("expected error for inability to find plugin source, got (%v)", err)
 	}
-
-	// Testing update for error
-	if err := Update(i); err == nil {
-		t.Error("expected error for plugin does not exist, got none")
-	} else if err.Error() != "plugin does not exist" {
-		t.Errorf("expected error for plugin does not exist, got (%v)", err)
-	}
 }
 
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
