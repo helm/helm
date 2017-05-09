@@ -1367,6 +1367,8 @@ _helm_status()
     flags_with_completion=()
     flags_completion=()
 
+    flags+=("--instance=")
+    flags+=("--kind=")
     flags+=("--revision=")
     flags+=("--tls")
     local_nonpersistent_flags+=("--tls")
