@@ -173,7 +173,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		if gvk.Kind != "Pod" {
 			objs[vk] = append(objs[vk], info.Object)
 		} else {
-			if !IsFoundPodInfo(objPods[vk], info) {
+			if !isFoundPodInfo(objPods[vk], info) {
 				objs[vk] = append(objs[vk], info.Object)
 			}
 		}
@@ -670,7 +670,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info,objPods map[string][]a
 
 		vk := pod.GroupVersionKind().Version + "/" + pod.GroupVersionKind().Kind
 
-		if !IsFoundPod(objPods[vk], pod) {
+		if !isFoundPod(objPods[vk], pod) {
 			objPods[vk] = append(objPods[vk], pod)
 		}
 	}
@@ -678,7 +678,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info,objPods map[string][]a
 	return objPods,nil
 }
 
-func IsFoundPod(podItem []api.Pod,pod api.Pod) bool {
+func isFoundPod(podItem []api.Pod,pod api.Pod) bool {
 	for _,value := range podItem {
 		if (value.Namespace == pod.Namespace) && (value.Name==pod.Name) {
 			 return true
@@ -687,7 +687,7 @@ func IsFoundPod(podItem []api.Pod,pod api.Pod) bool {
 
 	return  false
 }
-func IsFoundPodInfo(podItem []api.Pod,podInfo *resource.Info) bool {
+func isFoundPodInfo(podItem []api.Pod,podInfo *resource.Info) bool {
 	if podInfo == nil {
 		return false
 	}
