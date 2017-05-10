@@ -1,5 +1,5 @@
-hash: 6ee139cf584a7c74de86b7bfe1269ea8a467bc710801cb2a8156980cbad43180
-updated: 2017-05-12T16:19:06.928220473-07:00
+hash: 6754faf700ea2428c13d565039d2179b9124e39b80da8dffbbf25d3078f6f948
+updated: 2017-05-17T10:18:25.740091502-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -49,7 +49,7 @@ imports:
 - name: github.com/dgrijalva/jwt-go
   version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
 - name: github.com/docker/distribution
-  version: cd27f179f2c10c5d300e6d09025b538c475b0d51
+  version: 03efb43768979f4d2ea5187bef995656441829e5
   subpackages:
   - digest
   - reference
@@ -471,7 +471,7 @@ imports:
   - util/integer
   - util/jsonpath
 - name: k8s.io/kubernetes
-  version: 0480917b552be33e2dba47386e51decb1a211df6
+  version: 00fb653e406a4b5bbac71a10c3e330afef960f13
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install

@@ -53,7 +53,8 @@ import:
 - package: vbom.ml/util
   repo: https://github.com/fvbommel/util.git
   vcs: git
-
+- package: github.com/docker/distribution
+  version: ~v2.4.0
 testImports:
 - package: github.com/stretchr/testify
   version: ^1.1.4
