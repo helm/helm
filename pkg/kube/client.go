@@ -154,6 +154,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
+
 	objPods  := c.getRelationPods(infos)
 
 	missing := []string{}
