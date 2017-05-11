@@ -19,7 +19,7 @@
 
 PROJECT_NAME="helm"
 
-: ${HELM_INSTALL_DIR:="/usr/local/bin"}
+: "${HELM_INSTALL_DIR:="/usr/local/bin"}"
 
 # initArch discovers the architecture for this system.
 initArch() {
@@ -38,7 +38,7 @@ initArch() {
 
 # initOS discovers the operating system for this system.
 initOS() {
-  OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
+  OS=$(uname | tr '[:upper:]' '[:lower:]')
 
   case "$OS" in
     # Minimalist GNU for Windows
@@ -119,8 +119,9 @@ downloadFile() {
 # installs it.
 installFile() {
   HELM_TMP="/tmp/$PROJECT_NAME"
-  local sum=$(openssl sha -sha256 ${HELM_TMP_FILE} | awk '{print $2}')
-  local expected_sum=$(cat ${HELM_SUM_FILE})
+  local sum=$(openssl sha -sha256 "${HELM_TMP_FILE}" | awk '{print $2}')
+  local expected_sum=$(cat "${HELM_SUM_FILE}")
+
   if [ "$sum" != "$expected_sum" ]; then
     echo "SHA sum of $HELM_TMP does not match. Aborting."
     exit 1
@@ -147,7 +148,6 @@ fail_trap() {
 testVersion() {
   set +e
   echo "$PROJECT_NAME installed into $HELM_INSTALL_DIR/$PROJECT_NAME"
-  HELM="$(which $PROJECT_NAME)"
   if [ "$?" = "1" ]; then
     echo "$PROJECT_NAME not found. Is $HELM_INSTALL_DIR on your "'$PATH?'
     exit 1
@@ -164,7 +164,16 @@ set -e
 initArch
 initOS
 verifySupported
-checkLatestVersion
+if [[ "$1" =~ ^v[0-9]+.[0-9]+.[0-9]+$ ]];
+then
+  TAG="$1"
+elif [ ! $1 ];
+then
+  checkLatestVersion
+else
+  echo "Version tag $1 not match. Get tag from https://github.com/kubernetes/helm/releases"
+  exit 1
+fi
 if ! checkHelmInstalledVersion; then
   downloadFile
   installFile
