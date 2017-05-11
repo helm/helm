@@ -173,6 +173,8 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
+    
+
 	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
 	// spin through them and print them. Printer is cool since it prints the header only when
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
