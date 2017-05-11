@@ -52,7 +52,6 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		pods := []v1.Pod{}
 		services := []v1.Service{}
 		pvc := []v1.PersistentVolumeClaim{}
-		replicaSets := []*extensions.ReplicaSet{}
 		deployments := []deployment{}
 		for _, v := range created {
 			obj, err := c.AsVersionedObject(v.Object)
@@ -73,25 +72,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				pods = append(pods, *pod)
 			case (*extensions.Deployment):
-				// Get the RS children first
-				rs, err := client.Extensions().ReplicaSets(value.Namespace).List(metav1.ListOptions{
-					FieldSelector: fields.Everything().String(),
-					LabelSelector: labels.Set(value.Spec.Selector.MatchLabels).AsSelector().String(),
-				})
-				if err != nil {
-					return false, err
-				}
-
-				for _, i := range rs.Items {
-					replicaSets = append(replicaSets, &i)
-				}
-
 				currentDeployment, err := client.Extensions().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.FindNewReplicaSet(currentDeployment, replicaSets)
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, client)
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
