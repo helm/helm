@@ -174,6 +174,7 @@ Common commit types:
 - feat: Add a new feature
 - docs: Change documentation
 - test: Improve testing
+- ref: refactor existing code
 
 Common scopes:
 
