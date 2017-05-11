@@ -154,7 +154,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
-	objPods  := c.getRelationPods(infos)
+	objPods := c.getRelationPods(infos)
 
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
@@ -184,9 +184,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	}
 
 	//here, we will add the objPods to the objs
-	for key,podItems := range objPods{
-		for _,pod := range podItems {
-			objs[key] = append(objs[key],&pod)
+	for key, podItems := range objPods {
+		for _, pod := range podItems {
+			objs[key] = append(objs[key], &pod)
 		}
 	}
 
@@ -613,18 +613,18 @@ func watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
 	return err
 }
 
-func (c *Client) getRelationPods(infos []*resource.Info)(map[string][]api.Pod){
-	var objPods  = make(map[string][]api.Pod)
+func (c *Client) getRelationPods(infos []*resource.Info) map[string][]api.Pod {
+	var objPods = make(map[string][]api.Pod)
 
-	for _, value := range  infos {
-		objPods , _ = c.getSelectRelationPod(value,objPods)
+	for _, value := range infos {
+		objPods, _ = c.getSelectRelationPod(value, objPods)
 	}
 	return objPods
 }
 
-func (c *Client) getSelectRelationPod(info *resource.Info,objPods map[string][]api.Pod)(map[string][]api.Pod,error){
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]api.Pod) (map[string][]api.Pod, error) {
 	if info == nil {
-		return objPods,nil
+		return objPods, nil
 	}
 
 	err := info.Get()
@@ -634,17 +634,17 @@ func (c *Client) getSelectRelationPod(info *resource.Info,objPods map[string][]a
 
 	versioned, err := c.AsVersionedObject(info.Object)
 	if runtime.IsNotRegisteredError(err) {
-		return objPods,nil
+		return objPods, nil
 	}
 	if err != nil {
-		return objPods,err
+		return objPods, err
 	}
 
 	selector, err := getSelectorFromObject(versioned)
 
-	log.Printf("getSelectRelationPod selector: %+v",selector)
+	log.Printf("getSelectRelationPod selector: %+v", selector)
 	if err != nil {
-		return objPods,err
+		return objPods, err
 	}
 	client, _ := c.ClientSet()
 
@@ -653,14 +653,14 @@ func (c *Client) getSelectRelationPod(info *resource.Info,objPods map[string][]a
 		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
 	if err != nil {
-		return objPods,err
+		return objPods, err
 	}
 
 	for _, pod := range pods.Items {
 
 		log.Printf("get select relation pod: %v/%v", pod.Namespace, pod.Name)
 
-                if pod.APIVersion == "" {
+		if pod.APIVersion == "" {
 			pod.APIVersion = "v1"
 		}
 
@@ -675,19 +675,19 @@ func (c *Client) getSelectRelationPod(info *resource.Info,objPods map[string][]a
 		}
 	}
 
-	return objPods,nil
+	return objPods, nil
 }
 
-func isFoundPod(podItem []api.Pod,pod api.Pod) bool {
-	for _,value := range podItem {
-		if (value.Namespace == pod.Namespace) && (value.Name==pod.Name) {
-			 return true
+func isFoundPod(podItem []api.Pod, pod api.Pod) bool {
+	for _, value := range podItem {
+		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
+			return true
 		}
 	}
 
-	return  false
+	return false
 }
-func isFoundPodInfo(podItem []api.Pod,podInfo *resource.Info) bool {
+func isFoundPodInfo(podItem []api.Pod, podInfo *resource.Info) bool {
 	if podInfo == nil {
 		return false
 	}
@@ -699,5 +699,3 @@ func isFoundPodInfo(podItem []api.Pod,podInfo *resource.Info) bool {
 	}
 	return false
 }
-
-
