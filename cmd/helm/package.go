@@ -72,7 +72,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pkg.home = settings.Home
 			if len(args) == 0 {
-				return fmt.Errorf("This command needs at least one argument, the path to the chart.")
+				return fmt.Errorf("need at least one argument, the path to the chart")
 			}
 			if pkg.sign {
 				if pkg.key == "" {

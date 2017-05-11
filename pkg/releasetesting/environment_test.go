@@ -123,7 +123,7 @@ func newGetFailingKubeClient() *getFailingKubeClient {
 }
 
 func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
-	return "", errors.New("In the end, they did not find Nemo.")
+	return "", errors.New("in the end, they did not find Nemo")
 }
 
 type deleteFailingKubeClient struct {
