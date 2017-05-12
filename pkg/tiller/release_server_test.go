@@ -313,16 +313,16 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected event 0 is pre-delete")
 	}
 
-	if len(res.Release.Manifest) == 0 {
+	if len(res.Release.Stages[0]) == 0 {
 		t.Errorf("No manifest returned: %v", res.Release)
 	}
 
-	if len(rel.Manifest) == 0 {
+	if len(rel.Stages[0]) == 0 {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
-		t.Errorf("unexpected output: %s", rel.Manifest)
+	if !strings.Contains(rel.Stages[0], "---\n# Source: hello/templates/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", rel.Stages[0])
 	}
 
 	if rel.Info.Description != "Install complete" {
@@ -382,16 +382,16 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 		t.Errorf("Expected event 0 is pre-delete")
 	}
 
-	if len(res.Release.Manifest) == 0 {
+	if len(res.Release.Stages[0]) == 0 {
 		t.Errorf("No manifest returned: %v", res.Release)
 	}
 
-	if len(rel.Manifest) == 0 {
+	if len(rel.Stages[0]) == 0 {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
-		t.Errorf("unexpected output: %s", rel.Manifest)
+	if !strings.Contains(rel.Stages[0], "---\n# Source: hello/templates/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", rel.Stages[0])
 	}
 
 	if rel.Info.Description != "Install complete" {
@@ -452,16 +452,16 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 		t.Errorf("Expected event 0 is pre-delete")
 	}
 
-	if len(res.Release.Manifest) == 0 {
+	if len(res.Release.Stages[0]) == 0 {
 		t.Errorf("No manifest returned: %v", res.Release)
 	}
 
-	if len(rel.Manifest) == 0 {
+	if len(rel.Stages[0]) == 0 {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
-		t.Errorf("unexpected output: %s", rel.Manifest)
+	if !strings.Contains(rel.Stages[0], "---\n# Source: hello/templates/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", rel.Stages[0])
 	}
 
 	if rel.Info.Description != "Install complete" {
@@ -585,24 +585,24 @@ func TestInstallRelease_DryRun(t *testing.T) {
 		t.Errorf("Expected release name.")
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
-		t.Errorf("unexpected output: %s", res.Release.Manifest)
+	if !strings.Contains(res.Release.Stages[0], "---\n# Source: hello/templates/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", res.Release.Stages[0])
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/goodbye\ngoodbye: world") {
-		t.Errorf("unexpected output: %s", res.Release.Manifest)
+	if !strings.Contains(res.Release.Stages[0], "---\n# Source: hello/templates/goodbye\ngoodbye: world") {
+		t.Errorf("unexpected output: %s", res.Release.Stages[0])
 	}
 
-	if !strings.Contains(res.Release.Manifest, "hello: Earth") {
-		t.Errorf("Should contain partial content. %s", res.Release.Manifest)
+	if !strings.Contains(res.Release.Stages[0], "hello: Earth") {
+		t.Errorf("Should contain partial content. %s", res.Release.Stages[0])
 	}
 
-	if strings.Contains(res.Release.Manifest, "hello: {{ template \"_planet\" . }}") {
-		t.Errorf("Should not contain partial templates itself. %s", res.Release.Manifest)
+	if strings.Contains(res.Release.Stages[0], "hello: {{ template \"_planet\" . }}") {
+		t.Errorf("Should not contain partial templates itself. %s", res.Release.Stages[0])
 	}
 
-	if strings.Contains(res.Release.Manifest, "empty") {
-		t.Errorf("Should not contain template data for an empty file. %s", res.Release.Manifest)
+	if strings.Contains(res.Release.Stages[0], "empty") {
+		t.Errorf("Should not contain template data for an empty file. %s", res.Release.Stages[0])
 	}
 
 	if _, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version); err == nil {
@@ -744,7 +744,7 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected event 0 to be pre upgrade")
 	}
 
-	if len(res.Release.Manifest) == 0 {
+	if len(res.Release.Stages[0]) == 0 {
 		t.Errorf("No manifest returned: %v", res.Release)
 	}
 
@@ -754,12 +754,12 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Release.Config.Raw)
 	}
 
-	if len(updated.Manifest) == 0 {
+	if len(updated.Stages[0]) == 0 {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
-		t.Errorf("unexpected output: %s", rel.Manifest)
+	if !strings.Contains(updated.Stages[0], "---\n# Source: hello/templates/hello\nhello: world") {
+		t.Errorf("unexpected output: %s", rel.Stages[0])
 	}
 
 	if res.Release.Version != 2 {
@@ -1060,7 +1060,8 @@ func TestRollbackRelease(t *testing.T) {
 		},
 	}
 
-	upgradedRel.Manifest = "hello world"
+	upgradedRel.Stages = map[int32]string{}
+	upgradedRel.Stages[0] = "hello world"
 	rs.env.Releases.Update(rel)
 	rs.env.Releases.Create(upgradedRel)
 
@@ -1135,16 +1136,16 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Expected event 1 to be post rollback")
 	}
 
-	if len(res.Release.Manifest) == 0 {
+	if len(res.Release.Stages[0]) == 0 {
 		t.Errorf("No manifest returned: %v", res.Release)
 	}
 
-	if len(updated.Manifest) == 0 {
+	if len(updated.Stages[0]) == 0 {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(updated.Manifest, "hello world") {
-		t.Errorf("unexpected output: %s", rel.Manifest)
+	if !strings.Contains(updated.Stages[0], "hello world") {
+		t.Errorf("unexpected output: %s", rel.Stages[0])
 	}
 
 	if res.Release.Info.Description != "Rollback to 2" {

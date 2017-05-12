@@ -29,6 +29,7 @@ import (
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
+	"k8s.io/helm/pkg/stages"
 )
 
 var events = map[string]release.Hook_Event{
@@ -72,9 +73,9 @@ type manifest struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
+func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, stageMap, error) {
 	hs := []*release.Hook{}
-	generic := []manifest{}
+	sm := stageMap{}
 
 	for n, c := range files {
 		// Skip partials. We could return these as a separate map, but there doesn't
@@ -93,21 +94,30 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 
 		if err != nil {
 			e := fmt.Errorf("YAML parse error on %s: %s", n, err)
-			return hs, generic, e
+			return hs, sm, e
 		}
 
 		if sh.Version != "" && !apis.Has(sh.Version) {
-			return hs, generic, fmt.Errorf("apiVersion %q in %s is not available", sh.Version, n)
+			return hs, sm, fmt.Errorf("apiVersion %q in %s is not available", sh.Version, n)
 		}
 
 		if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
-			generic = append(generic, manifest{name: n, content: c, head: &sh})
+			sm.add(0, manifest{name: n, content: c, head: &sh})
 			continue
 		}
 
 		hookTypes, ok := sh.Metadata.Annotations[hooks.HookAnno]
 		if !ok {
-			generic = append(generic, manifest{name: n, content: c, head: &sh})
+			// We're not a hook. Might we belong to a stage?
+			stgNo := 0
+			stgNoStr, ok := sh.Metadata.Annotations[stages.StageAnno]
+			if ok {
+				stgNo, err = strconv.Atoi(stgNoStr)
+				if err != nil {
+					stgNo = 0
+				}
+			}
+			sm.add(stgNo, manifest{name: n, content: c, head: &sh})
 			continue
 		}
 
@@ -142,5 +152,5 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 		}
 		hs = append(hs, h)
 	}
-	return hs, sortByKind(generic, sort), nil
+	return hs, sortByKind(sm, sort), nil
 }

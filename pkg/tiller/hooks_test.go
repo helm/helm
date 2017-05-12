@@ -120,14 +120,14 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
+	hs, stgs, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
 	// This test will fail if 'six' or 'seven' was added.
-	if len(generic) != 1 {
-		t.Errorf("Expected 1 generic manifest, got %d", len(generic))
+	if len(stgs[0]) != 1 {
+		t.Errorf("Expected 1 generic manifest, got %d", len(stgs[0]))
 	}
 
 	if len(hs) != 3 {
@@ -161,7 +161,7 @@ metadata:
 	}
 
 	// Verify the sort order
-	sorted := make([]manifest, len(data))
+	sortedStg := make(stage, len(data))
 	for i, s := range data {
 		var sh util.SimpleHead
 		err := yaml.Unmarshal([]byte(s.manifest), &sh)
@@ -169,16 +169,17 @@ metadata:
 			// This is expected for manifests that are corrupt or empty.
 			t.Log(err)
 		}
-		sorted[i] = manifest{
+		sortedStg[i] = manifest{
 			content: s.manifest,
 			name:    s.name,
 			head:    &sh,
 		}
 	}
-	sorted = sortByKind(sorted, InstallOrder)
-	for i, m := range generic {
-		if m.content != sorted[i].content {
-			t.Errorf("Expected %q, got %q", m.content, sorted[i].content)
+	sortedStgs := stageMap{0: sortedStg}
+	sortedStg = sortByKind(sortedStgs, InstallOrder)[0]
+	for i, m := range stgs[0] {
+		if m.content != sortedStg[i].content {
+			t.Errorf("Expected %q, got %q", m.content, sortedStg[i].content)
 		}
 	}
 

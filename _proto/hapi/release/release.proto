@@ -50,4 +50,7 @@ message Release {
 
 	// Namespace is the kubernetes namespace of the release.
 	string namespace = 8;
+
+	// Stages are subsets of rendered templates indexed by stage number
+	map<int32, string> stages = 9;
 }

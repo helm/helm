@@ -29,37 +29,48 @@ const resourcePolicyAnno = "helm.sh/resource-policy"
 //   during an uninstallRelease action.
 const keepPolicy = "keep"
 
-func filterManifestsToKeep(manifests []manifest) ([]manifest, []manifest) {
-	remaining := []manifest{}
-	keep := []manifest{}
+func filterManifestsToKeep(sm stageMap) (stageMap, stageMap) {
+	remainingMap := stageMap{}
+	keepMap := stageMap{}
+	for stgNo, stg := range sm {
+		remaining := stage{}
+		keep := stage{}
+		for _, m := range stg {
 
-	for _, m := range manifests {
+			if m.head.Metadata == nil || m.head.Metadata.Annotations == nil || len(m.head.Metadata.Annotations) == 0 {
+				remaining = append(remaining, m)
+				continue
+			}
 
-		if m.head.Metadata == nil || m.head.Metadata.Annotations == nil || len(m.head.Metadata.Annotations) == 0 {
-			remaining = append(remaining, m)
-			continue
+			resourcePolicyType, ok := m.head.Metadata.Annotations[resourcePolicyAnno]
+			if !ok {
+				remaining = append(remaining, m)
+				continue
+			}
+
+			resourcePolicyType = strings.ToLower(strings.TrimSpace(resourcePolicyType))
+			if resourcePolicyType == keepPolicy {
+				keep = append(keep, m)
+			}
+
 		}
-
-		resourcePolicyType, ok := m.head.Metadata.Annotations[resourcePolicyAnno]
-		if !ok {
-			remaining = append(remaining, m)
-			continue
+		if len(remaining) > 0 {
+			remainingMap[stgNo] = remaining
 		}
-
-		resourcePolicyType = strings.ToLower(strings.TrimSpace(resourcePolicyType))
-		if resourcePolicyType == keepPolicy {
-			keep = append(keep, m)
+		if len(keep) > 0 {
+			keepMap[stgNo] = keep
 		}
-
 	}
-	return keep, remaining
+	return keepMap, remainingMap
 }
 
-func summarizeKeptManifests(manifests []manifest) string {
+func summarizeKeptManifests(sm stageMap) string {
 	message := "These resources were kept due to the resource policy:\n"
-	for _, m := range manifests {
-		details := "[" + m.head.Kind + "] " + m.head.Metadata.Name + "\n"
-		message = message + details
+	for _, stg := range sm {
+		for _, m := range stg {
+			details := "[" + m.head.Kind + "] " + m.head.Metadata.Name + "\n"
+			message = message + details
+		}
 	}
 	return message
 }

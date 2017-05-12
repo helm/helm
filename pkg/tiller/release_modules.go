@@ -154,18 +154,20 @@ func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient env
 	}
 
 	errs = []error{}
-	for _, file := range filesToDelete {
-		b := bytes.NewBufferString(strings.TrimSpace(file.content))
-		if b.Len() == 0 {
-			continue
-		}
-		if err := kubeClient.Delete(rel.Namespace, b); err != nil {
-			log.Printf("uninstall: Failed deletion of %q: %s", rel.Name, err)
-			if err == kube.ErrNoObjectsVisited {
-				// Rewrite the message from "no objects visited"
-				err = errors.New("object not found, skipping delete")
+	for _, stg := range filesToDelete {
+		for _, file := range stg {
+			b := bytes.NewBufferString(strings.TrimSpace(file.content))
+			if b.Len() == 0 {
+				continue
 			}
-			errs = append(errs, err)
+			if err := kubeClient.Delete(rel.Namespace, b); err != nil {
+				log.Printf("uninstall: Failed deletion of %q: %s", rel.Name, err)
+				if err == kube.ErrNoObjectsVisited {
+					// Rewrite the message from "no objects visited"
+					err = errors.New("object not found, skipping delete")
+				}
+				errs = append(errs, err)
+			}
 		}
 	}
 	return kept, errs

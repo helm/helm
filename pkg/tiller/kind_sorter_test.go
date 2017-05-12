@@ -24,121 +24,123 @@ import (
 )
 
 func TestKindSorter(t *testing.T) {
-	manifests := []manifest{
-		{
-			name:    "i",
-			content: "",
-			head:    &util.SimpleHead{Kind: "ClusterRole"},
-		},
-		{
-			name:    "j",
-			content: "",
-			head:    &util.SimpleHead{Kind: "ClusterRoleBinding"},
-		},
-		{
-			name:    "e",
-			content: "",
-			head:    &util.SimpleHead{Kind: "ConfigMap"},
-		},
-		{
-			name:    "u",
-			content: "",
-			head:    &util.SimpleHead{Kind: "CronJob"},
-		},
-		{
-			name:    "n",
-			content: "",
-			head:    &util.SimpleHead{Kind: "DaemonSet"},
-		},
-		{
-			name:    "r",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Deployment"},
-		},
-		{
-			name:    "!",
-			content: "",
-			head:    &util.SimpleHead{Kind: "HonkyTonkSet"},
-		},
-		{
-			name:    "v",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Ingress"},
-		},
-		{
-			name:    "t",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Job"},
-		},
-		{
-			name:    "c",
-			content: "",
-			head:    &util.SimpleHead{Kind: "LimitRange"},
-		},
-		{
-			name:    "a",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Namespace"},
-		},
-		{
-			name:    "f",
-			content: "",
-			head:    &util.SimpleHead{Kind: "PersistentVolume"},
-		},
-		{
-			name:    "g",
-			content: "",
-			head:    &util.SimpleHead{Kind: "PersistentVolumeClaim"},
-		},
-		{
-			name:    "o",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Pod"},
-		},
-		{
-			name:    "q",
-			content: "",
-			head:    &util.SimpleHead{Kind: "ReplicaSet"},
-		},
-		{
-			name:    "p",
-			content: "",
-			head:    &util.SimpleHead{Kind: "ReplicationController"},
-		},
-		{
-			name:    "b",
-			content: "",
-			head:    &util.SimpleHead{Kind: "ResourceQuota"},
-		},
-		{
-			name:    "k",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Role"},
-		},
-		{
-			name:    "l",
-			content: "",
-			head:    &util.SimpleHead{Kind: "RoleBinding"},
-		},
-		{
-			name:    "d",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Secret"},
-		},
-		{
-			name:    "m",
-			content: "",
-			head:    &util.SimpleHead{Kind: "Service"},
-		},
-		{
-			name:    "h",
-			content: "",
-			head:    &util.SimpleHead{Kind: "ServiceAccount"},
-		},
-		{
-			name:    "s",
-			content: "",
-			head:    &util.SimpleHead{Kind: "StatefulSet"},
+	stgs := stageMap{
+		0: {
+			{
+				name:    "i",
+				content: "",
+				head:    &util.SimpleHead{Kind: "ClusterRole"},
+			},
+			{
+				name:    "j",
+				content: "",
+				head:    &util.SimpleHead{Kind: "ClusterRoleBinding"},
+			},
+			{
+				name:    "e",
+				content: "",
+				head:    &util.SimpleHead{Kind: "ConfigMap"},
+			},
+			{
+				name:    "u",
+				content: "",
+				head:    &util.SimpleHead{Kind: "CronJob"},
+			},
+			{
+				name:    "n",
+				content: "",
+				head:    &util.SimpleHead{Kind: "DaemonSet"},
+			},
+			{
+				name:    "r",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Deployment"},
+			},
+			{
+				name:    "!",
+				content: "",
+				head:    &util.SimpleHead{Kind: "HonkyTonkSet"},
+			},
+			{
+				name:    "v",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Ingress"},
+			},
+			{
+				name:    "t",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Job"},
+			},
+			{
+				name:    "c",
+				content: "",
+				head:    &util.SimpleHead{Kind: "LimitRange"},
+			},
+			{
+				name:    "a",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Namespace"},
+			},
+			{
+				name:    "f",
+				content: "",
+				head:    &util.SimpleHead{Kind: "PersistentVolume"},
+			},
+			{
+				name:    "g",
+				content: "",
+				head:    &util.SimpleHead{Kind: "PersistentVolumeClaim"},
+			},
+			{
+				name:    "o",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Pod"},
+			},
+			{
+				name:    "q",
+				content: "",
+				head:    &util.SimpleHead{Kind: "ReplicaSet"},
+			},
+			{
+				name:    "p",
+				content: "",
+				head:    &util.SimpleHead{Kind: "ReplicationController"},
+			},
+			{
+				name:    "b",
+				content: "",
+				head:    &util.SimpleHead{Kind: "ResourceQuota"},
+			},
+			{
+				name:    "k",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Role"},
+			},
+			{
+				name:    "l",
+				content: "",
+				head:    &util.SimpleHead{Kind: "RoleBinding"},
+			},
+			{
+				name:    "d",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Secret"},
+			},
+			{
+				name:    "m",
+				content: "",
+				head:    &util.SimpleHead{Kind: "Service"},
+			},
+			{
+				name:    "h",
+				content: "",
+				head:    &util.SimpleHead{Kind: "ServiceAccount"},
+			},
+			{
+				name:    "s",
+				content: "",
+				head:    &util.SimpleHead{Kind: "StatefulSet"},
+			},
 		},
 	}
 
@@ -152,11 +154,11 @@ func TestKindSorter(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
-			if got, want := len(test.expected), len(manifests); got != want {
+			if got, want := len(test.expected), len(stgs[0]); got != want {
 				t.Fatalf("Expected %d names in order, got %d", want, got)
 			}
 			defer buf.Reset()
-			for _, r := range sortByKind(manifests, test.order) {
+			for _, r := range sortByKind(stgs, test.order)[0] {
 				buf.WriteString(r.name)
 			}
 			if got := buf.String(); got != test.expected {
