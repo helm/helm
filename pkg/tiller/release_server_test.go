@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/logger"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -105,6 +106,7 @@ func rsFixture() *ReleaseServer {
 		},
 		env:       MockEnvironment(),
 		clientset: clientset,
+		Logger:    logger.NewNopLogger(),
 	}
 }
 

@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"path"
 	"regexp"
 	"strings"
@@ -33,6 +32,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/logger"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -84,6 +84,7 @@ type ReleaseServer struct {
 	ReleaseModule
 	env       *environment.Environment
 	clientset internalclientset.Interface
+	Logger    logger.Logger
 }
 
 // NewReleaseServer creates a new release server.
@@ -101,6 +102,7 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 		env:           env,
 		clientset:     clientset,
 		ReleaseModule: releaseModule,
+		Logger:        logger.NewNopLogger(),
 	}
 }
 
@@ -268,7 +270,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil
 	} else if err != nil {
-		log.Printf("warning: Get for %s failed: %v", rel.Name, err)
+		s.Logger.Printf("warning: Get for %s failed: %v", rel.Name, err)
 		return nil, err
 	}
 	rel.Info.Status.Resources = resp
@@ -321,7 +323,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	res := &services.UpdateReleaseResponse{Release: updatedRelease}
 
 	if req.DryRun {
-		log.Printf("Dry run for %s", updatedRelease.Name)
+		s.Logger.Printf("Dry run for %s", updatedRelease.Name)
 		res.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
@@ -334,7 +336,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	}
 	if err := s.ReleaseModule.Update(originalRelease, updatedRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
-		log.Printf("warning: %s", msg)
+		s.Logger.Printf("warning: %s", msg)
 		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
 		updatedRelease.Info.Status.Code = release.Status_FAILED
 		updatedRelease.Info.Description = msg
@@ -370,19 +372,19 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) error {
 	if req.ResetValues {
 		// If ResetValues is set, we comletely ignore current.Config.
-		log.Print("Reset values to the chart's original version.")
+		s.Logger.Printf("Reset values to the chart's original version.")
 		return nil
 	}
 
 	// If the ReuseValues flag is set, we always copy the old values over the new config's values.
 	if req.ReuseValues {
-		log.Print("Reusing the old release's values")
+		s.Logger.Printf("Reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
 		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
 			err := fmt.Errorf("failed to rebuild old values: %s", err)
-			log.Print(err)
+			s.Logger.Printf("%s", err)
 			return err
 		}
 		nv, err := oldVals.YAML()
@@ -399,7 +401,7 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		current.Config != nil &&
 		current.Config.Raw != "" &&
 		current.Config.Raw != "{}\n" {
-		log.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
+		s.Logger.Printf("Copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}
 	return nil
@@ -508,7 +510,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	res := &services.RollbackReleaseResponse{Release: targetRelease}
 
 	if req.DryRun {
-		log.Printf("Dry run for %s", targetRelease.Name)
+		s.Logger.Printf("Dry run for %s", targetRelease.Name)
 		return res, nil
 	}
 
@@ -521,7 +523,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 
 	if err := s.ReleaseModule.Rollback(currentRelease, targetRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
-		log.Printf("warning: %s", msg)
+		s.Logger.Printf("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
 		targetRelease.Info.Status.Code = release.Status_FAILED
 		targetRelease.Info.Description = msg
@@ -565,7 +567,7 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 		rbv = crls.Version - 1
 	}
 
-	log.Printf("rolling back %s (current: v%d, target: v%d)", req.Name, crls.Version, rbv)
+	s.Logger.Printf("rolling back %s (current: v%d, target: v%d)", req.Name, crls.Version, rbv)
 
 	prls, err := s.env.Releases.Get(req.Name, rbv)
 	if err != nil {
@@ -617,7 +619,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 
 		if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
 			// Allowe re-use of names if the previous release is marked deleted.
-			log.Printf("reusing name %q", start)
+			s.Logger.Printf("reusing name %q", start)
 			return start, nil
 		} else if reuse {
 			return "", errors.New("cannot re-use a name that is still in use")
@@ -636,9 +638,9 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		if _, err := s.env.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
 			return name, nil
 		}
-		log.Printf("info: Name %q is taken. Searching again.", name)
+		s.Logger.Printf("info: Name %q is taken. Searching again.", name)
 	}
-	log.Printf("warning: No available release names found after %d tries", maxTries)
+	s.Logger.Printf("warning: No available release names found after %d tries", maxTries)
 	return "ERROR", errors.New("no available release name found")
 }
 
@@ -648,7 +650,7 @@ func (s *ReleaseServer) engine(ch *chart.Chart) environment.Engine {
 		if r, ok := s.env.EngineYard.Get(ch.Metadata.Engine); ok {
 			renderer = r
 		} else {
-			log.Printf("warning: %s requested non-existent template engine %s", ch.Metadata.Name, ch.Metadata.Engine)
+			s.Logger.Printf("warning: %s requested non-existent template engine %s", ch.Metadata.Name, ch.Metadata.Engine)
 		}
 	}
 	return renderer
@@ -658,7 +660,7 @@ func (s *ReleaseServer) engine(ch *chart.Chart) environment.Engine {
 func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	rel, err := s.prepareRelease(req)
 	if err != nil {
-		log.Printf("Failed install prepare step: %s", err)
+		s.Logger.Printf("Failed install prepare step: %s", err)
 		res := &services.InstallReleaseResponse{Release: rel}
 
 		// On dry run, append the manifest contents to a failed release. This is
@@ -671,7 +673,7 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 
 	res, err := s.performRelease(rel, req)
 	if err != nil {
-		log.Printf("Failed install perform step: %s", err)
+		s.Logger.Printf("Failed install perform step: %s", err)
 	}
 	return res, err
 }
@@ -854,10 +856,10 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
 		if err := s.env.Releases.Update(r); err != nil {
-			log.Printf("warning: Failed to update release %q: %s", r.Name, err)
+			s.Logger.Printf("warning: Failed to update release %q: %s", r.Name, err)
 		}
 	} else if err := s.env.Releases.Create(r); err != nil {
-		log.Printf("warning: Failed to record release %q: %s", r.Name, err)
+		s.Logger.Printf("warning: Failed to record release %q: %s", r.Name, err)
 	}
 }
 
@@ -866,7 +868,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	res := &services.InstallReleaseResponse{Release: r}
 
 	if req.DryRun {
-		log.Printf("Dry run for %s", r.Name)
+		s.Logger.Printf("Dry run for %s", r.Name)
 		res.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
@@ -901,7 +903,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		}
 		if err := s.ReleaseModule.Update(old, r, updateReq, s.env); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
-			log.Printf("warning: %s", msg)
+			s.Logger.Printf("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
@@ -915,7 +917,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// regular manifests
 		if err := s.ReleaseModule.Create(r, req, s.env); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
-			log.Printf("warning: %s", msg)
+			s.Logger.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, false)
@@ -927,7 +929,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	if !req.DisableHooks {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PostInstall, req.Timeout); err != nil {
 			msg := fmt.Sprintf("Release %q failed post-install: %s", r.Name, err)
-			log.Printf("warning: %s", msg)
+			s.Logger.Printf("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, false)
@@ -956,7 +958,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		return fmt.Errorf("unknown hook %q", hook)
 	}
 
-	log.Printf("Executing %s hooks for %s", hook, name)
+	s.Logger.Printf("Executing %s hooks for %s", hook, name)
 	executingHooks := []*release.Hook{}
 	for _, h := range hs {
 		for _, e := range h.Events {
@@ -972,20 +974,20 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b, timeout, false); err != nil {
-			log.Printf("warning: Release %q %s %s failed: %s", name, hook, h.Path, err)
+			s.Logger.Printf("warning: Release %q %s %s failed: %s", name, hook, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
 		b.WriteString(h.Manifest)
 		if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
-			log.Printf("warning: Release %q %s %s could not complete: %s", name, hook, h.Path, err)
+			s.Logger.Printf("warning: Release %q %s %s could not complete: %s", name, hook, h.Path, err)
 			return err
 		}
 		h.LastRun = timeconv.Now()
 	}
 
-	log.Printf("Hooks complete for %s %s", hook, name)
+	s.Logger.Printf("Hooks complete for %s %s", hook, name)
 	return nil
 }
 
@@ -1007,7 +1009,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	defer s.env.Releases.UnlockRelease(req.Name)
 
 	if !ValidName.MatchString(req.Name) {
-		log.Printf("uninstall: Release not found: %s", req.Name)
+		s.Logger.Printf("uninstall: Release not found: %s", req.Name)
 		return nil, errMissingRelease
 	}
 
@@ -1017,7 +1019,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 	rels, err := s.env.Releases.History(req.Name)
 	if err != nil {
-		log.Printf("uninstall: Release not loaded: %s", req.Name)
+		s.Logger.Printf("uninstall: Release not loaded: %s", req.Name)
 		return nil, err
 	}
 	if len(rels) < 1 {
@@ -1032,7 +1034,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	if rel.Info.Status.Code == release.Status_DELETED {
 		if req.Purge {
 			if err := s.purgeReleases(rels...); err != nil {
-				log.Printf("uninstall: Failed to purge the release: %s", err)
+				s.Logger.Printf("uninstall: Failed to purge the release: %s", err)
 				return nil, err
 			}
 			return &services.UninstallReleaseResponse{Release: rel}, nil
@@ -1040,7 +1042,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, fmt.Errorf("the release named %q is already deleted", req.Name)
 	}
 
-	log.Printf("uninstall: Deleting %s", req.Name)
+	s.Logger.Printf("uninstall: Deleting %s", req.Name)
 	rel.Info.Status.Code = release.Status_DELETING
 	rel.Info.Deleted = timeconv.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
@@ -1055,7 +1057,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	// From here on out, the release is currently considered to be in Status_DELETING
 	// state.
 	if err := s.env.Releases.Update(rel); err != nil {
-		log.Printf("uninstall: Failed to store updated release: %s", err)
+		s.Logger.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
 	kept, errs := s.ReleaseModule.Delete(rel, req, s.env)
@@ -1063,7 +1065,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 	es := make([]string, 0, len(errs))
 	for _, e := range errs {
-		log.Printf("error: %v", e)
+		s.Logger.Printf("error: %v", e)
 		es = append(es, e.Error())
 	}
 
@@ -1079,13 +1081,13 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	if req.Purge {
 		err := s.purgeReleases(rels...)
 		if err != nil {
-			log.Printf("uninstall: Failed to purge the release: %s", err)
+			s.Logger.Printf("uninstall: Failed to purge the release: %s", err)
 		}
 		return res, err
 	}
 
 	if err := s.env.Releases.Update(rel); err != nil {
-		log.Printf("uninstall: Failed to store updated release: %s", err)
+		s.Logger.Printf("uninstall: Failed to store updated release: %s", err)
 	}
 
 	if len(es) > 0 {
@@ -1122,12 +1124,12 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 
 	tSuite, err := reltesting.NewTestSuite(rel)
 	if err != nil {
-		log.Printf("Error creating test suite for %s", rel.Name)
+		s.Logger.Printf("Error creating test suite for %s", rel.Name)
 		return err
 	}
 
 	if err := tSuite.Run(testEnv); err != nil {
-		log.Printf("Error running test suite for %s", rel.Name)
+		s.Logger.Printf("Error running test suite for %s", rel.Name)
 		return err
 	}
 
