@@ -429,7 +429,11 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	if err != nil {
 		return nil
 	}
-	client, _ := c.ClientSet()
+
+	client, err := c.ClientSet()
+	if err != nil {
+		return err
+	}
 
 	pods, err := client.Core().Pods(target.Namespace).List(metav1.ListOptions{
 		FieldSelector: fields.Everything().String(),

@@ -46,7 +46,10 @@ type deployment struct {
 func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 	log.Printf("beginning wait for resources with timeout of %v", timeout)
 
-	cs, _ := c.ClientSet()
+	cs, err := c.ClientSet()
+	if err != nil {
+		return err
+	}
 	client := versionedClientsetForDeployment(cs)
 	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
 		pods := []v1.Pod{}
