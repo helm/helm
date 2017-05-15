@@ -102,7 +102,7 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 		env:           env,
 		clientset:     clientset,
 		ReleaseModule: releaseModule,
-		Logger:        logger.NewNopLogger(),
+		Logger:        logger.DefaultLogger,
 	}
 }
 

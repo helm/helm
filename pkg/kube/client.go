@@ -70,7 +70,7 @@ func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:        cmdutil.NewFactory(config),
 		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
-		Logger:         logger.NewNopLogger(),
+		Logger:         logger.DefaultLogger,
 	}
 }
 

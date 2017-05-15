@@ -221,6 +221,6 @@ func Init(d driver.Driver) *Storage {
 		Driver:           d,
 		releaseLocks:     make(map[string]*sync.Mutex),
 		releaseLocksLock: &sync.Mutex{},
-		Logger:           logger.NewNopLogger(),
+		Logger:           logger.DefaultLogger,
 	}
 }
