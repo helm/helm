@@ -1,5 +1,5 @@
-hash: e323e66f9aba77578f7dcc0886e3117ebc373bc391374b2d5ddd293c276c8966
-updated: 2017-05-02T22:27:03.674351365-04:00
+hash: 6ee139cf584a7c74de86b7bfe1269ea8a467bc710801cb2a8156980cbad43180
+updated: 2017-05-12T16:19:06.928220473-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -469,7 +469,7 @@ imports:
   - util/integer
   - util/jsonpath
 - name: k8s.io/kubernetes
-  version: 477efc3cbe6a7effca06bd1452fa356e2201e1ee
+  version: 0480917b552be33e2dba47386e51decb1a211df6
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install
