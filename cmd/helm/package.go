@@ -150,7 +150,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 
 	name, err := chartutil.Save(ch, dest)
 	if err == nil {
-		debug("Saved %s to current directory\n", name)
+		fmt.Fprintf(p.out, "Successfully packaged chart and saved it to: %s\n", name)
 	} else {
 		return fmt.Errorf("Failed to save: %s", err)
 	}
@@ -162,7 +162,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		if err := repo.AddChartToLocalRepo(ch, lr); err != nil {
 			return err
 		}
-		debug("Saved %s to %s\n", name, lr)
+		debug("Successfully saved %s to %s\n", name, lr)
 	}
 
 	if p.sign {
