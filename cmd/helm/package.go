@@ -130,6 +130,10 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		if err := checkDependencies(ch, reqs, p.out); err != nil {
 			return err
 		}
+	} else {
+		if err != chartutil.ErrRequirementsNotFound {
+			return err
+		}
 	}
 
 	var dest string
@@ -146,7 +150,9 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 
 	name, err := chartutil.Save(ch, dest)
 	if err == nil {
-		debug("Saved %s to current directory\n", name)
+		fmt.Fprintf(p.out, "Successfully packaged chart and saved it to: %s\n", name)
+	} else {
+		return fmt.Errorf("Failed to save: %s", err)
 	}
 
 	// Save to $HELM_HOME/local directory. This is second, because we don't want
@@ -156,7 +162,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		if err := repo.AddChartToLocalRepo(ch, lr); err != nil {
 			return err
 		}
-		debug("Saved %s to %s\n", name, lr)
+		debug("Successfully saved %s to %s\n", name, lr)
 	}
 
 	if p.sign {
