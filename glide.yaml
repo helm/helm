@@ -49,6 +49,10 @@ import:
 - package: github.com/chai2010/gettext-go
 - package: github.com/prometheus/client_golang
   version: v0.8.0
+- package: vbom.ml/util
+  repo: https://github.com/fvbommel/util.git
+  vcs: git
+
 testImports:
 - package: github.com/stretchr/testify
   version: ^1.1.4

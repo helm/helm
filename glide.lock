@@ -621,6 +621,8 @@ imports:
   - pkg/watch/json
 - name: vbom.ml/util
   version: db5cfe13f5cc80a4990d98e2e1b0707a4d1a5394
+  repo: https://github.com/fvbommel/util.git
+  vcs: git
   subpackages:
   - sortorder
 testImports:
