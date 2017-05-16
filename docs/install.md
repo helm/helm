@@ -16,9 +16,11 @@ provides binary releases for a variety of OSes. These binary versions
 can be manually downloaded and installed.
 
 1. Download your [desired version](https://github.com/kubernetes/helm/releases)
-2. Unpack it (`tar -zxvf helm-v2.0.0-linux-amd64.tgz`)
+2. Unpack it (`tar -zxvf helm-vX.X.X-linux-amd64.tar.gz`)
 3. Find the `helm` binary in the unpacked directory, and move it to its
-   desired destination (`mv linux-amd64/helm /usr/local/bin/helm`)
+   desired destination:
+   
+   `mv linux-amd64/helm /usr/local/bin/helm`
 
 From there, you should be able to run the client: `helm help`.
 
