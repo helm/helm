@@ -58,6 +58,7 @@ func Upgrade(client internalclientset.Interface, opts *Options) error {
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
 	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
+	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
 	if _, err := client.Extensions().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}

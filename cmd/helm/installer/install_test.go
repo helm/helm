@@ -329,11 +329,12 @@ func TestInstall_canary(t *testing.T) {
 
 func TestUpgrade(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
-
+	serviceAccount := "newServiceAccount"
 	existingDeployment := deployment(&Options{
-		Namespace: api.NamespaceDefault,
-		ImageSpec: "imageToReplace",
-		UseCanary: false,
+		Namespace:      api.NamespaceDefault,
+		ImageSpec:      "imageToReplace",
+		ServiceAccount: "serviceAccountToReplace",
+		UseCanary:      false,
 	})
 	existingService := service(api.NamespaceDefault)
 
@@ -347,13 +348,17 @@ func TestUpgrade(t *testing.T) {
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
 		}
+		sa := obj.Spec.Template.Spec.ServiceAccountName
+		if sa != serviceAccount {
+			t.Errorf("expected serviceAccountName = '%s', got '%s'", serviceAccount, sa)
+		}
 		return true, obj, nil
 	})
 	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
 		return true, existingService, nil
 	})
 
-	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image}
+	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image, ServiceAccount: serviceAccount}
 	if err := Upgrade(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
