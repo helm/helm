@@ -1044,6 +1044,28 @@ _helm_plugin_remove()
     noun_aliases=()
 }
 
+_helm_plugin_update()
+{
+    last_command="helm_plugin_update"
+    commands=()
+
+    flags=()
+    two_word_flags=()
+    local_nonpersistent_flags=()
+    flags_with_completion=()
+    flags_completion=()
+
+    flags+=("--debug")
+    flags+=("--home=")
+    flags+=("--host=")
+    flags+=("--kube-context=")
+    flags+=("--tiller-namespace=")
+
+    must_have_one_flag=()
+    must_have_one_noun=()
+    noun_aliases=()
+}
+
 _helm_plugin()
 {
     last_command="helm_plugin"
@@ -1051,6 +1073,7 @@ _helm_plugin()
     commands+=("install")
     commands+=("list")
     commands+=("remove")
+    commands+=("update")
 
     flags=()
     two_word_flags=()

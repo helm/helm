@@ -34,6 +34,18 @@ type VCSInstaller struct {
 	base
 }
 
+func existingVCSRepo(location string, home helmpath.Home) (Installer, error) {
+	repo, err := vcs.NewRepo("", location)
+	if err != nil {
+		return nil, err
+	}
+	i := &VCSInstaller{
+		Repo: repo,
+		base: newBase(repo.Remote(), home),
+	}
+	return i, err
+}
+
 // NewVCSInstaller creates a new VCSInstaller.
 func NewVCSInstaller(source, version string, home helmpath.Home) (*VCSInstaller, error) {
 	key, err := cache.Key(source)
@@ -75,6 +87,18 @@ func (i *VCSInstaller) Install() error {
 	}
 
 	return i.link(i.Repo.LocalPath())
+}
+
+// Update updates a remote repository
+func (i *VCSInstaller) Update() error {
+	debug("updating %s", i.Repo.Remote())
+	if err := i.Repo.Update(); err != nil {
+		return err
+	}
+	if !isPlugin(i.Repo.LocalPath()) {
+		return ErrMissingMetadata
+	}
+	return nil
 }
 
 func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {

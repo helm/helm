@@ -47,3 +47,9 @@ func (i *LocalInstaller) Install() error {
 	}
 	return i.link(src)
 }
+
+// Update updates a local repository
+func (i *LocalInstaller) Update() error {
+	debug("local repository is auto-updated")
+	return nil
+}

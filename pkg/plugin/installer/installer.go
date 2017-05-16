@@ -36,6 +36,8 @@ type Installer interface {
 	Install() error
 	// Path is the directory of the installed plugin.
 	Path() string
+	// Update updates a plugin to $HELM_HOME.
+	Update() error
 }
 
 // Install installs a plugin to $HELM_HOME.
@@ -47,6 +49,15 @@ func Install(i Installer) error {
 	return i.Install()
 }
 
+// Update updates a plugin in $HELM_HOME.
+func Update(i Installer) error {
+	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
+		return errors.New("plugin does not exist")
+	}
+
+	return i.Update()
+}
+
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string, home helmpath.Home) (Installer, error) {
 	// Check if source is a local directory
@@ -54,6 +65,15 @@ func NewForSource(source, version string, home helmpath.Home) (Installer, error)
 		return NewLocalInstaller(source, home)
 	}
 	return NewVCSInstaller(source, version, home)
+}
+
+// FindSource determines the correct Installer for the given source.
+func FindSource(location string, home helmpath.Home) (Installer, error) {
+	installer, err := existingVCSRepo(location, home)
+	if err != nil && err.Error() == "Cannot detect VCS" {
+		return installer, errors.New("cannot get information about plugin source")
+	}
+	return installer, err
 }
 
 // isLocalReference checks if the source exists on the filesystem.
