@@ -23,6 +23,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/facebookgo/atomicfile"
 	"github.com/ghodss/yaml"
 )
 
@@ -134,9 +135,24 @@ func (r *RepoFile) Remove(name string) bool {
 
 // WriteFile writes a repositories file to the given path.
 func (r *RepoFile) WriteFile(path string, perm os.FileMode) error {
+	f, err := atomicfile.New(path, os.FileMode(0666))
+	if err != nil {
+		return err
+	}
+
 	data, err := yaml.Marshal(r)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, perm)
+
+	_, err = f.File.Write(data)
+	if err != nil {
+		return err
+	}
+
+	if err = f.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
