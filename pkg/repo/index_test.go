@@ -18,6 +18,8 @@ package repo
 
 import (
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -129,10 +131,14 @@ func TestMerge(t *testing.T) {
 }
 
 func TestDownloadIndexFile(t *testing.T) {
-	srv, err := startLocalServerForTests(nil)
+	fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(fileBytes)
+	}))
 	defer srv.Close()
 
 	dirName, err := ioutil.TempDir("", "tmp")
@@ -175,8 +181,8 @@ func TestDownloadIndexFile(t *testing.T) {
 
 func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	numEntries := len(i.Entries)
-	if numEntries != 3 {
-		t.Errorf("Expected 3 entries in index file but got %d", numEntries)
+	if numEntries != 2 {
+		t.Errorf("Expected 2 entries in index file but got %d", numEntries)
 	}
 
 	alpine, ok := i.Entries["alpine"]
