@@ -24,6 +24,7 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"sync"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -122,8 +123,9 @@ func releaseMock(opts *releaseOptions) *release.Release {
 }
 
 type fakeReleaseClient struct {
-	rels []*release.Release
-	err  error
+	rels      []*release.Release
+	responses map[string]release.TestRun_Status
+	err       error
 }
 
 var _ helm.Interface = &fakeReleaseClient{}
@@ -198,7 +200,27 @@ func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryO
 }
 
 func (c *fakeReleaseClient) RunReleaseTest(rlsName string, opts ...helm.ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
-	return nil, nil
+
+	results := make(chan *rls.TestReleaseResponse, len(c.responses))
+	errc := make(chan error, 1)
+
+	go func() {
+		var wg sync.WaitGroup
+		for m, s := range c.responses {
+			wg.Add(1)
+
+			go func(msg string, status release.TestRun_Status) {
+				defer wg.Done()
+				results <- &rls.TestReleaseResponse{Msg: msg, Status: status}
+			}(m, s)
+		}
+
+		wg.Wait()
+		close(results)
+		close(errc)
+	}()
+
+	return results, errc
 }
 
 func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {

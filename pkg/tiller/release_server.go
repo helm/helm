@@ -1141,5 +1141,9 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		testEnv.DeleteTestPods(tSuite.TestManifests)
 	}
 
-	return s.env.Releases.Update(rel)
+	if err := s.env.Releases.Update(rel); err != nil {
+		log.Printf("test: Failed to store updated release: %s", err)
+	}
+
+	return nil
 }

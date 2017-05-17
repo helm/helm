@@ -65,7 +65,8 @@ func (ts *TestSuite) Run(env *Environment) error {
 	ts.StartedAt = timeconv.Now()
 
 	if len(ts.TestManifests) == 0 {
-		env.streamMessage("No Tests Found")
+		// TODO: make this better, adding test run status on test suite is weird
+		env.streamMessage("No Tests Found", release.TestRun_UNKNOWN)
 	}
 
 	for _, testManifest := range ts.TestManifests {
@@ -78,6 +79,7 @@ func (ts *TestSuite) Run(env *Environment) error {
 		if err := env.streamRunning(test.result.Name); err != nil {
 			return err
 		}
+		test.result.Status = release.TestRun_RUNNING
 
 		resourceCreated := true
 		if err := env.createTestPod(test); err != nil {
@@ -93,7 +95,7 @@ func (ts *TestSuite) Run(env *Environment) error {
 			status, err = env.getTestPodStatus(test)
 			if err != nil {
 				resourceCleanExit = false
-				if streamErr := env.streamUnknown(test.result.Name, test.result.Info); streamErr != nil {
+				if streamErr := env.streamError(test.result.Info); streamErr != nil {
 					return streamErr
 				}
 			}

@@ -20,6 +20,7 @@ import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
 import "hapi/release/info.proto";
+import "hapi/release/test_run.proto";
 import "hapi/release/status.proto";
 import "hapi/version/version.proto";
 
@@ -327,4 +328,6 @@ message TestReleaseRequest {
 // TestReleaseResponse represents a message from executing a test
 message TestReleaseResponse {
 	string msg = 1;
+	hapi.release.TestRun.Status status = 2;
+
 }
