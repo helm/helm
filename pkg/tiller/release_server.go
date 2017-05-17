@@ -448,9 +448,14 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
+	hooks, dm, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	docMap := make(map[int32]string, len(dm))
+	for i, d := range dm {
+		docMap[int32(i)] = d.String()
 	}
 
 	// Store an updated release.
@@ -465,15 +470,15 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
-		Version:  revision,
-		Manifest: manifestDoc.String(),
-		Hooks:    hooks,
+		Version: revision,
+		Stages:  docMap,
+		Hooks:   hooks,
 	}
 
 	if len(notesTxt) > 0 {
 		updatedRelease.Info.Status.Notes = notesTxt
 	}
-	err = validateManifest(s.env.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
+	err = validateManifests(s.env.KubeClient, currentRelease.Namespace, dm)
 	return currentRelease, updatedRelease, err
 }
 
@@ -723,7 +728,11 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
+	hooks, dm, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
+	docMap := make(map[int32]string, len(dm))
+	for i, d := range dm {
+		docMap[int32(i)] = d.String()
+	}
 	if err != nil {
 		// Return a release with partial data so that client can show debugging
 		// information.
@@ -740,9 +749,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 			},
 			Version: 0,
 		}
-		if manifestDoc != nil {
-			rel.Manifest = manifestDoc.String()
-		}
+		rel.Stages = docMap
 		return rel, err
 	}
 
@@ -758,15 +765,15 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
 			Description:   "Initial install underway", // Will be overwritten.
 		},
-		Manifest: manifestDoc.String(),
-		Hooks:    hooks,
-		Version:  int32(revision),
+		Stages:  docMap,
+		Hooks:   hooks,
+		Version: int32(revision),
 	}
 	if len(notesTxt) > 0 {
 		rel.Info.Status.Notes = notesTxt
 	}
 
-	err = validateManifest(s.env.KubeClient, req.Namespace, manifestDoc.Bytes())
+	err = validateManifests(s.env.KubeClient, req.Namespace, dm)
 	return rel, err
 }
 
@@ -789,7 +796,7 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 	return chartutil.NewVersionSet(versions...), nil
 }
 
-func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, docMap, string, error) {
 	// Guard to make sure Tiller is at the right version to handle this chart.
 	sver := version.GetVersion()
 	if ch.Metadata.TillerVersion != "" &&
@@ -823,32 +830,23 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hooks, manifests, err := sortManifests(files, vs, InstallOrder)
-	if err != nil {
-		// By catching parse errors here, we can prevent bogus releases from going
-		// to Kubernetes.
-		//
-		// We return the files as a big blob of data to help the user debug parser
-		// errors.
-		b := bytes.NewBuffer(nil)
-		for name, content := range files {
-			if len(strings.TrimSpace(content)) == 0 {
-				continue
-			}
-			b.WriteString("\n---\n# Source: " + name + "\n")
-			b.WriteString(content)
+	hooks, sm, err := sortManifests(files, vs, InstallOrder)
+
+	// Aggregate all valid manifests into one big doc per stage.
+	dm := make(docMap, len(sm))
+	for stgNo, stg := range sm {
+		dm[stgNo] = bytes.NewBuffer(nil)
+		for _, m := range stg {
+			dm[stgNo].WriteString("\n---\n# Source: " + m.name + "\n")
+			dm[stgNo].WriteString(m.content)
 		}
-		return nil, b, "", err
 	}
 
-	// Aggregate all valid manifests into one big doc.
-	b := bytes.NewBuffer(nil)
-	for _, m := range manifests {
-		b.WriteString("\n---\n# Source: " + m.name + "\n")
-		b.WriteString(m.content)
+	if err != nil {
+		return nil, dm, "", err
 	}
 
-	return hooks, b, notes, nil
+	return hooks, dm, notes, nil
 }
 
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
@@ -1094,10 +1092,15 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	return res, nil
 }
 
-func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
-	r := bytes.NewReader(manifest)
-	_, err := c.BuildUnstructured(ns, r)
-	return err
+func validateManifests(c environment.KubeClient, ns string, dm docMap) error {
+	for _, d := range dm {
+		r := bytes.NewReader(d.Bytes())
+		_, err := c.BuildUnstructured(ns, r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RunReleaseTest runs pre-defined tests stored as hooks on a given release

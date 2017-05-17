@@ -82,10 +82,14 @@ var UninstallOrder SortOrder = []string{
 // sortByKind does an in-place sort of manifests by Kind.
 //
 // Results are sorted by 'ordering'
-func sortByKind(manifests []manifest, ordering SortOrder) []manifest {
-	ks := newKindSorter(manifests, ordering)
-	sort.Sort(ks)
-	return ks.manifests
+func sortByKind(sm stageMap, ordering SortOrder) stageMap {
+	newSM := stageMap{}
+	for stgNo, stg := range sm {
+		ks := newKindSorter(stg, ordering)
+		sort.Sort(ks)
+		newSM[stgNo] = ks.manifests
+	}
+	return newSM
 }
 
 type kindSorter struct {
