@@ -61,6 +61,8 @@ type fetchCmd struct {
 	keyFile  string
 	caFile   string
 
+	devel bool
+
 	out io.Writer
 }
 
@@ -75,6 +77,12 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return fmt.Errorf("need at least one argument, url or repo/name of the chart")
 			}
+
+			if fch.version == "" && fch.devel {
+				debug("setting version to >0.0.0-a")
+				fch.version = ">0.0.0-a"
+			}
+
 			for i := 0; i < len(args); i++ {
 				fch.chartRef = args[i]
 				if err := fch.run(); err != nil {
@@ -97,6 +105,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&fch.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&fch.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&fch.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&fch.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	return cmd
 }

@@ -75,6 +75,7 @@ type upgradeCmd struct {
 	reuseValues  bool
 	wait         bool
 	repoURL      string
+	devel        bool
 
 	certFile string
 	keyFile  string
@@ -96,6 +97,11 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "chart path"); err != nil {
 				return err
+			}
+
+			if upgrade.version == "" && upgrade.devel {
+				debug("setting version to >0.0.0-a")
+				upgrade.version = ">0.0.0-a"
 			}
 
 			upgrade.release = args[0]
@@ -126,6 +132,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
