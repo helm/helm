@@ -88,59 +88,65 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			continue
 		}
 
-		var sh util.SimpleHead
-		err := yaml.Unmarshal([]byte(c), &sh)
+		entries := util.SplitManifests(c)
+		for _, m := range entries {
+			var sh util.SimpleHead
+			err := yaml.Unmarshal([]byte(m), &sh)
 
-		if err != nil {
-			e := fmt.Errorf("YAML parse error on %s: %s", n, err)
-			return hs, generic, e
-		}
-
-		if sh.Version != "" && !apis.Has(sh.Version) {
-			return hs, generic, fmt.Errorf("apiVersion %q in %s is not available", sh.Version, n)
-		}
-
-		if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
-			generic = append(generic, manifest{name: n, content: c, head: &sh})
-			continue
-		}
-
-		hookTypes, ok := sh.Metadata.Annotations[hooks.HookAnno]
-		if !ok {
-			generic = append(generic, manifest{name: n, content: c, head: &sh})
-			continue
-		}
-
-		hws, _ := sh.Metadata.Annotations[hooks.HookWeightAnno]
-		hw, err := strconv.Atoi(hws)
-		if err != nil {
-			hw = 0
-		}
-
-		h := &release.Hook{
-			Name:     sh.Metadata.Name,
-			Kind:     sh.Kind,
-			Path:     n,
-			Manifest: c,
-			Events:   []release.Hook_Event{},
-			Weight:   int32(hw),
-		}
-
-		isHook := false
-		for _, hookType := range strings.Split(hookTypes, ",") {
-			hookType = strings.ToLower(strings.TrimSpace(hookType))
-			e, ok := events[hookType]
-			if ok {
-				isHook = true
-				h.Events = append(h.Events, e)
+			if err != nil {
+				e := fmt.Errorf("YAML parse error on %s: %s", n, err)
+				return hs, generic, e
 			}
+
+			if sh.Version != "" && !apis.Has(sh.Version) {
+				return hs, generic, fmt.Errorf("apiVersion %q in %s is not available", sh.Version, n)
+			}
+
+			if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
+				generic = append(generic, manifest{name: n, content: m, head: &sh})
+				continue
+			}
+
+			hookTypes, ok := sh.Metadata.Annotations[hooks.HookAnno]
+			if !ok {
+				generic = append(generic, manifest{name: n, content: m, head: &sh})
+				continue
+			}
+
+			hws, _ := sh.Metadata.Annotations[hooks.HookWeightAnno]
+			hw, err := strconv.Atoi(hws)
+			if err != nil {
+				hw = 0
+			}
+			fmt.Println("NAME: " + sh.Metadata.Name)
+
+			h := &release.Hook{
+				Name:     sh.Metadata.Name,
+				Kind:     sh.Kind,
+				Path:     n, //TODO: fix by putting back into big loop
+				Manifest: m,
+				Events:   []release.Hook_Event{},
+				Weight:   int32(hw),
+			}
+
+			isHook := false
+			for _, hookType := range strings.Split(hookTypes, ",") {
+				hookType = strings.ToLower(strings.TrimSpace(hookType))
+				e, ok := events[hookType]
+				if ok {
+					isHook = true
+					h.Events = append(h.Events, e)
+				}
+			}
+
+			if !isHook {
+				log.Printf("info: skipping unknown hook: %q", hookTypes)
+				continue
+			}
+			hs = append(hs, h)
 		}
 
-		if !isHook {
-			log.Printf("info: skipping unknown hook: %q", hookTypes)
-			continue
-		}
-		hs = append(hs, h)
 	}
+
 	return hs, sortByKind(generic, sort), nil
 }

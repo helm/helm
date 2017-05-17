@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -29,17 +30,17 @@ import (
 func TestSortManifests(t *testing.T) {
 
 	data := []struct {
-		name     string
+		name     []string
 		path     string
-		kind     string
-		hooks    []release.Hook_Event
+		kind     []string
+		hooks    map[string][]release.Hook_Event
 		manifest string
 	}{
 		{
-			name:  "first",
+			name:  []string{"first"},
 			path:  "one",
-			kind:  "Job",
-			hooks: []release.Hook_Event{release.Hook_PRE_INSTALL},
+			kind:  []string{"Job"},
+			hooks: map[string][]release.Hook_Event{"first": {release.Hook_PRE_INSTALL}},
 			manifest: `apiVersion: v1
 kind: Job
 metadata:
@@ -51,10 +52,10 @@ metadata:
 `,
 		},
 		{
-			name:  "second",
+			name:  []string{"second"},
 			path:  "two",
-			kind:  "ReplicaSet",
-			hooks: []release.Hook_Event{release.Hook_POST_INSTALL},
+			kind:  []string{"ReplicaSet"},
+			hooks: map[string][]release.Hook_Event{"second": {release.Hook_POST_INSTALL}},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -63,10 +64,10 @@ metadata:
     "helm.sh/hook": post-install
 `,
 		}, {
-			name:  "third",
+			name:  []string{"third"},
 			path:  "three",
-			kind:  "ReplicaSet",
-			hooks: []release.Hook_Event{},
+			kind:  []string{"ReplicaSet"},
+			hooks: map[string][]release.Hook_Event{"third": nil},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -75,22 +76,21 @@ metadata:
     "helm.sh/hook": no-such-hook
 `,
 		}, {
-			name:  "fourth",
+			name:  []string{"fourth"},
 			path:  "four",
-			kind:  "Pod",
-			hooks: []release.Hook_Event{},
+			kind:  []string{"Pod"},
+			hooks: map[string][]release.Hook_Event{"fourth": nil},
 			manifest: `kind: Pod
 apiVersion: v1
 metadata:
   name: fourth
   annotations:
-    nothing: here
-`,
+    nothing: here`,
 		}, {
-			name:  "fifth",
+			name:  []string{"fifth"},
 			path:  "five",
-			kind:  "ReplicaSet",
-			hooks: []release.Hook_Event{release.Hook_POST_DELETE, release.Hook_POST_INSTALL},
+			kind:  []string{"ReplicaSet"},
+			hooks: map[string][]release.Hook_Event{"fifth": {release.Hook_POST_DELETE, release.Hook_POST_INSTALL}},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -100,18 +100,38 @@ metadata:
 `,
 		}, {
 			// Regression test: files with an underscore in the base name should be skipped.
-			name:     "sixth",
+			name:     []string{"sixth"},
 			path:     "six/_six",
-			kind:     "ReplicaSet",
-			hooks:    []release.Hook_Event{},
+			kind:     []string{"ReplicaSet"},
+			hooks:    map[string][]release.Hook_Event{"sixth": nil},
 			manifest: `invalid manifest`, // This will fail if partial is not skipped.
 		}, {
 			// Regression test: files with no content should be skipped.
-			name:     "seventh",
+			name:     []string{"seventh"},
 			path:     "seven",
-			kind:     "ReplicaSet",
-			hooks:    []release.Hook_Event{},
+			kind:     []string{"ReplicaSet"},
+			hooks:    map[string][]release.Hook_Event{"seventh": nil},
 			manifest: "",
+		},
+		{
+			name:  []string{"eighth", "example-test"},
+			path:  "eight",
+			kind:  []string{"ConfigMap", "Pod"},
+			hooks: map[string][]release.Hook_Event{"eighth": nil, "example-test": {release.Hook_RELEASE_TEST_SUCCESS}},
+			manifest: `kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: eighth
+data:
+  name: value
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-test
+  annotations:
+    "helm.sh/hook": test-success
+`,
 		},
 	}
 
@@ -126,12 +146,12 @@ metadata:
 	}
 
 	// This test will fail if 'six' or 'seven' was added.
-	if len(generic) != 1 {
-		t.Errorf("Expected 1 generic manifest, got %d", len(generic))
+	if len(generic) != 2 {
+		t.Errorf("Expected 2 generic manifests, got %d", len(generic))
 	}
 
-	if len(hs) != 3 {
-		t.Errorf("Expected 3 hooks, got %d", len(hs))
+	if len(hs) != 4 {
+		t.Errorf("Expected 4 hooks, got %d", len(hs))
 	}
 
 	for _, out := range hs {
@@ -142,17 +162,30 @@ metadata:
 				if out.Path != expect.path {
 					t.Errorf("Expected path %s, got %s", expect.path, out.Path)
 				}
-				if out.Name != expect.name {
-					t.Errorf("Expected name %s, got %s", expect.name, out.Name)
-				}
-				if out.Kind != expect.kind {
-					t.Errorf("Expected kind %s, got %s", expect.kind, out.Kind)
-				}
-				for i := 0; i < len(out.Events); i++ {
-					if out.Events[i] != expect.hooks[i] {
-						t.Errorf("Expected event %d, got %d", expect.hooks[i], out.Events[i])
+				nameFound := false
+				for _, expectedName := range expect.name {
+					if out.Name == expectedName {
+						nameFound = true
 					}
 				}
+				if !nameFound {
+					t.Errorf("Got unexpected name %s", out.Name)
+				}
+				kindFound := false
+				for _, expectedKind := range expect.kind {
+					if out.Kind == expectedKind {
+						kindFound = true
+					}
+				}
+				if !kindFound {
+					t.Errorf("Got unexpected kind %s", out.Kind)
+				}
+
+				expectedHooks := expect.hooks[out.Name]
+				if !reflect.DeepEqual(expectedHooks, out.Events) {
+					t.Errorf("expected events: %v but got: %v", expectedHooks, out.Events)
+				}
+
 			}
 		}
 		if !found {
@@ -161,27 +194,40 @@ metadata:
 	}
 
 	// Verify the sort order
-	sorted := make([]manifest, len(data))
-	for i, s := range data {
-		var sh util.SimpleHead
-		err := yaml.Unmarshal([]byte(s.manifest), &sh)
-		if err != nil {
-			// This is expected for manifests that are corrupt or empty.
-			t.Log(err)
-		}
-		sorted[i] = manifest{
-			content: s.manifest,
-			name:    s.name,
-			head:    &sh,
+	sorted := []manifest{}
+	for _, s := range data {
+		manifests := util.SplitManifests(s.manifest)
+		mCount := 0
+		for _, m := range manifests {
+			name := s.name[mCount]
+
+			var sh util.SimpleHead
+			err := yaml.Unmarshal([]byte(m), &sh)
+			if err != nil {
+				// This is expected for manifests that are corrupt or empty.
+				t.Log(err)
+			}
+
+			//only keep track of non-hook manifests
+			if err == nil && s.hooks[name] == nil {
+				another := manifest{
+					content: m,
+					name:    name,
+					head:    &sh,
+				}
+				sorted = append(sorted, another)
+			}
+
+			mCount++
 		}
 	}
+
 	sorted = sortByKind(sorted, InstallOrder)
 	for i, m := range generic {
 		if m.content != sorted[i].content {
 			t.Errorf("Expected %q, got %q", m.content, sorted[i].content)
 		}
 	}
-
 }
 
 func TestVersionSet(t *testing.T) {

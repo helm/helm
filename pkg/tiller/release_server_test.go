@@ -47,8 +47,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,pre-delete
 data:
-  name: value
-`
+  name: value`
 
 var manifestWithTestHook = `
 apiVersion: v1
@@ -81,8 +80,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-upgrade,pre-upgrade
 data:
-  name: value
-`
+  name: value`
 
 var manifestWithRollbackHooks = `apiVersion: v1
 kind: ConfigMap
