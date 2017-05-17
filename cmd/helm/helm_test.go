@@ -201,7 +201,7 @@ func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryO
 
 func (c *fakeReleaseClient) RunReleaseTest(rlsName string, opts ...helm.ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
 
-	results := make(chan *rls.TestReleaseResponse, len(c.responses))
+	results := make(chan *rls.TestReleaseResponse)
 	errc := make(chan error, 1)
 
 	go func() {
