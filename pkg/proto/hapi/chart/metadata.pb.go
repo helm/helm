@@ -47,6 +47,20 @@ func (m *Maintainer) String() string            { return proto.CompactTextString
 func (*Maintainer) ProtoMessage()               {}
 func (*Maintainer) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
+func (m *Maintainer) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Maintainer) GetEmail() string {
+	if m != nil {
+		return m.Email
+	}
+	return ""
+}
+
 // 	Metadata for a Chart file. This models the structure of a Chart.yaml file.
 //
 // 	Spec: https://k8s.io/helm/blob/master/docs/design/chart_format.md#the-chart-file
@@ -89,11 +103,109 @@ func (m *Metadata) String() string            { return proto.CompactTextString(m
 func (*Metadata) ProtoMessage()               {}
 func (*Metadata) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
 
+func (m *Metadata) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Metadata) GetHome() string {
+	if m != nil {
+		return m.Home
+	}
+	return ""
+}
+
+func (m *Metadata) GetSources() []string {
+	if m != nil {
+		return m.Sources
+	}
+	return nil
+}
+
+func (m *Metadata) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
+
+func (m *Metadata) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+func (m *Metadata) GetKeywords() []string {
+	if m != nil {
+		return m.Keywords
+	}
+	return nil
+}
+
 func (m *Metadata) GetMaintainers() []*Maintainer {
 	if m != nil {
 		return m.Maintainers
 	}
 	return nil
+}
+
+func (m *Metadata) GetEngine() string {
+	if m != nil {
+		return m.Engine
+	}
+	return ""
+}
+
+func (m *Metadata) GetIcon() string {
+	if m != nil {
+		return m.Icon
+	}
+	return ""
+}
+
+func (m *Metadata) GetApiVersion() string {
+	if m != nil {
+		return m.ApiVersion
+	}
+	return ""
+}
+
+func (m *Metadata) GetCondition() string {
+	if m != nil {
+		return m.Condition
+	}
+	return ""
+}
+
+func (m *Metadata) GetTags() string {
+	if m != nil {
+		return m.Tags
+	}
+	return ""
+}
+
+func (m *Metadata) GetAppVersion() string {
+	if m != nil {
+		return m.AppVersion
+	}
+	return ""
+}
+
+func (m *Metadata) GetDeprecated() bool {
+	if m != nil {
+		return m.Deprecated
+	}
+	return false
+}
+
+func (m *Metadata) GetTillerVersion() string {
+	if m != nil {
+		return m.TillerVersion
+	}
+	return ""
 }
 
 func init() {

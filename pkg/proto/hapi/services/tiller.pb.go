@@ -141,6 +141,55 @@ func (m *ListReleasesRequest) String() string            { return proto.CompactT
 func (*ListReleasesRequest) ProtoMessage()               {}
 func (*ListReleasesRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *ListReleasesRequest) GetLimit() int64 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+func (m *ListReleasesRequest) GetOffset() string {
+	if m != nil {
+		return m.Offset
+	}
+	return ""
+}
+
+func (m *ListReleasesRequest) GetSortBy() ListSort_SortBy {
+	if m != nil {
+		return m.SortBy
+	}
+	return ListSort_UNKNOWN
+}
+
+func (m *ListReleasesRequest) GetFilter() string {
+	if m != nil {
+		return m.Filter
+	}
+	return ""
+}
+
+func (m *ListReleasesRequest) GetSortOrder() ListSort_SortOrder {
+	if m != nil {
+		return m.SortOrder
+	}
+	return ListSort_ASC
+}
+
+func (m *ListReleasesRequest) GetStatusCodes() []hapi_release3.Status_Code {
+	if m != nil {
+		return m.StatusCodes
+	}
+	return nil
+}
+
+func (m *ListReleasesRequest) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
+}
+
 // ListSort defines sorting fields on a release list.
 type ListSort struct {
 }
@@ -168,6 +217,27 @@ func (m *ListReleasesResponse) String() string            { return proto.Compact
 func (*ListReleasesResponse) ProtoMessage()               {}
 func (*ListReleasesResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
+func (m *ListReleasesResponse) GetCount() int64 {
+	if m != nil {
+		return m.Count
+	}
+	return 0
+}
+
+func (m *ListReleasesResponse) GetNext() string {
+	if m != nil {
+		return m.Next
+	}
+	return ""
+}
+
+func (m *ListReleasesResponse) GetTotal() int64 {
+	if m != nil {
+		return m.Total
+	}
+	return 0
+}
+
 func (m *ListReleasesResponse) GetReleases() []*hapi_release5.Release {
 	if m != nil {
 		return m.Releases
@@ -188,6 +258,20 @@ func (m *GetReleaseStatusRequest) String() string            { return proto.Comp
 func (*GetReleaseStatusRequest) ProtoMessage()               {}
 func (*GetReleaseStatusRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
+func (m *GetReleaseStatusRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetReleaseStatusRequest) GetVersion() int32 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
+
 // GetReleaseStatusResponse is the response indicating the status of the named release.
 type GetReleaseStatusResponse struct {
 	// Name is the name of the release.
@@ -203,11 +287,25 @@ func (m *GetReleaseStatusResponse) String() string            { return proto.Com
 func (*GetReleaseStatusResponse) ProtoMessage()               {}
 func (*GetReleaseStatusResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
+func (m *GetReleaseStatusResponse) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func (m *GetReleaseStatusResponse) GetInfo() *hapi_release4.Info {
 	if m != nil {
 		return m.Info
 	}
 	return nil
+}
+
+func (m *GetReleaseStatusResponse) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
 }
 
 // GetReleaseContentRequest is a request to get the contents of a release.
@@ -222,6 +320,20 @@ func (m *GetReleaseContentRequest) Reset()                    { *m = GetReleaseC
 func (m *GetReleaseContentRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetReleaseContentRequest) ProtoMessage()               {}
 func (*GetReleaseContentRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *GetReleaseContentRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetReleaseContentRequest) GetVersion() int32 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
 
 // GetReleaseContentResponse is a response containing the contents of a release.
 type GetReleaseContentResponse struct {
@@ -304,6 +416,13 @@ func (m *UpdateReleaseRequest) String() string            { return proto.Compact
 func (*UpdateReleaseRequest) ProtoMessage()               {}
 func (*UpdateReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
+func (m *UpdateReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func (m *UpdateReleaseRequest) GetChart() *hapi_chart3.Chart {
 	if m != nil {
 		return m.Chart
@@ -316,6 +435,55 @@ func (m *UpdateReleaseRequest) GetValues() *hapi_chart.Config {
 		return m.Values
 	}
 	return nil
+}
+
+func (m *UpdateReleaseRequest) GetDryRun() bool {
+	if m != nil {
+		return m.DryRun
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetRecreate() bool {
+	if m != nil {
+		return m.Recreate
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *UpdateReleaseRequest) GetResetValues() bool {
+	if m != nil {
+		return m.ResetValues
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetReuseValues() bool {
+	if m != nil {
+		return m.ReuseValues
+	}
+	return false
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -357,6 +525,55 @@ func (m *RollbackReleaseRequest) Reset()                    { *m = RollbackRelea
 func (m *RollbackReleaseRequest) String() string            { return proto.CompactTextString(m) }
 func (*RollbackReleaseRequest) ProtoMessage()               {}
 func (*RollbackReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+
+func (m *RollbackReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *RollbackReleaseRequest) GetDryRun() bool {
+	if m != nil {
+		return m.DryRun
+	}
+	return false
+}
+
+func (m *RollbackReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *RollbackReleaseRequest) GetVersion() int32 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
+
+func (m *RollbackReleaseRequest) GetRecreate() bool {
+	if m != nil {
+		return m.Recreate
+	}
+	return false
+}
+
+func (m *RollbackReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *RollbackReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
 
 // RollbackReleaseResponse is the response to an update request.
 type RollbackReleaseResponse struct {
@@ -421,6 +638,55 @@ func (m *InstallReleaseRequest) GetValues() *hapi_chart.Config {
 	return nil
 }
 
+func (m *InstallReleaseRequest) GetDryRun() bool {
+	if m != nil {
+		return m.DryRun
+	}
+	return false
+}
+
+func (m *InstallReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *InstallReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *InstallReleaseRequest) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
+}
+
+func (m *InstallReleaseRequest) GetReuseName() bool {
+	if m != nil {
+		return m.ReuseName
+	}
+	return false
+}
+
+func (m *InstallReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *InstallReleaseRequest) GetWait() bool {
+	if m != nil {
+		return m.Wait
+	}
+	return false
+}
+
 // InstallReleaseResponse is the response from a release installation.
 type InstallReleaseResponse struct {
 	Release *hapi_release5.Release `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
@@ -455,6 +721,34 @@ func (m *UninstallReleaseRequest) String() string            { return proto.Comp
 func (*UninstallReleaseRequest) ProtoMessage()               {}
 func (*UninstallReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
 
+func (m *UninstallReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *UninstallReleaseRequest) GetDisableHooks() bool {
+	if m != nil {
+		return m.DisableHooks
+	}
+	return false
+}
+
+func (m *UninstallReleaseRequest) GetPurge() bool {
+	if m != nil {
+		return m.Purge
+	}
+	return false
+}
+
+func (m *UninstallReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
 // UninstallReleaseResponse represents a successful response to an uninstall request.
 type UninstallReleaseResponse struct {
 	// Release is the release that was marked deleted.
@@ -475,6 +769,13 @@ func (m *UninstallReleaseResponse) GetRelease() *hapi_release5.Release {
 	return nil
 }
 
+func (m *UninstallReleaseResponse) GetInfo() string {
+	if m != nil {
+		return m.Info
+	}
+	return ""
+}
+
 // GetVersionRequest requests for version information.
 type GetVersionRequest struct {
 }
@@ -485,7 +786,7 @@ func (*GetVersionRequest) ProtoMessage()               {}
 func (*GetVersionRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{17} }
 
 type GetVersionResponse struct {
-	Version *hapi_version.Version `protobuf:"bytes,1,opt,name=Version,json=version" json:"Version,omitempty"`
+	Version *hapi_version.Version `protobuf:"bytes,1,opt,name=Version" json:"Version,omitempty"`
 }
 
 func (m *GetVersionResponse) Reset()                    { *m = GetVersionResponse{} }
@@ -512,6 +813,20 @@ func (m *GetHistoryRequest) Reset()                    { *m = GetHistoryRequest{
 func (m *GetHistoryRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetHistoryRequest) ProtoMessage()               {}
 func (*GetHistoryRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{19} }
+
+func (m *GetHistoryRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *GetHistoryRequest) GetMax() int32 {
+	if m != nil {
+		return m.Max
+	}
+	return 0
+}
 
 // GetHistoryResponse is received in response to a GetHistory rpc.
 type GetHistoryResponse struct {
@@ -545,6 +860,27 @@ func (m *TestReleaseRequest) String() string            { return proto.CompactTe
 func (*TestReleaseRequest) ProtoMessage()               {}
 func (*TestReleaseRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{21} }
 
+func (m *TestReleaseRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *TestReleaseRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+func (m *TestReleaseRequest) GetCleanup() bool {
+	if m != nil {
+		return m.Cleanup
+	}
+	return false
+}
+
 // TestReleaseResponse represents a message from executing a test
 type TestReleaseResponse struct {
 	Msg string `protobuf:"bytes,1,opt,name=msg" json:"msg,omitempty"`
@@ -554,6 +890,13 @@ func (m *TestReleaseResponse) Reset()                    { *m = TestReleaseRespo
 func (m *TestReleaseResponse) String() string            { return proto.CompactTextString(m) }
 func (*TestReleaseResponse) ProtoMessage()               {}
 func (*TestReleaseResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{22} }
+
+func (m *TestReleaseResponse) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
 
 func init() {
 	proto.RegisterType((*ListReleasesRequest)(nil), "hapi.services.tiller.ListReleasesRequest")
@@ -589,7 +932,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for ReleaseService service
 
@@ -1097,7 +1440,7 @@ var _ReleaseService_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: fileDescriptor0,
+	Metadata: "hapi/services/tiller.proto",
 }
 
 func init() { proto.RegisterFile("hapi/services/tiller.proto", fileDescriptor0) }
@@ -1163,24 +1506,24 @@ var fileDescriptor0 = []byte{
 	0x1e, 0x47, 0x53, 0x2c, 0xa9, 0x15, 0x8b, 0x6c, 0x8c, 0x75, 0x2d, 0x46, 0x67, 0x08, 0xd6, 0xb2,
 	0x0f, 0x37, 0x8c, 0x28, 0xf1, 0x3a, 0xbd, 0x78, 0xda, 0xe2, 0x92, 0x71, 0xee, 0xc0, 0xed, 0x63,
 	0xcc, 0xde, 0x88, 0x0f, 0x40, 0x86, 0xe7, 0xf4, 0x00, 0x65, 0x37, 0x17, 0xf6, 0xe4, 0x96, 0x6e,
-	0x4f, 0x4d, 0x61, 0x4a, 0x3f, 0xbd, 0x58, 0xbe, 0xe5, 0xd8, 0x27, 0x3e, 0x65, 0x24, 0xba, 0xbc,
-	0x8a, 0xba, 0x4d, 0x30, 0x67, 0xde, 0x07, 0x79, 0x2f, 0x25, 0xaf, 0xce, 0x31, 0xf7, 0x20, 0x3d,
-	0x2a, 0x3d, 0xc8, 0xde, 0xf2, 0x46, 0xb5, 0x5b, 0xfe, 0x57, 0x40, 0xaf, 0x70, 0x3a, 0x70, 0x5c,
-	0x73, 0x41, 0xaa, 0x24, 0xd4, 0xf4, 0x42, 0xb3, 0xa0, 0x39, 0x0a, 0xb0, 0x17, 0xc6, 0x73, 0x99,
-	0x36, 0xb5, 0x74, 0x1e, 0xc0, 0x1d, 0x0d, 0x5d, 0xfa, 0x99, 0xc4, 0x43, 0xa7, 0x12, 0x3d, 0x79,
-	0x3d, 0xf8, 0xd8, 0x86, 0x0d, 0x35, 0x21, 0x88, 0x69, 0x0f, 0xf9, 0xb0, 0x9e, 0x1d, 0x85, 0xd0,
-	0xc3, 0xf2, 0x61, 0x30, 0x37, 0xd1, 0xda, 0x8f, 0xaa, 0xa8, 0x0a, 0x5f, 0x9c, 0x95, 0xa7, 0x06,
-	0xa2, 0xb0, 0x99, 0x9f, 0x50, 0xd0, 0x93, 0x62, 0x8c, 0x92, 0x91, 0xc8, 0xee, 0x56, 0x55, 0x57,
-	0x66, 0xd1, 0x05, 0xcf, 0xbe, 0x3e, 0x56, 0xa0, 0x6b, 0x61, 0xf4, 0x49, 0xc6, 0xde, 0xaf, 0xac,
-	0x9f, 0xda, 0x7d, 0x0f, 0x1b, 0xfa, 0x90, 0x80, 0x1e, 0x5f, 0x07, 0x92, 0x19, 0x53, 0xec, 0xaf,
-	0xaa, 0x29, 0x2b, 0x73, 0x1d, 0xe3, 0xa9, 0x81, 0x7e, 0x87, 0x5b, 0xda, 0x45, 0x88, 0x4a, 0x12,
-	0x54, 0x34, 0x7c, 0xd8, 0x8f, 0x2b, 0xe9, 0xa6, 0xe1, 0xcd, 0x60, 0x43, 0xef, 0x70, 0x65, 0xe1,
-	0x15, 0x5e, 0x19, 0x65, 0xe1, 0x15, 0x37, 0x4d, 0x67, 0x25, 0x29, 0x9d, 0x7c, 0x03, 0x2a, 0x2b,
-	0x9d, 0x92, 0x66, 0x59, 0x56, 0x3a, 0x65, 0x7d, 0xcd, 0x59, 0x41, 0x1e, 0xc0, 0xa2, 0xff, 0xa0,
-	0x07, 0xa5, 0x19, 0xd1, 0xdb, 0x96, 0xdd, 0xb9, 0x5e, 0x31, 0x35, 0x31, 0x87, 0x4f, 0x72, 0x17,
-	0x34, 0x2a, 0xa1, 0xa6, 0x78, 0x2e, 0xb1, 0x9f, 0x54, 0xd4, 0xce, 0x05, 0x25, 0x5b, 0xda, 0x15,
-	0x41, 0xe9, 0xfd, 0xf2, 0x8a, 0xa0, 0x72, 0xdd, 0xd1, 0x59, 0x41, 0x3e, 0x6c, 0xb8, 0x71, 0x28,
-	0x4d, 0x27, 0x8d, 0x09, 0x95, 0x9c, 0x5e, 0x6e, 0x89, 0xf6, 0xc3, 0x0a, 0x9a, 0x8b, 0x96, 0xf2,
-	0x0c, 0xde, 0xb6, 0x94, 0xea, 0x59, 0x83, 0xff, 0xff, 0xfe, 0xe6, 0xbf, 0x00, 0x00, 0x00, 0xff,
-	0xff, 0xd2, 0xe7, 0x93, 0xb8, 0x68, 0x10, 0x00, 0x00,
+	0x4f, 0x4d, 0x61, 0x4a, 0x5f, 0x69, 0x39, 0xdf, 0x72, 0xec, 0x13, 0x9f, 0x32, 0x12, 0x5d, 0x5e,
+	0x45, 0xdd, 0x26, 0x98, 0x33, 0xef, 0x83, 0xbc, 0x97, 0x92, 0x57, 0xe7, 0x98, 0x7b, 0x90, 0x1e,
+	0x95, 0x1e, 0x64, 0x6f, 0x79, 0xa3, 0xda, 0x2d, 0xff, 0x2b, 0xa0, 0x57, 0x38, 0x1d, 0x38, 0xae,
+	0xb9, 0x20, 0x55, 0x12, 0x6a, 0x7a, 0xa1, 0x59, 0xd0, 0x1c, 0x05, 0xd8, 0x0b, 0xe3, 0xb9, 0x4c,
+	0x9b, 0x5a, 0x3a, 0x0f, 0xe0, 0x8e, 0x86, 0x2e, 0xfd, 0x4c, 0xe2, 0xa1, 0x53, 0x89, 0x9e, 0xbc,
+	0x1e, 0x7c, 0x6c, 0xc3, 0x86, 0x9a, 0x10, 0xc4, 0xb4, 0x87, 0x7c, 0x58, 0xcf, 0x8e, 0x42, 0xe8,
+	0x61, 0xf9, 0x30, 0x98, 0x9b, 0x68, 0xed, 0x47, 0x55, 0x54, 0x85, 0x2f, 0xce, 0xca, 0x53, 0x03,
+	0x51, 0xd8, 0xcc, 0x4f, 0x28, 0xe8, 0x49, 0x31, 0x46, 0xc9, 0x48, 0x64, 0x77, 0xab, 0xaa, 0x2b,
+	0xb3, 0xe8, 0x82, 0x67, 0x5f, 0x1f, 0x2b, 0xd0, 0xb5, 0x30, 0xfa, 0x24, 0x63, 0xef, 0x57, 0xd6,
+	0x4f, 0xed, 0xbe, 0x87, 0x0d, 0x7d, 0x48, 0x40, 0x8f, 0xaf, 0x03, 0xc9, 0x8c, 0x29, 0xf6, 0x57,
+	0xd5, 0x94, 0x95, 0xb9, 0x8e, 0xf1, 0xd4, 0x40, 0xbf, 0xc3, 0x2d, 0xed, 0x22, 0x44, 0x25, 0x09,
+	0x2a, 0x1a, 0x3e, 0xec, 0xc7, 0x95, 0x74, 0xd3, 0xf0, 0x66, 0xb0, 0xa1, 0x77, 0xb8, 0xb2, 0xf0,
+	0x0a, 0xaf, 0x8c, 0xb2, 0xf0, 0x8a, 0x9b, 0xa6, 0xb3, 0x92, 0x94, 0x4e, 0xbe, 0x01, 0x95, 0x95,
+	0x4e, 0x49, 0xb3, 0x2c, 0x2b, 0x9d, 0xb2, 0xbe, 0xe6, 0xac, 0x20, 0x0f, 0x60, 0xd1, 0x7f, 0xd0,
+	0x83, 0xd2, 0x8c, 0xe8, 0x6d, 0xcb, 0xee, 0x5c, 0xaf, 0x98, 0x9a, 0x98, 0xc3, 0x27, 0xb9, 0x0b,
+	0x1a, 0x95, 0x50, 0x53, 0x3c, 0x97, 0xd8, 0x4f, 0x2a, 0x6a, 0xe7, 0x82, 0x92, 0x2d, 0xed, 0x8a,
+	0xa0, 0xf4, 0x7e, 0x79, 0x45, 0x50, 0xb9, 0xee, 0xe8, 0xac, 0x20, 0x1f, 0x36, 0xdc, 0x38, 0x94,
+	0xa6, 0x93, 0xc6, 0x84, 0x4a, 0x4e, 0x2f, 0xb7, 0x44, 0xfb, 0x61, 0x05, 0xcd, 0x45, 0x4b, 0x79,
+	0x06, 0x6f, 0x5b, 0x4a, 0xf5, 0xac, 0xc1, 0xff, 0x7f, 0x7f, 0xf3, 0x5f, 0x00, 0x00, 0x00, 0xff,
+	0xff, 0x43, 0x76, 0x4a, 0x56, 0x68, 0x10, 0x00, 0x00,
 }

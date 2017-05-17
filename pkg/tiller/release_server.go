@@ -254,7 +254,12 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		Info:      rel.Info,
 	}
 
-	s.logs.PubLog(req.Name, release.Log_SYSTEM, release.Log_INFO, "Got release status for the release")
+	logOptions := kube.NewLogOptions()
+	logOptions.Resource = "tiller-deploy-1491950541-666lt"
+	logOptions.Namespace = "kube-system"
+	w := s.logs.GetWriter(req.Name, release.Log_SYSTEM, release.Log_INFO)
+
+	err := logOptions.ExecuteLogRequest(w)
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.

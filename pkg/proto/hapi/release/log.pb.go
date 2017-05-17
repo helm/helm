@@ -99,6 +99,27 @@ func (m *LogSubscription) String() string            { return proto.CompactTextS
 func (*LogSubscription) ProtoMessage()               {}
 func (*LogSubscription) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
+func (m *LogSubscription) GetRelease() string {
+	if m != nil {
+		return m.Release
+	}
+	return ""
+}
+
+func (m *LogSubscription) GetLevel() Log_Level {
+	if m != nil {
+		return m.Level
+	}
+	return Log_UNIVERSAL
+}
+
+func (m *LogSubscription) GetSources() []Log_Source {
+	if m != nil {
+		return m.Sources
+	}
+	return nil
+}
+
 type Log struct {
 	Release   string                     `protobuf:"bytes,1,opt,name=release" json:"release,omitempty"`
 	Level     Log_Level                  `protobuf:"varint,2,opt,name=level,enum=hapi.release.Log_Level" json:"level,omitempty"`
@@ -111,6 +132,34 @@ func (m *Log) Reset()                    { *m = Log{} }
 func (m *Log) String() string            { return proto.CompactTextString(m) }
 func (*Log) ProtoMessage()               {}
 func (*Log) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
+
+func (m *Log) GetRelease() string {
+	if m != nil {
+		return m.Release
+	}
+	return ""
+}
+
+func (m *Log) GetLevel() Log_Level {
+	if m != nil {
+		return m.Level
+	}
+	return Log_UNIVERSAL
+}
+
+func (m *Log) GetSource() Log_Source {
+	if m != nil {
+		return m.Source
+	}
+	return Log_UNKNOWN
+}
+
+func (m *Log) GetLog() string {
+	if m != nil {
+		return m.Log
+	}
+	return ""
+}
 
 func (m *Log) GetTimestamp() *google_protobuf.Timestamp {
 	if m != nil {

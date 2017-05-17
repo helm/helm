@@ -1,5 +1,5 @@
-hash: e323e66f9aba77578f7dcc0886e3117ebc373bc391374b2d5ddd293c276c8966
-updated: 2017-05-02T22:27:03.674351365-04:00
+hash: 6ee139cf584a7c74de86b7bfe1269ea8a467bc710801cb2a8156980cbad43180
+updated: 2017-05-15T12:47:50.482052914-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -23,7 +23,12 @@ imports:
 - name: github.com/BurntSushi/toml
   version: b26d9c308763d68093482582cea63d69be07a0f0
 - name: github.com/chai2010/gettext-go
-  version: bf70f2a70fb1b1f36d90d671a72795984eab0fcb
+  version: c6fed771bfd517099caf0f7a961671fa8ed08723
+  subpackages:
+  - gettext
+  - gettext/mo
+  - gettext/plural
+  - gettext/po
 - name: github.com/coreos/go-oidc
   version: be73733bb8cc830d0205609b95d125215f8e9c70
   subpackages:
@@ -46,6 +51,8 @@ imports:
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
+- name: github.com/daviddengcn/go-colortext
+  version: 511bcaf42ccd42c38aba7427b6673277bf19e2a1
 - name: github.com/dgrijalva/jwt-go
   version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
 - name: github.com/docker/distribution
@@ -166,6 +173,8 @@ imports:
   - buffer
   - jlexer
   - jwriter
+- name: github.com/MakeNowJust/heredoc
+  version: 1d91351acdc1cb2f2c995864674b754134b86ca7
 - name: github.com/Masterminds/semver
   version: 3f0ab6d4ab4bed1c61caf056b63a6e62190c7801
 - name: github.com/Masterminds/sprig
@@ -204,6 +213,8 @@ imports:
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/renstrom/dedent
+  version: 020d11c3b9c0c7a3c2efcc8e5cf5b9ef7bcea21f
 - name: github.com/russross/blackfriday
   version: 300106c228d52c8941d4b3de6054a6062a86dda3
 - name: github.com/satori/go.uuid
@@ -345,6 +356,7 @@ imports:
   - pkg/util/httpstream/spdy
   - pkg/util/intstr
   - pkg/util/json
+  - pkg/util/jsonmergepatch
   - pkg/util/mergepatch
   - pkg/util/net
   - pkg/util/rand
@@ -468,8 +480,13 @@ imports:
   - util/homedir
   - util/integer
   - util/jsonpath
+- name: k8s.io/heapster
+  version: c2ac40f1adf8c42a79badddb2a2acd673cae3bcb
+  subpackages:
+  - metrics/api/v1/types
+  - metrics/apis/metrics/v1alpha1
 - name: k8s.io/kubernetes
-  version: 477efc3cbe6a7effca06bd1452fa356e2201e1ee
+  version: 0480917b552be33e2dba47386e51decb1a211df6
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install
@@ -488,6 +505,7 @@ imports:
   - pkg/api/pod
   - pkg/api/service
   - pkg/api/testapi
+  - pkg/api/unversioned
   - pkg/api/util
   - pkg/api/v1
   - pkg/api/validation
@@ -595,9 +613,18 @@ imports:
   - pkg/credentialprovider
   - pkg/features
   - pkg/fieldpath
+  - pkg/generated
   - pkg/kubectl
+  - pkg/kubectl/cmd
+  - pkg/kubectl/cmd/auth
+  - pkg/kubectl/cmd/config
+  - pkg/kubectl/cmd/rollout
+  - pkg/kubectl/cmd/set
+  - pkg/kubectl/cmd/templates
   - pkg/kubectl/cmd/testing
   - pkg/kubectl/cmd/util
+  - pkg/kubectl/cmd/util/editor
+  - pkg/kubectl/metricsutil
   - pkg/kubectl/resource
   - pkg/kubelet/qos
   - pkg/kubelet/server/remotecommand
@@ -608,14 +635,17 @@ imports:
   - pkg/security/apparmor
   - pkg/serviceaccount
   - pkg/util
+  - pkg/util/crlf
   - pkg/util/exec
   - pkg/util/hash
+  - pkg/util/i18n
   - pkg/util/interrupt
   - pkg/util/labels
   - pkg/util/net/sets
   - pkg/util/node
   - pkg/util/parsers
   - pkg/util/slice
+  - pkg/util/taints
   - pkg/util/term
   - pkg/version
   - pkg/watch/json

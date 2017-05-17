@@ -33,9 +33,9 @@ type LogOptions struct {
 	// Lines of recent log file to display. Defaults to -1 with no selector, showing all log lines otherwise 10, if a selector is provided.
 	Tail int64
 	// Only return logs after a specific date (RFC3339). Defaults to all logs. Only one of since-time / since may be used.
-	SinceTime time.Time
+	SinceTime *time.Time
 	// Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.
-	Since time.Duration
+	Since *time.Duration
 	// Print the logs of this container
 	Container string
 	// Selector (label query) to filter on.
@@ -46,7 +46,7 @@ type LogOptions struct {
 	Resource string
 }
 
-func NewOptions() *LogOptions {
+func NewLogOptions() *LogOptions {
 	return &LogOptions{
 		Follow: false,
 		Timestamps: false,
@@ -62,9 +62,15 @@ func NewOptions() *LogOptions {
 	}
 }
 
-func (o *LogOptions) ExecuteLogRequest(out io.Writer) {
+func (o *LogOptions) ExecuteLogRequest(out io.Writer) error {
 	f := cmdutil.NewFactory(nil)
-	Complete(o, f, out)
+	logsOptions, err := Complete(o, f, out)
+	if err != nil {
+		return err
+	}
+	Validate(logsOptions)
+	RunLogs(logsOptions)
+	return nil
 }
 
 func Complete(opts *LogOptions, f cmdutil.Factory, out io.Writer) (*cmd.LogsOptions, error) {
@@ -85,8 +91,8 @@ func Complete(opts *LogOptions, f cmdutil.Factory, out io.Writer) (*cmd.LogsOpti
 		Previous:   opts.Previous,
 		Timestamps: opts.Timestamps,
 	}
-	if opts.SinceTime {
-		t := metav1.NewTime(opts.SinceTime)
+	if opts.SinceTime != nil {
+		t := metav1.NewTime(*opts.SinceTime)
 		logOptions.SinceTime = &t
 	}
 	if opts.LimitBytes != 0 {
@@ -95,7 +101,7 @@ func Complete(opts *LogOptions, f cmdutil.Factory, out io.Writer) (*cmd.LogsOpti
 	if opts.Tail != -1 {
 		logOptions.TailLines = &opts.Tail
 	}
-	if opts.Since {
+	if opts.Since != nil {
 		// round up to the nearest second
 		sec := int64(math.Ceil(opts.Since.Seconds()))
 		logOptions.SinceSeconds = &sec
