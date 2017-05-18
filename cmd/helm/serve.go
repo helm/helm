@@ -55,17 +55,27 @@ func newServeCmd(out io.Writer) *cobra.Command {
 		Use:   "serve",
 		Short: "start a local http web server",
 		Long:  serveDesc,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return srv.complete(args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return srv.run()
 		},
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&srv.repoPath, "repo-path", settings.Home.LocalRepository(), "local directory path from which to serve charts")
+	f.StringVar(&srv.repoPath, "repo-path", "", "local directory path from which to serve charts")
 	f.StringVar(&srv.address, "address", "127.0.0.1:8879", "address to listen on")
 	f.StringVar(&srv.url, "url", "", "external URL of chart repository")
 
 	return cmd
+}
+
+func (s *serveCmd) complete(args []string) error {
+	if s.repoPath == "" {
+		s.repoPath = settings.Home.LocalRepository()
+	}
+	return nil
 }
 
 func (s *serveCmd) run() error {

@@ -33,7 +33,6 @@ import (
 
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
 	tiller_env "k8s.io/helm/pkg/tiller/environment"
@@ -84,8 +83,6 @@ Environment:
 `
 
 func newRootCmd(out io.Writer) *cobra.Command {
-	var helmHomeTemp string
-
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -101,8 +98,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		},
 	}
 	p := cmd.PersistentFlags()
-	p.StringVar(&helmHomeTemp, "home", helm_env.DefaultHelmHome(), "location of your Helm config. Overrides $HELM_HOME")
-	settings.Home = helmpath.Home(helmHomeTemp)
+	p.StringVar((*string)(&settings.Home), "home", helm_env.DefaultHelmHome(), "location of your Helm config. Overrides $HELM_HOME")
 	p.StringVar(&settings.TillerHost, "host", helm_env.DefaultHelmHost(), "address of tiller. Overrides $HELM_HOST")
 	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	p.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
