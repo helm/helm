@@ -22,7 +22,7 @@ import (
 	"path"
 	"strings"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 
 	"github.com/BurntSushi/toml"
 	"github.com/gobwas/glob"
