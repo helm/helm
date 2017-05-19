@@ -195,9 +195,9 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	os.Remove(filepath.Join(i.Path(), "plugin.yaml"))
 	// Testing update for error
 	if err := Update(i); err == nil {
-		t.Error("expected error for plugin metadata missing, got none")
-	} else if err.Error() != "plugin metadata (plugin.yaml) missing" {
-		t.Errorf("expected error for plugin metadata missing, got (%v)", err)
+		t.Error("expected error for plugin modified, got none")
+	} else if err.Error() != "plugin repo was modified" {
+		t.Errorf("expected error for plugin modified, got (%v)", err)
 	}
 
 }
