@@ -70,6 +70,8 @@ var rootServer *grpc.Server
 // Any changes to env should be done before rootServer.Serve() is called.
 var env = environment.New()
 
+var logger *log.Logger
+
 var (
 	grpcAddr             = ":44134"
 	probeAddr            = ":44135"
@@ -111,6 +113,7 @@ func initLog() {
 	if enableTracing {
 		log.SetFlags(log.Lshortfile)
 	}
+	logger = newLogger("main")
 }
 
 func main() {
@@ -126,7 +129,7 @@ func main() {
 	addFlags(root.Flags())
 
 	if err := root.Execute(); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 }
 
@@ -140,7 +143,7 @@ func newLogger(prefix string) *log.Logger {
 func start(c *cobra.Command, args []string) {
 	clientset, err := kube.New(nil).ClientSet()
 	if err != nil {
-		log.Fatalf("Cannot initialize Kubernetes connection: %s", err)
+		logger.Fatalf("Cannot initialize Kubernetes connection: %s", err)
 	}
 
 	switch store {
@@ -148,14 +151,14 @@ func start(c *cobra.Command, args []string) {
 		env.Releases = storage.Init(driver.NewMemory())
 	case storageConfigMap:
 		cfgmaps := driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace()))
-		cfgmaps.Logger = newLogger("storage/driver")
+		cfgmaps.Log = newLogger("storage/driver").Printf
 
 		env.Releases = storage.Init(cfgmaps)
-		env.Releases.Logger = newLogger("storage")
+		env.Releases.Log = newLogger("storage").Printf
 	}
 
 	kubeClient := kube.New(nil)
-	kubeClient.Logger = newLogger("kube")
+	kubeClient.Log = newLogger("kube").Printf
 	env.KubeClient = kubeClient
 
 	if tlsEnable || tlsVerify {
@@ -169,7 +172,7 @@ func start(c *cobra.Command, args []string) {
 	if tlsEnable || tlsVerify {
 		cfg, err := tlsutil.ServerConfig(tlsOptions())
 		if err != nil {
-			log.Fatalf("Could not create server TLS configuration: %v", err)
+			logger.Fatalf("Could not create server TLS configuration: %v", err)
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(cfg)))
 	}
@@ -178,13 +181,13 @@ func start(c *cobra.Command, args []string) {
 
 	lstn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		log.Fatalf("Server died: %s", err)
+		logger.Fatalf("Server died: %s", err)
 	}
 
-	log.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), tlsEnable || tlsVerify)
-	log.Printf("GRPC listening on %s", grpcAddr)
-	log.Printf("Probes listening on %s", probeAddr)
-	log.Printf("Storage driver is %s", env.Releases.Name())
+	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), tlsEnable || tlsVerify)
+	logger.Printf("GRPC listening on %s", grpcAddr)
+	logger.Printf("Probes listening on %s", probeAddr)
+	logger.Printf("Storage driver is %s", env.Releases.Name())
 
 	if enableTracing {
 		startTracing(traceAddr)
@@ -194,7 +197,7 @@ func start(c *cobra.Command, args []string) {
 	probeErrCh := make(chan error)
 	go func() {
 		svc := tiller.NewReleaseServer(env, clientset, remoteReleaseModules)
-		svc.Logger = newLogger("tiller")
+		svc.Log = newLogger("tiller").Printf
 		services.RegisterReleaseServiceServer(rootServer, svc)
 		if err := rootServer.Serve(lstn); err != nil {
 			srvErrCh <- err
@@ -215,9 +218,9 @@ func start(c *cobra.Command, args []string) {
 
 	select {
 	case err := <-srvErrCh:
-		log.Fatalf("Server died: %s", err)
+		logger.Fatalf("Server died: %s", err)
 	case err := <-probeErrCh:
-		log.Printf("Probes server died: %s", err)
+		logger.Printf("Probes server died: %s", err)
 	}
 }
 

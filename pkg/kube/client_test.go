@@ -42,8 +42,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/printers"
 	watchjson "k8s.io/kubernetes/pkg/watch/json"
-
-	"k8s.io/helm/pkg/logger"
 )
 
 func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
@@ -141,10 +139,9 @@ func encodeAndMarshalEvent(e *watch.Event) ([]byte, error) {
 }
 
 func newTestClient(f cmdutil.Factory) *Client {
-	return &Client{
-		Factory: f,
-		Logger:  logger.NewNopLogger(),
-	}
+	c := New(nil)
+	c.Factory = f
+	return c
 }
 
 func TestUpdate(t *testing.T) {

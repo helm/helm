@@ -49,8 +49,6 @@ import (
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/printers"
-
-	"k8s.io/helm/pkg/logger"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -62,7 +60,7 @@ type Client struct {
 	// SchemaCacheDir is the path for loading cached schema.
 	SchemaCacheDir string
 
-	Logger logger.Logger
+	Log func(string, ...interface{})
 }
 
 // New create a new Client
@@ -70,7 +68,7 @@ func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:        cmdutil.NewFactory(config),
 		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
-		Logger:         logger.DefaultLogger,
+		Log:            func(_ string, _ ...interface{}) {},
 	}
 }
 
@@ -104,7 +102,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
 	schema, err := c.Validator(true, c.SchemaCacheDir)
 	if err != nil {
-		c.Logger.Printf("warning: failed to load schema: %s", err)
+		c.Log("warning: failed to load schema: %s", err)
 	}
 	return c.NewBuilder().
 		ContinueOnError().
@@ -120,12 +118,12 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
 	schema, err := c.Validator(true, c.SchemaCacheDir)
 	if err != nil {
-		c.Logger.Printf("warning: failed to load schema: %s", err)
+		c.Log("warning: failed to load schema: %s", err)
 	}
 
 	mapper, typer, err := c.UnstructuredObject()
 	if err != nil {
-		c.Logger.Printf("failed to load mapper: %s", err)
+		c.Log("failed to load mapper: %s", err)
 		return nil, err
 	}
 	var result Result
@@ -160,9 +158,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	}
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
-		c.Logger.Printf("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
+		c.Log("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
 		if err := info.Get(); err != nil {
-			c.Logger.Printf("WARNING: Failed Get for resource %q: %s", info.Name, err)
+			c.Log("WARNING: Failed Get for resource %q: %s", info.Name, err)
 			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
 			return nil
 		}
@@ -190,7 +188,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		}
 		for _, o := range ot {
 			if err := p.PrintObj(o, buf); err != nil {
-				c.Logger.Printf("failed to print object type %s, object: %q :\n %v", t, o, err)
+				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
 				return "", err
 			}
 		}
@@ -243,7 +241,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Logger.Printf("Created a new %s called %q\n", kind, info.Name)
+			c.Log("Created a new %s called %q\n", kind, info.Name)
 			return nil
 		}
 
@@ -253,7 +251,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, recreate); err != nil {
-			c.Logger.Printf("error updating the resource %q:\n\t %v", info.Name, err)
+			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
 
@@ -268,9 +266,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	}
 
 	for _, info := range original.Difference(target) {
-		c.Logger.Printf("Deleting %q in %s...", info.Name, info.Namespace)
+		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		if err := deleteResource(c, info); err != nil {
-			c.Logger.Printf("Failed to delete %q, err: %s", info.Name, err)
+			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
 	}
 	if shouldWait {
@@ -288,7 +286,7 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 		return err
 	}
 	return perform(infos, func(info *resource.Info) error {
-		c.Logger.Printf("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(c, info)
 		return c.skipIfNotFound(err)
 	})
@@ -296,7 +294,7 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 
 func (c *Client) skipIfNotFound(err error) error {
 	if errors.IsNotFound(err) {
-		c.Logger.Printf("%v", err)
+		c.Log("%v", err)
 		return nil
 	}
 	return err
@@ -360,7 +358,7 @@ func deleteResource(c *Client, info *resource.Info) error {
 		}
 		return err
 	}
-	c.Logger.Printf("Using reaper for deleting %q", info.Name)
+	c.Log("Using reaper for deleting %q", info.Name)
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
@@ -400,7 +398,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
 	if patch == nil {
-		c.Logger.Printf("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
+		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
@@ -450,7 +448,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	// Restart pods
 	for _, pod := range pods.Items {
-		c.Logger.Printf("Restarting pod: %v/%v", pod.Namespace, pod.Name)
+		c.Log("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
 		if err := client.Core().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
@@ -486,7 +484,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 	}
 
 	kind := info.Mapping.GroupVersionKind.Kind
-	c.Logger.Printf("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
 
 	// What we watch for depends on the Kind.
 	// - For a Job, we watch for completion.
@@ -501,17 +499,17 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 			// we get. We care mostly about jobs, where what we want to see is
 			// the status go into a good state. For other types, like ReplicaSet
 			// we don't really do anything to support these as hooks.
-			c.Logger.Printf("Add/Modify event for %s: %v", info.Name, e.Type)
+			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
 			if kind == "Job" {
 				return c.waitForJob(e, info.Name)
 			}
 			return true, nil
 		case watch.Deleted:
-			c.Logger.Printf("Deleted event for %s", info.Name)
+			c.Log("Deleted event for %s", info.Name)
 			return true, nil
 		case watch.Error:
 			// Handle error and return with an error.
-			c.Logger.Printf("Error event for %s", info.Name)
+			c.Log("Error event for %s", info.Name)
 			return true, fmt.Errorf("Failed to deploy %s", info.Name)
 		default:
 			return false, nil
@@ -548,7 +546,7 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 		}
 	}
 
-	c.Logger.Printf("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
 	return false, nil
 }
 
@@ -597,7 +595,7 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 		return err
 	}
 
-	c.Logger.Printf("Watching pod %s for completion with timeout of %v", info.Name, timeout)
+	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
 		return conditions.PodCompleted(e)
 	})
