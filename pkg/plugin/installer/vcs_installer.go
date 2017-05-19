@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/pkg/plugin/installer"
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -92,6 +93,9 @@ func (i *VCSInstaller) Install() error {
 // Update updates a remote repository
 func (i *VCSInstaller) Update() error {
 	debug("updating %s", i.Repo.Remote())
+	if i.Repo.IsDirty() {
+		return errors.New("plugin repo was modified")
+	}
 	if err := i.Repo.Update(); err != nil {
 		return err
 	}
