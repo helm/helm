@@ -105,6 +105,7 @@ func rsFixture() *ReleaseServer {
 		},
 		env:       MockEnvironment(),
 		clientset: clientset,
+		Log:       func(_ string, _ ...interface{}) {},
 	}
 }
 

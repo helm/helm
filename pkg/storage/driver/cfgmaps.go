@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -51,12 +50,16 @@ var magicGzip = []byte{0x1f, 0x8b, 0x08}
 // ConfigMapsInterface.
 type ConfigMaps struct {
 	impl internalversion.ConfigMapInterface
+	Log  func(string, ...interface{})
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implmenetation of
 // the kubernetes ConfigMapsInterface.
 func NewConfigMaps(impl internalversion.ConfigMapInterface) *ConfigMaps {
-	return &ConfigMaps{impl: impl}
+	return &ConfigMaps{
+		impl: impl,
+		Log:  func(_ string, _ ...interface{}) {},
+	}
 }
 
 // Name returns the name of the driver.
@@ -74,13 +77,13 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 			return nil, ErrReleaseNotFound(key)
 		}
 
-		logerrf(err, "get: failed to get %q", key)
+		cfgmaps.Log("get: failed to get %q: %s", key, err)
 		return nil, err
 	}
 	// found the configmap, decode the base64 data string
 	r, err := decodeRelease(obj.Data["release"])
 	if err != nil {
-		logerrf(err, "get: failed to decode data %q", key)
+		cfgmaps.Log("get: failed to decode data %q: %s", key, err)
 		return nil, err
 	}
 	// return the release object
@@ -96,7 +99,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 
 	list, err := cfgmaps.impl.List(opts)
 	if err != nil {
-		logerrf(err, "list: failed to list")
+		cfgmaps.Log("list: failed to list: %s", err)
 		return nil, err
 	}
 
@@ -107,7 +110,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			logerrf(err, "list: failed to decode release: %v", item)
+			cfgmaps.Log("list: failed to decode release: %v: %s", item, err)
 			continue
 		}
 		if filter(rls) {
@@ -132,7 +135,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 
 	list, err := cfgmaps.impl.List(opts)
 	if err != nil {
-		logerrf(err, "query: failed to query with labels")
+		cfgmaps.Log("query: failed to query with labels: %s", err)
 		return nil, err
 	}
 
@@ -144,7 +147,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			logerrf(err, "query: failed to decode release: %s", err)
+			cfgmaps.Log("query: failed to decode release: %s", err)
 			continue
 		}
 		results = append(results, rls)
@@ -164,7 +167,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		logerrf(err, "create: failed to encode release %q", rls.Name)
+		cfgmaps.Log("create: failed to encode release %q: %s", rls.Name, err)
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -173,7 +176,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 			return ErrReleaseExists(rls.Name)
 		}
 
-		logerrf(err, "create: failed to create")
+		cfgmaps.Log("create: failed to create: %s", err)
 		return err
 	}
 	return nil
@@ -191,13 +194,13 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		logerrf(err, "update: failed to encode release %q", rls.Name)
+		cfgmaps.Log("update: failed to encode release %q: %s", rls.Name, err)
 		return err
 	}
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(obj)
 	if err != nil {
-		logerrf(err, "update: failed to update")
+		cfgmaps.Log("update: failed to update: %s", err)
 		return err
 	}
 	return nil
@@ -211,7 +214,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 			return nil, ErrReleaseExists(rls.Name)
 		}
 
-		logerrf(err, "delete: failed to get release %q", key)
+		cfgmaps.Log("delete: failed to get release %q: %s", key, err)
 		return nil, err
 	}
 	// delete the release
@@ -315,9 +318,4 @@ func decodeRelease(data string) (*rspb.Release, error) {
 		return nil, err
 	}
 	return &rls, nil
-}
-
-// logerrf wraps an error with a formatted string (used for debugging)
-func logerrf(err error, format string, args ...interface{}) {
-	log.Printf("configmaps: %s: %s\n", fmt.Sprintf(format, args...), err)
 }

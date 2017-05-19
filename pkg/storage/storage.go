@@ -18,7 +18,6 @@ package storage // import "k8s.io/helm/pkg/storage"
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -34,13 +33,15 @@ type Storage struct {
 	releaseLocks map[string]*sync.Mutex
 	// releaseLocksLock is a mutex for accessing releaseLocks
 	releaseLocksLock *sync.Mutex
+
+	Log func(string, ...interface{})
 }
 
 // Get retrieves the release from storage. An error is returned
 // if the storage driver failed to fetch the release, or the
 // release identified by the key, version pair does not exist.
 func (s *Storage) Get(name string, version int32) (*rspb.Release, error) {
-	log.Printf("Getting release %q (v%d) from storage\n", name, version)
+	s.Log("Getting release %q", makeKey(name, version))
 	return s.Driver.Get(makeKey(name, version))
 }
 
@@ -48,7 +49,7 @@ func (s *Storage) Get(name string, version int32) (*rspb.Release, error) {
 // error is returned if the storage driver failed to store the
 // release, or a release with identical an key already exists.
 func (s *Storage) Create(rls *rspb.Release) error {
-	log.Printf("Create release %q (v%d) in storage\n", rls.Name, rls.Version)
+	s.Log("Creating release %q", makeKey(rls.Name, rls.Version))
 	return s.Driver.Create(makeKey(rls.Name, rls.Version), rls)
 }
 
@@ -56,7 +57,7 @@ func (s *Storage) Create(rls *rspb.Release) error {
 // storage backend fails to update the release or if the release
 // does not exist.
 func (s *Storage) Update(rls *rspb.Release) error {
-	log.Printf("Updating %q (v%d) in storage\n", rls.Name, rls.Version)
+	s.Log("Updating release %q", makeKey(rls.Name, rls.Version))
 	return s.Driver.Update(makeKey(rls.Name, rls.Version), rls)
 }
 
@@ -64,21 +65,21 @@ func (s *Storage) Update(rls *rspb.Release) error {
 // the storage backend fails to delete the release or if the release
 // does not exist.
 func (s *Storage) Delete(name string, version int32) (*rspb.Release, error) {
-	log.Printf("Deleting release %q (v%d) from storage\n", name, version)
+	s.Log("Deleting release %q", makeKey(name, version))
 	return s.Driver.Delete(makeKey(name, version))
 }
 
 // ListReleases returns all releases from storage. An error is returned if the
 // storage backend fails to retrieve the releases.
 func (s *Storage) ListReleases() ([]*rspb.Release, error) {
-	log.Println("Listing all releases in storage")
+	s.Log("Listing all releases in storage")
 	return s.Driver.List(func(_ *rspb.Release) bool { return true })
 }
 
 // ListDeleted returns all releases with Status == DELETED. An error is returned
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListDeleted() ([]*rspb.Release, error) {
-	log.Println("List deleted releases in storage")
+	s.Log("Listing deleted releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
 		return relutil.StatusFilter(rspb.Status_DELETED).Check(rls)
 	})
@@ -87,7 +88,7 @@ func (s *Storage) ListDeleted() ([]*rspb.Release, error) {
 // ListDeployed returns all releases with Status == DEPLOYED. An error is returned
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
-	log.Println("Listing all deployed releases in storage")
+	s.Log("Listing all deployed releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
 		return relutil.StatusFilter(rspb.Status_DEPLOYED).Check(rls)
 	})
@@ -97,7 +98,7 @@ func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 // (filter0 && filter1 && ... && filterN), i.e. a Release is included in the results
 // if and only if all filters return true.
 func (s *Storage) ListFilterAll(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
-	log.Println("Listing all releases with filter")
+	s.Log("Listing all releases with filter")
 	return s.Driver.List(func(rls *rspb.Release) bool {
 		return relutil.All(fns...).Check(rls)
 	})
@@ -107,7 +108,7 @@ func (s *Storage) ListFilterAll(fns ...relutil.FilterFunc) ([]*rspb.Release, err
 // (filter0 || filter1 || ... || filterN), i.e. a Release is included in the results
 // if at least one of the filters returns true.
 func (s *Storage) ListFilterAny(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
-	log.Println("Listing any releases with filter")
+	s.Log("Listing any releases with filter")
 	return s.Driver.List(func(rls *rspb.Release) bool {
 		return relutil.Any(fns...).Check(rls)
 	})
@@ -116,7 +117,7 @@ func (s *Storage) ListFilterAny(fns ...relutil.FilterFunc) ([]*rspb.Release, err
 // Deployed returns the deployed release with the provided release name, or
 // returns ErrReleaseNotFound if not found.
 func (s *Storage) Deployed(name string) (*rspb.Release, error) {
-	log.Printf("Getting deployed release from '%s' history\n", name)
+	s.Log("Getting deployed release from %q history", name)
 
 	ls, err := s.Driver.Query(map[string]string{
 		"NAME":   name,
@@ -127,7 +128,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	case err != nil:
 		return nil, err
 	case len(ls) == 0:
-		return nil, fmt.Errorf("'%s' has no deployed releases", name)
+		return nil, fmt.Errorf("%q has no deployed releases", name)
 	default:
 		return ls[0], nil
 	}
@@ -136,17 +137,14 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 // History returns the revision history for the release with the provided name, or
 // returns ErrReleaseNotFound if no such release name exists.
 func (s *Storage) History(name string) ([]*rspb.Release, error) {
-	log.Printf("Getting release history for '%s'\n", name)
+	s.Log("Getting release history for %q", name)
 
-	l, err := s.Driver.Query(map[string]string{"NAME": name, "OWNER": "TILLER"})
-	if err != nil {
-		return nil, err
-	}
-	return l, nil
+	return s.Driver.Query(map[string]string{"NAME": name, "OWNER": "TILLER"})
 }
 
 // Last fetches the last revision of the named release.
 func (s *Storage) Last(name string) (*rspb.Release, error) {
+	s.Log("Getting last revision of %q", name)
 	h, err := s.History(name)
 	if err != nil {
 		return nil, err
@@ -180,7 +178,7 @@ func (s *Storage) LockRelease(name string) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("Unable to lock release %s: release not found", name)
+			return fmt.Errorf("Unable to lock release %q: release not found", name)
 		}
 
 		lock = &sync.Mutex{}
@@ -222,5 +220,6 @@ func Init(d driver.Driver) *Storage {
 		Driver:           d,
 		releaseLocks:     make(map[string]*sync.Mutex),
 		releaseLocksLock: &sync.Mutex{},
+		Log:              func(_ string, _ ...interface{}) {},
 	}
 }

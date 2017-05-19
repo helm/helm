@@ -29,6 +29,7 @@ import (
 
 	goprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -69,6 +70,8 @@ var rootServer *grpc.Server
 // Any changes to env should be done before rootServer.Serve() is called.
 var env = environment.New()
 
+var logger *log.Logger
+
 var (
 	grpcAddr             = ":44134"
 	probeAddr            = ":44135"
@@ -93,64 +96,83 @@ Tiller is the server for Helm. It provides in-cluster resource management.
 By default, Tiller listens for gRPC connections on port 44134.
 `
 
-var rootCommand = &cobra.Command{
-	Use:   "tiller",
-	Short: "The Kubernetes Helm server.",
-	Long:  globalUsage,
-	Run:   start,
+func addFlags(flags *pflag.FlagSet) {
+	flags.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
+	flags.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
+	flags.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
+	flags.BoolVar(&remoteReleaseModules, "experimental-release", false, "enable experimental release modules")
+
+	flags.BoolVar(&tlsEnable, "tls", tlsEnableEnvVarDefault(), "enable TLS")
+	flags.BoolVar(&tlsVerify, "tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
+	flags.StringVar(&keyFile, "tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
+	flags.StringVar(&certFile, "tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
+	flags.StringVar(&caCertFile, "tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
 }
 
-func init() {
-	log.SetFlags(log.Flags() | log.Lshortfile)
+func initLog() {
+	if enableTracing {
+		log.SetFlags(log.Lshortfile)
+	}
+	logger = newLogger("main")
 }
 
 func main() {
-	p := rootCommand.PersistentFlags()
-	p.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
-	p.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
-	p.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
-	p.BoolVar(&remoteReleaseModules, "experimental-release", false, "enable experimental release modules")
-
-	p.BoolVar(&tlsEnable, "tls", tlsEnableEnvVarDefault(), "enable TLS")
-	p.BoolVar(&tlsVerify, "tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
-	p.StringVar(&keyFile, "tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
-	p.StringVar(&certFile, "tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
-	p.StringVar(&caCertFile, "tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
-
-	if err := rootCommand.Execute(); err != nil {
-		fmt.Fprint(os.Stderr, err)
-		os.Exit(1)
+	root := &cobra.Command{
+		Use:   "tiller",
+		Short: "The Kubernetes Helm server.",
+		Long:  globalUsage,
+		Run:   start,
+		PreRun: func(_ *cobra.Command, _ []string) {
+			initLog()
+		},
 	}
+	addFlags(root.Flags())
+
+	if err := root.Execute(); err != nil {
+		logger.Fatal(err)
+	}
+}
+
+func newLogger(prefix string) *log.Logger {
+	if len(prefix) > 0 {
+		prefix = fmt.Sprintf("[%s] ", prefix)
+	}
+	return log.New(os.Stderr, prefix, log.Flags())
 }
 
 func start(c *cobra.Command, args []string) {
 	clientset, err := kube.New(nil).ClientSet()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Cannot initialize Kubernetes connection: %s\n", err)
-		os.Exit(1)
+		logger.Fatalf("Cannot initialize Kubernetes connection: %s", err)
 	}
 
 	switch store {
 	case storageMemory:
 		env.Releases = storage.Init(driver.NewMemory())
 	case storageConfigMap:
-		env.Releases = storage.Init(driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace())))
+		cfgmaps := driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace()))
+		cfgmaps.Log = newLogger("storage/driver").Printf
+
+		env.Releases = storage.Init(cfgmaps)
+		env.Releases.Log = newLogger("storage").Printf
 	}
+
+	kubeClient := kube.New(nil)
+	kubeClient.Log = newLogger("kube").Printf
+	env.KubeClient = kubeClient
 
 	if tlsEnable || tlsVerify {
 		opts := tlsutil.Options{CertFile: certFile, KeyFile: keyFile}
 		if tlsVerify {
 			opts.CaCertFile = caCertFile
 		}
-
 	}
 
 	var opts []grpc.ServerOption
 	if tlsEnable || tlsVerify {
 		cfg, err := tlsutil.ServerConfig(tlsOptions())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not create server TLS configuration: %v\n", err)
-			os.Exit(1)
+			logger.Fatalf("Could not create server TLS configuration: %v", err)
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(cfg)))
 	}
@@ -159,14 +181,13 @@ func start(c *cobra.Command, args []string) {
 
 	lstn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
-		os.Exit(1)
+		logger.Fatalf("Server died: %s", err)
 	}
 
-	fmt.Printf("Starting Tiller %s (tls=%t)\n", version.GetVersion(), tlsEnable || tlsVerify)
-	fmt.Printf("GRPC listening on %s\n", grpcAddr)
-	fmt.Printf("Probes listening on %s\n", probeAddr)
-	fmt.Printf("Storage driver is %s\n", env.Releases.Name())
+	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), tlsEnable || tlsVerify)
+	logger.Printf("GRPC listening on %s", grpcAddr)
+	logger.Printf("Probes listening on %s", probeAddr)
+	logger.Printf("Storage driver is %s", env.Releases.Name())
 
 	if enableTracing {
 		startTracing(traceAddr)
@@ -176,6 +197,7 @@ func start(c *cobra.Command, args []string) {
 	probeErrCh := make(chan error)
 	go func() {
 		svc := tiller.NewReleaseServer(env, clientset, remoteReleaseModules)
+		svc.Log = newLogger("tiller").Printf
 		services.RegisterReleaseServiceServer(rootServer, svc)
 		if err := rootServer.Serve(lstn); err != nil {
 			srvErrCh <- err
@@ -196,10 +218,9 @@ func start(c *cobra.Command, args []string) {
 
 	select {
 	case err := <-srvErrCh:
-		fmt.Fprintf(os.Stderr, "Server died: %s\n", err)
-		os.Exit(1)
+		logger.Fatalf("Server died: %s", err)
 	case err := <-probeErrCh:
-		fmt.Fprintf(os.Stderr, "Probes server died: %s\n", err)
+		logger.Printf("Probes server died: %s", err)
 	}
 }
 

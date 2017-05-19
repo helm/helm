@@ -59,6 +59,8 @@ type Client struct {
 	cmdutil.Factory
 	// SchemaCacheDir is the path for loading cached schema.
 	SchemaCacheDir string
+
+	Log func(string, ...interface{})
 }
 
 // New create a new Client
@@ -66,6 +68,7 @@ func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:        cmdutil.NewFactory(config),
 		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
+		Log:            func(_ string, _ ...interface{}) {},
 	}
 }
 
@@ -99,7 +102,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
 	schema, err := c.Validator(true, c.SchemaCacheDir)
 	if err != nil {
-		log.Printf("warning: failed to load schema: %s", err)
+		c.Log("warning: failed to load schema: %s", err)
 	}
 	return c.NewBuilder().
 		ContinueOnError().
@@ -115,12 +118,12 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
 	schema, err := c.Validator(true, c.SchemaCacheDir)
 	if err != nil {
-		log.Printf("warning: failed to load schema: %s", err)
+		c.Log("warning: failed to load schema: %s", err)
 	}
 
 	mapper, typer, err := c.UnstructuredObject()
 	if err != nil {
-		log.Printf("failed to load mapper: %s", err)
+		c.Log("failed to load mapper: %s", err)
 		return nil, err
 	}
 	var result Result
@@ -155,9 +158,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	}
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
-		log.Printf("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
+		c.Log("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
 		if err := info.Get(); err != nil {
-			log.Printf("WARNING: Failed Get for resource %q: %s", info.Name, err)
+			c.Log("WARNING: Failed Get for resource %q: %s", info.Name, err)
 			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
 			return nil
 		}
@@ -185,7 +188,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		}
 		for _, o := range ot {
 			if err := p.PrintObj(o, buf); err != nil {
-				log.Printf("failed to print object type %s, object: %q :\n %v", t, o, err)
+				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
 				return "", err
 			}
 		}
@@ -238,7 +241,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			log.Printf("Created a new %s called %q\n", kind, info.Name)
+			c.Log("Created a new %s called %q\n", kind, info.Name)
 			return nil
 		}
 
@@ -248,7 +251,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, recreate); err != nil {
-			log.Printf("error updating the resource %q:\n\t %v", info.Name, err)
+			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
 
@@ -263,9 +266,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	}
 
 	for _, info := range original.Difference(target) {
-		log.Printf("Deleting %q in %s...", info.Name, info.Namespace)
+		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		if err := deleteResource(c, info); err != nil {
-			log.Printf("Failed to delete %q, err: %s", info.Name, err)
+			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
 	}
 	if shouldWait {
@@ -283,23 +286,23 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 		return err
 	}
 	return perform(infos, func(info *resource.Info) error {
-		log.Printf("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(c, info)
-		return skipIfNotFound(err)
+		return c.skipIfNotFound(err)
 	})
 }
 
-func skipIfNotFound(err error) error {
+func (c *Client) skipIfNotFound(err error) error {
 	if errors.IsNotFound(err) {
-		log.Printf("%v", err)
+		c.Log("%v", err)
 		return nil
 	}
 	return err
 }
 
-func watchTimeout(t time.Duration) ResourceActorFunc {
+func (c *Client) watchTimeout(t time.Duration) ResourceActorFunc {
 	return func(info *resource.Info) error {
-		return watchUntilReady(t, info)
+		return c.watchUntilReady(t, info)
 	}
 }
 
@@ -322,7 +325,7 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int
 	}
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(infos, watchTimeout(time.Duration(timeout)*time.Second))
+	return perform(infos, c.watchTimeout(time.Duration(timeout)*time.Second))
 }
 
 func perform(infos Result, fn ResourceActorFunc) error {
@@ -355,7 +358,7 @@ func deleteResource(c *Client, info *resource.Info) error {
 		}
 		return err
 	}
-	log.Printf("Using reaper for deleting %q", info.Name)
+	c.Log("Using reaper for deleting %q", info.Name)
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
@@ -395,7 +398,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
 	if patch == nil {
-		log.Printf("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
+		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
@@ -445,7 +448,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	// Restart pods
 	for _, pod := range pods.Items {
-		log.Printf("Restarting pod: %v/%v", pod.Namespace, pod.Name)
+		c.Log("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
 		if err := client.Core().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
@@ -474,14 +477,14 @@ func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 	}
 }
 
-func watchUntilReady(timeout time.Duration, info *resource.Info) error {
+func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
 	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
 	if err != nil {
 		return err
 	}
 
 	kind := info.Mapping.GroupVersionKind.Kind
-	log.Printf("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
 
 	// What we watch for depends on the Kind.
 	// - For a Job, we watch for completion.
@@ -496,17 +499,17 @@ func watchUntilReady(timeout time.Duration, info *resource.Info) error {
 			// we get. We care mostly about jobs, where what we want to see is
 			// the status go into a good state. For other types, like ReplicaSet
 			// we don't really do anything to support these as hooks.
-			log.Printf("Add/Modify event for %s: %v", info.Name, e.Type)
+			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
 			if kind == "Job" {
-				return waitForJob(e, info.Name)
+				return c.waitForJob(e, info.Name)
 			}
 			return true, nil
 		case watch.Deleted:
-			log.Printf("Deleted event for %s", info.Name)
+			c.Log("Deleted event for %s", info.Name)
 			return true, nil
 		case watch.Error:
 			// Handle error and return with an error.
-			log.Printf("Error event for %s", info.Name)
+			c.Log("Error event for %s", info.Name)
 			return true, fmt.Errorf("Failed to deploy %s", info.Name)
 		default:
 			return false, nil
@@ -529,7 +532,7 @@ func (c *Client) AsVersionedObject(obj runtime.Object) (runtime.Object, error) {
 // waitForJob is a helper that waits for a job to complete.
 //
 // This operates on an event returned from a watcher.
-func waitForJob(e watch.Event, name string) (bool, error) {
+func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 	o, ok := e.Object.(*batchinternal.Job)
 	if !ok {
 		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
@@ -543,7 +546,7 @@ func waitForJob(e watch.Event, name string) (bool, error) {
 		}
 	}
 
-	log.Printf("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
 	return false, nil
 }
 
@@ -574,7 +577,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 		return api.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
 	}
 
-	if err := watchPodUntilComplete(timeout, info); err != nil {
+	if err := c.watchPodUntilComplete(timeout, info); err != nil {
 		return api.PodUnknown, err
 	}
 
@@ -586,13 +589,13 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 	return status, nil
 }
 
-func watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
+func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
 	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Watching pod %s for completion with timeout of %v", info.Name, timeout)
+	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
 		return conditions.PodCompleted(e)
 	})

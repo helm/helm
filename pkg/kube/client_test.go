@@ -138,6 +138,12 @@ func encodeAndMarshalEvent(e *watch.Event) ([]byte, error) {
 	return json.Marshal(encodedEvent)
 }
 
+func newTestClient(f cmdutil.Factory) *Client {
+	c := New(nil)
+	c.Factory = f
+	return c
+}
+
 func TestUpdate(t *testing.T) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
@@ -186,7 +192,7 @@ func TestUpdate(t *testing.T) {
 
 	reaper := &fakeReaper{}
 	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
-	c := &Client{Factory: rf}
+	c := newTestClient(rf)
 	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, 0, false); err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +257,7 @@ func TestBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		f, tf, _, _ := cmdtesting.NewAPIFactory()
-		c := &Client{Factory: f}
+		c := newTestClient(f)
 		if tt.swaggerFile != "" {
 			data, err := ioutil.ReadFile(tt.swaggerFile)
 			if err != nil {
@@ -320,7 +326,7 @@ func TestGet(t *testing.T) {
 			}
 		}),
 	}
-	c := &Client{Factory: f}
+	c := newTestClient(f)
 
 	// Test Success
 	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
@@ -380,7 +386,7 @@ func TestPerform(t *testing.T) {
 		}
 
 		f, tf, _, _ := cmdtesting.NewAPIFactory()
-		c := &Client{Factory: f}
+		c := newTestClient(f)
 		if tt.swaggerFile != "" {
 			data, err := ioutil.ReadFile(tt.swaggerFile)
 			if err != nil {
@@ -464,7 +470,7 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 			}),
 		}
 
-		c := &Client{Factory: f}
+		c := newTestClient(f)
 
 		phase, err := c.WaitAndGetCompletedPodPhase("test", objBody(codec, &testPodList), 1*time.Second)
 		if (err != nil) != tt.err {

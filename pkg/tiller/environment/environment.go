@@ -235,6 +235,5 @@ func New() *Environment {
 	return &Environment{
 		EngineYard: ey,
 		Releases:   storage.Init(driver.NewMemory()),
-		KubeClient: kube.New(nil),
 	}
 }
