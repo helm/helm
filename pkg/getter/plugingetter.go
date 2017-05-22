@@ -29,7 +29,7 @@ import (
 // collectPlugins scans for getter plugins.
 // This will load plugins according to the environment.
 func collectPlugins(settings environment.EnvSettings) (Providers, error) {
-	plugins, err := plugin.FindPlugins(settings.PlugDirs)
+	plugins, err := plugin.FindPlugins(settings.PluginDirs())
 	if err != nil {
 		return nil, err
 	}

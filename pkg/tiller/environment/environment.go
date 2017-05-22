@@ -24,7 +24,6 @@ package environment
 
 import (
 	"io"
-	"os"
 	"time"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -43,14 +42,6 @@ const TillerNamespaceEnvVar = "TILLER_NAMESPACE"
 
 // DefaultTillerNamespace is the default namespace for tiller.
 const DefaultTillerNamespace = "kube-system"
-
-// GetTillerNamespace returns the right tiller namespace.
-func GetTillerNamespace() string {
-	if ns := os.Getenv(TillerNamespaceEnvVar); ns != "" {
-		return ns
-	}
-	return DefaultTillerNamespace
-}
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"

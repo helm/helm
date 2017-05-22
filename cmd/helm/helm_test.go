@@ -321,7 +321,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		}
 	}
 
-	localRepoIndexFile := home.LocalRepository(localRepoIndexFilePath)
+	localRepoIndexFile := home.LocalRepository(localRepositoryIndexFile)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
 		i := repo.NewIndexFile()
 		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {

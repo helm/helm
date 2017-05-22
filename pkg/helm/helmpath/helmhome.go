@@ -17,6 +17,7 @@ package helmpath
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -29,12 +30,12 @@ type Home string
 //
 // Implements fmt.Stringer.
 func (h Home) String() string {
-	return string(h)
+	return os.ExpandEnv(string(h))
 }
 
 // Path returns Home with elements appended.
 func (h Home) Path(elem ...string) string {
-	p := []string{string(h)}
+	p := []string{h.String()}
 	p = append(p, elem...)
 	return filepath.Join(p...)
 }
