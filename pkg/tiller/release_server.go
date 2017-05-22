@@ -35,7 +35,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
-	reltesting "k8s.io/helm/pkg/releasetesting"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
@@ -219,12 +218,6 @@ func filterReleases(filter string, rels []*release.Release) ([]*release.Release,
 		}
 	}
 	return matches, nil
-}
-
-// GetVersion sends the server version.
-func (s *ReleaseServer) GetVersion(c ctx.Context, req *services.GetVersionRequest) (*services.GetVersionResponse, error) {
-	v := version.GetVersionProto()
-	return &services.GetVersionResponse{Version: v}, nil
 }
 
 // GetReleaseStatus gets the status information for a named release.
@@ -1099,52 +1092,4 @@ func validateManifest(c environment.KubeClient, ns string, manifest []byte) erro
 	r := bytes.NewReader(manifest)
 	_, err := c.BuildUnstructured(ns, r)
 	return err
-}
-
-// RunReleaseTest runs pre-defined tests stored as hooks on a given release
-func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
-
-	if !ValidName.MatchString(req.Name) {
-		return errMissingRelease
-	}
-
-	// finds the non-deleted release with the given name
-	rel, err := s.env.Releases.Last(req.Name)
-	if err != nil {
-		return err
-	}
-
-	testEnv := &reltesting.Environment{
-		Namespace:  rel.Namespace,
-		KubeClient: s.env.KubeClient,
-		Timeout:    req.Timeout,
-		Stream:     stream,
-	}
-
-	tSuite, err := reltesting.NewTestSuite(rel)
-	if err != nil {
-		s.Log("Error creating test suite for %s", rel.Name)
-		return err
-	}
-
-	if err := tSuite.Run(testEnv); err != nil {
-		s.Log("Error running test suite for %s", rel.Name)
-		return err
-	}
-
-	rel.Info.Status.LastTestSuiteRun = &release.TestSuite{
-		StartedAt:   tSuite.StartedAt,
-		CompletedAt: tSuite.CompletedAt,
-		Results:     tSuite.Results,
-	}
-
-	if req.Cleanup {
-		testEnv.DeleteTestPods(tSuite.TestManifests)
-	}
-
-	if err := s.env.Releases.Update(rel); err != nil {
-		s.Log("test: Failed to store updated release: %s", err)
-	}
-
-	return nil
 }
