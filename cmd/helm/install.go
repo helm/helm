@@ -232,6 +232,8 @@ func (i *installCmd) run() error {
 		if err := checkDependencies(chartRequested, req, i.out); err != nil {
 			return prettyError(err)
 		}
+	} else if err != chartutil.ErrRequirementsNotFound {
+		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
 	res, err := i.client.InstallReleaseFromChart(
