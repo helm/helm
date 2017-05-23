@@ -204,7 +204,7 @@ func (i *installCmd) run() error {
 		i.namespace = defaultNamespace()
 	}
 
-	rawVals, err := i.vals()
+	rawVals, err := vals(i.valueFiles, i.values)
 	if err != nil {
 		return err
 	}
@@ -300,11 +300,13 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 	return dest
 }
 
-func (i *installCmd) vals() ([]byte, error) {
+// vals merges values from files specified via -f/--values and
+// directly via --set, marshaling them to YAML
+func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
-	for _, filePath := range i.valueFiles {
+	for _, filePath := range valueFiles {
 		currentMap := map[string]interface{}{}
 		bytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
@@ -319,7 +321,7 @@ func (i *installCmd) vals() ([]byte, error) {
 	}
 
 	// User specified a value via --set
-	for _, value := range i.values {
+	for _, value := range values {
 		if err := strvals.ParseInto(value, base); err != nil {
 			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
 		}
