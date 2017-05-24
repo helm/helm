@@ -31,10 +31,13 @@ kube::util::ensure-temp-dir
 
 export HELM_NO_PLUGINS=1
 
-mkdir -p ${KUBE_TEMP}/docs/helm ${KUBE_TEMP}/docs/man/man1 ${KUBE_TEMP}/scripts
+# Reset Helm Home because it is used in the generation of docs.
+OLD_HELM_HOME=${HELM_HOME:-}
+HELM_HOME="$HOME/.helm"
+bin/helm init --client-only
+mkdir -p ${KUBE_TEMP}/docs/helm
 bin/helm docs --dir ${KUBE_TEMP}/docs/helm
-bin/helm docs --dir ${KUBE_TEMP}/docs/man/man1 --type man
-bin/helm docs --dir ${KUBE_TEMP}/scripts --type bash
+HELM_HOME=$OLD_HELM_HOME
 
 
 FILES=$(find ${KUBE_TEMP} -type f)
