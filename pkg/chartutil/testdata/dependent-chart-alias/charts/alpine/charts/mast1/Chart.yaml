@@ -1,0 +1,4 @@
+name: mast1
+description: A Helm chart for Kubernetes
+version: 0.1.0
+home: ""
