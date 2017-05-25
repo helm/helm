@@ -219,7 +219,7 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 }
 
 func copyChartAsAlias(charts []*chart.Chart, dependentChart, aliasChart string) *chart.Chart {
-	var chartFound *chart.Chart
+	var chartFound chart.Chart
 	for _, existingChart := range charts {
 		if existingChart == nil {
 			continue
@@ -231,30 +231,13 @@ func copyChartAsAlias(charts []*chart.Chart, dependentChart, aliasChart string) 
 			continue
 		}
 
-		chartFound = new(chart.Chart)
-		chartFound.Metadata = &chart.Metadata{
-			Name:          aliasChart,
-			Home:          existingChart.Metadata.Home,
-			Sources:       existingChart.Metadata.Sources,
-			Version:       existingChart.Metadata.Version,
-			Description:   existingChart.Metadata.Description,
-			Keywords:      existingChart.Metadata.Keywords,
-			Maintainers:   existingChart.Metadata.Maintainers,
-			Engine:        existingChart.Metadata.Engine,
-			Icon:          existingChart.Metadata.Icon,
-			ApiVersion:    existingChart.Metadata.ApiVersion,
-			Condition:     existingChart.Metadata.Condition,
-			Tags:          existingChart.Metadata.Tags,
-			AppVersion:    existingChart.Metadata.AppVersion,
-			Deprecated:    existingChart.Metadata.Deprecated,
-			TillerVersion: existingChart.Metadata.TillerVersion,
-		}
-		chartFound.Templates = existingChart.Templates
-		chartFound.Dependencies = existingChart.Dependencies
-		chartFound.Values = existingChart.Values
-		chartFound.Files = existingChart.Files
+		chartFound = *existingChart
+		newMetadata := *existingChart.Metadata
+		newMetadata.Name = aliasChart
+		chartFound.Metadata = &newMetadata
+		return &chartFound
 	}
-	return chartFound
+	return nil
 }
 
 // ProcessRequirementsEnabled removes disabled charts from dependencies
