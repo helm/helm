@@ -82,6 +82,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 	originalDepsPath := filepath.Join("testdata/testcharts/reqtest")
 	missingDepsPath := filepath.Join("testdata/testcharts/chart-missing-deps")
+	badDepsPath := filepath.Join("testdata/testcharts/chart-bad-requirements")
 	var ch3 *chart.Chart
 	ch3, err = chartutil.Load(originalDepsPath)
 	if err != nil {
@@ -140,6 +141,12 @@ func TestUpgradeCmd(t *testing.T) {
 		{
 			name: "upgrade a release with missing dependencies",
 			args: []string{"bonkers-bunny", missingDepsPath},
+			resp: releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
+			err:  true,
+		},
+		{
+			name: "upgrade a release with bad dependencies",
+			args: []string{"bonkers-bunny", badDepsPath},
 			resp: releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
 			err:  true,
 		},
