@@ -185,7 +185,11 @@ func (u *upgradeCmd) run() error {
 			if err := checkDependencies(ch, req, u.out); err != nil {
 				return err
 			}
+		} else if err != chartutil.ErrRequirementsNotFound {
+			return fmt.Errorf("cannot load requirements: %v", err)
 		}
+	} else {
+		return prettyError(err)
 	}
 
 	resp, err := u.client.UpdateRelease(
