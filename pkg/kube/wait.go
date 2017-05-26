@@ -136,6 +136,11 @@ func podsReady(pods []v1.Pod) bool {
 
 func servicesReady(svc []v1.Service) bool {
 	for _, s := range svc {
+		// ExternalName Services are external to cluster so helm shouldn't be checking to see if they're 'ready' (i.e. have an IP Set)
+		if s.Spec.Type == v1.ServiceTypeExternalName {
+			continue
+		}
+
 		// Make sure the service is not explicitly set to "None" before checking the IP
 		if s.Spec.ClusterIP != v1.ClusterIPNone && !v1.IsServiceIPSet(&s) {
 			return false
