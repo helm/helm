@@ -80,7 +80,7 @@ hooks, the lifecycle is altered like this:
 5. Tiller sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
 6. Tiller then loads the hook with the lowest weight first (negative to positive)
 7. Tiller waits until the hook is "Ready"
-8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
+8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait`
 flag is set, Tiller will wait until all resources are in a ready state
 and will not run the `post-install` hook until they are ready.
 9. Tiller executes the `post-install` hook (loading hook resources)
@@ -187,5 +187,4 @@ deterministic executing order. Weights are defined using the following annotatio
 
 Hook weights can be positive or negative numbers but must be represented as
 strings. When Tiller starts the execution cycle of hooks of a particular Kind it
-will sort those hooks in ascending order. 
-
+will sort those hooks in ascending order.

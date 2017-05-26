@@ -73,5 +73,3 @@ the pod.
 But this is even more important for sets like Deployment.
 Without this, the _entire_ set of labels is used to select matching pods, and
 this will break if you use labels that change, like version or release date.
-
-

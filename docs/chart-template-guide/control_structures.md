@@ -115,7 +115,7 @@ CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
 Error: YAML parse error on mychart/templates/configmap.yaml: error converting YAML to JSON: yaml: line 9: did not find expected key
 ```
 
-What happened? We generated incorrect YAML because of the whitespacing above. 
+What happened? We generated incorrect YAML because of the whitespacing above.
 
 ```yaml
 # Source: mychart/templates/configmap.yaml

@@ -124,7 +124,7 @@ with the old configuration resulting in an inconsistent deployment.
 
 The `sha256sum` function can be used together with the `include`
 function to ensure a deployments template section is updated if another
-spec changes: 
+spec changes:
 
 ```yaml
 kind: Deployment

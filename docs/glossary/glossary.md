@@ -179,5 +179,3 @@ These exposed variables are called _values_ in Helm parlance.
 Values can be set during `helm install` and `helm upgrade` operations,
 either by passing them in directly, or by uploading a `values.yaml`
 file.
-
-

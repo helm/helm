@@ -89,7 +89,7 @@ Blocks (such as control structures) may be indented to indicate flow of the temp
 ```
 {{ if $foo -}}
   {{- with .Bar }}Hello{{ end -}}
-{{- end -}} 
+{{- end -}}
 ```
 
 However, since YAML is a whitespace-oriented language, it is often not possible for code indentation to follow that convention.
@@ -196,7 +196,7 @@ readable than other YAML representations.
 For example, this YAML is closer to the normal YAML method of expressing lists:
 
 ```yaml
-arguments: 
+arguments:
   - "--dirname"
   - "/foo"
 ```

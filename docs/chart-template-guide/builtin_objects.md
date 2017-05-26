@@ -49,4 +49,3 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
 The values are available to any top-level template. As we will see later, this does not necessarily mean that they will be available _everywhere_.
 
 The built-in values always begin with a capital letter. This is in keeping with Go's naming convention. When you create your own names, you are free to use a convention that suits your team. Some teams, like the [Kubernetes Charts](https://github.com/kubernetes/charts) team, choose to use only initial lower case letters in order to distinguish local names from those built-in. In this guide, we follow that convention.
-

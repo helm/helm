@@ -124,7 +124,7 @@ the returned object.
 For example, imagine the directory structure:
 
 ```
-foo/: 
+foo/:
   foo.txt foo.yaml
 
 bar/:
@@ -222,4 +222,3 @@ data:
 Currently, there is no way to pass files external to the chart during `helm install`. So if you are asking users to supply data, it must be loaded using `helm install -f` or `helm install --set`.
 
 This discussion wraps up our dive into the tools and techniques for writing Helm templates. In the next section we will see how you can use one special file, `templates/NOTES.txt`, to send post-installation instructions to the users of your chart.
-

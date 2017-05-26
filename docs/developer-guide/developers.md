@@ -139,7 +139,7 @@ The code for the Helm project is organized as follows:
 - The individual programs are located in `cmd/`. Code inside of `cmd/`
   is not designed for library re-use.
 - Shared libraries are stored in `pkg/`.
-- The raw ProtoBuf files are stored in `_proto/hapi` (where `hapi` stands for 
+- The raw ProtoBuf files are stored in `_proto/hapi` (where `hapi` stands for
   the Helm Application Programming Interface).
 - The Go files generated from the `proto` definitions are stored in `pkg/proto`.
 - The `scripts/` directory contains a number of utility scripts. Most of these
