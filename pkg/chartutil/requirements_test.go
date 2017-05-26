@@ -320,3 +320,59 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Confi
 
 	}
 }
+
+func TestCopyChartAsAlias(t *testing.T) {
+	c, err := Load("testdata/frobnitz")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
+	if aliasChart := copyChartAsAlias(c.Dependencies, "mariners", "another-mariner"); aliasChart != nil {
+		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
+	}
+
+	aliasChart := copyChartAsAlias(c.Dependencies, "mariner", "another-mariner")
+	if aliasChart == nil {
+		t.Fatal("Failed to find dependent chart")
+	}
+	if aliasChart.Metadata.Name != "another-mariner" {
+		t.Fatal(`Failed to update chart-name for alias "dependent chart`)
+	}
+}
+
+func TestDependentChartAliases(t *testing.T) {
+	c, err := Load("testdata/dependent-chart-alias")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
+	if len(c.Dependencies) == 0 {
+		t.Fatal("There are no dependencies to run this test")
+	}
+
+	origLength := len(c.Dependencies)
+	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
+		t.Fatalf("Expected no errors but got %q", err)
+	}
+
+	if len(c.Dependencies) == origLength {
+		t.Fatal("Expected alias dependencies to be added, but did not got that")
+	}
+
+	reqmts, err := LoadRequirements(c)
+	if err != nil {
+		t.Fatalf("Cannot load requirements for test chart, %v", err)
+	}
+
+	var expectedDependencyCharts int
+	for _, reqmt := range reqmts.Dependencies {
+		expectedDependencyCharts++
+		if len(reqmt.Alias) >= 0 {
+			expectedDependencyCharts += len(reqmt.Alias)
+		}
+	}
+	if len(c.Dependencies) != expectedDependencyCharts {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", expectedDependencyCharts, len(c.Dependencies))
+	}
+
+}

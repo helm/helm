@@ -146,7 +146,7 @@ func TestResolve(t *testing.T) {
 }
 
 func TestHashReq(t *testing.T) {
-	expect := "sha256:1feffe2016ca113f64159d91c1f77d6a83bcd23510b171d9264741bf9d63f741"
+	expect := "sha256:917e251ddba291096889f81eb7de713ab4e1afbbb07c576dfd7d66ba9300b12b"
 	req := &chartutil.Requirements{
 		Dependencies: []*chartutil.Dependency{
 			{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
