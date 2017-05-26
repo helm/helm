@@ -687,17 +687,6 @@ parent chart.
 
 Also, global variables of parent charts take precedence over the global variables from subcharts.
 
-_Global sections are restricted to only simple key/value pairs. They do
-not support nesting._
-
-For example, the following is **illegal** and will not work:
-
-```yaml
-global:
-  foo:  # It is illegal to nest an object inside of global.
-    bar: baz
-```
-
 ### References
 
 When it comes to writing templates and values files, there are several
