@@ -1,3 +1,20 @@
++++
+title = "helm repo remove"
+weight = "33"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-repo-remove"
+
+[menu.main]
+  url = "helm-repo-remove"
+  parent = "helm-commands"
+
++++
+
 ## helm repo remove
 
 remove a chart repository

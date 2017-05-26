@@ -1,3 +1,20 @@
++++
+title = "helm repo add"
+weight = "30"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-repo-add"
+
+[menu.main]
+  url = "helm-repo-add"
+  parent = "helm-commands"
+
++++
+
 ## helm repo add
 
 add a chart repository

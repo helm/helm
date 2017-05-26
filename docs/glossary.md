@@ -1,3 +1,16 @@
++++
+title = "Glossary"
+weight = "1"
+
+tags = ["glossary", "architecture"]
+section = "using-helm"
+categories = ["glossary"]
+type = "page"
+
+slug = "glossary"
+
++++
+
 # Helm Glossary
 
 Helm uses a few special terms to describe components of the

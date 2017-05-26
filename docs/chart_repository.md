@@ -1,3 +1,20 @@
++++
+title = "Chart Repository Guide"
+weight = "4"
+
+tags = ["charts", "repo", "guide"]
+section = "developing-charts"
+categories = ["developing-charts"]
+type = "page"
+
+slug = "chart-repo-guide"
+
+[menu.main]
+  url = "chart-repo-guide"
+  parent = "developing-charts"
+
++++
+
 # The Chart Repository Guide
 
 This section explains how to create and work with Helm chart repositories. At a

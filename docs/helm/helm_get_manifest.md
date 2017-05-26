@@ -1,3 +1,20 @@
++++
+title = "helm get manifest"
+weight = "12"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-get-manifest"
+
+[menu.main]
+  url = "helm-get-manifest"
+  parent = "helm-commands"
+
++++
+
 ## helm get manifest
 
 download the manifest for a named release

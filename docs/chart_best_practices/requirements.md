@@ -1,3 +1,20 @@
++++
+title = "Requirements"
+weight = "4"
+
+tags = ["chart", "template", "guide"]
+section = "chart-best-practices"
+categories = ["chart-best-practices"]
+type = "page"
+
+slug = "requirements"
+
+[menu.main]
+  url = "requirements"
+  parent = "chart-best-practices"
+
++++
+
 # Requirements Files
 
 This section of the guide covers best practices for `requirements.yaml` files.

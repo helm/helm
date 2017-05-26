@@ -1,3 +1,20 @@
++++
+title = "helm dependency list"
+weight = "7"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-dependency-list"
+
+[menu.main]
+  url = "helm-dependency-list"
+  parent = "helm-commands"
+
++++
+
 ## helm dependency list
 
 list the dependencies for the given chart

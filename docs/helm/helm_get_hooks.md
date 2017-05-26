@@ -1,3 +1,20 @@
++++
+title = "helm get hooks"
+weight = "11"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-get-hooks"
+
+[menu.main]
+  url = "helm-get-hooks"
+  parent = "helm-commands"
+
++++
+
 ## helm get hooks
 
 download all hooks for a named release

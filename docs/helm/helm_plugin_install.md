@@ -1,3 +1,20 @@
++++
+title = "helm plugin install"
+weight = "25"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-plugin-install"
+
+[menu.main]
+  url = "helm-plugin-install"
+  parent = "helm-commands"
+
++++
+
 ## helm plugin install
 
 install one or more Helm plugins

@@ -1,3 +1,20 @@
++++
+title = "Plugins"
+weight = "6"
+
+tags = ["setup", "plugins"]
+section = "using-helm"
+categories = ["using-helm"]
+type = "page"
+
+slug = "plugins"
+
+[menu.main]
+  url = "plugins"
+  parent = "using-helm"
+
++++
+
 # The Helm Plugins Guide
 
 Helm 2.1.0 introduced the concept of a client-side Helm _plugin_. A plugin is a

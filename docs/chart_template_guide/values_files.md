@@ -1,3 +1,20 @@
++++
+title = "Values Files"
+weight = "4"
+
+tags = ["values", "template", "yaml"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "values-files"
+
+[menu.main]
+  url = "values-files"
+  parent = "chart-template-guide"
+
++++
+
 # Values Files
 
 In the previous section we looked at the built-in objects that Helm templates offer. One of the four built-in objects is `Values`. This object provides access to values passed into the chart. Its contents come from four sources:

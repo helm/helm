@@ -1,3 +1,20 @@
++++
+title = "helm plugin"
+weight = "24"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-plugin"
+
+[menu.main]
+  url = "helm-plugin"
+  parent = "helm-commands"
+
++++
+
 ## helm plugin
 
 add, list, or remove Helm plugins

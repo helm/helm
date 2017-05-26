@@ -1,3 +1,20 @@
++++
+title = "Debugging Templates"
+weight = "12"
+
+tags = ["debugging", "template"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "debugging-templates"
+
+[menu.main]
+  url = "debugging-templates"
+  parent = "chart-template-guide"
+
++++
+
 # Debugging Templates
 
 Debugging templates can be tricky simply because the templates are rendered on the Tiller server, not the Helm client. And then the rendered templates are sent to the Kubernetes API server, which may reject the YAML files for reasons other than formatting.

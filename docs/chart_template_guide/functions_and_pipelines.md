@@ -1,3 +1,20 @@
++++
+title = "Template Functions and Pipelines"
+weight = "5"
+
+tags = ["chart", "template", "guide"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "template-functions--pipelines"
+
+[menu.main]
+  url = "template-functions--pipelines"
+  parent = "chart-template-guide"
+
++++
+
 # Template Functions and Pipelines
 
 So far, we've seen how to place information into a template. But that information is placed into the template unmodified. Sometimes we want to transform the supplied data in a way that makes it more useable to us.

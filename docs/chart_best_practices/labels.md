@@ -1,3 +1,20 @@
++++
+title = "Labels and Annotations"
+weight = "5"
+
+tags = ["labels", "annotations"]
+section = "chart-best-practices"
+categories = ["chart-best-practices"]
+type = "page"
+
+slug = "labels-and-annotations"
+
+[menu.main]
+  url = "labels-and-annotations"
+  parent = "chart-best-practices"
+
++++
+
 # Labels and Annotations
 
 This part of the Best Practices Guide discusses the best practices for using

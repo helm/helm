@@ -1,3 +1,20 @@
++++
+title = "Quickstart"
+weight = "1"
+
+tags = ["quick", "start", "setup", "install"]
+section = "using-helm"
+categories = ["using-helm"]
+type = "page"
+
+slug = "quick-start"
+
+[menu.main]
+  url = "quick-start"
+  parent = "using-helm"
+
++++
+
 # Quickstart Guide
 
 This guide covers how you can quickly get started using Helm.

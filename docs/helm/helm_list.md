@@ -1,3 +1,20 @@
++++
+title = "helm list"
+weight = "22"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-list"
+
+[menu.main]
+  url = "helm-list"
+  parent = "helm-commands"
+
++++
+
 ## helm list
 
 list releases

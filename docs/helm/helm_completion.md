@@ -1,3 +1,20 @@
++++
+title = "helm completion"
+weight = "2"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-completion"
+
+[menu.main]
+  url = "helm-completion"
+  parent = "helm-commands"
+
++++
+
 ## helm completion
 
 Generate autocompletions script for the specified shell (bash or zsh)

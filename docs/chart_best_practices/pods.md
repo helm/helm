@@ -1,3 +1,20 @@
++++
+title = "Pods & PodTemplates"
+weight = "6"
+
+tags = ["pods", "podTemplates"]
+section = "chart-best-practices"
+categories = ["chart-best-practices"]
+type = "page"
+
+slug = "pods-and-podtemplates"
+
+[menu.main]
+  url = "pods-and-podtemplates"
+  parent = "chart-best-practices"
+
++++
+
 # Pods and PodTemplates
 
 This part of the Best Practices Guide discusses formatting the Pod and PodTemplate

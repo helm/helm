@@ -1,3 +1,20 @@
++++
+title = "General Conventions"
+weight = "1"
+
+tags = ["chart", "template", "guide"]
+section = "chart-best-practices"
+categories = ["chart-best-practices"]
+type = "page"
+
+slug = "conventions"
+
+[menu.main]
+  url = "conventions"
+  parent = "chart-best-practices"
+
++++
+
 # General Conventions
 
 This part of the Best Practices Guide explains general conventions.

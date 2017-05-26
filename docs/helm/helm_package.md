@@ -1,3 +1,20 @@
++++
+title = "helm package"
+weight = "23"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-package"
+
+[menu.main]
+  url = "helm-package"
+  parent = "helm-commands"
+
++++
+
 ## helm package
 
 package a chart directory into a chart archive

@@ -1,3 +1,16 @@
++++
+title = "Architecture"
+weight = "1"
+
+tags = ["stack", "architecture"]
+section = "architecture"
+categories = ["architecture"]
+type = "page"
+
+slug = "architecture"
+
++++
+
 # The Kubernetes Helm Architecture
 
 This document describes the Helm architecture at a high level.

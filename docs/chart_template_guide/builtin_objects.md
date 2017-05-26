@@ -1,3 +1,20 @@
++++
+title = "Built-in Objects"
+weight = "3"
+
+tags = ["objects", "template", "builtin"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "built-in-objects"
+
+[menu.main]
+  url = "built-in-objects"
+  parent = "chart-template-guide"
+
++++
+
 # Built-in Objects
 
 Objects are passed into a template from the template engine. And your code can pass objects around (we'll see examples when we look at the `with` and `range` statements). There are even a few ways to create new objects within your templates, like with the `tuple` function we'll see later.

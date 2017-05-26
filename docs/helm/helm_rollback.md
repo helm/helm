@@ -1,3 +1,20 @@
++++
+title = "helm rollback"
+weight = "36"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-rollback"
+
+[menu.main]
+  url = "helm-rollback"
+  parent = "helm-commands"
+
++++
+
 ## helm rollback
 
 roll back a release to a previous revision

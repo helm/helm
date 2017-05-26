@@ -1,3 +1,20 @@
++++
+title = "Syncing Your Chart Repo"
+weight = "5"
+
+tags = ["charts", "syncing", "repo", "directory"]
+section = "developing-charts"
+categories = ["developing-charts"]
+type = "page"
+
+slug = "syncing-your-chart-repo"
+
+[menu.main]
+  url = "syncing-your-chart-repo"
+  parent = "developing-charts"
+
++++
+
 # Syncing Your Chart Repository
 *Note: This example is specifically for a Google Cloud Storage (GCS) bucket which serves a chart repository.*
 

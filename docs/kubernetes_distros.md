@@ -1,3 +1,20 @@
++++
+title = "Kubernetes Distribution Notes"
+weight = "3"
+
+tags = ["setup", "install", "release", "distros", "minikube", "Ubuntu", "coreos"]
+section = "using-helm"
+categories = ["using-helm"]
+type = "page"
+
+slug = "kubernetes-distribution-notes"
+
+[menu.main]
+  url = "kubernetes-distribution-notes"
+  parent = "using-helm"
+
++++
+
 # Kubernetes Distribution Guide
 
 This document captures information about using Helm in specific Kubernetes

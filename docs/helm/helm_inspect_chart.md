@@ -1,3 +1,20 @@
++++
+title = "helm inspect chart"
+weight = "18"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-inspect-chart"
+
+[menu.main]
+  url = "helm-inspect-chart"
+  parent = "helm-commands"
+
++++
+
 ## helm inspect chart
 
 shows inspect chart

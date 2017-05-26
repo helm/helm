@@ -1,3 +1,20 @@
++++
+title = "helm repo index"
+weight = "31"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-repo-index"
+
+[menu.main]
+  url = "helm-repo-index"
+  parent = "helm-commands"
+
++++
+
 ## helm repo index
 
 generate an index file given a directory containing packaged charts

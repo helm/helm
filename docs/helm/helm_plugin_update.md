@@ -1,3 +1,20 @@
++++
+title = "helm plugin update"
+weight = "28"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-plugin-update"
+
+[menu.main]
+  url = "helm-plugin-update"
+  parent = "helm-commands"
+
++++
+
 ## helm plugin update
 
 update one or more Helm plugins

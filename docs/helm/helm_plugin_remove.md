@@ -1,3 +1,20 @@
++++
+title = "helm plugin remove"
+weight = "27"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-plugin-remove"
+
+[menu.main]
+  url = "helm-plugin-remove"
+  parent = "helm-commands"
+
++++
+
 ## helm plugin remove
 
 remove one or more Helm plugins

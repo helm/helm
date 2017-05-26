@@ -1,3 +1,20 @@
++++
+title = "helm reset"
+weight = "35"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-reset"
+
+[menu.main]
+  url = "helm-reset"
+  parent = "helm-commands"
+
++++
+
 ## helm reset
 
 uninstalls Tiller from a cluster

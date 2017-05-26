@@ -1,3 +1,20 @@
++++
+title = "helm history"
+weight = "14"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-history"
+
+[menu.main]
+  url = "helm-history"
+  parent = "helm-commands"
+
++++
+
 ## helm history
 
 fetch release history

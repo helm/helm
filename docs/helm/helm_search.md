@@ -1,3 +1,20 @@
++++
+title = "helm search"
+weight = "37"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-search"
+
+[menu.main]
+  url = "helm-search"
+  parent = "helm-commands"
+
++++
+
 ## helm search
 
 search for a keyword in charts

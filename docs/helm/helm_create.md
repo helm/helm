@@ -1,3 +1,20 @@
++++
+title = "helm create"
+weight = "3"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-create"
+
+[menu.main]
+  url = "helm-create"
+  parent = "helm-commands"
+
++++
+
 ## helm create
 
 create a new chart with the given name

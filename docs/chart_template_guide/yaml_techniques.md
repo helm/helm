@@ -1,3 +1,20 @@
++++
+title = "Appendix: YAML Techniques"
+weight = "14"
+
+tags = ["appendix", "yaml"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "appendix-yaml-techniques"
+
+[menu.main]
+  url = "appendix-yaml-techniques"
+  parent = "chart-template-guide"
+
++++
+
 # YAML Techniques
 
 Most of this guide has been focused on writing the template language. Here,

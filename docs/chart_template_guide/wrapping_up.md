@@ -1,3 +1,20 @@
++++
+title = "Next Steps"
+weight = "13"
+
+tags = ["community", "contribute", "resources"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "next-steps"
+
+[menu.main]
+  url = "next-steps"
+  parent = "chart-template-guide"
+
++++
+
 # Wrapping Up
 
 This guide is intended to give you, the chart developer, a strong understanding of how to use Helm's template language. The guide focuses on the technical aspects of template development.

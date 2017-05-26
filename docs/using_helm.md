@@ -1,3 +1,20 @@
++++
+title = "Using Helm"
+weight = "5"
+
+tags = ["setup", "usage", "commands"]
+section = "using-helm"
+categories = ["using-helm"]
+type = "page"
+
+slug = "helm-usage"
+
+[menu.main]
+  url = "helm-usage"
+  parent = "using-helm"
+
++++
+
 # Using Helm
 
 This guide explains the basics of using Helm (and Tiller) to manage

@@ -1,3 +1,20 @@
++++
+title = "Subcharts & Global Values"
+weight = "11"
+
+tags = ["chart", "subcharts", "global"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "subcharts-global-values"
+
+[menu.main]
+  url = "subcharts-global-values"
+  parent = "chart-template-guide"
+
++++
+
 # Subcharts and Global Values
 
 To this point we have been working only with one chart. But charts can have dependencies, called _subcharts_, that also have their own values and templates. In this section we will create a subchart and see the different ways we can access values from within templates.

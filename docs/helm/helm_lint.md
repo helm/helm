@@ -1,3 +1,20 @@
++++
+title = "helm lint"
+weight = "21"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-lint"
+
+[menu.main]
+  url = "helm-lint"
+  parent = "helm-commands"
+
++++
+
 ## helm lint
 
 examines a chart for possible issues

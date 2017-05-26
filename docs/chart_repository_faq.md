@@ -1,3 +1,20 @@
++++
+title = "Chart Repository FAQ"
+weight = "8"
+
+tags = ["charts", "repo", "faqs"]
+section = "developing-charts"
+categories = ["developing-charts"]
+type = "page"
+
+slug = "chart-repo-faq"
+
+[menu.main]
+  url = "chart-repo-faq"
+  parent = "developing-charts"
+
++++
+
 # Chart Repositories: Frequently Asked Questions
 
 This section tracks some of the more frequently encountered issues with using chart repositories.

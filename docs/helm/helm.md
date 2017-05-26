@@ -1,11 +1,21 @@
++++
+title = "Helm"
+weight = "-1"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm"
+
+[menu.main]
+  url = "helm"
+  parent = "helm-commands"
+
++++
+
 ## helm
-
-The Helm package manager for Kubernetes.
-
-### Synopsis
-
-
-The Kubernetes package manager
 
 To begin working with Helm, run the 'helm init' command:
 

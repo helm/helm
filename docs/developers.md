@@ -1,3 +1,16 @@
++++
+title = "Developers Guide"
+weight = "1"
+
+tags = ["team", "developers", "about"]
+section = "developer-guide"
+categories = ["developer-guide"]
+type = "page"
+
+slug = "developer-guide"
+
++++
+
 # Developers Guide
 
 This guide explains how to set up your environment for developing on
@@ -117,9 +130,7 @@ remains consistent, and (c) contributions follow the open source legal
 requirements. Our intent is not to burden contributors, but to build
 elegant and high-quality open source code so that our users will benefit.
 
-Make sure you have read and understood the main CONTRIBUTING guide:
-
-https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md
+Make sure you have read and understood the main [CONTRIBUTING guide](https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md).
 
 ### Structure of the Code
 

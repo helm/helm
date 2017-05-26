@@ -1,3 +1,16 @@
++++
+title = "Related Projects & Docs"
+weight = "1"
+
+tags = ["related", "developers", "articles", "guides"]
+section = "related"
+categories = ["related"]
+type = "page"
+
+slug = "related"
+
++++
+
 # Related Projects and Documentation
 
 The Helm community has produced many extra tools, plugins, and documentation about

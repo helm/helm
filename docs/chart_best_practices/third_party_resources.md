@@ -1,3 +1,20 @@
++++
+title = "Third Party Resources"
+weight = "7"
+
+tags = ["third", "resources", "party"]
+section = "chart-best-practices"
+categories = ["chart-best-practices"]
+type = "page"
+
+slug = "third-party-resources"
+
+[menu.main]
+  url = "third-party-resources"
+  parent = "chart-best-practices"
+
++++
+
 # Third Party Resources
 
 This section of the Best Practices Guide deals with creating and using Third Party Resource

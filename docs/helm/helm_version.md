@@ -1,3 +1,20 @@
++++
+title = "helm version"
+weight = "43"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-version"
+
+[menu.main]
+  url = "helm-version"
+  parent = "helm-commands"
+
++++
+
 ## helm version
 
 print the client/server version information

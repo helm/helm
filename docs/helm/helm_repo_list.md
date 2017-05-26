@@ -1,3 +1,20 @@
++++
+title = "helm repo list"
+weight = "32"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-repo-list"
+
+[menu.main]
+  url = "helm-repo-list"
+  parent = "helm-commands"
+
++++
+
 ## helm repo list
 
 list chart repositories

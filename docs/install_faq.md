@@ -1,3 +1,20 @@
++++
+title = "Install FAQ"
+weight = "4"
+
+tags = ["setup", "install", "release", "faq"]
+section = "using-helm"
+categories = ["using-helm"]
+type = "page"
+
+slug = "install-helm-faq"
+
+[menu.main]
+  url = "install-helm-faq"
+  parent = "using-helm"
+
++++
+
 # Installation: Frequently Asked Questions
 
 This section tracks some of the more frequently encountered issues with installing

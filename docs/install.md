@@ -1,3 +1,20 @@
++++
+title = "Installing Helm"
+weight = "2"
+
+tags = ["setup", "install", "release"]
+section = "using-helm"
+categories = ["using-helm"]
+type = "page"
+
+slug = "install-helm"
+
+[menu.main]
+  url = "install-helm"
+  parent = "using-helm"
+
++++
+
 # Installing Helm
 
 There are two parts to Helm: The Helm client (`helm`) and the Helm

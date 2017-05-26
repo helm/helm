@@ -1,3 +1,20 @@
++++
+title = "Signing Charts"
+weight = "6"
+
+tags = ["charts", "signing", "provenance", "integrity", "PGP", "key", "keypair"]
+section = "developing-charts"
+categories = ["developing-charts"]
+type = "page"
+
+slug = "signing-charts"
+
+[menu.main]
+  url = "signing-charts"
+  parent = "developing-charts"
+
++++
+
 # Helm Provenance and Integrity
 
 Helm has provenance tools which help chart users verify the integrity and origin

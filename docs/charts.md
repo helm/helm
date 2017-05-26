@@ -1,10 +1,23 @@
++++
+title = "Intro to Charts"
+weight = "1"
+
+tags = ["charts", "example", "intro", "structure", "format"]
+section = "developing-charts"
+categories = ["developing-charts"]
+type = "page"
+
+slug = "intro-dev-charts"
+
+[menu.main]
+  url = "intro-dev-charts"
+  parent = "developing-charts"
+
++++
+
 # Charts
 
-Helm uses a packaging format called _charts_. A chart is a collection of files
-that describe a related set of Kubernetes resources. A single chart
-might be used to deploy something simple, like a memcached pod, or
-something complex, like a full web app stack with HTTP servers,
-databases, caches, and so on.
+Helm uses a packaging format called _charts_. A chart is a collection of files that describe a related set of Kubernetes resources. A single chart might be used to deploy something simple, like a memcached pod, or something complex, like a full web app stack with HTTP servers, databases, caches, and so on.
 
 Charts are created as files laid out in a particular directory tree,
 then they can be packaged into versioned archives to be deployed.

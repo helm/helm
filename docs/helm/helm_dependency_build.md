@@ -1,3 +1,20 @@
++++
+title = "helm dependency build"
+weight = "6"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-dependency-build"
+
+[menu.main]
+  url = "helm-dependency-build"
+  parent = "helm-commands"
+
++++
+
 ## helm dependency build
 
 rebuild the charts/ directory based on the requirements.lock file

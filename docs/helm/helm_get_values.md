@@ -1,3 +1,20 @@
++++
+title = "helm get values"
+weight = "13"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-get-values"
+
+[menu.main]
+  url = "helm-get-values"
+  parent = "helm-commands"
+
++++
+
 ## helm get values
 
 download the values file for a named release

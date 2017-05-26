@@ -1,3 +1,20 @@
++++
+title = "helm delete"
+weight = "4"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-delete"
+
+[menu.main]
+  url = "helm-delete"
+  parent = "helm-commands"
+
++++
+
 ## helm delete
 
 given a release name, delete the release from Kubernetes

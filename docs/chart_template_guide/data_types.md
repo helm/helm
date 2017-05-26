@@ -1,3 +1,20 @@
++++
+title = "Appendix: Go Data Types & Templates"
+weight = "15"
+
+tags = ["appendix", "data types", "templates"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "appendix-data-templates"
+
+[menu.main]
+  url = "appendix-data-templates"
+  parent = "chart-template-guide"
+
++++
+
 # Appendix: Go Data Types and Templates
 
 The Helm template language is implemented in the strongly typed Go programming language. For that reason, variables in templates are _typed_. For the most part, variables will be exposed as one of the following types:

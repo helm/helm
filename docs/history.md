@@ -1,9 +1,19 @@
-## The History of the Project
++++
+title = "History"
+weight = "1"
 
-Kubernetes Helm is the merged result of [Helm
-Classic](https://github.com/helm/helm) and the Kubernetes port of GCS Deployment
-Manager. The project was jointly started by Google and Deis, though it
-is now part of the CNCF. Many companies now contribute regularly to Helm.
+tags = ["team", "history", "about", "deis", "cncf"]
+section = "history"
+categories = ["history"]
+type = "page"
+
+slug = "history"
+
++++
+
+# The History of the Helm Project
+
+Kubernetes Helm is the merged result of [Helm Classic](https://github.com/helm/helm) and the Kubernetes port of GCS Deployment Manager. The project was jointly started by Google and Deis, though it is now part of the CNCF. Many companies now contribute regularly to Helm.
 
 Differences from Helm Classic:
 

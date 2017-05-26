@@ -1,3 +1,20 @@
++++
+title = "helm init"
+weight = "16"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-init"
+
+[menu.main]
+  url = "helm-init"
+  parent = "helm-commands"
+
++++
+
 ## helm init
 
 initialize Helm on both client and server

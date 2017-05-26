@@ -1,3 +1,20 @@
++++
+title = "helm dependency update"
+weight = "8"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-dependency-update"
+
+[menu.main]
+  url = "helm-dependency-update"
+  parent = "helm-commands"
+
++++
+
 ## helm dependency update
 
 update charts/ based on the contents of requirements.yaml

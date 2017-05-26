@@ -1,3 +1,20 @@
++++
+title = "helm upgrade"
+weight = "41"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-upgrade"
+
+[menu.main]
+  url = "helm-upgrade"
+  parent = "helm-commands"
+
++++
+
 ## helm upgrade
 
 upgrade a release

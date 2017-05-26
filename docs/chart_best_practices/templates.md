@@ -1,3 +1,20 @@
++++
+title = "Templates"
+weight = "3"
+
+tags = ["chart", "template", "guide"]
+section = "chart-best-practices"
+categories = ["chart-best-practices"]
+type = "page"
+
+slug = "templates"
+
+[menu.main]
+  url = "templates"
+  parent = "chart-best-practices"
+
++++
+
 # Templates
 
 This part of the Best Practices Guide focuses on templates.

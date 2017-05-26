@@ -1,11 +1,25 @@
++++
+title = "Intro"
+weight = "1"
+
+tags = ["chart", "template", "guide"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "guide-intro"
+
+[menu.main]
+  url = "guide-intro"
+  parent = "chart-template-guide"
+
++++
+
 # The Chart Template Developer's Guide
 
-This guide provides an introduction to Helm's chart templates, with emphasis on
-the template language.
+This guide provides an introduction to Helm's chart templates, with emphasis on the template language.
 
-Templates generate manifest files, which are YAML-formatted resource descriptions
-that Kubernetes can understand. We'll look at how templates are structured,
-how they can be used, how to write Go templates, and how to debug your work.
+Templates generate manifest files, which are YAML-formatted resource descriptions that Kubernetes can understand. We'll look at how templates are structured, how they can be used, how to write Go templates, and how to debug your work.
 
 This guide focuses on the following concepts:
 

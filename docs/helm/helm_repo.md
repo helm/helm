@@ -1,3 +1,20 @@
++++
+title = "helm repo"
+weight = "29"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-repo"
+
+[menu.main]
+  url = "helm-repo"
+  parent = "helm-commands"
+
++++
+
 ## helm repo
 
 add, list, remove, update, and index chart repositories

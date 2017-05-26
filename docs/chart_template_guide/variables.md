@@ -1,3 +1,20 @@
++++
+title = "Variables"
+weight = "7"
+
+tags = ["variables", "template", "yaml"]
+section = "chart-template-guide"
+categories = ["chart-template-guide"]
+type = "page"
+
+slug = "variables"
+
+[menu.main]
+  url = "variables"
+  parent = "chart-template-guide"
+
++++
+
 # Variables
 
 With functions, pipelines, objects, and control structures under our belts, we can turn to one of the more basic ideas in many programming languages: variables. In templates, they are less frequently used. But we will see how to use them to simplify code, and to make better use of `with` and `range`.

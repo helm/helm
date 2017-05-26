@@ -1,3 +1,20 @@
++++
+title = "helm serve"
+weight = "38"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-serve"
+
+[menu.main]
+  url = "helm-serve"
+  parent = "helm-commands"
+
++++
+
 ## helm serve
 
 start a local http web server

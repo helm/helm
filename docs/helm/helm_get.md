@@ -1,3 +1,20 @@
++++
+title = "helm get"
+weight = "10"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-get"
+
+[menu.main]
+  url = "helm-get"
+  parent = "helm-commands"
+
++++
+
 ## helm get
 
 download a named release

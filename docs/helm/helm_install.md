@@ -1,3 +1,20 @@
++++
+title = "helm install"
+weight = "20"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-install"
+
+[menu.main]
+  url = "helm-install"
+  parent = "helm-commands"
+
++++
+
 ## helm install
 
 install a chart archive

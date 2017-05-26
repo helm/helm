@@ -1,3 +1,20 @@
++++
+title = "helm home"
+weight = "15"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-home"
+
+[menu.main]
+  url = "helm-home"
+  parent = "helm-commands"
+
++++
+
 ## helm home
 
 displays the location of HELM_HOME

@@ -1,3 +1,20 @@
++++
+title = "helm inspect values"
+weight = "19"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-inspect-values"
+
+[menu.main]
+  url = "helm-inspect-values"
+  parent = "helm-commands"
+
++++
+
 ## helm inspect values
 
 shows inspect values

@@ -1,3 +1,20 @@
++++
+title = "helm verify"
+weight = "42"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-verify"
+
+[menu.main]
+  url = "helm-verify"
+  parent = "helm-commands"
+
++++
+
 ## helm verify
 
 verify that a chart at the given path has been signed and is valid

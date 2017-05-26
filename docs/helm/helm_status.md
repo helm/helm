@@ -1,3 +1,20 @@
++++
+title = "helm status"
+weight = "39"
+
+tags = ["commands"]
+section = "helm-commands"
+categories = ["helm-commands"]
+type = "page"
+
+slug = "helm-status"
+
+[menu.main]
+  url = "helm-status"
+  parent = "helm-commands"
+
++++
+
 ## helm status
 
 displays the status of the named release
