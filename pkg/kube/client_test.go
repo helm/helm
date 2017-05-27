@@ -193,7 +193,7 @@ func TestUpdate(t *testing.T) {
 	reaper := &fakeReaper{}
 	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
 	c := newTestClient(rf)
-	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, 0, false); err != nil {
+	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
