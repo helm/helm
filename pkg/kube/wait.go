@@ -17,7 +17,6 @@ limitations under the License.
 package kube // import "k8s.io/helm/pkg/kube"
 
 import (
-	"log"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,7 +43,7 @@ type deployment struct {
 // waitForResources polls to get the current status of all pods, PVCs, and Services
 // until all are ready or a timeout is reached
 func (c *Client) waitForResources(timeout time.Duration, created Result) error {
-	log.Printf("beginning wait for resources with timeout of %v", timeout)
+	c.Log("beginning wait for %d resources with timeout of %v", len(created), timeout)
 
 	cs, err := c.ClientSet()
 	if err != nil {
@@ -121,7 +120,9 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				services = append(services, *svc)
 			}
 		}
-		return podsReady(pods) && servicesReady(services) && volumesReady(pvc) && deploymentsReady(deployments), nil
+		isReady := podsReady(pods) && servicesReady(services) && volumesReady(pvc) && deploymentsReady(deployments)
+		c.Log("resources ready: %v", isReady)
+		return isReady, nil
 	})
 }
 

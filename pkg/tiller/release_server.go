@@ -113,13 +113,13 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) error {
 	if req.ResetValues {
 		// If ResetValues is set, we comletely ignore current.Config.
-		s.Log("Reset values to the chart's original version.")
+		s.Log("resetting values to the chart's original version")
 		return nil
 	}
 
 	// If the ReuseValues flag is set, we always copy the old values over the new config's values.
 	if req.ReuseValues {
-		s.Log("Reusing the old release's values")
+		s.Log("reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
 		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
@@ -142,7 +142,7 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		current.Config != nil &&
 		current.Config.Raw != "" &&
 		current.Config.Raw != "{}\n" {
-		s.Log("Copying values from %s (v%d) to new release.", current.Name, current.Version)
+		s.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}
 	return nil
@@ -168,13 +168,13 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 
 		if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
 			// Allowe re-use of names if the previous release is marked deleted.
-			s.Log("reusing name %q", start)
+			s.Log("name %s exists but is not in use, reusing name", start)
 			return start, nil
 		} else if reuse {
 			return "", errors.New("cannot re-use a name that is still in use")
 		}
 
-		return "", fmt.Errorf("a release named %q already exists.\nPlease run: helm ls --all %q; helm del --help", start, start)
+		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
 	}
 
 	maxTries := 5
@@ -187,7 +187,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		if _, err := s.env.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
 			return name, nil
 		}
-		s.Log("info: Name %q is taken. Searching again.", name)
+		s.Log("info: generated name %s is taken. Searching again.", name)
 	}
 	s.Log("warning: No available release names found after %d tries", maxTries)
 	return "ERROR", errors.New("no available release name found")
@@ -249,6 +249,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		return nil, nil, "", fmt.Errorf("Chart incompatible with Tiller %s", sver)
 	}
 
+	s.Log("rendering %s chart using values", ch.GetMetadata().Name)
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
 	if err != nil {
@@ -306,10 +307,10 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
 		if err := s.env.Releases.Update(r); err != nil {
-			s.Log("warning: Failed to update release %q: %s", r.Name, err)
+			s.Log("warning: Failed to update release %s: %s", r.Name, err)
 		}
 	} else if err := s.env.Releases.Create(r); err != nil {
-		s.Log("warning: Failed to record release %q: %s", r.Name, err)
+		s.Log("warning: Failed to record release %s: %s", r.Name, err)
 	}
 }
 
@@ -317,10 +318,10 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	kubeCli := s.env.KubeClient
 	code, ok := events[hook]
 	if !ok {
-		return fmt.Errorf("unknown hook %q", hook)
+		return fmt.Errorf("unknown hook %s", hook)
 	}
 
-	s.Log("Executing %s hooks for %s", hook, name)
+	s.Log("executing %d %s hooks for %s", len(hs), hook, name)
 	executingHooks := []*release.Hook{}
 	for _, h := range hs {
 		for _, e := range h.Events {
@@ -336,20 +337,20 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b, timeout, false); err != nil {
-			s.Log("warning: Release %q %s %s failed: %s", name, hook, h.Path, err)
+			s.Log("warning: Release %s %s %s failed: %s", name, hook, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
 		b.WriteString(h.Manifest)
 		if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
-			s.Log("warning: Release %q %s %s could not complete: %s", name, hook, h.Path, err)
+			s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
 			return err
 		}
 		h.LastRun = timeconv.Now()
 	}
 
-	s.Log("Hooks complete for %s %s", hook, name)
+	s.Log("hooks complete for %s %s", hook, name)
 	return nil
 }
 

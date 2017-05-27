@@ -18,6 +18,7 @@ package tiller
 
 import (
 	"fmt"
+
 	ctx "golang.org/x/net/context"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -33,17 +34,20 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 	}
 	defer s.env.Releases.UnlockRelease(req.Name)
 
+	s.Log("preparing rollback of %s", req.Name)
 	currentRelease, targetRelease, err := s.prepareRollback(req)
 	if err != nil {
 		return nil, err
 	}
 
+	s.Log("performing rollback of %s", req.Name)
 	res, err := s.performRollback(currentRelease, targetRelease, req)
 	if err != nil {
 		return res, err
 	}
 
 	if !req.DryRun {
+		s.Log("creating rolled back release %s", req.Name)
 		if err := s.env.Releases.Create(targetRelease); err != nil {
 			return res, err
 		}
@@ -53,7 +57,7 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
-//  the previous release's configuration
+// the previous release's configuration
 func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	switch {
 	case !ValidName.MatchString(req.Name):
@@ -108,7 +112,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	res := &services.RollbackReleaseResponse{Release: targetRelease}
 
 	if req.DryRun {
-		s.Log("Dry run for %s", targetRelease.Name)
+		s.Log("dry run for %s", targetRelease.Name)
 		return res, nil
 	}
 
@@ -117,6 +121,8 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		if err := s.execHook(targetRelease.Hooks, targetRelease.Name, targetRelease.Namespace, hooks.PreRollback, req.Timeout); err != nil {
 			return res, err
 		}
+	} else {
+		s.Log("rollback hooks disabled for %s", req.Name)
 	}
 
 	if err := s.ReleaseModule.Rollback(currentRelease, targetRelease, req, s.env); err != nil {

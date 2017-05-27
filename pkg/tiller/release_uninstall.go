@@ -18,13 +18,14 @@ package tiller
 
 import (
 	"fmt"
+	"strings"
+
 	ctx "golang.org/x/net/context"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/timeconv"
-	"strings"
 )
 
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
@@ -79,6 +80,8 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, hooks.PreDelete, req.Timeout); err != nil {
 			return res, err
 		}
+	} else {
+		s.Log("delete hooks disabled for %s", req.Name)
 	}
 
 	// From here on out, the release is currently considered to be in Status_DELETING
@@ -106,6 +109,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	rel.Info.Description = "Deletion complete"
 
 	if req.Purge {
+		s.Log("purge requested for %s", req.Name)
 		err := s.purgeReleases(rels...)
 		if err != nil {
 			s.Log("uninstall: Failed to purge the release: %s", err)

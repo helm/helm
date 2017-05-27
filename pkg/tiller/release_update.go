@@ -18,6 +18,7 @@ package tiller
 
 import (
 	"fmt"
+
 	ctx "golang.org/x/net/context"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
@@ -34,17 +35,20 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	}
 	defer s.env.Releases.UnlockRelease(req.Name)
 
+	s.Log("preparing update for %s", req.Name)
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
 		return nil, err
 	}
 
+	s.Log("performing update for %s", req.Name)
 	res, err := s.performUpdate(currentRelease, updatedRelease, req)
 	if err != nil {
 		return res, err
 	}
 
 	if !req.DryRun {
+		s.Log("creating updated release for %s", req.Name)
 		if err := s.env.Releases.Create(updatedRelease); err != nil {
 			return res, err
 		}
@@ -129,7 +133,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	res := &services.UpdateReleaseResponse{Release: updatedRelease}
 
 	if req.DryRun {
-		s.Log("Dry run for %s", updatedRelease.Name)
+		s.Log("dry run for %s", updatedRelease.Name)
 		res.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
@@ -139,6 +143,8 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PreUpgrade, req.Timeout); err != nil {
 			return res, err
 		}
+	} else {
+		s.Log("update hooks disabled for %s", req.Name)
 	}
 	if err := s.ReleaseModule.Update(originalRelease, updatedRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
