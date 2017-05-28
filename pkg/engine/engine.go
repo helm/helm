@@ -36,7 +36,8 @@ type Engine struct {
 	FuncMap template.FuncMap
 	// If strict is enabled, template rendering will fail if a template references
 	// a value that was not passed in.
-	Strict bool
+	Strict           bool
+	CurrentTemplates map[string]renderable
 }
 
 // New creates a new Go template Engine instance.
@@ -117,6 +118,7 @@ func FuncMap() template.FuncMap {
 func (e *Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	// Render the charts
 	tmap := allTemplates(chrt, values)
+	e.CurrentTemplates = tmap
 	return e.render(tmap)
 }
 
@@ -199,6 +201,12 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 		t.Option("missingkey=zero")
 	}
 
+	// Adding templates from the engine context but do not overwrite
+	for k, v := range e.CurrentTemplates {
+		if _, exists := tpls[k]; exists {
+			tpls[k] = v
+		}
+	}
 	funcMap := e.alterFuncMap(t)
 
 	files := []string{}
