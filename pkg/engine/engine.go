@@ -171,13 +171,13 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 		}
 
 		templates := map[string]renderable{}
-		templates["template"] = r
+		templates["aaa_template"] = r
 
 		result, err := e.render(templates)
 		if err != nil {
 			return "", fmt.Errorf("Error during tpl function execution for %q: %s", tpl, err.Error())
 		}
-		return result["template"], nil
+		return result["aaa_template"], nil
 	}
 
 	return funcMap
@@ -201,21 +201,27 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 		t.Option("missingkey=zero")
 	}
 
-	// Adding templates from the engine context but do not overwrite
-	for k, v := range e.CurrentTemplates {
-		if _, exists := tpls[k]; exists {
-			tpls[k] = v
-		}
-	}
 	funcMap := e.alterFuncMap(t)
 
 	files := []string{}
+
 	for fname, r := range tpls {
 		t = t.New(fname).Funcs(funcMap)
 		if _, err := t.Parse(r.tpl); err != nil {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
 		}
 		files = append(files, fname)
+	}
+
+	// Adding the engine's currentTemplates to the template context
+	// so they can be referenced in the tpl function
+	for fname, r := range e.CurrentTemplates {
+		if t.Lookup(fname) == nil {
+			t = t.New(fname).Funcs(funcMap)
+			if _, err := t.Parse(r.tpl); err != nil {
+				return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
+			}
+		}
 	}
 
 	rendered := make(map[string]string, len(files))

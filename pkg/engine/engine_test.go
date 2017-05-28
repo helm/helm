@@ -503,4 +503,33 @@ func TestAlterFuncMap(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expectTplStrWithFunction, gotStrTplWithFunction, outTplWithFunction)
 	}
 
+	tplChartWithInclude := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplFunction"},
+		Templates: []*chart.Template{
+			{Name: "templates/base", Data: []byte(`{{ tpl "{{include ` + "`" + `TplFunction/templates/_partial` + "`" + ` .  | quote }}" .}}`)},
+			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}}`)},
+		},
+		Values:       &chart.Config{Raw: ``},
+		Dependencies: []*chart.Chart{},
+	}
+	tplValueWithInclude := chartutil.Values{
+		"Values": chartutil.Values{
+			"value": "myvalue",
+		},
+		"Chart": tplChartWithInclude.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	outTplWithInclude, err := New().Render(tplChartWithInclude, tplValueWithInclude)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedTplStrWithInclude := "\"TestRelease\""
+	if gotStrTplWithInclude := outTplWithInclude["TplFunction/templates/base"]; gotStrTplWithInclude != expectedTplStrWithInclude {
+		t.Errorf("Expected %q, got %q (%v)", expectedTplStrWithInclude, gotStrTplWithInclude, outTplWithInclude)
+	}
+
 }
