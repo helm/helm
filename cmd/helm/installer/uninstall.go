@@ -19,9 +19,9 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/client-go/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/kubectl"
 )
 
@@ -39,7 +39,7 @@ func Uninstall(client internalclientset.Interface, opts *Options) error {
 }
 
 // deleteService deletes the Tiller Service resource
-func deleteService(client internalversion.ServicesGetter, namespace string) error {
+func deleteService(client coreclient.ServicesGetter, namespace string) error {
 	err := client.Services(namespace).Delete(serviceName, &metav1.DeleteOptions{})
 	return ingoreNotFound(err)
 }

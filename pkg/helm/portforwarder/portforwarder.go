@@ -21,17 +21,17 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	"k8s.io/helm/pkg/kube"
 )
 
 // New creates a new and initialized tunnel.
-func New(namespace string, client *internalclientset.Clientset, config *rest.Config) (*kube.Tunnel, error) {
-	podName, err := getTillerPodName(client.Core(), namespace)
+func New(namespace string, client kubernetes.Interface, config *rest.Config) (*kube.Tunnel, error) {
+	podName, err := getTillerPodName(client.CoreV1(), namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func New(namespace string, client *internalclientset.Clientset, config *rest.Con
 	return t, t.ForwardPort()
 }
 
-func getTillerPodName(client internalversion.PodsGetter, namespace string) (string, error) {
+func getTillerPodName(client corev1.PodsGetter, namespace string) (string, error) {
 	// TODO use a const for labels
 	selector := labels.Set{"app": "helm", "name": "tiller"}.AsSelector()
 	pod, err := getFirstRunningPod(client, namespace, selector)
@@ -50,7 +50,7 @@ func getTillerPodName(client internalversion.PodsGetter, namespace string) (stri
 	return pod.ObjectMeta.GetName(), nil
 }
 
-func getFirstRunningPod(client internalversion.PodsGetter, namespace string, selector labels.Selector) (*api.Pod, error) {
+func getFirstRunningPod(client corev1.PodsGetter, namespace string, selector labels.Selector) (*v1.Pod, error) {
 	options := metav1.ListOptions{LabelSelector: selector.String()}
 	pods, err := client.Pods(namespace).List(options)
 	if err != nil {
@@ -60,7 +60,7 @@ func getFirstRunningPod(client internalversion.PodsGetter, namespace string, sel
 		return nil, fmt.Errorf("could not find tiller")
 	}
 	for _, p := range pods.Items {
-		if api.IsPodReady(&p) {
+		if isPodReady(&p) {
 			return &p, nil
 		}
 	}

@@ -30,10 +30,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	testcore "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -52,7 +52,7 @@ func TestInitCmd(t *testing.T) {
 		out:        &buf,
 		home:       helmpath.Home(home),
 		kubeClient: fc,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
@@ -81,20 +81,20 @@ func TestInitCmd_exists(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	fc := fake.NewSimpleClientset(&extensions.Deployment{
+	fc := fake.NewSimpleClientset(&v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: api.NamespaceDefault,
+			Namespace: v1.NamespaceDefault,
 			Name:      "tiller-deploy",
 		},
 	})
 	fc.PrependReactor("*", "*", func(action testcore.Action) (bool, runtime.Object, error) {
-		return true, nil, apierrors.NewAlreadyExists(api.Resource("deployments"), "1")
+		return true, nil, apierrors.NewAlreadyExists(v1.Resource("deployments"), "1")
 	})
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
 		kubeClient: fc,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
@@ -120,7 +120,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 		home:       helmpath.Home(home),
 		kubeClient: fc,
 		clientOnly: true,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -155,7 +155,7 @@ func TestInitCmd_dryRun(t *testing.T) {
 		kubeClient: fc,
 		clientOnly: true,
 		dryRun:     true,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Fatal(err)

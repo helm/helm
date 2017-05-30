@@ -86,7 +86,7 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 // runReset uninstalls tiller from Kubernetes Cluster and deletes local config
 func (d *resetCmd) run() error {
 	if d.kubeClient == nil {
-		_, c, err := getKubeClient(kubeContext)
+		_, c, err := getInternalKubeClient(kubeContext)
 		if err != nil {
 			return fmt.Errorf("could not get kubernetes client: %s", err)
 		}
