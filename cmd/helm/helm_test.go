@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sync"
 	"testing"
@@ -336,4 +337,78 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 
 	t.Logf("$HELM_HOME has been configured at %s.\n", settings.Home.String())
 	return nil
+}
+
+func TestRootCmd(t *testing.T) {
+	oldhome := os.Getenv("HELM_HOME")
+	defer os.Setenv("HELM_HOME", oldhome)
+
+	tests := []struct {
+		name   string
+		args   []string
+		envars map[string]string
+		home   string
+	}{
+		{
+			name: "defaults",
+			home: filepath.Join(os.Getenv("HOME"), "/.helm"),
+		},
+		{
+			name: "with --home set",
+			args: []string{"--home", "/foo"},
+			home: "/foo",
+		},
+		{
+			name: "subcommands with --home set",
+			args: []string{"home", "--home", "/foo"},
+			home: "/foo",
+		},
+		{
+			name:   "with $HELM_HOME set",
+			envars: map[string]string{"HELM_HOME": "/bar"},
+			home:   "/bar",
+		},
+		{
+			name:   "subcommands with $HELM_HOME set",
+			args:   []string{"home"},
+			envars: map[string]string{"HELM_HOME": "/bar"},
+			home:   "/bar",
+		},
+		{
+			name:   "with $HELM_HOME and --home set",
+			args:   []string{"home", "--home", "/foo"},
+			envars: map[string]string{"HELM_HOME": "/bar"},
+			home:   "/foo",
+		},
+	}
+
+	// ensure not set locally
+	os.Unsetenv("HELM_HOME")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer os.Unsetenv("HELM_HOME")
+
+			for k, v := range tt.envars {
+				os.Setenv(k, v)
+			}
+
+			cmd := newRootCmd()
+			cmd.SetOutput(ioutil.Discard)
+			cmd.SetArgs(tt.args)
+			cmd.Run = func(*cobra.Command, []string) {}
+			if err := cmd.Execute(); err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+
+			if settings.Home.String() != tt.home {
+				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
+			}
+			homeFlag := cmd.Flag("home").Value.String()
+			homeFlag = os.ExpandEnv(homeFlag)
+			if homeFlag != tt.home {
+				t.Errorf("expected home %q, got %q", tt.home, homeFlag)
+			}
+		})
+	}
 }

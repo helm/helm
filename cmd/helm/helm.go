@@ -19,7 +19,6 @@ package main // import "k8s.io/helm/cmd/helm"
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -45,9 +44,7 @@ var (
 	tlsKeyFile    string // path to TLS key file
 	tlsVerify     bool   // enable TLS and verify remote certificates
 	tlsEnable     bool   // enable TLS
-)
 
-var (
 	kubeContext  string
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
@@ -114,7 +111,7 @@ func initRootFlags(cmd *cobra.Command) {
 	tlsKeyFile = os.ExpandEnv(tlsKeyFile)
 }
 
-func newRootCmd(out io.Writer) *cobra.Command {
+func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -123,11 +120,12 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			initRootFlags(cmd)
 		},
-		PersistentPostRun: func(_ *cobra.Command, _ []string) {
+		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
 	}
 	addRootFlags(cmd)
+	out := cmd.OutOrStdout()
 
 	cmd.AddCommand(
 		// chart commands
@@ -157,7 +155,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		addFlagsTLS(newVersionCmd(nil, out)),
 
 		newCompletionCmd(out),
-		newHomeCmd(out),
+		newHomeCmd(),
 		newInitCmd(out),
 		newPluginCmd(out),
 
@@ -180,7 +178,7 @@ func init() {
 }
 
 func main() {
-	cmd := newRootCmd(os.Stdout)
+	cmd := newRootCmd()
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
