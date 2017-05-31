@@ -25,6 +25,7 @@ import (
 
 // GetHistory gets the history for a given release.
 func (s *ReleaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryRequest) (*tpb.GetHistoryResponse, error) {
+	s.Log("getting history for release %s", req.Name)
 	h, err := s.env.Releases.History(req.Name)
 	if err != nil {
 		return nil, err

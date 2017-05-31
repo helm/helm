@@ -22,7 +22,6 @@ import (
 	goerrors "errors"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"time"
 
@@ -86,10 +85,12 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 	if err := ensureNamespace(client, namespace); err != nil {
 		return err
 	}
+	c.Log("building resources from manifest")
 	infos, buildErr := c.BuildUnstructured(namespace, reader)
 	if buildErr != nil {
 		return buildErr
 	}
+	c.Log("creating %d resource(s)", len(infos))
 	if err := perform(infos, createResource); err != nil {
 		return err
 	}
@@ -217,6 +218,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
+	c.Log("building resources from updated manifest")
 	target, err := c.BuildUnstructured(namespace, targetReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -224,6 +226,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 
 	updateErrors := []string{}
 
+	c.Log("checking %d resources for changes", len(target))
 	err = target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -232,7 +235,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
 			if !errors.IsNotFound(err) {
-				return fmt.Errorf("Could not get information about the resource: err: %s", err)
+				return fmt.Errorf("Could not get information about the resource: %s", err)
 			}
 
 			// Since the resource does not exist, create it.
@@ -386,7 +389,6 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 	case err != nil:
 		return nil, types.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
 	default:
-		log.Printf("generating strategic merge patch for %T", target)
 		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
 		return patch, types.StrategicMergePatchType, err
 	}

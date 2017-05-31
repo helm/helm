@@ -18,6 +18,8 @@ package tiller
 
 import (
 	"fmt"
+	"strings"
+
 	ctx "golang.org/x/net/context"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
@@ -25,14 +27,14 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/timeconv"
-	"strings"
 )
 
 // InstallRelease installs a release and stores the release record.
 func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+	s.Log("preparing install for %s", req.Name)
 	rel, err := s.prepareRelease(req)
 	if err != nil {
-		s.Log("Failed install prepare step: %s", err)
+		s.Log("failed install prepare step: %s", err)
 		res := &services.InstallReleaseResponse{Release: rel}
 
 		// On dry run, append the manifest contents to a failed release. This is
@@ -43,9 +45,10 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		return res, err
 	}
 
+	s.Log("performing install for %s", req.Name)
 	res, err := s.performRelease(rel, req)
 	if err != nil {
-		s.Log("Failed install perform step: %s", err)
+		s.Log("failed install perform step: %s", err)
 	}
 	return res, err
 }
@@ -132,7 +135,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	res := &services.InstallReleaseResponse{Release: r}
 
 	if req.DryRun {
-		s.Log("Dry run for %s", r.Name)
+		s.Log("dry run for %s", r.Name)
 		res.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
@@ -142,11 +145,14 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout); err != nil {
 			return res, err
 		}
+	} else {
+		s.Log("install hooks disabled for %s", req.Name)
 	}
 
 	switch h, err := s.env.Releases.History(req.Name); {
 	// if this is a replace operation, append to the release history
 	case req.ReuseName && err == nil && len(h) >= 1:
+		s.Log("name reuse for %s requested, replacing release", req.Name)
 		// get latest release revision
 		relutil.Reverse(h, relutil.SortByRevision)
 
