@@ -78,7 +78,7 @@ Go provides a way for setting template options to control behavior
 when a map is indexed with a key that's not present in the map. This
 is typically set with template.Options("missingkey=option"), where option
 can be default, zero, or error. While setting this option to error will
-stop execution with an arror, this would apply to every missing key in the
+stop execution with an error, this would apply to every missing key in the
 map. There may be situations where a chart developer wants to enforce this
 behavior for select values in the values.yml file.
 
