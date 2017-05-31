@@ -215,12 +215,13 @@ You can then override any of these settings in a YAML formatted file,
 and then pass that file during installation.
 
 ```console
-$ echo 'mariadbUser: user0' > config.yaml
+$ echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.yaml
 $ helm install -f config.yaml stable/mariadb
 ```
 
-The above will set the default MariaDB user to `user0`, but accept all
-the rest of the defaults for that chart.
+The above will create a default MariaDB user with the name `user0`, and
+grant this user access to a newly created `user0db` database, but will
+accept all the rest of the defaults for that chart.
 
 There are two ways to pass configuration data during install:
 
