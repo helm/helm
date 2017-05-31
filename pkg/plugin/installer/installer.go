@@ -44,7 +44,7 @@ type Installer interface {
 // Install installs a plugin to $HELM_HOME.
 func Install(i Installer) error {
 	if _, pathErr := os.Stat(path.Dir(i.Path())); os.IsNotExist(pathErr) {
-		return errors.New(`plugin home "$HELM_HOME/plugins" does not exists`)
+		return errors.New(`plugin home "$HELM_HOME/plugins" does not exist`)
 	}
 
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
