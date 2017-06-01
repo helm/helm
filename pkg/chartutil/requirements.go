@@ -218,7 +218,7 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 
 }
 
-func copyChartAsAlias(charts []*chart.Chart, dependentChart, aliasChart string) *chart.Chart {
+func updateChartDependencyAlias(charts []*chart.Chart, dependentChart, aliasChart string, firstAlias bool) *chart.Chart {
 	var chartFound chart.Chart
 	for _, existingChart := range charts {
 		if existingChart == nil {
@@ -229,6 +229,10 @@ func copyChartAsAlias(charts []*chart.Chart, dependentChart, aliasChart string) 
 		}
 		if existingChart.Metadata.Name != dependentChart {
 			continue
+		}
+		if firstAlias {
+			existingChart.Metadata.Name = aliasChart
+			return nil
 		}
 
 		chartFound = *existingChart
@@ -254,16 +258,22 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	}
 
 	for _, req := range reqs.Dependencies {
+		var firstAlias = true
+		var dependentChartName = req.Name
 		for _, alias := range req.Alias {
-			aliasDependency := copyChartAsAlias(c.Dependencies, req.Name, alias)
+			aliasDependency := updateChartDependencyAlias(c.Dependencies, dependentChartName, alias, firstAlias)
+			if firstAlias {
+				dependentChartName = alias
+				firstAlias = false
+				continue
+			}
 			if aliasDependency == nil {
 				break
 			}
 			c.Dependencies = append(c.Dependencies, aliasDependency)
-			origReqName := req.Name
 			req.Name = alias
 			reqs.Dependencies = append(reqs.Dependencies, req)
-			req.Name = origReqName
+			req.Name = dependentChartName
 		}
 	}
 

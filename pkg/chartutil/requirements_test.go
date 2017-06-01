@@ -321,23 +321,33 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Confi
 	}
 }
 
-func TestCopyChartAsAlias(t *testing.T) {
+func TestUpdateChartDependencyAlias(t *testing.T) {
 	c, err := Load("testdata/frobnitz")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	if aliasChart := copyChartAsAlias(c.Dependencies, "mariners", "another-mariner"); aliasChart != nil {
+	if aliasChart := updateChartDependencyAlias(c.Dependencies, "mariners", "another-mariner", false); aliasChart != nil {
 		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
 	}
 
-	aliasChart := copyChartAsAlias(c.Dependencies, "mariner", "another-mariner")
+	aliasChart := updateChartDependencyAlias(c.Dependencies, "mariner", "another-mariner", false)
 	if aliasChart == nil {
 		t.Fatal("Failed to find dependent chart")
 	}
 	if aliasChart.Metadata.Name != "another-mariner" {
 		t.Fatal(`Failed to update chart-name for alias "dependent chart`)
 	}
+
+	//Testing single-alias update, first update and then try same with non-first alias, we should not be able to find chart
+	if aliasChart := updateChartDependencyAlias(c.Dependencies, "mariner", "another-mariner", true); aliasChart != nil {
+		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
+	}
+
+	if aliasChart := updateChartDependencyAlias(c.Dependencies, "mariner", "another-mariner", false); aliasChart != nil {
+		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
+	}
+
 }
 
 func TestDependentChartAliases(t *testing.T) {
@@ -371,8 +381,8 @@ func TestDependentChartAliases(t *testing.T) {
 			expectedDependencyCharts += len(reqmt.Alias)
 		}
 	}
-	if len(c.Dependencies) != expectedDependencyCharts {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", expectedDependencyCharts, len(c.Dependencies))
+	if len(c.Dependencies) != expectedDependencyCharts-1 {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", expectedDependencyCharts-1, len(c.Dependencies))
 	}
 
 }
