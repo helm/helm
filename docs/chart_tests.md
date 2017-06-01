@@ -22,7 +22,7 @@ In Helm, there are two test hooks: `test-success` and `test-failure`
 
 ## Example Test
 
-Here is an example of a helm test pod definition in an example maraidb chart:
+Here is an example of a helm test pod definition in an example mariadb chart:
 
 ```
 mariadb/
