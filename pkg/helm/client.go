@@ -98,7 +98,7 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	if err != nil {
 		return nil, err
 	}
-	err = chartutil.ProcessRequirementsImportValues(req.Chart, req.Values)
+	err = chartutil.ProcessRequirementsImportValues(req.Chart)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	if err != nil {
 		return nil, err
 	}
-	err = chartutil.ProcessRequirementsImportValues(req.Chart, req.Values)
+	err = chartutil.ProcessRequirementsImportValues(req.Chart)
 	if err != nil {
 		return nil, err
 	}
