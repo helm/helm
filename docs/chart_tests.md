@@ -1,6 +1,6 @@
 # Chart Tests
 
-A chart contains a number of Kubernetes resources and components that work together. As a chart author, you may want to write some tests that validate that your charts works as expected when it is installed. These tests also help the chart consumer understand what your chart is supposed to do.
+A chart contains a number of Kubernetes resources and components that work together. As a chart author, you may want to write some tests that validate that your chart works as expected when it is installed. These tests also help the chart consumer understand what your chart is supposed to do.
 
 A **test** in a helm chart lives under the `templates/` directory and is a pod definition that specifies a container with a given command to run. The container should exit successfully (exit 0) for a test to be considered a success. The pod definiton must contain one of the helm test hook annotations: `helm.sh/hooks: test-success` or `helm.sh/hooks: test-failure`.
 
@@ -17,8 +17,8 @@ You can run the pre-defined tests in Helm on a release using the command `helm t
 
 In Helm, there are two test hooks: `test-success` and `test-failure`
 
-`test-success` indiciates that test pod should complete successfully. In other words, the containers in the pod should exit 0.
-`test-failure` is a way to assert that a test pod should not complete successfully. If the containers in the pod do not exit 0, that indiciates success.
+`test-success` indicates that test pod should complete successfully. In other words, the containers in the pod should exit 0.
+`test-failure` is a way to assert that a test pod should not complete successfully. If the containers in the pod do not exit 0, that indicates success.
 
 ## Example Test
 
