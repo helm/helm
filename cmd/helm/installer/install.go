@@ -28,7 +28,6 @@ import (
 	extensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/util"
 )
 
 // Install uses kubernetes client to install tiller.
@@ -127,7 +126,6 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 			Labels:    labels,
 		},
 		Spec: v1beta1.DeploymentSpec{
-			Replicas: util.Int32Ptr(1),
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
