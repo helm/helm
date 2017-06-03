@@ -229,6 +229,38 @@ Managing charts with `requirements.yaml` is a good way to easily keep
 charts updated, and also share requirements information throughout a
 team.
 
+#### Alias field in requirements.yaml
+
+In addition to the other fields above, each requirements entry may contain
+the optional field `alias`.
+
+Adding an alias for a dependency chart would add another copy
+of the chart as a new depdendency using alias as name of new dependency.
+
+One can use `alias` in cases where they need multiple copies of same chart
+as dependencies all independent of one another.
+
+````
+# parentchart/requirements.yaml
+dependencies:
+      - name: subchart
+        repository: http://localhost:10191
+        version: 0.1.0
+        alias:
+          - one-more-subchart
+          - another-subchart
+````
+
+In the above example we will get 3 depenendencies in all for `parentchart`
+```
+subchart
+one-more-subchart
+another-subchart
+```
+
+Manual way of achieving this is copy/pasting same chart in
+`charts/` directory multiple times with different name.
+
 #### Tags and Condition fields in requirements.yaml
 
 In addition to the other fields above, each requirements entry may contain
@@ -686,17 +718,6 @@ chart. There is no way for a subchart to influence the values of the
 parent chart.
 
 Also, global variables of parent charts take precedence over the global variables from subcharts.
-
-_Global sections are restricted to only simple key/value pairs. They do
-not support nesting._
-
-For example, the following is **illegal** and will not work:
-
-```yaml
-global:
-  foo:  # It is illegal to nest an object inside of global.
-    bar: baz
-```
 
 ### References
 

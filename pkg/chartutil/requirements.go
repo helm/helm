@@ -65,6 +65,8 @@ type Dependency struct {
 	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
 	// string or pair of child/parent sublist items.
 	ImportValues []interface{} `json:"import-values"`
+	// Alias usable alias to be used for the chart
+	Alias []string `json:"alias"`
 }
 
 // ErrNoRequirementsFile to detect error condition
@@ -216,6 +218,28 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 
 }
 
+func copyChartAsAlias(charts []*chart.Chart, dependentChart, aliasChart string) *chart.Chart {
+	var chartFound chart.Chart
+	for _, existingChart := range charts {
+		if existingChart == nil {
+			continue
+		}
+		if existingChart.Metadata == nil {
+			continue
+		}
+		if existingChart.Metadata.Name != dependentChart {
+			continue
+		}
+
+		chartFound = *existingChart
+		newMetadata := *existingChart.Metadata
+		newMetadata.Name = aliasChart
+		chartFound.Metadata = &newMetadata
+		return &chartFound
+	}
+	return nil
+}
+
 // ProcessRequirementsEnabled removes disabled charts from dependencies
 func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	reqs, err := LoadRequirements(c)
@@ -228,6 +252,21 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 		// no requirements to process
 		return nil
 	}
+
+	for _, req := range reqs.Dependencies {
+		for _, alias := range req.Alias {
+			aliasDependency := copyChartAsAlias(c.Dependencies, req.Name, alias)
+			if aliasDependency == nil {
+				break
+			}
+			c.Dependencies = append(c.Dependencies, aliasDependency)
+			origReqName := req.Name
+			req.Name = alias
+			reqs.Dependencies = append(reqs.Dependencies, req)
+			req.Name = origReqName
+		}
+	}
+
 	// set all to true
 	for _, lr := range reqs.Dependencies {
 		lr.Enabled = true

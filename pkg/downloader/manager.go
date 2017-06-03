@@ -572,5 +572,5 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 		return ch.Metadata.Version, err
 	}
 
-	return "", fmt.Errorf("Can't get a valid version for dependency %s.", name)
+	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
 }

@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/pkg/plugin/installer"
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -32,6 +33,18 @@ type VCSInstaller struct {
 	Repo    vcs.Repo
 	Version string
 	base
+}
+
+func existingVCSRepo(location string, home helmpath.Home) (Installer, error) {
+	repo, err := vcs.NewRepo("", location)
+	if err != nil {
+		return nil, err
+	}
+	i := &VCSInstaller{
+		Repo: repo,
+		base: newBase(repo.Remote(), home),
+	}
+	return i, err
 }
 
 // NewVCSInstaller creates a new VCSInstaller.
@@ -75,6 +88,21 @@ func (i *VCSInstaller) Install() error {
 	}
 
 	return i.link(i.Repo.LocalPath())
+}
+
+// Update updates a remote repository
+func (i *VCSInstaller) Update() error {
+	debug("updating %s", i.Repo.Remote())
+	if i.Repo.IsDirty() {
+		return errors.New("plugin repo was modified")
+	}
+	if err := i.Repo.Update(); err != nil {
+		return err
+	}
+	if !isPlugin(i.Repo.LocalPath()) {
+		return ErrMissingMetadata
+	}
+	return nil
 }
 
 func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {

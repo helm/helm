@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/proto/hapi/services"
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
 )
 
@@ -88,6 +89,29 @@ func TestDeleteTestPodsFailingDelete(t *testing.T) {
 	}
 }
 
+func TestStreamMessage(t *testing.T) {
+	mockTestEnv := newMockTestingEnvironment()
+
+	expectedMessage := "testing streamMessage"
+	expectedStatus := release.TestRun_SUCCESS
+	err := mockTestEnv.streamMessage(expectedMessage, expectedStatus)
+	if err != nil {
+		t.Errorf("Expected no errors, got 1: %s", err)
+	}
+
+	stream := mockTestEnv.Stream.(*mockStream)
+	if len(stream.messages) != 1 {
+		t.Errorf("Expected 1 message, got: %v", len(stream.messages))
+	}
+
+	if stream.messages[0].Msg != expectedMessage {
+		t.Errorf("Expected message: %s, got: %s", expectedMessage, stream.messages[0])
+	}
+	if stream.messages[0].Status != expectedStatus {
+		t.Errorf("Expected status: %v, got: %v", expectedStatus, stream.messages[0].Status)
+	}
+}
+
 type MockTestingEnvironment struct {
 	*Environment
 }
@@ -110,7 +134,10 @@ func (mte MockTestingEnvironment) streamError(info string) error         { retur
 func (mte MockTestingEnvironment) streamFailed(name string) error        { return nil }
 func (mte MockTestingEnvironment) streamSuccess(name string) error       { return nil }
 func (mte MockTestingEnvironment) streamUnknown(name, info string) error { return nil }
-func (mte MockTestingEnvironment) streamMessage(msg string) error        { return nil }
+func (mte MockTestingEnvironment) streamMessage(msg string, status release.TestRun_Status) error {
+	mte.Stream.Send(&services.TestReleaseResponse{Msg: msg, Status: status})
+	return nil
+}
 
 type getFailingKubeClient struct {
 	tillerEnv.PrintingKubeClient
@@ -123,7 +150,7 @@ func newGetFailingKubeClient() *getFailingKubeClient {
 }
 
 func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
-	return "", errors.New("In the end, they did not find Nemo.")
+	return "", errors.New("in the end, they did not find Nemo")
 }
 
 type deleteFailingKubeClient struct {

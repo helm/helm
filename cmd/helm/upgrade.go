@@ -62,6 +62,7 @@ type upgradeCmd struct {
 	client       helm.Interface
 	dryRun       bool
 	recreate     bool
+	force        bool
 	disableHooks bool
 	valueFiles   valueFiles
 	values       []string
@@ -75,6 +76,7 @@ type upgradeCmd struct {
 	reuseValues  bool
 	wait         bool
 	repoURL      string
+	devel        bool
 
 	certFile string
 	keyFile  string
@@ -98,6 +100,11 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			if upgrade.version == "" && upgrade.devel {
+				debug("setting version to >0.0.0-a")
+				upgrade.version = ">0.0.0-a"
+			}
+
 			upgrade.release = args[0]
 			upgrade.chart = args[1]
 			upgrade.client = ensureHelmClient(upgrade.client)
@@ -110,6 +117,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
 	f.StringArrayVar(&upgrade.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
@@ -126,6 +134,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
@@ -178,7 +187,11 @@ func (u *upgradeCmd) run() error {
 			if err := checkDependencies(ch, req, u.out); err != nil {
 				return err
 			}
+		} else if err != chartutil.ErrRequirementsNotFound {
+			return fmt.Errorf("cannot load requirements: %v", err)
 		}
+	} else {
+		return prettyError(err)
 	}
 
 	resp, err := u.client.UpdateRelease(
@@ -187,6 +200,7 @@ func (u *upgradeCmd) run() error {
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
+		helm.UpgradeForce(u.force),
 		helm.UpgradeDisableHooks(u.disableHooks),
 		helm.UpgradeTimeout(u.timeout),
 		helm.ResetValues(u.resetValues),

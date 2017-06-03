@@ -62,31 +62,31 @@ verifySupported() {
   fi
 }
 
-# checkLatestVersion checks the latest available version.
-checkLatestVersion() {
-  # Use the GitHub releases webpage for the project to find the latest version for this project.
-  local latest_url="https://github.com/kubernetes/helm/releases/latest"
+# checkDesiredVersion checks if the desired version is available.
+checkDesiredVersion() {
+  # Use the GitHub releases webpage for the project to find the desired version for this project.
+  local release_url="https://github.com/kubernetes/helm/releases/${DESIRED_VERSION:-latest}"
   if type "curl" > /dev/null; then
-    TAG=$(curl -SsL $latest_url | awk '/\/tag\//' | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}')
+    TAG=$(curl -SsL $release_url | awk '/\/tag\//' | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}')
   elif type "wget" > /dev/null; then
-    TAG=$(wget -q -O - $latest_url | awk '/\/tag\//' | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}')
+    TAG=$(wget -q -O - $release_url | awk '/\/tag\//' | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}')
   fi
   if [ "x$TAG" == "x" ]; then
-    echo "Cannot determine latest tag."
+    echo "Cannot determine ${DESIRED_VERSION} tag."
     exit 1
   fi
 }
 
 # checkHelmInstalledVersion checks which version of helm is installed and
-# if it needs to be updated.
+# if it needs to be changed.
 checkHelmInstalledVersion() {
   if [[ -f "${HELM_INSTALL_DIR}/${PROJECT_NAME}" ]]; then
     local version=$(helm version | grep '^Client' | cut -d'"' -f2)
     if [[ "$version" == "$TAG" ]]; then
-      echo "Helm ${version} is up-to-date."
+      echo "Helm ${version} is already ${DESIRED_VERSION:-latest}"
       return 0
     else
-      echo "Helm ${TAG} is available. Upgrading from version ${version}."
+      echo "Helm ${TAG} is available. Changing from version ${version}."
       return 1
     fi
   else
@@ -137,7 +137,12 @@ installFile() {
 fail_trap() {
   result=$?
   if [ "$result" != "0" ]; then
-    echo "Failed to install $PROJECT_NAME"
+    if [[ -n "$INPUT_ARGUMENTS" ]]; then
+      echo "Failed to install $PROJECT_NAME with the arguments provided: $INPUT_ARGUMENTS"
+      help
+    else
+      echo "Failed to install $PROJECT_NAME"
+    fi
     echo -e "\tFor support, go to https://github.com/kubernetes/helm."
   fi
   exit $result
@@ -156,15 +161,44 @@ testVersion() {
   echo "Run '$PROJECT_NAME init' to configure $PROJECT_NAME."
 }
 
+# help provides possible cli installation arguments
+help () {
+  echo "Accepted cli arguments are:"
+  echo -e "\t[--help|-h ] ->> prints this help"
+  echo -e "\t[--version|-v <desired_version>] . When not defined it defaults to latest"
+  echo -e "\te.g. --version v2.4.0  or -v latest"
+}
+
 # Execution
 
 #Stop execution on any error
 trap "fail_trap" EXIT
 set -e
+
+# Parsing input arguments (if any)
+export INPUT_ARGUMENTS="${@}"
+set -u
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    '--version'|-v) 
+       export DESIRED_VERSION="${2}" 
+       shift
+       ;;
+    '--help'|-h) 
+       help
+       exit 0
+       ;;
+    *) exit 1
+       ;;
+  esac
+  shift
+done
+set +u
+
 initArch
 initOS
 verifySupported
-checkLatestVersion
+checkDesiredVersion
 if ! checkHelmInstalledVersion; then
   downloadFile
   installFile

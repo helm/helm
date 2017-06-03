@@ -20,6 +20,7 @@ import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
 import "hapi/release/info.proto";
+import "hapi/release/test_run.proto";
 import "hapi/release/status.proto";
 import "hapi/version/version.proto";
 
@@ -206,6 +207,8 @@ message UpdateReleaseRequest {
 	// ReuseValues will cause Tiller to reuse the values from the last release.
 	// This is ignored if reset_values is set.
 	bool reuse_values = 10;
+	// Force resource update through delete/recreate if needed.
+	bool force = 11;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -229,6 +232,8 @@ message RollbackReleaseRequest {
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
 	bool wait = 7;
+	// Force resource update through delete/recreate if needed.
+	bool force = 8;
 }
 
 // RollbackReleaseResponse is the response to an update request.
@@ -327,4 +332,6 @@ message TestReleaseRequest {
 // TestReleaseResponse represents a message from executing a test
 message TestReleaseResponse {
 	string msg = 1;
+	hapi.release.TestRun.Status status = 2;
+
 }

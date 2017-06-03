@@ -15,7 +15,7 @@ import:
 - package: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - package: github.com/Masterminds/sprig
-  version: ^2.11
+  version: ^2.12
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
   version: ~1.2.3
@@ -41,6 +41,7 @@ import:
 - package: github.com/gobwas/glob
   version: ^0.2.1
 - package: github.com/evanphx/json-patch
+- package: github.com/facebookgo/atomicfile
 - package: github.com/facebookgo/symwalk
 - package: github.com/BurntSushi/toml
   version: ~0.3.0
@@ -49,6 +50,11 @@ import:
 - package: github.com/chai2010/gettext-go
 - package: github.com/prometheus/client_golang
   version: v0.8.0
+- package: vbom.ml/util
+  repo: https://github.com/fvbommel/util.git
+  vcs: git
+- package: github.com/docker/distribution
+  version: ~v2.4.0
 testImports:
 - package: github.com/stretchr/testify
   version: ^1.1.4

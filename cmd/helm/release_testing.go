@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 const releaseTestDesc = `
@@ -75,16 +76,35 @@ func (t *releaseTestCmd) run() (err error) {
 		helm.ReleaseTestTimeout(t.timeout),
 		helm.ReleaseTestCleanup(t.cleanup),
 	)
+	testErr := &testErr{}
 
 	for {
 		select {
 		case err := <-errc:
+			if prettyError(err) == nil && testErr.failed > 0 {
+				return testErr.Error()
+			}
 			return prettyError(err)
 		case res, ok := <-c:
 			if !ok {
 				break
 			}
+
+			if res.Status == release.TestRun_FAILURE {
+				testErr.failed++
+			}
+
 			fmt.Fprintf(t.out, res.Msg+"\n")
+
 		}
 	}
+
+}
+
+type testErr struct {
+	failed int
+}
+
+func (err *testErr) Error() error {
+	return fmt.Errorf("%v test(s) failed", err.failed)
 }
