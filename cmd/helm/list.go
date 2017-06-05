@@ -82,11 +82,11 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "list [flags] [FILTER]",
-		Short:             "list releases",
-		Long:              listHelp,
-		Aliases:           []string{"ls"},
-		PersistentPreRunE: setupConnection,
+		Use:     "list [flags] [FILTER]",
+		Short:   "list releases",
+		Long:    listHelp,
+		Aliases: []string{"ls"},
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				list.filter = strings.Join(args, " ")

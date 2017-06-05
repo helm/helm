@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
 
@@ -71,7 +72,6 @@ func TestLoadPlugins(t *testing.T) {
 		settings.Home = old
 	}()
 	hh := settings.Home
-	settings.PlugDirs = hh.Plugins()
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
@@ -139,12 +139,11 @@ func TestLoadPlugins(t *testing.T) {
 func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 	// Set helm home to point to testdata
 	old := settings.Home
-	oldPlugDirs := settings.PlugDirs
 	settings.Home = "testdata/helmhome"
-	settings.PlugDirs = ""
+	os.Setenv(helm_env.PluginDisableEnvVar, "1")
 	defer func() {
 		settings.Home = old
-		settings.PlugDirs = oldPlugDirs
+		os.Unsetenv(helm_env.PluginDisableEnvVar)
 	}()
 
 	out := bytes.NewBuffer(nil)
@@ -161,7 +160,6 @@ func TestSetupEnv(t *testing.T) {
 	name := "pequod"
 	settings.Home = helmpath.Home("testdata/helmhome")
 	base := filepath.Join(settings.Home.Plugins(), name)
-	settings.PlugDirs = settings.Home.Plugins()
 	settings.Debug = true
 	defer func() {
 		settings.Debug = false

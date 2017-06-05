@@ -57,7 +57,7 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Use:   "reset",
 		Short: "uninstalls Tiller from a cluster",
 		Long:  resetDesc,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := setupConnection(cmd, args); !d.force && err != nil {
 				return err
 			}

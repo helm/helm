@@ -59,9 +59,8 @@ func (pcmd *pluginRemoveCmd) complete(args []string) error {
 }
 
 func (pcmd *pluginRemoveCmd) run() error {
-	plugdirs := pluginDirs(pcmd.home)
-	debug("loading installed plugins from %s", plugdirs)
-	plugins, err := findPlugins(plugdirs)
+	debug("loading installed plugins from %s", settings.PluginDirs())
+	plugins, err := findPlugins(settings.PluginDirs())
 	if err != nil {
 		return err
 	}

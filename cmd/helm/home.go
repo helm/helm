@@ -17,9 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
-	"io"
-
 	"github.com/spf13/cobra"
 )
 
@@ -28,25 +25,24 @@ This command displays the location of HELM_HOME. This is where
 any helm configuration files live.
 `
 
-func newHomeCmd(out io.Writer) *cobra.Command {
+func newHomeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "home",
 		Short: "displays the location of HELM_HOME",
 		Long:  longHomeHelp,
 		Run: func(cmd *cobra.Command, args []string) {
 			h := settings.Home
-			fmt.Fprintf(out, "%s\n", h)
+			cmd.Println(h)
 			if settings.Debug {
-				fmt.Fprintf(out, "Repository: %s\n", h.Repository())
-				fmt.Fprintf(out, "RepositoryFile: %s\n", h.RepositoryFile())
-				fmt.Fprintf(out, "Cache: %s\n", h.Cache())
-				fmt.Fprintf(out, "Stable CacheIndex: %s\n", h.CacheIndex("stable"))
-				fmt.Fprintf(out, "Starters: %s\n", h.Starters())
-				fmt.Fprintf(out, "LocalRepository: %s\n", h.LocalRepository())
-				fmt.Fprintf(out, "Plugins: %s\n", h.Plugins())
+				cmd.Printf("Repository: %s\n", h.Repository())
+				cmd.Printf("RepositoryFile: %s\n", h.RepositoryFile())
+				cmd.Printf("Cache: %s\n", h.Cache())
+				cmd.Printf("Stable CacheIndex: %s\n", h.CacheIndex("stable"))
+				cmd.Printf("Starters: %s\n", h.Starters())
+				cmd.Printf("LocalRepository: %s\n", h.LocalRepository())
+				cmd.Printf("Plugins: %s\n", h.Plugins())
 			}
 		},
 	}
-
 	return cmd
 }

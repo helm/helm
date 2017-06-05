@@ -179,7 +179,7 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 
 		// Set vars that may not have been set, and save client the
 		// trouble of re-parsing.
-		helm_env.PluginEnvVar: settings.PlugDirs,
+		helm_env.PluginEnvVar: settings.PluginDirs(),
 		helm_env.HomeEnvVar:   settings.Home.String(),
 
 		// Set vars that convey common information.

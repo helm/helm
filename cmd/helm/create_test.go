@@ -87,7 +87,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := helmpath.Home(environment.DefaultHelmHome())
+	old := helmpath.Home(environment.DefaultHelmHome)
 	settings.Home = thome
 	defer func() {
 		settings.Home = old
