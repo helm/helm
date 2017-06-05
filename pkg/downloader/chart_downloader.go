@@ -215,6 +215,12 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 		return u, r.Client, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
+	// If the URL is relative (no scheme), prepend the chart repo's base URL
+	if !u.IsAbs() {
+		u, err = url.Parse(rc.URL + "/" + u.Path)
+		return u, r.Client, err
+	}
+
 	return u, r.Client, nil
 }
 
