@@ -28,7 +28,7 @@ func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleas
 	}
 
 	if req.Version <= 0 {
-		rel, err := s.env.Releases.Deployed(req.Name)
+		rel, err := s.env.Releases.Last(req.Name)
 		return &services.GetReleaseContentResponse{Release: rel}, err
 	}
 
