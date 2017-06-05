@@ -16,6 +16,17 @@ LDFLAGS   :=
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
+HOSTARCH  := $(shell $(GO) env GOHOSTARCH)
+HOSTOS		:= $(shell $(GO) env GOHOSTOS)
+BUILDARCH := $(shell echo $${GOARCH:-$(HOSTARCH)})
+BUILDOS   := $(shell echo $${GOOS:-$(HOSTOS)})
+GOBIN			:= $(BINDIR)
+ifneq ($(BUILDARCH),$(HOSTARCH))
+	GOBIN := 
+endif
+ifneq ($(BUILDOS),$(HOSTOS))
+	GOBIN :=
+endif
 
 # Required for globs to work correctly
 SHELL=/bin/bash
@@ -24,8 +35,19 @@ SHELL=/bin/bash
 all: build
 
 .PHONY: build
-build:
-	GOBIN=$(BINDIR) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+build: gobuild copy
+
+.PHONY: gobuild
+gobuild:
+	GOBIN=$(GOBIN) $(GO) install $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/...
+
+.PHONY: copy
+copy:
+	@if [ "$(BINDIR)" != "$(GOBIN)" ]; then \
+		for binary in ${BINARIES} ; do \
+			cp $(GOPATH)/bin/$(BUILDOS)_$(BUILDARCH)/$$binary $(BINDIR); \
+		done \
+	fi
 
 # usage: make clean build-cross dist APP=helm|tiller VERSION=v2.0.0-alpha.3
 .PHONY: build-cross
