@@ -5,6 +5,8 @@ dependencies:
   - name: mariner
     version: "4.3.2"
     repository: https://example.com/charts
-    alias:
-    - mariners1
-    - mariners2
+    alias: mariners2
+  - name: mariner
+    version: "4.3.2"
+    repository: https://example.com/charts
+    alias: mariners1

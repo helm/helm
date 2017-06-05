@@ -66,7 +66,7 @@ type Dependency struct {
 	// string or pair of child/parent sublist items.
 	ImportValues []interface{} `json:"import-values"`
 	// Alias usable alias to be used for the chart
-	Alias []string `json:"alias"`
+	Alias string `json:"alias"`
 }
 
 // ErrNoRequirementsFile to detect error condition
@@ -218,7 +218,7 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 
 }
 
-func updateChartDependencyAlias(charts []*chart.Chart, dependentChart, aliasChart string, firstAlias bool) *chart.Chart {
+func getAliasDependency(charts []*chart.Chart, aliasChart *Dependency) *chart.Chart {
 	var chartFound chart.Chart
 	for _, existingChart := range charts {
 		if existingChart == nil {
@@ -227,17 +227,17 @@ func updateChartDependencyAlias(charts []*chart.Chart, dependentChart, aliasChar
 		if existingChart.Metadata == nil {
 			continue
 		}
-		if existingChart.Metadata.Name != dependentChart {
+		if existingChart.Metadata.Name != aliasChart.Name {
 			continue
 		}
-		if firstAlias {
-			existingChart.Metadata.Name = aliasChart
-			return nil
+		if existingChart.Metadata.Version != aliasChart.Version {
+			continue
 		}
-
 		chartFound = *existingChart
 		newMetadata := *existingChart.Metadata
-		newMetadata.Name = aliasChart
+		if aliasChart.Alias != "" {
+			newMetadata.Name = aliasChart.Alias
+		}
 		chartFound.Metadata = &newMetadata
 		return &chartFound
 	}
@@ -257,25 +257,16 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 		return nil
 	}
 
+	var chartDependencies []*chart.Chart
 	for _, req := range reqs.Dependencies {
-		var firstAlias = true
-		var dependentChartName = req.Name
-		for _, alias := range req.Alias {
-			aliasDependency := updateChartDependencyAlias(c.Dependencies, dependentChartName, alias, firstAlias)
-			if firstAlias {
-				dependentChartName = alias
-				firstAlias = false
-				continue
-			}
-			if aliasDependency == nil {
-				break
-			}
-			c.Dependencies = append(c.Dependencies, aliasDependency)
-			req.Name = alias
-			reqs.Dependencies = append(reqs.Dependencies, req)
-			req.Name = dependentChartName
+		if chartDependency := getAliasDependency(c.Dependencies, req); chartDependency != nil {
+			chartDependencies = append(chartDependencies, chartDependency)
+		}
+		if req.Alias != "" {
+			req.Name = req.Alias
 		}
 	}
+	c.Dependencies = chartDependencies
 
 	// set all to true
 	for _, lr := range reqs.Dependencies {
