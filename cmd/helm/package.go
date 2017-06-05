@@ -48,13 +48,14 @@ Versioned chart archives are used by Helm package repositories.
 `
 
 type packageCmd struct {
-	save        bool
-	sign        bool
-	path        string
-	key         string
-	keyring     string
-	version     string
-	destination string
+	save             bool
+	sign             bool
+	path             string
+	key              string
+	keyring          string
+	version          string
+	destination      string
+	dependencyUpdate bool
 
 	out  io.Writer
 	home helmpath.Home
@@ -99,6 +100,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
 	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
 	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
+	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
 
 	return cmd
 }
@@ -107,6 +109,21 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	path, err := filepath.Abs(p.path)
 	if err != nil {
 		return err
+	}
+
+	if p.dependencyUpdate {
+		dependencyUpdateCommand := &dependencyUpdateCmd{
+			out:      p.out,
+			keyring:  p.keyring,
+			helmhome: settings.Home,
+		}
+		dependencyUpdateCommand.chartpath, err = filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		if err := dependencyUpdateCommand.run(); err != nil {
+			return err
+		}
 	}
 
 	ch, err := chartutil.LoadDir(path)
