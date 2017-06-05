@@ -234,11 +234,11 @@ team.
 In addition to the other fields above, each requirements entry may contain
 the optional field `alias`.
 
-Adding an alias for a dependency chart would add another copy
-of the chart as a new depdendency using alias as name of new dependency.
+Adding an alias for a dependency chart would put
+a chart in dependencies using alias as name of new dependency.
 
-One can use `alias` in cases where they need multiple copies of same chart
-as dependencies all independent of one another.
+One can use `alias` in cases where they need to access a chart
+with other name(s).
 
 ````
 # parentchart/requirements.yaml
@@ -246,16 +246,21 @@ dependencies:
       - name: subchart
         repository: http://localhost:10191
         version: 0.1.0
-        alias:
-          - one-more-subchart
-          - another-subchart
+        alias: new-subchart-1
+      - name: subchart
+        repository: http://localhost:10191
+        version: 0.1.0
+        alias: new-subchart-2
+      - name: subchart
+        repository: http://localhost:10191
+        version: 0.1.0
 ````
 
 In the above example we will get 3 depenendencies in all for `parentchart`
 ```
 subchart
-one-more-subchart
-another-subchart
+new-subchart-1
+new-subchart-2
 ```
 
 Manual way of achieving this is copy/pasting same chart in
