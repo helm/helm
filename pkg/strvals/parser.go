@@ -93,7 +93,7 @@ func runeSet(r []rune) map[rune]bool {
 }
 
 func (t *parser) key(data map[string]interface{}) error {
-	stop := runeSet([]rune{'=', ',', '.'})
+	stop := runeSet([]rune{'=', '[', ',', '.'})
 	for {
 		switch k, last, err := runesUntil(t.sc, stop); {
 		case err != nil:
@@ -103,6 +103,23 @@ func (t *parser) key(data map[string]interface{}) error {
 			return fmt.Errorf("key %q has no value", string(k))
 			//set(data, string(k), "")
 			//return err
+		case last == '[':
+			// We are in a list index context, so we need to set an index.
+			i, err := t.keyIndex()
+			if err != nil {
+				return fmt.Errorf("error parsing index: %s", err)
+			}
+			kk := string(k)
+			// Find or create target list
+			list := []interface{}{}
+			if _, ok := data[kk]; ok {
+				list = data[kk].([]interface{})
+			}
+
+			// Now we need to get the value after the ].
+			list, err = t.listItem(list, i)
+			set(data, kk, list)
+			return err
 		case last == '=':
 			//End of key. Consume =, Get value.
 			// FIXME: Get value list first
@@ -150,6 +167,71 @@ func set(data map[string]interface{}, key string, val interface{}) {
 		return
 	}
 	data[key] = val
+}
+
+func setIndex(list []interface{}, index int, val interface{}) []interface{} {
+	if len(list) <= index {
+		newlist := make([]interface{}, index+1)
+		copy(newlist, list)
+		list = newlist
+	}
+	list[index] = val
+	return list
+}
+
+func (t *parser) keyIndex() (int, error) {
+	// First, get the key.
+	stop := runeSet([]rune{']'})
+	v, _, err := runesUntil(t.sc, stop)
+	if err != nil {
+		return 0, err
+	}
+	// v should be the index
+	return strconv.Atoi(string(v))
+
+}
+func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
+	stop := runeSet([]rune{'[', '.', '='})
+	switch k, last, err := runesUntil(t.sc, stop); {
+	case len(k) > 0:
+		return list, fmt.Errorf("unexpected data at end of array index: %q", k)
+	case err != nil:
+		return list, err
+	case last == '=':
+		vl, e := t.valList()
+		switch e {
+		case nil:
+			return setIndex(list, i, vl), nil
+		case io.EOF:
+			return setIndex(list, i, ""), err
+		case ErrNotList:
+			v, e := t.val()
+			return setIndex(list, i, typedVal(v)), e
+		default:
+			return list, e
+		}
+	case last == '[':
+		// now we have a nested list. Read the index and handle.
+		i, err := t.keyIndex()
+		if err != nil {
+			return list, fmt.Errorf("error parsing index: %s", err)
+		}
+		// Now we need to get the value after the ].
+		list2, err := t.listItem(list, i)
+		return setIndex(list, i, list2), err
+	case last == '.':
+		// We have a nested object. Send to t.key
+		inner := map[string]interface{}{}
+		if len(list) > i {
+			inner = list[i].(map[string]interface{})
+		}
+
+		// Recurse
+		e := t.key(inner)
+		return setIndex(list, i, inner), e
+	default:
+		return nil, fmt.Errorf("parse error: unexpected token %v", last)
+	}
 }
 
 func (t *parser) val() ([]rune, error) {
