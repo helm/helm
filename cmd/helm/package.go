@@ -30,6 +30,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
@@ -112,16 +114,16 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if p.dependencyUpdate {
-		dependencyUpdateCommand := &dependencyUpdateCmd{
-			out:      p.out,
-			keyring:  p.keyring,
-			helmhome: settings.Home,
+		downloadManager := &downloader.Manager{
+			Out:       p.out,
+			ChartPath: path,
+			HelmHome:  settings.Home,
+			Keyring:   p.keyring,
+			Getters:   getter.All(settings),
+			Debug:     settings.Debug,
 		}
-		dependencyUpdateCommand.chartpath, err = filepath.Abs(path)
-		if err != nil {
-			return err
-		}
-		if err := dependencyUpdateCommand.run(); err != nil {
+
+		if err := downloadManager.Update(); err != nil {
 			return err
 		}
 	}
