@@ -30,6 +30,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
@@ -48,13 +50,14 @@ Versioned chart archives are used by Helm package repositories.
 `
 
 type packageCmd struct {
-	save        bool
-	sign        bool
-	path        string
-	key         string
-	keyring     string
-	version     string
-	destination string
+	save             bool
+	sign             bool
+	path             string
+	key              string
+	keyring          string
+	version          string
+	destination      string
+	dependencyUpdate bool
 
 	out  io.Writer
 	home helmpath.Home
@@ -99,6 +102,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
 	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
 	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
+	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
 
 	return cmd
 }
@@ -107,6 +111,21 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	path, err := filepath.Abs(p.path)
 	if err != nil {
 		return err
+	}
+
+	if p.dependencyUpdate {
+		downloadManager := &downloader.Manager{
+			Out:       p.out,
+			ChartPath: path,
+			HelmHome:  settings.Home,
+			Keyring:   p.keyring,
+			Getters:   getter.All(settings),
+			Debug:     settings.Debug,
+		}
+
+		if err := downloadManager.Update(); err != nil {
+			return err
+		}
 	}
 
 	ch, err := chartutil.LoadDir(path)
