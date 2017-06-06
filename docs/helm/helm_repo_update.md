@@ -1,6 +1,6 @@
 ## helm repo update
 
-update information on available charts in the chart repositories
+update information of available charts locally from chart repositories
 
 ### Synopsis
 
