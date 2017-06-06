@@ -282,7 +282,7 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 }
 func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Config, e map[string]string) {
 
-	err := ProcessRequirementsImportValues(c, v)
+	err := ProcessRequirementsImportValues(c)
 	if err != nil {
 		t.Errorf("Error processing import values requirements %v", err)
 	}

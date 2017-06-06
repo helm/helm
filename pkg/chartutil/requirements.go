@@ -361,22 +361,17 @@ func getParents(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 }
 
 // processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
-func processImportValues(c *chart.Chart, v *chart.Config) error {
+func processImportValues(c *chart.Chart) error {
 	reqs, err := LoadRequirements(c)
 	if err != nil {
 		return err
 	}
-	// combine chart values and its dependencies' values
-	cvals, err := CoalesceValues(c, v)
+	// combine chart values and empty config to get Values
+	cvals, err := CoalesceValues(c, &chart.Config{})
 	if err != nil {
 		return err
 	}
-	nv := v.GetValues()
-	b := make(map[string]interface{}, len(nv))
-	// convert values to map
-	for kk, vvv := range nv {
-		b[kk] = vvv
-	}
+	b := make(map[string]interface{}, 0)
 	// import values from each dependency if specified in import-values
 	for _, r := range reqs.Dependencies {
 		if len(r.ImportValues) > 0 {
@@ -431,10 +426,10 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 }
 
 // ProcessRequirementsImportValues imports specified chart values from child to parent.
-func ProcessRequirementsImportValues(c *chart.Chart, v *chart.Config) error {
+func ProcessRequirementsImportValues(c *chart.Chart) error {
 	pc := getParents(c, nil)
 	for i := len(pc) - 1; i >= 0; i-- {
-		processImportValues(pc[i], v)
+		processImportValues(pc[i])
 	}
 
 	return nil
