@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -35,8 +34,6 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
-	"k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -123,120 +120,15 @@ func releaseMock(opts *releaseOptions) *release.Release {
 	}
 }
 
-type fakeReleaseClient struct {
-	rels      []*release.Release
-	responses map[string]release.TestRun_Status
-	err       error
-}
-
-var _ helm.Interface = &fakeReleaseClient{}
-var _ helm.Interface = &helm.Client{}
-
-func (c *fakeReleaseClient) ListReleases(opts ...helm.ReleaseListOption) (*rls.ListReleasesResponse, error) {
-	resp := &rls.ListReleasesResponse{
-		Count:    int64(len(c.rels)),
-		Releases: c.rels,
-	}
-	return resp, c.err
-}
-
-func (c *fakeReleaseClient) InstallRelease(chStr, ns string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
-	return &rls.InstallReleaseResponse{
-		Release: c.rels[0],
-	}, nil
-}
-
-func (c *fakeReleaseClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
-	return &rls.InstallReleaseResponse{
-		Release: c.rels[0],
-	}, nil
-}
-
-func (c *fakeReleaseClient) DeleteRelease(rlsName string, opts ...helm.DeleteOption) (*rls.UninstallReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) ReleaseStatus(rlsName string, opts ...helm.StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	if c.rels[0] != nil {
-		return &rls.GetReleaseStatusResponse{
-			Name:      c.rels[0].Name,
-			Info:      c.rels[0].Info,
-			Namespace: c.rels[0].Namespace,
-		}, nil
-	}
-	return nil, fmt.Errorf("No such release: %s", rlsName)
-}
-
-func (c *fakeReleaseClient) GetVersion(opts ...helm.VersionOption) (*rls.GetVersionResponse, error) {
-	return &rls.GetVersionResponse{
-		Version: &version.Version{
-			SemVer: "1.2.3-fakeclient+testonly",
-		},
-	}, nil
-}
-
-func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) RollbackRelease(rlsName string, opts ...helm.RollbackOption) (*rls.RollbackReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
-	if len(c.rels) > 0 {
-		resp = &rls.GetReleaseContentResponse{
-			Release: c.rels[0],
-		}
-	}
-	return resp, c.err
-}
-
-func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryOption) (*rls.GetHistoryResponse, error) {
-	return &rls.GetHistoryResponse{Releases: c.rels}, c.err
-}
-
-func (c *fakeReleaseClient) RunReleaseTest(rlsName string, opts ...helm.ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
-
-	results := make(chan *rls.TestReleaseResponse)
-	errc := make(chan error, 1)
-
-	go func() {
-		var wg sync.WaitGroup
-		for m, s := range c.responses {
-			wg.Add(1)
-
-			go func(msg string, status release.TestRun_Status) {
-				defer wg.Done()
-				results <- &rls.TestReleaseResponse{Msg: msg, Status: status}
-			}(m, s)
-		}
-
-		wg.Wait()
-		close(results)
-		close(errc)
-	}()
-
-	return results, errc
-}
-
-func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {
-	return c
-}
-
-// releaseCmd is a command that works with a fakeReleaseClient
-type releaseCmd func(c *fakeReleaseClient, out io.Writer) *cobra.Command
+// releaseCmd is a command that works with a FakeReleaseClient
+type releaseCmd func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command
 
 // runReleaseCases runs a set of release cases through the given releaseCmd.
 func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		c := &fakeReleaseClient{
-			rels: []*release.Release{tt.resp},
+		c := &helm.FakeReleaseClient{
+			Rels: []*release.Release{tt.resp},
 		}
 		cmd := rcmd(c, &buf)
 		cmd.ParseFlags(tt.flags)

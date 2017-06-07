@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 func TestInstall(t *testing.T) {
@@ -146,7 +148,7 @@ func TestInstall(t *testing.T) {
 		},
 	}
 
-	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	runReleaseCases(t, tests, func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command {
 		return newInstallCmd(c, out)
 	})
 }

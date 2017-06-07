@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"testing"
 
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -82,7 +83,7 @@ func TestReleaseTesting(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		c := &fakeReleaseClient{responses: tt.responses}
+		c := &helm.FakeReleaseClient{Responses: tt.responses}
 
 		buf := bytes.NewBuffer(nil)
 		cmd := newReleaseTestCmd(c, buf)

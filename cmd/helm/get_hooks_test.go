@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 func TestGetHooks(t *testing.T) {
@@ -37,7 +39,7 @@ func TestGetHooks(t *testing.T) {
 			err:  true,
 		},
 	}
-	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	runReleaseCases(t, tests, func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command {
 		return newGetHooksCmd(c, out)
 	})
 }

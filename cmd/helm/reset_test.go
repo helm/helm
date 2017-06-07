@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -38,7 +39,7 @@ func TestResetCmd(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	c := &fakeReleaseClient{}
+	c := &helm.FakeReleaseClient{}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
 		out:        &buf,
@@ -71,7 +72,7 @@ func TestResetCmd_removeHelmHome(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	c := &fakeReleaseClient{}
+	c := &helm.FakeReleaseClient{}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
 		removeHelmHome: true,
@@ -108,8 +109,8 @@ func TestReset_deployedReleases(t *testing.T) {
 	resp := []*release.Release{
 		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 	}
-	c := &fakeReleaseClient{
-		rels: resp,
+	c := &helm.FakeReleaseClient{
+		Rels: resp,
 	}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
@@ -140,8 +141,8 @@ func TestReset_forceFlag(t *testing.T) {
 	resp := []*release.Release{
 		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 	}
-	c := &fakeReleaseClient{
-		rels: resp,
+	c := &helm.FakeReleaseClient{
+		Rels: resp,
 	}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
