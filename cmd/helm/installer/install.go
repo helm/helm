@@ -122,6 +122,7 @@ func generateLabels(labels map[string]string) map[string]string {
 func parseNodeSelectors(labels string) map[string]string {
 	kv := strings.Split(labels, ",")
 	nodeSelectors := map[string]string{}
+	nodeSelectors["beta.kubernetes.io/os"] = "linux"
 	for _, v := range kv {
 		el := strings.Split(v, "=")
 		if len(el) == 2 {
