@@ -321,22 +321,36 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Confi
 	}
 }
 
-func TestCopyChartAsAlias(t *testing.T) {
+func TestGetAliasDependency(t *testing.T) {
 	c, err := Load("testdata/frobnitz")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-
-	if aliasChart := copyChartAsAlias(c.Dependencies, "mariners", "another-mariner"); aliasChart != nil {
-		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
+	req, err := LoadRequirements(c)
+	if err != nil {
+		t.Fatalf("Failed to load requirement for testdata: %s", err)
+	}
+	if len(req.Dependencies) == 0 {
+		t.Fatalf("There are no requirements to test")
 	}
 
-	aliasChart := copyChartAsAlias(c.Dependencies, "mariner", "another-mariner")
+	// Success case
+	aliasChart := getAliasDependency(c.Dependencies, req.Dependencies[0])
 	if aliasChart == nil {
-		t.Fatal("Failed to find dependent chart")
+		t.Fatalf("Failed to get dependency chart for alias %s", req.Dependencies[0].Name)
 	}
-	if aliasChart.Metadata.Name != "another-mariner" {
-		t.Fatal(`Failed to update chart-name for alias "dependent chart`)
+	if req.Dependencies[0].Alias != "" {
+		if aliasChart.Metadata.Name != req.Dependencies[0].Alias {
+			t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Alias, aliasChart.Metadata.Name)
+		}
+	} else if aliasChart.Metadata.Name != req.Dependencies[0].Name {
+		t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Name, aliasChart.Metadata.Name)
+	}
+
+	// Failure case
+	req.Dependencies[0].Name = "something-else"
+	if aliasChart := getAliasDependency(c.Dependencies, req.Dependencies[0]); aliasChart != nil {
+		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
 	}
 }
 
@@ -364,15 +378,15 @@ func TestDependentChartAliases(t *testing.T) {
 		t.Fatalf("Cannot load requirements for test chart, %v", err)
 	}
 
-	var expectedDependencyCharts int
-	for _, reqmt := range reqmts.Dependencies {
-		expectedDependencyCharts++
-		if len(reqmt.Alias) >= 0 {
-			expectedDependencyCharts += len(reqmt.Alias)
-		}
-	}
-	if len(c.Dependencies) != expectedDependencyCharts {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", expectedDependencyCharts, len(c.Dependencies))
+	// var expectedDependencyCharts int
+	// for _, reqmt := range reqmts.Dependencies {
+	// 	expectedDependencyCharts++
+	// 	if len(reqmt.Alias) >= 0 {
+	// 		expectedDependencyCharts += len(reqmt.Alias)
+	// 	}
+	// }
+	if len(c.Dependencies) != len(reqmts.Dependencies) {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(reqmts.Dependencies), len(c.Dependencies))
 	}
 
 }
