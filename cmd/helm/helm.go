@@ -155,7 +155,7 @@ func newRootCmd() *cobra.Command {
 		addFlagsTLS(newVersionCmd(nil, out)),
 
 		newCompletionCmd(out),
-		newHomeCmd(),
+		newHomeCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
 
