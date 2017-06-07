@@ -120,14 +120,14 @@ func releaseMock(opts *releaseOptions) *release.Release {
 	}
 }
 
-// releaseCmd is a command that works with a FakeReleaseClient
-type releaseCmd func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command
+// releaseCmd is a command that works with a FakeClient
+type releaseCmd func(c *helm.FakeClient, out io.Writer) *cobra.Command
 
 // runReleaseCases runs a set of release cases through the given releaseCmd.
 func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		c := &helm.FakeReleaseClient{
+		c := &helm.FakeClient{
 			Rels: []*release.Release{tt.resp},
 		}
 		cmd := rcmd(c, &buf)

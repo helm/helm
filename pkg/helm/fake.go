@@ -26,18 +26,18 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/version"
 )
 
-// FakeReleaseClient implements Interface
-type FakeReleaseClient struct {
+// FakeClient implements Interface
+type FakeClient struct {
 	Rels      []*release.Release
 	Responses map[string]release.TestRun_Status
 	Err       error
 }
 
-var _ Interface = &FakeReleaseClient{}
-var _ Interface = (*FakeReleaseClient)(nil)
+var _ Interface = &FakeClient{}
+var _ Interface = (*FakeClient)(nil)
 
-// Listreleases lists the current releases
-func (c *FakeReleaseClient) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
+// ListReleases lists the current releases
+func (c *FakeClient) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
 	resp := &rls.ListReleasesResponse{
 		Count:    int64(len(c.Rels)),
 		Releases: c.Rels,
@@ -46,31 +46,31 @@ func (c *FakeReleaseClient) ListReleases(opts ...ReleaseListOption) (*rls.ListRe
 }
 
 // InstallRelease returns a response with the first Release on the fake release client
-func (c *FakeReleaseClient) InstallRelease(chStr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+func (c *FakeClient) InstallRelease(chStr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	return &rls.InstallReleaseResponse{
 		Release: c.Rels[0],
 	}, nil
 }
 
 // InstallReleaseFromChart returns a response with the first Release on the fake release client
-func (c *FakeReleaseClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	return &rls.InstallReleaseResponse{
 		Release: c.Rels[0],
 	}, nil
 }
 
 // DeleteRelease returns nil, nil
-func (c *FakeReleaseClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
 	return nil, nil
 }
 
 // UpdateRelease returns nil, nil
-func (c *FakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	return nil, nil
 }
 
 // GetVersion returns a fake version
-func (c *FakeReleaseClient) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
+func (c *FakeClient) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
 	return &rls.GetVersionResponse{
 		Version: &version.Version{
 			SemVer: "1.2.3-fakeclient+testonly",
@@ -79,18 +79,18 @@ func (c *FakeReleaseClient) GetVersion(opts ...VersionOption) (*rls.GetVersionRe
 }
 
 // UpdateReleaseFromChart returns nil, nil
-func (c *FakeReleaseClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (c *FakeClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	return nil, nil
 }
 
 // RollbackRelease returns nil, nil
-func (c *FakeReleaseClient) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
+func (c *FakeClient) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
 	return nil, nil
 }
 
 // ReleaseStatus returns a release status response with info from the first release in the fake
 // release client
-func (c *FakeReleaseClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
+func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
 	if c.Rels[0] != nil {
 		return &rls.GetReleaseStatusResponse{
 			Name:      c.Rels[0].Name,
@@ -102,7 +102,7 @@ func (c *FakeReleaseClient) ReleaseStatus(rlsName string, opts ...StatusOption) 
 }
 
 // ReleaseContent returns the configuration for the first release in the fake release client
-func (c *FakeReleaseClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
+func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
 	if len(c.Rels) > 0 {
 		resp = &rls.GetReleaseContentResponse{
 			Release: c.Rels[0],
@@ -112,12 +112,12 @@ func (c *FakeReleaseClient) ReleaseContent(rlsName string, opts ...ContentOption
 }
 
 // ReleaseHistory returns a release's revision history.
-func (c *FakeReleaseClient) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error) {
+func (c *FakeClient) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error) {
 	return &rls.GetHistoryResponse{Releases: c.Rels}, c.Err
 }
 
 // RunReleaseTest executes a pre-defined tests on a release
-func (c *FakeReleaseClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
+func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
 
 	results := make(chan *rls.TestReleaseResponse)
 	errc := make(chan error, 1)
@@ -142,6 +142,6 @@ func (c *FakeReleaseClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOp
 }
 
 // Option returns the fake release client
-func (c *FakeReleaseClient) Option(opt ...Option) Interface {
+func (c *FakeClient) Option(opt ...Option) Interface {
 	return c
 }

@@ -62,7 +62,7 @@ func TestDelete(t *testing.T) {
 			err:  true,
 		},
 	}
-	runReleaseCases(t, tests, func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command {
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newDeleteCmd(c, out)
 	})
 }
