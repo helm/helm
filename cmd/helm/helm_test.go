@@ -351,6 +351,7 @@ func TestRootCmd(t *testing.T) {
 	}{
 		{
 			name: "defaults",
+			args: []string{"home"},
 			home: filepath.Join(os.Getenv("HOME"), "/.helm"),
 		},
 		{
@@ -365,6 +366,7 @@ func TestRootCmd(t *testing.T) {
 		},
 		{
 			name:   "with $HELM_HOME set",
+			args:   []string{"home"},
 			envars: map[string]string{"HELM_HOME": "/bar"},
 			home:   "/bar",
 		},
