@@ -19,6 +19,8 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	"io/ioutil"
 
+	"strings"
+
 	"github.com/ghodss/yaml"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,8 +118,26 @@ func generateLabels(labels map[string]string) map[string]string {
 	return labels
 }
 
+// parseNodeSelectors takes a comma delimited list of key=values pairs and returns a map
+func parseNodeSelectors(labels string) map[string]string {
+	kv := strings.Split(labels, ",")
+	nodeSelectors := map[string]string{}
+	for _, v := range kv {
+		el := strings.Split(v, "=")
+		if len(el) == 2 {
+			nodeSelectors[el[0]] = el[1]
+		}
+	}
+
+	return nodeSelectors
+}
+
 func generateDeployment(opts *Options) *v1beta1.Deployment {
 	labels := generateLabels(map[string]string{"name": "tiller"})
+	nodeSelectors := map[string]string{}
+	if len(opts.NodeSelectors) > 0 {
+		nodeSelectors = parseNodeSelectors(opts.NodeSelectors)
+	}
 	d := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: opts.Namespace,
@@ -164,10 +184,8 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 							},
 						},
 					},
-					HostNetwork: opts.EnableHostNetwork,
-					NodeSelector: map[string]string{
-						"beta.kubernetes.io/os": "linux",
-					},
+					HostNetwork:  opts.EnableHostNetwork,
+					NodeSelector: nodeSelectors,
 				},
 			},
 		},
@@ -203,6 +221,7 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 			},
 		})
 	}
+
 	return d
 }
 

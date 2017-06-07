@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -120,6 +121,9 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
+	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to select which node tiller lands on")
+	f.StringVarP(&i.opts.Output, "output", "o", "", "skip installation and output tiller's manifest in specified format")
+
 	return cmd
 }
 
@@ -159,31 +163,52 @@ func (i *initCmd) run() error {
 	i.opts.ImageSpec = i.image
 	i.opts.ServiceAccount = i.serviceAccount
 
-	if settings.Debug {
-		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
-			w := i.out
-			if !first {
-				// YAML starting document boundary marker
-				if _, err := fmt.Fprintln(w, "---"); err != nil {
-					return err
-				}
-			}
-			if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
+	writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
+		w := i.out
+		if !first {
+			// YAML starting document boundary marker
+			if _, err := fmt.Fprintln(w, "---"); err != nil {
 				return err
 			}
-			if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprint(w, body); err != nil {
-				return err
-			}
-			if !last {
-				return nil
-			}
-			// YAML ending document boundary marker
-			_, err := fmt.Fprintln(w, "...")
+		}
+		if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
 			return err
 		}
+		if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprint(w, body); err != nil {
+			return err
+		}
+		if !last {
+			return nil
+		}
+		// YAML ending document boundary marker
+		_, err := fmt.Fprintln(w, "...")
+		return err
+	}
+	if len(i.opts.Output) > 0 {
+		switch i.opts.Output {
+		case "json":
+			var body string
+			var err error
+			if body, err = installer.DeploymentManifest(&i.opts); err != nil {
+				return err
+			}
+			jsonb, err := yaml.ToJSON([]byte(body))
+			if err != nil {
+				return err
+			}
+			jsons := string(jsonb)
+			jsons = "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\"," + jsons[1:]
+			fmt.Fprint(i.out, jsons)
+
+			return nil
+		default:
+			return fmt.Errorf("Unknown output format: %s", i.opts.Output)
+		}
+	}
+	if settings.Debug {
 
 		var body string
 		var err error
