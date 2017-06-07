@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -120,6 +123,10 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 	f.IntVar(&i.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
 
+	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
+	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
+	f.StringArrayVar(&i.opts.Values, "override", []string{}, "override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+
 	return cmd
 }
 
@@ -160,31 +167,66 @@ func (i *initCmd) run() error {
 	i.opts.ServiceAccount = i.serviceAccount
 	i.opts.MaxHistory = i.maxHistory
 
-	if settings.Debug {
-		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
-			w := i.out
-			if !first {
-				// YAML starting document boundary marker
-				if _, err := fmt.Fprintln(w, "---"); err != nil {
-					return err
-				}
-			}
-			if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
+	writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
+		w := i.out
+		if !first {
+			// YAML starting document boundary marker
+			if _, err := fmt.Fprintln(w, "---"); err != nil {
 				return err
 			}
-			if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprint(w, body); err != nil {
-				return err
-			}
-			if !last {
-				return nil
-			}
-			// YAML ending document boundary marker
-			_, err := fmt.Fprintln(w, "...")
+		}
+		if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
 			return err
 		}
+		if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprint(w, body); err != nil {
+			return err
+		}
+		if !last {
+			return nil
+		}
+		// YAML ending document boundary marker
+		_, err := fmt.Fprintln(w, "...")
+		return err
+	}
+	if len(i.opts.Output) > 0 {
+		var body string
+		var err error
+		const tm = `{"apiVersion":"extensions/v1beta1","kind":"Deployment",`
+		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
+			return err
+		}
+		switch i.opts.Output.String() {
+		case "json":
+			var out bytes.Buffer
+			jsonb, err := yaml.ToJSON([]byte(body))
+			if err != nil {
+				return err
+			}
+			buf := bytes.NewBuffer(make([]byte, 0, len(tm)+len(jsonb)-1))
+			buf.WriteString(tm)
+			// Drop the opening object delimiter ('{').
+			buf.Write(jsonb[1:])
+			if err := json.Indent(&out, buf.Bytes(), "", "    "); err != nil {
+				return err
+			}
+			if _, err = i.out.Write(out.Bytes()); err != nil {
+				return err
+			}
+
+			return nil
+		case "yaml":
+			if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
+				return err
+			}
+			return nil
+		default:
+			return fmt.Errorf("unknown output format: %q", i.opts.Output)
+		}
+	}
+	if settings.Debug {
 
 		var body string
 		var err error

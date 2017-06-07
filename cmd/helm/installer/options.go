@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/helm/pkg/strvals"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -76,6 +77,15 @@ type Options struct {
 	//
 	// Less than or equal to zero means no limit.
 	MaxHistory int
+
+	// NodeSelectors determine which nodes Tiller can land on.
+	NodeSelectors string
+
+	// Output dumps the Tiller manifest in the specified format (e.g. JSON) but skips Helm/Tiller installation.
+	Output OutputFormat
+
+	// Set merges additional values into the Tiller Deployment manifest.
+	Values []string
 }
 
 func (opts *Options) selectImage() string {
@@ -97,3 +107,42 @@ func (opts *Options) pullPolicy() v1.PullPolicy {
 }
 
 func (opts *Options) tls() bool { return opts.EnableTLS || opts.VerifyTLS }
+
+// valuesMap returns user set values in map format
+func (opts *Options) valuesMap(m map[string]interface{}) (map[string]interface{}, error) {
+	for _, skv := range opts.Values {
+		if err := strvals.ParseInto(skv, m); err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
+}
+
+// OutputFormat defines valid values for init output (json, yaml)
+type OutputFormat string
+
+// String returns the string value of the OutputFormat
+func (f *OutputFormat) String() string {
+	return string(*f)
+}
+
+// Type returns the string value of the OutputFormat
+func (f *OutputFormat) Type() string {
+	return "OutputFormat"
+}
+
+const (
+	fmtJSON OutputFormat = "json"
+	fmtYAML OutputFormat = "yaml"
+)
+
+// Set validates and sets the value of the OutputFormat
+func (f *OutputFormat) Set(s string) error {
+	for _, of := range []OutputFormat{fmtJSON, fmtYAML} {
+		if s == string(of) {
+			*f = of
+			return nil
+		}
+	}
+	return fmt.Errorf("unknown output format %q", s)
+}
