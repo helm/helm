@@ -54,6 +54,7 @@ Tools layered on top of Helm or Tiller.
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
 - [Monocular](https://github.com/helm/monocular) - Web UI for Helm Chart repositories
 - [Helm Chart Publisher](https://github.com/luizbafilho/helm-chart-publisher) - HTTP API for publishing Helm Charts in an easy way
+- [Armada](https://github.com/att-comdev/armada) - Manage prefixed releases throughout various Kubernetes namespaces, and removes completed jobs for complex deployments. Used by the [Openstack-Helm](https://github.com/openstack/openstack-helm) team.
 
 ## Helm Included
 
