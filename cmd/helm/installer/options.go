@@ -71,6 +71,12 @@ type Options struct {
 
 	// EnableHostNetwork installs Tiller with net=host
 	EnableHostNetwork bool
+
+	// NodeSelectors determine which nodes Tiller can land on
+	NodeSelectors string
+
+	// Output dumps the Tiller manifest in the specified format (e.g. json) but skips Helm/Tiller installation
+	Output string
 }
 
 func (opts *Options) selectImage() string {
