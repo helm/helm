@@ -474,6 +474,14 @@ Note: The `stable` repository is managed on the [Kubernetes Charts
 GitHub repository](https://github.com/kubernetes/charts). That project
 accepts chart source code, and (after audit) packages those for you.
 
+## Tiller, Namespaces and RBAC
+In some cases you may wish to scope Tiller or deploy multiple Tillers to a single cluster. Here are some best practices when operating in those circumstances.
+
+1. Tiller can be [installed](install.md) into any namespace. By default, it is installed into kube-system. You can run multiple tillers in multiple namespaces.
+2. Limiting Tiller to only be able to install into specific namespaces and/or resource types is controlled by Kubernetes [RBAC](https://kubernetes.io/docs/admin/authorization/rbac/) roles and rolebindings.
+3. Release names are unique PER TILLER INSTANCE .
+4. Charts should only contain resources that exist in a single namespace.
+
 ## Conclusion
 
 This chapter has covered the basic usage patterns of the `helm` client,
