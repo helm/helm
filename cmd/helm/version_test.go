@@ -43,7 +43,7 @@ func TestVersion(t *testing.T) {
 	settings.TillerHost = "fake-localhost"
 	for _, tt := range tests {
 		b := new(bytes.Buffer)
-		c := &helm.FakeReleaseClient{}
+		c := &helm.FakeClient{}
 
 		cmd := newVersionCmd(c, b)
 		cmd.ParseFlags(tt.args)

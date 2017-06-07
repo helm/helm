@@ -148,7 +148,7 @@ func TestInstall(t *testing.T) {
 		},
 	}
 
-	runReleaseCases(t, tests, func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command {
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newInstallCmd(c, out)
 	})
 }

@@ -83,7 +83,7 @@ func TestReleaseTesting(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		c := &helm.FakeReleaseClient{Responses: tt.responses}
+		c := &helm.FakeClient{Responses: tt.responses}
 
 		buf := bytes.NewBuffer(nil)
 		cmd := newReleaseTestCmd(c, buf)

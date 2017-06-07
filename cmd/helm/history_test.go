@@ -67,7 +67,7 @@ func TestHistoryCmd(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		frc := &helm.FakeReleaseClient{Rels: tt.resp}
+		frc := &helm.FakeClient{Rels: tt.resp}
 		cmd := newHistoryCmd(frc, &buf)
 		cmd.ParseFlags(tt.args)
 

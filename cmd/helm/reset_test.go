@@ -39,7 +39,7 @@ func TestResetCmd(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	c := &helm.FakeReleaseClient{}
+	c := &helm.FakeClient{}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
 		out:        &buf,
@@ -72,7 +72,7 @@ func TestResetCmd_removeHelmHome(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	c := &helm.FakeReleaseClient{}
+	c := &helm.FakeClient{}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
 		removeHelmHome: true,
@@ -109,7 +109,7 @@ func TestReset_deployedReleases(t *testing.T) {
 	resp := []*release.Release{
 		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 	}
-	c := &helm.FakeReleaseClient{
+	c := &helm.FakeClient{
 		Rels: resp,
 	}
 	fc := fake.NewSimpleClientset()
@@ -141,7 +141,7 @@ func TestReset_forceFlag(t *testing.T) {
 	resp := []*release.Release{
 		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 	}
-	c := &helm.FakeReleaseClient{
+	c := &helm.FakeClient{
 		Rels: resp,
 	}
 	fc := fake.NewSimpleClientset()

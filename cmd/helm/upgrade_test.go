@@ -153,7 +153,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 	}
 
-	cmd := func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command {
+	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newUpgradeCmd(c, out)
 	}
 

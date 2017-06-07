@@ -102,7 +102,7 @@ func TestListCmd(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		c := &helm.FakeReleaseClient{
+		c := &helm.FakeClient{
 			Rels: tt.resp,
 		}
 		cmd := newListCmd(c, &buf)

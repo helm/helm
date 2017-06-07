@@ -107,13 +107,13 @@ func TestStatusCmd(t *testing.T) {
 		},
 	}
 
-	scmd := func(c *helm.FakeReleaseClient, out io.Writer) *cobra.Command {
+	scmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newStatusCmd(c, out)
 	}
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		c := &helm.FakeReleaseClient{
+		c := &helm.FakeClient{
 			Rels: []*release.Release{tt.rel},
 		}
 		cmd := scmd(c, &buf)
