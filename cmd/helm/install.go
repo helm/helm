@@ -399,7 +399,11 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		name = chartURL
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, ".")
+	if _, err := os.Stat(settings.Home.Archive()); os.IsNotExist(err) {
+		os.MkdirAll(settings.Home.Archive(), 0744)
+	}
+
+	filename, _, err := dl.DownloadTo(name, version, settings.Home.Archive())
 	if err == nil {
 		lname, err := filepath.Abs(filename)
 		if err != nil {

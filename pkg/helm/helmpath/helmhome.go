@@ -81,3 +81,8 @@ func (h Home) LocalRepository(elem ...string) string {
 func (h Home) Plugins() string {
 	return h.Path("plugins")
 }
+
+// Archive returns the path to download chart archives
+func (h Home) Archive() string {
+	return h.Path("cache", "archive")
+}
