@@ -1,5 +1,5 @@
-hash: e9366bddb36a7120a832959c89f72f75d56b9f10f84820420795c668d9cb0987
-updated: 2017-04-27T14:23:27.66000871-06:00
+hash: f705b8873fe2e7fb0cf436e2485edf218f558ae726015e6d59490d53464ae536
+updated: 2017-05-17T12:47:01.838888143-06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -20,6 +20,8 @@ imports:
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
+- name: github.com/BurntSushi/toml
+  version: b26d9c308763d68093482582cea63d69be07a0f0
 - name: github.com/chai2010/gettext-go
   version: bf70f2a70fb1b1f36d90d671a72795984eab0fcb
 - name: github.com/coreos/go-oidc
@@ -47,7 +49,7 @@ imports:
 - name: github.com/dgrijalva/jwt-go
   version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
 - name: github.com/docker/distribution
-  version: cd27f179f2c10c5d300e6d09025b538c475b0d51
+  version: 03efb43768979f4d2ea5187bef995656441829e5
   subpackages:
   - digest
   - reference
@@ -100,6 +102,8 @@ imports:
   version: ba18e35c5c1b36ef6334cad706eb681153d2d379
 - name: github.com/exponent-io/jsonpath
   version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
+- name: github.com/facebookgo/atomicfile
+  version: 2de1f203e7d5e386a6833233882782932729f27e
 - name: github.com/facebookgo/symwalk
   version: 42004b9f322246749dd73ad71008b1f3160c0052
 - name: github.com/ghodss/yaml
@@ -150,6 +154,8 @@ imports:
   version: 34abd90a014618f61222a1b0a7b7eb834a2d0dc3
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
+- name: github.com/huandu/xstrings
+  version: 3959339b333561bf62a38b424fd41517c2c90f40
 - name: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/inconshreveable/mousetrap
@@ -167,9 +173,9 @@ imports:
 - name: github.com/Masterminds/semver
   version: 3f0ab6d4ab4bed1c61caf056b63a6e62190c7801
 - name: github.com/Masterminds/sprig
-  version: 23597e5f6ad0e4d590e71314bfd0251a4a3cf849
+  version: 9526be0327b26ad31aa70296a7b10704883976d5
 - name: github.com/Masterminds/vcs
-  version: 795e20f901c3d561de52811fb3488a2cb2c8588b
+  version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -180,10 +186,6 @@ imports:
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/naoina/go-stringutil
   version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
-- name: github.com/naoina/toml
-  version: 751171607256bb66e64c9f0220c00662420c38e9
-  subpackages:
-  - ast
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/prometheus/client_golang
@@ -471,7 +473,7 @@ imports:
   - util/integer
   - util/jsonpath
 - name: k8s.io/kubernetes
-  version: 477efc3cbe6a7effca06bd1452fa356e2201e1ee
+  version: 0480917b552be33e2dba47386e51decb1a211df6
   subpackages:
   - federation/apis/federation
   - federation/apis/federation/install
@@ -623,6 +625,8 @@ imports:
   - pkg/watch/json
 - name: vbom.ml/util
   version: db5cfe13f5cc80a4990d98e2e1b0707a4d1a5394
+  repo: https://github.com/fvbommel/util.git
+  vcs: git
   subpackages:
   - sortorder
 testImports:

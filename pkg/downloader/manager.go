@@ -56,7 +56,7 @@ type Manager struct {
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
 	// Getter collection for the operation
-	Getters []getter.Prop
+	Getters []getter.Provider
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -572,5 +572,5 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 		return ch.Metadata.Version, err
 	}
 
-	return "", fmt.Errorf("Can't get a valid version for dependency %s.", name)
+	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
 }

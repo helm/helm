@@ -26,7 +26,8 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/repo"
 )
 
 const fetchDesc = `
@@ -50,10 +51,17 @@ type fetchCmd struct {
 	chartRef string
 	destdir  string
 	version  string
+	repoURL  string
 
 	verify      bool
 	verifyLater bool
 	keyring     string
+
+	certFile string
+	keyFile  string
+	caFile   string
+
+	devel bool
 
 	out io.Writer
 }
@@ -67,8 +75,14 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 		Long:  fetchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return fmt.Errorf("This command needs at least one argument, url or repo/name of the chart.")
+				return fmt.Errorf("need at least one argument, url or repo/name of the chart")
 			}
+
+			if fch.version == "" && fch.devel {
+				debug("setting version to >0.0.0-a")
+				fch.version = ">0.0.0-a"
+			}
+
 			for i := 0; i < len(args); i++ {
 				fch.chartRef = args[i]
 				if err := fch.run(); err != nil {
@@ -87,6 +101,11 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&fch.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
 	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.StringVarP(&fch.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
+	f.StringVar(&fch.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&fch.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&fch.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&fch.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&fch.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	return cmd
 }
@@ -97,7 +116,7 @@ func (f *fetchCmd) run() error {
 		Out:      f.out,
 		Keyring:  f.keyring,
 		Verify:   downloader.VerifyNever,
-		Getters:  defaultgetters.Get(settings),
+		Getters:  getter.All(settings),
 	}
 
 	if f.verify {
@@ -116,6 +135,14 @@ func (f *fetchCmd) run() error {
 			return fmt.Errorf("Failed to untar: %s", err)
 		}
 		defer os.RemoveAll(dest)
+	}
+
+	if f.repoURL != "" {
+		chartURL, err := repo.FindChartInRepoURL(f.repoURL, f.chartRef, f.version, f.certFile, f.keyFile, f.caFile, getter.All(settings))
+		if err != nil {
+			return err
+		}
+		f.chartRef = chartURL
 	}
 
 	saved, v, err := c.DownloadTo(f.chartRef, f.version, dest)

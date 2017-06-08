@@ -30,7 +30,7 @@ const rollbackDesc = `
 This command rolls back a release to a previous revision.
 
 The first argument of the rollback command is the name of a release, and the
-second is a revision (version) number. To see revision numbers, run 
+second is a revision (version) number. To see revision numbers, run
 'helm history RELEASE'.
 `
 
@@ -39,6 +39,7 @@ type rollbackCmd struct {
 	revision     int32
 	dryRun       bool
 	recreate     bool
+	force        bool
 	disableHooks bool
 	out          io.Writer
 	client       helm.Interface
@@ -53,10 +54,10 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "rollback [flags] [RELEASE] [REVISION]",
-		Short:             "roll back a release to a previous revision",
-		Long:              rollbackDesc,
-		PersistentPreRunE: setupConnection,
+		Use:     "rollback [flags] [RELEASE] [REVISION]",
+		Short:   "roll back a release to a previous revision",
+		Long:    rollbackDesc,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "revision number"); err != nil {
 				return err
@@ -78,6 +79,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&rollback.force, "force", false, "force resource update through delete/recreate if needed")
 	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 	f.Int64Var(&rollback.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&rollback.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
@@ -90,6 +92,7 @@ func (r *rollbackCmd) run() error {
 		r.name,
 		helm.RollbackDryRun(r.dryRun),
 		helm.RollbackRecreate(r.recreate),
+		helm.RollbackForce(r.force),
 		helm.RollbackDisableHooks(r.disableHooks),
 		helm.RollbackVersion(r.revision),
 		helm.RollbackTimeout(r.timeout),

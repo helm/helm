@@ -24,7 +24,6 @@ package environment
 
 import (
 	"io"
-	"os"
 	"time"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -43,14 +42,6 @@ const TillerNamespaceEnvVar = "TILLER_NAMESPACE"
 
 // DefaultTillerNamespace is the default namespace for tiller.
 const DefaultTillerNamespace = "kube-system"
-
-// GetTillerNamespace returns the right tiller namespace.
-func GetTillerNamespace() string {
-	if ns := os.Getenv(TillerNamespaceEnvVar); ns != "" {
-		return ns
-	}
-	return DefaultTillerNamespace
-}
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 const GoTplEngine = "gotpl"
@@ -147,7 +138,7 @@ type KubeClient interface {
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Update(namespace string, originalReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error
+	Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
 	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)
@@ -190,7 +181,7 @@ func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
+func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }
@@ -235,6 +226,5 @@ func New() *Environment {
 	return &Environment{
 		EngineYard: ey,
 		Releases:   storage.Init(driver.NewMemory()),
-		KubeClient: kube.New(nil),
 	}
 }

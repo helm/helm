@@ -17,7 +17,6 @@ limitations under the License.
 package kube // import "k8s.io/helm/pkg/kube"
 
 import (
-	"log"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,15 +43,17 @@ type deployment struct {
 // waitForResources polls to get the current status of all pods, PVCs, and Services
 // until all are ready or a timeout is reached
 func (c *Client) waitForResources(timeout time.Duration, created Result) error {
-	log.Printf("beginning wait for resources with timeout of %v", timeout)
+	c.Log("beginning wait for %d resources with timeout of %v", len(created), timeout)
 
-	cs, _ := c.ClientSet()
+	cs, err := c.ClientSet()
+	if err != nil {
+		return err
+	}
 	client := versionedClientsetForDeployment(cs)
 	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
 		pods := []v1.Pod{}
 		services := []v1.Service{}
 		pvc := []v1.PersistentVolumeClaim{}
-		replicaSets := []*extensions.ReplicaSet{}
 		deployments := []deployment{}
 		for _, v := range created {
 			obj, err := c.AsVersionedObject(v.Object)
@@ -73,26 +74,13 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				pods = append(pods, *pod)
 			case (*extensions.Deployment):
-				// Get the RS children first
-				rs, err := client.Extensions().ReplicaSets(value.Namespace).List(metav1.ListOptions{
-					FieldSelector: fields.Everything().String(),
-					LabelSelector: labels.Set(value.Spec.Selector.MatchLabels).AsSelector().String(),
-				})
-				if err != nil {
-					return false, err
-				}
-
-				for _, i := range rs.Items {
-					replicaSets = append(replicaSets, &i)
-				}
-
 				currentDeployment, err := client.Extensions().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.FindNewReplicaSet(currentDeployment, replicaSets)
-				if err != nil {
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, client)
+				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
 				newDeployment := deployment{
@@ -132,7 +120,9 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				services = append(services, *svc)
 			}
 		}
-		return podsReady(pods) && servicesReady(services) && volumesReady(pvc) && deploymentsReady(deployments), nil
+		isReady := podsReady(pods) && servicesReady(services) && volumesReady(pvc) && deploymentsReady(deployments)
+		c.Log("resources ready: %v", isReady)
+		return isReady, nil
 	})
 }
 
@@ -147,6 +137,11 @@ func podsReady(pods []v1.Pod) bool {
 
 func servicesReady(svc []v1.Service) bool {
 	for _, s := range svc {
+		// ExternalName Services are external to cluster so helm shouldn't be checking to see if they're 'ready' (i.e. have an IP Set)
+		if s.Spec.Type == v1.ServiceTypeExternalName {
+			continue
+		}
+
 		// Make sure the service is not explicitly set to "None" before checking the IP
 		if s.Spec.ClusterIP != v1.ClusterIPNone && !v1.IsServiceIPSet(&s) {
 			return false

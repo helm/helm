@@ -21,12 +21,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/ghodss/yaml"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/lint/support"
 	"k8s.io/helm/pkg/timeconv"
+	tversion "k8s.io/helm/pkg/version"
 )
 
 // Templates lints the templates in the Linter.
@@ -51,7 +54,17 @@ func Templates(linter *support.Linter) {
 	}
 
 	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: "testNamespace"}
-	caps := &chartutil.Capabilities{APIVersions: chartutil.DefaultVersionSet}
+	caps := &chartutil.Capabilities{
+		APIVersions: chartutil.DefaultVersionSet,
+		KubeVersion: &version.Info{
+			Major:     "1",
+			Minor:     "6",
+			GoVersion: runtime.Version(),
+			Compiler:  runtime.Compiler,
+			Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		},
+		TillerVersion: tversion.GetVersionProto(),
+	}
 	valuesToRender, err := chartutil.ToRenderValuesCaps(chart, chart.Values, options, caps)
 	if err != nil {
 		// FIXME: This seems to generate a duplicate, but I can't find where the first

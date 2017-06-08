@@ -30,27 +30,37 @@ import (
 )
 
 const (
-	HomeEnvVar          = "HELM_HOME"
-	PluginEnvVar        = "HELM_PLUGIN"
+	// HomeEnvVar is the HELM_HOME environment variable key.
+	HomeEnvVar = "HELM_HOME"
+	// PluginEnvVar is the HELM_PLUGIN environment variable key.
+	PluginEnvVar = "HELM_PLUGIN"
+	// PluginDisableEnvVar is the HELM_NO_PLUGINS environment variable key.
 	PluginDisableEnvVar = "HELM_NO_PLUGINS"
-	HostEnvVar          = "HELM_HOST"
+	// HostEnvVar is the HELM_HOST environment variable key.
+	HostEnvVar = "HELM_HOST"
+	// DebugEnvVar is the HELM_DEBUG environment variable key.
+	DebugEnvVar = "HELM_DEBUG"
 )
 
-func DefaultHelmHome() string {
-	if home := os.Getenv(HomeEnvVar); home != "" {
-		return home
-	}
-	return filepath.Join(os.Getenv("HOME"), ".helm")
-}
+// DefaultHelmHome is the default HELM_HOME.
+var DefaultHelmHome = filepath.Join("$HOME", ".helm")
 
-func DefaultHelmHost() string {
-	return os.Getenv(HostEnvVar)
-}
-
+// EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	TillerHost      string
+	// TillerHost is the host and port of Tiller.
+	TillerHost string
+	// TillerNamespace is the namespace in which Tiller runs.
 	TillerNamespace string
-	Home            helmpath.Home
-	PlugDirs        string
-	Debug           bool
+	// Home is the local path to the Helm home directory.
+	Home helmpath.Home
+	// Debug indicates whether or not Helm is running in Debug mode.
+	Debug bool
+}
+
+// PluginDirs is the path to the plugin directories.
+func (s EnvSettings) PluginDirs() string {
+	if d := os.Getenv(PluginEnvVar); d != "" {
+		return d
+	}
+	return s.Home.Plugins()
 }

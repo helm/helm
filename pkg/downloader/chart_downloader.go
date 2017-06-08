@@ -66,7 +66,7 @@ type ChartDownloader struct {
 	// HelmHome is the $HELM_HOME.
 	HelmHome helmpath.Home
 	// Getter collection for the operation
-	Getters []getter.Prop
+	Getters getter.Providers
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -161,7 +161,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 			// If there is no special config, return the default HTTP client and
 			// swallow the error.
 			if err == ErrNoOwnerRepo {
-				getterConstructor, err := getter.ConstructorByScheme(c.Getters, u.Scheme)
+				getterConstructor, err := c.Getters.ByScheme(u.Scheme)
 				if err != nil {
 					return u, nil, err
 				}
@@ -202,7 +202,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return u, r.Client, fmt.Errorf("chart %q not found in %s index. (try 'helm repo update'). %s", chartName, r.Config.Name, err)
+		return u, r.Client, fmt.Errorf("chart %q matching %s not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
 	}
 
 	if len(cv.URLs) == 0 {
@@ -213,6 +213,12 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 	u, err = url.Parse(cv.URLs[0])
 	if err != nil {
 		return u, r.Client, fmt.Errorf("invalid chart URL format: %s", ref)
+	}
+
+	// If the URL is relative (no scheme), prepend the chart repo's base URL
+	if !u.IsAbs() {
+		u, err = url.Parse(rc.URL + "/" + u.Path)
+		return u, r.Client, err
 	}
 
 	return u, r.Client, nil

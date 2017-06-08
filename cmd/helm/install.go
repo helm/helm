@@ -34,11 +34,12 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
 )
 
@@ -115,6 +116,12 @@ type installCmd struct {
 	version      string
 	timeout      int64
 	wait         bool
+	repoURL      string
+	devel        bool
+
+	certFile string
+	keyFile  string
+	caFile   string
 }
 
 type valueFiles []string
@@ -141,15 +148,23 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "install [CHART]",
-		Short:             "install a chart archive",
-		Long:              installDesc,
-		PersistentPreRunE: setupConnection,
+		Use:     "install [CHART]",
+		Short:   "install a chart archive",
+		Long:    installDesc,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(args[0], inst.version, inst.verify, inst.keyring)
+
+			debug("Original chart version: %q", inst.version)
+			if inst.version == "" && inst.devel {
+				debug("setting version to >0.0.0-a")
+				inst.version = ">0.0.0-a"
+			}
+
+			cp, err := locateChartPath(inst.repoURL, args[0], inst.version, inst.verify, inst.keyring,
+				inst.certFile, inst.keyFile, inst.caFile)
 			if err != nil {
 				return err
 			}
@@ -173,6 +188,11 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	return cmd
 }
@@ -206,7 +226,14 @@ func (i *installCmd) run() error {
 	}
 
 	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
-		checkDependencies(chartRequested, req, i.out)
+		// If checkDependencies returns an error, we have unfullfilled dependencies.
+		// As of Helm 2.4.0, this is treated as a stopping condition:
+		// https://github.com/kubernetes/helm/issues/2209
+		if err := checkDependencies(chartRequested, req, i.out); err != nil {
+			return prettyError(err)
+		}
+	} else if err != chartutil.ErrRequirementsNotFound {
+		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
 	res, err := i.client.InstallReleaseFromChart(
@@ -326,7 +353,8 @@ func (i *installCmd) printRelease(rel *release.Release) {
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func locateChartPath(name, version string, verify bool, keyring string) (string, error) {
+func locateChartPath(repoURL, name, version string, verify bool, keyring,
+	certFile, keyFile, caFile string) (string, error) {
 	name = strings.TrimSpace(name)
 	version = strings.TrimSpace(version)
 	if fi, err := os.Stat(name); err == nil {
@@ -357,10 +385,18 @@ func locateChartPath(name, version string, verify bool, keyring string) (string,
 		HelmHome: settings.Home,
 		Out:      os.Stdout,
 		Keyring:  keyring,
-		Getters:  defaultgetters.Get(settings),
+		Getters:  getter.All(settings),
 	}
 	if verify {
 		dl.Verify = downloader.VerifyAlways
+	}
+	if repoURL != "" {
+		chartURL, err := repo.FindChartInRepoURL(repoURL, name, version,
+			certFile, keyFile, caFile, getter.All(settings))
+		if err != nil {
+			return "", err
+		}
+		name = chartURL
 	}
 
 	filename, _, err := dl.DownloadTo(name, version, ".")
@@ -398,7 +434,9 @@ func defaultNamespace() string {
 	return "default"
 }
 
-func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Writer) {
+func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Writer) error {
+	missing := []string{}
+
 	deps := ch.GetDependencies()
 	for _, r := range reqs.Dependencies {
 		found := false
@@ -409,7 +447,12 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Wri
 			}
 		}
 		if !found {
-			fmt.Fprintf(out, "Warning: %s is in requirements.yaml but not in the charts/ directory!\n", r.Name)
+			missing = append(missing, r.Name)
 		}
 	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+	}
+	return nil
 }

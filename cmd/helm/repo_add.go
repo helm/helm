@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -85,7 +85,7 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 	}
 
 	if noUpdate && f.Has(name) {
-		return fmt.Errorf("The repository name you provided (%s) already exists. Please specify a different name.", name)
+		return fmt.Errorf("repository name (%s) already exists, please specify a different name", name)
 	}
 
 	cif := home.CacheIndex(name)
@@ -98,7 +98,7 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 		CAFile:   caFile,
 	}
 
-	r, err := repo.NewChartRepository(&c, defaultgetters.Get(settings))
+	r, err := repo.NewChartRepository(&c, getter.All(settings))
 	if err != nil {
 		return err
 	}

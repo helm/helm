@@ -27,6 +27,37 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 )
 
+func TestSortTemplates(t *testing.T) {
+	tpls := map[string]renderable{
+		"/mychart/templates/foo.tpl":                                 {},
+		"/mychart/templates/charts/foo/charts/bar/templates/foo.tpl": {},
+		"/mychart/templates/bar.tpl":                                 {},
+		"/mychart/templates/charts/foo/templates/bar.tpl":            {},
+		"/mychart/templates/_foo.tpl":                                {},
+		"/mychart/templates/charts/foo/templates/foo.tpl":            {},
+		"/mychart/templates/charts/bar/templates/foo.tpl":            {},
+	}
+	got := sortTemplates(tpls)
+	if len(got) != len(tpls) {
+		t.Fatal("Sorted results are missing templates")
+	}
+
+	expect := []string{
+		"/mychart/templates/charts/foo/charts/bar/templates/foo.tpl",
+		"/mychart/templates/charts/foo/templates/foo.tpl",
+		"/mychart/templates/charts/foo/templates/bar.tpl",
+		"/mychart/templates/charts/bar/templates/foo.tpl",
+		"/mychart/templates/foo.tpl",
+		"/mychart/templates/bar.tpl",
+		"/mychart/templates/_foo.tpl",
+	}
+	for i, e := range expect {
+		if got[i] != e {
+			t.Errorf("expected %q, got %q at index %d\n\tExp: %#v\n\tGot: %#v", e, got[i], i, expect, got)
+		}
+	}
+}
+
 func TestEngine(t *testing.T) {
 	e := New()
 

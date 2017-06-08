@@ -38,3 +38,9 @@ func TestHelmHome(t *testing.T) {
 	isEq(t, hh.CacheIndex("t"), "/r/repository/cache/t-index.yaml")
 	isEq(t, hh.Starters(), "/r/starters")
 }
+
+func TestHelmHome_expand(t *testing.T) {
+	if Home("$HOME").String() == "$HOME" {
+		t.Error("expected variable expansion")
+	}
+}

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -143,12 +144,12 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 	}
 
 	// Add the 'include' function here so we can close over t.
-	funcMap["include"] = func(name string, data interface{}) string {
+	funcMap["include"] = func(name string, data interface{}) (string, error) {
 		buf := bytes.NewBuffer(nil)
 		if err := t.ExecuteTemplate(buf, name, data); err != nil {
-			buf.WriteString(err.Error())
+			return "", err
 		}
-		return buf.String()
+		return buf.String(), nil
 	}
 
 	// Add the 'required' function here
@@ -203,9 +204,14 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 
 	funcMap := e.alterFuncMap(t)
 
+	// We want to parse the templates in a predictable order. The order favors
+	// higher-level (in file system) templates over deeply nested templates.
+	keys := sortTemplates(tpls)
+
 	files := []string{}
 
-	for fname, r := range tpls {
+	for _, fname := range keys {
+		r := tpls[fname]
 		t = t.New(fname).Funcs(funcMap)
 		if _, err := t.Parse(r.tpl); err != nil {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
@@ -227,6 +233,11 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	rendered := make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
+		// Don't render partials. We don't care out the direct output of partials.
+		// They are only included from other templates.
+		if strings.HasPrefix(path.Base(file), "_") {
+			continue
+		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[file].vals
 		vals["Template"] = map[string]interface{}{"Name": file, "BasePath": tpls[file].basePath}
@@ -242,6 +253,30 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	}
 
 	return rendered, nil
+}
+
+func sortTemplates(tpls map[string]renderable) []string {
+	keys := make([]string, len(tpls))
+	i := 0
+	for key := range tpls {
+		keys[i] = key
+		i++
+	}
+	sort.Sort(sort.Reverse(byPathLen(keys)))
+	return keys
+}
+
+type byPathLen []string
+
+func (p byPathLen) Len() int      { return len(p) }
+func (p byPathLen) Swap(i, j int) { p[j], p[i] = p[i], p[j] }
+func (p byPathLen) Less(i, j int) bool {
+	a, b := p[i], p[j]
+	ca, cb := strings.Count(a, "/"), strings.Count(b, "/")
+	if ca == cb {
+		return strings.Compare(a, b) == -1
+	}
+	return ca < cb
 }
 
 // allTemplates returns all templates for a chart and its dependencies.

@@ -19,7 +19,6 @@ package main // import "k8s.io/helm/cmd/helm"
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -33,15 +32,10 @@ import (
 
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
 	tiller_env "k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/tlsutil"
-)
-
-const (
-	localRepoIndexFilePath = "index.yaml"
 )
 
 var (
@@ -50,13 +44,10 @@ var (
 	tlsKeyFile    string // path to TLS key file
 	tlsVerify     bool   // enable TLS and verify remote certificates
 	tlsEnable     bool   // enable TLS
-)
 
-var (
-	kubeContext string
-	settings    helm_env.EnvSettings
-	// TODO refactor out this global var
+	kubeContext  string
 	tillerTunnel *kube.Tunnel
+	settings     helm_env.EnvSettings
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -83,37 +74,58 @@ Environment:
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
-func newRootCmd(out io.Writer) *cobra.Command {
-	var helmHomeTemp string
+func setFlagFromEnv(name, envar string, cmd *cobra.Command) {
+	if cmd.Flags().Changed(name) {
+		return
+	}
+	if v, ok := os.LookupEnv(envar); ok {
+		cmd.Flags().Set(name, v)
+	}
+}
 
+func setFlagsFromEnv(flags map[string]string, cmd *cobra.Command) {
+	for name, envar := range flags {
+		setFlagFromEnv(name, envar, cmd)
+	}
+}
+
+func addRootFlags(cmd *cobra.Command) {
+	pf := cmd.PersistentFlags()
+	pf.StringVar((*string)(&settings.Home), "home", helm_env.DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
+	pf.StringVar(&settings.TillerHost, "host", "", "address of tiller. Overrides $HELM_HOST")
+	pf.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
+	pf.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
+	pf.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.DefaultTillerNamespace, "namespace of tiller")
+}
+
+func initRootFlags(cmd *cobra.Command) {
+	setFlagsFromEnv(map[string]string{
+		"debug":            helm_env.DebugEnvVar,
+		"home":             helm_env.HomeEnvVar,
+		"host":             helm_env.HostEnvVar,
+		"tiller-namespace": tiller_env.TillerNamespaceEnvVar,
+	}, cmd.Root())
+
+	tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
+	tlsCertFile = os.ExpandEnv(tlsCertFile)
+	tlsKeyFile = os.ExpandEnv(tlsKeyFile)
+}
+
+func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
-			tlsCertFile = os.ExpandEnv(tlsCertFile)
-			tlsKeyFile = os.ExpandEnv(tlsKeyFile)
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			initRootFlags(cmd)
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
 	}
-	p := cmd.PersistentFlags()
-	p.StringVar(&helmHomeTemp, "home", helm_env.DefaultHelmHome(), "location of your Helm config. Overrides $HELM_HOME")
-	settings.Home = helmpath.Home(helmHomeTemp)
-	p.StringVar(&settings.TillerHost, "host", helm_env.DefaultHelmHost(), "address of tiller. Overrides $HELM_HOST")
-	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	p.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
-	p.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.GetTillerNamespace(), "namespace of tiller")
-
-	if os.Getenv(helm_env.PluginDisableEnvVar) != "1" {
-		settings.PlugDirs = os.Getenv(helm_env.PluginEnvVar)
-		if settings.PlugDirs == "" {
-			settings.PlugDirs = settings.Home.Plugins()
-		}
-	}
+	addRootFlags(cmd)
+	out := cmd.OutOrStdout()
 
 	cmd.AddCommand(
 		// chart commands
@@ -166,7 +178,7 @@ func init() {
 }
 
 func main() {
-	cmd := newRootCmd(os.Stdout)
+	cmd := newRootCmd()
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}

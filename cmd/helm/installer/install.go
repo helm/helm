@@ -58,6 +58,7 @@ func Upgrade(client internalclientset.Interface, opts *Options) error {
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
 	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
+	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
 	if _, err := client.Extensions().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
@@ -131,6 +132,7 @@ func generateDeployment(opts *Options) *extensions.Deployment {
 					Labels: labels,
 				},
 				Spec: api.PodSpec{
+					ServiceAccountName: opts.ServiceAccount,
 					Containers: []api.Container{
 						{
 							Name:            "tiller",
@@ -163,6 +165,9 @@ func generateDeployment(opts *Options) *extensions.Deployment {
 								TimeoutSeconds:      1,
 							},
 						},
+					},
+					NodeSelector: map[string]string{
+						"beta.kubernetes.io/os": "linux",
 					},
 					SecurityContext: &api.PodSecurityContext{
 						HostNetwork: opts.EnableHostNetwork,

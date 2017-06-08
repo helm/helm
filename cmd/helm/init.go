@@ -27,7 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/cmd/helm/installer"
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -54,8 +54,9 @@ To dump a manifest containing the Tiller deployment YAML, combine the
 `
 
 const (
-	stableRepository = "stable"
-	localRepository  = "local"
+	stableRepository         = "stable"
+	localRepository          = "local"
+	localRepositoryIndexFile = "index.yaml"
 )
 
 var (
@@ -66,17 +67,18 @@ var (
 )
 
 type initCmd struct {
-	image       string
-	clientOnly  bool
-	canary      bool
-	upgrade     bool
-	namespace   string
-	dryRun      bool
-	skipRefresh bool
-	out         io.Writer
-	home        helmpath.Home
-	opts        installer.Options
-	kubeClient  internalclientset.Interface
+	image          string
+	clientOnly     bool
+	canary         bool
+	upgrade        bool
+	namespace      string
+	dryRun         bool
+	skipRefresh    bool
+	out            io.Writer
+	home           helmpath.Home
+	opts           installer.Options
+	kubeClient     internalclientset.Interface
+	serviceAccount string
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -116,6 +118,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install tiller with net=host")
+	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
 	return cmd
 }
@@ -154,6 +157,7 @@ func (i *initCmd) run() error {
 	i.opts.Namespace = i.namespace
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
+	i.opts.ServiceAccount = i.serviceAccount
 
 	if settings.Debug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
@@ -293,7 +297,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepoIndexFilePath), home.CacheIndex("local"))
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"))
 		if err != nil {
 			return err
 		}
@@ -314,7 +318,7 @@ func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
 		URL:   stableRepositoryURL,
 		Cache: cacheFile,
 	}
-	r, err := repo.NewChartRepository(&c, defaultgetters.Get(settings))
+	r, err := repo.NewChartRepository(&c, getter.All(settings))
 	if err != nil {
 		return nil, err
 	}

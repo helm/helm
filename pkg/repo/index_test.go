@@ -18,13 +18,11 @@ package repo
 
 import (
 	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -131,14 +129,10 @@ func TestMerge(t *testing.T) {
 }
 
 func TestDownloadIndexFile(t *testing.T) {
-	fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+	srv, err := startLocalServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(fileBytes)
-	}))
 	defer srv.Close()
 
 	dirName, err := ioutil.TempDir("", "tmp")
@@ -152,7 +146,7 @@ func TestDownloadIndexFile(t *testing.T) {
 		Name:  testRepo,
 		URL:   srv.URL,
 		Cache: indexFilePath,
-	}, defaultgetters.Get(environment.EnvSettings{}))
+	}, getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 	}
@@ -181,8 +175,8 @@ func TestDownloadIndexFile(t *testing.T) {
 
 func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	numEntries := len(i.Entries)
-	if numEntries != 2 {
-		t.Errorf("Expected 2 entries in index file but got %d", numEntries)
+	if numEntries != 3 {
+		t.Errorf("Expected 3 entries in index file but got %d", numEntries)
 	}
 
 	alpine, ok := i.Entries["alpine"]

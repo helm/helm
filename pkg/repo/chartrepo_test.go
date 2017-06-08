@@ -17,13 +17,17 @@ limitations under the License.
 package repo
 
 import (
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -37,7 +41,7 @@ func TestLoadChartRepository(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
-	}, defaultgetters.Get(environment.EnvSettings{}))
+	}, getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
@@ -69,7 +73,7 @@ func TestIndex(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
-	}, defaultgetters.Get(environment.EnvSettings{}))
+	}, getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
@@ -183,5 +187,84 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 				t.Error("Expected exactly 1 URL")
 			}
 		}
+	}
+}
+
+// startLocalServerForTests Start the local helm server
+func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
+	if handler == nil {
+		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		if err != nil {
+			return nil, err
+		}
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(fileBytes)
+		})
+	}
+
+	return httptest.NewServer(handler), nil
+}
+
+func TestFindChartInRepoURL(t *testing.T) {
+	srv, err := startLocalServerForTests(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(environment.EnvSettings{}))
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
+		t.Errorf("%s is not the valid URL", chartURL)
+	}
+
+	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(environment.EnvSettings{}))
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.1.0.tgz" {
+		t.Errorf("%s is not the valid URL", chartURL)
+	}
+}
+
+func TestErrorFindChartInRepoURL(t *testing.T) {
+	_, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", getter.All(environment.EnvSettings{}))
+	if err == nil {
+		t.Errorf("Expected error for bad chart URL, but did not get any errors")
+	}
+	if err != nil && !strings.Contains(err.Error(), `Looks like "http://someserver/something" is not a valid chart repository or cannot be reached: Get http://someserver/something/index.yaml`) {
+		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
+	}
+
+	srv, err := startLocalServerForTests(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	_, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", getter.All(environment.EnvSettings{}))
+	if err == nil {
+		t.Errorf("Expected error for chart not found, but did not get any errors")
+	}
+	if err != nil && err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
+		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
+	}
+
+	_, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", getter.All(environment.EnvSettings{}))
+	if err == nil {
+		t.Errorf("Expected error for chart not found, but did not get any errors")
+	}
+	if err != nil && err.Error() != `chart "nginx1" version "0.1.0" not found in `+srv.URL+` repository` {
+		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
+	}
+
+	_, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", getter.All(environment.EnvSettings{}))
+	if err == nil {
+		t.Errorf("Expected error for no chart URLs available, but did not get any errors")
+	}
+	if err != nil && err.Error() != `chart "chartWithNoURL" has no downloadable URLs` {
+		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 }

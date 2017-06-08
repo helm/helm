@@ -170,7 +170,7 @@ data:
   {{- end}}
 ```
 
-Just for the same of making this point clear, let's adjust the above, and substitute an `*` for each whitespace that will be deleted following this rule. an `*` at the end of the line indicates a newline character that would be removed
+Just for the sake of making this point clear, let's adjust the above, and substitute an `*` for each whitespace that will be deleted following this rule. an `*` at the end of the line indicates a newline character that would be removed
 
 ```yaml
 apiVersion: v1

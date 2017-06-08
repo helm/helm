@@ -70,6 +70,34 @@ func TestDeploymentManifest(t *testing.T) {
 	}
 }
 
+func TestDeploymentManifestForServiceAccount(t *testing.T) {
+	tests := []struct {
+		name            string
+		image           string
+		canary          bool
+		expect          string
+		imagePullPolicy api.PullPolicy
+		serviceAccount  string
+	}{
+		{"withSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", "service-account"},
+		{"withoutSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", ""},
+	}
+	for _, tt := range tests {
+		o, err := DeploymentManifest(&Options{Namespace: api.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary, ServiceAccount: tt.serviceAccount})
+		if err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+
+		var d extensions.Deployment
+		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+		if got := d.Spec.Template.Spec.ServiceAccountName; got != tt.serviceAccount {
+			t.Errorf("%s: expected service account value %q, got %q", tt.name, tt.serviceAccount, got)
+		}
+	}
+}
+
 func TestDeploymentManifest_WithTLS(t *testing.T) {
 	tests := []struct {
 		opts   Options
@@ -301,11 +329,12 @@ func TestInstall_canary(t *testing.T) {
 
 func TestUpgrade(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
-
+	serviceAccount := "newServiceAccount"
 	existingDeployment := deployment(&Options{
-		Namespace: api.NamespaceDefault,
-		ImageSpec: "imageToReplace",
-		UseCanary: false,
+		Namespace:      api.NamespaceDefault,
+		ImageSpec:      "imageToReplace",
+		ServiceAccount: "serviceAccountToReplace",
+		UseCanary:      false,
 	})
 	existingService := service(api.NamespaceDefault)
 
@@ -319,13 +348,17 @@ func TestUpgrade(t *testing.T) {
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
 		}
+		sa := obj.Spec.Template.Spec.ServiceAccountName
+		if sa != serviceAccount {
+			t.Errorf("expected serviceAccountName = '%s', got '%s'", serviceAccount, sa)
+		}
 		return true, obj, nil
 	})
 	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
 		return true, existingService, nil
 	})
 
-	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image}
+	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image, ServiceAccount: serviceAccount}
 	if err := Upgrade(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}

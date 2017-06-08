@@ -54,10 +54,15 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "reset",
-		Short:             "uninstalls Tiller from a cluster",
-		Long:              resetDesc,
-		PersistentPreRunE: setupConnection,
+		Use:   "reset",
+		Short: "uninstalls Tiller from a cluster",
+		Long:  resetDesc,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := setupConnection(cmd, args); !d.force && err != nil {
+				return err
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
 				return errors.New("This command does not accept arguments")
@@ -72,7 +77,7 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&d.force, "force", "f", false, "forces Tiller uninstall even if there are releases installed")
+	f.BoolVarP(&d.force, "force", "f", false, "forces Tiller uninstall even if there are releases installed, or if tiller is not in ready state")
 	f.BoolVar(&d.removeHelmHome, "remove-helm-home", false, "if set deletes $HELM_HOME")
 
 	return cmd
@@ -91,12 +96,12 @@ func (d *resetCmd) run() error {
 	res, err := d.client.ListReleases(
 		helm.ReleaseListStatuses([]release.Status_Code{release.Status_DEPLOYED}),
 	)
-	if err != nil {
+	if !d.force && err != nil {
 		return prettyError(err)
 	}
 
-	if len(res.Releases) > 0 && !d.force {
-		return fmt.Errorf("There are still %d deployed releases (Tip: use --force).", len(res.Releases))
+	if !d.force && res != nil && len(res.Releases) > 0 {
+		return fmt.Errorf("there are still %d deployed releases (Tip: use --force)", len(res.Releases))
 	}
 
 	if err := installer.Uninstall(d.kubeClient, &installer.Options{Namespace: d.namespace}); err != nil {

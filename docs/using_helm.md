@@ -215,12 +215,13 @@ You can then override any of these settings in a YAML formatted file,
 and then pass that file during installation.
 
 ```console
-$ echo 'mariadbUser: user0` > config.yaml
+$ echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.yaml
 $ helm install -f config.yaml stable/mariadb
 ```
 
-The above will set the default MariaDB user to `user0`, but accept all
-the rest of the defaults for that chart.
+The above will create a default MariaDB user with the name `user0`, and
+grant this user access to a newly created `user0db` database, but will
+accept all the rest of the defaults for that chart.
 
 There are two ways to pass configuration data during install:
 
@@ -355,7 +356,7 @@ is not a full list of cli flags. To see a description of all flags, just run
   This defaults to 300 (5 minutes)
 - `--wait`: Waits until all Pods are in a ready state, PVCs are bound, Deployments
   have minimum (`Desired` minus `maxUnavailable`) Pods in ready state and
-  Services have and IP address (and Ingress if a `LoadBalancer`) before 
+  Services have an IP address (and Ingress if a `LoadBalancer`) before 
   marking the release as successful. It will wait for as long as the 
   `--timeout` value. If timeout is reached, the release will be marked as 
   `FAILED`.
@@ -472,6 +473,15 @@ documentation for your chart repository server to learn how to upload.
 Note: The `stable` repository is managed on the [Kubernetes Charts
 GitHub repository](https://github.com/kubernetes/charts). That project
 accepts chart source code, and (after audit) packages those for you.
+
+## Tiller, Namespaces and RBAC
+In some cases you may wish to scope Tiller or deploy multiple Tillers to a single cluster. Here are some best practices when operating in those circumstances.
+
+1. Tiller can be [installed](install.md) into any namespace. By default, it is installed into kube-system. You can run multiple Tillers provided they each run in their own namespace.
+2. Limiting Tiller to only be able to install into specific namespaces and/or resource types is controlled by Kubernetes [RBAC](https://kubernetes.io/docs/admin/authorization/rbac/) roles and rolebindings.
+3. Release names are unique PER TILLER INSTANCE.
+4. Charts should only contain resources that exist in a single namespace.
+5. It is not recommended to have multiple Tillers configured to manage resources in the same namespace.
 
 ## Conclusion
 

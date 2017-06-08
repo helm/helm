@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter/defaultgetters"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
@@ -77,7 +77,7 @@ func (d *dependencyBuildCmd) run() error {
 		ChartPath: d.chartpath,
 		HelmHome:  d.helmhome,
 		Keyring:   d.keyring,
-		Getters:   defaultgetters.Get(settings),
+		Getters:   getter.All(settings),
 	}
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible

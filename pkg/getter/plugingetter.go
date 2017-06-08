@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package plugingetter
+package getter
 
 import (
 	"bytes"
@@ -22,14 +22,37 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/plugin"
 )
 
-// PluginGetter is a generic type to invoke custom downloaders,
+// collectPlugins scans for getter plugins.
+// This will load plugins according to the environment.
+func collectPlugins(settings environment.EnvSettings) (Providers, error) {
+	plugins, err := plugin.FindPlugins(settings.PluginDirs())
+	if err != nil {
+		return nil, err
+	}
+	var result Providers
+	for _, plugin := range plugins {
+		for _, downloader := range plugin.Metadata.Downloaders {
+			result = append(result, Provider{
+				Schemes: downloader.Protocols,
+				New: newPluginGetter(
+					downloader.Command,
+					settings,
+					plugin.Metadata.Name,
+					plugin.Dir,
+				),
+			})
+		}
+	}
+	return result, nil
+}
+
+// pluginGetter is a generic type to invoke custom downloaders,
 // implemented in plugins.
-type PluginGetter struct {
+type pluginGetter struct {
 	command                   string
 	certFile, keyFile, cAFile string
 	settings                  environment.EnvSettings
@@ -38,7 +61,7 @@ type PluginGetter struct {
 }
 
 // Get runs downloader plugin command
-func (p *PluginGetter) Get(href string) (*bytes.Buffer, error) {
+func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 	argv := []string{p.certFile, p.keyFile, p.cAFile, href}
 	prog := exec.Command(filepath.Join(p.base, p.command), argv...)
 	plugin.SetupPluginEnv(p.settings, p.name, p.base)
@@ -56,13 +79,10 @@ func (p *PluginGetter) Get(href string) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-// ConstructNew constructs a valid plugin getter
-func ConstructNew(command string,
-	settings environment.EnvSettings,
-	name string,
-	base string) getter.Constructor {
-	return func(URL, CertFile, KeyFile, CAFile string) (getter.Getter, error) {
-		result := &PluginGetter{
+// newPluginGetter constructs a valid plugin getter
+func newPluginGetter(command string, settings environment.EnvSettings, name, base string) Constructor {
+	return func(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
+		result := &pluginGetter{
 			command:  command,
 			certFile: CertFile,
 			keyFile:  KeyFile,

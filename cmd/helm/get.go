@@ -54,10 +54,10 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "get [flags] RELEASE_NAME",
-		Short:             "download a named release",
-		Long:              getHelp,
-		PersistentPreRunE: setupConnection,
+		Use:     "get [flags] RELEASE_NAME",
+		Short:   "download a named release",
+		Long:    getHelp,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired

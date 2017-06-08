@@ -34,6 +34,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-last](https://github.com/adamreese/helm-last) - Plugin to show the latest release
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
 - [App Registry](https://github.com/app-registry/helm-plugin) - Plugin to manage charts via the [App Registry specification](https://github.com/app-registry/spec)
+- [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
 
 We also encourage GitHub authors to use the [helm-plugin](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories)
 tag on their plugin repositories.
@@ -53,11 +54,13 @@ Tools layered on top of Helm or Tiller.
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
 - [Monocular](https://github.com/helm/monocular) - Web UI for Helm Chart repositories
 - [Helm Chart Publisher](https://github.com/luizbafilho/helm-chart-publisher) - HTTP API for publishing Helm Charts in an easy way
+- [Armada](https://github.com/att-comdev/armada) - Manage prefixed releases throughout various Kubernetes namespaces, and removes completed jobs for complex deployments. Used by the [Openstack-Helm](https://github.com/openstack/openstack-helm) team.
 
 ## Helm Included
 
 Platforms, distributions, and services that include Helm support.
 
+- [Kubernetic](https://kubernetic.com/) - Kubernetes Desktop Client
 - [Cabin](http://www.skippbox.com/cabin/) - Mobile App for Managing Kubernetes
 - [Qstack](https://qstack.com)
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes

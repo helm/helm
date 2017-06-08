@@ -10,8 +10,12 @@ import:
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - package: github.com/Masterminds/vcs
   version: ~1.11.0
+
+  # Pin version of mergo that is compatible with both sprig and Kubernetes
+- package: github.com/imdario/mergo
+  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - package: github.com/Masterminds/sprig
-  version: ^2.10
+  version: ^2.12
 - package: github.com/ghodss/yaml
 - package: github.com/Masterminds/semver
   version: ~1.2.3
@@ -37,14 +41,20 @@ import:
 - package: github.com/gobwas/glob
   version: ^0.2.1
 - package: github.com/evanphx/json-patch
+- package: github.com/facebookgo/atomicfile
 - package: github.com/facebookgo/symwalk
-- package: github.com/naoina/toml
-  version: ~0.1.0
+- package: github.com/BurntSushi/toml
+  version: ~0.3.0
 - package: github.com/naoina/go-stringutil
   version: ~0.1.0
 - package: github.com/chai2010/gettext-go
 - package: github.com/prometheus/client_golang
   version: v0.8.0
+- package: vbom.ml/util
+  repo: https://github.com/fvbommel/util.git
+  vcs: git
+- package: github.com/docker/distribution
+  version: ~v2.4.0
 testImports:
 - package: github.com/stretchr/testify
   version: ^1.1.4
