@@ -148,10 +148,10 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "install [CHART]",
-		Short:             "install a chart archive",
-		Long:              installDesc,
-		PersistentPreRunE: setupConnection,
+		Use:     "install [CHART]",
+		Short:   "install a chart archive",
+		Long:    installDesc,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err

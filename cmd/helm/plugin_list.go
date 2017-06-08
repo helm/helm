@@ -44,11 +44,8 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 }
 
 func (pcmd *pluginListCmd) run() error {
-	plugdirs := pluginDirs(pcmd.home)
-
-	debug("pluginDirs: %s", plugdirs)
-
-	plugins, err := findPlugins(plugdirs)
+	debug("pluginDirs: %s", settings.PluginDirs())
+	plugins, err := findPlugins(settings.PluginDirs())
 	if err != nil {
 		return err
 	}

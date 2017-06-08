@@ -166,6 +166,9 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 						},
 					},
 					HostNetwork: opts.EnableHostNetwork,
+					NodeSelector: map[string]string{
+						"beta.kubernetes.io/os": "linux",
+					},
 				},
 			},
 		},

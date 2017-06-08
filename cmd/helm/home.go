@@ -35,7 +35,7 @@ func newHomeCmd(out io.Writer) *cobra.Command {
 		Long:  longHomeHelp,
 		Run: func(cmd *cobra.Command, args []string) {
 			h := settings.Home
-			fmt.Fprintf(out, "%s\n", h)
+			fmt.Fprintln(out, h)
 			if settings.Debug {
 				fmt.Fprintf(out, "Repository: %s\n", h.Repository())
 				fmt.Fprintf(out, "RepositoryFile: %s\n", h.RepositoryFile())
@@ -47,6 +47,5 @@ func newHomeCmd(out io.Writer) *cobra.Command {
 			}
 		},
 	}
-
 	return cmd
 }

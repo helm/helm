@@ -61,9 +61,8 @@ func (pcmd *pluginUpdateCmd) complete(args []string) error {
 
 func (pcmd *pluginUpdateCmd) run() error {
 	installer.Debug = settings.Debug
-	plugdirs := pluginDirs(pcmd.home)
-	debug("loading installed plugins from %s", plugdirs)
-	plugins, err := findPlugins(plugdirs)
+	debug("loading installed plugins from %s", settings.PluginDirs())
+	plugins, err := findPlugins(settings.PluginDirs())
 	if err != nil {
 		return err
 	}

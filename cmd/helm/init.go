@@ -54,8 +54,9 @@ To dump a manifest containing the Tiller deployment YAML, combine the
 `
 
 const (
-	stableRepository = "stable"
-	localRepository  = "local"
+	stableRepository         = "stable"
+	localRepository          = "local"
+	localRepositoryIndexFile = "index.yaml"
 )
 
 var (
@@ -296,7 +297,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepoIndexFilePath), home.CacheIndex("local"))
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"))
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-#Alpine: A simple Helm chart
+# Alpine: A simple Helm chart
 
 Run a single pod of Alpine Linux.
 

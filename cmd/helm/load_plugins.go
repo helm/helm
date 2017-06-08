@@ -25,18 +25,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/helm/helmpath"
+	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/plugin"
 )
-
-const pluginEnvVar = "HELM_PLUGIN"
-
-func pluginDirs(home helmpath.Home) string {
-	if dirs := os.Getenv(pluginEnvVar); dirs != "" {
-		return dirs
-	}
-	return home.Plugins()
-}
 
 // loadPlugins loads plugins into the command list.
 //
@@ -46,14 +37,23 @@ func pluginDirs(home helmpath.Home) string {
 func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 	// If HELM_NO_PLUGINS is set to 1, do not load plugins.
-	if settings.PlugDirs == "" {
+	if os.Getenv(helm_env.PluginDisableEnvVar) == "1" {
 		return
 	}
 
-	found, err := findPlugins(settings.PlugDirs)
+	found, err := findPlugins(settings.PluginDirs())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
 		return
+	}
+
+	processParent := func(cmd *cobra.Command, args []string) ([]string, error) {
+		k, u := manuallyProcessArgs(args)
+		if err := cmd.Parent().ParseFlags(k); err != nil {
+			return nil, err
+		}
+		initRootFlags(cmd)
+		return u, nil
 	}
 
 	// Now we create commands for all of these.
@@ -69,9 +69,8 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			Short: md.Usage,
 			Long:  md.Description,
 			RunE: func(cmd *cobra.Command, args []string) error {
-
-				k, u := manuallyProcessArgs(args)
-				if err := cmd.Parent().ParseFlags(k); err != nil {
+				u, err := processParent(cmd, args)
+				if err != nil {
 					return err
 				}
 
@@ -99,10 +98,9 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		}
 
 		if md.UseTunnel {
-			c.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+			c.PreRunE = func(cmd *cobra.Command, args []string) error {
 				// Parse the parent flag, but not the local flags.
-				k, _ := manuallyProcessArgs(args)
-				if err := c.Parent().ParseFlags(k); err != nil {
+				if _, err := processParent(cmd, args); err != nil {
 					return err
 				}
 				return setupConnection(cmd, args)

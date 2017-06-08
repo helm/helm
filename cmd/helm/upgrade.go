@@ -91,10 +91,10 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "upgrade [RELEASE] [CHART]",
-		Short:             "upgrade a release",
-		Long:              upgradeDesc,
-		PersistentPreRunE: setupConnection,
+		Use:     "upgrade [RELEASE] [CHART]",
+		Short:   "upgrade a release",
+		Long:    upgradeDesc,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "chart path"); err != nil {
 				return err

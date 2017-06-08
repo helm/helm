@@ -57,10 +57,10 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "status [flags] RELEASE_NAME",
-		Short:             "displays the status of the named release",
-		Long:              statusHelp,
-		PersistentPreRunE: setupConnection,
+		Use:     "status [flags] RELEASE_NAME",
+		Short:   "displays the status of the named release",
+		Long:    statusHelp,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired

@@ -30,7 +30,7 @@ const rollbackDesc = `
 This command rolls back a release to a previous revision.
 
 The first argument of the rollback command is the name of a release, and the
-second is a revision (version) number. To see revision numbers, run 
+second is a revision (version) number. To see revision numbers, run
 'helm history RELEASE'.
 `
 
@@ -54,10 +54,10 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "rollback [flags] [RELEASE] [REVISION]",
-		Short:             "roll back a release to a previous revision",
-		Long:              rollbackDesc,
-		PersistentPreRunE: setupConnection,
+		Use:     "rollback [flags] [RELEASE] [REVISION]",
+		Short:   "roll back a release to a previous revision",
+		Long:    rollbackDesc,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "revision number"); err != nil {
 				return err
