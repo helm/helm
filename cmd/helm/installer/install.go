@@ -107,7 +107,6 @@ func DeploymentManifest(opts *Options) (string, error) {
 // resource.
 func ServiceManifest(namespace string) (string, error) {
 	obj := service(namespace)
-
 	buf, err := yaml.Marshal(obj)
 	return string(buf), err
 }

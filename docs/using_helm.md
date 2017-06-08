@@ -264,6 +264,22 @@ name:
   - c
 ```
 
+As of Helm 2.5.0, it is possible to access list items using an array index syntax.
+For example, `--set servers[0].port=80` becomes:
+
+```yaml
+servers:
+  - port: 80
+```
+
+Multiple values can be set this way. The line `--set servers[0].port=80,servers[0].host=example` becomes:
+
+```yaml
+servers:
+  - port: 80
+    host: example
+```
+
 Sometimes you need to use special characters in your `--set` lines. You can use
 a backslash to escape the characters; `--set name=value1\,value2` will become:
 
@@ -280,9 +296,9 @@ nodeSelector:
   kubernetes.io/role: master
 ```
 
-The `--set` syntax is not as expressive as YAML, especially when it comes to
-collections. And there is currently no method for expressing things such as "set
-the third item in a list to...".
+Deeply nested datastructures can be difficult to express using `--set`. Chart
+designers are encouraged to consider the `--set` usage when designing the format
+of a `values.yaml` file.
 
 ### More Installation Methods
 
