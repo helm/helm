@@ -67,7 +67,7 @@ func (pcmd *pluginRemoveCmd) run() error {
 	var errorPlugins []string
 	for _, name := range pcmd.names {
 		if found := findPlugin(plugins, name); found != nil {
-			if err := removePlugin(found, pcmd.home); err != nil {
+			if err := removePlugin(found); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to remove plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(pcmd.out, "Removed plugin: %s\n", name)
@@ -82,11 +82,11 @@ func (pcmd *pluginRemoveCmd) run() error {
 	return nil
 }
 
-func removePlugin(p *plugin.Plugin, home helmpath.Home) error {
+func removePlugin(p *plugin.Plugin) error {
 	if err := os.Remove(p.Dir); err != nil {
 		return err
 	}
-	return runHook(p, plugin.Delete, home)
+	return runHook(p, plugin.Delete)
 }
 
 func findPlugin(plugins []*plugin.Plugin, name string) *plugin.Plugin {

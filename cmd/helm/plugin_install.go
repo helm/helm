@@ -75,7 +75,7 @@ func (pcmd *pluginInstallCmd) run() error {
 		return err
 	}
 
-	if err := runHook(p, plugin.Install, pcmd.home); err != nil {
+	if err := runHook(p, plugin.Install); err != nil {
 		return err
 	}
 

@@ -87,7 +87,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 			}
 			for i := 0; i < len(args); i++ {
 				pkg.path = args[i]
-				if err := pkg.run(cmd, args); err != nil {
+				if err := pkg.run(); err != nil {
 					return err
 				}
 			}
@@ -107,7 +107,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
+func (p *packageCmd) run() error {
 	path, err := filepath.Abs(p.path)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
-		if err := checkDependencies(ch, reqs, p.out); err != nil {
+		if err := checkDependencies(ch, reqs); err != nil {
 			return err
 		}
 	} else {

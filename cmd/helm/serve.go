@@ -56,7 +56,7 @@ func newServeCmd(out io.Writer) *cobra.Command {
 		Short: "start a local http web server",
 		Long:  serveDesc,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return srv.complete(args)
+			return srv.complete()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return srv.run()
@@ -71,7 +71,7 @@ func newServeCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (s *serveCmd) complete(args []string) error {
+func (s *serveCmd) complete() error {
 	if s.repoPath == "" {
 		s.repoPath = settings.Home.LocalRepository()
 	}
