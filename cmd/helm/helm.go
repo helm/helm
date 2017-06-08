@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
@@ -241,16 +242,39 @@ func prettyError(err error) error {
 	return errors.New(grpc.ErrorDesc(err))
 }
 
-// getKubeClient is a convenience method for creating kubernetes config and client
-// for a given kubeconfig context
-func getKubeClient(context string) (*rest.Config, *internalclientset.Clientset, error) {
+// configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
+func configForContext(context string) (*rest.Config, error) {
 	config, err := kube.GetConfig(context).ClientConfig()
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get kubernetes config for context '%s': %s", context, err)
+		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
+	}
+	return config, nil
+}
+
+// getKubeClient creates a Kubernetes config and client for a given kubeconfig context.
+func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
+	config, err := configForContext(context)
+	if err != nil {
+		return nil, nil, err
+	}
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
+	}
+	return config, client, nil
+}
+
+// getInternalKubeClient creates a Kubernetes config and an "internal" client for a given kubeconfig context.
+//
+// Prefer the similar getKubeClient if you don't need to use such an internal client.
+func getInternalKubeClient(context string) (*rest.Config, internalclientset.Interface, error) {
+	config, err := configForContext(context)
+	if err != nil {
+		return nil, nil, err
 	}
 	client, err := internalclientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get kubernetes client: %s", err)
+		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
 	}
 	return config, client, nil
 }

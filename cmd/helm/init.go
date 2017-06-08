@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
@@ -77,7 +77,7 @@ type initCmd struct {
 	out            io.Writer
 	home           helmpath.Home
 	opts           installer.Options
-	kubeClient     internalclientset.Interface
+	kubeClient     kubernetes.Interface
 	serviceAccount string
 }
 

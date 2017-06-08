@@ -25,10 +25,10 @@ import (
 	"github.com/ghodss/yaml"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	testcore "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	"k8s.io/helm/pkg/version"
 )
@@ -39,7 +39,7 @@ func TestDeploymentManifest(t *testing.T) {
 		image           string
 		canary          bool
 		expect          string
-		imagePullPolicy api.PullPolicy
+		imagePullPolicy v1.PullPolicy
 	}{
 		{"default", "", false, "gcr.io/kubernetes-helm/tiller:" + version.Version, "IfNotPresent"},
 		{"canary", "example.com/tiller", true, "gcr.io/kubernetes-helm/tiller:canary", "Always"},
@@ -47,11 +47,11 @@ func TestDeploymentManifest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		o, err := DeploymentManifest(&Options{Namespace: api.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary})
+		o, err := DeploymentManifest(&Options{Namespace: v1.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary})
 		if err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
-		var dep extensions.Deployment
+		var dep v1beta1.Deployment
 		if err := yaml.Unmarshal([]byte(o), &dep); err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
@@ -64,8 +64,8 @@ func TestDeploymentManifest(t *testing.T) {
 			t.Errorf("%s: expected imagePullPolicy %q, got %q", tt.name, tt.imagePullPolicy, got)
 		}
 
-		if got := dep.Spec.Template.Spec.Containers[0].Env[0].Value; got != api.NamespaceDefault {
-			t.Errorf("%s: expected namespace %q, got %q", tt.name, api.NamespaceDefault, got)
+		if got := dep.Spec.Template.Spec.Containers[0].Env[0].Value; got != v1.NamespaceDefault {
+			t.Errorf("%s: expected namespace %q, got %q", tt.name, v1.NamespaceDefault, got)
 		}
 	}
 }
@@ -76,19 +76,19 @@ func TestDeploymentManifestForServiceAccount(t *testing.T) {
 		image           string
 		canary          bool
 		expect          string
-		imagePullPolicy api.PullPolicy
+		imagePullPolicy v1.PullPolicy
 		serviceAccount  string
 	}{
 		{"withSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", "service-account"},
 		{"withoutSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", ""},
 	}
 	for _, tt := range tests {
-		o, err := DeploymentManifest(&Options{Namespace: api.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary, ServiceAccount: tt.serviceAccount})
+		o, err := DeploymentManifest(&Options{Namespace: v1.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary, ServiceAccount: tt.serviceAccount})
 		if err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
 
-		var d extensions.Deployment
+		var d v1beta1.Deployment
 		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
@@ -106,19 +106,19 @@ func TestDeploymentManifest_WithTLS(t *testing.T) {
 		verify string
 	}{
 		{
-			Options{Namespace: api.NamespaceDefault, EnableTLS: true, VerifyTLS: true},
+			Options{Namespace: v1.NamespaceDefault, EnableTLS: true, VerifyTLS: true},
 			"tls enable (true), tls verify (true)",
 			"1",
 			"1",
 		},
 		{
-			Options{Namespace: api.NamespaceDefault, EnableTLS: true, VerifyTLS: false},
+			Options{Namespace: v1.NamespaceDefault, EnableTLS: true, VerifyTLS: false},
 			"tls enable (true), tls verify (false)",
 			"1",
 			"",
 		},
 		{
-			Options{Namespace: api.NamespaceDefault, EnableTLS: false, VerifyTLS: true},
+			Options{Namespace: v1.NamespaceDefault, EnableTLS: false, VerifyTLS: true},
 			"tls enable (false), tls verify (true)",
 			"1",
 			"1",
@@ -130,7 +130,7 @@ func TestDeploymentManifest_WithTLS(t *testing.T) {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
 
-		var d extensions.Deployment
+		var d v1beta1.Deployment
 		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
@@ -145,17 +145,17 @@ func TestDeploymentManifest_WithTLS(t *testing.T) {
 }
 
 func TestServiceManifest(t *testing.T) {
-	o, err := ServiceManifest(api.NamespaceDefault)
+	o, err := ServiceManifest(v1.NamespaceDefault)
 	if err != nil {
 		t.Fatalf("error %q", err)
 	}
-	var svc api.Service
+	var svc v1.Service
 	if err := yaml.Unmarshal([]byte(o), &svc); err != nil {
 		t.Fatalf("error %q", err)
 	}
 
-	if got := svc.ObjectMeta.Namespace; got != api.NamespaceDefault {
-		t.Errorf("expected namespace %s, got %s", api.NamespaceDefault, got)
+	if got := svc.ObjectMeta.Namespace; got != v1.NamespaceDefault {
+		t.Errorf("expected namespace %s, got %s", v1.NamespaceDefault, got)
 	}
 }
 
@@ -163,7 +163,7 @@ func TestSecretManifest(t *testing.T) {
 	o, err := SecretManifest(&Options{
 		VerifyTLS:     true,
 		EnableTLS:     true,
-		Namespace:     api.NamespaceDefault,
+		Namespace:     v1.NamespaceDefault,
 		TLSKeyFile:    tlsTestFile(t, "key.pem"),
 		TLSCertFile:   tlsTestFile(t, "crt.pem"),
 		TLSCaCertFile: tlsTestFile(t, "ca.pem"),
@@ -173,13 +173,13 @@ func TestSecretManifest(t *testing.T) {
 		t.Fatalf("error %q", err)
 	}
 
-	var obj api.Secret
+	var obj v1.Secret
 	if err := yaml.Unmarshal([]byte(o), &obj); err != nil {
 		t.Fatalf("error %q", err)
 	}
 
-	if got := obj.ObjectMeta.Namespace; got != api.NamespaceDefault {
-		t.Errorf("expected namespace %s, got %s", api.NamespaceDefault, got)
+	if got := obj.ObjectMeta.Namespace; got != v1.NamespaceDefault {
+		t.Errorf("expected namespace %s, got %s", v1.NamespaceDefault, got)
 	}
 	if _, ok := obj.Data["tls.key"]; !ok {
 		t.Errorf("missing 'tls.key' in generated secret object")
@@ -197,7 +197,7 @@ func TestInstall(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
@@ -209,19 +209,19 @@ func TestInstall(t *testing.T) {
 		return true, obj, nil
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*api.Service)
+		obj := action.(testcore.CreateAction).GetObject().(*v1.Service)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
 		}
 		n := obj.ObjectMeta.Namespace
-		if n != api.NamespaceDefault {
-			t.Errorf("expected namespace = '%s', got '%s'", api.NamespaceDefault, n)
+		if n != v1.NamespaceDefault {
+			t.Errorf("expected namespace = '%s', got '%s'", v1.NamespaceDefault, n)
 		}
 		return true, obj, nil
 	})
 
-	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image}
+	opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: image}
 	if err := Install(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
@@ -237,7 +237,7 @@ func TestInstall_WithTLS(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
@@ -249,24 +249,24 @@ func TestInstall_WithTLS(t *testing.T) {
 		return true, obj, nil
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*api.Service)
+		obj := action.(testcore.CreateAction).GetObject().(*v1.Service)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
 		}
 		n := obj.ObjectMeta.Namespace
-		if n != api.NamespaceDefault {
-			t.Errorf("expected namespace = '%s', got '%s'", api.NamespaceDefault, n)
+		if n != v1.NamespaceDefault {
+			t.Errorf("expected namespace = '%s', got '%s'", v1.NamespaceDefault, n)
 		}
 		return true, obj, nil
 	})
 	fc.AddReactor("create", "secrets", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*api.Secret)
+		obj := action.(testcore.CreateAction).GetObject().(*v1.Secret)
 		if l := obj.GetLabels(); reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
 		}
-		if n := obj.ObjectMeta.Namespace; n != api.NamespaceDefault {
-			t.Errorf("expected namespace = '%s', got '%s'", api.NamespaceDefault, n)
+		if n := obj.ObjectMeta.Namespace; n != v1.NamespaceDefault {
+			t.Errorf("expected namespace = '%s', got '%s'", v1.NamespaceDefault, n)
 		}
 		if s := obj.ObjectMeta.Name; s != name {
 			t.Errorf("expected name = '%s', got '%s'", name, s)
@@ -284,7 +284,7 @@ func TestInstall_WithTLS(t *testing.T) {
 	})
 
 	opts := &Options{
-		Namespace:     api.NamespaceDefault,
+		Namespace:     v1.NamespaceDefault,
 		ImageSpec:     image,
 		EnableTLS:     true,
 		VerifyTLS:     true,
@@ -305,7 +305,7 @@ func TestInstall_WithTLS(t *testing.T) {
 func TestInstall_canary(t *testing.T) {
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*extensions.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != "gcr.io/kubernetes-helm/tiller:canary" {
 			t.Errorf("expected canary image, got '%s'", i)
@@ -313,11 +313,11 @@ func TestInstall_canary(t *testing.T) {
 		return true, obj, nil
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*api.Service)
+		obj := action.(testcore.CreateAction).GetObject().(*v1.Service)
 		return true, obj, nil
 	})
 
-	opts := &Options{Namespace: api.NamespaceDefault, UseCanary: true}
+	opts := &Options{Namespace: v1.NamespaceDefault, UseCanary: true}
 	if err := Install(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
@@ -331,19 +331,19 @@ func TestUpgrade(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
 	existingDeployment := deployment(&Options{
-		Namespace:      api.NamespaceDefault,
+		Namespace:      v1.NamespaceDefault,
 		ImageSpec:      "imageToReplace",
 		ServiceAccount: "serviceAccountToReplace",
 		UseCanary:      false,
 	})
-	existingService := service(api.NamespaceDefault)
+	existingService := service(v1.NamespaceDefault)
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*extensions.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -358,7 +358,7 @@ func TestUpgrade(t *testing.T) {
 		return true, existingService, nil
 	})
 
-	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image, ServiceAccount: serviceAccount}
+	opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: image, ServiceAccount: serviceAccount}
 	if err := Upgrade(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
@@ -372,7 +372,7 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
 	existingDeployment := deployment(&Options{
-		Namespace: api.NamespaceDefault,
+		Namespace: v1.NamespaceDefault,
 		ImageSpec: "imageToReplace",
 		UseCanary: false,
 	})
@@ -382,7 +382,7 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*extensions.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -390,18 +390,18 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 		return true, obj, nil
 	})
 	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
-		return true, nil, apierrors.NewNotFound(api.Resource("services"), "1")
+		return true, nil, apierrors.NewNotFound(v1.Resource("services"), "1")
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*api.Service)
+		obj := action.(testcore.CreateAction).GetObject().(*v1.Service)
 		n := obj.ObjectMeta.Namespace
-		if n != api.NamespaceDefault {
-			t.Errorf("expected namespace = '%s', got '%s'", api.NamespaceDefault, n)
+		if n != v1.NamespaceDefault {
+			t.Errorf("expected namespace = '%s', got '%s'", v1.NamespaceDefault, n)
 		}
 		return true, obj, nil
 	})
 
-	opts := &Options{Namespace: api.NamespaceDefault, ImageSpec: image}
+	opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: image}
 	if err := Upgrade(fc, opts); err != nil {
 		t.Errorf("unexpected error: %#+v", err)
 	}
