@@ -273,6 +273,7 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 		home.LocalRepository(),
 		home.Plugins(),
 		home.Starters(),
+		home.Archive(),
 	}
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
