@@ -39,6 +39,7 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 	if err != nil {
 		return nil, err
 	}
+	targetRelease.Info.Username = getUserName(c)
 
 	s.Log("performing rollback of %s", req.Name)
 	res, err := s.performRollback(currentRelease, targetRelease, req)

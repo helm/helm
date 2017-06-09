@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
@@ -44,6 +45,7 @@ import (
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
 	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/authorization/internalversion"
 	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -74,6 +76,24 @@ func New(config clientcmd.ClientConfig) *Client {
 
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
+
+// Discovery retrieves the DiscoveryClient
+func (c *Client) Discovery() (discovery.DiscoveryInterface, error) {
+	client, err := c.ClientSet()
+	if err != nil {
+		return nil, err
+	}
+	return client.Discovery(), nil
+}
+
+// Authorization retrieves the AuthorizationInterface
+func (c *Client) Authorization() (internalversion.AuthorizationInterface, error) {
+	client, err := c.ClientSet()
+	if err != nil {
+		return nil, err
+	}
+	return client.Authorization(), nil
+}
 
 // Create creates kubernetes resources from an io.reader
 //

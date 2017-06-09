@@ -40,6 +40,7 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	if err != nil {
 		return nil, err
 	}
+	updatedRelease.Info.Username = getUserName(c)
 
 	s.Log("performing update for %s", req.Name)
 	res, err := s.performUpdate(currentRelease, updatedRelease, req)
