@@ -109,5 +109,5 @@ func updatePlugin(p *plugin.Plugin, home helmpath.Home) error {
 		return err
 	}
 
-	return runHook(updatedPlugin, plugin.Update, home)
+	return runHook(updatedPlugin, plugin.Update)
 }

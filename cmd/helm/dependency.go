@@ -150,7 +150,7 @@ func (l *dependencyListCmd) run() error {
 
 	l.printRequirements(r, l.out)
 	fmt.Fprintln(l.out)
-	l.printMissing(r, l.out)
+	l.printMissing(r)
 	return nil
 }
 
@@ -240,7 +240,7 @@ func (l *dependencyListCmd) printRequirements(reqs *chartutil.Requirements, out 
 }
 
 // printMissing prints warnings about charts that are present on disk, but are not in the requirements.
-func (l *dependencyListCmd) printMissing(reqs *chartutil.Requirements, out io.Writer) {
+func (l *dependencyListCmd) printMissing(reqs *chartutil.Requirements) {
 	folder := filepath.Join(l.chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {

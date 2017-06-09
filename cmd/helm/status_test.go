@@ -78,7 +78,7 @@ func TestStatusCmd(t *testing.T) {
 			args: []string{"flummoxed-chickadee"},
 			expected: outputWithStatus(
 				fmt.Sprintf("DEPLOYED\n\nTEST SUITE:\nLast Started: %s\nLast Completed: %s\n\n", dateString, dateString) +
-					fmt.Sprint("TEST \tSTATUS \tINFO \tSTARTED \tCOMPLETED \n") +
+					"TEST \tSTATUS \tINFO \tSTARTED \tCOMPLETED \n" +
 					fmt.Sprintf("test run 1\tSUCCESS \textra info\t%s\t%s\n", dateString, dateString) +
 					fmt.Sprintf("test run 2\tFAILURE \t \t%s\t%s\n", dateString, dateString)),
 			rel: releaseMockWithStatus(&release.Status{

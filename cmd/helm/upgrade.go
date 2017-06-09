@@ -184,7 +184,7 @@ func (u *upgradeCmd) run() error {
 	// Check chart requirements to make sure all dependencies are present in /charts
 	if ch, err := chartutil.Load(chartPath); err == nil {
 		if req, err := chartutil.LoadRequirements(ch); err == nil {
-			if err := checkDependencies(ch, req, u.out); err != nil {
+			if err := checkDependencies(ch, req); err != nil {
 				return err
 			}
 		} else if err != chartutil.ErrRequirementsNotFound {
