@@ -61,7 +61,7 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("prepareRollback: Release name is invalid: %s", req.Name)
-		return nil, err
+		return nil, nil, err
 	}
 
 	if req.Version < 0 {

@@ -27,7 +27,7 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("releaseTest: Release name is invalid: %s", req.Name)
-		return nil, err
+		return err
 	}
 
 	// finds the non-deleted release with the given name
