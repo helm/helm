@@ -197,8 +197,9 @@ func TestValidName(t *testing.T) {
 		" ":                      false,
 		".nina.":                 false,
 		"nina.pinta":             true,
+		"abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcd": false,
 	} {
-		if valid != ValidName.MatchString(name) {
+		if valid != (validateReleaseName(name) == nil) {
 			t.Errorf("Expected %q to be %t", name, valid)
 		}
 	}
