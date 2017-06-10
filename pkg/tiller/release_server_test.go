@@ -199,7 +199,7 @@ func TestValidName(t *testing.T) {
 		"nina.pinta":             true,
 		"abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcdefghi-abc": false,
 	} {
-		if valid != validateReleaseName(name) {
+		if valid != (validateReleaseName(name) == nil) {
 			t.Errorf("Expected %q to be %t", name, valid)
 		}
 	}
