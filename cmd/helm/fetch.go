@@ -169,7 +169,13 @@ func (f *fetchCmd) run() error {
 			return fmt.Errorf("Failed to untar: %s is not a directory", ud)
 		}
 
-		return chartutil.ExpandFile(ud, saved)
+		expandDir, err := chartutil.ExpandFile(ud, saved)
+		if err != nil {
+			return fmt.Errorf("Failed to untar: %s", err)
+		}
+		fmt.Fprintf(f.out, "Untared the chart into: %s\n", expandDir)
+	} else {
+		fmt.Fprintf(f.out, "Downloaded the chart into: %s\n", saved)
 	}
 	return nil
 }
