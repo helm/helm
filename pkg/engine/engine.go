@@ -37,7 +37,8 @@ type Engine struct {
 	FuncMap template.FuncMap
 	// If strict is enabled, template rendering will fail if a template references
 	// a value that was not passed in.
-	Strict bool
+	Strict           bool
+	CurrentTemplates map[string]renderable
 }
 
 // New creates a new Go template Engine instance.
@@ -65,7 +66,9 @@ func New() *Engine {
 //	- "include": This is late-bound in Engine.Render(). The version
 //	   included in the FuncMap is a placeholder.
 //      - "required": This is late-bound in Engine.Render(). The version
-//	   included in thhe FuncMap is a placeholder.
+//	   included in the FuncMap is a placeholder.
+//      - "tpl": This is late-bound in Engine.Render(). The version
+//	   included in the FuncMap is a placeholder.
 func FuncMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
@@ -84,6 +87,7 @@ func FuncMap() template.FuncMap {
 		// integrity of the linter.
 		"include":  func(string, interface{}) string { return "not implemented" },
 		"required": func(string, interface{}) interface{} { return "not implemented" },
+		"tpl":      func(string, interface{}) interface{} { return "not implemented" },
 	}
 
 	for k, v := range extra {
@@ -115,6 +119,7 @@ func FuncMap() template.FuncMap {
 func (e *Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	// Render the charts
 	tmap := allTemplates(chrt, values)
+	e.CurrentTemplates = tmap
 	return e.render(tmap)
 }
 
@@ -159,6 +164,23 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 		return val, nil
 	}
 
+	// Add the 'tpl' function here
+	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
+		r := renderable{
+			tpl:  tpl,
+			vals: vals,
+		}
+
+		templates := map[string]renderable{}
+		templates["aaa_template"] = r
+
+		result, err := e.render(templates)
+		if err != nil {
+			return "", fmt.Errorf("Error during tpl function execution for %q: %s", tpl, err.Error())
+		}
+		return result["aaa_template"], nil
+	}
+
 	return funcMap
 }
 
@@ -187,7 +209,7 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	keys := sortTemplates(tpls)
 
 	files := []string{}
-	//for fname, r := range tpls {
+
 	for _, fname := range keys {
 		r := tpls[fname]
 		t = t.New(fname).Funcs(funcMap)
@@ -195,6 +217,17 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
 		}
 		files = append(files, fname)
+	}
+
+	// Adding the engine's currentTemplates to the template context
+	// so they can be referenced in the tpl function
+	for fname, r := range e.CurrentTemplates {
+		if t.Lookup(fname) == nil {
+			t = t.New(fname).Funcs(funcMap)
+			if _, err := t.Parse(r.tpl); err != nil {
+				return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
+			}
+		}
 	}
 
 	rendered := make(map[string]string, len(files))
