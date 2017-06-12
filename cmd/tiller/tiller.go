@@ -18,6 +18,7 @@ package main // import "k8s.io/helm/cmd/tiller"
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -28,9 +29,6 @@ import (
 	"strings"
 
 	goprom "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -53,100 +51,57 @@ const (
 	// tlsCertsEnvVar names the environment variable that points to
 	// the directory where Tiller's TLS certificates are located.
 	tlsCertsEnvVar = "TILLER_TLS_CERTS"
-)
 
-const (
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
-)
 
-// rootServer is the root gRPC server.
-//
-// Each gRPC service registers itself to this server during init().
-var rootServer *grpc.Server
-
-// env is the default environment.
-//
-// Any changes to env should be done before rootServer.Serve() is called.
-var env = environment.New()
-
-var logger *log.Logger
-
-var (
-	grpcAddr             = ":44134"
-	probeAddr            = ":44135"
-	traceAddr            = ":44136"
-	enableTracing        = false
-	store                = storageConfigMap
-	remoteReleaseModules = false
+	probeAddr = ":44135"
+	traceAddr = ":44136"
 )
 
 var (
-	tlsEnable  bool
-	tlsVerify  bool
-	keyFile    string
-	certFile   string
-	caCertFile string
+	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
+	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
+	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
+	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
+	tlsEnable            = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
+	tlsVerify            = flag.Bool("tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
+	keyFile              = flag.String("tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
+	certFile             = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
+	caCertFile           = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
+
+	// rootServer is the root gRPC server.
+	//
+	// Each gRPC service registers itself to this server during init().
+	rootServer *grpc.Server
+
+	// env is the default environment.
+	//
+	// Any changes to env should be done before rootServer.Serve() is called.
+	env = environment.New()
+
+	logger *log.Logger
 )
 
-const globalUsage = `The Kubernetes Helm server.
+func main() {
+	flag.Parse()
 
-Tiller is the server for Helm. It provides in-cluster resource management.
-
-By default, Tiller listens for gRPC connections on port 44134.
-`
-
-func addFlags(flags *pflag.FlagSet) {
-	flags.StringVarP(&grpcAddr, "listen", "l", ":44134", "address:port to listen on")
-	flags.StringVar(&store, "storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
-	flags.BoolVar(&enableTracing, "trace", false, "enable rpc tracing")
-	flags.BoolVar(&remoteReleaseModules, "experimental-release", false, "enable experimental release modules")
-
-	flags.BoolVar(&tlsEnable, "tls", tlsEnableEnvVarDefault(), "enable TLS")
-	flags.BoolVar(&tlsVerify, "tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
-	flags.StringVar(&keyFile, "tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
-	flags.StringVar(&certFile, "tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
-	flags.StringVar(&caCertFile, "tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
-}
-
-func initLog() {
-	if enableTracing {
+	if *enableTracing {
 		log.SetFlags(log.Lshortfile)
 	}
 	logger = newLogger("main")
+
+	start()
 }
 
-func main() {
-	root := &cobra.Command{
-		Use:   "tiller",
-		Short: "The Kubernetes Helm server.",
-		Long:  globalUsage,
-		Run:   start,
-		PreRun: func(_ *cobra.Command, _ []string) {
-			initLog()
-		},
-	}
-	addFlags(root.Flags())
+func start() {
 
-	if err := root.Execute(); err != nil {
-		logger.Fatal(err)
-	}
-}
-
-func newLogger(prefix string) *log.Logger {
-	if len(prefix) > 0 {
-		prefix = fmt.Sprintf("[%s] ", prefix)
-	}
-	return log.New(os.Stderr, prefix, log.Flags())
-}
-
-func start(c *cobra.Command, args []string) {
 	clientset, err := kube.New(nil).ClientSet()
 	if err != nil {
 		logger.Fatalf("Cannot initialize Kubernetes connection: %s", err)
 	}
 
-	switch store {
+	switch *store {
 	case storageMemory:
 		env.Releases = storage.Init(driver.NewMemory())
 	case storageConfigMap:
@@ -161,15 +116,15 @@ func start(c *cobra.Command, args []string) {
 	kubeClient.Log = newLogger("kube").Printf
 	env.KubeClient = kubeClient
 
-	if tlsEnable || tlsVerify {
-		opts := tlsutil.Options{CertFile: certFile, KeyFile: keyFile}
-		if tlsVerify {
-			opts.CaCertFile = caCertFile
+	if *tlsEnable || *tlsVerify {
+		opts := tlsutil.Options{CertFile: *certFile, KeyFile: *keyFile}
+		if *tlsVerify {
+			opts.CaCertFile = *caCertFile
 		}
 	}
 
 	var opts []grpc.ServerOption
-	if tlsEnable || tlsVerify {
+	if *tlsEnable || *tlsVerify {
 		cfg, err := tlsutil.ServerConfig(tlsOptions())
 		if err != nil {
 			logger.Fatalf("Could not create server TLS configuration: %v", err)
@@ -179,24 +134,24 @@ func start(c *cobra.Command, args []string) {
 
 	rootServer = tiller.NewServer(opts...)
 
-	lstn, err := net.Listen("tcp", grpcAddr)
+	lstn, err := net.Listen("tcp", *grpcAddr)
 	if err != nil {
 		logger.Fatalf("Server died: %s", err)
 	}
 
-	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), tlsEnable || tlsVerify)
-	logger.Printf("GRPC listening on %s", grpcAddr)
+	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), *tlsEnable || *tlsVerify)
+	logger.Printf("GRPC listening on %s", *grpcAddr)
 	logger.Printf("Probes listening on %s", probeAddr)
 	logger.Printf("Storage driver is %s", env.Releases.Name())
 
-	if enableTracing {
+	if *enableTracing {
 		startTracing(traceAddr)
 	}
 
 	srvErrCh := make(chan error)
 	probeErrCh := make(chan error)
 	go func() {
-		svc := tiller.NewReleaseServer(env, clientset, remoteReleaseModules)
+		svc := tiller.NewReleaseServer(env, clientset, *remoteReleaseModules)
 		svc.Log = newLogger("tiller").Printf
 		services.RegisterReleaseServiceServer(rootServer, svc)
 		if err := rootServer.Serve(lstn); err != nil {
@@ -224,6 +179,13 @@ func start(c *cobra.Command, args []string) {
 	}
 }
 
+func newLogger(prefix string) *log.Logger {
+	if len(prefix) > 0 {
+		prefix = fmt.Sprintf("[%s] ", prefix)
+	}
+	return log.New(os.Stderr, prefix, log.Flags())
+}
+
 // namespace returns the namespace of tiller
 func namespace() string {
 	if ns := os.Getenv("TILLER_NAMESPACE"); ns != "" {
@@ -241,9 +203,9 @@ func namespace() string {
 }
 
 func tlsOptions() tlsutil.Options {
-	opts := tlsutil.Options{CertFile: certFile, KeyFile: keyFile}
-	if tlsVerify {
-		opts.CaCertFile = caCertFile
+	opts := tlsutil.Options{CertFile: *certFile, KeyFile: *keyFile}
+	if *tlsVerify {
+		opts.CaCertFile = *caCertFile
 		opts.ClientAuth = tls.VerifyClientCertIfGiven
 	}
 	return opts
