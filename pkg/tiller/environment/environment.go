@@ -26,14 +26,15 @@ import (
 	"io"
 	"time"
 
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 // TillerNamespaceEnvVar is the environment variable name for the tiller

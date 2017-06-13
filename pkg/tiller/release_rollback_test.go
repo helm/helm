@@ -17,11 +17,12 @@ limitations under the License.
 package tiller
 
 import (
+	"strings"
+	"testing"
+
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
-	"strings"
-	"testing"
 )
 
 func TestRollbackRelease(t *testing.T) {

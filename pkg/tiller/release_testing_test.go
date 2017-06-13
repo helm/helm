@@ -17,9 +17,10 @@ limitations under the License.
 package tiller
 
 import (
+	"testing"
+
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
-	"testing"
 )
 
 func TestRunReleaseTest(t *testing.T) {
