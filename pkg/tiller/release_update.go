@@ -30,6 +30,11 @@ import (
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
 func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+	if err := validateReleaseName(req.Name); err != nil {
+		s.Log("updateRelease: Release name is invalid: %s", req.Name)
+		return nil, err
+	}
+
 	err := s.env.Releases.LockRelease(req.Name)
 	if err != nil {
 		return nil, err
@@ -60,10 +65,6 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 
 // prepareUpdate builds an updated release for an update operation.
 func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
-	if !ValidName.MatchString(req.Name) {
-		return nil, nil, errMissingRelease
-	}
-
 	if req.Chart == nil {
 		return nil, nil, errMissingChart
 	}

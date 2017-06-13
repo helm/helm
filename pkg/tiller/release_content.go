@@ -24,8 +24,9 @@ import (
 
 // GetReleaseContent gets all of the stored information for the given release.
 func (s *ReleaseServer) GetReleaseContent(c ctx.Context, req *services.GetReleaseContentRequest) (*services.GetReleaseContentResponse, error) {
-	if !ValidName.MatchString(req.Name) {
-		return nil, errMissingRelease
+	if err := validateReleaseName(req.Name); err != nil {
+		s.Log("releaseContent: Release name is invalid: %s", req.Name)
+		return nil, err
 	}
 
 	if req.Version <= 0 {

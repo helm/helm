@@ -60,10 +60,12 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 // prepareRollback finds the previous release and prepares a new release object with
 // the previous release's configuration
 func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
-	switch {
-	case !ValidName.MatchString(req.Name):
-		return nil, nil, errMissingRelease
-	case req.Version < 0:
+	if err := validateReleaseName(req.Name); err != nil {
+		s.Log("prepareRollback: Release name is invalid: %s", req.Name)
+		return nil, nil, err
+	}
+
+	if req.Version < 0 {
 		return nil, nil, errInvalidRevision
 	}
 

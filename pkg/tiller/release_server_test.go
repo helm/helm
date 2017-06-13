@@ -183,22 +183,23 @@ func upgradeReleaseVersion(rel *release.Release) *release.Release {
 }
 
 func TestValidName(t *testing.T) {
-	for name, valid := range map[string]bool{
-		"nina pinta santa-maria": false,
-		"nina-pinta-santa-maria": true,
-		"-nina":                  false,
-		"pinta-":                 false,
-		"santa-maria":            true,
-		"niña":                   false,
-		"...":                    false,
-		"pinta...":               false,
-		"santa...maria":          true,
-		"":                       false,
-		" ":                      false,
-		".nina.":                 false,
-		"nina.pinta":             true,
+	for name, valid := range map[string]error{
+		"nina pinta santa-maria": errInvalidName,
+		"nina-pinta-santa-maria": nil,
+		"-nina":                  errInvalidName,
+		"pinta-":                 errInvalidName,
+		"santa-maria":            nil,
+		"niña":                   errInvalidName,
+		"...":                    errInvalidName,
+		"pinta...":               errInvalidName,
+		"santa...maria":          nil,
+		"":                       errMissingRelease,
+		" ":                      errInvalidName,
+		".nina.":                 errInvalidName,
+		"nina.pinta":             nil,
+		"abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcd": errInvalidName,
 	} {
-		if valid != ValidName.MatchString(name) {
+		if valid != validateReleaseName(name) {
 			t.Errorf("Expected %q to be %t", name, valid)
 		}
 	}

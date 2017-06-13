@@ -28,8 +28,9 @@ import (
 
 // GetReleaseStatus gets the status information for a named release.
 func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
-	if !ValidName.MatchString(req.Name) {
-		return nil, errMissingRelease
+	if err := validateReleaseName(req.Name); err != nil {
+		s.Log("getStatus: Release name is invalid: %s", req.Name)
+		return nil, err
 	}
 
 	var rel *release.Release
