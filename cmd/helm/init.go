@@ -122,7 +122,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
 	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to select which node tiller lands on")
-	f.StringVarP(&i.opts.Output, "output", "o", "", "skip installation and output tiller's manifest in specified format")
+	f.StringVarP(&i.opts.Output, "output", "o", "", "skip installation and output tiller's manifest in specified format (json,yaml)")
+	f.StringArrayVar(&i.opts.Values, "set", []string{}, "set values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 
 	return cmd
 }
@@ -188,13 +189,14 @@ func (i *initCmd) run() error {
 		return err
 	}
 	if len(i.opts.Output) > 0 {
+
+		var body string
+		var err error
+		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
+			return err
+		}
 		switch i.opts.Output {
 		case "json":
-			var body string
-			var err error
-			if body, err = installer.DeploymentManifest(&i.opts); err != nil {
-				return err
-			}
 			jsonb, err := yaml.ToJSON([]byte(body))
 			if err != nil {
 				return err
@@ -202,7 +204,11 @@ func (i *initCmd) run() error {
 			jsons := string(jsonb)
 			jsons = "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\"," + jsons[1:]
 			fmt.Fprint(i.out, jsons)
-
+			return nil
+		case "yaml":
+			if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
+				return err
+			}
 			return nil
 		default:
 			return fmt.Errorf("Unknown output format: %s", i.opts.Output)
