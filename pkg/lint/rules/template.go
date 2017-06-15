@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/lint/support"
 	"k8s.io/helm/pkg/timeconv"
 	tversion "k8s.io/helm/pkg/version"
@@ -116,6 +117,27 @@ func Templates(linter *support.Linter) {
 		if !validYaml {
 			continue
 		}
+
+		// access kubectl client
+		kubeClient := kube.New(kube.GetConfig(""))
+		f := kubeClient.Factory
+
+		// get the schema validator
+		schema, err := f.Validator(true, kubeClient.SchemaCacheDir)
+		if err != nil {
+			panic(err)
+		}
+
+		// convert to YAML to JSON, validated above so should be ok
+		j, _ := yaml.YAMLToJSON([]byte(renderedContent))
+
+		//
+		err = schema.ValidateBytes(j)
+		validSchema := linter.RunLinterRule(support.ErrorSev, path, validateSchema(err))
+
+		if !validSchema {
+			continue
+		}
 	}
 }
 
@@ -145,6 +167,13 @@ func validateAllowedExtension(fileName string) error {
 func validateYamlContent(err error) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse YAML\n\t%s", err)
+	}
+	return nil
+}
+
+func validateSchema(err error) error {
+	if err != nil {
+		return fmt.Errorf("schema validation failure - %s", err)
 	}
 	return nil
 }
