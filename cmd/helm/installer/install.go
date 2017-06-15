@@ -21,7 +21,10 @@ import (
 
 	"strings"
 
+	"log"
+
 	"github.com/ghodss/yaml"
+	"github.com/imdario/mergo"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -30,6 +33,7 @@ import (
 	extensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/helm/pkg/chartutil"
 )
 
 // Install uses Kubernetes client to install Tiller.
@@ -133,6 +137,98 @@ func parseNodeSelectors(labels string) map[string]string {
 	return nodeSelectors
 }
 
+// istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
+func istable(v interface{}) bool {
+	_, ok := v.(map[string]interface{})
+	return ok
+}
+func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
+	// Because dest has higher precedence than src, dest values override src
+	// values.
+	for key, val := range src {
+		if istable(val) {
+			if innerdst, ok := dst[key]; !ok {
+				dst[key] = val
+			} else if istable(innerdst) {
+				coalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}))
+			} else {
+				log.Printf("warning: cannot overwrite table with non table for %s (%v)", key, val)
+			}
+			continue
+		} else if dv, ok := dst[key]; ok && istable(dv) {
+			log.Printf("warning: destination for %s is a table. Ignoring non-table value %v", key, val)
+			continue
+		} else if !ok { // <- ok is still in scope from preceding conditional.
+			dst[key] = val
+			continue
+		}
+	}
+	return dst
+}
+
+// pathToMap creates a nested map given a YAML path in dot notation.
+func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
+	if path == "." {
+		return data
+	}
+	ap := strings.Split(path, ".")
+	if len(ap) == 0 {
+		return nil
+	}
+	n := []map[string]interface{}{}
+	// created nested map for each key, adding to slice
+	for _, v := range ap {
+		nm := make(map[string]interface{})
+		nm[v] = make(map[string]interface{})
+		n = append(n, nm)
+	}
+	// find the last key (map) and set our data
+	for i, d := range n {
+		for k := range d {
+			z := i + 1
+			if z == len(n) {
+				n[i][k] = data
+				break
+			}
+			n[i][k] = n[z]
+		}
+	}
+
+	return n[0]
+}
+
+// Merges source and destination map, preferring values from the source map
+func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[string]interface{} {
+	for k, v := range src {
+		// If the key doesn't exist already, then just set the key to that value
+		if _, exists := dest[k]; !exists {
+			dest[k] = v
+			continue
+		}
+		nextMap, ok := v.(map[string]interface{})
+		// If it isn't another map, overwrite the value
+		if !ok {
+			dest[k] = v
+			continue
+		}
+		// If the key doesn't exist already, then just set the key to that value
+		if _, exists := dest[k]; !exists {
+			dest[k] = nextMap
+			continue
+		}
+		// Edge case: If the key exists in the destination, but isn't a map
+		destMap, isMap := dest[k].(map[string]interface{})
+		// If the source map has a map for this key, prefer it
+		if !isMap {
+			dest[k] = v
+			continue
+		}
+		// If we got to this point, it is a map in both, so merge them
+		dest[k] = mergeValues(destMap, nextMap)
+	}
+	return dest
+}
+
 func generateDeployment(opts *Options) *v1beta1.Deployment {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	nodeSelectors := map[string]string{}
@@ -221,6 +317,57 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 				},
 			},
 		})
+	}
+	// if --set values were specified, ultimately convert values and deployment to maps,
+	// merge them and convert back to Deployment
+	if len(opts.Values) > 0 {
+		// base deployment struct
+		var dd v1beta1.Deployment
+		// get YAML from original deployment
+		dy, err := yaml.Marshal(d)
+		if err != nil {
+			log.Fatalf("Error marshalling base Tiller Deployment to YAML: %+v", err)
+		}
+		// convert deployment YAML to values
+		dv, err := chartutil.ReadValues(dy)
+		if err != nil {
+			log.Fatalf("Error converting Deployment manifest to Values: %+v ", err)
+		}
+		setMap, err := opts.valuesMap()
+		// transform our set map back into YAML
+		setS, err := yaml.Marshal(setMap)
+
+		if err != nil {
+			log.Fatalf("Error marshalling set map to YAML: %+v ", err)
+		}
+		// transform our YAML into Values
+		setV, err := chartutil.ReadValues(setS)
+
+		//log.Fatal(setV)
+		if err != nil {
+			log.Fatalf("Error reading Values from input: %+v ", err)
+		}
+		// merge original deployment map and set map
+		//finalM := coalesceTables(dv.AsMap(), setV.AsMap())
+		//finalM := mergeValues(dv.AsMap(), setV.AsMap())
+		dm := dv.AsMap()
+		sm := setV.AsMap()
+		err = mergo.Merge(&sm, dm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Fatal(sm) //for other merges use finalM above
+		finalY, err := yaml.Marshal(dm)
+		if err != nil {
+			log.Fatalf("Error marshalling merged map to YAML: %+v ", err)
+		}
+
+		// convert merged values back into deployment
+		err = yaml.Unmarshal([]byte(finalY), &dd)
+		if err != nil {
+			log.Fatalf("Error unmarshalling Values to Deployment manifest: %+v ", err)
+		}
+		d = &dd
 	}
 
 	return d

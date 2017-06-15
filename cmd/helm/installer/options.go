@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/helm/pkg/strvals"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -77,6 +78,9 @@ type Options struct {
 
 	// Output dumps the Tiller manifest in the specified format (e.g. json) but skips Helm/Tiller installation
 	Output string
+
+	// Set merges additional values into the Tiller Deployment manifest
+	Values []string
 }
 
 func (opts *Options) selectImage() string {
@@ -98,3 +102,15 @@ func (opts *Options) pullPolicy() v1.PullPolicy {
 }
 
 func (opts *Options) tls() bool { return opts.EnableTLS || opts.VerifyTLS }
+
+// valuesMap returns user set values in map format
+func (opts *Options) valuesMap() (map[string]interface{}, error) {
+	m := map[string]interface{}{}
+	for _, skv := range opts.Values {
+		err := strvals.ParseInto(skv, m)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
+}
