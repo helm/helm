@@ -331,7 +331,7 @@ func TestInstall_canary(t *testing.T) {
 func TestUpgrade(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
-	existingDeployment := deployment(&Options{
+	existingDeployment, _ := deployment(&Options{
 		Namespace:      v1.NamespaceDefault,
 		ImageSpec:      "imageToReplace",
 		ServiceAccount: "serviceAccountToReplace",
@@ -372,7 +372,7 @@ func TestUpgrade(t *testing.T) {
 func TestUpgrade_serviceNotFound(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
-	existingDeployment := deployment(&Options{
+	existingDeployment, _ := deployment(&Options{
 		Namespace: v1.NamespaceDefault,
 		ImageSpec: "imageToReplace",
 		UseCanary: false,
@@ -471,8 +471,8 @@ func TestDeploymentManifest_WithSetValues(t *testing.T) {
 		expect     interface{}
 	}{
 		{
-			Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec.nodeselector=app=tiller"}},
-			"setValues spec.template.spec.nodeSelector=app=tiller",
+			Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec.nodeselector.app=tiller"}},
+			"setValues spec.template.spec.nodeSelector.app=tiller",
 			"spec.template.spec.nodeSelector.app",
 			"tiller",
 		},
@@ -483,11 +483,20 @@ func TestDeploymentManifest_WithSetValues(t *testing.T) {
 			2,
 		},
 		{
-			Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec=activedeadlineseconds=120"}},
-			"setValues spec.template.spec=activedeadlineseconds=120",
+			Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec.activedeadlineseconds=120"}},
+			"setValues spec.template.spec.activedeadlineseconds=120",
 			"spec.template.spec.activeDeadlineSeconds",
 			120,
 		},
+		/*
+			// TODO test --set value nested beneath list
+			{
+				Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec.containers[0].image=gcr.io/kubernetes-helm/tiller:v2.4.2"}},
+				"setValues spec.template.spec.containers[0].image=gcr.io/kubernetes-helm/tiller:v2.4.2",
+				"spec.template.spec.containers[0].image",
+				"gcr.io/kubernetes-helm/tiller:v2.4.2",
+			},
+		*/
 	}
 	for _, tt := range tests {
 		o, err := DeploymentManifest(&tt.opts)

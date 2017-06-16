@@ -104,8 +104,7 @@ func (opts *Options) pullPolicy() v1.PullPolicy {
 func (opts *Options) tls() bool { return opts.EnableTLS || opts.VerifyTLS }
 
 // valuesMap returns user set values in map format
-func (opts *Options) valuesMap() (map[string]interface{}, error) {
-	m := map[string]interface{}{}
+func (opts *Options) valuesMap(m map[string]interface{}) (map[string]interface{}, error) {
 	for _, skv := range opts.Values {
 		err := strvals.ParseInto(skv, m)
 		if err != nil {
