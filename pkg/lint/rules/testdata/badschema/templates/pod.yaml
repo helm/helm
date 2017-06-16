@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-example
+spec:
+  aaa: zzz
+  containers:
+  - image: ubuntu:trusty
+    command: ["echo"]
+    args: ["Hello World"]

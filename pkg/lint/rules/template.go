@@ -124,8 +124,10 @@ func Templates(linter *support.Linter) {
 
 		// get the schema validator
 		schema, err := f.Validator(true, kubeClient.SchemaCacheDir)
-		if err != nil {
-			panic(err)
+		validSchemaAccess := linter.RunLinterRule(support.ErrorSev, path, validateSchemaAccess(err))
+
+		if !validSchemaAccess {
+			continue
 		}
 
 		// convert to YAML to JSON, validated above so should be ok
@@ -171,9 +173,16 @@ func validateYamlContent(err error) error {
 	return nil
 }
 
+func validateSchemaAccess(err error) error {
+	if err != nil {
+		return fmt.Errorf("can not access schema\n\t%s", err)
+	}
+	return nil
+}
+
 func validateSchema(err error) error {
 	if err != nil {
-		return fmt.Errorf("schema validation failure - %s", err)
+		return fmt.Errorf("schema validation failure\n\t%s", err)
 	}
 	return nil
 }

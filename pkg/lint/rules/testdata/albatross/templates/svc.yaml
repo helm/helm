@@ -12,7 +12,7 @@ metadata:
     tillerVersion: {{ .Capabilities.TillerVersion }}
 spec:
   ports:
-  - port: {{default 80 .Values.httpPort | quote}}
+  - port: {{default 80 .Values.httpPort}}
     targetPort: 80
     protocol: TCP
     name: http
