@@ -201,9 +201,8 @@ func (i *initCmd) run() error {
 			if err != nil {
 				return err
 			}
-			jsons := string(jsonb)
-			jsons = "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\"," + jsons[1:]
-			fmt.Fprint(i.out, jsons)
+			io.WriteString(i.out, "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",")
+			(io.Writer).Write(i.out, jsonb[1:])
 			return nil
 		case "yaml":
 			if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
