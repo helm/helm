@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -194,7 +195,7 @@ func (i *initCmd) run() error {
 		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
 			return err
 		}
-		switch i.opts.Output {
+		switch strings.ToLower(i.opts.Output) {
 		case "json":
 			jsonb, err := yaml.ToJSON([]byte(body))
 			if err != nil {
