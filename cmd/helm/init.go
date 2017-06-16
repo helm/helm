@@ -121,8 +121,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
-	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to select which node tiller lands on")
-	f.StringVarP(&i.opts.Output, "output", "o", "", "skip installation and output tiller's manifest in specified format (json,yaml)")
+	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which tiller is installed (app=tiller,helm=rocks)")
+	f.StringVarP(&i.opts.Output, "output", "o", "", "skip installation and output tiller's manifest in specified format (json or yaml)")
 	f.StringArrayVar(&i.opts.Values, "set", []string{}, "set values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 
 	return cmd
@@ -189,7 +189,6 @@ func (i *initCmd) run() error {
 		return err
 	}
 	if len(i.opts.Output) > 0 {
-
 		var body string
 		var err error
 		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
