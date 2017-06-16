@@ -19,9 +19,12 @@ package rules
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/version"
@@ -81,6 +84,8 @@ func Templates(linter *support.Linter) {
 		return
 	}
 
+	serverAvailable := true
+
 	/* Iterate over all the templates to check:
 	- It is a .yaml file
 	- All the values in the template file is defined
@@ -88,6 +93,7 @@ func Templates(linter *support.Linter) {
 	- Generated content is a valid Yaml file
 	- Metadata.Namespace is not set
 	*/
+
 	for _, template := range chart.Templates {
 		fileName, _ := template.Name, template.Data
 		path = fileName
@@ -118,27 +124,43 @@ func Templates(linter *support.Linter) {
 			continue
 		}
 
-		// access kubectl client
-		kubeClient := kube.New(kube.GetConfig(""))
-		f := kubeClient.Factory
+		if serverAvailable {
+			// access kubernetes URL from the kubectl client
+			kubeConfig := kube.GetConfig("")
+			clientConfig, _ := kubeConfig.ClientConfig()
+			u, _ := url.Parse(clientConfig.Host)
 
-		// get the schema validator
-		schema, err := f.Validator(true, kubeClient.SchemaCacheDir)
-		validSchemaAccess := linter.RunLinterRule(support.ErrorSev, path, validateSchemaAccess(err))
+			// if kubernetes server is unavailable print a warning
+			// and don't try again this run.
+			timeout := time.Duration(5 * time.Second)
+			_, err = net.DialTimeout("tcp" , u.Host , timeout)
+			if err != nil {
+				e := fmt.Errorf("%s, skipping schema validation\n", err)
+				linter.RunLinterRule(support.WarningSev, path, e)
+				serverAvailable = false
+				continue
+			}
 
-		if !validSchemaAccess {
-			continue
-		}
+			kubeClient := kube.New(kubeConfig)
+			f := kubeClient.Factory
 
-		// convert to YAML to JSON, validated above so should be ok
-		j, _ := yaml.YAMLToJSON([]byte(renderedContent))
+			// get the schema validator
+			schema, err := f.Validator(true, kubeClient.SchemaCacheDir)
+			validSchemaAccess := linter.RunLinterRule(support.ErrorSev, path, validateSchemaAccess(err))
 
-		//
-		err = schema.ValidateBytes(j)
-		validSchema := linter.RunLinterRule(support.ErrorSev, path, validateSchema(err))
+			if !validSchemaAccess {
+				continue
+			}
 
-		if !validSchema {
-			continue
+			// convert to YAML to JSON, validated above so should be ok
+			j, _ := yaml.YAMLToJSON([]byte(renderedContent))
+			err = schema.ValidateBytes(j)
+
+			validSchema := linter.RunLinterRule(support.ErrorSev, path, validateSchema(err))
+
+			if !validSchema {
+				continue
+			}
 		}
 	}
 }
