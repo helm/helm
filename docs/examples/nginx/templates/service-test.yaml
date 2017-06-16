@@ -1,7 +1,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{.Release.Name}}-service-test"
+  name: "{{ template "fullname" . }}-service-test"
+  labels:
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app: {{ template "name" . }}
   annotations:
     "helm.sh/hook": test-success
 spec:
@@ -9,5 +14,5 @@ spec:
     - name: curl
       image: radial/busyboxplus:curl
       command: ['curl']
-      args:  [ '{{ template "fullname" .}}:{{default 80 .Values.httpPort}}' ]
+      args:  ['{{ template "fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
