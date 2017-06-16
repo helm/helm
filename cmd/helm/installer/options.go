@@ -45,6 +45,7 @@ type Options struct {
 	Namespace string
 
 	// ServiceAccount is the Kubernetes service account to add to Tiller.
+
 	ServiceAccount string
 
 	// ImageSpec indentifies the image Tiller will use when deployed.
@@ -76,7 +77,7 @@ type Options struct {
 	// NodeSelectors determine which nodes Tiller can land on
 	NodeSelectors string
 
-	// Output dumps the Tiller manifest in the specified format (e.g. json) but skips Helm/Tiller installation
+	// Output dumps the Tiller manifest in the specified format (e.g. JSON) but skips Helm/Tiller installation
 	Output string
 
 	// Set merges additional values into the Tiller Deployment manifest
@@ -106,8 +107,7 @@ func (opts *Options) tls() bool { return opts.EnableTLS || opts.VerifyTLS }
 // valuesMap returns user set values in map format
 func (opts *Options) valuesMap(m map[string]interface{}) (map[string]interface{}, error) {
 	for _, skv := range opts.Values {
-		err := strvals.ParseInto(skv, m)
-		if err != nil {
+		if err := strvals.ParseInto(skv, m); err != nil {
 			return nil, err
 		}
 	}
