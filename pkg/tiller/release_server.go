@@ -60,7 +60,7 @@ var (
 	// errInvalidRevision indicates that an invalid release revision number was provided.
 	errInvalidRevision = errors.New("invalid release revision")
 	//errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New("invalid release name")
+	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
 )
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
