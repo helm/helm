@@ -25,11 +25,7 @@ import (
 	"k8s.io/helm/pkg/lint/support"
 )
 
-const (
-	albatrossTestBasedir = "./testdata/albatross"
-	badSchemaTestBasedir    = "./testdata/badschema"
-	goodSchemaTestBasedir   = "./testdata/goodschema"
-)
+const templateTestBasedir = "./testdata/albatross"
 
 func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.yml", "/test.toml", "test.yml"}
@@ -49,7 +45,7 @@ func TestValidateAllowedExtension(t *testing.T) {
 }
 
 func TestTemplateParsing(t *testing.T) {
-	linter := support.Linter{ChartDir: albatrossTestBasedir}
+	linter := support.Linter{ChartDir: templateTestBasedir}
 	Templates(&linter)
 	res := linter.Messages
 
@@ -62,8 +58,8 @@ func TestTemplateParsing(t *testing.T) {
 	}
 }
 
-var wrongTemplatePath = filepath.Join(albatrossTestBasedir, "templates", "fail.yaml")
-var ignoredTemplatePath = filepath.Join(albatrossTestBasedir, "fail.yaml.ignored")
+var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
+var ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
 
 // Test a template with all the existing features:
 // namespaces, partial templates
@@ -72,35 +68,12 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	os.Rename(wrongTemplatePath, ignoredTemplatePath)
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
-	linter := support.Linter{ChartDir: albatrossTestBasedir}
+	linter := support.Linter{ChartDir: templateTestBasedir}
 	Templates(&linter)
 	res := linter.Messages
 
-	if len(res) != 0 {
-		t.Fatalf("Expected no error, got %d, %v", len(res), res)
-	}
-}
-
-func TestBadSchema(t *testing.T) {
-	linter := support.Linter{ChartDir: badSchemaTestBasedir}
-	Templates(&linter)
-	res := linter.Messages
-
-	if len(res) != 1 {
-		t.Fatalf("Expected two error, got %d, %v", len(res), res)
-	}
-
-	if !strings.Contains(res[0].Err.Error(), "schema validation failure") {
-		t.Errorf("Unexpected error: %s", res[0])
-	}
-}
-
-func TestGoodSchema(t *testing.T) {
-	linter := support.Linter{ChartDir: goodSchemaTestBasedir}
-	Templates(&linter)
-	res := linter.Messages
-
-	if len(res) != 0 {
-		t.Fatalf("Expected no error, got %d, %v", len(res), res)
+	// expect no errors and one warning indicating no server is available
+	if len(res) != 1 && linter.Messages[0].Severity != support.WarningSev {
+		t.Fatalf("Expected one warning and no error, got %d, %v", len(res), res)
 	}
 }
