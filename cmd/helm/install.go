@@ -258,6 +258,12 @@ func (i *installCmd) run() error {
 
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
+		// If this is a dry run, we should delete the compiled chart tarball to remain idempotent.
+		debug("Dry run: removing compiled chart: %s\n", i.chartPath)
+		err := os.Remove(i.chartPath)
+		if err != nil {
+			prettyError(err)
+		}
 		return nil
 	}
 
