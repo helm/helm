@@ -72,8 +72,12 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	Templates(&linter)
 	res := linter.Messages
 
-	// expect no errors and one warning indicating no server is available
-	if len(res) != 1 && linter.Messages[0].Severity != support.WarningSev {
-		t.Fatalf("Expected one warning and no error, got %d, %v", len(res), res)
+	// expect one warning indicating no server is available
+	if len(res) != 1 {
+		t.Fatalf("expected one warning, got %d, %v", len(res), res)
+	}
+
+	if linter.HighestSeverity != support.WarningSev {
+		t.Fatalf("expected warning severity, got %d, %v", linter.HighestSeverity, res)
 	}
 }

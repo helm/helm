@@ -133,9 +133,9 @@ func Templates(linter *support.Linter) {
 			// if kubernetes server is unavailable print a warning
 			// and don't try again this run.
 			timeout := time.Duration(5 * time.Second)
-			_, err = net.DialTimeout("tcp" , u.Host , timeout)
+			_, err = net.DialTimeout("tcp", u.Host, timeout)
 			if err != nil {
-				e := fmt.Errorf("%s, skipping schema validation\n", err)
+				e := fmt.Errorf("skipping schema validation\n\t%s", err)
 				linter.RunLinterRule(support.WarningSev, path, e)
 				serverAvailable = false
 				continue

@@ -86,8 +86,8 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir).Messages
-	if len(m) != 0 {
-		t.Errorf("All failed but shouldn't have: %#v", m)
+	sev := All(goodChartDir).HighestSeverity
+	if sev > support.WarningSev {
+		t.Errorf("All failed but shouldn't have: %#v", sev)
 	}
 }
