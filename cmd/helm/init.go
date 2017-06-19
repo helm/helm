@@ -202,7 +202,9 @@ func (i *initCmd) run() error {
 				return err
 			}
 			io.WriteString(i.out, "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",")
-			(io.Writer).Write(i.out, jsonb[1:])
+			if _, err = i.out.Write(jsonb[1:]); err != nil {
+				return err
+			}
 			return nil
 		case "yaml":
 			if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
