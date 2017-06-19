@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -196,14 +198,20 @@ func (i *initCmd) run() error {
 		}
 		switch i.opts.Output.String() {
 		case "json":
+			var out bytes.Buffer
 			jsonb, err := yaml.ToJSON([]byte(body))
-			if err != nil {
+			if err := json.Indent(&out, jsonb, "", "    "); err != nil {
 				return err
 			}
-			io.WriteString(i.out, "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",")
-			if _, err = i.out.Write(jsonb[1:]); err != nil {
+			tm := []byte("{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",")
+			j := append(tm, jsonb[1:]...)
+			if err := json.Indent(&out, j, "", "    "); err != nil {
 				return err
 			}
+			if _, err = i.out.Write(out.Bytes()); err != nil {
+				return err
+			}
+
 			return nil
 		case "yaml":
 			if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
