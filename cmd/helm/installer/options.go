@@ -114,12 +114,15 @@ func (opts *Options) valuesMap(m map[string]interface{}) (map[string]interface{}
 	return m, nil
 }
 
+// OutputFormat defines valid values for init output (json, yaml)
 type OutputFormat string
 
+// String returns the string value of the OutputFormat
 func (f *OutputFormat) String() string {
 	return string(*f)
 }
 
+// Type returns the string value of the OutputFormat
 func (f *OutputFormat) Type() string {
 	return "OutputFormat"
 }
@@ -129,6 +132,7 @@ const (
 	fmtYAML              = "yaml"
 )
 
+// Set validates and sets the value of the OutputFormat
 func (f *OutputFormat) Set(s string) error {
 	for _, of := range []OutputFormat{fmtJSON, fmtYAML} {
 		if s == string(of) {
