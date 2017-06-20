@@ -128,24 +128,28 @@ func generateLabels(labels map[string]string) map[string]string {
 	return labels
 }
 
-// parseNodeSelectors takes a comma delimited list of key=values pairs and returns a map
-func parseNodeSelectors(labels string, m map[string]string) map[string]string {
+// parseNodeSelectors parses a comma delimited list of key=values pairs into a map
+func parseNodeSelectorsInto(labels string, m map[string]string) error {
 	kv := strings.Split(labels, ",")
 	for _, v := range kv {
 		el := strings.Split(v, "=")
 		if len(el) == 2 {
 			m[el[0]] = el[1]
+		} else {
+			return fmt.Errorf("Invalid nodeSelector label: %s", kv)
 		}
 	}
-
-	return m
+	return nil
 }
 func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	nodeSelectors := map[string]string{}
 	nodeSelectors["beta.kubernetes.io/os"] = "linux"
 	if len(opts.NodeSelectors) > 0 {
-		nodeSelectors = parseNodeSelectors(opts.NodeSelectors, nodeSelectors)
+		err := parseNodeSelectorsInto(opts.NodeSelectors, nodeSelectors)
+		if err != nil {
+			return nil, err
+		}
 	}
 	d := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
