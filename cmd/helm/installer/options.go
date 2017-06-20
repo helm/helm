@@ -77,7 +77,7 @@ type Options struct {
 	NodeSelectors string
 
 	// Output dumps the Tiller manifest in the specified format (e.g. JSON) but skips Helm/Tiller installation
-	Output outputFormat
+	Output OutputFormat
 
 	// Set merges additional values into the Tiller Deployment manifest
 	Values []string
@@ -113,23 +113,23 @@ func (opts *Options) valuesMap(m map[string]interface{}) (map[string]interface{}
 	return m, nil
 }
 
-type outputFormat string
+type OutputFormat string
 
-func (f *outputFormat) String() string {
+func (f *OutputFormat) String() string {
 	return string(*f)
 }
 
-func (f *outputFormat) Type() string {
-	return "outputFormat"
+func (f *OutputFormat) Type() string {
+	return "OutputFormat"
 }
 
 const (
-	fmtJSON outputFormat = "json"
+	fmtJSON OutputFormat = "json"
 	fmtYAML              = "yaml"
 )
 
-func (f *outputFormat) Set(s string) error {
-	for _, of := range []outputFormat{fmtJSON, fmtYAML} {
+func (f *OutputFormat) Set(s string) error {
+	for _, of := range []OutputFormat{fmtJSON, fmtYAML} {
 		if s == string(of) {
 			*f = of
 			return nil
