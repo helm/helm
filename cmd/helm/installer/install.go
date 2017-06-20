@@ -128,7 +128,7 @@ func generateLabels(labels map[string]string) map[string]string {
 	return labels
 }
 
-// parseNodeSelectors parses a comma delimited list of key=values pairs into a map
+// parseNodeSelectors parses a comma delimited list of key=values pairs into a map.
 func parseNodeSelectorsInto(labels string, m map[string]string) error {
 	kv := strings.Split(labels, ",")
 	for _, v := range kv {
