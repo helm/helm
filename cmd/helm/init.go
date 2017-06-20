@@ -200,7 +200,7 @@ func (i *initCmd) run() error {
 		case "json":
 			var out bytes.Buffer
 			jsonb, err := yaml.ToJSON([]byte(body))
-			if err := json.Indent(&out, jsonb, "", "    "); err != nil {
+			if err != nil {
 				return err
 			}
 			tm := []byte("{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Deployment\",")

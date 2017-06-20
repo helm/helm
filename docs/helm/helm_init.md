@@ -39,7 +39,7 @@ helm init
       --local-repo-url string    URL for local repository (default "http://127.0.0.1:8879/charts")
       --net-host                 install Tiller with net=host
       --node-selectors string    labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)
-  -o, --output outputFormat      skip installation and output Tiller's manifest in specified format (json or yaml)
+  -o, --output OutputFormat      skip installation and output Tiller's manifest in specified format (json or yaml)
       --service-account string   name of service account
       --set stringArray          set values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)
       --skip-refresh             do not refresh (download) the local repository cache
