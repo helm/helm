@@ -206,6 +206,7 @@ func (i *initCmd) run() error {
 			const tm = `{"apiVersion":"extensions/v1beta1","kind":"Deployment",`
 			buf := bytes.NewBuffer(make([]byte, 0, len(tm)+len(jsonb)-1))
 			buf.WriteString(tm)
+			// Drop the opening object delimiter ('{').
 			buf.Write(jsonb[1:])
 			if err := json.Indent(&out, buf.Bytes(), "", "    "); err != nil {
 				return err
