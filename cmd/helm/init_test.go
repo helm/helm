@@ -320,8 +320,8 @@ func TestInitCmd_output(t *testing.T) {
 	}()
 	fc := fake.NewSimpleClientset()
 	tests := []struct {
-		expectF    func([]byte, interface{}) error
-		expectName string
+		unmarshal func([]byte, interface{}) error
+		format    string
 	}{
 		{
 			json.Unmarshal,
@@ -338,7 +338,7 @@ func TestInitCmd_output(t *testing.T) {
 			out:        &buf,
 			home:       helmpath.Home(home),
 			kubeClient: fc,
-			opts:       installer.Options{Output: installer.OutputFormat(s.expectName)},
+			opts:       installer.Options{Output: installer.OutputFormat(s.format)},
 			namespace:  v1.NamespaceDefault,
 		}
 		if err := cmd.run(); err != nil {
@@ -348,9 +348,8 @@ func TestInitCmd_output(t *testing.T) {
 			t.Errorf("expected no server calls, got %d", got)
 		}
 		d := &v1beta1.Deployment{}
-		if err = s.expectF(buf.Bytes(), &d); err != nil {
-			t.Errorf("error unmarshalling init %s output %s %s", s.expectName, err, string(buf.Bytes()))
+		if err = s.unmarshal(buf.Bytes(), &d); err != nil {
+			t.Errorf("error unmarshalling init %s output %s %s", s.format, err, string(buf.Bytes()))
 		}
 	}
-
 }
