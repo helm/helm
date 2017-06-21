@@ -63,7 +63,7 @@ type Client struct {
 	Log func(string, ...interface{})
 }
 
-// New create a new Client
+// New creates a new Client.
 func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:        cmdutil.NewFactory(config),
@@ -75,9 +75,9 @@ func New(config clientcmd.ClientConfig) *Client {
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
 
-// Create creates kubernetes resources from an io.reader
+// Create creates Kubernetes resources from an io.reader.
 //
-// Namespace will set the namespace
+// Namespace will set the namespace.
 func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
 	client, err := c.ClientSet()
 	if err != nil {
@@ -147,12 +147,12 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	return result, scrubValidationError(err)
 }
 
-// Get gets kubernetes resources as pretty printed string
+// Get gets Kubernetes resources as pretty-printed string.
 //
-// Namespace will set the namespace
+// Namespace will set the namespace.
 func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
-	// that when we print them, they come looking good (headers apply to subgroups, etc.)
+	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
 	objs := make(map[string][]runtime.Object)
 	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
@@ -181,7 +181,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
 	// spin through them and print them. Printer is cool since it prints the header only when
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
-	// track of tab widths
+	// track of tab widths.
 	buf := new(bytes.Buffer)
 	p, _ := c.Printer(nil, printers.PrintOptions{})
 	for t, ot := range objs {
@@ -208,11 +208,11 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 }
 
 // Update reads in the current configuration and a target configuration from io.reader
-//  and creates resources that don't already exists, updates resources that have been modified
-//  in the target configuration and deletes resources from the current configuration that are
-//  not present in the target configuration
+// and creates resources that don't already exists, updates resources that have been modified
+// in the target configuration and deletes resources from the current configuration that are
+// not present in the target configuration.
 //
-// Namespace will set the namespaces
+// Namespace will set the namespaces.
 func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
@@ -281,9 +281,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	return nil
 }
 
-// Delete deletes kubernetes resources from an io.reader
+// Delete deletes Kubernetes resources from an io.reader.
 //
-// Namespace will set the namespace
+// Namespace will set the namespace.
 func (c *Client) Delete(namespace string, reader io.Reader) error {
 	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
@@ -577,7 +577,7 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 	return false, nil
 }
 
-// scrubValidationError removes kubectl info from the message
+// scrubValidationError removes kubectl info from the message.
 func scrubValidationError(err error) error {
 	if err == nil {
 		return nil
@@ -591,7 +591,7 @@ func scrubValidationError(err error) error {
 }
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-// and returns said phase (PodSucceeded or PodFailed qualify)
+// and returns said phase (PodSucceeded or PodFailed qualify).
 func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
 	infos, err := c.Build(namespace, reader)
 	if err != nil {

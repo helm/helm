@@ -69,9 +69,9 @@ type Queryor interface {
 	Query(labels map[string]string) ([]*rspb.Release, error)
 }
 
-// Driver is the interface composed of Creator, Updator, Deletor, Queryor
+// Driver is the interface composed of Creator, Updator, Deletor, and Queryor
 // interfaces. It defines the behavior for storing, updating, deleted,
-// and retrieving tiller releases from some underlying storage mechanism,
+// and retrieving Tiller releases from some underlying storage mechanism,
 // e.g. memory, configmaps.
 type Driver interface {
 	Creator
