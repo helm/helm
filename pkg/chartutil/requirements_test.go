@@ -378,13 +378,6 @@ func TestDependentChartAliases(t *testing.T) {
 		t.Fatalf("Cannot load requirements for test chart, %v", err)
 	}
 
-	// var expectedDependencyCharts int
-	// for _, reqmt := range reqmts.Dependencies {
-	// 	expectedDependencyCharts++
-	// 	if len(reqmt.Alias) >= 0 {
-	// 		expectedDependencyCharts += len(reqmt.Alias)
-	// 	}
-	// }
 	if len(c.Dependencies) != len(reqmts.Dependencies) {
 		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(reqmts.Dependencies), len(c.Dependencies))
 	}
