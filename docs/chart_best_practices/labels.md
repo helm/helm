@@ -27,7 +27,7 @@ Name|Status|Description
 -----|------|----------
 heritage | REC | This should always be set to `Tiller`. It is for finding all things managed by Tiller.
 release | REC | This should be the `{{ .Release.Name }}`.
-chart | REC | This should be the chart name and version: `{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}`.
+chart | REC | This should be the chart name and version: `{{ .Chart.Name }}-{{ .Chart.Version \| replace "+" "_" }}`.
 app | OPT | This should be the app name, reflecting the entire app. Often the chart's `{{ .Chart.Name }}` is used for this. This is used by many Kubernetes manifests, and is not Helm-specific.
 component | OPT | This is a common label for marking the different roles that pieces may play in an application. For example, `component: frontend`
 
