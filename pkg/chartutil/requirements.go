@@ -258,6 +258,24 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	}
 
 	var chartDependencies []*chart.Chart
+	// If any dependency is not a part of requirements.yaml
+	// then this should be added to chartDependencies.
+	// However, if the dependency is already specified in requirements.yaml
+	// we should not add it, as it would be anyways processed from requirements.yaml
+
+	for _, existingDependency := range c.Dependencies {
+		var dependencyFound bool
+		for _, req := range reqs.Dependencies {
+			if existingDependency.Metadata.Name == req.Name && existingDependency.Metadata.Version == req.Version {
+				dependencyFound = true
+				break
+			}
+		}
+		if !dependencyFound {
+			chartDependencies = append(chartDependencies, existingDependency)
+		}
+	}
+
 	for _, req := range reqs.Dependencies {
 		if chartDependency := getAliasDependency(c.Dependencies, req); chartDependency != nil {
 			chartDependencies = append(chartDependencies, chartDependency)
