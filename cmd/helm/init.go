@@ -101,23 +101,23 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
-	f.BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
-	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if tiller is already installed")
-	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
+	f.StringVarP(&i.image, "tiller-image", "i", "", "override Tiller image")
+	f.BoolVar(&i.canary, "canary-image", false, "use the canary Tiller image")
+	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if Tiller is already installed")
+	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install Tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 
-	f.BoolVar(&tlsEnable, "tiller-tls", false, "install tiller with TLS enabled")
-	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install tiller with TLS enabled and to verify remote certificates")
-	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with tiller")
-	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with tiller")
+	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
+	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
+	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
+	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with Tiller")
 	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
-	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install tiller with net=host")
+	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
 	return cmd
