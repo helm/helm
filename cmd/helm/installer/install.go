@@ -136,7 +136,7 @@ func parseNodeSelectorsInto(labels string, m map[string]string) error {
 		if len(el) == 2 {
 			m[el[0]] = el[1]
 		} else {
-			return fmt.Errorf("invalid nodeSelector label: %s", kv)
+			return fmt.Errorf("invalid nodeSelector label: %q", kv)
 		}
 	}
 	return nil
