@@ -221,7 +221,7 @@ func (i *initCmd) run() error {
 			}
 			return nil
 		default:
-			return fmt.Errorf("Unknown output format: %s", i.opts.Output)
+			return fmt.Errorf("unknown output format: %s", i.opts.Output)
 		}
 	}
 	if settings.Debug {
