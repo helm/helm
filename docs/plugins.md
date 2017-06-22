@@ -65,7 +65,7 @@ Here is a plugin YAML for a plugin that adds support for Keybase operations:
 ```
 name: "keybase"
 version: "0.1.0"
-usage: "Integreate Keybase.io tools with Helm"
+usage: "Integrate Keybase.io tools with Helm"
 description: |-
   This plugin provides Keybase services to Helm.
 ignoreFlags: false
