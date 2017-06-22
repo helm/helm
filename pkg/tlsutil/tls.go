@@ -29,14 +29,17 @@ func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cp, err := CertPoolFromFile(caFile)
-	if err != nil {
-		return nil, err
-	}
-	return &tls.Config{
+	config := tls.Config{
 		Certificates: []tls.Certificate{*cert},
-		RootCAs:      cp,
-	}, nil
+	}
+	if caFile != "" {
+		cp, err := CertPoolFromFile(caFile)
+		if err != nil {
+			return nil, err
+		}
+		config.RootCAs = cp
+	}
+	return &config, nil
 }
 
 // CertPoolFromFile returns an x509.CertPool containing the certificates
