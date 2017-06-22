@@ -40,14 +40,14 @@ Binary downloads of the Helm client can be found at the following links:
 Unpack the `helm` binary and add it to your PATH and you are good to go!
 macOS/[homebrew](https://brew.sh/) users can also use `brew install kubernetes-helm`.
 
-To rapidly get Helm up and running, start with the [Quick Start Guide](docs/quickstart.md).
+To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 
-See the [installation guide](docs/install.md) for more options,
+See the [installation guide](https://docs.helm.sh/using_helm/#installing-helm) for more options,
 including installing pre-releases.
 
 ## Docs
 
-Get started with the [Quick Start guide](docs/quickstart.md) or plunge into the [complete documentation](docs/index.md)
+Get started with the [Quick Start guide](https://docs.helm.sh/using_helm/#quickstart-guide) or plunge into the [complete documentation](https://docs.helm.sh)
 
 ## Roadmap
 
