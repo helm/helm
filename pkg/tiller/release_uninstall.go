@@ -31,13 +31,9 @@ import (
 
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
 func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
-	if !ValidName.MatchString(req.Name) {
-		s.Log("uninstall: Release not found: %s", req.Name)
-		return nil, errMissingRelease
-	}
-
-	if len(req.Name) > releaseNameMaxLen {
-		return nil, fmt.Errorf("release name %q exceeds max length of %d", req.Name, releaseNameMaxLen)
+	if err := validateReleaseName(req.Name); err != nil {
+		s.Log("uninstallRelease: Release name is invalid: %s", req.Name)
+		return nil, err
 	}
 
 	err := s.env.Releases.LockRelease(req.Name)

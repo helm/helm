@@ -59,6 +59,8 @@ var (
 	errMissingRelease = errors.New("no release provided")
 	// errInvalidRevision indicates that an invalid release revision number was provided.
 	errInvalidRevision = errors.New("invalid release revision")
+	//errInvalidName indicates that an invalid release name was provided
+	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
 )
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
@@ -358,4 +360,16 @@ func validateManifest(c environment.KubeClient, ns string, manifest []byte) erro
 	r := bytes.NewReader(manifest)
 	_, err := c.BuildUnstructured(ns, r)
 	return err
+}
+
+func validateReleaseName(releaseName string) error {
+	if releaseName == "" {
+		return errMissingRelease
+	}
+
+	if !ValidName.MatchString(releaseName) || (len(releaseName) > releaseNameMaxLen) {
+		return errInvalidName
+	}
+
+	return nil
 }

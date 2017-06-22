@@ -25,8 +25,9 @@ import (
 // RunReleaseTest runs pre-defined tests stored as hooks on a given release
 func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
 
-	if !ValidName.MatchString(req.Name) {
-		return errMissingRelease
+	if err := validateReleaseName(req.Name); err != nil {
+		s.Log("releaseTest: Release name is invalid: %s", req.Name)
+		return err
 	}
 
 	// finds the non-deleted release with the given name
