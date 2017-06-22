@@ -57,16 +57,16 @@ type Dependency struct {
 	// used to fetch the repository index.
 	Repository string `json:"repository"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
-	Condition string `json:"condition"`
+	Condition string `json:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags,omitempty"`
 	// Enabled bool determines if chart should be loaded
-	Enabled bool `json:"enabled"`
+	Enabled bool `json:"enabled,omitempty"`
 	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
 	// string or pair of child/parent sublist items.
-	ImportValues []interface{} `json:"import-values"`
+	ImportValues []interface{} `json:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
-	Alias string `json:"alias"`
+	Alias string `json:"alias,omitempty"`
 }
 
 // ErrNoRequirementsFile to detect error condition
