@@ -2,8 +2,6 @@
 
 Run a single pod of Alpine Linux.
 
-This example was generated using the command `helm create alpine`.
-
 The `templates/` directory contains a very simple pod resource with a
 couple of parameters.
 

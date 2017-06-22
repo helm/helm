@@ -1,11 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "{{template "fullname" . }}"
+  name: {{ template "fullname" . }}
   labels:
-    heritage: {{.Release.Service | quote }}
-    release: {{.Release.Name | quote }}
-    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    # The "heritage" label is used to track which tool deployed a given chart.
+    # It is useful for admins who want to see what releases a particular tool
+    # is responsible for.
+    heritage: {{ .Release.Service }}
+    # The "release" convention makes it easy to tie a release to all of the
+    # Kubernetes resources that were created as part of that release.
+    release: {{ .Release.Name }}
+    # This makes it easy to audit chart usage.
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app: {{ template "name" . }}
   annotations:
     # This is what defines this resource as a hook. Without this line, the
     # job is considered part of the release.
@@ -13,19 +20,18 @@ metadata:
 spec:
   template:
     metadata:
-      name: "{{template "fullname" . }}"
+      name: {{ template "fullname" . }}
       labels:
-        heritage: {{.Release.Service | quote }}
-        release: {{.Release.Name | quote }}
-        chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+        release: {{ .Release.Name }}
+        app: {{ template "name" . }}
     spec:
       # This shows how to use a simple value. This will look for a passed-in value
       # called restartPolicy. If it is not found, it will use the default value.
-      # {{default "Never" .restartPolicy}} is a slightly optimized version of the
-      # more conventional syntax: {{.restartPolicy | default "Never"}}
-      restartPolicy: Never
+      # {{ default "Never" .restartPolicy }} is a slightly optimized version of the
+      # more conventional syntax: {{ .restartPolicy | default "Never" }}
+      restartPolicy: {{ .Values.restartPolicy }}
       containers:
-      - name: post-install-job
-        image: "alpine:3.3"
-        # All we're going to do is sleep for a minute, then exit.
-        command: ["/bin/sleep","{{default "10" .Values.sleepyTime}}"]
+        - name: post-install-job
+          image: "alpine:3.3"
+          # All we're going to do is sleep for a while, then exit.
+          command: ["/bin/sleep", "{{ .Values.sleepyTime }}"]
