@@ -6,9 +6,9 @@ keywords:
   - nginx
   - www
   - web
-home: "https://github.com/kubernetes/helm"
+home: https://github.com/kubernetes/helm
 sources:
-  - "https://hub.docker.com/_/nginx/"
+  - https://hub.docker.com/_/nginx/
 maintainers:
   - name: technosophos
     email: mbutcher@deis.com
