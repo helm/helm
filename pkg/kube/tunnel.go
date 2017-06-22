@@ -25,7 +25,7 @@ import (
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 // Tunnel describes a ssh-like tunnel to a kubernetes pod

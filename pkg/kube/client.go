@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/helper"
 	"k8s.io/kubernetes/pkg/api/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
@@ -106,7 +107,7 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 	if err != nil {
 		c.Log("warning: failed to load schema: %s", err)
 	}
-	return c.NewBuilder().
+	return c.NewBuilder(true).
 		ContinueOnError().
 		Schema(schema).
 		NamespaceParam(namespace).
@@ -123,14 +124,12 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 		c.Log("warning: failed to load schema: %s", err)
 	}
 
-	mapper, typer, err := c.UnstructuredObject()
-	if err != nil {
-		c.Log("failed to load mapper: %s", err)
-		return nil, err
-	}
 	var result Result
-	result, err = resource.NewBuilder(mapper, typer, resource.ClientMapperFunc(c.UnstructuredClientForMapping), unstructured.UnstructuredJSONScheme).
-		ContinueOnError().
+	b, err := c.NewUnstructuredBuilder(true)
+	if err != nil {
+		return result, err
+	}
+	result, err = b.ContinueOnError().
 		Schema(schema).
 		NamespaceParam(namespace).
 		DefaultNamespace().
@@ -376,7 +375,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
 
-	if api.Semantic.DeepEqual(oldData, newData) {
+	if helper.Semantic.DeepEqual(oldData, newData) {
 		return nil, types.StrategicMergePatchType, nil
 	}
 
