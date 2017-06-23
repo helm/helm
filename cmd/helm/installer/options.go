@@ -19,6 +19,7 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/helm/pkg/version"
 )
@@ -71,6 +72,18 @@ type Options struct {
 
 	// EnableHostNetwork installs Tiller with net=host.
 	EnableHostNetwork bool
+
+	//CPULimits is the cpu limits used to deploy tiller
+	CPULimits resource.Quantity
+
+	//CPURequests is the cpu request limits used to deploy tiller
+	CPURequests resource.Quantity
+
+	//MemLimits is the memory limits used to deploy tiller
+	MemLimits resource.Quantity
+
+	//MemRequests is the memory request limits used to deploy tiller
+	MemRequests resource.Quantity
 }
 
 func (opts *Options) selectImage() string {

@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -79,6 +80,10 @@ type initCmd struct {
 	opts           installer.Options
 	kubeClient     kubernetes.Interface
 	serviceAccount string
+	cpuLimits      string
+	cpuRequests    string
+	memLimits      string
+	memRequests    string
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -120,6 +125,10 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
+	f.StringVar(&i.cpuLimits, "tiller-cpu-limits", "", "override tiller cpu limits")
+	f.StringVar(&i.cpuRequests, "tiller-cpu-requests", "", "override tiller cpu requests")
+	f.StringVar(&i.memLimits, "tiller-memory-limits", "", "override tiller cpu limits")
+	f.StringVar(&i.memRequests, "tiller-memory-requests", "", "override tiller cpu limits")
 	return cmd
 }
 
@@ -149,16 +158,50 @@ func (i *initCmd) tlsOptions() error {
 	return nil
 }
 
-// run initializes local config and installs Tiller to Kubernetes cluster.
+func (i *initCmd) generateLimits() error {
+	var err error
+	if i.cpuLimits != "" {
+		i.opts.CPULimits, err = resource.ParseQuantity(i.cpuLimits)
+		if err != nil {
+			return err
+		}
+	}
+
+	if i.cpuRequests != "" {
+		i.opts.CPURequests, err = resource.ParseQuantity(i.cpuRequests)
+		if err != nil {
+			return err
+		}
+	}
+
+	if i.memLimits != "" {
+		i.opts.MemLimits, err = resource.ParseQuantity(i.memLimits)
+		if err != nil {
+			return err
+		}
+	}
+
+	if i.memRequests != "" {
+		i.opts.MemRequests, err = resource.ParseQuantity(i.memRequests)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// run initializes local config and installs tiller to Kubernetes Cluster.
 func (i *initCmd) run() error {
 	if err := i.tlsOptions(); err != nil {
+		return err
+	}
+	if err := i.generateLimits(); err != nil {
 		return err
 	}
 	i.opts.Namespace = i.namespace
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
 	i.opts.ServiceAccount = i.serviceAccount
-
 	if settings.Debug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
 			w := i.out

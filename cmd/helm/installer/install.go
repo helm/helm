@@ -21,6 +21,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -116,8 +117,43 @@ func generateLabels(labels map[string]string) map[string]string {
 	return labels
 }
 
+func generateLimits(opts *Options) (v1.ResourceRequirements, bool) {
+	limits := map[v1.ResourceName]resource.Quantity{}
+	requests := map[v1.ResourceName]resource.Quantity{}
+	resources := v1.ResourceRequirements{}
+	var resourcesEnabled bool
+	if (opts.CPURequests != (resource.Quantity{})) || (opts.CPULimits != (resource.Quantity{})) ||
+		(opts.MemRequests != (resource.Quantity{})) || opts.MemLimits != (resource.Quantity{}) {
+		resourcesEnabled = true
+		if opts.CPULimits != (resource.Quantity{}) {
+			limits[v1.ResourceCPU] = opts.CPULimits
+			if opts.CPURequests == (resource.Quantity{}) {
+				requests[v1.ResourceCPU] = opts.CPULimits
+			}
+		}
+		if opts.CPURequests != (resource.Quantity{}) {
+			requests[v1.ResourceCPU] = opts.CPURequests
+		}
+		if opts.MemLimits != (resource.Quantity{}) {
+			limits[v1.ResourceMemory] = opts.MemLimits
+			if opts.MemRequests == (resource.Quantity{}) {
+				requests[v1.ResourceMemory] = opts.MemLimits
+			}
+		}
+		if opts.MemRequests != (resource.Quantity{}) {
+			requests[v1.ResourceMemory] = opts.MemRequests
+		}
+		resources = v1.ResourceRequirements{
+			Limits:   limits,
+			Requests: requests,
+		}
+	}
+	return resources, resourcesEnabled
+}
+
 func generateDeployment(opts *Options) *v1beta1.Deployment {
 	labels := generateLabels(map[string]string{"name": "tiller"})
+	resources, resourcesEnabled := generateLimits(opts)
 	d := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: opts.Namespace,
@@ -172,7 +208,9 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 			},
 		},
 	}
-
+	if resourcesEnabled {
+		d.Spec.Template.Spec.Containers[0].Resources = resources
+	}
 	if opts.tls() {
 		const certsDir = "/etc/certs"
 
