@@ -34,7 +34,7 @@ import (
 // path to example charts relative to pkg/helm.
 const chartsDir = "../../docs/examples/"
 
-// sentinel error to indicate to the helm client to not send the request to tiller.
+// sentinel error to indicate to the Helm client to not send the request to tiller.
 var errSkip = errors.New("test: skip")
 
 // Verify ReleaseListOption's are applied to a ListReleasesRequest correctly.
@@ -75,7 +75,7 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		ReleaseListNamespace(namespace),
 	}
 
-	// BeforeCall option to intercept helm client ListReleasesRequest
+	// BeforeCall option to intercept Helm client ListReleasesRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.ListReleasesRequest:
@@ -124,7 +124,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 		InstallDisableHooks(disableHooks),
 	}
 
-	// BeforeCall option to intercept helm client InstallReleaseRequest
+	// BeforeCall option to intercept Helm client InstallReleaseRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.InstallReleaseRequest:
@@ -161,7 +161,7 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 		DeleteDisableHooks(disableHooks),
 	}
 
-	// BeforeCall option to intercept helm client DeleteReleaseRequest
+	// BeforeCall option to intercept Helm client DeleteReleaseRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.UninstallReleaseRequest:
@@ -204,7 +204,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 		UpgradeDisableHooks(disableHooks),
 	}
 
-	// BeforeCall option to intercept helm client UpdateReleaseRequest
+	// BeforeCall option to intercept Helm client UpdateReleaseRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.UpdateReleaseRequest:
@@ -244,7 +244,7 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 		RollbackDisableHooks(disableHooks),
 	}
 
-	// BeforeCall option to intercept helm client RollbackReleaseRequest
+	// BeforeCall option to intercept Helm client RollbackReleaseRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.RollbackReleaseRequest:
@@ -273,7 +273,7 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 		Version: revision,
 	}
 
-	// BeforeCall option to intercept helm client GetReleaseStatusRequest
+	// BeforeCall option to intercept Helm client GetReleaseStatusRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.GetReleaseStatusRequest:
@@ -302,7 +302,7 @@ func TestReleaseContent_VerifyOptions(t *testing.T) {
 		Version: revision,
 	}
 
-	// BeforeCall option to intercept helm client GetReleaseContentRequest
+	// BeforeCall option to intercept Helm client GetReleaseContentRequest
 	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.GetReleaseContentRequest:

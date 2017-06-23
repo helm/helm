@@ -75,9 +75,9 @@ func New(config clientcmd.ClientConfig) *Client {
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
 
-// Create creates kubernetes resources from an io.reader
+// Create creates Kubernetes resources from an io.reader.
 //
-// Namespace will set the namespace
+// Namespace will set the namespace.
 func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
 	client, err := c.ClientSet()
 	if err != nil {
@@ -147,7 +147,7 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	return result, scrubValidationError(err)
 }
 
-// Get gets kubernetes resources as pretty printed string
+// Get gets Kubernetes resources as pretty printed string.
 //
 // Namespace will set the namespace
 func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
@@ -210,9 +210,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 // Update reads in the current configuration and a target configuration from io.reader
 //  and creates resources that don't already exists, updates resources that have been modified
 //  in the target configuration and deletes resources from the current configuration that are
-//  not present in the target configuration
+//  not present in the target configuration.
 //
-// Namespace will set the namespaces
+// Namespace will set the namespaces.
 func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
@@ -281,9 +281,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	return nil
 }
 
-// Delete deletes kubernetes resources from an io.reader
+// Delete deletes Kubernetes resources from an io.reader.
 //
-// Namespace will set the namespace
+// Namespace will set the namespace.
 func (c *Client) Delete(namespace string, reader io.Reader) error {
 	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {

@@ -27,7 +27,7 @@ import (
 type Options struct {
 	CaCertFile string
 	// If either the KeyFile or CertFile is empty, ClientConfig() will not load them,
-	// preventing helm from authenticating to Tiller. They are required to be non-empty
+	// preventing Helm from authenticating to Tiller. They are required to be non-empty
 	// when calling ServerConfig, otherwise an error is returned.
 	KeyFile  string
 	CertFile string

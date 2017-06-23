@@ -40,7 +40,7 @@ func NewClient(opts ...Option) *Client {
 	return c.Option(opts...)
 }
 
-// Option configures the helm client with the provided options
+// Option configures the Helm client with the provided options
 func (h *Client) Option(opts ...Option) *Client {
 	for _, opt := range opts {
 		opt(&h.opts)

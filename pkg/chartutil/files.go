@@ -94,7 +94,7 @@ func (f Files) Glob(pattern string) Files {
 }
 
 // AsConfig turns a Files group and flattens it to a YAML map suitable for
-// including in the `data` section of a kubernetes ConfigMap definition.
+// including in the `data` section of a Kubernetes ConfigMap definition.
 // Duplicate keys will be overwritten, so be aware that your filenames
 // (regardless of path) should be unique.
 //
@@ -123,7 +123,7 @@ func (f Files) AsConfig() string {
 }
 
 // AsSecrets returns the value of a Files object as base64 suitable for
-// including in the `data` section of a kubernetes Secret definition.
+// including in the `data` section of a Kubernetes Secret definition.
 // Duplicate keys will be overwritten, so be aware that your filenames
 // (regardless of path) should be unique.
 //
