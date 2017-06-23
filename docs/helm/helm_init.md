@@ -6,8 +6,8 @@ initialize Helm on both client and server
 
 
 
-This command installs Tiller (the helm server side component) onto your
-Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/)
+This command installs Tiller (the Helm server side component) onto your
+Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/).
 
 As with the rest of the Helm commands, 'helm init' discovers Kubernetes clusters
 by reading $KUBECONFIG (default '~/.kube/config') and using the default context.
