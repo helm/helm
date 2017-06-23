@@ -27,26 +27,39 @@ Here is an example of a helm test pod definition in an example mariadb chart:
 ```
 mariadb/
   Chart.yaml
-  LICENSE
   README.md
   values.yaml
   charts/
   templates/
-  templates/mariadb-tests.yaml
+  templates/tests/test-mariadb-connection.yaml
 ```
-In `wordpress/templates/mariadb-tests.yaml`:
+In `wordpress/templates/tests/test-mariadb-connection.yaml`:
 ```
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{.Release.Name}}-credentials-test"
+  name: "{{ .Release.Name }}-credentials-test"
   annotations:
     "helm.sh/hook": test-success
 spec:
   containers:
-    - name: {{.Release.Name}}-credentials-test
-      image: bitnami/mariadb:{{.Values.imageTag}}
-      command: ["mysql",  "--host={{.Release.Name}}-mariadb", "--user={{.Values.mariadbUser}}", "--password={{.Values.mariadbPassword}}"]
+  - name: {{ .Release.Name }}-credentials-test
+    image: {{ .Values.image }}
+    env:
+      - name: MARIADB_HOST
+        value: {{ template "mariadb.fullname" . }}
+      - name: MARIADB_PORT
+        value: "3306"
+      - name: WORDPRESS_DATABASE_NAME
+        value: {{ default "" .Values.mariadb.mariadbDatabase | quote }}
+      - name: WORDPRESS_DATABASE_USER
+        value: {{ default "" .Values.mariadb.mariadbUser | quote }}
+      - name: WORDPRESS_DATABASE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: {{ template "mariadb.fullname" . }}
+            key: mariadb-password
+    command: ["sh", "-c", "mysql --host=$MARIADB_HOST --port=$MARIADB_PORT --user=$WORDPRESS_DATABASE_USER --password=$WORDPRESS_DATABASE_PASSWORD"]
   restartPolicy: Never
 ```
 
