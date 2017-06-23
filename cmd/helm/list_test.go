@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"testing"
 
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -101,8 +102,8 @@ func TestListCmd(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		c := &fakeReleaseClient{
-			rels: tt.resp,
+		c := &helm.FakeClient{
+			Rels: tt.resp,
 		}
 		cmd := newListCmd(c, &buf)
 		cmd.ParseFlags(tt.args)

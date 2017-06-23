@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 func TestRollbackCmd(t *testing.T) {
@@ -50,7 +52,7 @@ func TestRollbackCmd(t *testing.T) {
 		},
 	}
 
-	cmd := func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newRollbackCmd(c, out)
 	}
 

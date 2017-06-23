@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 func TestDelete(t *testing.T) {
@@ -60,7 +62,7 @@ func TestDelete(t *testing.T) {
 			err:  true,
 		},
 	}
-	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newDeleteCmd(c, out)
 	})
 }

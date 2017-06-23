@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -152,7 +153,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 	}
 
-	cmd := func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newUpgradeCmd(c, out)
 	}
 

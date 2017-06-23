@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -42,7 +43,7 @@ func TestVersion(t *testing.T) {
 	settings.TillerHost = "fake-localhost"
 	for _, tt := range tests {
 		b := new(bytes.Buffer)
-		c := &fakeReleaseClient{}
+		c := &helm.FakeClient{}
 
 		cmd := newVersionCmd(c, b)
 		cmd.ParseFlags(tt.args)
