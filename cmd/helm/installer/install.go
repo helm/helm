@@ -71,7 +71,7 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	return err
 }
 
-// createDeployment creates the Tiller deployment resource.
+// createDeployment creates the Tiller Deployment resource.
 func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) error {
 	obj := deployment(opts)
 	_, err := client.Deployments(obj.Namespace).Create(obj)

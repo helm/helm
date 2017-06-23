@@ -31,13 +31,13 @@ import (
 	tpb "k8s.io/helm/pkg/proto/hapi/services"
 )
 
-// path to example charts relative to pkg/helm.
+// Path to example charts relative to pkg/helm.
 const chartsDir = "../../docs/examples/"
 
-// sentinel error to indicate to the Helm client to not send the request to tiller.
+// Sentinel error to indicate to the Helm client to not send the request to Tiller.
 var errSkip = errors.New("test: skip")
 
-// Verify ReleaseListOption's are applied to a ListReleasesRequest correctly.
+// Verify each ReleaseListOption is applied to a ListReleasesRequest correctly.
 func TestListReleases_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var limit = 2
@@ -92,7 +92,7 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	}
 }
 
-// Verify InstallOption's are applied to an InstallReleaseRequest correctly.
+// Verify each InstallOption is applied to an InstallReleaseRequest correctly.
 func TestInstallRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var disableHooks = true
@@ -141,7 +141,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	}
 }
 
-// Verify DeleteOptions's are applied to an UninstallReleaseRequest correctly.
+// Verify each DeleteOptions is applied to an UninstallReleaseRequest correctly.
 func TestDeleteRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var releaseName = "test"
@@ -178,7 +178,7 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 	}
 }
 
-// Verify UpdateOption's are applied to an UpdateReleaseRequest correctly.
+// Verify each UpdateOption is applied to an UpdateReleaseRequest correctly.
 func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var chartName = "alpine"
@@ -221,7 +221,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	}
 }
 
-// Verify RollbackOption's are applied to a RollbackReleaseRequest correctly.
+// Verify each RollbackOption is applied to a RollbackReleaseRequest correctly.
 func TestRollbackRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var disableHooks = true
@@ -261,7 +261,7 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 	}
 }
 
-// Verify StatusOption's are applied to a GetReleaseStatusRequest correctly.
+// Verify each StatusOption is applied to a GetReleaseStatusRequest correctly.
 func TestReleaseStatus_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var releaseName = "test"
@@ -290,7 +290,7 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 	}
 }
 
-// Verify ContentOption's are applied to a GetReleaseContentRequest correctly.
+// Verify each ContentOption is applied to a GetReleaseContentRequest correctly.
 func TestReleaseContent_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var releaseName = "test"
