@@ -149,7 +149,7 @@ func (i *initCmd) tlsOptions() error {
 	return nil
 }
 
-// runInit initializes local config and installs tiller to Kubernetes Cluster
+// run initializes local config and installs Tiller to Kubernetes cluster.
 func (i *initCmd) run() error {
 	if err := i.tlsOptions(); err != nil {
 		return err
@@ -255,14 +255,14 @@ func (i *initCmd) run() error {
 			fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
 		}
 	} else {
-		fmt.Fprintln(i.out, "Not installing tiller due to 'client-only' flag having been set")
+		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
 	}
 
 	fmt.Fprintln(i.out, "Happy Helming!")
 	return nil
 }
 
-// ensureDirectories checks to see if $HELM_HOME exists
+// ensureDirectories checks to see if $HELM_HOME exists.
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureDirectories(home helmpath.Home, out io.Writer) error {

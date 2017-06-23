@@ -128,7 +128,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 	if len(fc.Actions()) != 0 {
 		t.Error("expected client call")
 	}
-	expected := "Not installing tiller due to 'client-only' flag having been set"
+	expected := "Not installing Tiller due to 'client-only' flag having been set"
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}

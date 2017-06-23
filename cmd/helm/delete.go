@@ -80,7 +80,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
 	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
 	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")
-	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
+	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 
 	return cmd
 }

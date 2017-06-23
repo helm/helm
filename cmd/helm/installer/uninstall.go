@@ -30,7 +30,7 @@ const (
 	serviceName    = "tiller-deploy"
 )
 
-// Uninstall uses kubernetes client to uninstall tiller
+// Uninstall uses Kubernetes client to uninstall Tiller.
 func Uninstall(client internalclientset.Interface, opts *Options) error {
 	if err := deleteService(client.Core(), opts.Namespace); err != nil {
 		return err
