@@ -28,7 +28,7 @@ import:
 - package: google.golang.org/grpc
   version: 1.2.1
 - package: k8s.io/kubernetes
-  version: ~1.7.0-beta.3
+  version: ~1.7.0-rc.1
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0

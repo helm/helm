@@ -1,5 +1,5 @@
-hash: c96bcc3b3a092bc255830d131be2e31bfd4537422a36a023248f56b6e3924bc2
-updated: 2017-06-21T22:56:08.831740118-07:00
+hash: 302083aa1e1e0d5d688bbf4d96c6560c8035196046e86876610b3eef7fafca21
+updated: 2017-06-24T15:49:50.322001912-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -139,7 +139,7 @@ imports:
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/gofuzz
-  version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
+  version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
 - name: github.com/gosuri/uitable
   version: 36ee7e946282a3fb1cfecd476ddc9b35d8847e42
   subpackages:
@@ -245,14 +245,9 @@ imports:
   - http2/hpack
   - idna
   - internal/timeseries
-  - lex/httplex
   - trace
 - name: golang.org/x/oauth2
-  version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
-- name: golang.org/x/sys
-  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
-  subpackages:
-  - unix
+  version: 3c3a985cb79f52a3190fbc056984415ca6763d01
 - name: golang.org/x/text
   version: 2910a502d2bf9e43193af9d68ca516529614eed3
   subpackages:
@@ -304,7 +299,7 @@ imports:
   - pkg/util/feature
   - pkg/util/flag
 - name: k8s.io/kubernetes
-  version: 594edb773975124b137fa12bc573478a0355e89c
+  version: 6b9ded1649cfb512d4e88570c738aca9f8265639
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - federation/apis/federation
