@@ -47,6 +47,7 @@ var (
 	tlsEnable     bool   // enable TLS
 
 	kubeContext  string
+        kubeConfig   string
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
 )
@@ -95,6 +96,7 @@ func addRootFlags(cmd *cobra.Command) {
 	pf.StringVar((*string)(&settings.Home), "home", helm_env.DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
 	pf.StringVar(&settings.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
 	pf.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
+	pf.StringVar(&kubeConfig, "kubeconfig", "", "path to kubeconfig file")
 	pf.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
 	pf.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.DefaultTillerNamespace, "namespace of Tiller")
 }
@@ -244,7 +246,7 @@ func prettyError(err error) error {
 
 // configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
 func configForContext(context string) (*rest.Config, error) {
-	config, err := kube.GetConfig(context).ClientConfig()
+	config, err := kube.GetConfig(context, kubeConfig).ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
 	}
