@@ -40,6 +40,8 @@ const (
 	HostEnvVar = "HELM_HOST"
 	// DebugEnvVar is the HELM_DEBUG environment variable key.
 	DebugEnvVar = "HELM_DEBUG"
+	// KubeconfigVar is the HELM_KUBECONFIG enviroment variable key.
+	KubeconfigEnvVar = "HELM_KUBECONFIG"
 )
 
 // DefaultHelmHome is the default HELM_HOME.
@@ -55,6 +57,8 @@ type EnvSettings struct {
 	Home helmpath.Home
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
+	// Kubeconfig is the local paht to the kubernetes config directory
+	Kubeconfig string
 }
 
 // PluginDirs is the path to the plugin directories.
