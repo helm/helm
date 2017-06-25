@@ -46,6 +46,8 @@ type EnvSettings struct {
 	Debug bool
 	// KubeContext is the name of the kubeconfig context.
 	KubeContext string
+	// KubeConfig is the name of the kubeconfig file.
+	KubeConfig string
 }
 
 // AddFlags binds flags to the given flagset.
@@ -53,6 +55,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
 	fs.StringVar(&s.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
+	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to kubeconfig file. Overrides $KUBECONFIG")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
 }
@@ -77,6 +80,7 @@ var envMap = map[string]string{
 	"debug":            "HELM_DEBUG",
 	"home":             "HELM_HOME",
 	"host":             "HELM_HOST",
+	"kubeconfig":       "KUBECONFIG",
 	"tiller-namespace": "TILLER_NAMESPACE",
 }
 
