@@ -135,7 +135,7 @@ func TestDeploymentManifest_WithTLS(t *testing.T) {
 		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
-		// verify environment variable in deployment reflect the use of tls being enabled
+		// verify environment variable in deployment reflect the use of tls being enabled.
 		if got := d.Spec.Template.Spec.Containers[0].Env[1].Value; got != tt.verify {
 			t.Errorf("%s: expected tls verify env value %q, got %q", tt.name, tt.verify, got)
 		}
@@ -454,6 +454,7 @@ func TestDeploymentManifest_WithNodeSelectors(t *testing.T) {
 		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
+		// verify environment variable in deployment reflect the use of tls being enabled.
 		got := d.Spec.Template.Spec.NodeSelector
 		for k, v := range tt.expect {
 			if got[k] != v {
@@ -487,6 +488,15 @@ func TestDeploymentManifest_WithSetValues(t *testing.T) {
 			"spec.template.spec.activeDeadlineSeconds",
 			120,
 		},
+		/*
+			// TODO test --set value nested beneath list
+			{
+				Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec.containers[0].image=gcr.io/kubernetes-helm/tiller:v2.4.2"}},
+				"setValues spec.template.spec.containers[0].image=gcr.io/kubernetes-helm/tiller:v2.4.2",
+				"spec.template.spec.containers[0].image",
+				"gcr.io/kubernetes-helm/tiller:v2.4.2",
+			},
+		*/
 	}
 	for _, tt := range tests {
 		o, err := DeploymentManifest(&tt.opts)
