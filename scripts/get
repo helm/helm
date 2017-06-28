@@ -51,7 +51,7 @@ runAsRoot() {
   local CMD="$*"
   
   if ! whoami | egrep -q '^root$'; then
-    CMD="sudo $*"
+    CMD="sudo $CMD"
   fi
   
   $CMD
