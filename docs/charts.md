@@ -243,17 +243,17 @@ with other name(s).
 ````
 # parentchart/requirements.yaml
 dependencies:
-      - name: subchart
-        repository: http://localhost:10191
-        version: 0.1.0
-        alias: new-subchart-1
-      - name: subchart
-        repository: http://localhost:10191
-        version: 0.1.0
-        alias: new-subchart-2
-      - name: subchart
-        repository: http://localhost:10191
-        version: 0.1.0
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    alias: new-subchart-1
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    alias: new-subchart-2
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
 ````
 
 In the above example we will get 3 depenendencies in all for `parentchart`
