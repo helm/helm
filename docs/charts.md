@@ -446,7 +446,7 @@ on Apache and MySQL by including those charts inside of its `charts/`
 directory.
 
 **TIP:** _To drop a dependency into your `charts/` directory, use the
-`helm fetch` command or use a `requirements.yaml` file_
+`helm fetch` command_
 
 ## Templates and Values
 
