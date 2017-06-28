@@ -117,7 +117,7 @@ the client and server version. (If it shows only the client version,
 `helm` cannot yet connect to the server. Use `kubectl` to see if any
 `tiller` pods are running.)
 
-If Helm will look for Tiller in the `kube-system` namespace unless
+Helm will look for Tiller in the `kube-system` namespace unless
 `--tiller-namespace` or `TILLER_NAMESPACE` is set.
 
 ### Installing Tiller Canary Builds
