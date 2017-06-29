@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	goprom "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -57,6 +58,10 @@ const (
 
 	probeAddr = ":44135"
 	traceAddr = ":44136"
+
+	// defaultMaxHistory sets the maximum number of releases to 0: unlimited
+	historyMaxEnvVar  = "TILLER_HISTORY_MAX"
+	defaultMaxHistory = 0
 )
 
 var (
@@ -69,6 +74,7 @@ var (
 	keyFile              = flag.String("tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
 	certFile             = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
 	caCertFile           = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
+	maxHistory           = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
 
 	// rootServer is the root gRPC server.
 	//
@@ -112,6 +118,10 @@ func start() {
 		env.Releases.Log = newLogger("storage").Printf
 	}
 
+	if *maxHistory > 0 {
+		env.Releases.MaxHistory = *maxHistory
+	}
+
 	kubeClient := kube.New(nil)
 	kubeClient.Log = newLogger("kube").Printf
 	env.KubeClient = kubeClient
@@ -143,6 +153,7 @@ func start() {
 	logger.Printf("GRPC listening on %s", *grpcAddr)
 	logger.Printf("Probes listening on %s", probeAddr)
 	logger.Printf("Storage driver is %s", env.Releases.Name())
+	logger.Printf("Max history per release is %d", *maxHistory)
 
 	if *enableTracing {
 		startTracing(traceAddr)
@@ -221,6 +232,19 @@ func tlsDefaultsFromEnv(name string) (value string) {
 		return filepath.Join(certsDir, "ca.crt")
 	}
 	return ""
+}
+
+func historyMaxFromEnv() int {
+	val := os.Getenv(historyMaxEnvVar)
+	if val == "" {
+		return defaultMaxHistory
+	}
+	ret, err := strconv.Atoi(val)
+	if err != nil {
+		log.Printf("Invalid max history %q. Defaulting to 0.", val)
+		return defaultMaxHistory
+	}
+	return ret
 }
 
 func tlsEnableEnvVarDefault() bool { return os.Getenv(tlsEnableEnvVar) != "" }
