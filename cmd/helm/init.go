@@ -246,13 +246,13 @@ func (i *initCmd) run() error {
 				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
-				fmt.Fprintln(i.out, "\nTiller (the helm server-side component) has been upgraded to the current version.")
+				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
 			} else {
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			fmt.Fprintln(i.out, "\nTiller (the helm server-side component) has been installed into your Kubernetes Cluster.")
+			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.")
 		}
 	} else {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
