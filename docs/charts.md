@@ -138,47 +138,19 @@ for greater detail.
 
 ## Chart Dependencies
 
-In Helm, one chart may depend on any number of other charts. These
-dependencies are expressed explicitly by copying the dependency charts
-into the `charts/` directory.
+In Helm, one chart may depend on any number of other charts. 
+These dependencies can be dynamically linked through the `requirements.yaml`
+file or brought in to the `charts/` directory and managed manually. 
 
-A dependency can be either a chart archive (`foo-1.2.3.tgz`) or an
-unpacked chart directory. But its name cannot start with `_` or `.`.
-Such files are ignored by the chart loader.
+Although manually managing your dependencies has a few advantages some teams need,
+the preferred method of declaring dependencies is by using a
+`requirements.yaml` file inside of your chart.
 
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
 
-For example, if the WordPress chart depends on the Apache chart, the
-Apache chart (of the correct version) is supplied in the WordPress
-chart's `charts/` directory:
-
-```
-wordpress:
-  Chart.yaml
-  requirements.yaml
-  # ...
-  charts/
-    apache/
-      Chart.yaml
-      # ...
-    mysql/
-      Chart.yaml
-      # ...
-```
-
-The example above shows how the WordPress chart expresses its dependency
-on Apache and MySQL by including those charts inside of its `charts/`
-directory.
-
-**TIP:** _To drop a dependency into your `charts/` directory, use the
-`helm fetch` command or use a `requirements.yaml` file_
 
 ### Managing Dependencies with `requirements.yaml`
-
-While Helm will allow you to manually manage your dependencies, the
-preferred method of declaring dependencies is by using a
-`requirements.yaml` file inside of your chart.
 
 A `requirements.yaml` file is a simple file for listing your
 dependencies.
@@ -440,6 +412,41 @@ myimports:
 ```
 
 The parent's final values now contains the `myint` and `mybool` fields imported from subchart1.
+
+### Managing Dependencies manually via the `charts/` directory
+
+If more control over dependencies is desired, these dependencies can
+be expressed explicitly by copying the dependency charts into the
+`charts/` directory.
+
+A dependency can be either a chart archive (`foo-1.2.3.tgz`) or an
+unpacked chart directory. But its name cannot start with `_` or `.`.
+Such files are ignored by the chart loader.
+
+For example, if the WordPress chart depends on the Apache chart, the
+Apache chart (of the correct version) is supplied in the WordPress
+chart's `charts/` directory:
+
+```
+wordpress:
+  Chart.yaml
+  requirements.yaml
+  # ...
+  charts/
+    apache/
+      Chart.yaml
+      # ...
+    mysql/
+      Chart.yaml
+      # ...
+```
+
+The example above shows how the WordPress chart expresses its dependency
+on Apache and MySQL by including those charts inside of its `charts/`
+directory.
+
+**TIP:** _To drop a dependency into your `charts/` directory, use the
+`helm fetch` command_
 
 ## Templates and Values
 
