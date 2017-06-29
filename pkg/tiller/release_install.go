@@ -119,9 +119,10 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 			Status:        &release.Status{Code: release.Status_UNKNOWN},
 			Description:   "Initial install underway", // Will be overwritten.
 		},
-		Manifest: manifestDoc.String(),
-		Hooks:    hooks,
-		Version:  int32(revision),
+		Manifest:    manifestDoc.String(),
+		Hooks:       hooks,
+		Version:     int32(revision),
+		Annotations: req.Annotations,
 	}
 	if len(notesTxt) > 0 {
 		rel.Info.Status.Notes = notesTxt

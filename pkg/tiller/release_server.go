@@ -147,6 +147,12 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		s.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}
+
+	if len(req.Annotations) == 0 {
+		s.Log("copying annotations from %s (v%d) to new release.", current.Name, current.Version)
+		req.Annotations = current.Annotations
+	}
+
 	return nil
 }
 

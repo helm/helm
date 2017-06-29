@@ -103,9 +103,10 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 			// message here, and only override it later if we experience failure.
 			Description: fmt.Sprintf("Rollback to %d", rbv),
 		},
-		Version:  crls.Version + 1,
-		Manifest: prls.Manifest,
-		Hooks:    prls.Hooks,
+		Version:     crls.Version + 1,
+		Manifest:    prls.Manifest,
+		Hooks:       prls.Hooks,
+		Annotations: prls.Annotations,
 	}
 
 	return crls, target, nil

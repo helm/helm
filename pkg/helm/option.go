@@ -393,6 +393,20 @@ func StatusReleaseVersion(version int32) StatusOption {
 	}
 }
 
+// InstallAnnotations attaches annotations to the release
+func InstallAnnotations(annotations map[string]string) InstallOption {
+	return func(opts *options) {
+		opts.instReq.Annotations = annotations
+	}
+}
+
+// UpgradeAnnotations attaches annotations to the release
+func UpgradeAnnotations(annotations map[string]string) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Annotations = annotations
+	}
+}
+
 // DeleteOption allows setting optional attributes when
 // performing a UninstallRelease tiller rpc.
 type DeleteOption func(*options)
