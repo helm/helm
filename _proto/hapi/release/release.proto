@@ -50,4 +50,8 @@ message Release {
 
 	// Namespace is the kubernetes namespace of the release.
 	string namespace = 8;
+
+	// Annotations is an unstructured key value map stored with a release that
+	// may be set by external tools to store and retrieve arbitrary metadata.
+	map<string,string> annotations = 9;
 }
