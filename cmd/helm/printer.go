@@ -42,6 +42,10 @@ HOOKS:
 {{- end }}
 MANIFEST:
 {{.Release.Manifest}}
+ANNOTATIONS:
+{{- range $k, $v := .Release.Annotations }}
+{{$k}}={{$v}}
+{{- end }}
 `
 
 func printRelease(out io.Writer, rel *release.Release) error {
