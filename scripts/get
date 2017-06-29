@@ -50,7 +50,7 @@ initOS() {
 runAsRoot() {
   local CMD="$*"
   
-  if ! whoami | egrep -q '^root$'; then
+  if [ $EUID -ne 0 ]; then
     CMD="sudo $CMD"
   fi
   
