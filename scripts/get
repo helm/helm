@@ -46,6 +46,17 @@ initOS() {
   esac
 }
 
+# runs the given command as root (detects if we are root already)
+runAsRoot() {
+  local CMD="$*"
+  
+  if [ $EUID -ne 0 ]; then
+    CMD="sudo $CMD"
+  fi
+  
+  $CMD
+}
+
 # verifySupported checks that the os/arch combination is supported for
 # binary builds.
 verifySupported() {
@@ -129,8 +140,8 @@ installFile() {
   mkdir -p "$HELM_TMP"
   tar xf "$HELM_TMP_FILE" -C "$HELM_TMP"
   HELM_TMP_BIN="$HELM_TMP/$OS-$ARCH/$PROJECT_NAME"
-  echo "Preparing to install into ${HELM_INSTALL_DIR} (sudo)"
-  sudo cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR"
+  echo "Preparing to install into ${HELM_INSTALL_DIR}"
+  runAsRoot cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR"
 }
 
 # fail_trap is executed if an error occurs.
