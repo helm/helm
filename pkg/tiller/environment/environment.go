@@ -37,11 +37,11 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-// TillerNamespaceEnvVar is the environment variable name for the tiller
+// TillerNamespaceEnvVar is the environment variable name for the Tiller
 // namespace in the kubernetes cluster.
 const TillerNamespaceEnvVar = "TILLER_NAMESPACE"
 
-// DefaultTillerNamespace is the default namespace for tiller.
+// DefaultTillerNamespace is the default namespace for Tiller.
 const DefaultTillerNamespace = "kube-system"
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
@@ -133,9 +133,9 @@ type KubeClient interface {
 	WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
 
 	// Update updates one or more resources or creates the resource
-	// if it doesn't exist
+	// if it doesn't exist.
 	//
-	// namespace must contain a valid existing namespace
+	// namespace must contain a valid existing namespace.
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
@@ -145,7 +145,7 @@ type KubeClient interface {
 	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify)
+	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error)
 }
 
@@ -197,7 +197,7 @@ func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kub
 	return []*resource.Info{}, nil
 }
 
-// WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase
+// WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
 func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
 	_, err := io.Copy(p.Out, reader)
 	return api.PodUnknown, err

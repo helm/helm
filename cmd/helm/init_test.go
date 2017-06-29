@@ -67,7 +67,7 @@ func TestInitCmd(t *testing.T) {
 	if !actions[1].Matches("create", "services") {
 		t.Errorf("unexpected action: %v, expected create service", actions[1])
 	}
-	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
+	expected := "Tiller (the Helm server-side component) has been installed into your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}
@@ -128,7 +128,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 	if len(fc.Actions()) != 0 {
 		t.Error("expected client call")
 	}
-	expected := "Not installing tiller due to 'client-only' flag having been set"
+	expected := "Not installing Tiller due to 'client-only' flag having been set"
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}

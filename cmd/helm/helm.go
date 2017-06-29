@@ -93,10 +93,10 @@ func setFlagsFromEnv(flags map[string]string, cmd *cobra.Command) {
 func addRootFlags(cmd *cobra.Command) {
 	pf := cmd.PersistentFlags()
 	pf.StringVar((*string)(&settings.Home), "home", helm_env.DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
-	pf.StringVar(&settings.TillerHost, "host", "", "address of tiller. Overrides $HELM_HOST")
+	pf.StringVar(&settings.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
 	pf.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	pf.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
-	pf.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.DefaultTillerNamespace, "namespace of tiller")
+	pf.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.DefaultTillerNamespace, "namespace of Tiller")
 }
 
 func initRootFlags(cmd *cobra.Command) {

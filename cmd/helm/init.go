@@ -33,14 +33,14 @@ import (
 )
 
 const initDesc = `
-This command installs Tiller (the helm server side component) onto your
-Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/)
+This command installs Tiller (the Helm server-side component) onto your
+Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/).
 
 As with the rest of the Helm commands, 'helm init' discovers Kubernetes clusters
 by reading $KUBECONFIG (default '~/.kube/config') and using the default context.
 
 To set up just a local environment, use '--client-only'. That will configure
-$HELM_HOME, but not attempt to connect to a remote cluster and install the Tiller
+$HELM_HOME, but not attempt to connect to a Kubernetes cluster and install the Tiller
 deployment.
 
 When installing Tiller, 'helm init' will attempt to install the latest released
@@ -101,23 +101,23 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
-	f.BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
-	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if tiller is already installed")
-	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
+	f.StringVarP(&i.image, "tiller-image", "i", "", "override Tiller image")
+	f.BoolVar(&i.canary, "canary-image", false, "use the canary Tiller image")
+	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if Tiller is already installed")
+	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install Tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 
-	f.BoolVar(&tlsEnable, "tiller-tls", false, "install tiller with TLS enabled")
-	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install tiller with TLS enabled and to verify remote certificates")
-	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with tiller")
-	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with tiller")
+	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
+	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
+	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
+	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with Tiller")
 	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
-	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install tiller with net=host")
+	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
 	return cmd
@@ -149,7 +149,7 @@ func (i *initCmd) tlsOptions() error {
 	return nil
 }
 
-// runInit initializes local config and installs tiller to Kubernetes Cluster
+// run initializes local config and installs Tiller to Kubernetes cluster.
 func (i *initCmd) run() error {
 	if err := i.tlsOptions(); err != nil {
 		return err
@@ -246,23 +246,23 @@ func (i *initCmd) run() error {
 				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
-				fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been upgraded to the current version.")
+				fmt.Fprintln(i.out, "\nTiller (the helm server-side component) has been upgraded to the current version.")
 			} else {
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
+			fmt.Fprintln(i.out, "\nTiller (the helm server-side component) has been installed into your Kubernetes Cluster.")
 		}
 	} else {
-		fmt.Fprintln(i.out, "Not installing tiller due to 'client-only' flag having been set")
+		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
 	}
 
 	fmt.Fprintln(i.out, "Happy Helming!")
 	return nil
 }
 
-// ensureDirectories checks to see if $HELM_HOME exists
+// ensureDirectories checks to see if $HELM_HOME exists.
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureDirectories(home helmpath.Home, out io.Writer) error {

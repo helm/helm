@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-// Install uses kubernetes client to install tiller.
+// Install uses Kubernetes client to install Tiller.
 //
 // Returns an error if the command failed.
 func Install(client kubernetes.Interface, opts *Options) error {
@@ -48,7 +48,7 @@ func Install(client kubernetes.Interface, opts *Options) error {
 	return nil
 }
 
-// Upgrade uses kubernetes client to upgrade tiller to current version.
+// Upgrade uses Kubernetes client to upgrade Tiller to current version.
 //
 // Returns an error if the command failed.
 func Upgrade(client kubernetes.Interface, opts *Options) error {
@@ -62,7 +62,7 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	if _, err := client.Extensions().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
-	// If the service does not exists that would mean we are upgrading from a tiller version
+	// If the service does not exists that would mean we are upgrading from a Tiller version
 	// that didn't deploy the service, so install it.
 	_, err = client.Core().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -71,7 +71,7 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	return err
 }
 
-// createDeployment creates the Tiller deployment reource
+// createDeployment creates the Tiller Deployment resource.
 func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) error {
 	obj := deployment(opts)
 	_, err := client.Deployments(obj.Namespace).Create(obj)
