@@ -118,6 +118,7 @@ type installCmd struct {
 	wait         bool
 	repoURL      string
 	devel        bool
+	annotations  []string
 
 	certFile string
 	keyFile  string
@@ -193,6 +194,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
+	f.StringArrayVar(&inst.annotations, "annotations", []string{}, "set release annotations (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 
 	return cmd
 }
@@ -205,6 +207,11 @@ func (i *installCmd) run() error {
 	}
 
 	rawVals, err := i.vals()
+	if err != nil {
+		return err
+	}
+
+	annotations, err := parseAnnotations(i.annotations)
 	if err != nil {
 		return err
 	}
@@ -245,7 +252,8 @@ func (i *installCmd) run() error {
 		helm.InstallReuseName(i.replace),
 		helm.InstallDisableHooks(i.disableHooks),
 		helm.InstallTimeout(i.timeout),
-		helm.InstallWait(i.wait))
+		helm.InstallWait(i.wait),
+		helm.InstallAnnotations(annotations))
 	if err != nil {
 		return prettyError(err)
 	}
@@ -459,4 +467,18 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 		return fmt.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+func parseAnnotations(input []string) (map[string]string, error) {
+	annotations := map[string]string{}
+	for _, a := range input {
+		for _, s := range strings.Split(a, ",") {
+			v := strings.Split(s, "=")
+			if len(v) < 2 || len(v[0]) == 0 {
+				return nil, fmt.Errorf("invalid annotations format: '%s', should be <key>=[value]", s)
+			}
+			annotations[v[0]] = v[1]
+		}
+	}
+	return annotations, nil
 }

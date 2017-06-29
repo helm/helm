@@ -77,6 +77,7 @@ type upgradeCmd struct {
 	wait         bool
 	repoURL      string
 	devel        bool
+	annotations  []string
 
 	certFile string
 	keyFile  string
@@ -135,6 +136,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
+	f.StringArrayVar(&upgrade.annotations, "annotations", []string{}, "set release annotations (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
@@ -171,12 +173,18 @@ func (u *upgradeCmd) run() error {
 				namespace:    u.namespace,
 				timeout:      u.timeout,
 				wait:         u.wait,
+				annotations:  u.annotations,
 			}
 			return ic.run()
 		}
 	}
 
 	rawVals, err := u.vals()
+	if err != nil {
+		return err
+	}
+
+	annotations, err := parseAnnotations(u.annotations)
 	if err != nil {
 		return err
 	}
@@ -205,7 +213,8 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeTimeout(u.timeout),
 		helm.ResetValues(u.resetValues),
 		helm.ReuseValues(u.reuseValues),
-		helm.UpgradeWait(u.wait))
+		helm.UpgradeWait(u.wait),
+		helm.UpgradeAnnotations(annotations))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
