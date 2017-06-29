@@ -29,6 +29,11 @@ import (
 type Storage struct {
 	driver.Driver
 
+	// MaxHistory specifies the maximum number of historical releases that will
+	// be retained, including the most recent release. Values of 0 or less are
+	// ignored (meaning no limits are imposed).
+	MaxHistory int
+
 	// releaseLocks are for locking releases to make sure that only one operation at a time is executed on each release
 	releaseLocks map[string]*sync.Mutex
 	// releaseLocksLock is a mutex for accessing releaseLocks
@@ -50,6 +55,10 @@ func (s *Storage) Get(name string, version int32) (*rspb.Release, error) {
 // release, or a release with identical an key already exists.
 func (s *Storage) Create(rls *rspb.Release) error {
 	s.Log("creating release %q", makeKey(rls.Name, rls.Version))
+	if s.MaxHistory > 0 {
+		// Want to make space for one more release.
+		s.removeLeastRecent(rls.Name, s.MaxHistory-1)
+	}
 	return s.Driver.Create(makeKey(rls.Name, rls.Version), rls)
 }
 
@@ -140,6 +149,52 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	s.Log("getting release history for %q", name)
 
 	return s.Driver.Query(map[string]string{"NAME": name, "OWNER": "TILLER"})
+}
+
+// removeLeastRecent removes items from history until the lengh number of releases
+// does not exceed max.
+//
+// We allow max to be set explicitly so that calling functions can "make space"
+// for the new records they are going to write.
+func (s *Storage) removeLeastRecent(name string, max int) error {
+	if max <= 0 {
+		return nil
+	}
+	h, err := s.History(name)
+	if err != nil {
+		s.Log("error fetching history: %s", err)
+		return err
+	}
+	if len(h) <= max {
+		return nil
+	}
+	overage := len(h) - max
+
+	// We want oldest to newest
+	relutil.SortByRevision(h)
+
+	// We want to try to delete as many as possible because some systems
+	// need to gradually prune down because of API throughput limitations.
+	toDelete := h[0:overage]
+	errors := []error{}
+	for _, rel := range toDelete {
+		key := makeKey(name, rel.Version)
+		_, innerErr := s.Delete(name, rel.Version)
+		if err != nil {
+			s.Log("error pruning %s from release history: %s", key, err)
+			errors = append(errors, innerErr)
+		}
+	}
+
+	s.Log("Pruned %d record(s) from %s with %d error(s)", len(toDelete), name, len(errors))
+	switch c := len(errors); c {
+	case 0:
+		return nil
+	case 1:
+		return errors[0]
+	default:
+		return fmt.Errorf("encountered %d deletion errors. First is: %s", c, errors[0])
+	}
 }
 
 // Last fetches the last revision of the named release.

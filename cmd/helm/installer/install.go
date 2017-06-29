@@ -17,6 +17,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	"github.com/ghodss/yaml"
@@ -141,6 +142,7 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 							},
 							Env: []v1.EnvVar{
 								{Name: "TILLER_NAMESPACE", Value: opts.Namespace},
+								{Name: "TILLER_HISTORY_MAX", Value: fmt.Sprintf("%d", opts.MaxHistory)},
 							},
 							LivenessProbe: &v1.Probe{
 								Handler: v1.Handler{

@@ -135,10 +135,10 @@ func TestDeploymentManifest_WithTLS(t *testing.T) {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
 		// verify environment variable in deployment reflect the use of tls being enabled.
-		if got := d.Spec.Template.Spec.Containers[0].Env[1].Value; got != tt.verify {
+		if got := d.Spec.Template.Spec.Containers[0].Env[2].Value; got != tt.verify {
 			t.Errorf("%s: expected tls verify env value %q, got %q", tt.name, tt.verify, got)
 		}
-		if got := d.Spec.Template.Spec.Containers[0].Env[2].Value; got != tt.enable {
+		if got := d.Spec.Template.Spec.Containers[0].Env[3].Value; got != tt.enable {
 			t.Errorf("%s: expected tls enable env value %q, got %q", tt.name, tt.enable, got)
 		}
 	}
