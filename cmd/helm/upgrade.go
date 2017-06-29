@@ -19,16 +19,13 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/storage/driver"
-	"k8s.io/helm/pkg/strvals"
 )
 
 const upgradeDesc = `
@@ -176,7 +173,7 @@ func (u *upgradeCmd) run() error {
 		}
 	}
 
-	rawVals, err := u.vals()
+	rawVals, err := vals(u.valueFiles, u.values)
 	if err != nil {
 		return err
 	}
@@ -224,32 +221,4 @@ func (u *upgradeCmd) run() error {
 	PrintStatus(u.out, status)
 
 	return nil
-}
-
-func (u *upgradeCmd) vals() ([]byte, error) {
-	base := map[string]interface{}{}
-
-	// User specified a values files via -f/--values
-	for _, filePath := range u.valueFiles {
-		currentMap := map[string]interface{}{}
-		bytes, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			return []byte{}, err
-		}
-
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return []byte{}, fmt.Errorf("failed to parse %s: %s", filePath, err)
-		}
-		// Merge with the previous map
-		base = mergeValues(base, currentMap)
-	}
-
-	// User specified a value via --set
-	for _, value := range u.values {
-		if err := strvals.ParseInto(value, base); err != nil {
-			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
-		}
-	}
-
-	return yaml.Marshal(base)
 }
