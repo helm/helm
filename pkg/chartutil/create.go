@@ -63,7 +63,7 @@ service:
   internalPort: 80
 ingress:
   enabled: false
-  # Used to create Ingress record (should used with service.type: ClusterIP).
+  # Used to create an Ingress record.
   hosts:
     - chart-example.local
   annotations:
