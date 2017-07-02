@@ -21,6 +21,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -116,8 +117,36 @@ func generateLabels(labels map[string]string) map[string]string {
 	return labels
 }
 
+func generateResourceRequirements(opts *Options) v1.ResourceRequirements {
+	limits := make(map[v1.ResourceName]resource.Quantity, 2)
+	requests := make(map[v1.ResourceName]resource.Quantity, 2)
+	resources := v1.ResourceRequirements{}
+	if opts.CPURequest != (resource.Quantity{}) {
+		requests[v1.ResourceCPU] = opts.CPURequest
+	}
+	if opts.CPULimit != (resource.Quantity{}) {
+		limits[v1.ResourceCPU] = opts.CPULimit
+		if opts.CPURequest == (resource.Quantity{}) {
+			requests[v1.ResourceCPU] = opts.CPULimit
+		}
+	}
+	if opts.MemoryRequest != (resource.Quantity{}) {
+		requests[v1.ResourceMemory] = opts.MemoryRequest
+	}
+	if opts.MemoryLimit != (resource.Quantity{}) {
+		limits[v1.ResourceMemory] = opts.MemoryLimit
+		if opts.MemoryRequest == (resource.Quantity{}) {
+			requests[v1.ResourceMemory] = opts.MemoryLimit
+		}
+	}
+	resources.Requests = requests
+	resources.Limits = limits
+	return resources
+}
+
 func generateDeployment(opts *Options) *v1beta1.Deployment {
 	labels := generateLabels(map[string]string{"name": "tiller"})
+	resources := generateResourceRequirements(opts)
 	d := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: opts.Namespace,
@@ -162,6 +191,7 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 								InitialDelaySeconds: 1,
 								TimeoutSeconds:      1,
 							},
+							Resources: resources,
 						},
 					},
 					HostNetwork: opts.EnableHostNetwork,
@@ -172,7 +202,6 @@ func generateDeployment(opts *Options) *v1beta1.Deployment {
 			},
 		},
 	}
-
 	if opts.tls() {
 		const certsDir = "/etc/certs"
 

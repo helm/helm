@@ -30,6 +30,8 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	testcore "k8s.io/client-go/testing"
 
+	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -140,6 +142,73 @@ func TestDeploymentManifest_WithTLS(t *testing.T) {
 		}
 		if got := d.Spec.Template.Spec.Containers[0].Env[2].Value; got != tt.enable {
 			t.Errorf("%s: expected tls enable env value %q, got %q", tt.name, tt.enable, got)
+		}
+	}
+}
+
+func TestDeploymentManifest_WithResourceLimits(t *testing.T) {
+	type test struct {
+		cpuLimit   string
+		cpuRequest string
+		memLimit   string
+		memRequest string
+	}
+
+	var tests = []test{
+		{cpuLimit: "2", cpuRequest: "100m", memLimit: "1Gi", memRequest: "500Mi"},
+		{cpuLimit: "2", memLimit: "1Gi"},
+		{cpuRequest: "100m", memRequest: "500Mi"},
+		{},
+	}
+
+	for _, tt := range tests {
+		opts := &Options{Namespace: v1.NamespaceDefault}
+		var err error
+		if tt.cpuLimit != "" {
+			opts.CPULimit, err = resource.ParseQuantity(tt.cpuLimit)
+			if err != nil {
+				t.Errorf("Error %q", err)
+			}
+		}
+		if tt.cpuRequest != "" {
+			opts.CPURequest, err = resource.ParseQuantity(tt.cpuRequest)
+			if err != nil {
+				t.Errorf("Error %q", err)
+			}
+		}
+		if tt.memLimit != "" {
+			opts.MemoryLimit, err = resource.ParseQuantity(tt.memLimit)
+			if err != nil {
+				t.Errorf("Error %q", err)
+			}
+		}
+		if tt.memRequest != "" {
+			opts.MemoryRequest, err = resource.ParseQuantity(tt.memRequest)
+			if err != nil {
+				t.Errorf("Error %q", err)
+			}
+		}
+		o, err := DeploymentManifest(opts)
+		if err != nil {
+			t.Fatalf("error %q", err)
+		}
+		var d v1beta1.Deployment
+		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
+			t.Fatalf(" error %q", err)
+		}
+		fmt.Println(o)
+		// verify Resources in deployment reflect the use of cpu/memory limits.
+		if got := d.Spec.Template.Spec.Containers[0].Resources.Limits[v1.ResourceCPU]; got != opts.CPULimit {
+			t.Errorf("Expected cpu limits %q, got %q", opts.CPULimit, got)
+		}
+		if got := d.Spec.Template.Spec.Containers[0].Resources.Limits[v1.ResourceMemory]; got != opts.MemoryLimit {
+			t.Errorf("Expected memory limits %q, got %q", opts.MemoryLimit, got)
+		}
+		if got := d.Spec.Template.Spec.Containers[0].Resources.Requests[v1.ResourceCPU]; got != opts.CPURequest && got != opts.CPULimit {
+			t.Errorf("Expected cpu requests %q, got %q", opts.CPURequest, got)
+		}
+		if got := d.Spec.Template.Spec.Containers[0].Resources.Requests[v1.ResourceMemory]; got != opts.MemoryRequest && got != opts.MemoryLimit {
+			t.Errorf("Expected memory requests %q, got %q", opts.MemoryRequest, got)
 		}
 	}
 }

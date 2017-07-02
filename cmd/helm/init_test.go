@@ -302,3 +302,32 @@ func TestInitCmd_tlsOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestInitCmd_resourceLimits(t *testing.T) {
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(home)
+	var buf bytes.Buffer
+	fc := fake.NewSimpleClientset()
+
+	cmd := &initCmd{
+		out:           &buf,
+		home:          helmpath.Home(home),
+		kubeClient:    fc,
+		clientOnly:    true,
+		dryRun:        true,
+		namespace:     v1.NamespaceDefault,
+		cpuLimit:      "2",
+		cpuRequest:    "100m",
+		memoryLimit:   "1Gi",
+		memoryRequest: "500Mi",
+	}
+	if err := cmd.run(); err != nil {
+		t.Fatal(err)
+	}
+	if len(fc.Actions()) != 0 {
+		t.Error("expected client call")
+	}
+}
