@@ -15,4 +15,5 @@ elif [[ ${1} ]]; then
         EXEC:"'docker exec -i portforward socat STDIO TCP-CONNECT:localhost:${1}'"
 else
   echo "Must specify either start or the port number" >&2
+  exit 1
 fi
