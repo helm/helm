@@ -1,10 +1,10 @@
-hash: 302083aa1e1e0d5d688bbf4d96c6560c8035196046e86876610b3eef7fafca21
-updated: 2017-06-24T15:49:50.322001912-07:00
+hash: adaaaf3d7bb416de3dff4c34bfee192661fa32dd1b53bd48dc583fe4949dcac3
+updated: 2017-07-03T14:35:27.116781224-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
 - name: github.com/aokoli/goutils
-  version: e57d01ace047c1a43e6a49ecf3ecc50ed2be81d1
+  version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/asaskevich/govalidator
   version: 7664702784775e51966f0885f5cd27435916517b
 - name: github.com/Azure/go-autorest
@@ -78,6 +78,8 @@ imports:
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-openapi/analysis
   version: b44dc874b601d9e4e2f6e19140e794ba24bead3b
+- name: github.com/go-openapi/errors
+  version: d24ebc2075bad502fac3a8ae27aa6dd58e1952dc
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -86,6 +88,8 @@ imports:
   version: 18441dfa706d924a39a030ee2c3b1d8d81917b38
 - name: github.com/go-openapi/spec
   version: 6aced65f8501fe1217321abf0749d354824ba2ff
+- name: github.com/go-openapi/strfmt
+  version: 93a31ef21ac23f317792fff78f9539219dd74619
 - name: github.com/go-openapi/swag
   version: 1d0bd113de87027671077d3c71eb3ac5d7dbba72
 - name: github.com/gobwas/glob
@@ -139,7 +143,7 @@ imports:
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/gofuzz
-  version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
+  version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/gosuri/uitable
   version: 36ee7e946282a3fb1cfecd476ddc9b35d8847e42
   subpackages:
@@ -148,7 +152,7 @@ imports:
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
   version: 34abd90a014618f61222a1b0a7b7eb834a2d0dc3
 - name: github.com/hashicorp/golang-lru
-  version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
+  version: 0a025b7e63adc15a622f29b0b2c4c3848243bbf6
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/huandu/xstrings
@@ -177,6 +181,8 @@ imports:
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
+- name: github.com/mitchellh/mapstructure
+  version: d0303fe809921458f417bcf828397a65db30a7e4
 - name: github.com/naoina/go-stringutil
   version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
 - name: github.com/pborman/uuid
@@ -217,7 +223,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/technosophos/moniker
-  version: ab470f5e105a44d0c87ea21bacd6a335c4816d83
+  version: 9f956786b91d9786ca11aa5be6104542fa911546
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -245,9 +251,14 @@ imports:
   - http2/hpack
   - idna
   - internal/timeseries
+  - lex/httplex
   - trace
 - name: golang.org/x/oauth2
   version: 3c3a985cb79f52a3190fbc056984415ca6763d01
+- name: golang.org/x/sys
+  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
+  subpackages:
+  - unix
 - name: golang.org/x/text
   version: 2910a502d2bf9e43193af9d68ca516529614eed3
   subpackages:
@@ -282,10 +293,14 @@ imports:
   - transport
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
+- name: gopkg.in/mgo.v2
+  version: 3f83fa5005286a7fe593b055f0d7771a7dce4655
+  subpackages:
+  - bson
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 - name: k8s.io/apiserver
-  version: 156ed5ba2d435ec2db08d2f803fecb591b72c058
+  version: 2308857ad3b8b18abf74ff734853973eda9da94d
   subpackages:
   - pkg/admission
   - pkg/apis/apiserver
@@ -299,7 +314,7 @@ imports:
   - pkg/util/feature
   - pkg/util/flag
 - name: k8s.io/kubernetes
-  version: 6b9ded1649cfb512d4e88570c738aca9f8265639
+  version: d3ada0119e776222f11ec7945e6d860061339aad
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - federation/apis/federation
