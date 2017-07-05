@@ -216,12 +216,15 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		return fmt.Errorf("%q is not a directory", destPath)
 	}
 
-	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
+	fmt.Fprintln(m.Out, "Deleting outdated charts")
 	for _, dep := range deps {
 		if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
 			return err
 		}
+	}
 
+	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
+	for _, dep := range deps {
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
