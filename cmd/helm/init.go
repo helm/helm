@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -123,7 +122,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
 	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
-	f.StringVarP(&i.opts.Output, "output", "o", "", "skip installation and output Tiller's manifest in specified format (json or yaml)")
+	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
 	f.StringArrayVar(&i.opts.Values, "set", []string{}, "set values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 
 	return cmd
@@ -195,7 +194,7 @@ func (i *initCmd) run() error {
 		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
 			return err
 		}
-		switch strings.ToLower(i.opts.Output) {
+		switch i.opts.Output.String() {
 		case "json":
 			jsonb, err := yaml.ToJSON([]byte(body))
 			if err != nil {
