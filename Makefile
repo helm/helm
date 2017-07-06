@@ -2,7 +2,10 @@ DOCKER_REGISTRY   ?= gcr.io
 IMAGE_PREFIX      ?= kubernetes-helm
 SHORT_NAME        ?= tiller
 SHORT_NAME_RUDDER ?= rudder
-TARGETS           = darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+# Helm CLI platforms
+TARGETS           = darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
+# Tiller docker image platforms
+ALL_ARCH          = amd64 arm arm64 ppc64le s390x
 DIST_DIRS         = find * -type d -exec
 APP               = helm
 
@@ -16,9 +19,33 @@ LDFLAGS   :=
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
+ARCH      ?= amd64
+QEMUVERSION=v2.7.0
 
 # Required for globs to work correctly
 SHELL=/bin/bash
+
+ifeq ($(ARCH),amd64)
+	BASEIMAGE?=alpine:3.6
+endif
+ifeq ($(ARCH),arm)
+	BASEIMAGE?=arm32v6/alpine:3.6
+	QEMUARCH=arm
+endif
+ifeq ($(ARCH),arm64)
+	BASEIMAGE?=arm64v8/alpine:3.6
+	QEMUARCH=aarch64
+endif
+ifeq ($(ARCH),ppc64le)
+	BASEIMAGE?=ppc64le/alpine:3.6
+	QEMUARCH=ppc64le
+endif
+ifeq ($(ARCH),s390x)
+	BASEIMAGE?=s390x/alpine:3.6
+	QEMUARCH=s390x
+endif
+
+include versioning.mk
 
 .PHONY: all
 all: build
@@ -57,28 +84,41 @@ check-docker:
 	fi
 
 .PHONY: docker-binary
-docker-binary: BINDIR = ./rootfs
-docker-binary: GOFLAGS += -a -installsuffix cgo
-docker-binary:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/tiller $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/tiller
+docker-binary-%: BINDIR = ./rootfs
+docker-binary-%: GOFLAGS += -a -installsuffix cgo
+docker-binary-%:
+	docker run -it -v $(shell pwd)/$(BINDIR):/build -v $(shell pwd):/go/src/k8s.io/helm -e GOARCH=$(ARCH) golang:1.8 /bin/bash -c "\
+		CGO_ENABLED=0 go build -o /build/$* $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/$*"
+
+docker-build-prepare-%:
+	cp rootfs/Dockerfile.$* rootfs/Dockerfile.$*.$(ARCH)
+	sed -i "s|QEMUARCH|$(QEMUARCH)|g" rootfs/Dockerfile.$*.$(ARCH)
+	sed -i "s|BASEIMAGE|$(BASEIMAGE)|g" rootfs/Dockerfile.$*.$(ARCH)
+ifeq ($(ARCH),amd64)
+	# When building "normally", remove the whole line, it has no part in the image
+	sed -i "/CROSS_BUILD_/d" rootfs/Dockerfile.$*.$(ARCH)
+else
+	sed -i "s/CROSS_BUILD_//g" rootfs/Dockerfile.$*.$(ARCH)
+
+	# When cross-building, only the placeholder "CROSS_BUILD_" should be removed
+	# Register /usr/bin/qemu-ARCH-static as the handler for ARM binaries in the kernel
+	docker run --rm --privileged multiarch/qemu-user-static:register --reset
+	curl -sSL --retry 5 https://github.com/multiarch/qemu-user-static/releases/download/$(QEMUVERSION)/x86_64_qemu-$(QEMUARCH)-static.tar.gz | tar -xz -C rootfs
+endif
 
 .PHONY: docker-build
-docker-build: check-docker docker-binary
-	docker build --rm -t ${IMAGE} rootfs
-	docker tag ${IMAGE} ${MUTABLE_IMAGE}
-
-.PHONY: docker-binary-rudder
-docker-binary-rudder: BINDIR = ./rootfs
-docker-binary-rudder: GOFLAGS += -a -installsuffix cgo
-docker-binary-rudder:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/rudder $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/rudder
+docker-build: check-docker docker-binary-tiller docker-build-prepare-tiller
+	docker build --rm -t $(IMAGE) -f rootfs/Dockerfile.tiller.$(ARCH) rootfs
+	docker tag $(IMAGE) $(MUTABLE_IMAGE)
+	rm rootfs/Dockerfile.tiller.$(ARCH)
 
 .PHONY: docker-build-experimental
-docker-build-experimental: check-docker docker-binary docker-binary-rudder
-	docker build --rm -t ${IMAGE} rootfs -f rootfs/Dockerfile.experimental
+docker-build-experimental: check-docker docker-binary-tiller docker-binary-rudder docker-build-prepare-experimental docker-build-prepare-rudder
+	docker build --rm -t ${IMAGE} -f rootfs/Dockerfile.experimental.$(ARCH) rootfs
 	docker tag ${IMAGE} ${MUTABLE_IMAGE}
-	docker build --rm -t ${IMAGE_RUDDER} rootfs -f rootfs/Dockerfile.rudder
+	docker build --rm -t ${IMAGE_RUDDER} -f rootfs/Dockerfile.rudder.$(ARCH) rootfs
 	docker tag ${IMAGE_RUDDER} ${MUTABLE_IMAGE_RUDDER}
+	rm rootfs/Dockerfile.experimental.$(ARCH) rootfs/Dockerfile.rudder.$(ARCH)
 
 .PHONY: test
 test: build
@@ -141,4 +181,5 @@ endif
 	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
 	scripts/setup-apimachinery.sh
 
-include versioning.mk
+bootstrap-dockerized:
+	docker run -it -v $(shell pwd):/go/src/k8s.io/helm -w /go/src/k8s.io/helm gcr.io/google_containers/kube-cross:v1.8.3-1 /bin/bash -c "make bootstrap"
