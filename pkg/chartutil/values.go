@@ -283,10 +283,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 		// remove incompatible keys from any previous chart, file, or set values.
 		// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
 		switch val {
-		case "null":
-		case "Null":
-		case "NULL":
-		case "~":
+		case "null", "Null", "NULL", "~":
 			delete(v, key)
 			continue
 		}
