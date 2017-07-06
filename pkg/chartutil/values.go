@@ -278,7 +278,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 	}
 
 	for key, val := range nv {
-		// If the value is YAML null, remove the value's key.
+		// When the YAML value is null, we remove the value's key.
 		// This allows Helm's various sources of values (value files or --set) to
 		// remove incompatible keys from any previous chart, file, or set values.
 		// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
