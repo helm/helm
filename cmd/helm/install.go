@@ -273,14 +273,6 @@ func (i *installCmd) run() error {
 // Merges source and destination map, preferring values from the source map
 func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[string]interface{} {
 	for k, v := range src {
-		// If the new value is literally the string "null", remove the value's key.
-		// This allows helm's multiple value sources (value files or --set) to
-		// remove incompatible keys from the previous values.
-		if v == "null" {
-			delete(dest, k)
-			continue
-		}
-
 		// If the key doesn't exist already, then just set the key to that value
 		if _, exists := dest[k]; !exists {
 			dest[k] = v
