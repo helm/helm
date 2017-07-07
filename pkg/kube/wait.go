@@ -25,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/api/v1/helper"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	extensions "k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
@@ -128,7 +130,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 
 func podsReady(pods []v1.Pod) bool {
 	for _, pod := range pods {
-		if !v1.IsPodReady(&pod) {
+		if !podutil.IsPodReady(&pod) {
 			return false
 		}
 	}
@@ -143,7 +145,7 @@ func servicesReady(svc []v1.Service) bool {
 		}
 
 		// Make sure the service is not explicitly set to "None" before checking the IP
-		if s.Spec.ClusterIP != v1.ClusterIPNone && !v1.IsServiceIPSet(&s) {
+		if s.Spec.ClusterIP != v1.ClusterIPNone && !helper.IsServiceIPSet(&s) {
 			return false
 		}
 		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined

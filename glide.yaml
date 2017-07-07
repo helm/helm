@@ -1,7 +1,6 @@
 package: k8s.io/helm
 import:
 - package: golang.org/x/net
-  version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
   subpackages:
   - context
 - package: github.com/spf13/cobra
@@ -28,10 +27,8 @@ import:
   - ptypes/timestamp
 - package: google.golang.org/grpc
   version: 1.2.1
-- package: k8s.io/apimachinery
-- package: k8s.io/client-go
 - package: k8s.io/kubernetes
-  version: ~1.6.0
+  version: ~1.7.0
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
@@ -49,12 +46,42 @@ import:
   version: ~0.1.0
 - package: github.com/chai2010/gettext-go
 - package: github.com/prometheus/client_golang
-  version: v0.8.0
+  version: 0.8.0
 - package: vbom.ml/util
   repo: https://github.com/fvbommel/util.git
   vcs: git
 - package: github.com/docker/distribution
-  version: ~v2.4.0
+  version: ~2.4.0
+
+# hacks for kubernetes v1.7
+- package: cloud.google.com/go
+- package: github.com/Azure/go-autorest
+  version: d7c034a8af24eda120dd6460bfcd6d9ed14e43ca
+- package: github.com/dgrijalva/jwt-go
+- package: github.com/docker/spdystream
+- package: github.com/go-openapi/analysis
+  version: b44dc874b601d9e4e2f6e19140e794ba24bead3b
+- package: github.com/go-openapi/errors
+  version: d24ebc2075bad502fac3a8ae27aa6dd58e1952dc
+- package: github.com/go-openapi/loads
+  version: 18441dfa706d924a39a030ee2c3b1d8d81917b38
+- package: github.com/go-openapi/spec
+  version: 6aced65f8501fe1217321abf0749d354824ba2ff
+- package: github.com/google/gofuzz
+- package: github.com/hashicorp/golang-lru
+- package: github.com/howeyc/gopass
+- package: github.com/juju/ratelimit
+  version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
+- package: github.com/pborman/uuid
+- package: golang.org/x/oauth2
+- package: gopkg.in/inf.v0
+- package: github.com/go-openapi/strfmt
+- package: github.com/mitchellh/mapstructure
+- package: gopkg.in/mgo.v2/bson
+ignore:
+  - k8s.io/client-go
+  - k8s.io/apimachinery
+
 testImports:
 - package: github.com/stretchr/testify
   version: ^1.1.4
