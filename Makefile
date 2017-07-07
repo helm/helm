@@ -97,6 +97,27 @@ test-style:
 	@scripts/validate-go.sh
 	@scripts/validate-license.sh
 
+.PHONY: build-test-functional
+build-test-functional: TARGETS = linux/amd64
+build-test-functional: build-cross
+build-test-functional: APP = tiller
+build-test-functional: build-cross
+build-test-functional:
+	docker build -f _functional_tests/Dockerfile -t helm-functional-tests:latest .
+
+.PHONY: run-test-functional
+run-test-functional:
+	# FIXME: Have to do a little path hackery to get minikube to work.
+	docker run \
+		-v $(HOME)/.kube/:/kube \
+		-v $(HOME)/.minikube/:$(HOME)/.minikube \
+		helm-functional-tests:latest
+
+
+.PHONY: test-functional
+test-functional: build-test-functional
+test-functional: run-test-functional
+
 .PHONY: protoc
 protoc:
 	$(MAKE) -C _proto/ all

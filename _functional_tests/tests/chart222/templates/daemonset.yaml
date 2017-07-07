@@ -1,0 +1,17 @@
+iapiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: {{ .Release.Name . }}
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+spec:
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name . }}
+      name: {{ .Release.Name . }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "alpine:3.3"
+        imagePullPolicy: IfNotPresent
