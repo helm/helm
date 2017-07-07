@@ -277,6 +277,12 @@ func ttpl(tpl string, v map[string]interface{}) (string, error) {
 
 var testCoalesceValuesYaml = `
 top: yup
+bottom: null
+right: Null
+left: NULL
+front: ~
+back:
+side: ""
 
 global:
   name: Ishmael
@@ -316,6 +322,8 @@ func TestCoalesceValues(t *testing.T) {
 		expect string
 	}{
 		{"{{.top}}", "yup"},
+		// The keys bottom, right, left, front, and back should not be present.
+		{"{{.side}}", ""},
 		{"{{.name}}", "moby"},
 		{"{{.global.name}}", "Ishmael"},
 		{"{{.global.subject}}", "Queequeg"},

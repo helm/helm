@@ -2,3 +2,9 @@ scope: moby
 name: moby
 override: bad
 top: nope
+bottom: exists
+right: exists
+left: exists
+front: exists
+back: exists
+side: exists
