@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"regexp"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -283,12 +282,9 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 		// This allows Helm's various sources of values (value files or --set) to
 		// remove incompatible keys from any previous chart, file, or set values.
 		// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
-		var nullPattern = regexp.MustCompile("^(?:null|Null|NULL|~)$")
-		if str, ok := val.(string); ok {
-			if nullPattern.MatchString(str) {
-				delete(v, key)
-				continue
-			}
+		if val == nil {
+			delete(v, key)
+			continue
 		}
 
 		if _, ok := v[key]; !ok {
