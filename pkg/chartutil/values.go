@@ -281,6 +281,13 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 		if _, ok := v[key]; !ok {
 			// If the key is not in v, copy it from nv.
 			v[key] = val
+		} else if ok && v[key] == nil {
+			// When the YAML value is null, we remove the value's key.
+			// This allows Helm's various sources of values (value files or --set) to
+			// remove incompatible keys from any previous chart, file, or set values.
+			// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
+			delete(v, key)
+			continue
 		} else if dest, ok := v[key].(map[string]interface{}); ok {
 			// if v[key] is a table, merge nv's val table into v[key].
 			src, ok := val.(map[string]interface{})
