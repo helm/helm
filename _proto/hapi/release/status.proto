@@ -37,6 +37,8 @@ message Status {
                 FAILED = 4;
                 // Status_DELETING indicates that a delete operation is underway.
                 DELETING = 5;
+                // Status_PENDING indicates that an upgrade/rollback operation is underway.
+                PENDING = 6;
         }
 
         Code code = 1;
