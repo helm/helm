@@ -1,5 +1,5 @@
-hash: adaaaf3d7bb416de3dff4c34bfee192661fa32dd1b53bd48dc583fe4949dcac3
-updated: 2017-07-03T14:35:27.116781224-07:00
+hash: 54e64255ab9112d0183766264214969a8add57903fbe9e96034f9640b9c9cd82
+updated: 2017-07-10T10:52:19.616678852-04:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -18,7 +18,7 @@ imports:
 - name: github.com/chai2010/gettext-go
   version: bf70f2a70fb1b1f36d90d671a72795984eab0fcb
 - name: github.com/cpuguy83/go-md2man
-  version: a65d4d2de4d5f7c74868dfa9b202a3c8be315aaa
+  version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
   - md2man
 - name: github.com/davecgh/go-spew
@@ -89,7 +89,7 @@ imports:
 - name: github.com/go-openapi/spec
   version: 6aced65f8501fe1217321abf0749d354824ba2ff
 - name: github.com/go-openapi/strfmt
-  version: 93a31ef21ac23f317792fff78f9539219dd74619
+  version: d65c7fdb29eca313476e529628176fe17e58c488
 - name: github.com/go-openapi/swag
   version: 1d0bd113de87027671077d3c71eb3ac5d7dbba72
 - name: github.com/gobwas/glob
@@ -143,16 +143,16 @@ imports:
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/gofuzz
-  version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
+  version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
 - name: github.com/gosuri/uitable
   version: 36ee7e946282a3fb1cfecd476ddc9b35d8847e42
   subpackages:
   - util/strutil
   - util/wordwrap
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
-  version: 34abd90a014618f61222a1b0a7b7eb834a2d0dc3
+  version: 0c1b191dbfe51efdabe3c14b9f6f3b96429e0722
 - name: github.com/hashicorp/golang-lru
-  version: 0a025b7e63adc15a622f29b0b2c4c3848243bbf6
+  version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/huandu/xstrings
@@ -170,7 +170,7 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/Masterminds/semver
-  version: 3f0ab6d4ab4bed1c61caf056b63a6e62190c7801
+  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/Masterminds/sprig
   version: 9526be0327b26ad31aa70296a7b10704883976d5
 - name: github.com/Masterminds/vcs
@@ -182,7 +182,7 @@ imports:
   subpackages:
   - pbutil
 - name: github.com/mitchellh/mapstructure
-  version: d0303fe809921458f417bcf828397a65db30a7e4
+  version: 740c764bc6149d3f1806231418adb9f52c11bcbf
 - name: github.com/naoina/go-stringutil
   version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
 - name: github.com/pborman/uuid
@@ -223,7 +223,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/technosophos/moniker
-  version: 9f956786b91d9786ca11aa5be6104542fa911546
+  version: ab470f5e105a44d0c87ea21bacd6a335c4816d83
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -299,13 +299,37 @@ imports:
   - bson
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+- name: k8s.io/api
+  version: 4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57
+  subpackages:
+  - admissionregistration/v1alpha1
+  - apps/v1beta1
+  - authentication/v1
+  - authentication/v1beta1
+  - authorization/v1
+  - authorization/v1beta1
+  - autoscaling/v1
+  - autoscaling/v2alpha1
+  - batch/v1
+  - batch/v2alpha1
+  - certificates/v1beta1
+  - core/v1
+  - extensions/v1beta1
+  - networking/v1
+  - policy/v1beta1
+  - rbac/v1alpha1
+  - rbac/v1beta1
+  - settings/v1alpha1
+  - storage/v1
+  - storage/v1beta1
 - name: k8s.io/apiserver
-  version: 2308857ad3b8b18abf74ff734853973eda9da94d
+  version: 087d1a2efeb6296f04bb0f54e7af9890052aa6d7
   subpackages:
   - pkg/admission
   - pkg/apis/apiserver
   - pkg/apis/apiserver/install
   - pkg/apis/apiserver/v1alpha1
+  - pkg/apis/audit
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
   - pkg/authentication/user
@@ -506,7 +530,7 @@ imports:
   - plugin/pkg/scheduler/schedulercache
   - plugin/pkg/scheduler/util
 - name: k8s.io/metrics
-  version: fd2415bb9381a6731027b48a8c6b78f28e13f876
+  version: 8efbc8e22d00b9c600afec5f1c14073fd2412fce
   subpackages:
   - pkg/apis/metrics
   - pkg/apis/metrics/v1alpha1
