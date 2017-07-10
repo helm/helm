@@ -118,9 +118,8 @@ func TestKindSorter(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "StatefulSet"},
 		},
 		{
-			Name:    "w",
-			Content: "",
-			Head:    &util.SimpleHead{Kind: "APIService"},
+			Name: "w",
+			Head: &util.SimpleHead{Kind: "APIService"},
 		},
 	}
 
