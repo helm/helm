@@ -144,7 +144,6 @@ func parseNodeSelectorsInto(labels string, m map[string]string) error {
 func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	nodeSelectors := map[string]string{}
-	nodeSelectors["beta.kubernetes.io/os"] = "linux"
 	if len(opts.NodeSelectors) > 0 {
 		err := parseNodeSelectorsInto(opts.NodeSelectors, nodeSelectors)
 		if err != nil {

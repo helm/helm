@@ -430,18 +430,18 @@ func TestDeploymentManifest_WithNodeSelectors(t *testing.T) {
 		{
 			Options{Namespace: v1.NamespaceDefault, NodeSelectors: "app=tiller"},
 			"nodeSelector app=tiller",
-			map[string]interface{}{"app": "tiller", "beta.kubernetes.io/os": "linux"},
+			map[string]interface{}{"app": "tiller"},
 		},
 		{
 			Options{Namespace: v1.NamespaceDefault, NodeSelectors: "app=tiller,helm=rocks"},
 			"nodeSelector app=tiller, helm=rocks",
-			map[string]interface{}{"app": "tiller", "helm": "rocks", "beta.kubernetes.io/os": "linux"},
+			map[string]interface{}{"app": "tiller", "helm": "rocks"},
 		},
 		// note: nodeSelector key and value are strings
 		{
 			Options{Namespace: v1.NamespaceDefault, NodeSelectors: "app=tiller,minCoolness=1"},
 			"nodeSelector app=tiller, helm=rocks",
-			map[string]interface{}{"app": "tiller", "minCoolness": "1", "beta.kubernetes.io/os": "linux"},
+			map[string]interface{}{"app": "tiller", "minCoolness": "1"},
 		},
 	}
 	for _, tt := range tests {
