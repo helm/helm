@@ -44,9 +44,10 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		client: client,
 	}
 	cmd := &cobra.Command{
-		Use:   "values [flags] RELEASE_NAME",
-		Short: "download the values file for a named release",
-		Long:  getValuesHelp,
+		Use:     "values [flags] RELEASE_NAME",
+		Short:   "download the values file for a named release",
+		Long:    getValuesHelp,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired
