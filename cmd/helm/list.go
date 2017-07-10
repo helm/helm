@@ -104,7 +104,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.StringVarP(&list.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
-	f.BoolVar(&list.all, "all", false, "show all releases, not just the ones marked DEPLOYED")
+	f.BoolVarP(&list.all, "all", "a", false, "show all releases, not just the ones marked DEPLOYED")
 	f.BoolVar(&list.deleted, "deleted", false, "show deleted releases")
 	f.BoolVar(&list.deleting, "deleting", false, "show releases that are currently being deleted")
 	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
