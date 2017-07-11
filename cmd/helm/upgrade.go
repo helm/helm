@@ -17,10 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -180,6 +182,32 @@ func (u *upgradeCmd) run() error {
 
 	// Check chart requirements to make sure all dependencies are present in /charts
 	if ch, err := chartutil.Load(chartPath); err == nil {
+		res, err := u.client.ReleaseContent(u.release, helm.ContentReleaseVersion(0))
+		if err != nil {
+			return prettyError(err)
+		}
+		if res.Release.Chart.Metadata.Name != ch.Metadata.Name {
+			return fmt.Errorf("%q is not a release for chart %q", u.release, u.chart)
+		}
+		fmt.Println("Version requested:", u.version, "\nversion of chart:", res.Release.Chart.Metadata.Version)
+		if u.version != "" {
+			releaseVersion, err := semver.NewVersion(res.Release.Chart.Metadata.Version)
+			if err != nil {
+				return fmt.Errorf("invalid release version %q, %s", res.Release.Chart.Metadata.Version, err)
+			}
+			upgradeVersion, err := semver.NewVersion(u.version)
+			if err != nil {
+				return fmt.Errorf("invalid upgrade version %q, %s", u.version, err)
+			}
+			if releaseVersion.Equal(upgradeVersion) && !u.force {
+				return errors.New("no version change requested")
+			}
+
+			if releaseVersion.GreaterThan(upgradeVersion) && !u.force {
+				return fmt.Errorf("requested upgrade version %q is lower than current version of release %q.\nTIP: use force if want to downgrade the release", u.version, res.Release.Chart.Metadata.Version)
+			}
+		}
+
 		if req, err := chartutil.LoadRequirements(ch); err == nil {
 			if err := checkDependencies(ch, req); err != nil {
 				return err
