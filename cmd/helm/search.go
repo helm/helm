@@ -50,13 +50,14 @@ type searchCmd struct {
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
-	sc := &searchCmd{out: out, helmhome: settings.Home}
+	sc := &searchCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",
 		Short: "search for a keyword in charts",
 		Long:  searchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			sc.helmhome = settings.Home
 			return sc.run(args)
 		},
 	}

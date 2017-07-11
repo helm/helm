@@ -41,9 +41,7 @@ type repoAddCmd struct {
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
-	add := &repoAddCmd{
-		out: out,
-	}
+	add := &repoAddCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "add [flags] [NAME] [URL]",

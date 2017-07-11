@@ -108,9 +108,8 @@ type dependencyListCmd struct {
 }
 
 func newDependencyListCmd(out io.Writer) *cobra.Command {
-	dlc := &dependencyListCmd{
-		out: out,
-	}
+	dlc := &dependencyListCmd{out: out}
+
 	cmd := &cobra.Command{
 		Use:     "list [flags] CHART",
 		Aliases: []string{"ls"},

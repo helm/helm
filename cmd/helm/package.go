@@ -64,9 +64,7 @@ type packageCmd struct {
 }
 
 func newPackageCmd(out io.Writer) *cobra.Command {
-	pkg := &packageCmd{
-		out: out,
-	}
+	pkg := &packageCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "package [flags] [CHART_PATH] [...]",

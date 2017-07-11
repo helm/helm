@@ -34,9 +34,7 @@ type repoListCmd struct {
 }
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
-	list := &repoListCmd{
-		out: out,
-	}
+	list := &repoListCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "list [flags]",
