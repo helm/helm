@@ -72,6 +72,7 @@ type listCmd struct {
 	failed     bool
 	namespace  string
 	superseded bool
+	pending    bool
 	client     helm.Interface
 }
 
@@ -109,6 +110,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.deleting, "deleting", false, "show releases that are currently being deleted")
 	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
+	f.BoolVar(&list.pending, "pending", false, "show pending releases")
 	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
 
 	// TODO: Do we want this as a feature of 'helm list'?
@@ -173,6 +175,7 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 			release.Status_DELETED,
 			release.Status_DELETING,
 			release.Status_FAILED,
+			release.Status_PENDING,
 		}
 	}
 	status := []release.Status_Code{}
@@ -190,6 +193,9 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 	}
 	if l.superseded {
 		status = append(status, release.Status_SUPERSEDED)
+	}
+	if l.pending {
+		status = append(status, release.Status_PENDING)
 	}
 
 	// Default case.
