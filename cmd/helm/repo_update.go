@@ -37,9 +37,7 @@ Information is cached locally, where it is used by commands like 'helm search'.
 future releases.
 `
 
-var (
-	errNoRepositories = errors.New("no repositories found. You must add one before updating")
-)
+var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateCmd struct {
 	update func([]*repo.ChartRepository, io.Writer, helmpath.Home)

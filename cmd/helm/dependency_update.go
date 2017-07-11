@@ -52,9 +52,7 @@ type dependencyUpdateCmd struct {
 
 // newDependencyUpdateCmd creates a new dependency update command.
 func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
-	duc := &dependencyUpdateCmd{
-		out: out,
-	}
+	duc := &dependencyUpdateCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:     "update [flags] CHART",

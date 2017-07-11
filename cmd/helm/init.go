@@ -82,9 +82,7 @@ type initCmd struct {
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
-	i := &initCmd{
-		out: out,
-	}
+	i := &initCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "init",

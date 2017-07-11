@@ -62,9 +62,7 @@ type createCmd struct {
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
-	cc := &createCmd{
-		out: out,
-	}
+	cc := &createCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "create NAME",

@@ -34,9 +34,7 @@ type repoRemoveCmd struct {
 }
 
 func newRepoRemoveCmd(out io.Writer) *cobra.Command {
-	remove := &repoRemoveCmd{
-		out: out,
-	}
+	remove := &repoRemoveCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:     "remove [flags] [NAME]",
