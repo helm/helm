@@ -64,12 +64,24 @@ func TestManuallyProcessArgs(t *testing.T) {
 
 }
 
+// resetEnv sets an env var, and returns a defer function to reset the env
+func resetEnv(name, val string) func() {
+	original, ok := os.LookupEnv(name)
+	os.Setenv(name, val)
+	if ok {
+		return func() { os.Setenv(name, original) }
+	}
+	return func() { os.Unsetenv(name) }
+}
+
 func TestLoadPlugins(t *testing.T) {
 	// Set helm home to point to testdata
 	old := settings.Home
 	settings.Home = "testdata/helmhome"
+	cleanup := resetEnv("HELM_HOME", settings.Home.String())
 	defer func() {
 		settings.Home = old
+		cleanup()
 	}()
 	hh := settings.Home
 
