@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/plugin"
@@ -40,6 +41,16 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 	if os.Getenv(helm_env.PluginDisableEnvVar) == "1" {
 		return
 	}
+
+	// manually handel processing of HELM_HOME and --home
+	helmHome := "$HOME/.helm"
+	if h, ok := os.LookupEnv("HELM_HOME"); ok {
+		helmHome = h
+	}
+
+	fs := pflag.NewFlagSet("homer", pflag.ContinueOnError)
+	fs.StringVar((*string)(&settings.Home), "home", helmHome, "location of your Helm config. Overrides $HELM_HOME")
+	fs.Parse(os.Args)
 
 	found, err := findPlugins(settings.PluginDirs())
 	if err != nil {
