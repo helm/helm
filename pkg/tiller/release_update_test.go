@@ -239,6 +239,28 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	}
 }
 
+func TestUpdateReleaseFailure_DifferentChart(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hi"},
+			Templates: []*chart.Template{
+				{Name: "templates/hi", Data: []byte("hi: there")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+		},
+	}
+	_, err := rs.UpdateRelease(c, req)
+	if err == nil {
+		t.Fatalf("Expected failed update")
+	}
+}
+
 func TestUpdateReleaseNoHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
