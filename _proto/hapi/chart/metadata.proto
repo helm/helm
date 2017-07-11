@@ -80,4 +80,7 @@ message Metadata {
 	// TillerVersion is a SemVer constraints on what version of Tiller is required.
 	// See SemVer ranges here: https://github.com/Masterminds/semver#basic-comparisons
 	string tillerVersion = 15;
+
+	// Options is an unstructured key value map for user to store arbitrary data.
+	map<string,string> options = 16;
 }
