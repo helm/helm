@@ -197,16 +197,17 @@ metadata:
 	sorted := []manifest{}
 	for _, s := range data {
 		manifests := util.SplitManifests(s.manifest)
-		mCount := 0
-		for _, m := range manifests {
-			name := s.name[mCount]
 
+		for _, m := range manifests {
 			var sh util.SimpleHead
 			err := yaml.Unmarshal([]byte(m), &sh)
 			if err != nil {
 				// This is expected for manifests that are corrupt or empty.
 				t.Log(err)
+				continue
 			}
+
+			name := sh.Metadata.Name
 
 			//only keep track of non-hook manifests
 			if err == nil && s.hooks[name] == nil {
@@ -217,8 +218,6 @@ metadata:
 				}
 				sorted = append(sorted, another)
 			}
-
-			mCount++
 		}
 	}
 
