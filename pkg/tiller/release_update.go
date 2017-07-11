@@ -75,6 +75,10 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
+	if err = validateChartUpdate(currentRelease.Chart, req.Chart); err != nil {
+		return nil, nil, err
+	}
+
 	// If new values were not supplied in the upgrade, re-use the existing values.
 	if err := s.reuseValues(req, currentRelease); err != nil {
 		return nil, nil, err

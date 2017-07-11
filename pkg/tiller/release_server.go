@@ -55,6 +55,8 @@ const notesFileSuffix = "NOTES.txt"
 var (
 	// errMissingChart indicates that a chart was not provided.
 	errMissingChart = errors.New("no chart provided")
+	// errDifferntChart indicates use a different chart to update the current release.
+	errDifferentChart = errors.New("update release with different chart")
 	// errMissingRelease indicates that a release (name) was not provided.
 	errMissingRelease = errors.New("no release provided")
 	// errInvalidRevision indicates that an invalid release revision number was provided.
@@ -371,5 +373,12 @@ func validateReleaseName(releaseName string) error {
 		return errInvalidName
 	}
 
+	return nil
+}
+
+func validateChartUpdate(curChart, newChart *chart.Chart) error {
+	if curChart.Metadata.Name != newChart.Metadata.Name {
+		return errDifferentChart
+	}
 	return nil
 }
