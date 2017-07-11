@@ -45,9 +45,7 @@ type dependencyBuildCmd struct {
 }
 
 func newDependencyBuildCmd(out io.Writer) *cobra.Command {
-	dbc := &dependencyBuildCmd{
-		out: out,
-	}
+	dbc := &dependencyBuildCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "build [flags] CHART",
