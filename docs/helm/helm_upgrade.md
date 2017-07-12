@@ -36,31 +36,32 @@ helm upgrade [RELEASE] [CHART]
 ### Options
 
 ```
-      --ca-file string       verify certificates of HTTPS-enabled servers using this CA bundle
-      --cert-file string     identify HTTPS client using this SSL certificate file
-      --devel                use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.
-      --dry-run              simulate an upgrade
-      --force                force resource update through delete/recreate if needed
-  -i, --install              if a release by this name doesn't already exist, run an install
-      --key-file string      identify HTTPS client using this SSL key file
-      --keyring string       path to the keyring that contains public signing keys (default "~/.gnupg/pubring.gpg")
-      --namespace string     namespace to install the release into (only used if --install is set) (default "default")
-      --no-hooks             disable pre/post upgrade hooks
-      --recreate-pods        performs pods restart for the resource if applicable
-      --repo string          chart repository url where to locate the requested chart
-      --reset-values         when upgrading, reset the values to the ones built into the chart
-      --reuse-values         when upgrading, reuse the last release's values, and merge in any new values. If '--reset-values' is specified, this is ignored.
-      --set stringArray      set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
-      --timeout int          time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks) (default 300)
-      --tls                  enable TLS for request
-      --tls-ca-cert string   path to TLS CA certificate file (default "$HELM_HOME/ca.pem")
-      --tls-cert string      path to TLS certificate file (default "$HELM_HOME/cert.pem")
-      --tls-key string       path to TLS key file (default "$HELM_HOME/key.pem")
-      --tls-verify           enable TLS for request and verify remote
-  -f, --values valueFiles    specify values in a YAML file (can specify multiple) (default [])
-      --verify               verify the provenance of the chart before upgrading
-      --version string       specify the exact chart version to use. If this is not specified, the latest version is used
-      --wait                 if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout
+      --annotations stringArray   set release annotations (can specify multiple or separate values with commas: key1=val1,key2=val2)
+      --ca-file string            verify certificates of HTTPS-enabled servers using this CA bundle
+      --cert-file string          identify HTTPS client using this SSL certificate file
+      --devel                     use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.
+      --dry-run                   simulate an upgrade
+      --force                     force resource update through delete/recreate if needed
+  -i, --install                   if a release by this name doesn't already exist, run an install
+      --key-file string           identify HTTPS client using this SSL key file
+      --keyring string            path to the keyring that contains public signing keys (default "~/.gnupg/pubring.gpg")
+      --namespace string          namespace to install the release into (only used if --install is set) (default "default")
+      --no-hooks                  disable pre/post upgrade hooks
+      --recreate-pods             performs pods restart for the resource if applicable
+      --repo string               chart repository url where to locate the requested chart
+      --reset-values              when upgrading, reset the values to the ones built into the chart
+      --reuse-values              when upgrading, reuse the last release's values, and merge in any new values. If '--reset-values' is specified, this is ignored.
+      --set stringArray           set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
+      --timeout int               time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks) (default 300)
+      --tls                       enable TLS for request
+      --tls-ca-cert string        path to TLS CA certificate file (default "$HELM_HOME/ca.pem")
+      --tls-cert string           path to TLS certificate file (default "$HELM_HOME/cert.pem")
+      --tls-key string            path to TLS key file (default "$HELM_HOME/key.pem")
+      --tls-verify                enable TLS for request and verify remote
+  -f, --values valueFiles         specify values in a YAML file (can specify multiple) (default [])
+      --verify                    verify the provenance of the chart before upgrading
+      --version string            specify the exact chart version to use. If this is not specified, the latest version is used
+      --wait                      if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout
 ```
 
 ### Options inherited from parent commands
@@ -76,4 +77,4 @@ helm upgrade [RELEASE] [CHART]
 ### SEE ALSO
 * [helm](helm.md)	 - The Helm package manager for Kubernetes.
 
-###### Auto generated by spf13/cobra on 23-Jun-2017
+###### Auto generated by spf13/cobra on 12-Jul-2017
