@@ -59,8 +59,8 @@ The 'version' field should contain a semantic version or version range.
 
 The 'repository' URL should point to a Chart Repository. Helm expects that by
 appending '/index.yaml' to the URL, it should be able to retrieve the chart
-repository's index. Note: 'repository' cannot be a repository alias. It must be
-a URL.
+repository's index. Note: 'repository' can be an alias. The alias must start
+with 'alias:' or '@'.
 
 Starting from 2.2.0, repository can be defined as the path to the directory of
 the dependency charts stored locally. The path should start with a prefix of
