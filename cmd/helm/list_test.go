@@ -98,6 +98,24 @@ func TestListCmd(t *testing.T) {
 			// See note on previous test.
 			expected: "thomas-guide",
 		},
+		{
+			name: "with a pending release, multiple flags",
+			args: []string{"--all", "-q"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_PENDING}),
+				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
+			},
+			expected: "thomas-guide\natlas-guide",
+		},
+		{
+			name: "with a pending release, pending flag",
+			args: []string{"--pending", "-q"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_PENDING}),
+				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
+			},
+			expected: "thomas-guide",
+		},
 	}
 
 	var buf bytes.Buffer
