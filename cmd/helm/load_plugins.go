@@ -42,29 +42,14 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		return
 	}
 
-	// manually handel processing of HELM_HOME and --home
-	helmHome := "$HOME/.helm"
-	if h, ok := os.LookupEnv("HELM_HOME"); ok {
-		helmHome = h
-	}
-
-	fs := pflag.NewFlagSet("homer", pflag.ContinueOnError)
-	fs.StringVar((*string)(&settings.Home), "home", helmHome, "location of your Helm config. Overrides $HELM_HOME")
-	fs.Parse(os.Args)
+	args, _ := manuallyProcessArgs(pflag.Args())
+	baseCmd.ParseFlags(args)
+	initRootFlags(baseCmd)
 
 	found, err := findPlugins(settings.PluginDirs())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
 		return
-	}
-
-	processParent := func(cmd *cobra.Command, args []string) ([]string, error) {
-		k, u := manuallyProcessArgs(args)
-		if err := cmd.Parent().ParseFlags(k); err != nil {
-			return nil, err
-		}
-		initRootFlags(cmd)
-		return u, nil
 	}
 
 	// Now we create commands for all of these.
@@ -80,10 +65,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			Short: md.Usage,
 			Long:  md.Description,
 			RunE: func(cmd *cobra.Command, args []string) error {
-				u, err := processParent(cmd, args)
-				if err != nil {
-					return err
-				}
+				_, u := manuallyProcessArgs(args)
 
 				// Call setupEnv before PrepareCommand because
 				// PrepareCommand uses os.ExpandEnv and expects the
@@ -110,10 +92,6 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 		if md.UseTunnel {
 			c.PreRunE = func(cmd *cobra.Command, args []string) error {
-				// Parse the parent flag, but not the local flags.
-				if _, err := processParent(cmd, args); err != nil {
-					return err
-				}
 				return setupConnection(cmd, args)
 			}
 		}
