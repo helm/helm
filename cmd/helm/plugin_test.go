@@ -23,7 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
 
@@ -152,10 +151,10 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 	// Set helm home to point to testdata
 	old := settings.Home
 	settings.Home = "testdata/helmhome"
-	os.Setenv(helm_env.PluginDisableEnvVar, "1")
+	cleanup := resetEnv("HELM_NO_PLUGINS", "1")
 	defer func() {
 		settings.Home = old
-		os.Unsetenv(helm_env.PluginDisableEnvVar)
+		cleanup()
 	}()
 
 	out := bytes.NewBuffer(nil)

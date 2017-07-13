@@ -24,8 +24,6 @@ import (
 	"regexp"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
@@ -34,7 +32,7 @@ func TestFetchCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := helmpath.Home(environment.DefaultHelmHome)
+	old := settings.Home
 	settings.Home = hh
 	defer func() {
 		settings.Home = old
