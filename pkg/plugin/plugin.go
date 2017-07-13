@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	helm_env "k8s.io/helm/pkg/helm/environment"
-	tiller_env "k8s.io/helm/pkg/tiller/environment"
 
 	"github.com/ghodss/yaml"
 )
@@ -179,8 +178,8 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 
 		// Set vars that may not have been set, and save client the
 		// trouble of re-parsing.
-		helm_env.PluginEnvVar: settings.PluginDirs(),
-		helm_env.HomeEnvVar:   settings.Home.String(),
+		"HELM_PLUGIN": settings.PluginDirs(),
+		"HELM_HOME":   settings.Home.String(),
 
 		// Set vars that convey common information.
 		"HELM_PATH_REPOSITORY":       settings.Home.Repository(),
@@ -189,8 +188,8 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 		"HELM_PATH_LOCAL_REPOSITORY": settings.Home.LocalRepository(),
 		"HELM_PATH_STARTER":          settings.Home.Starters(),
 
-		"TILLER_HOST":                    settings.TillerHost,
-		tiller_env.TillerNamespaceEnvVar: settings.TillerNamespace,
+		"TILLER_HOST":      settings.TillerHost,
+		"TILLER_NAMESPACE": settings.TillerNamespace,
 	} {
 		os.Setenv(key, val)
 	}

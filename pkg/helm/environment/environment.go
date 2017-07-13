@@ -26,20 +26,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"k8s.io/helm/pkg/helm/helmpath"
-)
+	"github.com/spf13/pflag"
 
-const (
-	// HomeEnvVar is the HELM_HOME environment variable key.
-	HomeEnvVar = "HELM_HOME"
-	// PluginEnvVar is the HELM_PLUGIN environment variable key.
-	PluginEnvVar = "HELM_PLUGIN"
-	// PluginDisableEnvVar is the HELM_NO_PLUGINS environment variable key.
-	PluginDisableEnvVar = "HELM_NO_PLUGINS"
-	// HostEnvVar is the HELM_HOST environment variable key.
-	HostEnvVar = "HELM_HOST"
-	// DebugEnvVar is the HELM_DEBUG environment variable key.
-	DebugEnvVar = "HELM_DEBUG"
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 // DefaultHelmHome is the default HELM_HOME.
@@ -55,12 +44,56 @@ type EnvSettings struct {
 	Home helmpath.Home
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
+	// KubeContext is the name of the kubeconfig context.
+	KubeContext string
+}
+
+// AddFlags binds flags to the given flagset.
+func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
+	fs.StringVar(&s.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
+	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
+	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
+	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
+}
+
+// Init sets values from the environment.
+func (s *EnvSettings) Init(fs *pflag.FlagSet) {
+	for name, envar := range envMap {
+		setFlagFromEnv(name, envar, fs)
+	}
 }
 
 // PluginDirs is the path to the plugin directories.
 func (s EnvSettings) PluginDirs() string {
-	if d := os.Getenv(PluginEnvVar); d != "" {
+	if d, ok := os.LookupEnv("HELM_PLUGIN"); ok {
 		return d
 	}
 	return s.Home.Plugins()
 }
+
+// envMap maps flag names to envvars
+var envMap = map[string]string{
+	"debug":            "HELM_DEBUG",
+	"home":             "HELM_HOME",
+	"host":             "HELM_HOST",
+	"tiller-namespace": "TILLER_NAMESPACE",
+}
+
+func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
+	if fs.Changed(name) {
+		return
+	}
+	if v, ok := os.LookupEnv(envar); ok {
+		fs.Set(name, v)
+	}
+}
+
+// Deprecated
+const (
+	HomeEnvVar          = "HELM_HOME"
+	PluginEnvVar        = "HELM_PLUGIN"
+	PluginDisableEnvVar = "HELM_NO_PLUGINS"
+	HostEnvVar          = "HELM_HOST"
+	DebugEnvVar         = "HELM_DEBUG"
+)

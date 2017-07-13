@@ -37,10 +37,6 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-// TillerNamespaceEnvVar is the environment variable name for the Tiller
-// namespace in the kubernetes cluster.
-const TillerNamespaceEnvVar = "TILLER_NAMESPACE"
-
 // DefaultTillerNamespace is the default namespace for Tiller.
 const DefaultTillerNamespace = "kube-system"
 
