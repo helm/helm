@@ -102,7 +102,7 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 			FirstDeployed: crls.Info.FirstDeployed,
 			LastDeployed:  timeconv.Now(),
 			Status: &release.Status{
-				Code:  release.Status_PENDING,
+				Code:  release.Status_PENDING_ROLLBACK,
 				Notes: prls.Info.Status.Notes,
 			},
 			// Because we lose the reference to rbv elsewhere, we set the

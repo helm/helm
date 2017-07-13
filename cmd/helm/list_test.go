@@ -102,7 +102,7 @@ func TestListCmd(t *testing.T) {
 			name: "with a pending release, multiple flags",
 			args: []string{"--all", "-q"},
 			resp: []*release.Release{
-				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_PENDING}),
+				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_PENDING_INSTALL}),
 				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 			},
 			expected: "thomas-guide\natlas-guide",
@@ -111,10 +111,12 @@ func TestListCmd(t *testing.T) {
 			name: "with a pending release, pending flag",
 			args: []string{"--pending", "-q"},
 			resp: []*release.Release{
-				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_PENDING}),
+				releaseMock(&releaseOptions{name: "thomas-guide", statusCode: release.Status_PENDING_INSTALL}),
+				releaseMock(&releaseOptions{name: "wild-idea", statusCode: release.Status_PENDING_UPGRADE}),
+				releaseMock(&releaseOptions{name: "crazy-maps", statusCode: release.Status_PENDING_ROLLBACK}),
 				releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 			},
-			expected: "thomas-guide",
+			expected: "thomas-guide\nwild-idea\ncrazy-maps",
 		},
 	}
 

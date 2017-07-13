@@ -175,7 +175,9 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 			release.Status_DELETED,
 			release.Status_DELETING,
 			release.Status_FAILED,
-			release.Status_PENDING,
+			release.Status_PENDING_INSTALL,
+			release.Status_PENDING_UPGRADE,
+			release.Status_PENDING_ROLLBACK,
 		}
 	}
 	status := []release.Status_Code{}
@@ -195,7 +197,7 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 		status = append(status, release.Status_SUPERSEDED)
 	}
 	if l.pending {
-		status = append(status, release.Status_PENDING)
+		status = append(status, release.Status_PENDING_INSTALL, release.Status_PENDING_UPGRADE, release.Status_PENDING_ROLLBACK)
 	}
 
 	// Default case.

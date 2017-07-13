@@ -123,7 +123,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  ts,
-			Status:        &release.Status{Code: release.Status_PENDING},
+			Status:        &release.Status{Code: release.Status_PENDING_UPGRADE},
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
 		Version:  revision,

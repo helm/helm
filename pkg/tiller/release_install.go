@@ -116,7 +116,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		Info: &release.Info{
 			FirstDeployed: ts,
 			LastDeployed:  ts,
-			Status:        &release.Status{Code: release.Status_PENDING},
+			Status:        &release.Status{Code: release.Status_PENDING_INSTALL},
 			Description:   "Initial install underway", // Will be overwritten.
 		},
 		Manifest: manifestDoc.String(),
