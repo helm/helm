@@ -15,3 +15,6 @@ sources:
   - https://example.com/foo/bar
 home: http://example.com
 icon: https://example.com/64x64.png
+annotations:
+  extrakey: extravalue
+  anotherkey: anothervalue
