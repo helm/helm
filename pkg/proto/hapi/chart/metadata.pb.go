@@ -96,7 +96,8 @@ type Metadata struct {
 	// TillerVersion is a SemVer constraints on what version of Tiller is required.
 	// See SemVer ranges here: https://github.com/Masterminds/semver#basic-comparisons
 	TillerVersion string `protobuf:"bytes,15,opt,name=tillerVersion" json:"tillerVersion,omitempty"`
-	// Annotations is an unstructured key value map for user to store arbitrary data.
+	// Annotations are additional mappings uninterpreted by Tiller,
+	// made available for inspection by other applications.
 	Annotations map[string]string `protobuf:"bytes,16,rep,name=annotations" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 }
 

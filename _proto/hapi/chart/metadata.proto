@@ -81,6 +81,7 @@ message Metadata {
 	// See SemVer ranges here: https://github.com/Masterminds/semver#basic-comparisons
 	string tillerVersion = 15;
 
-	// Annotations is an unstructured key value map for user to store arbitrary data.
+	// Annotations are additional mappings uninterpreted by Tiller,
+	// made available for inspection by other applications.
 	map<string,string> annotations = 16;
 }
