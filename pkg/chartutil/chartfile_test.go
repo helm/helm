@@ -92,12 +92,12 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 		t.Fatalf("Unexpected annotations")
 	}
 
-	if value := f.Annotations["extrakey"]; value != "extravalue" {
-		t.Errorf("Expected extravalue, but got %s", value)
+	if want, got := "extravalue", f.Annotations["extrakey"]; want != got {
+		t.Errorf("Want %q, but got %q", want, got)
 	}
 
-	if value := f.Annotations["anotherkey"]; value != "anothervalue" {
-		t.Errorf("Expected anotherkey, but got %s", value)
+	if want, got := "anothervalue", f.Annotations["anotherkey"]; want != got {
+		t.Errorf("Want %q, but got %q", want, got)
 	}
 
 	kk := []string{"frobnitz", "sprocket", "dodad"}
