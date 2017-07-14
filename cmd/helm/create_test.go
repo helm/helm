@@ -85,12 +85,13 @@ func TestCreateStarterCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := settings.Home
-	settings.Home = thome
+	cleanup := resetEnv()
 	defer func() {
-		settings.Home = old
 		os.RemoveAll(thome.String())
+		cleanup()
 	}()
+
+	settings.Home = thome
 
 	// Create a starter.
 	starterchart := filepath.Join(thome.String(), "starters")

@@ -33,17 +33,18 @@ func TestRepoRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := settings.Home
-	settings.Home = thome
 	hh := helmpath.Home(thome)
+	cleanup := resetEnv()
 	defer func() {
 		ts.Stop()
-		settings.Home = oldhome
 		os.Remove(thome.String())
+		cleanup()
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
 		t.Fatal(err)
 	}
+
+	settings.Home = thome
 
 	b := bytes.NewBuffer(nil)
 

@@ -140,12 +140,13 @@ func TestInitCmd_dryRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dbg := settings.Debug
-	settings.Debug = true
+	cleanup := resetEnv()
 	defer func() {
 		os.Remove(home)
-		settings.Debug = dbg
+		cleanup()
 	}()
+
+	settings.Debug = true
 
 	var buf bytes.Buffer
 	fc := fake.NewSimpleClientset()
