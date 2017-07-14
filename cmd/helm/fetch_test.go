@@ -24,8 +24,6 @@ import (
 	"regexp"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
@@ -34,14 +32,15 @@ func TestFetchCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := helmpath.Home(environment.DefaultHelmHome)
-	settings.Home = hh
+	cleanup := resetEnv()
 	defer func() {
-		settings.Home = old
 		os.RemoveAll(hh.String())
+		cleanup()
 	}()
 	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
+
+	settings.Home = hh
 
 	// all flags will get "--home=TMDIR -d outdir" appended.
 	tests := []struct {

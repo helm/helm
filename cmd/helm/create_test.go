@@ -23,8 +23,6 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -87,12 +85,13 @@ func TestCreateStarterCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := helmpath.Home(environment.DefaultHelmHome)
-	settings.Home = thome
+	cleanup := resetEnv()
 	defer func() {
-		settings.Home = old
 		os.RemoveAll(thome.String())
+		cleanup()
 	}()
+
+	settings.Home = thome
 
 	// Create a starter.
 	starterchart := filepath.Join(thome.String(), "starters")

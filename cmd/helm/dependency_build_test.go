@@ -29,16 +29,17 @@ import (
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
-	oldhome := settings.Home
 	hh, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings.Home = hh
+	cleanup := resetEnv()
 	defer func() {
 		os.RemoveAll(hh.String())
-		settings.Home = oldhome
+		cleanup()
 	}()
+
+	settings.Home = hh
 
 	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()

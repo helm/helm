@@ -35,7 +35,6 @@ import (
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
-	tiller_env "k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/tlsutil"
 )
 
@@ -46,7 +45,6 @@ var (
 	tlsVerify     bool   // enable TLS and verify remote certificates
 	tlsEnable     bool   // enable TLS
 
-	kubeContext  string
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
 )
@@ -75,57 +73,25 @@ Environment:
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
-func setFlagFromEnv(name, envar string, cmd *cobra.Command) {
-	if cmd.Flags().Changed(name) {
-		return
-	}
-	if v, ok := os.LookupEnv(envar); ok {
-		cmd.Flags().Set(name, v)
-	}
-}
-
-func setFlagsFromEnv(flags map[string]string, cmd *cobra.Command) {
-	for name, envar := range flags {
-		setFlagFromEnv(name, envar, cmd)
-	}
-}
-
-func addRootFlags(cmd *cobra.Command) {
-	pf := cmd.PersistentFlags()
-	pf.StringVar((*string)(&settings.Home), "home", helm_env.DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
-	pf.StringVar(&settings.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
-	pf.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	pf.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
-	pf.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.DefaultTillerNamespace, "namespace of Tiller")
-}
-
-func initRootFlags(cmd *cobra.Command) {
-	setFlagsFromEnv(map[string]string{
-		"debug":            helm_env.DebugEnvVar,
-		"home":             helm_env.HomeEnvVar,
-		"host":             helm_env.HostEnvVar,
-		"tiller-namespace": tiller_env.TillerNamespaceEnvVar,
-	}, cmd.Root())
-
-	tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
-	tlsCertFile = os.ExpandEnv(tlsCertFile)
-	tlsKeyFile = os.ExpandEnv(tlsKeyFile)
-}
-
-func newRootCmd() *cobra.Command {
+func newRootCmd(args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-			initRootFlags(cmd)
+		PersistentPreRun: func(*cobra.Command, []string) {
+			tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
+			tlsCertFile = os.ExpandEnv(tlsCertFile)
+			tlsKeyFile = os.ExpandEnv(tlsKeyFile)
 		},
 		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
 	}
-	addRootFlags(cmd)
+	flags := cmd.PersistentFlags()
+
+	settings.AddFlags(flags)
+
 	out := cmd.OutOrStdout()
 
 	cmd.AddCommand(
@@ -167,6 +133,11 @@ func newRootCmd() *cobra.Command {
 		markDeprecated(newRepoUpdateCmd(out), "use 'helm repo update'\n"),
 	)
 
+	flags.Parse(args)
+
+	// set defaults from environment
+	settings.Init(flags)
+
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
@@ -179,7 +150,7 @@ func init() {
 }
 
 func main() {
-	cmd := newRootCmd()
+	cmd := newRootCmd(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -192,7 +163,7 @@ func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
 
 func setupConnection(c *cobra.Command, args []string) error {
 	if settings.TillerHost == "" {
-		config, client, err := getKubeClient(kubeContext)
+		config, client, err := getKubeClient(settings.KubeContext)
 		if err != nil {
 			return err
 		}

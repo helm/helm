@@ -68,9 +68,10 @@ func TestSearchCmd(t *testing.T) {
 		},
 	}
 
-	oldhome := settings.Home
+	cleanup := resetEnv()
+	defer cleanup()
+
 	settings.Home = "testdata/helmhome"
-	defer func() { settings.Home = oldhome }()
 
 	for _, tt := range tests {
 		buf := bytes.NewBuffer(nil)

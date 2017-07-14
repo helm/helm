@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -232,8 +233,8 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 }
 
 func TestRootCmd(t *testing.T) {
-	oldhome := os.Getenv("HELM_HOME")
-	defer os.Setenv("HELM_HOME", oldhome)
+	cleanup := resetEnv()
+	defer cleanup()
 
 	tests := []struct {
 		name   string
@@ -287,7 +288,7 @@ func TestRootCmd(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			cmd := newRootCmd()
+			cmd := newRootCmd(tt.args)
 			cmd.SetOutput(ioutil.Discard)
 			cmd.SetArgs(tt.args)
 			cmd.Run = func(*cobra.Command, []string) {}
@@ -304,5 +305,17 @@ func TestRootCmd(t *testing.T) {
 				t.Errorf("expected home %q, got %q", tt.home, homeFlag)
 			}
 		})
+	}
+}
+
+func resetEnv() func() {
+	origSettings := settings
+	origEnv := os.Environ()
+	return func() {
+		settings = origSettings
+		for _, pair := range origEnv {
+			kv := strings.SplitN(pair, "=", 2)
+			os.Setenv(kv[0], kv[1])
+		}
 	}
 }

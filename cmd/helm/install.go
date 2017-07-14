@@ -434,7 +434,7 @@ func generateName(nameTemplate string) (string, error) {
 }
 
 func defaultNamespace() string {
-	if ns, _, err := kube.GetConfig(kubeContext).Namespace(); err == nil {
+	if ns, _, err := kube.GetConfig(settings.KubeContext).Namespace(); err == nil {
 		return ns
 	}
 	return "default"
