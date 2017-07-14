@@ -34,12 +34,14 @@ func TestUpdateCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	oldhome := settings.Home
-	settings.Home = thome
+
+	cleanup := resetEnv()
 	defer func() {
-		settings.Home = oldhome
 		os.Remove(thome.String())
+		cleanup()
 	}()
+
+	settings.Home = thome
 
 	out := bytes.NewBuffer(nil)
 	// Instead of using the HTTP updater, we provide our own for this test.
@@ -69,17 +71,18 @@ func TestUpdateCharts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := settings.Home
-	settings.Home = thome
 	hh := helmpath.Home(thome)
+	cleanup := resetEnv()
 	defer func() {
 		ts.Stop()
-		settings.Home = oldhome
 		os.Remove(thome.String())
+		cleanup()
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
 		t.Fatal(err)
 	}
+
+	settings.Home = thome
 
 	r, err := repo.NewChartRepository(&repo.Entry{
 		Name:  "charts",

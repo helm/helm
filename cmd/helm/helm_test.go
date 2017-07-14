@@ -233,13 +233,8 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 }
 
 func TestRootCmd(t *testing.T) {
-	// reset env
-	defer func(origEnv []string) {
-		for _, pair := range origEnv {
-			kv := strings.SplitN(pair, "=", 2)
-			os.Setenv(kv[0], kv[1])
-		}
-	}(os.Environ())
+	cleanup := resetEnv()
+	defer cleanup()
 
 	tests := []struct {
 		name   string
@@ -310,5 +305,17 @@ func TestRootCmd(t *testing.T) {
 				t.Errorf("expected home %q, got %q", tt.home, homeFlag)
 			}
 		})
+	}
+}
+
+func resetEnv() func() {
+	origSettings := settings
+	origEnv := os.Environ()
+	return func() {
+		settings = origSettings
+		for _, pair := range origEnv {
+			kv := strings.SplitN(pair, "=", 2)
+			os.Setenv(kv[0], kv[1])
+		}
 	}
 }

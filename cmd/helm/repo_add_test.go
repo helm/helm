@@ -33,16 +33,17 @@ func TestRepoAddCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := settings.Home
-	settings.Home = thome
+	cleanup := resetEnv()
 	defer func() {
 		srv.Stop()
-		settings.Home = oldhome
 		os.Remove(thome.String())
+		cleanup()
 	}()
 	if err := ensureTestHome(thome, t); err != nil {
 		t.Fatal(err)
 	}
+
+	settings.Home = thome
 
 	tests := []releaseCase{
 		{
@@ -67,17 +68,18 @@ func TestRepoAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	oldhome := settings.Home
-	settings.Home = thome
+	cleanup := resetEnv()
 	hh := thome
 	defer func() {
 		ts.Stop()
-		settings.Home = oldhome
 		os.Remove(thome.String())
+		cleanup()
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
 		t.Fatal(err)
 	}
+
+	settings.Home = thome
 
 	if err := addRepository(testName, ts.URL(), hh, "", "", "", true); err != nil {
 		t.Error(err)

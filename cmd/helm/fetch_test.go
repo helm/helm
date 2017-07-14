@@ -32,14 +32,15 @@ func TestFetchCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := settings.Home
-	settings.Home = hh
+	cleanup := resetEnv()
 	defer func() {
-		settings.Home = old
 		os.RemoveAll(hh.String())
+		cleanup()
 	}()
 	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
+
+	settings.Home = hh
 
 	// all flags will get "--home=TMDIR -d outdir" appended.
 	tests := []struct {

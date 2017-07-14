@@ -63,25 +63,13 @@ func TestManuallyProcessArgs(t *testing.T) {
 
 }
 
-// resetEnv sets an env var, and returns a defer function to reset the env
-func resetEnv(name, val string) func() {
-	original, ok := os.LookupEnv(name)
-	os.Setenv(name, val)
-	if ok {
-		return func() { os.Setenv(name, original) }
-	}
-	return func() { os.Unsetenv(name) }
-}
-
 func TestLoadPlugins(t *testing.T) {
-	// Set helm home to point to testdata
-	old := settings.Home
+	cleanup := resetEnv()
+	defer cleanup()
+
 	settings.Home = "testdata/helmhome"
-	cleanup := resetEnv("HELM_HOME", settings.Home.String())
-	defer func() {
-		settings.Home = old
-		cleanup()
-	}()
+
+	os.Setenv("HELM_HOME", settings.Home.String())
 	hh := settings.Home
 
 	out := bytes.NewBuffer(nil)
@@ -148,14 +136,12 @@ func TestLoadPlugins(t *testing.T) {
 }
 
 func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
-	// Set helm home to point to testdata
-	old := settings.Home
+	cleanup := resetEnv()
+	defer cleanup()
+
 	settings.Home = "testdata/helmhome"
-	cleanup := resetEnv("HELM_NO_PLUGINS", "1")
-	defer func() {
-		settings.Home = old
-		cleanup()
-	}()
+
+	os.Setenv("HELM_NO_PLUGINS", "1")
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}

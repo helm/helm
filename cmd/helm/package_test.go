@@ -143,13 +143,14 @@ func TestPackage(t *testing.T) {
 	}
 
 	ensureTestHome(helmpath.Home(tmp), t)
-	oldhome := settings.Home
-	settings.Home = helmpath.Home(tmp)
+	cleanup := resetEnv()
 	defer func() {
-		settings.Home = oldhome
 		os.Chdir(origDir)
 		os.RemoveAll(tmp)
+		cleanup()
 	}()
+
+	settings.Home = helmpath.Home(tmp)
 
 	for _, tt := range tests {
 		buf := bytes.NewBuffer(nil)

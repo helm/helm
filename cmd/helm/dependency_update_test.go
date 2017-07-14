@@ -34,17 +34,17 @@ import (
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
-	// Set up a testing helm home
-	oldhome := settings.Home
 	hh, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings.Home = hh
+	cleanup := resetEnv()
 	defer func() {
 		os.RemoveAll(hh.String())
-		settings.Home = oldhome
+		cleanup()
 	}()
+
+	settings.Home = hh
 
 	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
@@ -129,17 +129,17 @@ func TestDependencyUpdateCmd(t *testing.T) {
 }
 
 func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
-	// Set up a testing helm home
-	oldhome := settings.Home
 	hh, err := tempHelmHome(t)
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings.Home = hh
+	cleanup := resetEnv()
 	defer func() {
 		os.RemoveAll(hh.String())
-		settings.Home = oldhome
+		cleanup()
 	}()
+
+	settings.Home = hh
 
 	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
