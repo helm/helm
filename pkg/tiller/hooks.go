@@ -44,6 +44,12 @@ var events = map[string]release.Hook_Event{
 	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
 }
 
+// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
+var deletePolices = map[string]release.Hook_DeletePolicy{
+	hooks.HookSucceeded: release.Hook_SUCCEEDED,
+	hooks.HookFailed:    release.Hook_FAILED,
+}
+
 // manifest represents a manifest file, which has a name and some content.
 type manifest struct {
 	name    string
@@ -113,6 +119,13 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 //		annotations:
 //			helm.sh/hook: pre-install
 //
+// To determine the policy to delete the hook, it looks for a YAML structure like this:
+//
+//  kind: SomeKind
+//  apiVersion: v1
+//  metadata:
+// 		annotations:
+// 			helm.sh/hook-delete-policy: hook-succeeded
 func (file *manifestFile) sort(result *result) error {
 	for _, m := range file.entries {
 		var entry util.SimpleHead
@@ -149,12 +162,13 @@ func (file *manifestFile) sort(result *result) error {
 		hw := calculateHookWeight(entry)
 
 		h := &release.Hook{
-			Name:     entry.Metadata.Name,
-			Kind:     entry.Kind,
-			Path:     file.path,
-			Manifest: m,
-			Events:   []release.Hook_Event{},
-			Weight:   hw,
+			Name:           entry.Metadata.Name,
+			Kind:           entry.Kind,
+			Path:           file.path,
+			Manifest:       m,
+			Events:         []release.Hook_Event{},
+			Weight:         hw,
+			DeletePolicies: []release.Hook_DeletePolicy{},
 		}
 
 		isKnownHook := false
@@ -173,6 +187,22 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		result.hooks = append(result.hooks, h)
+
+		isKnownDeletePolices := false
+		dps, ok := entry.Metadata.Annotations[hooks.HookDeleteAnno]
+		if ok {
+			for _, dp := range strings.Split(dps, ",") {
+				dp = strings.ToLower(strings.TrimSpace(dp))
+				p, exist := deletePolices[dp]
+				if exist {
+					isKnownDeletePolices = true
+					h.DeletePolicies = append(h.DeletePolicies, p)
+				}
+			}
+			if !isKnownDeletePolices {
+				log.Printf("info: skipping unknown hook delete policy: %q", dps)
+			}
+		}
 	}
 
 	return nil

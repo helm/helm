@@ -87,7 +87,7 @@ in the future.) It is considered good practice to add a hook weight, and set it
 to `0` if weight is not important.
 
 
-### Hook resources are unmanaged
+### Hook resources are not managed with correponding releases
 
 The resources that a hook creates are not tracked or managed as part of the
 release. Once Tiller verifies that the hook has reached its ready state, it
@@ -95,8 +95,8 @@ will leave the hook resource alone.
 
 Practically speaking, this means that if you create resources in a hook, you
 cannot rely upon `helm delete` to remove the resources. To destroy such
-resources, you need to write code to perform this operation in a `pre-delete`
-or `post-delete` hook.
+resources, you need to either write code to perform this operation in a `pre-delete`
+or `post-delete` hook or add `"helm.sh/hook-delete-policy"` annotation to the hook template file.
 
 ## Writing a Hook
 
@@ -122,6 +122,7 @@ metadata:
     # job is considered part of the release.
     "helm.sh/hook": post-install
     "helm.sh/hook-weight": "-5"
+    "helm/hook-delete-policy": hook-succeeded
 spec:
   template:
     metadata:
@@ -160,7 +161,7 @@ and a config map as a pre-install hook.
 When subcharts declare hooks, those are also evaluated. There is no way
 for a top-level chart to disable the hooks declared by subcharts.
 
-It is also possible to define a weight for a hook which will help build a
+It is possible to define a weight for a hook which will help build a
 deterministic executing order. Weights are defined using the following annotation:
 
 ```
@@ -171,4 +172,13 @@ deterministic executing order. Weights are defined using the following annotatio
 Hook weights can be positive or negative numbers but must be represented as
 strings. When Tiller starts the execution cycle of hooks of a particular Kind it
 will sort those hooks in ascending order. 
+
+It is also possible to define policies that determine when to delete corresponding hook resources. Hook deletion policies are defined using the following annotation:
+
+```
+  annotations:
+    "helm.sh/hook-delete-policy": hook-succeeded
+```
+
+When using `"helm.sh/hook-delete-policy"` annoation, you can choose its value from `"hook-succeeded"` and `"hook-failed"`. The value `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully excuted, while the value `"hook-failed"`specifies Tiller should delete the hook if the hook is failed during execuation.
 
