@@ -228,15 +228,15 @@ dependencies:
     version: 0.1.0
 ```
 
-In the above example we will get 3 depenendencies in all for `parentchart`
+In the above example we will get 3 dependencies in all for `parentchart`
 ```
 subchart
 new-subchart-1
 new-subchart-2
 ```
 
-Manual way of achieving this is copy/pasting same chart in
-`charts/` directory multiple times with different name.
+The manual way of achieving this is by copy/pasting the same chart in the
+`charts/` directory multiple times with different names.
 
 #### Tags and Condition fields in requirements.yaml
 
