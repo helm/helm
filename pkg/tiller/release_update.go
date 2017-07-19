@@ -30,12 +30,6 @@ import (
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
 func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
-	err := s.env.Releases.LockRelease(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	defer s.env.Releases.UnlockRelease(req.Name)
-
 	s.Log("preparing update for %s", req.Name)
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {

@@ -173,7 +173,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	// push the configmap object out into the kubiverse
 	if _, err := cfgmaps.impl.Create(obj); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return ErrReleaseExists(rls.Name)
+			return ErrReleaseExists(key)
 		}
 
 		cfgmaps.Log("create: failed to create: %s", err)
