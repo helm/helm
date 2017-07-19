@@ -272,31 +272,3 @@ func assertErrNil(eh func(args ...interface{}), err error, message string) {
 		eh(fmt.Sprintf("%s: %q", message, err))
 	}
 }
-
-func TestReleaseLocksNotExist(t *testing.T) {
-	s := Init(driver.NewMemory())
-
-	err := s.LockRelease("no-such-release")
-
-	if err == nil {
-		t.Errorf("Exptected error when trying to lock non-existing release, got nil")
-	}
-}
-
-func TestReleaseLocks(t *testing.T) {
-	s := Init(driver.NewMemory())
-
-	releaseName := "angry-beaver"
-	rls := ReleaseTestData{
-		Name:    releaseName,
-		Version: 1,
-	}.ToRelease()
-
-	s.Create(rls)
-
-	err := s.LockRelease(releaseName)
-	if err != nil {
-		t.Errorf("Exptected nil err when locking existing release")
-	}
-	s.UnlockRelease(releaseName)
-}

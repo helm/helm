@@ -34,13 +34,6 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 		s.Log("updateRelease: Release name is invalid: %s", req.Name)
 		return nil, err
 	}
-
-	err := s.env.Releases.LockRelease(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	defer s.env.Releases.UnlockRelease(req.Name)
-
 	s.Log("preparing update for %s", req.Name)
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
