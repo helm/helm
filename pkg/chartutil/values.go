@@ -392,9 +392,9 @@ func istable(v interface{}) bool {
 // The path starts at the root of the YAML structure and is comprised of YAML keys separated by periods.
 // Given the following YAML data the value at path "chapter.one.title" is "Loomings".
 //
-// 		chapter:
-//		  one:
-//		    title: "Loomings"
+//	chapter:
+//	  one:
+//	    title: "Loomings"
 func (v Values) PathValue(ypath string) (interface{}, error) {
 	if len(ypath) == 0 {
 		return nil, errors.New("YAML path string cannot be zero length")
