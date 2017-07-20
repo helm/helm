@@ -350,6 +350,10 @@ func TestCoalesceValues(t *testing.T) {
 		}
 	}
 
+	// When the YAML value is null, we remove the value's key.
+	// This allows Helm's various sources of values (value files or --set) to
+	// remove incompatible keys from any previous chart, file, or set values.
+	// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
 	nullKeys := []string{"bottom", "right", "left", "front"}
 	for _, nullKey := range nullKeys {
 		if _, ok := v[nullKey]; ok {
