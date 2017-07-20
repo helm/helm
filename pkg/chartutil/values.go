@@ -391,7 +391,7 @@ func istable(v interface{}) bool {
 // PathValue takes a yaml path with . notation and returns the value if exists
 func (v Values) PathValue(ypath string) (interface{}, error) {
 	if len(ypath) == 0 {
-		return nil, errors.New("yaml path string cannot be zero length")
+		return nil, errors.New("YAML path string cannot be zero length")
 	}
 	yps := strings.Split(ypath, ".")
 	if len(yps) == 1 {
