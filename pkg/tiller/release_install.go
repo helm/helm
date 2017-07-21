@@ -116,7 +116,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		Info: &release.Info{
 			FirstDeployed: ts,
 			LastDeployed:  ts,
-			Status:        &release.Status{Code: release.Status_UNKNOWN},
+			Status:        &release.Status{Code: release.Status_PENDING_INSTALL},
 			Description:   "Initial install underway", // Will be overwritten.
 		},
 		Manifest: manifestDoc.String(),
@@ -172,6 +172,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			Recreate: false,
 			Timeout:  req.Timeout,
 		}
+		s.recordRelease(r, false)
 		if err := s.ReleaseModule.Update(old, r, updateReq, s.env); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
@@ -179,19 +180,20 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(old, true)
-			s.recordRelease(r, false)
+			s.recordRelease(r, true)
 			return res, err
 		}
 
 	default:
 		// nothing to replace, create as normal
 		// regular manifests
+		s.recordRelease(r, false)
 		if err := s.ReleaseModule.Create(r, req, s.env); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
-			s.recordRelease(r, false)
+			s.recordRelease(r, true)
 			return res, fmt.Errorf("release %s failed: %s", r.Name, err)
 		}
 	}
@@ -203,7 +205,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			s.Log("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
-			s.recordRelease(r, false)
+			s.recordRelease(r, true)
 			return res, err
 		}
 	}
@@ -217,7 +219,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	//
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
-	s.recordRelease(r, false)
+	s.recordRelease(r, true)
 
 	return res, nil
 }

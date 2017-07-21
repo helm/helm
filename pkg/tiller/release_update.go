@@ -47,6 +47,13 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 		return nil, err
 	}
 
+	if !req.DryRun {
+		s.Log("creating updated release for %s", req.Name)
+		if err := s.env.Releases.Create(updatedRelease); err != nil {
+			return nil, err
+		}
+	}
+
 	s.Log("performing update for %s", req.Name)
 	res, err := s.performUpdate(currentRelease, updatedRelease, req)
 	if err != nil {
@@ -54,8 +61,8 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	}
 
 	if !req.DryRun {
-		s.Log("creating updated release for %s", req.Name)
-		if err := s.env.Releases.Create(updatedRelease); err != nil {
+		s.Log("updating status for updated release for %s", req.Name)
+		if err := s.env.Releases.Update(updatedRelease); err != nil {
 			return res, err
 		}
 	}
@@ -116,7 +123,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  ts,
-			Status:        &release.Status{Code: release.Status_UNKNOWN},
+			Status:        &release.Status{Code: release.Status_PENDING_UPGRADE},
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
 		Version:  revision,
