@@ -151,6 +151,40 @@ func TestUpgradeCmd(t *testing.T) {
 			resp: releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
 			err:  true,
 		},
+		{
+			name: "upgrade a release with different chart",
+			args: []string{"funny-bunny", chartPath},
+			resp: releaseMock(&releaseOptions{name: "funny-bunny", chart: ch3}),
+			err:  true,
+		},
+		{
+			name:  "upgrade a release with bad version",
+			args:  []string{"funny-bunny", chartPath},
+			flags: []string{"--version", "a.b"},
+			resp:  releaseMock(&releaseOptions{name: "funny-bunny", chart: ch}),
+			err:   true,
+		},
+		{
+			name:  "upgrade a release with same version",
+			args:  []string{"funny-bunny", chartPath},
+			flags: []string{"--version", "0.1.0"},
+			resp:  releaseMock(&releaseOptions{name: "funny-bunny", chart: ch}),
+			err:   true,
+		},
+		{
+			name:  "upgrade a release with lesser version",
+			args:  []string{"funny-bunny", chartPath},
+			flags: []string{"--version", "0.0.1"},
+			resp:  releaseMock(&releaseOptions{name: "funny-bunny", chart: ch}),
+			err:   true,
+		},
+		{
+			name:     "force upgrade a release with lesser version",
+			args:     []string{"funny-bunny", chartPath},
+			flags:    []string{"--version", "0.0.1", "--force"},
+			resp:     releaseMock(&releaseOptions{name: "funny-bunny", chart: ch}),
+			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+		},
 	}
 
 	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
