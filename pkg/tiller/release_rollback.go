@@ -29,12 +29,6 @@ import (
 
 // RollbackRelease rolls back to a previous version of the given release.
 func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackReleaseRequest) (*services.RollbackReleaseResponse, error) {
-	err := s.env.Releases.LockRelease(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	defer s.env.Releases.UnlockRelease(req.Name)
-
 	s.Log("preparing rollback of %s", req.Name)
 	currentRelease, targetRelease, err := s.prepareRollback(req)
 	if err != nil {
