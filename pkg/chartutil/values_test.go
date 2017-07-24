@@ -275,6 +275,7 @@ func ttpl(tpl string, v map[string]interface{}) (string, error) {
 	return b.String(), nil
 }
 
+// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
 var testCoalesceValuesYaml = `
 top: yup
 bottom: null

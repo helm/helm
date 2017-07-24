@@ -278,26 +278,26 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 	}
 
 	for key, val := range nv {
-		if _, ok := v[key]; !ok {
+		if value, ok := v[key]; ok {
+			if value == nil {
+				// When the YAML value is null, we remove the value's key.
+				// This allows Helm's various sources of values (value files or --set) to
+				// remove incompatible keys from any previous chart, file, or set values.
+				delete(v, key)
+			} else if dest, ok := value.(map[string]interface{}); ok {
+				// if v[key] is a table, merge nv's val table into v[key].
+				src, ok := val.(map[string]interface{})
+				if !ok {
+					log.Printf("warning: skipped value for %s: Not a table.", key)
+					continue
+				}
+				// Because v has higher precedence than nv, dest values override src
+				// values.
+				coalesceTables(dest, src)
+			}
+		} else {
 			// If the key is not in v, copy it from nv.
 			v[key] = val
-		} else if ok && v[key] == nil {
-			// When the YAML value is null, we remove the value's key.
-			// This allows Helm's various sources of values (value files or --set) to
-			// remove incompatible keys from any previous chart, file, or set values.
-			// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
-			delete(v, key)
-			continue
-		} else if dest, ok := v[key].(map[string]interface{}); ok {
-			// if v[key] is a table, merge nv's val table into v[key].
-			src, ok := val.(map[string]interface{})
-			if !ok {
-				log.Printf("warning: skipped value for %s: Not a table.", key)
-				continue
-			}
-			// Because v has higher precedence than nv, dest values override src
-			// values.
-			coalesceTables(dest, src)
 		}
 	}
 	return v, nil
