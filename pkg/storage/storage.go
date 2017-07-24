@@ -193,8 +193,6 @@ func (s *Storage) LockRelease(name string) error {
 // If release doesn't exist or wasn't previously locked - the unlock will pass
 func (s *Storage) UnlockRelease(name string) {
 	s.Log("unlocking release %s", name)
-	s.releaseLocksLock.Lock()
-	defer s.releaseLocksLock.Unlock()
 
 	var lock *sync.Mutex
 	lock, exists := s.releaseLocks[name]
