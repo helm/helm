@@ -448,10 +448,12 @@ chapter:
 	if _, err := d.PathValue("chapter.doesntexist.one"); err == nil {
 		t.Errorf("Non-existent key in middle of path should return error: %s\n%v", err, d)
 	}
+	if _, err := d.PathValue(""); err == nil {
+		t.Error("Asking for the value from an empty path should yield an error")
+	}
 	if v, err := d.PathValue("title"); err == nil {
 		if v != "Moby Dick" {
 			t.Errorf("Failed to return values for root key title")
 		}
 	}
-
 }

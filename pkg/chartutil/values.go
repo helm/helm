@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -387,10 +388,16 @@ func istable(v interface{}) bool {
 	return ok
 }
 
-// PathValue takes a yaml path with . notation and returns the value if exists
+// PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
+// The path starts at the root of the YAML structure and is comprised of YAML keys separated by periods.
+// Given the following YAML data the value at path "chapter.one.title" is "Loomings".
+//
+//	chapter:
+//	  one:
+//	    title: "Loomings"
 func (v Values) PathValue(ypath string) (interface{}, error) {
 	if len(ypath) == 0 {
-		return nil, fmt.Errorf("yaml path string cannot be zero length")
+		return nil, errors.New("YAML path string cannot be zero length")
 	}
 	yps := strings.Split(ypath, ".")
 	if len(yps) == 1 {
