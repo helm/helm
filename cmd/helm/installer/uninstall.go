@@ -28,6 +28,7 @@ import (
 const (
 	deploymentName = "tiller-deploy"
 	serviceName    = "tiller-deploy"
+	secretName     = "tiller-secret"
 )
 
 // Uninstall uses Kubernetes client to uninstall Tiller.
@@ -35,7 +36,10 @@ func Uninstall(client internalclientset.Interface, opts *Options) error {
 	if err := deleteService(client.Core(), opts.Namespace); err != nil {
 		return err
 	}
-	return deleteDeployment(client, opts.Namespace)
+	if err := deleteDeployment(client, opts.Namespace); err != nil {
+		return err
+	}
+	return deleteSecret(client.Core(), opts.Namespace)
 }
 
 // deleteService deletes the Tiller Service resource
@@ -50,6 +54,12 @@ func deleteService(client coreclient.ServicesGetter, namespace string) error {
 func deleteDeployment(client internalclientset.Interface, namespace string) error {
 	reaper, _ := kubectl.ReaperFor(extensions.Kind("Deployment"), client)
 	err := reaper.Stop(namespace, deploymentName, 0, nil)
+	return ingoreNotFound(err)
+}
+
+// deleteSecret deletes the Tiller Secret resource
+func deleteSecret(client coreclient.SecretsGetter, namespace string) error {
+	err := client.Secrets(namespace).Delete(secretName, &metav1.DeleteOptions{})
 	return ingoreNotFound(err)
 }
 
