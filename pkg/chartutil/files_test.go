@@ -18,8 +18,8 @@ package chartutil
 import (
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/any"
 	"github.com/stretchr/testify/assert"
+	any "k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 var cases = []struct {

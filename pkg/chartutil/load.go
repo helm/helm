@@ -29,7 +29,6 @@ import (
 	"strings"
 
 	"github.com/facebookgo/symwalk"
-	"github.com/golang/protobuf/ptypes/any"
 
 	"k8s.io/helm/pkg/ignore"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -139,7 +138,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			c.Templates = append(c.Templates, &chart.Template{Name: f.Name, Data: f.Data})
 		} else if strings.HasPrefix(f.Name, "charts/") {
 			if filepath.Ext(f.Name) == ".prov" {
-				c.Files = append(c.Files, &any.Any{TypeUrl: f.Name, Value: f.Data})
+				c.Files = append(c.Files, &chart.Any{TypeUrl: f.Name, Value: f.Data})
 				continue
 			}
 			cname := strings.TrimPrefix(f.Name, "charts/")
@@ -151,7 +150,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			scname := parts[0]
 			subcharts[scname] = append(subcharts[scname], &BufferedFile{Name: cname, Data: f.Data})
 		} else {
-			c.Files = append(c.Files, &any.Any{TypeUrl: f.Name, Value: f.Data})
+			c.Files = append(c.Files, &chart.Any{TypeUrl: f.Name, Value: f.Data})
 		}
 	}
 

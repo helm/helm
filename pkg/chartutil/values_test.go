@@ -23,7 +23,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/golang/protobuf/ptypes/any"
+	any "k8s.io/helm/pkg/proto/hapi/chart"
 
 	kversion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/helm/pkg/proto/hapi/chart"

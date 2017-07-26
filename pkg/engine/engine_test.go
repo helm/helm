@@ -24,7 +24,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 
-	"github.com/golang/protobuf/ptypes/any"
+	any "k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 func TestSortTemplates(t *testing.T) {
