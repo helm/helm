@@ -124,6 +124,9 @@ func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *se
 func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
 	statusRequest := &rudderAPI.ReleaseStatusRequest{Release: r}
 	resp, err := rudder.ReleaseStatus(statusRequest)
+	if resp == nil {
+		return "", err
+	}
 	return resp.Info.Status.Resources, err
 }
 
@@ -131,10 +134,17 @@ func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleas
 func (m *RemoteReleaseModule) Delete(r *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (string, []error) {
 	deleteRequest := &rudderAPI.DeleteReleaseRequest{Release: r}
 	resp, err := rudder.DeleteRelease(deleteRequest)
+
+	errs := make([]error, 0)
+	result := ""
+
 	if err != nil {
-		return resp.Release.Manifest, []error{err}
+		errs = append(errs, err)
 	}
-	return resp.Release.Manifest, []error{}
+	if resp != nil {
+		result = resp.Release.Manifest
+	}
+	return result, errs
 }
 
 // DeleteRelease is a helper that allows Rudder to delete a release without exposing most of Tiller inner functions
