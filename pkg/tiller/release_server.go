@@ -78,7 +78,7 @@ var ListDefaultLimit int64 = 512
 // prevents an empty string from matching.
 var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
 
-// ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
+// ReleaseServer implements the server-side gRPC endpoint for the release service.
 type ReleaseServer struct {
 	ReleaseModule
 	env       *environment.Environment

@@ -172,6 +172,14 @@ func start() {
 	}()
 
 	go func() {
+		svc := tiller.NewInfoServer(env, clientset)
+		services.RegisterInfoServiceServer(rootServer, svc)
+		if err := rootServer.Serve(lstn); err != nil {
+			srvErrCh <- err
+		}
+	}()
+
+	go func() {
 		mux := newProbesMux()
 
 		// Register gRPC server to prometheus to initialized matrix

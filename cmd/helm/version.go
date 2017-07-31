@@ -71,9 +71,9 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if !version.showClient && !version.showServer {
 				version.showClient, version.showServer = true, true
 			}
-			if version.showServer {
+			if version.showServer || settings.Debug {
 				// We do this manually instead of in PreRun because we only
-				// need a tunnel if server version is requested.
+				// need a tunnel if server version or debug is requested.
 				setupConnection(cmd, args)
 			}
 			version.client = ensureHelmClient(version.client)
@@ -89,6 +89,17 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (v *versionCmd) run() error {
+	if settings.Debug {
+		resp, err := v.client.GetKubeInfo()
+		if err != nil {
+			if grpc.Code(err) == codes.Unimplemented {
+				return errors.New("server is too old to know kubernetes info")
+			}
+			debug("%s", err)
+			return errors.New("cannot connect to Tiller")
+		}
+		debug("Kubernetes: %+v\n", resp.Info)
+	}
 
 	if v.showClient {
 		cv := version.GetVersionProto()

@@ -197,6 +197,19 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 	return h.version(ctx, req)
 }
 
+// GetKubeInfo returns the kubernetes server information.
+func (h *Client) GetKubeInfo() (*rls.GetKubeInfoResponse, error) {
+	req := &rls.GetKubeInfoRequest{}
+	ctx := NewContext()
+
+	if h.opts.before != nil {
+		if err := h.opts.before(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	return h.kubeInfo(ctx, req)
+}
+
 // RollbackRelease rolls back a release to the previous version.
 func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
 	for _, opt := range opts {
@@ -401,6 +414,17 @@ func (h *Client) version(ctx context.Context, req *rls.GetVersionRequest) (*rls.
 
 	rlc := rls.NewReleaseServiceClient(c)
 	return rlc.GetVersion(ctx, req)
+}
+
+func (h *Client) kubeInfo(ctx context.Context, req *rls.GetKubeInfoRequest) (*rls.GetKubeInfoResponse, error) {
+	c, err := h.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	rlc := rls.NewInfoServiceClient(c)
+	return rlc.GetKubeInfo(ctx, req)
 }
 
 // Executes tiller.GetHistory RPC.

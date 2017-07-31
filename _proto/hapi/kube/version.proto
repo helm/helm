@@ -1,0 +1,31 @@
+// Copyright 2017 The Kubernetes Authors All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package hapi.kube;
+
+option go_package = "kube";
+
+message Version {
+	string major = 1;
+	string minor = 2;
+	string git_version = 3;
+	string git_commit = 4;
+	string git_tree_state = 5;
+	string build_date = 6;
+	string go_version = 7;
+	string compiler = 8;
+	string platform = 9;
+}
