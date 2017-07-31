@@ -23,6 +23,7 @@ import (
 
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
@@ -53,7 +54,7 @@ func KubeClient() (*kubernetes.Clientset, error) {
 
 func DeleteNS(clientset kubernetes.Interface, namespace *v1.Namespace) {
 	defer GinkgoRecover()
-	pods, err := clientset.Core().Pods(namespace.Name).List(v1.ListOptions{})
+	pods, err := clientset.Core().Pods(namespace.Name).List(metav1.ListOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	for _, pod := range pods.Items {
 		clientset.Core().Pods(namespace.Name).Delete(pod.Name, nil)
@@ -69,7 +70,7 @@ func WaitForPod(clientset kubernetes.Interface, namespace string, name string, p
 	defer GinkgoRecover()
 	var podUpdated *v1.Pod
 	Eventually(func() error {
-		podUpdated, err := clientset.Core().Pods(namespace).Get(name)
+		podUpdated, err := clientset.Core().Pods(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}

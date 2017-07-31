@@ -22,6 +22,7 @@ import (
 
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 
@@ -35,7 +36,8 @@ import (
 
 const (
 	experimentalTillerImage string = "nebril/tiller"
-	rudderAppcontroller     string = "rudder"
+	rudderPodName           string = "rudder"
+	rudderImage             string = "nebril/rudder-fed"
 )
 
 // HelmManager provides functionality to install client/server helm and use it
@@ -58,27 +60,27 @@ type HelmManager interface {
 
 // BinaryHelmManager uses helm binary to work with helm server
 type BinaryHelmManager struct {
-	Clientset kubernetes.Interface
-	Namespace string
-	HelmBin   string
+	Clientset  kubernetes.Interface
+	Namespace  string
+	HelmBin    string
+	KubectlBin string
 }
 
 func (m *BinaryHelmManager) InstallTiller() error {
 	arg := make([]string, 0, 5)
-	arg = append(arg, "init", "--tiller-namespace", m.Namespace)
+	var err error
 	if enableRudder {
-		arg = append(arg, "--tiller-image", experimentalTillerImage)
+		arg = append(arg, "create", "-f", "manifests/", "-n", m.Namespace)
+		_, err = m.executeUsingKubectl(arg...)
+	} else {
+		arg = append(arg, "init", "--tiller-namespace", m.Namespace)
+		_, err = m.executeUsingHelm(arg...)
 	}
-	_, err := m.executeUsingHelm(arg...)
 	if err != nil {
 		return err
 	}
 	By("Waiting for tiller pod")
 	waitTillerPod(m.Clientset, m.Namespace)
-	if enableRudder {
-		By("Enabling rudder pod")
-		prepareRudder(m.Clientset, m.Namespace)
-	}
 	return nil
 }
 
@@ -91,9 +93,6 @@ func (m *BinaryHelmManager) DeleteTiller(removeHelmHome bool) error {
 	_, err := m.executeUsingHelm(arg...)
 	if err != nil {
 		return err
-	}
-	if enableRudder {
-		return deleteRudder(m.Clientset, m.Namespace)
 	}
 	return nil
 }
@@ -147,12 +146,25 @@ func (m *BinaryHelmManager) executeUsingHelmInNamespace(arg ...string) (string, 
 }
 
 func (m *BinaryHelmManager) executeUsingHelm(arg ...string) (string, error) {
-	cmd := exec.Command(m.HelmBin, arg...)
+	return m.executeUsingBinary(m.HelmBin, arg...)
+}
+
+func (m *BinaryHelmManager) executeUsingKubectl(arg ...string) (string, error) {
+	return m.executeUsingBinary(m.KubectlBin, arg...)
+}
+
+func (m *BinaryHelmManager) executeUsingBinary(binary string, arg ...string) (string, error) {
+	cmd := exec.Command(binary, arg...)
 	Logf("Running command %+v\n", cmd.Args)
 	stdout, err := cmd.Output()
 	if err != nil {
-		stderr := err.(*exec.ExitError)
-		Logf("Command %+v, Err %s\n", cmd.Args, stderr.Stderr)
+		switch err.(type) {
+		case *exec.ExitError:
+			stderr := err.(*exec.ExitError)
+			Logf("Command %+v, Err %s\n", cmd.Args, stderr.Stderr)
+		case *exec.Error:
+			Logf("Command %+v, Err %s\n", cmd.Args, err)
+		}
 		return "", err
 	}
 	return string(stdout), nil
@@ -186,8 +198,8 @@ func regexpKeyFromStructuredOutput(key, output string) string {
 
 func prepareRudder(clientset kubernetes.Interface, namespace string) {
 	rudder := &v1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: rudderAppcontroller,
+		ObjectMeta: metav1.ObjectMeta{
+			Name: rudderPodName,
 		},
 		Spec: v1.PodSpec{
 			RestartPolicy: "Always",
@@ -202,11 +214,11 @@ func prepareRudder(clientset kubernetes.Interface, namespace string) {
 	}
 	_, err := clientset.Core().Pods(namespace).Create(rudder)
 	Expect(err).NotTo(HaveOccurred())
-	WaitForPod(clientset, namespace, rudderAppcontroller, v1.PodRunning)
+	WaitForPod(clientset, namespace, rudderPodName, v1.PodRunning)
 }
 
 func deleteRudder(clientset kubernetes.Interface, namespace string) error {
-	return clientset.Core().Pods(namespace).Delete(rudderAppcontroller, nil)
+	return clientset.Core().Pods(namespace).Delete(rudderPodName, nil)
 }
 
 func getNameFromHelmOutput(output string) string {
@@ -219,7 +231,7 @@ func getStatusFromHelmOutput(output string) string {
 
 func waitTillerPod(clientset kubernetes.Interface, namespace string) {
 	Eventually(func() bool {
-		pods, err := clientset.Core().Pods(namespace).List(v1.ListOptions{})
+		pods, err := clientset.Core().Pods(namespace).List(metav1.ListOptions{})
 		if err != nil {
 			return false
 		}
