@@ -296,7 +296,7 @@ nodeSelector:
   kubernetes.io/role: master
 ```
 
-Deeply nested datastructures can be difficult to express using `--set`. Chart
+Deeply nested data structures can be difficult to express using `--set`. Chart
 designers are encouraged to consider the `--set` usage when designing the format
 of a `values.yaml` file.
 
