@@ -60,6 +60,7 @@ You can reach the Helm community and developers via the following channels:
 - [Kubernetes Slack](https://slack.k8s.io):
   - #helm-users
   - #helm-dev
+  - #charts
 - Mailing List: https://groups.google.com/forum/#!forum/kubernetes-sig-apps
 - Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/4526666954](https://zoom.us/j/4526666954)
 
