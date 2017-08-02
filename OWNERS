@@ -1,5 +1,6 @@
 maintainers:
   - adamreese
+  - bacongobbler
   - michelleN
   - migmartri
   - prydonius
@@ -10,6 +11,7 @@ maintainers:
   - viglesiasce
 reviewers:
   - adamreese
+  - bacongobbler
   - fibonacci1729
   - michelleN
   - migmartri
