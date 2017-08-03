@@ -263,9 +263,8 @@ in using the provenance system:
   - Keybase also has fabulous documentation available
   - While we haven't tested it, Keybase's "secure website" feature could
     be used to serve Helm charts.
-- The [https://github.com/kubernetes/charts](official Kubernetes Charts
-  project) is trying to solve this problem for the official chart
-  repository.
+- The [official Kubernetes Charts project](https://github.com/kubernetes/charts)
+  is trying to solve this problem for the official chart repository.
   - There is a long issue there [detailing the current thoughts](https://github.com/kubernetes/charts/issues/23).
   - The basic idea is that an official "chart reviewer" signs charts with
     her or his key, and the resulting provenance file is then uploaded
