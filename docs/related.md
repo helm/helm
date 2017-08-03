@@ -35,6 +35,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
 - [App Registry](https://github.com/app-registry/helm-plugin) - Plugin to manage charts via the [App Registry specification](https://github.com/app-registry/spec)
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
+- [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
 
 We also encourage GitHub authors to use the [helm-plugin](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories)
 tag on their plugin repositories.
