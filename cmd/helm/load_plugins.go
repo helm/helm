@@ -81,6 +81,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 				prog := exec.Command(main, argv...)
 				prog.Env = os.Environ()
+				prog.Stdin = os.Stdin
 				prog.Stdout = out
 				prog.Stderr = os.Stderr
 				if err := prog.Run(); err != nil {
