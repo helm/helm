@@ -52,8 +52,8 @@ func TestResetCmd(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	actions := fc.Actions()
-	if len(actions) != 2 {
-		t.Errorf("Expected 2 actions, got %d", len(actions))
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions, got %d", len(actions))
 	}
 	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
@@ -86,8 +86,8 @@ func TestResetCmd_removeHelmHome(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	actions := fc.Actions()
-	if len(actions) != 2 {
-		t.Errorf("Expected 2 actions, got %d", len(actions))
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions, got %d", len(actions))
 	}
 	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
@@ -157,8 +157,8 @@ func TestReset_forceFlag(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	actions := fc.Actions()
-	if len(actions) != 2 {
-		t.Errorf("Expected 2 actions, got %d", len(actions))
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions, got %d", len(actions))
 	}
 	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {

@@ -251,7 +251,6 @@ func createSecret(client corev1.SecretsGetter, opts *Options) error {
 
 // generateSecret builds the secret object that hold Tiller secrets.
 func generateSecret(opts *Options) (*v1.Secret, error) {
-	const secretName = "tiller-secret"
 
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	secret := &v1.Secret{

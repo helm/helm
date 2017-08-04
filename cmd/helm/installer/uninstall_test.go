@@ -34,8 +34,8 @@ func TestUninstall(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
-	if actions := fc.Actions(); len(actions) != 6 {
-		t.Errorf("unexpected actions: %v, expected 6 actions got %d", actions, len(actions))
+	if actions := fc.Actions(); len(actions) != 7 {
+		t.Errorf("unexpected actions: %v, expected 7 actions got %d", actions, len(actions))
 	}
 }
 
@@ -50,8 +50,8 @@ func TestUninstall_serviceNotFound(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
-	if actions := fc.Actions(); len(actions) != 6 {
-		t.Errorf("unexpected actions: %v, expected 6 actions got %d", actions, len(actions))
+	if actions := fc.Actions(); len(actions) != 7 {
+		t.Errorf("unexpected actions: %v, expected 7 actions got %d", actions, len(actions))
 	}
 }
 
@@ -66,7 +66,23 @@ func TestUninstall_deploymentNotFound(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
-	if actions := fc.Actions(); len(actions) != 6 {
-		t.Errorf("unexpected actions: %v, expected 6 actions got %d", actions, len(actions))
+	if actions := fc.Actions(); len(actions) != 7 {
+		t.Errorf("unexpected actions: %v, expected 7 actions got %d", actions, len(actions))
+	}
+}
+
+func TestUninstall_secretNotFound(t *testing.T) {
+	fc := &fake.Clientset{}
+	fc.AddReactor("delete", "secrets", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewNotFound(api.Resource("secrets"), "1")
+	})
+
+	opts := &Options{Namespace: api.NamespaceDefault}
+	if err := Uninstall(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 7 {
+		t.Errorf("unexpected actions: %v, expect 7 actions got %d", actions, len(actions))
 	}
 }
