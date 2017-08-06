@@ -44,6 +44,7 @@ tag on their plugin repositories.
 
 Tools layered on top of Helm or Tiller.
 
+- [Wheel](https://github.com/appscode/wheel) - Ajax friendly Helm Tiller Proxy using [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway)
 - [Quay App Registry](https://coreos.com/blog/quay-application-registry-for-kubernetes.html) - Open Kubernetes application registry, including a Helm access client
 - [Chartify](https://github.com/appscode/chartify) - Generate Helm charts from existing Kubernetes resources.
 - [VIM-Kubernetes](https://github.com/andrewstuart/vim-kubernetes) - VIM plugin for Kubernetes and Helm
