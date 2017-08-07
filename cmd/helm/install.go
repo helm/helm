@@ -41,6 +41,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
+	"net/url"
 )
 
 const installDesc = `
@@ -175,7 +176,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
+	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
 	f.StringVarP(&inst.name, "name", "n", "", "release name. If unspecified, it will autogenerate one for you")
 	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
@@ -316,8 +317,9 @@ func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 		if strings.TrimSpace(filePath) == "-" {
 			bytes, err = ioutil.ReadAll(os.Stdin)
 		} else {
-			bytes, err = ioutil.ReadFile(filePath)
+			bytes, err = readFile(filePath)
 		}
+
 		if err != nil {
 			return []byte{}, err
 		}
@@ -468,4 +470,24 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 		return fmt.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+//readFile load a file from the local directory or a remote file with a url.
+func readFile(filePath string) ([]byte, error) {
+	u, _ := url.Parse(filePath)
+	p := getter.All(settings)
+
+	// FIXME: maybe someone handle other protocols like ftp.
+	getterConstructor, err := p.ByScheme(u.Scheme)
+
+	if err != nil {
+		return ioutil.ReadFile(filePath)
+	} else {
+		getter, err := getterConstructor(filePath, "", "", "")
+		if err != nil {
+			return []byte{}, err
+		}
+		data, err := getter.Get(filePath)
+		return data.Bytes(), err
+	}
 }
