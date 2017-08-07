@@ -19,9 +19,9 @@ $ mv alpine-0.1.0.tgz fantastic-charts/
 Use helm to generate an updated index.yaml file by passing in the directory path and the url of the remote repository to the `helm repo index` command like this:
 
 ```console
-$ helm repo index fantastic-charts/ --url https://fantastic-charts.storage.googleapis.com
+$ helm repo index --url https://fantastic-charts.storage.googleapis.com fantastic-charts
 ```
-This will generate an updated index.yaml file and place in the `fantastic-charts/` directory.
+This will generate an updated index.yaml file and place in the `fantastic-charts` directory.
 
 ## Sync your local and remote chart repositories
 Upload the contents of the directory to your GCS bucket by running `scripts/sync-repo.sh` and pass in the local directory name and the GCS bucket name.
