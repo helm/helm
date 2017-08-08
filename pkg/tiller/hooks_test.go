@@ -194,7 +194,7 @@ metadata:
 	}
 
 	// Verify the sort order
-	sorted := []manifest{}
+	sorted := []Manifest{}
 	for _, s := range data {
 		manifests := util.SplitManifests(s.manifest)
 
@@ -211,10 +211,10 @@ metadata:
 
 			//only keep track of non-hook manifests
 			if err == nil && s.hooks[name] == nil {
-				another := manifest{
-					content: m,
-					name:    name,
-					head:    &sh,
+				another := Manifest{
+					Content: m,
+					Name:    name,
+					Head:    &sh,
 				}
 				sorted = append(sorted, another)
 			}
@@ -223,8 +223,8 @@ metadata:
 
 	sorted = sortByKind(sorted, InstallOrder)
 	for i, m := range generic {
-		if m.content != sorted[i].content {
-			t.Errorf("Expected %q, got %q", m.content, sorted[i].content)
+		if m.Content != sorted[i].Content {
+			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)
 		}
 	}
 }
