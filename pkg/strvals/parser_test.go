@@ -94,6 +94,10 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]interface{}{"name1": "", "name2": "value2"},
 		},
 		{
+			str:    "leading_zeros=00009",
+			expect: map[string]interface{}{"leading_zeros": "00009"},
+		},
+		{
 			str: "name1,name2=",
 			err: true,
 		},

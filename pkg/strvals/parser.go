@@ -308,8 +308,11 @@ func typedVal(v []rune) interface{} {
 		return false
 	}
 
-	if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
-		return iv
+	// If this value does not start with zero, try parsing it to an int
+	if len(val) != 0 && val[0] != '0' {
+		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
+			return iv
+		}
 	}
 
 	return val
