@@ -153,6 +153,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	objPods := c.getRelationPods(infos)
+
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
 		log.Printf("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
@@ -166,11 +169,25 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], info.Object)
+
+		if gvk.Kind != "Pod" {
+			objs[vk] = append(objs[vk], info.Object)
+		} else {
+			if !IsFoundPodInfo(objPods[vk], info) {
+				objs[vk] = append(objs[vk], info.Object)
+			}
+		}
 		return nil
 	})
 	if err != nil {
 		return "", err
+	}
+
+	//here, we will add the objPods to the objs
+	for key, podItems := range objPods {
+		for _, pod := range podItems {
+			objs[key] = append(objs[key], &pod)
+		}
 	}
 
 	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
@@ -594,4 +611,90 @@ func watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
 	})
 
 	return err
+}
+func (c *Client) getRelationPods(infos []*resource.Info) map[string][]api.Pod {
+	var objPods = make(map[string][]api.Pod)
+
+	for _, value := range infos {
+		objPods, _ = c.getSelectRelationPod(value, objPods)
+	}
+	return objPods
+}
+
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]api.Pod) (map[string][]api.Pod, error) {
+	if info == nil {
+		return objPods, nil
+	}
+
+	err := info.Get()
+	if err != nil {
+		return objPods, err
+	}
+
+	versioned, err := c.AsVersionedObject(info.Object)
+	if runtime.IsNotRegisteredError(err) {
+		return objPods, nil
+	}
+	if err != nil {
+		return objPods, err
+	}
+
+	selector, err := getSelectorFromObject(versioned)
+
+	log.Printf("getSelectRelationPod selector: %+v", selector)
+	if err != nil {
+		return objPods, err
+	}
+	client, _ := c.ClientSet()
+
+	pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
+		FieldSelector: fields.Everything().String(),
+		LabelSelector: labels.Set(selector).AsSelector().String(),
+	})
+	if err != nil {
+		return objPods, err
+	}
+
+	for _, pod := range pods.Items {
+
+		log.Printf("get select relation pod: %v/%v", pod.Namespace, pod.Name)
+
+		if pod.APIVersion == "" {
+			pod.APIVersion = "v1"
+		}
+
+		if pod.Kind == "" {
+			pod.Kind = "Pod"
+		}
+
+		vk := pod.GroupVersionKind().Version + "/" + pod.GroupVersionKind().Kind
+
+		if !IsFoundPod(objPods[vk], pod) {
+			objPods[vk] = append(objPods[vk], pod)
+		}
+	}
+
+	return objPods, nil
+}
+
+func IsFoundPod(podItem []api.Pod, pod api.Pod) bool {
+	for _, value := range podItem {
+		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
+			return true
+		}
+	}
+
+	return false
+}
+func IsFoundPodInfo(podItem []api.Pod, podInfo *resource.Info) bool {
+	if podInfo == nil {
+		return false
+	}
+
+	for _, value := range podItem {
+		if (value.Namespace == podInfo.Namespace) && (value.Name == podInfo.Name) {
+			return true
+		}
+	}
+	return false
 }
