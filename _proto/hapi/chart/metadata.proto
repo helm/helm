@@ -87,4 +87,7 @@ message Metadata {
 	// Annotations are additional mappings uninterpreted by Tiller,
 	// made available for inspection by other applications.
 	map<string,string> annotations = 16;
+
+	// KubeVersion is a SemVer constraint specifying the version of Kubernetes required.
+        string kubeVersion = 17;
 }

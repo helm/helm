@@ -252,6 +252,15 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		return nil, nil, "", fmt.Errorf("Chart incompatible with Tiller %s", sver)
 	}
 
+	if ch.Metadata.KubeVersion != "" {
+		cap, _ := values["Capabilities"].(*chartutil.Capabilities)
+		gitVersion := cap.KubeVersion.String()
+		k8sVersion := strings.Split(gitVersion, "+")[0]
+		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, k8sVersion) {
+			return nil, nil, "", fmt.Errorf("Chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
+		}
+	}
+
 	s.Log("rendering %s chart using values", ch.GetMetadata().Name)
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
