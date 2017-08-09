@@ -75,9 +75,9 @@ ingress:
     #   hosts:
     #     - chart-example.local
 resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious 
-  # choice for the user. This also increases chances charts run on environments with little 
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following 
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   # limits:
   #  cpu: 100m
@@ -205,8 +205,10 @@ spec:
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
-{{- if .Values.ingress.hostname }}
-  http://{{- .Values.ingress.hostname }}
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http://{{ . }}
+{{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ template "fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
