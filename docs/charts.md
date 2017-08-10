@@ -569,7 +569,7 @@ that supplies the necessary values would look like this:
 ```yaml
 imageRegistry: "quay.io/deis"
 dockerTag: "latest"
-pullPolicy: "alwaysPull"
+pullPolicy: "Always"
 storage: "s3"
 ```
 
@@ -595,7 +595,7 @@ generated content will be:
 ```yaml
 imageRegistry: "quay.io/deis"
 dockerTag: "latest"
-pullPolicy: "alwaysPull"
+pullPolicy: "Always"
 storage: "gcs"
 ```
 
