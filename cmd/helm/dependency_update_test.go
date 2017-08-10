@@ -172,6 +172,75 @@ func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 	}
 }
 
+func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
+	hh, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanup := resetEnv()
+	defer func() {
+		os.RemoveAll(hh.String())
+		cleanup()
+	}()
+
+	settings.Home = hh
+
+	srv := repotest.NewServer(hh.String())
+	defer srv.Stop()
+	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Copied charts:\n%s", strings.Join(copied, "\n"))
+	t.Logf("Listening on directory %s", srv.Root())
+
+	chartname := "depupdelete"
+	if err := createTestingChart(hh.String(), chartname, srv.URL()); err != nil {
+		t.Fatal(err)
+	}
+
+	out := bytes.NewBuffer(nil)
+	duc := &dependencyUpdateCmd{out: out}
+	duc.helmhome = helmpath.Home(hh)
+	duc.chartpath = filepath.Join(hh.String(), chartname)
+
+	if err := duc.run(); err != nil {
+		output := out.String()
+		t.Logf("Output: %s", output)
+		t.Fatal(err)
+	}
+
+	// Chart repo is down
+	srv.Stop()
+
+	if err := duc.run(); err == nil {
+		output := out.String()
+		t.Logf("Output: %s", output)
+		t.Fatal("Expected error, got nil")
+	}
+
+	// Make sure charts dir still has dependencies
+	files, err := ioutil.ReadDir(filepath.Join(duc.chartpath, "charts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependencies := []string{"compressedchart-0.1.0.tgz", "reqtest-0.1.0.tgz"}
+
+	if len(dependencies) != len(files) {
+		t.Fatalf("Expected %d chart dependencies, got %d", len(dependencies), len(files))
+	}
+	for index, file := range files {
+		if dependencies[index] != file.Name() {
+			t.Fatalf("Chart dependency %s not matching %s", dependencies[index], file.Name())
+		}
+	}
+
+	// Make sure tmpcharts is deleted
+	if _, err := os.Stat(filepath.Join(duc.chartpath, "tmpcharts")); !os.IsNotExist(err) {
+		t.Fatalf("tmpcharts dir still exists")
+	}
+}
+
 // createTestingChart creates a basic chart that depends on reqtest-0.1.0
 //
 // The baseURL can be used to point to a particular repository server.
