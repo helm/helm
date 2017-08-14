@@ -152,7 +152,7 @@ Documentation PRs will follow the same lifecycle as other PRs. They will also be
 ## The Triager
 Each week, one of the core maintainers will serve as the designated "triager" starting after the 
 public standup meetings on Thursday. This person will be in charge triaging new PRs and issues 
-thoughout the work week.
+throughout the work week.
 
 ## Labels
 The following tables define all label types used for Helm. It is split up by category.
