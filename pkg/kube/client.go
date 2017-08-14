@@ -171,6 +171,44 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
 		objs[vk] = append(objs[vk], info.Object)
+		versioned, err := c.AsVersionedObject(info.Object)
+		if runtime.IsNotRegisteredError(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		selector, err := getSelectorFromObject(versioned)
+		if err != nil {
+			return nil
+		}
+
+		client, err := c.ClientSet()
+		if err != nil {
+			return err
+		}
+		pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
+			FieldSelector: fields.Everything().String(),
+			LabelSelector: labels.Set(selector).AsSelector().String(),
+		})
+		if err != nil {
+			return err
+		}
+		for i := range pods.Items {
+			pod := pods.Items[i]
+			if pod.APIVersion == "" {
+				pod.APIVersion = "v1"
+			}
+			if pod.Kind == "" {
+				pod.Kind = "Pod"
+			}
+			podGvk := pod.GroupVersionKind()
+			vk := podGvk.Version + "/" + pod.Kind
+
+			objs[vk] = append(objs[vk], &pod)
+		}
+
 		return nil
 	})
 	if err != nil {
