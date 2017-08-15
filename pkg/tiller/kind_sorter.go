@@ -123,5 +123,9 @@ func (k *kindSorter) Less(i, j int) bool {
 	if !ok {
 		return true
 	}
+	if first == second {
+		// same kind so sub sort alphanumeric
+		return a.name < b.name
+	}
 	return first < second
 }
