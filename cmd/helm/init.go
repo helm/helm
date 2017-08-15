@@ -335,6 +335,8 @@ func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
 		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 
+	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
+
 	return &c, nil
 }
 
@@ -350,6 +352,8 @@ func initLocalRepo(indexFile, cacheFile string) (*repo.Entry, error) {
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
+
+	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
 
 	return &repo.Entry{
 		Name:  localRepository,
