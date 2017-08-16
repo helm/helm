@@ -99,7 +99,7 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 		// Normalize the path to the / delimiter
 		n = strings.Replace(n, delimiter, "/", -1)
 
-		if parts[0] == "Chart.yaml" {
+		if parts[0] == ChartfileName {
 			return nil, errors.New("chart yaml not in base directory")
 		}
 
@@ -124,7 +124,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	subcharts := map[string][]*BufferedFile{}
 
 	for _, f := range files {
-		if f.Name == "Chart.yaml" {
+		if f.Name == ChartfileName {
 			m, err := UnmarshalChartfile(f.Data)
 			if err != nil {
 				return c, err
@@ -132,16 +132,16 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			c.Metadata = m
 		} else if f.Name == "values.toml" {
 			return c, errors.New("values.toml is illegal as of 2.0.0-alpha.2")
-		} else if f.Name == "values.yaml" {
+		} else if f.Name == ValuesfileName {
 			c.Values = &chart.Config{Raw: string(f.Data)}
-		} else if strings.HasPrefix(f.Name, "templates/") {
+		} else if strings.HasPrefix(f.Name, TemplatesDir+"/") {
 			c.Templates = append(c.Templates, &chart.Template{Name: f.Name, Data: f.Data})
-		} else if strings.HasPrefix(f.Name, "charts/") {
+		} else if strings.HasPrefix(f.Name, ChartsDir+"/") {
 			if filepath.Ext(f.Name) == ".prov" {
 				c.Files = append(c.Files, &any.Any{TypeUrl: f.Name, Value: f.Data})
 				continue
 			}
-			cname := strings.TrimPrefix(f.Name, "charts/")
+			cname := strings.TrimPrefix(f.Name, ChartsDir+"/")
 			if strings.IndexAny(cname, "._") == 0 {
 				// Ignore charts/ that start with . or _.
 				continue
@@ -156,10 +156,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 
 	// Ensure that we got a Chart.yaml file
 	if c.Metadata == nil {
-		return c, errors.New("chart metadata (Chart.yaml) missing")
+		return c, ErrChartMetadataMissing
 	}
 	if c.Metadata.Name == "" {
-		return c, errors.New("invalid chart (Chart.yaml): name must not be empty")
+		return c, ErrChartNameEmpty
 	}
 
 	for n, files := range subcharts {

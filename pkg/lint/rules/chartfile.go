@@ -33,29 +33,28 @@ import (
 
 // Chartfile runs a set of linter rules related to Chart.yaml file
 func Chartfile(linter *support.Linter) {
-	chartFileName := "Chart.yaml"
-	chartPath := filepath.Join(linter.ChartDir, chartFileName)
+	chartPath := filepath.Join(linter.ChartDir, chartutil.ChartfileName)
 
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartYamlNotDirectory(chartPath))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartYamlNotDirectory(chartPath))
 
 	chartFile, err := chartutil.LoadChartfile(chartPath)
-	validChartFile := linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartYamlFormat(err))
+	validChartFile := linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartYamlFormat(err))
 
 	// Guard clause. Following linter rules require a parseable ChartFile
 	if !validChartFile {
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartName(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartEngine(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
-	linter.RunLinterRule(support.InfoSev, chartFileName, validateChartIconPresence(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartIconURL(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartVersion(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartEngine(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartMaintainer(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartSources(chartFile))
+	linter.RunLinterRule(support.InfoSev, chartutil.ChartfileName, validateChartIconPresence(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ChartfileName, validateChartIconURL(chartFile))
 }
 
 func validateChartYamlNotDirectory(chartPath string) error {

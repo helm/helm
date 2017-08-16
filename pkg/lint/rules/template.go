@@ -32,7 +32,7 @@ import (
 
 // Templates lints the templates in the Linter.
 func Templates(linter *support.Linter) {
-	path := "templates/"
+	path := chartutil.TemplatesDir + "/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
 	templatesDirExist := linter.RunLinterRule(support.WarningSev, path, validateTemplatesDir(templatesPath))
