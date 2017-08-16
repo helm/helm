@@ -80,4 +80,8 @@ message Metadata {
 	// TillerVersion is a SemVer constraints on what version of Tiller is required.
 	// See SemVer ranges here: https://github.com/Masterminds/semver#basic-comparisons
 	string tillerVersion = 15;
+
+	// Annotations are additional mappings uninterpreted by Tiller,
+	// made available for inspection by other applications.
+	map<string,string> annotations = 16;
 }
