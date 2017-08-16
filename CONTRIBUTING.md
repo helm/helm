@@ -143,6 +143,10 @@ Like any good open source project, we use Pull Requests to track code changes
     - PRs should stay open until merged or if they have not been active for more than 30 days. 
     This will help keep the PR queue to a manageable size and reduce noise. Should the PR need 
     to stay open (like in the case of a WIP), the `keep open` label can be added.
+    - If the owner of the PR is listed in `OWNERS`, that user **must** merge their own PRs
+    or explicitly request another OWNER do that for them.
+    - If the owner of a PR is _not_ listed in `OWNERS`, any core committer may
+    merge the PR once it is approved.
 
 #### Documentation PRs
 Documentation PRs will follow the same lifecycle as other PRs. They will also be labeled with the 
