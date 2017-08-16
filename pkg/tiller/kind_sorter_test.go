@@ -175,19 +175,29 @@ func TestKindSorterSubSort(t *testing.T) {
 			name: "!",
 			head: &util.SimpleHead{Kind: "ClusterRoleBinding"},
 		},
+		{
+			name: "u3",
+			head: &util.SimpleHead{Kind: "Unknown"},
+		},
+		{
+			name: "u1",
+			head: &util.SimpleHead{Kind: "Unknown"},
+		},
+		{
+			name: "u2",
+			head: &util.SimpleHead{Kind: "Unknown"},
+		},
 	}
 	for _, test := range []struct {
 		description string
 		order       SortOrder
 		expected    string
 	}{
-		{"cm,clusterRole,clusterRoleBinding", InstallOrder, "01Aa!z"},
+		// expectation is sorted by kind (unknown is last) and then sub sorted alphabetically within each group
+		{"cm,clusterRole,clusterRoleBinding,Unknown", InstallOrder, "01Aa!zu1u2u3"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
-			if got, want := len(test.expected), len(manifests); got != want {
-				t.Fatalf("Expected %d names in order, got %d", want, got)
-			}
 			defer buf.Reset()
 			for _, r := range sortByKind(manifests, test.order) {
 				buf.WriteString(r.name)

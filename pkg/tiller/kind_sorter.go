@@ -114,18 +114,19 @@ func (k *kindSorter) Swap(i, j int) { k.manifests[i], k.manifests[j] = k.manifes
 func (k *kindSorter) Less(i, j int) bool {
 	a := k.manifests[i]
 	b := k.manifests[j]
-	first, ok := k.ordering[a.head.Kind]
-	if !ok {
-		// Unknown is always last
-		return false
-	}
-	second, ok := k.ordering[b.head.Kind]
-	if !ok {
-		return true
-	}
+	first, aok := k.ordering[a.head.Kind]
+	second, bok := k.ordering[b.head.Kind]
 	if first == second {
-		// same kind so sub sort alphanumeric
+		// same kind (including unknown) so sub sort alphanumeric
 		return a.name < b.name
 	}
+	// unknown kind is last
+	if !aok {
+		return false
+	}
+	if !bok {
+		return true
+	}
+	// sort different kinds
 	return first < second
 }
