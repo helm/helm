@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -79,6 +80,10 @@ type initCmd struct {
 	opts           installer.Options
 	kubeClient     kubernetes.Interface
 	serviceAccount string
+	cpuLimit       string
+	memoryLimit    string
+	cpuRequest     string
+	memoryRequest  string
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -118,6 +123,10 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 
+	f.StringVar(&i.cpuLimit, "tiller-cpu-limit", "", "override Tiller CPU limit")
+	f.StringVar(&i.memoryLimit, "tiller-memory-limit", "", "override Tiller memory limit")
+	f.StringVar(&i.cpuRequest, "tiller-cpu-request", "", "override Tiller CPU request")
+	f.StringVar(&i.memoryRequest, "tiller-memory-request", "", "override Tiller memory request")
 	return cmd
 }
 
@@ -147,16 +156,39 @@ func (i *initCmd) tlsOptions() error {
 	return nil
 }
 
-// run initializes local config and installs Tiller to Kubernetes cluster.
+func (i *initCmd) generateResourceRequirements() error {
+	var err error
+	for _, opt := range []struct {
+		spec     string
+		quantity *resource.Quantity
+	}{
+		{i.cpuLimit, &i.opts.CPULimit},
+		{i.memoryLimit, &i.opts.MemoryLimit},
+		{i.cpuRequest, &i.opts.CPURequest},
+		{i.memoryRequest, &i.opts.MemoryRequest},
+	} {
+		if opt.spec != "" {
+			*opt.quantity, err = resource.ParseQuantity(opt.spec)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// run initializes local config and installs tiller to Kubernetes Cluster.
 func (i *initCmd) run() error {
 	if err := i.tlsOptions(); err != nil {
+		return err
+	}
+	if err := i.generateResourceRequirements(); err != nil {
 		return err
 	}
 	i.opts.Namespace = i.namespace
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
 	i.opts.ServiceAccount = i.serviceAccount
-
 	if settings.Debug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
 			w := i.out
