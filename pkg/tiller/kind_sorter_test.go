@@ -147,3 +147,64 @@ func TestKindSorter(t *testing.T) {
 		})
 	}
 }
+
+// TestKindSorterSubSort verifies manifests of same kind are also sorted alphanumeric
+func TestKindSorterSubSort(t *testing.T) {
+	manifests := []manifest{
+		{
+			name: "a",
+			head: &util.SimpleHead{Kind: "ClusterRole"},
+		},
+		{
+			name: "A",
+			head: &util.SimpleHead{Kind: "ClusterRole"},
+		},
+		{
+			name: "0",
+			head: &util.SimpleHead{Kind: "ConfigMap"},
+		},
+		{
+			name: "1",
+			head: &util.SimpleHead{Kind: "ConfigMap"},
+		},
+		{
+			name: "z",
+			head: &util.SimpleHead{Kind: "ClusterRoleBinding"},
+		},
+		{
+			name: "!",
+			head: &util.SimpleHead{Kind: "ClusterRoleBinding"},
+		},
+		{
+			name: "u3",
+			head: &util.SimpleHead{Kind: "Unknown"},
+		},
+		{
+			name: "u1",
+			head: &util.SimpleHead{Kind: "Unknown"},
+		},
+		{
+			name: "u2",
+			head: &util.SimpleHead{Kind: "Unknown"},
+		},
+	}
+	for _, test := range []struct {
+		description string
+		order       SortOrder
+		expected    string
+	}{
+		// expectation is sorted by kind (unknown is last) and then sub sorted alphabetically within each group
+		{"cm,clusterRole,clusterRoleBinding,Unknown", InstallOrder, "01Aa!zu1u2u3"},
+	} {
+		var buf bytes.Buffer
+		t.Run(test.description, func(t *testing.T) {
+			defer buf.Reset()
+			for _, r := range sortByKind(manifests, test.order) {
+				buf.WriteString(r.name)
+			}
+			if got := buf.String(); got != test.expected {
+				t.Errorf("Expected %q, got %q", test.expected, got)
+			}
+		})
+	}
+}
