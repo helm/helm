@@ -310,7 +310,14 @@ func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 	// User specified a values files via -f/--values
 	for _, filePath := range valueFiles {
 		currentMap := map[string]interface{}{}
-		bytes, err := ioutil.ReadFile(filePath)
+
+		var bytes []byte
+		var err error
+		if strings.TrimSpace(filePath) == "-" {
+			bytes, err = ioutil.ReadAll(os.Stdin)
+		} else {
+			bytes, err = ioutil.ReadFile(filePath)
+		}
 		if err != nil {
 			return []byte{}, err
 		}
