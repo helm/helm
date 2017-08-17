@@ -79,6 +79,7 @@ type initCmd struct {
 	opts           installer.Options
 	kubeClient     kubernetes.Interface
 	serviceAccount string
+	maxHistory     int
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -117,6 +118,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
+	f.IntVar(&i.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
 
 	return cmd
 }
@@ -156,6 +158,7 @@ func (i *initCmd) run() error {
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
 	i.opts.ServiceAccount = i.serviceAccount
+	i.opts.MaxHistory = i.maxHistory
 
 	if settings.Debug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {

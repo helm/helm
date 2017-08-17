@@ -71,6 +71,11 @@ type Options struct {
 
 	// EnableHostNetwork installs Tiller with net=host.
 	EnableHostNetwork bool
+
+	// MaxHistory sets the maximum number of release versions stored per release.
+	//
+	// Less than or equal to zero means no limit.
+	MaxHistory int
 }
 
 func (opts *Options) selectImage() string {
