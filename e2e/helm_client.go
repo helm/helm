@@ -1,16 +1,17 @@
-// Copyright 2017 Mirantis
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+Copyright 2017 The Kubernetes Authors All rights reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 package e2e
 
@@ -35,9 +36,7 @@ import (
 )
 
 const (
-	experimentalTillerImage string = "nebril/tiller"
-	rudderPodName           string = "rudder"
-	rudderImage             string = "nebril/rudder-fed"
+	tillerImage string = "tiller"
 )
 
 // HelmManager provides functionality to install client/server helm and use it
@@ -63,19 +62,14 @@ type BinaryHelmManager struct {
 	Clientset  kubernetes.Interface
 	Namespace  string
 	HelmBin    string
-	KubectlBin string
+	TillerHost string
 }
 
 func (m *BinaryHelmManager) InstallTiller() error {
 	arg := make([]string, 0, 5)
 	var err error
-	if enableRudder {
-		arg = append(arg, "create", "-f", "manifests/", "-n", m.Namespace)
-		_, err = m.executeUsingKubectl(arg...)
-	} else {
-		arg = append(arg, "init", "--tiller-namespace", m.Namespace)
-		_, err = m.executeUsingHelm(arg...)
-	}
+	arg = append(arg, "init", "--tiller-namespace", m.Namespace)
+	_, err = m.executeUsingHelm(arg...)
 	if err != nil {
 		return err
 	}
@@ -146,11 +140,10 @@ func (m *BinaryHelmManager) executeUsingHelmInNamespace(arg ...string) (string, 
 }
 
 func (m *BinaryHelmManager) executeUsingHelm(arg ...string) (string, error) {
+	if m.TillerHost != "" {
+		arg = append(arg, "--host", m.TillerHost)
+	}
 	return m.executeUsingBinary(m.HelmBin, arg...)
-}
-
-func (m *BinaryHelmManager) executeUsingKubectl(arg ...string) (string, error) {
-	return m.executeUsingBinary(m.KubectlBin, arg...)
 }
 
 func (m *BinaryHelmManager) executeUsingBinary(binary string, arg ...string) (string, error) {
@@ -194,31 +187,6 @@ func regexpKeyFromStructuredOutput(key, output string) string {
 		return ""
 	}
 	return result[1]
-}
-
-func prepareRudder(clientset kubernetes.Interface, namespace string) {
-	rudder := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: rudderPodName,
-		},
-		Spec: v1.PodSpec{
-			RestartPolicy: "Always",
-			Containers: []v1.Container{
-				{
-					Name:            "rudder-appcontroller",
-					Image:           "helm/rudder-appcontroller",
-					ImagePullPolicy: v1.PullNever,
-				},
-			},
-		},
-	}
-	_, err := clientset.Core().Pods(namespace).Create(rudder)
-	Expect(err).NotTo(HaveOccurred())
-	WaitForPod(clientset, namespace, rudderPodName, v1.PodRunning)
-}
-
-func deleteRudder(clientset kubernetes.Interface, namespace string) error {
-	return clientset.Core().Pods(namespace).Delete(rudderPodName, nil)
 }
 
 func getNameFromHelmOutput(output string) string {
