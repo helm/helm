@@ -71,3 +71,9 @@ testImports:
   version: ^1.1.4
   subpackages:
   - assert
+- package: github.com/onsi/ginkgo
+  version: ^1.4.0
+  subpackages:
+  - ginkgo
+- package: github.com/onsi/gomega
+  version: ^1.2.0

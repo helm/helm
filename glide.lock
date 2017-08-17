@@ -1,5 +1,5 @@
 hash: d93f565214b112cf8560e9cd2da2f3ab7852a1f19544569fc112bd4fb2d1d506
-updated: 2018-03-08T14:06:06.497394911-08:00
+updated: 2018-03-08T23:39:31.661722573Z
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -247,6 +247,49 @@ imports:
   version: ad45545899c7b13c020ea92b2072220eefad42b8
 - name: github.com/naoina/go-stringutil
   version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
+- name: github.com/onsi/ginkgo
+  version: 67b9df7f55fe1165fd9ad49aca7754cce01a42b8
+  subpackages:
+  - config
+  - ginkgo
+  - ginkgo/convert
+  - ginkgo/interrupthandler
+  - ginkgo/nodot
+  - ginkgo/testrunner
+  - ginkgo/testsuite
+  - ginkgo/watch
+  - internal/codelocation
+  - internal/containernode
+  - internal/failer
+  - internal/leafnodes
+  - internal/remote
+  - internal/spec
+  - internal/spec_iterator
+  - internal/specrunner
+  - internal/suite
+  - internal/testingtproxy
+  - internal/writer
+  - reporters
+  - reporters/stenographer
+  - reporters/stenographer/support/go-colorable
+  - reporters/stenographer/support/go-isatty
+  - types
+- name: github.com/onsi/gomega
+  version: d59fa0ac68bb5dd932ee8d24eed631cdd519efc3
+  subpackages:
+  - format
+  - gstruct
+  - gstruct/errors
+  - internal/assertion
+  - internal/asyncassertion
+  - internal/oraclematcher
+  - internal/testingtsupport
+  - matchers
+  - matchers/support/goraph/bipartitegraph
+  - matchers/support/goraph/edge
+  - matchers/support/goraph/node
+  - matchers/support/goraph/util
+  - types
 - name: github.com/opencontainers/go-digest
   version: a6d0ee40d4207ea02364bd3b9e8e77b9159ba1eb
 - name: github.com/opencontainers/image-spec
