@@ -42,6 +42,10 @@ run_docs_check() {
   make verify-docs
 }
 
+run_e2e_test() {
+	make e2e
+}
+
 # Build to ensure packages are compiled
 echo "Running 'make build'"
 make build
@@ -50,4 +54,5 @@ case "${CIRCLE_NODE_INDEX-0}" in
   0) run_unit_test   ;;
   1) run_style_check ;;
   2) run_docs_check  ;;
+  3) run_e2e_test    ;;
 esac

@@ -2,12 +2,24 @@ version: 2
 jobs:
   build:
     working_directory: /go/src/k8s.io/helm
-    parallelism: 3
+    parallelism: 4
     docker:
       - image: golang:1.8
     environment:
       PROJECT_NAME: "kubernetes-helm"
+      DOCKER_VERSION: "17.03.0-ce"
     steps:
+      - setup_remote_docker
+      - run:
+          name: Install Docker client
+          command: |
+            set -x
+            curl -sSL -o "/tmp/docker-${DOCKER_VERSION}.tgz" "https://get.docker.com/builds/Linux/x86_64/docker-${DOCKER_VERSION}.tgz"
+            tar -xz -C /tmp -f "/tmp/docker-${DOCKER_VERSION}.tgz"
+            mv /tmp/docker/* /usr/bin
+      - run:
+          name: Install socat
+          command: apt-get update && apt-get install -y socat
       - checkout
       - run:
           name: install dependencies

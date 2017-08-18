@@ -63,12 +63,16 @@ type BinaryHelmManager struct {
 	Namespace  string
 	HelmBin    string
 	TillerHost string
+	UseCanary  bool
 }
 
 func (m *BinaryHelmManager) InstallTiller() error {
 	arg := make([]string, 0, 5)
 	var err error
 	arg = append(arg, "init", "--tiller-namespace", m.Namespace)
+	if m.UseCanary {
+		arg = append(arg, "--canary-image")
+	}
 	_, err = m.executeUsingHelm(arg...)
 	if err != nil {
 		return err
