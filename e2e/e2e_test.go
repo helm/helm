@@ -46,6 +46,7 @@ var _ = Describe("Basic Suite", func() {
 			Clientset:  clientset,
 			HelmBin:    helmBinPath,
 			TillerHost: tillerHost,
+			UseCanary:  true,
 		}
 		if !localTiller {
 			Expect(helm.InstallTiller()).NotTo(HaveOccurred())
