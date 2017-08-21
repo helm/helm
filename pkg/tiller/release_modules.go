@@ -84,12 +84,23 @@ func (m *LocalReleaseModule) Delete(rel *release.Release, req *services.Uninstal
 }
 
 // RemoteReleaseModule is a ReleaseModule which calls Rudder service to operate on a release
-type RemoteReleaseModule struct{}
+type RemoteReleaseModule struct {
+	c *rudder.Client
+}
+
+// NewRemoteReleaseModule creates new instance of RemoteReleaseModule and returns it as ReleaseModule interface.
+func NewRemoteReleaseModule(address string) (ReleaseModule, error) {
+	client, err := rudder.NewClient(address)
+	if err != nil {
+		return nil, err
+	}
+	return &RemoteReleaseModule{c: client}, nil
+}
 
 // Create calls rudder.InstallRelease
 func (m *RemoteReleaseModule) Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error {
 	request := &rudderAPI.InstallReleaseRequest{Release: r}
-	_, err := rudder.InstallRelease(request)
+	_, err := m.c.InstallRelease(request)
 	return err
 }
 
@@ -103,7 +114,7 @@ func (m *RemoteReleaseModule) Update(current, target *release.Release, req *serv
 		Wait:     req.Wait,
 		Force:    req.Force,
 	}
-	_, err := rudder.UpgradeRelease(upgrade)
+	_, err := m.c.UpgradeRelease(upgrade)
 	return err
 }
 
@@ -116,14 +127,14 @@ func (m *RemoteReleaseModule) Rollback(current, target *release.Release, req *se
 		Timeout:  req.Timeout,
 		Wait:     req.Wait,
 	}
-	_, err := rudder.RollbackRelease(rollback)
+	_, err := m.c.RollbackRelease(rollback)
 	return err
 }
 
 // Status returns status retrieved from rudder.ReleaseStatus
 func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
 	statusRequest := &rudderAPI.ReleaseStatusRequest{Release: r}
-	resp, err := rudder.ReleaseStatus(statusRequest)
+	resp, err := m.c.ReleaseStatus(statusRequest)
 	if resp == nil {
 		return "", err
 	}
@@ -133,7 +144,7 @@ func (m *RemoteReleaseModule) Status(r *release.Release, req *services.GetReleas
 // Delete calls rudder.DeleteRelease
 func (m *RemoteReleaseModule) Delete(r *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (string, []error) {
 	deleteRequest := &rudderAPI.DeleteReleaseRequest{Release: r}
-	resp, err := rudder.DeleteRelease(deleteRequest)
+	resp, err := m.c.DeleteRelease(deleteRequest)
 
 	errs := make([]error, 0)
 	result := ""

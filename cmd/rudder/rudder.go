@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/helm/pkg/kube"
 	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
+	"k8s.io/helm/pkg/rudder"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/version"
 )
@@ -41,8 +42,8 @@ type options struct {
 }
 
 func (opts *options) registerFlags() {
-	pflag.StringVarP(&opts.listen, "listen", "l", "127.0.0.1:10001",
-		"Socket for rudder grpc server (default: 127.0.0.1:10001).")
+	pflag.StringVarP(&opts.listen, "listen", "l", rudder.RudderDefaultAddress,
+		fmt.Sprintf("Socket for rudder grpc server (default: %s).", rudder.RudderDefaultAddress))
 }
 
 func (opts *options) parseFlags() {
