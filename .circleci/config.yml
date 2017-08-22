@@ -1,0 +1,46 @@
+version: 2
+jobs:
+  build:
+    working_directory: /go/src/k8s.io/helm
+    parallelism: 3
+    docker:
+      - image: golang:1.8
+    environment:
+      PROJECT_NAME: "kubernetes-helm"
+    steps:
+      - checkout
+      - run:
+          name: install dependencies
+          command: make bootstrap
+      - run:
+          name: go env
+          command: go env
+      - save_cache:
+          key: vendor-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+          paths:
+            - vendor
+      - run:
+          name: test
+          command: ./scripts/ci.sh
+  deployment:
+    working_directory: /go/src/k8s.io/helm
+    docker:
+      - image: golang:1.8
+    environment:
+      PROJECT_NAME: "kubernetes-helm"
+    filters:
+      tags:
+        only: /.*/
+      branches:
+        only: master
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - vendor-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+      - run:
+          name: go env
+          command: go env
+      - deploy:
+        name: deploy
+        command: ./scripts/ci/deploy.sh
