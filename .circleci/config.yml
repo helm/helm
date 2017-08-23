@@ -20,6 +20,9 @@ jobs:
       - run:
           name: Install socat
           command: apt-get update && apt-get install -y socat
+      - run:
+          name: update PATH
+          command: echo 'export PATH=~/.kubeadm-dind-cluster:$PATH' >> $BASH_ENV
       - checkout
       - run:
           name: install dependencies

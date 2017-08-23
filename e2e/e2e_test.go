@@ -42,11 +42,12 @@ var _ = Describe("Basic Suite", func() {
 		namespace, err = clientset.Core().Namespaces().Create(namespaceObj)
 		Expect(err).NotTo(HaveOccurred())
 		helm = &BinaryHelmManager{
-			Namespace:  namespace.Name,
-			Clientset:  clientset,
-			HelmBin:    helmBinPath,
-			TillerHost: tillerHost,
-			UseCanary:  true,
+			Namespace:         namespace.Name,
+			Clientset:         clientset,
+			HelmBin:           helmBinPath,
+			TillerHost:        tillerHost,
+			UseCanary:         true,
+			UseServiceAccount: true,
 		}
 		if !localTiller {
 			Expect(helm.InstallTiller()).NotTo(HaveOccurred())
