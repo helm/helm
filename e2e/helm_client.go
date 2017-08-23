@@ -18,6 +18,7 @@ package e2e
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -30,10 +31,6 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	tillerImage string = "tiller"
 )
 
 // HelmManager provides functionality to install client/server helm and use it
@@ -56,11 +53,12 @@ type HelmManager interface {
 
 // BinaryHelmManager uses helm binary to work with helm server
 type BinaryHelmManager struct {
-	Clientset  kubernetes.Interface
-	Namespace  string
-	HelmBin    string
-	TillerHost string
-	UseCanary  bool
+	Clientset         kubernetes.Interface
+	Namespace         string
+	HelmBin           string
+	TillerHost        string
+	UseCanary         bool
+	UseServiceAccount bool
 }
 
 func (m *BinaryHelmManager) InstallTiller() error {
@@ -69,6 +67,12 @@ func (m *BinaryHelmManager) InstallTiller() error {
 	arg = append(arg, "init", "--tiller-namespace", m.Namespace)
 	if m.UseCanary {
 		arg = append(arg, "--canary-image")
+	}
+	if m.UseServiceAccount {
+		arg = append(arg, "--service-account", "tiller")
+		if err = m.InstallServiceAccounts(); err != nil {
+			return err
+		}
 	}
 	_, err = m.executeUsingHelm(arg...)
 	if err != nil {
@@ -180,6 +184,22 @@ func (m *BinaryHelmManager) executeCommandWithValues(releaseName, command string
 	return m.executeUsingHelmInNamespace(arg...)
 }
 
+func (m *BinaryHelmManager) InstallServiceAccounts() error {
+	objects := strings.Replace(serviceAccountTemplate, "TILLER_NAMESPACE", m.Namespace, -1)
+
+	f, err := ioutil.TempFile("", m.Namespace)
+	if err != nil {
+		Logf("Failed creating tempfile: %s", err)
+		return err
+	}
+
+	f.WriteString(objects)
+	f.Sync()
+
+	_, err = m.executeUsingBinary("kubectl", "create", "-f", f.Name())
+	return err
+}
+
 func regexpKeyFromStructuredOutput(key, output string) string {
 	r := regexp.MustCompile(fmt.Sprintf("%v:[[:space:]]*(.*)", key))
 	// key will be captured in group with index 1
@@ -233,3 +253,34 @@ func prepareArgsFromValues(values map[string]string) string {
 	}
 	return b.String()
 }
+
+var serviceAccountTemplate = `
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tiller
+  namespace: TILLER_NAMESPACE
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tiller-manager
+  namespace: TILLER_NAMESPACE
+rules:
+- apiGroups: ["", "extensions", "apps", "*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tiller-binding
+  namespace: TILLER_NAMESPACE
+subjects:
+- kind: ServiceAccount
+  name: tiller
+  namespace: TILLER_NAMESPACE
+roleRef:
+  kind: Role
+  name: tiller-manager
+  apiGroup: rbac.authorization.k8s.io`
