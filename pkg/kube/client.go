@@ -157,6 +157,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	var objPods = make(map[string][]api.Pod)
+
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
 		c.Log("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
@@ -171,10 +174,24 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
 		objs[vk] = append(objs[vk], info.Object)
+
+		//Get the relation pods
+		objPods, err = c.getSelectRelationPod(info, objPods)
+		if err != nil {
+			c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+		}
+
 		return nil
 	})
 	if err != nil {
 		return "", err
+	}
+
+	//here, we will add the objPods to the objs
+	for key, podItems := range objPods {
+		for i := range podItems {
+			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
+		}
 	}
 
 	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
@@ -627,4 +644,68 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	})
 
 	return err
+}
+
+//get an kubernetes resources's relation pods
+// kubernetes resource used select labels to relate pods
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]api.Pod) (map[string][]api.Pod, error) {
+	if info == nil {
+		return objPods, nil
+	}
+
+	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
+
+	versioned, err := c.AsVersionedObject(info.Object)
+	if runtime.IsNotRegisteredError(err) {
+		return objPods, nil
+	}
+	if err != nil {
+		return objPods, err
+	}
+
+	// We can ignore this error because it will only error if it isn't a type that doesn't
+	// have pods. In that case, we don't care
+	selector, _ := getSelectorFromObject(versioned)
+
+	selectorString := labels.Set(selector).AsSelector().String()
+
+	// If we have an empty selector, this likely is a service or config map, so bail out now
+	if selectorString == "" {
+		return objPods, nil
+	}
+
+	client, _ := c.ClientSet()
+
+	pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
+		FieldSelector: fields.Everything().String(),
+		LabelSelector: labels.Set(selector).AsSelector().String(),
+	})
+	if err != nil {
+		return objPods, err
+	}
+
+	for _, pod := range pods.Items {
+		if pod.APIVersion == "" {
+			pod.APIVersion = "v1"
+		}
+
+		if pod.Kind == "" {
+			pod.Kind = "Pod"
+		}
+		vk := pod.GroupVersionKind().Version + "/" + pod.GroupVersionKind().Kind
+
+		if !isFoundPod(objPods[vk], pod) {
+			objPods[vk] = append(objPods[vk], pod)
+		}
+	}
+	return objPods, nil
+}
+
+func isFoundPod(podItem []api.Pod, pod api.Pod) bool {
+	for _, value := range podItem {
+		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
+			return true
+		}
+	}
+	return false
 }
