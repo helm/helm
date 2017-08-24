@@ -217,9 +217,16 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	}
 
 	fmt.Fprintln(m.Out, "Deleting outdated charts")
+	c, _ := m.loadChartDir()
+	req, _ := chartutil.LoadRequirements(c)
 	for _, dep := range deps {
-		if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
-			return err
+		for _, r := range req.Dependencies {
+			if dep.Name == r.Name {
+				if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
+					return err
+				}
+				break
+			}
 		}
 	}
 
