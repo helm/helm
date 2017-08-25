@@ -87,7 +87,6 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 	}
 
 	cif := home.RelativeIndex(name)
-
 	c := repo.Entry{
 		Name:     name,
 		Cache:    cif,
@@ -96,7 +95,6 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 		KeyFile:  keyFile,
 		CAFile:   caFile,
 	}
-
 
 	r, err := repo.NewChartRepository(&c, getter.All(settings))
 	if err != nil {
