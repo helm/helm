@@ -84,7 +84,7 @@ func (m *BinaryHelmManager) InstallTiller() error {
 }
 
 func (m *BinaryHelmManager) DeleteTiller(removeHelmHome bool) error {
-	arg := make([]string, 0, 4)
+	arg := []string{}
 	arg = append(arg, "reset", "--tiller-namespace", m.Namespace, "--force")
 	if removeHelmHome {
 		arg = append(arg, "--remove-helm-home")
@@ -172,14 +172,8 @@ func (m *BinaryHelmManager) executeCommandWithValues(releaseName, command string
 	arg := make([]string, 0, 8)
 	arg = append(arg, command, releaseName)
 	if len(values) > 0 {
-		var b bytes.Buffer
-		for key, val := range values {
-			b.WriteString(key)
-			b.WriteString("=")
-			b.WriteString(val)
-			b.WriteString(",")
-		}
-		arg = append(arg, "--set", b.String())
+		vals := prepareArgsFromValues(values)
+		arg = append(arg, "--set", vals)
 	}
 	return m.executeUsingHelmInNamespace(arg...)
 }
