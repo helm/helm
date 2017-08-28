@@ -61,6 +61,9 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 
 // DeleteRelease returns nil, nil
 func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+	if rlsName == "return-error" {
+		return nil, fmt.Errorf("No such release: %s", rlsName)
+	}
 	return nil, nil
 }
 
