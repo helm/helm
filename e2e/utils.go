@@ -18,10 +18,6 @@ package e2e
 import (
 	"flag"
 	"fmt"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +25,9 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var url string
@@ -58,12 +57,8 @@ func KubeClient() (*kubernetes.Clientset, error) {
 
 func DeleteNS(clientset kubernetes.Interface, namespace *v1.Namespace) {
 	defer GinkgoRecover()
-	pods, err := clientset.Core().Pods(namespace.Name).List(metav1.ListOptions{})
+	err := clientset.Core().Namespaces().Delete(namespace.Name, nil)
 	Expect(err).NotTo(HaveOccurred())
-	for _, pod := range pods.Items {
-		clientset.Core().Pods(namespace.Name).Delete(pod.Name, nil)
-	}
-	clientset.Core().Namespaces().Delete(namespace.Name, nil)
 }
 
 func Logf(format string, a ...interface{}) {
