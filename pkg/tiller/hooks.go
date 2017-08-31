@@ -171,17 +171,18 @@ func (file *manifestFile) sort(result *result) error {
 			DeletePolicies: []release.Hook_DeletePolicy{},
 		}
 
-		isKnownHook := false
+		isUnknownHook := false
 		for _, hookType := range strings.Split(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
 			e, ok := events[hookType]
-			if ok {
-				isKnownHook = true
-				h.Events = append(h.Events, e)
+			if !ok {
+				isUnknownHook = true
+				break
 			}
+			h.Events = append(h.Events, e)
 		}
 
-		if !isKnownHook {
+		if isUnknownHook {
 			log.Printf("info: skipping unknown hook: %q", hookTypes)
 			continue
 		}
