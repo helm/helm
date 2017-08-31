@@ -209,6 +209,9 @@ message UpdateReleaseRequest {
 	bool reuse_values = 10;
 	// Force resource update through delete/recreate if needed.
 	bool force = 11;
+	// Annotations is an unstructured key value map stored with a release that
+	// may be set by external tools to store and retrieve arbitrary metadata.
+	map<string,string> annotations = 12;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -271,6 +274,9 @@ message InstallReleaseRequest {
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
 	bool wait = 9;
+	// Annotations is an unstructured key value map stored with a release that
+	// may be set by external tools to store and retrieve arbitrary metadata.
+	map<string,string> annotations = 10;
 }
 
 // InstallReleaseResponse is the response from a release installation.

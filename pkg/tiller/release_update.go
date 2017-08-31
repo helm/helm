@@ -119,9 +119,10 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 			Status:        &release.Status{Code: release.Status_PENDING_UPGRADE},
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
-		Version:  revision,
-		Manifest: manifestDoc.String(),
-		Hooks:    hooks,
+		Version:     revision,
+		Manifest:    manifestDoc.String(),
+		Hooks:       hooks,
+		Annotations: req.Annotations,
 	}
 
 	if len(notesTxt) > 0 {
