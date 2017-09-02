@@ -106,6 +106,7 @@ func newRootCmd(args []string) *cobra.Command {
 		newSearchCmd(out),
 		newServeCmd(out),
 		newVerifyCmd(out),
+		newTemplateCmd(out),
 
 		// release commands
 		addFlagsTLS(newDeleteCmd(nil, out)),
