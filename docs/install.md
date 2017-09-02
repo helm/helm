@@ -48,7 +48,7 @@ $ chmod 700 get_helm.sh
 $ ./get_helm.sh
 ```
 
-Yes, you can `curl ...| bash` that if you want to live on the edge.
+Yes, you can `curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash` that if you want to live on the edge.
 
 ### From Canary Builds
 
