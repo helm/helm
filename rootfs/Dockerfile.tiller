@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.3
+FROM BASEIMAGE
+
+# If we're building for another architecture than amd64, the CROSS_BUILD_ placeholder is removed so e.g. CROSS_BUILD_COPY turns into COPY
+# If we're building normally, for amd64, CROSS_BUILD lines are removed
+CROSS_BUILD_COPY qemu-QEMUARCH-static /usr/bin/
 
 RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
 
 ENV HOME /tmp
-
-COPY tiller /tiller
-
+COPY tiller /
 EXPOSE 44134
-
 CMD ["/tiller"]
-

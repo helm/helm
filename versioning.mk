@@ -25,10 +25,10 @@ endif
 LDFLAGS += -X k8s.io/helm/pkg/version.GitCommit=${GIT_COMMIT}
 LDFLAGS += -X k8s.io/helm/pkg/version.GitTreeState=${GIT_DIRTY}
 
-IMAGE                := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${DOCKER_VERSION}
-IMAGE_RUDDER         := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME_RUDDER}:${DOCKER_VERSION}
-MUTABLE_IMAGE        := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
-MUTABLE_IMAGE_RUDDER := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME_RUDDER}:${DOCKER_VERSION}
+IMAGE                := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}-${ARCH}:${DOCKER_VERSION}
+IMAGE_RUDDER         := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME_RUDDER}-${ARCH}:${DOCKER_VERSION}
+MUTABLE_IMAGE        := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}-${ARCH}:${MUTABLE_VERSION}
+MUTABLE_IMAGE_RUDDER := ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME_RUDDER}-${ARCH}:${DOCKER_VERSION}
 
 DOCKER_PUSH = docker push
 ifeq ($(DOCKER_REGISTRY),gcr.io)
@@ -46,12 +46,24 @@ info:
 	 @echo "Mutable Image:     ${MUTABLE_IMAGE}"
 
 .PHONY: docker-push
-docker-push: docker-mutable-push docker-immutable-push
+docker-push: $(addprefix sub-docker-push-,$(ALL_ARCH))
+sub-docker-push-%:
+	$(MAKE) ARCH=$* docker-build
+	$(MAKE) ARCH=$* docker-mutable-push
+	$(MAKE) ARCH=$* docker-immutable-push
 
 .PHONY: docker-immutable-push
 docker-immutable-push:
 	${DOCKER_PUSH} ${IMAGE}
+ifeq ($(ARCH),amd64)
+	docker tag ${IMAGE} ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${DOCKER_VERSION}
+	docker push ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${DOCKER_VERSION}
+endif
 
 .PHONY: docker-mutable-push
 docker-mutable-push:
 	${DOCKER_PUSH} ${MUTABLE_IMAGE}
+ifeq ($(ARCH),amd64)
+	docker tag ${MUTABLE_IMAGE} ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
+	docker push ${DOCKER_REGISTRY}/${IMAGE_PREFIX}/${SHORT_NAME}:${MUTABLE_VERSION}
+endif
