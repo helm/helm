@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 # subchartA
 service:
-  name: nginx
+  name: apache
   type: ClusterIP
   externalPort: 80
   internalPort: 80

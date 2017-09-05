@@ -50,16 +50,16 @@ var deletePolices = map[string]release.Hook_DeletePolicy{
 	hooks.HookFailed:    release.Hook_FAILED,
 }
 
-// manifest represents a manifest file, which has a name and some content.
-type manifest struct {
-	name    string
-	content string
-	head    *util.SimpleHead
+// Manifest represents a manifest file, which has a name and some content.
+type Manifest struct {
+	Name    string
+	Content string
+	Head    *util.SimpleHead
 }
 
 type result struct {
 	hooks   []*release.Hook
-	generic []manifest
+	generic []Manifest
 }
 
 type manifestFile struct {
@@ -77,7 +77,7 @@ type manifestFile struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
+func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	for filePath, c := range files {
@@ -141,20 +141,20 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		if !hasAnyAnnotation(entry) {
-			result.generic = append(result.generic, manifest{
-				name:    file.path,
-				content: m,
-				head:    &entry,
+			result.generic = append(result.generic, Manifest{
+				Name:    file.path,
+				Content: m,
+				Head:    &entry,
 			})
 			continue
 		}
 
 		hookTypes, ok := entry.Metadata.Annotations[hooks.HookAnno]
 		if !ok {
-			result.generic = append(result.generic, manifest{
-				name:    file.path,
-				content: m,
-				head:    &entry,
+			result.generic = append(result.generic, Manifest{
+				Name:    file.path,
+				Content: m,
+				Head:    &entry,
 			})
 			continue
 		}

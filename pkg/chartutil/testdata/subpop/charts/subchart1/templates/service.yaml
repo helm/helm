@@ -4,6 +4,8 @@ metadata:
   name: {{ .Chart.Name }}
   labels:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    namespace: "{{ .Release.Namespace }}"
+    release-name: "{{ .Release.Name }}"
 spec:
   type: {{ .Values.service.type }}
   ports:

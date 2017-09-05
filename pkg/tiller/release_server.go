@@ -300,8 +300,8 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// Aggregate all valid manifests into one big doc.
 	b := bytes.NewBuffer(nil)
 	for _, m := range manifests {
-		b.WriteString("\n---\n# Source: " + m.name + "\n")
-		b.WriteString(m.content)
+		b.WriteString("\n---\n# Source: " + m.Name + "\n")
+		b.WriteString(m.Content)
 	}
 
 	return hooks, b, notes, nil

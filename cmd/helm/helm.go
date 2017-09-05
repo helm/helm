@@ -125,6 +125,7 @@ func newRootCmd(args []string) *cobra.Command {
 		newHomeCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
+		newTemplateCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
