@@ -138,7 +138,13 @@ data:
   food: "PIZZA"
 ```
 
-It is considered good (almost mandatory) practice to set defaults with `default` for any object that originates from `.Values`. (In some places, an `if` conditional guard may be better suited. We'll see those in the next section.)
+In an actual chart, all static default values should live in the values.yaml, and should not be repeated using the `default` command (otherwise they would be redundant). However, the `default` command is perfect for computed values, which can not be declared inside values.yaml. For example:
+
+```yaml
+drink: {{ .Values.favorite.drink | default (printf "%s-tea" (include "fullname" .)) }}
+```
+
+In some places, an `if` conditional guard may be better suited than `default`. We'll see those in the next section.
 
 Template functions and pipelines are a powerful way to transform information and then insert it into your YAML. But sometimes it's necessary to add some template logic that is a little more sophisticated than just inserting a string. In the next section we will look at the control structures provided by the template language.
 
