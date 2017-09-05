@@ -1,0 +1,23 @@
+name: helm
+version: '2.5.0'
+summary: The Kubernetes package manager
+description: |
+  Helm is a tool for managing Kubernetes
+  charts. Charts are packages of
+  pre-configured Kubernetes resources.
+
+grade: stable
+confinement: strict
+
+apps:
+  helm:
+    command: helm
+    plugs:
+      - network
+      - home
+
+parts:
+  helm:
+    plugin: dump
+    source: https://storage.googleapis.com/kubernetes-helm/helm-v2.5.0-linux-amd64.tar.gz
+

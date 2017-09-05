@@ -10,3 +10,8 @@ rootfs/rudder
 vendor/
 *.exe
 .idea/
+*.snap
+.snapcraft/
+parts/
+prime/
+stage/
