@@ -36,6 +36,7 @@ Whether you are a user or contributor, official support channels include:
 Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of.
 
 ## Milestones
+
 We use milestones to track progress of releases. There are also 2 special milestones
 used for helping us keep work organized: `Upcoming - Minor` and `Upcoming - Major`
 
@@ -52,10 +53,27 @@ An issue that we are not sure we will be doing will not be added to any mileston
 
 A milestone (and hence release) is considered done when all outstanding issues/PRs have been closed or moved to another milestone.
 
+## Semver
+
+Helm maintains a strong commitment to backward compatibility. All of our changes to protocols and formats are backward compatible from Helm 2.0 until Helm 3.0. No features, flags, or commands are removed or substantially modified (other than bug fixes).
+
+We also try very hard to not change publicly accessible Go library definitions inside of the `pkg/` directory of our source code.
+
+For a quick summary of our backward compatibility guidelines for releases between 2.0 and 3.0:
+
+- Protobuf and gRPC changes MUST be backward compatible.
+- Command line commands, flags, and arguments MUST be backward compatible
+- File formats (such as Chart.yaml, repositories.yaml, and requirements.yaml) MUST be backward compatible
+- Any chart that worked on a previous version of Helm MUST work on a new version of Helm (barring the cases where (a) Kubernetes itself changed, and (b) the chart worked because it exploited a bug)
+- Chart repository functionality MUST be backward compatible
+- Go libraries inside of `pkg/` SHOULD remain backward compatible (though code inside of `cmd/` may be changed from release to release without notice).
+
 ## Issues
+
 Issues are used as the primary method for tracking anything to do with the Helm project.
 
 ### Issue Types
+
 There are 4 types of issues (each with their own corresponding [label](#labels)):
 - Question: These are support or functionality inquiries that we want to have a record of for 
 future reference. Generally these are questions that are too complex or large to store in the 
@@ -72,6 +90,7 @@ from a "Proposal" or can be submitted individually depending on the size.
 - Bugs: These track bugs with the code or problems with the documentation (i.e. missing or incomplete)
 
 ### Issue Lifecycle
+
 The issue lifecycle is mainly driven by the core maintainers, but is good information for those 
 contributing to Helm. All issue types follow the same general lifecycle. Differences are noted below.
 1. Issue creation
@@ -107,9 +126,11 @@ https://github.com/kubernetes/helm/blob/master/docs/developers.md
 The next section contains more information on the workflow followed for PRs
 
 ## Pull Requests
+
 Like any good open source project, we use Pull Requests to track code changes
 
 ### PR Lifecycle
+
 1. PR creation
     - We more than welcome PRs that are currently in progress. They are a great way to keep track of
     important work that is in-flight, but useful for others to see. If a PR is a work in progress, 
@@ -149,19 +170,23 @@ Like any good open source project, we use Pull Requests to track code changes
     merge the PR once it is approved.
 
 #### Documentation PRs
+
 Documentation PRs will follow the same lifecycle as other PRs. They will also be labeled with the 
 `docs` label. For documentation, special attention will be paid to spelling, grammar, and clarity 
 (whereas those things don't matter *as* much for comments in code).
 
 ## The Triager
+
 Each week, one of the core maintainers will serve as the designated "triager" starting after the 
 public standup meetings on Thursday. This person will be in charge triaging new PRs and issues 
 throughout the work week.
 
 ## Labels
+
 The following tables define all label types used for Helm. It is split up by category.
 
 ### Common
+
 | Label | Description |
 | ----- | ----------- |
 | `bug` | Marks an issue as a bug or a PR as a bugfix |
@@ -173,6 +198,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `refactor` | Indicates that the issue is a code refactor and is not fixing a bug or adding additional functionality |
 
 ### Issue Specific
+
 | Label | Description |
 | ----- | ----------- |
 | `help wanted` | This issue is one the core maintainers cannot get to right now and would appreciate help with |
@@ -182,6 +208,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `wont fix` | The issue has been discussed and will not be implemented (or accepted in the case of a proposal) |
 
 ### PR Specific
+
 | Label | Description |
 | ----- | ----------- |
 | `awaiting review` | The PR has been triaged and is ready for someone to review |
@@ -194,6 +221,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `picked` | This PR has been picked into a feature branch |
 
 #### Size labels
+
 Size labels are used to indicate how "dangerous" a PR is. The guidelines below are used to assign the 
 labels, but ultimately this can be changed by the maintainers. For example, even if a PR only makes 
 30 lines of changes in 1 file, but it changes key functionality, it will likely be labeled as `size/large` 
