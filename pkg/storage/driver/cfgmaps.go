@@ -17,7 +17,6 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
+	codederrors "k8s.io/helm/pkg/errors"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -65,17 +65,17 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 	obj, err := cfgmaps.impl.Get(key, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseNotFound(key)
+			return nil, codederrors.ErrNotFound("release %s not found", key)
 		}
 
 		cfgmaps.Log("get: failed to get %q: %s", key, err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 	// found the configmap, decode the base64 data string
 	r, err := decodeRelease(obj.Data["release"])
 	if err != nil {
 		cfgmaps.Log("get: failed to decode data %q: %s", key, err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 	// return the release object
 	return r, nil
@@ -91,7 +91,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	list, err := cfgmaps.impl.List(opts)
 	if err != nil {
 		cfgmaps.Log("list: failed to list: %s", err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 
 	var results []*rspb.Release
@@ -117,7 +117,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
-			return nil, fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
+			return nil, codederrors.ErrInvalidArgument("invalid label value: %q: %s", v, strings.Join(errs, "; "))
 		}
 		ls[k] = v
 	}
@@ -127,11 +127,11 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	list, err := cfgmaps.impl.List(opts)
 	if err != nil {
 		cfgmaps.Log("query: failed to query with labels: %s", err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 
 	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound(labels["NAME"])
+		return nil, codederrors.ErrNotFound("release %s not found", labels["NAME"])
 	}
 
 	var results []*rspb.Release
@@ -159,16 +159,16 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
 		cfgmaps.Log("create: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	// push the configmap object out into the kubiverse
 	if _, err := cfgmaps.impl.Create(obj); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return ErrReleaseExists(key)
+			return codederrors.ErrConflict("release %s already exist", key)
 		}
 
 		cfgmaps.Log("create: failed to create: %s", err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	return nil
 }
@@ -186,13 +186,13 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
 		cfgmaps.Log("update: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(obj)
 	if err != nil {
 		cfgmaps.Log("update: failed to update: %s", err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	return nil
 }
@@ -202,15 +202,14 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseExists(rls.Name)
+			return nil, codederrors.ErrNotFound("release %s not found", rls.Name)
 		}
-
 		cfgmaps.Log("delete: failed to get release %q: %s", key, err)
 		return nil, err
 	}
 	// delete the release
 	if err = cfgmaps.impl.Delete(key, &metav1.DeleteOptions{}); err != nil {
-		return rls, err
+		return rls, codederrors.ErrInternal(err.Error())
 	}
 	return rls, nil
 }

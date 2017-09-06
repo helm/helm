@@ -23,6 +23,7 @@ import (
 	ctx "golang.org/x/net/context"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -57,7 +58,7 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 // prepareRelease builds a release for an install operation.
 func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
 	if req.Chart == nil {
-		return nil, errMissingChart
+		return nil, errors.ErrInvalidArgument("missing chart")
 	}
 
 	name, err := s.uniqName(req.Name, req.ReuseName)
@@ -81,7 +82,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	}
 	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrUnknown(err.Error())
 	}
 
 	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
@@ -181,7 +182,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Description = msg
 			s.recordRelease(old, true)
 			s.recordRelease(r, true)
-			return res, err
+			return res, errors.ErrUnknown(msg)
 		}
 
 	default:
@@ -194,7 +195,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, true)
-			return res, fmt.Errorf("release %s failed: %s", r.Name, err)
+			return res, errors.ErrUnknown(msg)
 		}
 	}
 

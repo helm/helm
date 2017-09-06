@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 
+	errors "k8s.io/helm/pkg/errors"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -53,16 +54,16 @@ func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	case 2:
 		name, ver := elems[0], elems[1]
 		if _, err := strconv.Atoi(ver); err != nil {
-			return nil, ErrInvalidKey(key)
+			return nil, errors.ErrInvalidArgument(key)
 		}
 		if recs, ok := mem.cache[name]; ok {
 			if r := recs.Get(key); r != nil {
 				return r.rls, nil
 			}
 		}
-		return nil, ErrReleaseNotFound(key)
+		return nil, errors.ErrNotFound(key)
 	default:
-		return nil, ErrInvalidKey(key)
+		return nil, errors.ErrInvalidArgument(key)
 	}
 }
 
@@ -131,7 +132,7 @@ func (mem *Memory) Update(key string, rls *rspb.Release) error {
 		rs.Replace(key, newRecord(key, rls))
 		return nil
 	}
-	return ErrReleaseNotFound(rls.Name)
+	return errors.ErrNotFound(rls.Name)
 }
 
 // Delete deletes a release or returns ErrReleaseNotFound.
@@ -141,12 +142,12 @@ func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	elems := strings.Split(key, ".v")
 
 	if len(elems) != 2 {
-		return nil, ErrInvalidKey(key)
+		return nil, errors.ErrInvalidArgument(key)
 	}
 
 	name, ver := elems[0], elems[1]
 	if _, err := strconv.Atoi(ver); err != nil {
-		return nil, ErrInvalidKey(key)
+		return nil, errors.ErrInvalidArgument(key)
 	}
 	if recs, ok := mem.cache[name]; ok {
 		if r := recs.Remove(key); r != nil {
@@ -155,7 +156,7 @@ func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 			return r.rls, nil
 		}
 	}
-	return nil, ErrReleaseNotFound(key)
+	return nil, errors.ErrNotFound(key)
 }
 
 // wlock locks mem for writing

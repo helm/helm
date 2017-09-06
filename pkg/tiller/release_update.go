@@ -22,6 +22,7 @@ import (
 	ctx "golang.org/x/net/context"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -66,7 +67,7 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 // prepareUpdate builds an updated release for an update operation.
 func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
 	if req.Chart == nil {
-		return nil, nil, errMissingChart
+		return nil, nil, errors.ErrNotFound("missing chart")
 	}
 
 	// finds the deployed release with the given name
@@ -105,7 +106,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	}
 	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.ErrUnknown(err.Error())
 	}
 
 	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
@@ -161,7 +162,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
 		s.recordRelease(updatedRelease, true)
-		return res, err
+		return res, errors.ErrUnknown(msg)
 	}
 
 	// post-upgrade hooks

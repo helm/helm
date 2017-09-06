@@ -17,9 +17,9 @@ limitations under the License.
 package tiller
 
 import (
-	"fmt"
 	"regexp"
 
+	codederrors "k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
@@ -45,10 +45,7 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 	}
 
 	if req.Namespace != "" {
-		rels, err = filterByNamespace(req.Namespace, rels)
-		if err != nil {
-			return err
-		}
+		rels = filterByNamespace(req.Namespace, rels)
 	}
 
 	if len(req.Filter) != 0 {
@@ -86,11 +83,11 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 			}
 		}
 		if i == -1 {
-			return fmt.Errorf("offset %q not found", req.Offset)
+			return codederrors.ErrInvalidArgument("offset %q not found", req.Offset)
 		}
 
 		if len(rels) < i {
-			return fmt.Errorf("no items after %q", req.Offset)
+			return codederrors.ErrInvalidArgument("no items after %q", req.Offset)
 		}
 
 		rels = rels[i:]
@@ -117,20 +114,20 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 	return stream.Send(res)
 }
 
-func filterByNamespace(namespace string, rels []*release.Release) ([]*release.Release, error) {
+func filterByNamespace(namespace string, rels []*release.Release) []*release.Release {
 	matches := []*release.Release{}
 	for _, r := range rels {
 		if namespace == r.Namespace {
 			matches = append(matches, r)
 		}
 	}
-	return matches, nil
+	return matches
 }
 
 func filterReleases(filter string, rels []*release.Release) ([]*release.Release, error) {
 	preg, err := regexp.Compile(filter)
 	if err != nil {
-		return rels, err
+		return rels, codederrors.ErrInvalidArgument(err.Error())
 	}
 	matches := []*release.Release{}
 	for _, r := range rels {

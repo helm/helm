@@ -17,11 +17,9 @@ limitations under the License.
 package tiller
 
 import (
-	"errors"
-	"fmt"
-
 	ctx "golang.org/x/net/context"
 
+	codederrors "k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
@@ -39,20 +37,20 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		var err error
 		rel, err = s.env.Releases.Last(req.Name)
 		if err != nil {
-			return nil, fmt.Errorf("getting deployed release %q: %s", req.Name, err)
+			return nil, err
 		}
 	} else {
 		var err error
 		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
-			return nil, fmt.Errorf("getting release '%s' (v%d): %s", req.Name, req.Version, err)
+			return nil, err
 		}
 	}
 
 	if rel.Info == nil {
-		return nil, errors.New("release info is missing")
+		return nil, codederrors.ErrInternal("release info is missing")
 	}
 	if rel.Chart == nil {
-		return nil, errors.New("release chart is missing")
+		return nil, codederrors.ErrInternal("release chart is missing")
 	}
 
 	sc := rel.Info.Status.Code

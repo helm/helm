@@ -18,7 +18,6 @@ package tiller
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -30,6 +29,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -52,17 +52,6 @@ const releaseNameMaxLen = 53
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
-
-var (
-	// errMissingChart indicates that a chart was not provided.
-	errMissingChart = errors.New("no chart provided")
-	// errMissingRelease indicates that a release (name) was not provided.
-	errMissingRelease = errors.New("no release provided")
-	// errInvalidRevision indicates that an invalid release revision number was provided.
-	errInvalidRevision = errors.New("invalid release revision")
-	//errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
-)
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
 var ListDefaultLimit int64 = 512
@@ -127,13 +116,13 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		// We have to regenerate the old coalesced values:
 		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
-			err := fmt.Errorf("failed to rebuild old values: %s", err)
-			s.Log("%s", err)
-			return err
+			msg := fmt.Sprintf("failed to rebuild old values: %s", err)
+			s.Log(msg)
+			return errors.ErrUnknown(msg)
 		}
 		nv, err := oldVals.YAML()
 		if err != nil {
-			return err
+			return errors.ErrUnknown(err.Error())
 		}
 		req.Chart.Values = &chart.Config{Raw: nv}
 		return nil
@@ -159,11 +148,15 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 	if start != "" {
 
 		if len(start) > releaseNameMaxLen {
-			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
+			return "", errors.ErrInvalidArgument("release %s exceeds max length of %d", start, releaseNameMaxLen)
 		}
 
 		h, err := s.env.Releases.History(start)
-		if err != nil || len(h) < 1 {
+		if err != nil && errors.IsNotFound(err) {
+			return start, nil
+		} else if err != nil {
+			return start, err
+		} else if len(h) < 1 {
 			return start, nil
 		}
 		relutil.Reverse(h, relutil.SortByRevision)
@@ -174,10 +167,10 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 			s.Log("name %s exists but is not in use, reusing name", start)
 			return start, nil
 		} else if reuse {
-			return "", errors.New("cannot re-use a name that is still in use")
+			return "", errors.ErrConflict("release %s already exist", start)
 		}
 
-		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
+		return "", errors.ErrConflict("release %s already exist", start)
 	}
 
 	maxTries := 5
@@ -187,13 +180,15 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		if len(name) > releaseNameMaxLen {
 			name = name[:releaseNameMaxLen]
 		}
-		if _, err := s.env.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
-			return name, nil
+		if _, err := s.env.Releases.Get(name, 1); err != nil {
+			if errors.IsNotFound(err) {
+				return name, nil
+			}
 		}
 		s.Log("info: generated name %s is taken. Searching again.", name)
 	}
 	s.Log("warning: No available release names found after %d tries", maxTries)
-	return "ERROR", errors.New("no available release name found")
+	return "ERROR", errors.ErrUnavailable("no available release name found")
 }
 
 func (s *ReleaseServer) engine(ch *chart.Chart) environment.Engine {
@@ -212,11 +207,11 @@ func (s *ReleaseServer) engine(ch *chart.Chart) environment.Engine {
 func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, error) {
 	sv, err := disc.ServerVersion()
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrUnknown(err.Error())
 	}
 	vs, err := GetVersionSet(disc)
 	if err != nil {
-		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+		return nil, err
 	}
 	return &chartutil.Capabilities{
 		APIVersions:   vs,
@@ -229,7 +224,8 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
 	groups, err := client.ServerGroups()
 	if err != nil {
-		return chartutil.DefaultVersionSet, err
+		//return chartutil.DefaultVersionSet, err
+		return chartutil.DefaultVersionSet, errors.ErrUnknown(err.Error())
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -249,14 +245,14 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	sver := version.GetVersion()
 	if ch.Metadata.TillerVersion != "" &&
 		!version.IsCompatibleRange(ch.Metadata.TillerVersion, sver) {
-		return nil, nil, "", fmt.Errorf("Chart incompatible with Tiller %s", sver)
+		return nil, nil, "", errors.ErrInvalidArgument("Chart incompatible with Tiller %s", sver)
 	}
 
 	s.Log("rendering %s chart using values", ch.GetMetadata().Name)
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", errors.ErrUnknown(err.Error())
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -321,7 +317,8 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	kubeCli := s.env.KubeClient
 	code, ok := events[hook]
 	if !ok {
-		return fmt.Errorf("unknown hook %s", hook)
+		// this shouldn't happen, since all the execHook call use Const in pkg hook
+		return errors.ErrUnknown("unknown hook %s", hook)
 	}
 
 	s.Log("executing %d %s hooks for %s", len(hs), hook, name)
@@ -341,7 +338,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b, timeout, false); err != nil {
 			s.Log("warning: Release %s %s %s failed: %s", name, hook, h.Path, err)
-			return err
+			return errors.ErrInternal(err.Error())
 		}
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
@@ -356,10 +353,10 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 				s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, hooks.HookFailed)
 				if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
 					s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
-					return errHookDelete
+					return errors.ErrInternal(errHookDelete.Error())
 				}
 			}
-			return err
+			return errors.ErrInternal(err.Error())
 		}
 	}
 
@@ -372,7 +369,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 			s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, hooks.HookSucceeded)
 			if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
 				s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
-				return errHookDelete
+				return errors.ErrInternal(errHookDelete.Error())
 			}
 		}
 		h.LastRun = timeconv.Now()
@@ -384,16 +381,19 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
 	r := bytes.NewReader(manifest)
 	_, err := c.BuildUnstructured(ns, r)
+	if err != nil {
+		err = errors.ErrInternal(err.Error())
+	}
 	return err
 }
 
 func validateReleaseName(releaseName string) error {
 	if releaseName == "" {
-		return errMissingRelease
+		return errors.ErrInvalidArgument("release name is empty")
 	}
 
 	if !ValidName.MatchString(releaseName) || (len(releaseName) > releaseNameMaxLen) {
-		return errInvalidName
+		return errors.ErrInvalidArgument("release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
 	}
 
 	return nil

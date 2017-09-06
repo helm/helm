@@ -19,13 +19,12 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/storage/driver"
 )
 
 const upgradeDesc = `
@@ -152,15 +151,13 @@ func (u *upgradeCmd) run() error {
 		// So we're stuck doing string matching against the wrapped error, which is nested somewhere
 		// inside of the grpc.rpcError message.
 		releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
-
 		if err == nil {
 			previousReleaseNamespace := releaseHistory.Releases[0].Namespace
 			if previousReleaseNamespace != u.namespace {
 				fmt.Fprintf(u.out, "WARNING: Namespace doesn't match with previous. Release will be deployed to %s\n", previousReleaseNamespace)
 			}
 		}
-
-		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(u.release).Error()) {
+		if err != nil && errors.IsNotFound(err) {
 			fmt.Fprintf(u.out, "Release %q does not exist. Installing it now.\n", u.release)
 			ic := &installCmd{
 				chartPath:    chartPath,

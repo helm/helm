@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
+	codederrors "k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -183,24 +184,29 @@ func upgradeReleaseVersion(rel *release.Release) *release.Release {
 }
 
 func TestValidName(t *testing.T) {
-	for name, valid := range map[string]error{
-		"nina pinta santa-maria": errInvalidName,
-		"nina-pinta-santa-maria": nil,
-		"-nina":                  errInvalidName,
-		"pinta-":                 errInvalidName,
-		"santa-maria":            nil,
-		"niña":                   errInvalidName,
-		"...":                    errInvalidName,
-		"pinta...":               errInvalidName,
-		"santa...maria":          nil,
-		"":                       errMissingRelease,
-		" ":                      errInvalidName,
-		".nina.":                 errInvalidName,
-		"nina.pinta":             nil,
-		"abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcd": errInvalidName,
+	type isSomeError func(err error) bool
+	isNilError := func(err error) bool {
+		return err == nil
+	}
+	isInvalidArgumentError := codederrors.IsInvalidArgument
+	for name, valid := range map[string]isSomeError{
+		"nina pinta santa-maria": isInvalidArgumentError,
+		"nina-pinta-santa-maria": isNilError,
+		"-nina":                  isInvalidArgumentError,
+		"pinta-":                 isInvalidArgumentError,
+		"santa-maria":            isNilError,
+		"niña":                   isInvalidArgumentError,
+		"...":                    isInvalidArgumentError,
+		"pinta...":               isInvalidArgumentError,
+		"santa...maria":          isNilError,
+		"":                       isInvalidArgumentError,
+		" ":                      isInvalidArgumentError,
+		".nina.":                 isInvalidArgumentError,
+		"nina.pinta":             isNilError,
+		"abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcd": isInvalidArgumentError,
 	} {
-		if valid != validateReleaseName(name) {
-			t.Errorf("Expected %q to be %t", name, valid)
+		if !valid(validateReleaseName(name)) {
+			t.Errorf("%s error type missmatch", name)
 		}
 	}
 }

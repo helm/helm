@@ -17,11 +17,11 @@ limitations under the License.
 package tiller
 
 import (
-	"fmt"
 	"strings"
 
 	ctx "golang.org/x/net/context"
 
+	"k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -42,7 +42,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, err
 	}
 	if len(rels) < 1 {
-		return nil, errMissingRelease
+		return nil, errors.ErrNotFound("release %s not exist", req.Name)
 	}
 
 	relutil.SortByRevision(rels)
@@ -58,7 +58,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 			}
 			return &services.UninstallReleaseResponse{Release: rel}, nil
 		}
-		return nil, fmt.Errorf("the release named %q is already deleted", req.Name)
+		return nil, errors.ErrConflict("the release named %q is already deleted", req.Name)
 	}
 
 	s.Log("uninstall: Deleting %s", req.Name)
@@ -113,7 +113,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	if len(es) > 0 {
-		return res, fmt.Errorf("deletion completed with %d error(s): %s", len(es), strings.Join(es, "; "))
+		return res, errors.ErrUnknown("deletion completed with %d error(s): %s", len(es), strings.Join(es, "; "))
 	}
 	return res, nil
 }

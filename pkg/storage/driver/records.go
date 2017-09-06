@@ -21,7 +21,7 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/proto"
-
+	"k8s.io/helm/pkg/errors"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -38,7 +38,7 @@ func (rs *records) Add(r *record) error {
 	}
 
 	if rs.Exists(r.key) {
-		return ErrReleaseExists(r.key)
+		return errors.ErrConflict("release %s already exist", r.key)
 	}
 
 	*rs = append(*rs, r)

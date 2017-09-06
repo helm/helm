@@ -17,7 +17,6 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
+	codederrors "k8s.io/helm/pkg/errors"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -65,7 +65,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	obj, err := secrets.impl.Get(key, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseNotFound(key)
+			return nil, codederrors.ErrNotFound("release %s not found", key)
 		}
 
 		secrets.Log("get: failed to get %q: %s", key, err)
@@ -75,7 +75,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	r, err := decodeRelease(string(obj.Data["release"]))
 	if err != nil {
 		secrets.Log("get: failed to decode data %q: %s", key, err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 	// return the release object
 	return r, nil
@@ -91,7 +91,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 	list, err := secrets.impl.List(opts)
 	if err != nil {
 		secrets.Log("list: failed to list: %s", err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 
 	var results []*rspb.Release
@@ -117,7 +117,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
-			return nil, fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
+			return nil, codederrors.ErrInvalidArgument("invalid label value: %q: %s", v, strings.Join(errs, "; "))
 		}
 		ls[k] = v
 	}
@@ -127,11 +127,11 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	list, err := secrets.impl.List(opts)
 	if err != nil {
 		secrets.Log("query: failed to query with labels: %s", err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 
 	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound(labels["NAME"])
+		return nil, codederrors.ErrNotFound("release %s not found", labels["NAME"])
 	}
 
 	var results []*rspb.Release
@@ -159,16 +159,16 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	obj, err := newSecretsObject(key, rls, lbs)
 	if err != nil {
 		secrets.Log("create: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	// push the secret object out into the kubiverse
 	if _, err := secrets.impl.Create(obj); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return ErrReleaseExists(rls.Name)
+			return codederrors.ErrConflict("release %s already exist", rls.Name)
 		}
 
 		secrets.Log("create: failed to create: %s", err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	return nil
 }
@@ -186,13 +186,13 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	obj, err := newSecretsObject(key, rls, lbs)
 	if err != nil {
 		secrets.Log("update: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	// push the secret object out into the kubiverse
 	_, err = secrets.impl.Update(obj)
 	if err != nil {
 		secrets.Log("update: failed to update: %s", err)
-		return err
+		return codederrors.ErrInternal(err.Error())
 	}
 	return nil
 }
@@ -202,15 +202,15 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = secrets.Get(key); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseExists(rls.Name)
+			return nil, codederrors.ErrNotFound("release %s not found", rls.Name)
 		}
 
 		secrets.Log("delete: failed to get release %q: %s", key, err)
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 	// delete the release
 	if err = secrets.impl.Delete(key, &metav1.DeleteOptions{}); err != nil {
-		return rls, err
+		return rls, codederrors.ErrInternal(err.Error())
 	}
 	return rls, nil
 }
@@ -234,7 +234,7 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*api.Secret, e
 	// encode the release
 	s, err := encodeRelease(rls)
 	if err != nil {
-		return nil, err
+		return nil, codederrors.ErrInternal(err.Error())
 	}
 
 	if lbs == nil {

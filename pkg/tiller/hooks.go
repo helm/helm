@@ -26,6 +26,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
+	codederrors "k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
@@ -100,7 +101,7 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 		}
 
 		if err := manifestFile.sort(result); err != nil {
-			return result.hooks, result.generic, err
+			return result.hooks, result.generic, codederrors.ErrUnknown(err.Error())
 		}
 	}
 

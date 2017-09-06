@@ -21,6 +21,7 @@ import (
 
 	ctx "golang.org/x/net/context"
 
+	"k8s.io/helm/pkg/errors"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -66,7 +67,7 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 	}
 
 	if req.Version < 0 {
-		return nil, nil, errInvalidRevision
+		return nil, nil, errors.ErrInvalidArgument("invalid release version %d, must >= 0", req.Version)
 	}
 
 	crls, err := s.env.Releases.Last(req.Name)
@@ -136,7 +137,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		targetRelease.Info.Description = msg
 		s.recordRelease(currentRelease, true)
 		s.recordRelease(targetRelease, false)
-		return res, err
+		return res, errors.ErrUnknown(msg)
 	}
 
 	// post-rollback hooks
