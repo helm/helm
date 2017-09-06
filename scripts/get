@@ -191,9 +191,14 @@ export INPUT_ARGUMENTS="${@}"
 set -u
 while [[ $# -gt 0 ]]; do
   case $1 in
-    '--version'|-v) 
-       export DESIRED_VERSION="${2}" 
+    '--version'|-v)
        shift
+       if [[ $# -ne 0 ]]; then
+           export DESIRED_VERSION="${1}"
+       else
+           echo -e "Please provide the desired version. e.g. --version v2.4.0 or -v latest"
+           exit 0
+       fi
        ;;
     '--help'|-h) 
        help
