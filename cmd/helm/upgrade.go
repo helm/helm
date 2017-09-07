@@ -73,6 +73,7 @@ type upgradeCmd struct {
 	reuseValues  bool
 	wait         bool
 	repoURL      string
+	labels       []string
 	devel        bool
 
 	certFile string
@@ -128,6 +129,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values, and merge in any new values. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringArrayVar(&upgrade.labels, "labels", []string{}, "apply a custom set of labels to the release (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -178,6 +180,11 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
+	labels, err := parseLabels(u.labels)
+	if err != nil {
+		return err
+	}
+
 	// Check chart requirements to make sure all dependencies are present in /charts
 	if ch, err := chartutil.Load(chartPath); err == nil {
 		if req, err := chartutil.LoadRequirements(ch); err == nil {
@@ -202,7 +209,8 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeTimeout(u.timeout),
 		helm.ResetValues(u.resetValues),
 		helm.ReuseValues(u.reuseValues),
-		helm.UpgradeWait(u.wait))
+		helm.UpgradeWait(u.wait),
+		helm.UpgradeLabels(labels))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}

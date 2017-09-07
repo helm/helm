@@ -117,6 +117,7 @@ type installCmd struct {
 	timeout      int64
 	wait         bool
 	repoURL      string
+	labels       []string
 	devel        bool
 
 	certFile string
@@ -189,6 +190,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringArrayVar(&inst.labels, "labels", []string{}, "apply a custom set of labels to the release (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -205,6 +207,11 @@ func (i *installCmd) run() error {
 	}
 
 	rawVals, err := vals(i.valueFiles, i.values)
+	if err != nil {
+		return err
+	}
+
+	labels, err := parseLabels(i.labels)
 	if err != nil {
 		return err
 	}
@@ -245,7 +252,8 @@ func (i *installCmd) run() error {
 		helm.InstallReuseName(i.replace),
 		helm.InstallDisableHooks(i.disableHooks),
 		helm.InstallTimeout(i.timeout),
-		helm.InstallWait(i.wait))
+		helm.InstallWait(i.wait),
+		helm.InstallLabels(labels))
 	if err != nil {
 		return prettyError(err)
 	}
@@ -468,4 +476,18 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 		return fmt.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+func parseLabels(input []string) (map[string]string, error) {
+	labelMap := make(map[string]string)
+	for _, labels := range input {
+		for _, labelString := range strings.Split(labels, ",") {
+			singleLabel := strings.Split(labelString, "=")
+			if len(singleLabel) < 2 || len(singleLabel[0]) == 0 {
+				return nil, fmt.Errorf("invalid label format: '%s', should be <key>=[value]", singleLabel)
+			}
+			labelMap[singleLabel[0]] = singleLabel[1]
+		}
+	}
+	return labelMap, nil
 }

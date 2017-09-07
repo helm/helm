@@ -87,6 +87,7 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	req.DryRun = h.opts.dryRun
 	req.DisableHooks = h.opts.disableHooks
 	req.ReuseName = h.opts.reuseName
+	req.Labels = h.opts.labels
 	ctx := NewContext()
 
 	if h.opts.before != nil {
@@ -162,6 +163,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	req.Force = h.opts.force
 	req.ResetValues = h.opts.resetValues
 	req.ReuseValues = h.opts.reuseValues
+	req.Labels = h.opts.labels
 	ctx := NewContext()
 
 	if h.opts.before != nil {

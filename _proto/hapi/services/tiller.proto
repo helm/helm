@@ -209,6 +209,8 @@ message UpdateReleaseRequest {
 	bool reuse_values = 10;
 	// Force resource update through delete/recreate if needed.
 	bool force = 11;
+	// labels is a set of labels to apply to the release.
+	map<string, string> labels = 12;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -251,26 +253,23 @@ message InstallReleaseRequest {
 	// a release object nor deploy to Kubernetes. The release object returned
 	// in the response will be fake.
 	bool dry_run = 3;
-
 	// Name is the candidate release name. This must be unique to the
 	// namespace, otherwise the server will return an error. If it is not
 	// supplied, the server will autogenerate one.
 	string name = 4;
-
 	// DisableHooks causes the server to skip running any hooks for the install.
 	bool disable_hooks = 5;
-
 	// Namepace is the kubernetes namespace of the release.
 	string namespace = 6;
-
 	// ReuseName requests that Tiller re-uses a name, instead of erroring out.
 	bool reuse_name = 7;
-
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 8;
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
 	bool wait = 9;
+	// labels is a set of labels to apply to the release.
+	map<string, string> labels = 10;
 }
 
 // InstallReleaseResponse is the response from a release installation.
