@@ -87,6 +87,44 @@ The `bootstrap` target will attempt to install dependencies, rebuild the
 The `build` target will compile `helm` and place it in `bin/helm`.
 Tiller is also compiled, and is placed in `bin/tiller`.
 
+### From Source (Windows)
+
+From powershell run:
+
+```console
+$ cd $GOPATH
+$ mkdir -p src/k8s.io
+$ cd src/k8s.io
+$ git clone https://github.com/kubernetes/helm.git
+$ cd helm
+$ ./scripts/devenv.ps1
+```
+
+This will prepare Docker container with properly setup git, Mercurial and Go. Helm directory will be share with container so it can access your changes to helm as well as produce binaries you can access from Windows environment.
+
+From within this container run:
+
+```console
+$ make bootstrap build
+```
+
+to produce linux assembly. Or
+
+```console
+$ make bootstrap build-cross
+```
+
+to cross compile and produce windows assemblies which you will find in _dist/windows-amd64.
+
+In case you have troubles with line endings on some script files, you can use 'dos2unix' utility to make them right.
+
+Usage: 
+
+```console
+$ dos2unix scripts/{script_filename.sh}
+```
+
+
 ## Installing Tiller
 
 Tiller, the server portion of Helm, typically runs inside of your
