@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"k8s.io/helm/pkg/getter"
 	helm_env "k8s.io/helm/pkg/helm/environment"
@@ -86,7 +87,12 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, set
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository), home, out, skipRefresh, settings, stableRepositoryURL)
+		// the cache path is prepended to all relative paths, for backwards compatibility, we must be relative to the cache directory
+		sif, err := filepath.Rel(home.Cache(), home.CacheIndex(stableRepository))
+		if err != nil {
+			return err
+		}
+		sr, err := initStableRepo(sif, home, out, skipRefresh, settings, stableRepositoryURL)
 		if err != nil {
 			return err
 		}
