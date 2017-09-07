@@ -344,7 +344,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.RelativeIndex("local"), out)
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out)
 		if err != nil {
 			return err
 		}
