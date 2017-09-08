@@ -1,4 +1,7 @@
 package: k8s.io/helm
+ignore:
+- k8s.io/client-go
+- k8s.io/apimachinery
 import:
 - package: golang.org/x/net
   subpackages:
@@ -9,8 +12,6 @@ import:
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - package: github.com/Masterminds/vcs
   version: ~1.11.0
-
-  # Pin version of mergo that is compatible with both sprig and Kubernetes
 - package: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - package: github.com/Masterminds/sprig
@@ -52,11 +53,9 @@ import:
   vcs: git
 - package: github.com/docker/distribution
   version: ~2.4.0
-
-# hacks for kubernetes v1.7
 - package: cloud.google.com/go
 - package: github.com/Azure/go-autorest
-  version: d7c034a8af24eda120dd6460bfcd6d9ed14e43ca
+  version: 77a52603f06947221c672f10275abc9bf2c7d557
 - package: github.com/dgrijalva/jwt-go
 - package: github.com/docker/spdystream
 - package: github.com/go-openapi/analysis
@@ -77,13 +76,12 @@ import:
 - package: gopkg.in/inf.v0
 - package: github.com/go-openapi/strfmt
 - package: github.com/mitchellh/mapstructure
-- package: gopkg.in/mgo.v2/bson
-ignore:
-  - k8s.io/client-go
-  - k8s.io/apimachinery
-
-testImports:
-- package: github.com/stretchr/testify
-  version: ^1.1.4
+- package: gopkg.in/mgo.v2
   subpackages:
-  - assert
+  - bson
+- package: github.com/onsi/ginkgo
+  version: ^1.4.0
+  subpackages:
+  - ginkgo
+- package: github.com/onsi/gomega
+  version: ^1.2.0

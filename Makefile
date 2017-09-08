@@ -8,7 +8,7 @@ APP               = helm
 
 # go option
 GO        ?= go
-PKG       := $(shell glide novendor)
+PKG       := ./pkg/... ./cmd/...
 TAGS      :=
 TESTS     := .
 TESTFLAGS :=
@@ -116,6 +116,18 @@ clean:
 .PHONY: coverage
 coverage:
 	@scripts/coverage.sh
+
+.PHONY: dind
+dind: docker-build
+dind:
+	@scripts/portforward.sh start
+	@scripts/dind.sh
+	@scripts/import-docker-image.sh
+
+.PHONY: e2e
+e2e: dind
+e2e:
+	go test -v ./e2e --cluster-url http://localhost:8080 --helm-bin ../bin/helm
 
 HAS_GLIDE := $(shell command -v glide;)
 HAS_GOX := $(shell command -v gox;)

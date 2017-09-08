@@ -1,5 +1,5 @@
-hash: 54e64255ab9112d0183766264214969a8add57903fbe9e96034f9640b9c9cd82
-updated: 2017-07-10T10:52:19.616678852-04:00
+hash: e898f3f3c4f537e5181bf9d59a2f401f30187cf061d477389d634fc8d2b7d9cb
+updated: 2017-08-17T15:21:32.21876387+02:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -8,7 +8,7 @@ imports:
 - name: github.com/asaskevich/govalidator
   version: 7664702784775e51966f0885f5cd27435916517b
 - name: github.com/Azure/go-autorest
-  version: d7c034a8af24eda120dd6460bfcd6d9ed14e43ca
+  version: 77a52603f06947221c672f10275abc9bf2c7d557
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -247,6 +247,9 @@ imports:
   version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
   subpackages:
   - context
+  - html
+  - html/atom
+  - html/charset
   - http2
   - http2/hpack
   - idna
@@ -264,8 +267,14 @@ imports:
   subpackages:
   - cases
   - encoding
+  - encoding/charmap
+  - encoding/htmlindex
   - encoding/internal
   - encoding/internal/identifier
+  - encoding/japanese
+  - encoding/korean
+  - encoding/simplifiedchinese
+  - encoding/traditionalchinese
   - encoding/unicode
   - internal/tag
   - internal/utf8internal
@@ -338,7 +347,7 @@ imports:
   - pkg/util/feature
   - pkg/util/flag
 - name: k8s.io/kubernetes
-  version: d3ada0119e776222f11ec7945e6d860061339aad
+  version: ebd4ffa39761a21ea5a2a206dc236e6003a8f9d1
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - federation/apis/federation
@@ -552,3 +561,38 @@ testImports:
   version: e3a8ff8ce36581f87a15341206f205b1da467059
   subpackages:
   - assert
+- name: github.com/onsi/ginkgo
+  version: 9eda700730cba42af70d53180f9dcce9266bc2bc
+  subpackages:
+  - config
+  - ginkgo
+  - internal/codelocation
+  - internal/containernode
+  - internal/failer
+  - internal/leafnodes
+  - internal/remote
+  - internal/spec
+  - internal/spec_iterator
+  - internal/specrunner
+  - internal/suite
+  - internal/testingtproxy
+  - internal/writer
+  - reporters
+  - reporters/stenographer
+  - reporters/stenographer/support/go-colorable
+  - reporters/stenographer/support/go-isatty
+  - types
+- name: github.com/onsi/gomega
+  version: c893efa28eb45626cdaa76c9f653b62488858837
+  subpackages:
+  - format
+  - internal/assertion
+  - internal/asyncassertion
+  - internal/oraclematcher
+  - internal/testingtsupport
+  - matchers
+  - matchers/support/goraph/bipartitegraph
+  - matchers/support/goraph/edge
+  - matchers/support/goraph/node
+  - matchers/support/goraph/util
+  - types
