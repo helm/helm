@@ -9,38 +9,17 @@ jobs:
       PROJECT_NAME: "kubernetes-helm"
     steps:
       - checkout
+      - setup_remote_docker
       - run:
           name: install dependencies
           command: make bootstrap
-      - run:
-          name: go env
-          command: go env
       - save_cache:
           key: vendor-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
           paths:
             - vendor
       - run:
           name: test
-          command: ./scripts/ci.sh
-  deployment:
-    working_directory: /go/src/k8s.io/helm
-    docker:
-      - image: golang:1.8
-    environment:
-      PROJECT_NAME: "kubernetes-helm"
-    filters:
-      tags:
-        only: /.*/
-      branches:
-        only: master
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - vendor-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
-      - run:
-          name: go env
-          command: go env
+          command: .circleci/test.sh
       - deploy:
-        name: deploy
-        command: ./scripts/ci/deploy.sh
+          name: deploy
+          command: .circleci/deploy.sh
