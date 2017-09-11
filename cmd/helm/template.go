@@ -35,6 +35,7 @@ import (
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/timeconv"
+	tversion "k8s.io/helm/pkg/version"
 )
 
 const templateDesc = `
@@ -171,7 +172,12 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	// Set up engine.
 	renderer := engine.New()
 
-	vals, err := chartutil.ToRenderValues(c, config, options)
+	caps := &chartutil.Capabilities{
+		APIVersions:   chartutil.DefaultVersionSet,
+		KubeVersion:   chartutil.DefaultKubeVersion,
+		TillerVersion: tversion.GetVersionProto(),
+	}
+	vals, err := chartutil.ToRenderValuesCaps(c, config, options, caps)
 	if err != nil {
 		return err
 	}
