@@ -57,6 +57,7 @@ const (
 
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
+	storageSecret    = "secret"
 
 	probeAddr = ":44135"
 	traceAddr = ":44136"
@@ -68,7 +69,7 @@ const (
 var (
 	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
-	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap' or 'memory'")
+	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
 	tlsEnable            = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
 	tlsVerify            = flag.Bool("tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
@@ -116,6 +117,12 @@ func start() {
 		cfgmaps.Log = newLogger("storage/driver").Printf
 
 		env.Releases = storage.Init(cfgmaps)
+		env.Releases.Log = newLogger("storage").Printf
+	case storageSecret:
+		secrets := driver.NewSecrets(clientset.Core().Secrets(namespace()))
+		secrets.Log = newLogger("storage/driver").Printf
+
+		env.Releases = storage.Init(secrets)
 		env.Releases.Log = newLogger("storage").Printf
 	}
 
