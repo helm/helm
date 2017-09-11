@@ -91,7 +91,9 @@ func (t *Tunnel) ForwardPort() error {
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- pf.ForwardPorts()
+		if err := pf.ForwardPorts(); err != nil {
+			errChan <- err
+		}
 	}()
 
 	select {
