@@ -28,9 +28,6 @@ func TestEnsureNamespace(t *testing.T) {
 	if err := ensureNamespace(client, "foo"); err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	if err := ensureNamespace(client, "foo"); err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
 	if _, err := client.Core().Namespaces().Get("foo", metav1.GetOptions{}); err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
