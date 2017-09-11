@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
@@ -62,6 +63,7 @@ type templateCmd struct {
 	showNotes    bool
 	releaseName  string
 	renderFiles  []string
+	kubeVersion  string
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -85,6 +87,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&t.namespace, "namespace", "", "namespace to install the release into")
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
+	f.StringVar(&t.kubeVersion, "kube-version", "", "override the Kubernetes version used as Capabilities.KubeVersion.Major/Minor (e.g. 1.7)")
 
 	return cmd
 }
@@ -176,6 +179,16 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		APIVersions:   chartutil.DefaultVersionSet,
 		KubeVersion:   chartutil.DefaultKubeVersion,
 		TillerVersion: tversion.GetVersionProto(),
+	}
+	// If --kube-versionis set, try to parse it as SemVer, and override the
+	// kubernetes version
+	if t.kubeVersion != "" {
+		kv, err := semver.NewVersion(t.kubeVersion)
+		if err != nil {
+			return fmt.Errorf("could not parse a kubernetes version: %v", err)
+		}
+		caps.KubeVersion.Major = fmt.Sprint(kv.Major())
+		caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
 	}
 	vals, err := chartutil.ToRenderValuesCaps(c, config, options, caps)
 	if err != nil {
