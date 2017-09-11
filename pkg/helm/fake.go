@@ -21,7 +21,6 @@ import (
 	"sync"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/proto/hapi/version"
@@ -75,25 +74,6 @@ func (c *FakeClient) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse,
 	return &rls.GetVersionResponse{
 		Version: &version.Version{
 			SemVer: "1.2.3-fakeclient+testonly",
-		},
-	}, nil
-}
-
-// GetKubeInfo returns fake kubernetes server information
-func (c *FakeClient) GetKubeInfo() (*rls.GetKubeInfoResponse, error) {
-	return &rls.GetKubeInfoResponse{
-		Info: &kube.Info{
-			Version: &kube.Version{
-				Major:        "0",
-				Minor:        "1",
-				GitVersion:   "2",
-				GitCommit:    "3",
-				GitTreeState: "4",
-				BuildDate:    "5",
-				GoVersion:    "6",
-				Compiler:     "7",
-				Platform:     "8",
-			},
 		},
 	}, nil
 }

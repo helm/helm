@@ -8,13 +8,13 @@ dst 	= ../pkg/proto
 target  = go
 plugins = grpc
 
-chart_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(chart_pkg),$(addprefix M,$(chart_pbs))))
-chart_pbs = $(sort $(wildcard hapi/chart/*.proto))
-chart_pkg = chart
+chart_ias    = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(chart_pkg),$(addprefix M,$(chart_pbs))))
+chart_pbs    = $(sort $(wildcard hapi/chart/*.proto))
+chart_pkg    = chart
 
-release_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(release_pkg),$(addprefix M,$(release_pbs))))
-release_pbs = $(sort $(wildcard hapi/release/*.proto))
-release_pkg = release
+release_ias  = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(release_pkg),$(addprefix M,$(release_pbs))))
+release_pbs  = $(sort $(wildcard hapi/release/*.proto))
+release_pkg  = release
 
 services_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(services_pkg),$(addprefix M,$(services_pbs))))
 services_pbs = $(sort $(wildcard hapi/services/*.proto))
@@ -24,18 +24,14 @@ rudder_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(rudder_pkg)
 rudder_pbs = $(sort $(wildcard hapi/rudder/*.proto))
 rudder_pkg = rudder
 
-version_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(version_pkg),$(addprefix M,$(version_pbs))))
-version_pbs = $(sort $(wildcard hapi/version/*.proto))
-version_pkg = version
-
-kube_ias = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(kube_pkg),$(addprefix M,$(kube_pbs))))
-kube_pbs = $(sort $(wildcard hapi/kube/*.proto))
-kube_pkg = kube
+version_ias    = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(version_pkg),$(addprefix M,$(version_pbs))))
+version_pbs    = $(sort $(wildcard hapi/version/*.proto))
+version_pkg    = version
 
 google_deps	 = Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any
 
 .PHONY: all
-all: chart release services rudder version kube
+all: chart release services rudder version
 
 .PHONY: chart
 chart:
@@ -56,10 +52,6 @@ rudder:
 .PHONY: version
 version:
 	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps):$(dst) $(version_pbs)
-
-.PHONY: kube
-kube:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps):$(dst) $(kube_pbs)
 
 .PHONY: clean
 clean:

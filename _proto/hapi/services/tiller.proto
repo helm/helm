@@ -23,7 +23,6 @@ import "hapi/release/info.proto";
 import "hapi/release/test_run.proto";
 import "hapi/release/status.proto";
 import "hapi/version/version.proto";
-import "hapi/kube/info.proto";
 
 option go_package = "services";
 
@@ -84,11 +83,6 @@ service ReleaseService {
     // RunReleaseTest executes the tests defined of a named release
     rpc RunReleaseTest(TestReleaseRequest) returns (stream TestReleaseResponse) {
     }
-}
-
-service InfoService {
-	rpc GetKubeInfo(GetKubeInfoRequest) returns (GetKubeInfoResponse) {
-	}
 }
 
 // ListReleasesRequest requests a list of releases.
@@ -339,11 +333,5 @@ message TestReleaseRequest {
 message TestReleaseResponse {
 	string msg = 1;
 	hapi.release.TestRun.Status status = 2;
-}
 
-message GetKubeInfoRequest {
-}
-
-message GetKubeInfoResponse {
-	hapi.kube.Info Info = 1;
 }
