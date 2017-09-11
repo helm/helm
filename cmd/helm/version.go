@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	apiVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/helm/pkg/helm"
 	pb "k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/version"
@@ -89,6 +90,13 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (v *versionCmd) run() error {
+	if settings.Debug {
+		k8sVersion, err := getK8sVersion()
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(v.out, "Kubernetes: %#v\n", k8sVersion)
+	}
 
 	if v.showClient {
 		cv := version.GetVersionProto()
@@ -109,6 +117,16 @@ func (v *versionCmd) run() error {
 	}
 	fmt.Fprintf(v.out, "Server: %s\n", formatVersion(resp.Version, v.short))
 	return nil
+}
+
+func getK8sVersion() (*apiVersion.Info, error) {
+	var v *apiVersion.Info
+	_, client, err := getKubeClient(settings.KubeContext)
+	if err != nil {
+		return v, err
+	}
+	v, err = client.Discovery().ServerVersion()
+	return v, err
 }
 
 func formatVersion(v *pb.Version, short bool) string {
