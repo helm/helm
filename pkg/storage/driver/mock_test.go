@@ -22,18 +22,19 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	hapi_chart3 "k8s.io/helm/pkg/proto/hapi/chart"
+	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
-
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
-func releaseStub(name string, vers int32, namespace string, code rspb.Status_Code) *rspb.Release {
+func releaseStub(name string, vers int32, namespace string, code rspb.Status_Code, chart string) *rspb.Release {
 	return &rspb.Release{
 		Name:      name,
 		Version:   vers,
 		Namespace: namespace,
 		Info:      &rspb.Info{Status: &rspb.Status{Code: code}},
+		Chart:     &hapi_chart3.Chart{Metadata: &hapi_chart3.Metadata{Name: chart}},
 	}
 }
 
@@ -44,15 +45,15 @@ func testKey(name string, vers int32) string {
 func tsFixtureMemory(t *testing.T) *Memory {
 	hs := []*rspb.Release{
 		// rls-a
-		releaseStub("rls-a", 4, "default", rspb.Status_DEPLOYED),
-		releaseStub("rls-a", 1, "default", rspb.Status_SUPERSEDED),
-		releaseStub("rls-a", 3, "default", rspb.Status_SUPERSEDED),
-		releaseStub("rls-a", 2, "default", rspb.Status_SUPERSEDED),
+		releaseStub("rls-a", 4, "default", rspb.Status_DEPLOYED, "chart-a"),
+		releaseStub("rls-a", 1, "default", rspb.Status_SUPERSEDED, "chart-a"),
+		releaseStub("rls-a", 3, "default", rspb.Status_SUPERSEDED, "chart-a"),
+		releaseStub("rls-a", 2, "default", rspb.Status_SUPERSEDED, "chart-a"),
 		// rls-b
-		releaseStub("rls-b", 4, "default", rspb.Status_DEPLOYED),
-		releaseStub("rls-b", 1, "default", rspb.Status_SUPERSEDED),
-		releaseStub("rls-b", 3, "default", rspb.Status_SUPERSEDED),
-		releaseStub("rls-b", 2, "default", rspb.Status_SUPERSEDED),
+		releaseStub("rls-b", 4, "default", rspb.Status_DEPLOYED, "chart-b"),
+		releaseStub("rls-b", 1, "default", rspb.Status_SUPERSEDED, "chart-b"),
+		releaseStub("rls-b", 3, "default", rspb.Status_SUPERSEDED, "chart-b"),
+		releaseStub("rls-b", 2, "default", rspb.Status_SUPERSEDED, "chart-b"),
 	}
 
 	mem := NewMemory()
