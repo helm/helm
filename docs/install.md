@@ -102,7 +102,7 @@ whatever cluster `kubectl` connects to by default (`kubectl config
 view`). Once it connects, it will install `tiller` into the
 `kube-system` namespace.
 
-After `helm init`, you should be able to run `kubectl get po --namespace
+After `helm init`, you should be able to run `kubectl get pods --namespace
 kube-system` and see Tiller running.
 
 You can explicitly tell `helm init` to...
