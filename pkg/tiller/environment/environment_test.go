@@ -22,11 +22,12 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
 type mockEngine struct {
@@ -48,7 +49,7 @@ func (k *mockKubeClient) Get(ns string, r io.Reader) (string, error) {
 func (k *mockKubeClient) Delete(ns string, r io.Reader) error {
 	return nil
 }
-func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, recreate bool, timeout int64, shouldWait bool) error {
+func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	return nil
 }
 func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {

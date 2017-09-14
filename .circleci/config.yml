@@ -1,0 +1,25 @@
+version: 2
+jobs:
+  build:
+    working_directory: /go/src/k8s.io/helm
+    parallelism: 3
+    docker:
+      - image: golang:1.8
+    environment:
+      PROJECT_NAME: "kubernetes-helm"
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: install dependencies
+          command: make bootstrap
+      - save_cache:
+          key: vendor-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+          paths:
+            - vendor
+      - run:
+          name: test
+          command: .circleci/test.sh
+      - deploy:
+          name: deploy
+          command: .circleci/deploy.sh

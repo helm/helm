@@ -8,3 +8,5 @@ repositories:
     url: "http://username:password@example.com"
   - name: kubernetes-charts
     url: "http://example.com/charts"
+  - name: malformed
+    url: "http://dl.example.com"

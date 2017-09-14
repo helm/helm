@@ -26,6 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -38,7 +39,7 @@ func TestResetCmd(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	c := &fakeReleaseClient{}
+	c := &helm.FakeClient{}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
 		out:        &buf,
@@ -51,10 +52,10 @@ func TestResetCmd(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	actions := fc.Actions()
-	if len(actions) != 2 {
-		t.Errorf("Expected 2 actions, got %d", len(actions))
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions, got %d", len(actions))
 	}
-	expected := "Tiller (the helm server side component) has been uninstalled from your Kubernetes Cluster."
+	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}
@@ -71,7 +72,7 @@ func TestResetCmd_removeHelmHome(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	c := &fakeReleaseClient{}
+	c := &helm.FakeClient{}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
 		removeHelmHome: true,
@@ -85,10 +86,10 @@ func TestResetCmd_removeHelmHome(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	actions := fc.Actions()
-	if len(actions) != 2 {
-		t.Errorf("Expected 2 actions, got %d", len(actions))
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions, got %d", len(actions))
 	}
-	expected := "Tiller (the helm server side component) has been uninstalled from your Kubernetes Cluster."
+	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}
@@ -108,8 +109,8 @@ func TestReset_deployedReleases(t *testing.T) {
 	resp := []*release.Release{
 		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 	}
-	c := &fakeReleaseClient{
-		rels: resp,
+	c := &helm.FakeClient{
+		Rels: resp,
 	}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
@@ -120,7 +121,7 @@ func TestReset_deployedReleases(t *testing.T) {
 		namespace:  api.NamespaceDefault,
 	}
 	err = cmd.run()
-	expected := "There are still 1 deployed releases (Tip: use --force)"
+	expected := "there are still 1 deployed releases (Tip: use --force)"
 	if !strings.Contains(err.Error(), expected) {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -140,8 +141,8 @@ func TestReset_forceFlag(t *testing.T) {
 	resp := []*release.Release{
 		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
 	}
-	c := &fakeReleaseClient{
-		rels: resp,
+	c := &helm.FakeClient{
+		Rels: resp,
 	}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
@@ -156,10 +157,10 @@ func TestReset_forceFlag(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 	actions := fc.Actions()
-	if len(actions) != 2 {
-		t.Errorf("Expected 2 actions, got %d", len(actions))
+	if len(actions) != 3 {
+		t.Errorf("Expected 3 actions, got %d", len(actions))
 	}
-	expected := "Tiller (the helm server side component) has been uninstalled from your Kubernetes Cluster."
+	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}

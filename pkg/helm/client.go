@@ -31,7 +31,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
-// Client manages client side of the helm-tiller protocol
+// Client manages client side of the Helm-Tiller protocol.
 type Client struct {
 	opts options
 }
@@ -42,7 +42,7 @@ func NewClient(opts ...Option) *Client {
 	return c.Option(opts...)
 }
 
-// Option configures the helm client with the provided options
+// Option configures the Helm client with the provided options.
 func (h *Client) Option(opts ...Option) *Client {
 	for _, opt := range opts {
 		opt(&h.opts)
@@ -66,7 +66,7 @@ func (h *Client) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesRespo
 	return h.list(ctx, req)
 }
 
-// InstallRelease loads a chart from chstr, installs it and returns the release response.
+// InstallRelease loads a chart from chstr, installs it, and returns the release response.
 func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	// load the chart to install
 	chart, err := chartutil.Load(chstr)
@@ -100,7 +100,7 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	if err != nil {
 		return nil, err
 	}
-	err = chartutil.ProcessRequirementsImportValues(req.Chart, req.Values)
+	err = chartutil.ProcessRequirementsImportValues(req.Chart)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 	return h.delete(ctx, req)
 }
 
-// UpdateRelease loads a chart from chstr and updates a release to a new/different chart
+// UpdateRelease loads a chart from chstr and updates a release to a new/different chart.
 func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	// load the chart to update
 	chart, err := chartutil.Load(chstr)
@@ -148,7 +148,7 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOptio
 	return h.UpdateReleaseFromChart(rlsName, chart, opts...)
 }
 
-// UpdateReleaseFromChart updates a release to a new/different chart
+// UpdateReleaseFromChart updates a release to a new/different chart.
 func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 
 	// apply the update options
@@ -161,6 +161,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	req.Name = rlsName
 	req.DisableHooks = h.opts.disableHooks
 	req.Recreate = h.opts.recreate
+	req.Force = h.opts.force
 	req.ResetValues = h.opts.resetValues
 	req.ReuseValues = h.opts.reuseValues
 	ctx := NewContext()
@@ -174,7 +175,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	if err != nil {
 		return nil, err
 	}
-	err = chartutil.ProcessRequirementsImportValues(req.Chart, req.Values)
+	err = chartutil.ProcessRequirementsImportValues(req.Chart)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +183,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	return h.update(ctx, req)
 }
 
-// GetVersion returns the server version
+// GetVersion returns the server version.
 func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
 	for _, opt := range opts {
 		opt(&h.opts)
@@ -198,12 +199,14 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 	return h.version(ctx, req)
 }
 
-// RollbackRelease rolls back a release to the previous version
+// RollbackRelease rolls back a release to the previous version.
 func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
 	for _, opt := range opts {
 		opt(&h.opts)
 	}
 	req := &h.opts.rollbackReq
+	req.Recreate = h.opts.recreate
+	req.Force = h.opts.force
 	req.DisableHooks = h.opts.disableHooks
 	req.DryRun = h.opts.dryRun
 	req.Name = rlsName
@@ -278,7 +281,7 @@ func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.Get
 	return h.history(ctx, req)
 }
 
-// RunReleaseTest executes a pre-defined test on a release
+// RunReleaseTest executes a pre-defined test on a release.
 func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
 	for _, opt := range opts {
 		opt(&h.opts)
@@ -291,7 +294,7 @@ func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-ch
 	return h.test(ctx, req)
 }
 
-// connect returns a grpc connection to tiller or error. The grpc dial options
+// connect returns a gRPC connection to Tiller or error. The gRPC dial options
 // are constructed here.
 func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error) {
 	opts := []grpc.DialOption{

@@ -206,6 +206,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
+	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
 
 	// Create 'charts' directory if it doesn't already exist.
 	if fi, err := os.Stat(destPath); err != nil {
@@ -216,19 +217,25 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		return fmt.Errorf("%q is not a directory", destPath)
 	}
 
-	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
-	for _, dep := range deps {
-		if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
-			return err
-		}
+	if err := os.Rename(destPath, tmpPath); err != nil {
+		return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
+	}
 
+	if err := os.MkdirAll(destPath, 0755); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
+	var saveError error
+	for _, dep := range deps {
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
 			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
 			if err != nil {
-				return err
+				saveError = err
+				break
 			}
 			dep.Version = ver
 			continue
@@ -240,12 +247,44 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		// https://github.com/kubernetes/helm/issues/1439
 		churl, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
-			return fmt.Errorf("could not find %s: %s", churl, err)
+			saveError = fmt.Errorf("could not find %s: %s", churl, err)
+			break
 		}
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
-			return fmt.Errorf("could not download %s: %s", churl, err)
+			saveError = fmt.Errorf("could not download %s: %s", churl, err)
+			break
 		}
+	}
+
+	if saveError == nil {
+		fmt.Fprintln(m.Out, "Deleting outdated charts")
+		for _, dep := range deps {
+			if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
+				return err
+			}
+		}
+		if err := move(tmpPath, destPath); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(tmpPath); err != nil {
+			return fmt.Errorf("Failed to remove %v: %v", tmpPath, err)
+		}
+	} else {
+		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
+		fmt.Fprintln(m.Out, "Deleting newly downloaded charts, restoring pre-update state")
+		for _, dep := range deps {
+			if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
+				return err
+			}
+		}
+		if err := os.RemoveAll(destPath); err != nil {
+			return fmt.Errorf("Failed to remove %v: %v", destPath, err)
+		}
+		if err := os.Rename(tmpPath, destPath); err != nil {
+			return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
+		}
+		return saveError
 	}
 	return nil
 }
@@ -572,5 +611,19 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 		return ch.Metadata.Version, err
 	}
 
-	return "", fmt.Errorf("Can't get a valid version for dependency %s.", name)
+	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
+}
+
+// move files from tmppath to destpath
+func move(tmpPath, destPath string) error {
+	files, _ := ioutil.ReadDir(tmpPath)
+	for _, file := range files {
+		filename := file.Name()
+		tmpfile := filepath.Join(tmpPath, filename)
+		destfile := filepath.Join(destPath, filename)
+		if err := os.Rename(tmpfile, destfile); err != nil {
+			return fmt.Errorf("Unable to move local charts to charts dir: %v", err)
+		}
+	}
+	return nil
 }

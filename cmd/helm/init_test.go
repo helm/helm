@@ -30,10 +30,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	testcore "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -52,7 +52,7 @@ func TestInitCmd(t *testing.T) {
 		out:        &buf,
 		home:       helmpath.Home(home),
 		kubeClient: fc,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
@@ -67,7 +67,7 @@ func TestInitCmd(t *testing.T) {
 	if !actions[1].Matches("create", "services") {
 		t.Errorf("unexpected action: %v, expected create service", actions[1])
 	}
-	expected := "Tiller (the helm server side component) has been installed into your Kubernetes Cluster."
+	expected := "Tiller (the Helm server-side component) has been installed into your Kubernetes Cluster."
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}
@@ -81,20 +81,20 @@ func TestInitCmd_exists(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	fc := fake.NewSimpleClientset(&extensions.Deployment{
+	fc := fake.NewSimpleClientset(&v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: api.NamespaceDefault,
+			Namespace: v1.NamespaceDefault,
 			Name:      "tiller-deploy",
 		},
 	})
 	fc.PrependReactor("*", "*", func(action testcore.Action) (bool, runtime.Object, error) {
-		return true, nil, apierrors.NewAlreadyExists(api.Resource("deployments"), "1")
+		return true, nil, apierrors.NewAlreadyExists(v1.Resource("deployments"), "1")
 	})
 	cmd := &initCmd{
 		out:        &buf,
 		home:       helmpath.Home(home),
 		kubeClient: fc,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("expected error: %v", err)
@@ -120,7 +120,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 		home:       helmpath.Home(home),
 		kubeClient: fc,
 		clientOnly: true,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -128,7 +128,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 	if len(fc.Actions()) != 0 {
 		t.Error("expected client call")
 	}
-	expected := "Not installing tiller due to 'client-only' flag having been set"
+	expected := "Not installing Tiller due to 'client-only' flag having been set"
 	if !strings.Contains(buf.String(), expected) {
 		t.Errorf("expected %q, got %q", expected, buf.String())
 	}
@@ -140,12 +140,13 @@ func TestInitCmd_dryRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dbg := settings.Debug
-	settings.Debug = true
+	cleanup := resetEnv()
 	defer func() {
 		os.Remove(home)
-		settings.Debug = dbg
+		cleanup()
 	}()
+
+	settings.Debug = true
 
 	var buf bytes.Buffer
 	fc := fake.NewSimpleClientset()
@@ -155,7 +156,7 @@ func TestInitCmd_dryRun(t *testing.T) {
 		kubeClient: fc,
 		clientOnly: true,
 		dryRun:     true,
-		namespace:  api.NamespaceDefault,
+		namespace:  v1.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Fatal(err)
@@ -214,7 +215,7 @@ func TestEnsureHome(t *testing.T) {
 		t.Errorf("%s should not be a directory", fi)
 	}
 
-	if fi, err := os.Stat(hh.LocalRepository(localRepoIndexFilePath)); err != nil {
+	if fi, err := os.Stat(hh.LocalRepository(localRepositoryIndexFile)); err != nil {
 		t.Errorf("%s", err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)

@@ -29,18 +29,18 @@ const resourcePolicyAnno = "helm.sh/resource-policy"
 //   during an uninstallRelease action.
 const keepPolicy = "keep"
 
-func filterManifestsToKeep(manifests []manifest) ([]manifest, []manifest) {
-	remaining := []manifest{}
-	keep := []manifest{}
+func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
+	remaining := []Manifest{}
+	keep := []Manifest{}
 
 	for _, m := range manifests {
 
-		if m.head.Metadata == nil || m.head.Metadata.Annotations == nil || len(m.head.Metadata.Annotations) == 0 {
+		if m.Head.Metadata == nil || m.Head.Metadata.Annotations == nil || len(m.Head.Metadata.Annotations) == 0 {
 			remaining = append(remaining, m)
 			continue
 		}
 
-		resourcePolicyType, ok := m.head.Metadata.Annotations[resourcePolicyAnno]
+		resourcePolicyType, ok := m.Head.Metadata.Annotations[resourcePolicyAnno]
 		if !ok {
 			remaining = append(remaining, m)
 			continue
@@ -55,10 +55,10 @@ func filterManifestsToKeep(manifests []manifest) ([]manifest, []manifest) {
 	return keep, remaining
 }
 
-func summarizeKeptManifests(manifests []manifest) string {
+func summarizeKeptManifests(manifests []Manifest) string {
 	message := "These resources were kept due to the resource policy:\n"
 	for _, m := range manifests {
-		details := "[" + m.head.Kind + "] " + m.head.Metadata.Name + "\n"
+		details := "[" + m.Head.Kind + "] " + m.Head.Metadata.Name + "\n"
 		message = message + details
 	}
 	return message

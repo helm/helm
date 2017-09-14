@@ -32,9 +32,8 @@ func hh(debug bool) environment.EnvSettings {
 	}
 	hp := helmpath.Home(apath)
 	return environment.EnvSettings{
-		Home:     hp,
-		PlugDirs: hp.Plugins(),
-		Debug:    debug,
+		Home:  hp,
+		Debug: debug,
 	}
 }
 

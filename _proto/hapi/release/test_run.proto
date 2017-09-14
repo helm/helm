@@ -26,6 +26,7 @@ message TestRun {
         UNKNOWN = 0;
         SUCCESS = 1;
         FAILURE = 2;
+        RUNNING = 3;
     }
 
     string name = 1;

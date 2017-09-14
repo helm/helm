@@ -1,8 +1,8 @@
 # Chart Tests
 
-A chart contains a number of Kubernetes resources and components that work together. As a chart author, you may want to write some tests that validate that your charts works as expected when it is installed. These tests also help the chart consumer understand what your chart is supposed to do.
+A chart contains a number of Kubernetes resources and components that work together. As a chart author, you may want to write some tests that validate that your chart works as expected when it is installed. These tests also help the chart consumer understand what your chart is supposed to do.
 
-A **test** in a helm chart lives under the `templates/` directory and is a pod definition that specifies a container with a given command to run. The container should exist successfully (exit 0) for a test to be considered a success. The pod definiton must contain one of the helm test hook annotations: `helm.sh/hooks: test-success` or `helm.sh/hooks: test-failure`.
+A **test** in a helm chart lives under the `templates/` directory and is a pod definition that specifies a container with a given command to run. The container should exit successfully (exit 0) for a test to be considered a success. The pod definition must contain one of the helm test hook annotations: `helm.sh/hooks: test-success` or `helm.sh/hooks: test-failure`.
 
 Example tests:
 - Validate that your configuration from the values.yaml file was properly injected.
@@ -17,36 +17,49 @@ You can run the pre-defined tests in Helm on a release using the command `helm t
 
 In Helm, there are two test hooks: `test-success` and `test-failure`
 
-`test-success` indiciates that test pod should complete successfully. In other words, the containers in the pod should exit 0.
-`test-failure` is a way to assert that a test pod should not complete successfully. If the containers in the pod do not exit 0, that indiciates success.
+`test-success` indicates that test pod should complete successfully. In other words, the containers in the pod should exit 0.
+`test-failure` is a way to assert that a test pod should not complete successfully. If the containers in the pod do not exit 0, that indicates success.
 
 ## Example Test
 
-Here is an example of a helm test pod definition in an example maraidb chart:
+Here is an example of a helm test pod definition in an example mariadb chart:
 
 ```
 mariadb/
   Chart.yaml
-  LICENSE
   README.md
   values.yaml
   charts/
   templates/
-  templates/mariadb-tests.yaml
+  templates/tests/test-mariadb-connection.yaml
 ```
-In `wordpress/templates/mariadb-tests.yaml`:
+In `wordpress/templates/tests/test-mariadb-connection.yaml`:
 ```
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{.Release.Name}}-credentials-test"
+  name: "{{ .Release.Name }}-credentials-test"
   annotations:
     "helm.sh/hook": test-success
 spec:
   containers:
-    - name: {{.Release.Name}}-credentials-test
-      image: bitnami/mariadb:{{.Values.imageTag}}
-      command: ["mysql",  "--host={{.Release.Name}}-mariadb", "--user={{.Values.mariadbUser}}", "--password={{.Values.mariadbPassword}}"]
+  - name: {{ .Release.Name }}-credentials-test
+    image: {{ .Values.image }}
+    env:
+      - name: MARIADB_HOST
+        value: {{ template "mariadb.fullname" . }}
+      - name: MARIADB_PORT
+        value: "3306"
+      - name: WORDPRESS_DATABASE_NAME
+        value: {{ default "" .Values.mariadb.mariadbDatabase | quote }}
+      - name: WORDPRESS_DATABASE_USER
+        value: {{ default "" .Values.mariadb.mariadbUser | quote }}
+      - name: WORDPRESS_DATABASE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: {{ template "mariadb.fullname" . }}
+            key: mariadb-password
+    command: ["sh", "-c", "mysql --host=$MARIADB_HOST --port=$MARIADB_PORT --user=$WORDPRESS_DATABASE_USER --password=$WORDPRESS_DATABASE_PASSWORD"]
   restartPolicy: Never
 ```
 

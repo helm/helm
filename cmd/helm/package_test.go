@@ -64,7 +64,7 @@ func TestPackage(t *testing.T) {
 			name:   "package without chart path",
 			args:   []string{},
 			flags:  map[string]string{},
-			expect: "This command needs at least one argument, the path to the chart.",
+			expect: "need at least one argument, the path to the chart",
 			err:    true,
 		},
 		{
@@ -143,13 +143,14 @@ func TestPackage(t *testing.T) {
 	}
 
 	ensureTestHome(helmpath.Home(tmp), t)
-	oldhome := settings.Home
-	settings.Home = helmpath.Home(tmp)
+	cleanup := resetEnv()
 	defer func() {
-		settings.Home = oldhome
 		os.Chdir(origDir)
 		os.RemoveAll(tmp)
+		cleanup()
 	}()
+
+	settings.Home = helmpath.Home(tmp)
 
 	for _, tt := range tests {
 		buf := bytes.NewBuffer(nil)

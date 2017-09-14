@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/exec"
 
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
 
 	"github.com/spf13/cobra"
@@ -41,12 +40,13 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 		newPluginInstallCmd(out),
 		newPluginListCmd(out),
 		newPluginRemoveCmd(out),
+		newPluginUpdateCmd(out),
 	)
 	return cmd
 }
 
 // runHook will execute a plugin hook.
-func runHook(p *plugin.Plugin, event string, home helmpath.Home) error {
+func runHook(p *plugin.Plugin, event string) error {
 	hook := p.Metadata.Hooks.Get(event)
 	if hook == "" {
 		return nil

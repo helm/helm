@@ -2,14 +2,8 @@
 # This is a YAML-formatted file.
 # Declare name/value pairs to be passed into your templates.
 
-# See the list at https://hub.docker.com/r/library/nginx/tags/
-imageTag: "1.11.0"
-
-# The port (defined on the service) to access the HTTP server.
-httpPort: 8888
-
-# Number of nginx instances to run
 replicaCount: 1
+restartPolicy: Never
 
 # Evaluated by the post-install hook
 sleepyTime: "10"
@@ -17,3 +11,24 @@ sleepyTime: "10"
 index: >-
   <h1>Hello</h1>
   <p>This is a test</p>
+
+image:
+  repository: nginx
+  tag: 1.11.0
+  pullPolicy: IfNotPresent
+
+service:
+  annotations: {}
+  clusterIP: ""
+  externalIPs: []
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  type: ClusterIP
+  port: 8888
+  nodePort: ""
+
+podAnnotations: {}
+
+resources: {}
+
+nodeSelector: {}

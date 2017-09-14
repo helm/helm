@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"testing"
 
+	"k8s.io/helm/pkg/helm"
 	rpb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
@@ -66,7 +67,7 @@ func TestHistoryCmd(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		frc := &fakeReleaseClient{rels: tt.resp}
+		frc := &helm.FakeClient{Rels: tt.resp}
 		cmd := newHistoryCmd(frc, &buf)
 		cmd.ParseFlags(tt.args)
 

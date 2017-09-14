@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -278,19 +279,26 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 	}
 
 	for key, val := range nv {
-		if _, ok := v[key]; !ok {
+		if value, ok := v[key]; ok {
+			if value == nil {
+				// When the YAML value is null, we remove the value's key.
+				// This allows Helm's various sources of values (value files or --set) to
+				// remove incompatible keys from any previous chart, file, or set values.
+				delete(v, key)
+			} else if dest, ok := value.(map[string]interface{}); ok {
+				// if v[key] is a table, merge nv's val table into v[key].
+				src, ok := val.(map[string]interface{})
+				if !ok {
+					log.Printf("warning: skipped value for %s: Not a table.", key)
+					continue
+				}
+				// Because v has higher precedence than nv, dest values override src
+				// values.
+				coalesceTables(dest, src)
+			}
+		} else {
 			// If the key is not in v, copy it from nv.
 			v[key] = val
-		} else if dest, ok := v[key].(map[string]interface{}); ok {
-			// if v[key] is a table, merge nv's val table into v[key].
-			src, ok := val.(map[string]interface{})
-			if !ok {
-				log.Printf("warning: skipped value for %s: Not a table.", key)
-				continue
-			}
-			// Because v has higher precedence than nv, dest values override src
-			// values.
-			coalesceTables(dest, src)
 		}
 	}
 	return v, nil
@@ -380,10 +388,16 @@ func istable(v interface{}) bool {
 	return ok
 }
 
-// PathValue takes a yaml path with . notation and returns the value if exists
+// PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
+// The path starts at the root of the YAML structure and is comprised of YAML keys separated by periods.
+// Given the following YAML data the value at path "chapter.one.title" is "Loomings".
+//
+//	chapter:
+//	  one:
+//	    title: "Loomings"
 func (v Values) PathValue(ypath string) (interface{}, error) {
 	if len(ypath) == 0 {
-		return nil, fmt.Errorf("yaml path string cannot be zero length")
+		return nil, errors.New("YAML path string cannot be zero length")
 	}
 	yps := strings.Split(ypath, ".")
 	if len(yps) == 1 {

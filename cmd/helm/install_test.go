@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 func TestInstall(t *testing.T) {
@@ -138,9 +140,15 @@ func TestInstall(t *testing.T) {
 			args: []string{"testdata/testcharts/chart-missing-deps"},
 			err:  true,
 		},
+		// Install, chart with bad requirements.yaml in /charts
+		{
+			name: "install chart with bad requirements.yaml",
+			args: []string{"testdata/testcharts/chart-bad-requirements"},
+			err:  true,
+		},
 	}
 
-	runReleaseCases(t, tests, func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newInstallCmd(c, out)
 	})
 }

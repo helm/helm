@@ -30,6 +30,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
@@ -48,22 +50,21 @@ Versioned chart archives are used by Helm package repositories.
 `
 
 type packageCmd struct {
-	save        bool
-	sign        bool
-	path        string
-	key         string
-	keyring     string
-	version     string
-	destination string
+	save             bool
+	sign             bool
+	path             string
+	key              string
+	keyring          string
+	version          string
+	destination      string
+	dependencyUpdate bool
 
 	out  io.Writer
 	home helmpath.Home
 }
 
 func newPackageCmd(out io.Writer) *cobra.Command {
-	pkg := &packageCmd{
-		out: out,
-	}
+	pkg := &packageCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "package [flags] [CHART_PATH] [...]",
@@ -72,7 +73,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pkg.home = settings.Home
 			if len(args) == 0 {
-				return fmt.Errorf("This command needs at least one argument, the path to the chart.")
+				return fmt.Errorf("need at least one argument, the path to the chart")
 			}
 			if pkg.sign {
 				if pkg.key == "" {
@@ -84,7 +85,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 			}
 			for i := 0; i < len(args); i++ {
 				pkg.path = args[i]
-				if err := pkg.run(cmd, args); err != nil {
+				if err := pkg.run(); err != nil {
 					return err
 				}
 			}
@@ -99,14 +100,30 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
 	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
 	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
+	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
 
 	return cmd
 }
 
-func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
+func (p *packageCmd) run() error {
 	path, err := filepath.Abs(p.path)
 	if err != nil {
 		return err
+	}
+
+	if p.dependencyUpdate {
+		downloadManager := &downloader.Manager{
+			Out:       p.out,
+			ChartPath: path,
+			HelmHome:  settings.Home,
+			Keyring:   p.keyring,
+			Getters:   getter.All(settings),
+			Debug:     settings.Debug,
+		}
+
+		if err := downloadManager.Update(); err != nil {
+			return err
+		}
 	}
 
 	ch, err := chartutil.LoadDir(path)
@@ -127,7 +144,11 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
-		if err := checkDependencies(ch, reqs, p.out); err != nil {
+		if err := checkDependencies(ch, reqs); err != nil {
+			return err
+		}
+	} else {
+		if err != chartutil.ErrRequirementsNotFound {
 			return err
 		}
 	}
@@ -146,7 +167,9 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 
 	name, err := chartutil.Save(ch, dest)
 	if err == nil {
-		debug("Saved %s to current directory\n", name)
+		fmt.Fprintf(p.out, "Successfully packaged chart and saved it to: %s\n", name)
+	} else {
+		return fmt.Errorf("Failed to save: %s", err)
 	}
 
 	// Save to $HELM_HOME/local directory. This is second, because we don't want
@@ -156,7 +179,7 @@ func (p *packageCmd) run(cmd *cobra.Command, args []string) error {
 		if err := repo.AddChartToLocalRepo(ch, lr); err != nil {
 			return err
 		}
-		debug("Saved %s to %s\n", name, lr)
+		debug("Successfully saved %s to %s\n", name, lr)
 	}
 
 	if p.sign {

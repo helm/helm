@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 func TestGetValuesCmd(t *testing.T) {
@@ -36,7 +38,7 @@ func TestGetValuesCmd(t *testing.T) {
 			err:  true,
 		},
 	}
-	cmd := func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newGetValuesCmd(c, out)
 	}
 	runReleaseCases(t, tests, cmd)

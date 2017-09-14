@@ -94,6 +94,11 @@ func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
 	var ls []*rspb.Release
 	for _, recs := range mem.cache {
 		recs.Iter(func(_ int, rec *record) bool {
+			// A query for a release name that doesn't exist (has been deleted)
+			// can cause rec to be nil.
+			if rec == nil {
+				return false
+			}
 			if rec.lbs.match(lbs) {
 				ls = append(ls, rec.rls)
 			}
@@ -133,21 +138,24 @@ func (mem *Memory) Update(key string, rls *rspb.Release) error {
 func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	defer unlock(mem.wlock())
 
-	switch elems := strings.Split(key, ".v"); len(elems) {
-	case 2:
-		name, ver := elems[0], elems[1]
-		if _, err := strconv.Atoi(ver); err != nil {
-			return nil, ErrInvalidKey(key)
-		}
-		if recs, ok := mem.cache[name]; ok {
-			if r := recs.Remove(key); r != nil {
-				return r.rls, nil
-			}
-		}
-		return nil, ErrReleaseNotFound(key)
-	default:
+	elems := strings.Split(key, ".v")
+
+	if len(elems) != 2 {
 		return nil, ErrInvalidKey(key)
 	}
+
+	name, ver := elems[0], elems[1]
+	if _, err := strconv.Atoi(ver); err != nil {
+		return nil, ErrInvalidKey(key)
+	}
+	if recs, ok := mem.cache[name]; ok {
+		if r := recs.Remove(key); r != nil {
+			// recs.Remove changes the slice reference, so we have to re-assign it.
+			mem.cache[name] = recs
+			return r.rls, nil
+		}
+	}
+	return nil, ErrReleaseNotFound(key)
 }
 
 // wlock locks mem for writing

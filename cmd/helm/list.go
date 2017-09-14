@@ -72,6 +72,7 @@ type listCmd struct {
 	failed     bool
 	namespace  string
 	superseded bool
+	pending    bool
 	client     helm.Interface
 }
 
@@ -82,11 +83,11 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "list [flags] [FILTER]",
-		Short:             "list releases",
-		Long:              listHelp,
-		Aliases:           []string{"ls"},
-		PersistentPreRunE: setupConnection,
+		Use:     "list [flags] [FILTER]",
+		Short:   "list releases",
+		Long:    listHelp,
+		Aliases: []string{"ls"},
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				list.filter = strings.Join(args, " ")
@@ -104,11 +105,12 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.StringVarP(&list.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
-	f.BoolVar(&list.all, "all", false, "show all releases, not just the ones marked DEPLOYED")
+	f.BoolVarP(&list.all, "all", "a", false, "show all releases, not just the ones marked DEPLOYED")
 	f.BoolVar(&list.deleted, "deleted", false, "show deleted releases")
 	f.BoolVar(&list.deleting, "deleting", false, "show releases that are currently being deleted")
 	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
+	f.BoolVar(&list.pending, "pending", false, "show pending releases")
 	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
 
 	// TODO: Do we want this as a feature of 'helm list'?
@@ -173,6 +175,9 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 			release.Status_DELETED,
 			release.Status_DELETING,
 			release.Status_FAILED,
+			release.Status_PENDING_INSTALL,
+			release.Status_PENDING_UPGRADE,
+			release.Status_PENDING_ROLLBACK,
 		}
 	}
 	status := []release.Status_Code{}
@@ -190,6 +195,9 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 	}
 	if l.superseded {
 		status = append(status, release.Status_SUPERSEDED)
+	}
+	if l.pending {
+		status = append(status, release.Status_PENDING_INSTALL, release.Status_PENDING_UPGRADE, release.Status_PENDING_ROLLBACK)
 	}
 
 	// Default case.

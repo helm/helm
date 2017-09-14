@@ -44,20 +44,74 @@ var events = map[string]release.Hook_Event{
 	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
 }
 
-// manifest represents a manifest file, which has a name and some content.
-type manifest struct {
-	name    string
-	content string
-	head    *util.SimpleHead
+// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
+var deletePolices = map[string]release.Hook_DeletePolicy{
+	hooks.HookSucceeded: release.Hook_SUCCEEDED,
+	hooks.HookFailed:    release.Hook_FAILED,
 }
 
-// sortManifests takes a map of filename/YAML contents and sorts them into hook types.
+// Manifest represents a manifest file, which has a name and some content.
+type Manifest struct {
+	Name    string
+	Content string
+	Head    *util.SimpleHead
+}
+
+type result struct {
+	hooks   []*release.Hook
+	generic []Manifest
+}
+
+type manifestFile struct {
+	entries map[string]string
+	path    string
+	apis    chartutil.VersionSet
+}
+
+// sortManifests takes a map of filename/YAML contents, splits the file
+// by manifest entries, and sorts the entries into hook types.
 //
 // The resulting hooks struct will be populated with all of the generated hooks.
 // Any file that does not declare one of the hook types will be placed in the
 // 'generic' bucket.
 //
-// To determine hook type, this looks for a YAML structure like this:
+// Files that do not parse into the expected format are simply placed into a map and
+// returned.
+func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
+	result := &result{}
+
+	for filePath, c := range files {
+
+		// Skip partials. We could return these as a separate map, but there doesn't
+		// seem to be any need for that at this time.
+		if strings.HasPrefix(path.Base(filePath), "_") {
+			continue
+		}
+		// Skip empty files and log this.
+		if len(strings.TrimSpace(c)) == 0 {
+			log.Printf("info: manifest %q is empty. Skipping.", filePath)
+			continue
+		}
+
+		manifestFile := &manifestFile{
+			entries: util.SplitManifests(c),
+			path:    filePath,
+			apis:    apis,
+		}
+
+		if err := manifestFile.sort(result); err != nil {
+			return result.hooks, result.generic, err
+		}
+	}
+
+	return result.hooks, sortByKind(result.generic, sort), nil
+}
+
+// sort takes a manifestFile object which may contain multiple resource definition
+// entries and sorts each entry by hook types, and saves the resulting hooks and
+// generic manifests (or non-hooks) to the result struct.
+//
+// To determine hook type, it looks for a YAML structure like this:
 //
 //  kind: SomeKind
 //  apiVersion: v1
@@ -65,82 +119,112 @@ type manifest struct {
 //		annotations:
 //			helm.sh/hook: pre-install
 //
-// Where HOOK_NAME is one of the known hooks.
+// To determine the policy to delete the hook, it looks for a YAML structure like this:
 //
-// If a file declares more than one hook, it will be copied into all of the applicable
-// hook buckets. (Note: label keys are not unique within the labels section).
-//
-// Files that do not parse into the expected format are simply placed into a map and
-// returned.
-func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
-	hs := []*release.Hook{}
-	generic := []manifest{}
-
-	for n, c := range files {
-		// Skip partials. We could return these as a separate map, but there doesn't
-		// seem to be any need for that at this time.
-		if strings.HasPrefix(path.Base(n), "_") {
-			continue
-		}
-		// Skip empty files, and log this.
-		if len(strings.TrimSpace(c)) == 0 {
-			log.Printf("info: manifest %q is empty. Skipping.", n)
-			continue
-		}
-
-		var sh util.SimpleHead
-		err := yaml.Unmarshal([]byte(c), &sh)
+//  kind: SomeKind
+//  apiVersion: v1
+//  metadata:
+// 		annotations:
+// 			helm.sh/hook-delete-policy: hook-succeeded
+func (file *manifestFile) sort(result *result) error {
+	for _, m := range file.entries {
+		var entry util.SimpleHead
+		err := yaml.Unmarshal([]byte(m), &entry)
 
 		if err != nil {
-			e := fmt.Errorf("YAML parse error on %s: %s", n, err)
-			return hs, generic, e
+			e := fmt.Errorf("YAML parse error on %s: %s", file.path, err)
+			return e
 		}
 
-		if sh.Version != "" && !apis.Has(sh.Version) {
-			return hs, generic, fmt.Errorf("apiVersion %q in %s is not available", sh.Version, n)
+		if entry.Version != "" && !file.apis.Has(entry.Version) {
+			return fmt.Errorf("apiVersion %q in %s is not available", entry.Version, file.path)
 		}
 
-		if sh.Metadata == nil || sh.Metadata.Annotations == nil || len(sh.Metadata.Annotations) == 0 {
-			generic = append(generic, manifest{name: n, content: c, head: &sh})
+		if !hasAnyAnnotation(entry) {
+			result.generic = append(result.generic, Manifest{
+				Name:    file.path,
+				Content: m,
+				Head:    &entry,
+			})
 			continue
 		}
 
-		hookTypes, ok := sh.Metadata.Annotations[hooks.HookAnno]
+		hookTypes, ok := entry.Metadata.Annotations[hooks.HookAnno]
 		if !ok {
-			generic = append(generic, manifest{name: n, content: c, head: &sh})
+			result.generic = append(result.generic, Manifest{
+				Name:    file.path,
+				Content: m,
+				Head:    &entry,
+			})
 			continue
 		}
 
-		hws, _ := sh.Metadata.Annotations[hooks.HookWeightAnno]
-		hw, err := strconv.Atoi(hws)
-		if err != nil {
-			hw = 0
-		}
+		hw := calculateHookWeight(entry)
 
 		h := &release.Hook{
-			Name:     sh.Metadata.Name,
-			Kind:     sh.Kind,
-			Path:     n,
-			Manifest: c,
-			Events:   []release.Hook_Event{},
-			Weight:   int32(hw),
+			Name:           entry.Metadata.Name,
+			Kind:           entry.Kind,
+			Path:           file.path,
+			Manifest:       m,
+			Events:         []release.Hook_Event{},
+			Weight:         hw,
+			DeletePolicies: []release.Hook_DeletePolicy{},
 		}
 
-		isHook := false
+		isUnknownHook := false
 		for _, hookType := range strings.Split(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
 			e, ok := events[hookType]
-			if ok {
-				isHook = true
-				h.Events = append(h.Events, e)
+			if !ok {
+				isUnknownHook = true
+				break
 			}
+			h.Events = append(h.Events, e)
 		}
 
-		if !isHook {
+		if isUnknownHook {
 			log.Printf("info: skipping unknown hook: %q", hookTypes)
 			continue
 		}
-		hs = append(hs, h)
+
+		result.hooks = append(result.hooks, h)
+
+		isKnownDeletePolices := false
+		dps, ok := entry.Metadata.Annotations[hooks.HookDeleteAnno]
+		if ok {
+			for _, dp := range strings.Split(dps, ",") {
+				dp = strings.ToLower(strings.TrimSpace(dp))
+				p, exist := deletePolices[dp]
+				if exist {
+					isKnownDeletePolices = true
+					h.DeletePolicies = append(h.DeletePolicies, p)
+				}
+			}
+			if !isKnownDeletePolices {
+				log.Printf("info: skipping unknown hook delete policy: %q", dps)
+			}
+		}
 	}
-	return hs, sortByKind(generic, sort), nil
+
+	return nil
+}
+
+func hasAnyAnnotation(entry util.SimpleHead) bool {
+	if entry.Metadata == nil ||
+		entry.Metadata.Annotations == nil ||
+		len(entry.Metadata.Annotations) == 0 {
+		return false
+	}
+
+	return true
+}
+
+func calculateHookWeight(entry util.SimpleHead) int32 {
+	hws, _ := entry.Metadata.Annotations[hooks.HookWeightAnno]
+	hw, err := strconv.Atoi(hws)
+	if err != nil {
+		hw = 0
+	}
+
+	return int32(hw)
 }

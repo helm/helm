@@ -52,12 +52,12 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "delete [flags] RELEASE_NAME [...]",
-		Aliases:           []string{"del"},
-		SuggestFor:        []string{"remove", "rm"},
-		Short:             "given a release name, delete the release from Kubernetes",
-		Long:              deleteDesc,
-		PersistentPreRunE: setupConnection,
+		Use:        "delete [flags] RELEASE_NAME [...]",
+		Aliases:    []string{"del"},
+		SuggestFor: []string{"remove", "rm"},
+		Short:      "given a release name, delete the release from Kubernetes",
+		Long:       deleteDesc,
+		PreRunE:    setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.New("command 'delete' requires a release name")
@@ -80,7 +80,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
 	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
 	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")
-	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
+	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 
 	return cmd
 }

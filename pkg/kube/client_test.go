@@ -138,6 +138,12 @@ func encodeAndMarshalEvent(e *watch.Event) ([]byte, error) {
 	return json.Marshal(encodedEvent)
 }
 
+func newTestClient(f cmdutil.Factory) *Client {
+	c := New(nil)
+	c.Factory = f
+	return c
+}
+
 func TestUpdate(t *testing.T) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
@@ -168,7 +174,7 @@ func TestUpdate(t *testing.T) {
 					t.Fatalf("could not dump request: %s", err)
 				}
 				req.Body.Close()
-				expected := `{"spec":{"containers":[{"name":"app:v4","ports":[{"containerPort":443,"name":"https"},{"$patch":"delete","containerPort":80}]}]}}`
+				expected := `{"spec":{"$setElementOrder/containers":[{"name":"app:v4"}],"containers":[{"$setElementOrder/ports":[{"containerPort":443}],"name":"app:v4","ports":[{"containerPort":443,"name":"https"},{"$patch":"delete","containerPort":80}]}]}}`
 				if string(data) != expected {
 					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
 				}
@@ -186,8 +192,8 @@ func TestUpdate(t *testing.T) {
 
 	reaper := &fakeReaper{}
 	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
-	c := &Client{Factory: rf}
-	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, 0, false); err != nil {
+	c := newTestClient(rf)
+	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
@@ -251,7 +257,7 @@ func TestBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		f, tf, _, _ := cmdtesting.NewAPIFactory()
-		c := &Client{Factory: f}
+		c := newTestClient(f)
 		if tt.swaggerFile != "" {
 			data, err := ioutil.ReadFile(tt.swaggerFile)
 			if err != nil {
@@ -320,7 +326,7 @@ func TestGet(t *testing.T) {
 			}
 		}),
 	}
-	c := &Client{Factory: f}
+	c := newTestClient(f)
 
 	// Test Success
 	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
@@ -380,7 +386,7 @@ func TestPerform(t *testing.T) {
 		}
 
 		f, tf, _, _ := cmdtesting.NewAPIFactory()
-		c := &Client{Factory: f}
+		c := newTestClient(f)
 		if tt.swaggerFile != "" {
 			data, err := ioutil.ReadFile(tt.swaggerFile)
 			if err != nil {
@@ -464,7 +470,7 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 			}),
 		}
 
-		c := &Client{Factory: f}
+		c := newTestClient(f)
 
 		phase, err := c.WaitAndGetCompletedPodPhase("test", objBody(codec, &testPodList), 1*time.Second)
 		if (err != nil) != tt.err {

@@ -19,27 +19,31 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/client-go/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/kubectl"
 )
 
 const (
 	deploymentName = "tiller-deploy"
 	serviceName    = "tiller-deploy"
+	secretName     = "tiller-secret"
 )
 
-// Uninstall uses kubernetes client to uninstall tiller
+// Uninstall uses Kubernetes client to uninstall Tiller.
 func Uninstall(client internalclientset.Interface, opts *Options) error {
 	if err := deleteService(client.Core(), opts.Namespace); err != nil {
 		return err
 	}
-	return deleteDeployment(client, opts.Namespace)
+	if err := deleteDeployment(client, opts.Namespace); err != nil {
+		return err
+	}
+	return deleteSecret(client.Core(), opts.Namespace)
 }
 
 // deleteService deletes the Tiller Service resource
-func deleteService(client internalversion.ServicesGetter, namespace string) error {
+func deleteService(client coreclient.ServicesGetter, namespace string) error {
 	err := client.Services(namespace).Delete(serviceName, &metav1.DeleteOptions{})
 	return ingoreNotFound(err)
 }
@@ -50,6 +54,12 @@ func deleteService(client internalversion.ServicesGetter, namespace string) erro
 func deleteDeployment(client internalclientset.Interface, namespace string) error {
 	reaper, _ := kubectl.ReaperFor(extensions.Kind("Deployment"), client)
 	err := reaper.Stop(namespace, deploymentName, 0, nil)
+	return ingoreNotFound(err)
+}
+
+// deleteSecret deletes the Tiller Secret resource
+func deleteSecret(client coreclient.SecretsGetter, namespace string) error {
+	err := client.Secrets(namespace).Delete(secretName, &metav1.DeleteOptions{})
 	return ingoreNotFound(err)
 }
 

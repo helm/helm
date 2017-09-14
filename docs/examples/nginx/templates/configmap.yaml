@@ -1,15 +1,14 @@
-# This is a simple example of using a config map to create a single page
-# static site.
+# This is a simple example of using a config map to create a single page static site.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{template "fullname" .}}
+  name: {{ template "fullname" . }}
   labels:
-    release: {{ .Release.Name | quote }}
-    app: {{template "fullname" .}}
-    heritage: {{.Release.Service | quote }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app: {{ template "name" . }}
 data:
-  # When the config map is mounted as a volume, these will be created as
-  # files.
-  index.html: {{default "Hello" .Values.index | quote}}
+  # When the config map is mounted as a volume, these will be created as files.
+  index.html: {{ .Values.index | quote }}
   test.txt: test

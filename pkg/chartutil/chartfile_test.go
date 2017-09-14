@@ -88,6 +88,18 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 		t.Error("Unexpected keywords")
 	}
 
+	if len(f.Annotations) != 2 {
+		t.Fatalf("Unexpected annotations")
+	}
+
+	if want, got := "extravalue", f.Annotations["extrakey"]; want != got {
+		t.Errorf("Want %q, but got %q", want, got)
+	}
+
+	if want, got := "anothervalue", f.Annotations["anotherkey"]; want != got {
+		t.Errorf("Want %q, but got %q", want, got)
+	}
+
 	kk := []string{"frobnitz", "sprocket", "dodad"}
 	for i, k := range f.Keywords {
 		if kk[i] != k {

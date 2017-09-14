@@ -57,14 +57,16 @@ type Dependency struct {
 	// used to fetch the repository index.
 	Repository string `json:"repository"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
-	Condition string `json:"condition"`
+	Condition string `json:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags,omitempty"`
 	// Enabled bool determines if chart should be loaded
-	Enabled bool `json:"enabled"`
+	Enabled bool `json:"enabled,omitempty"`
 	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
 	// string or pair of child/parent sublist items.
-	ImportValues []interface{} `json:"import-values"`
+	ImportValues []interface{} `json:"import-values,omitempty"`
+	// Alias usable alias to be used for the chart
+	Alias string `json:"alias,omitempty"`
 }
 
 // ErrNoRequirementsFile to detect error condition
@@ -216,6 +218,32 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 
 }
 
+func getAliasDependency(charts []*chart.Chart, aliasChart *Dependency) *chart.Chart {
+	var chartFound chart.Chart
+	for _, existingChart := range charts {
+		if existingChart == nil {
+			continue
+		}
+		if existingChart.Metadata == nil {
+			continue
+		}
+		if existingChart.Metadata.Name != aliasChart.Name {
+			continue
+		}
+		if existingChart.Metadata.Version != aliasChart.Version {
+			continue
+		}
+		chartFound = *existingChart
+		newMetadata := *existingChart.Metadata
+		if aliasChart.Alias != "" {
+			newMetadata.Name = aliasChart.Alias
+		}
+		chartFound.Metadata = &newMetadata
+		return &chartFound
+	}
+	return nil
+}
+
 // ProcessRequirementsEnabled removes disabled charts from dependencies
 func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	reqs, err := LoadRequirements(c)
@@ -228,6 +256,36 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 		// no requirements to process
 		return nil
 	}
+
+	var chartDependencies []*chart.Chart
+	// If any dependency is not a part of requirements.yaml
+	// then this should be added to chartDependencies.
+	// However, if the dependency is already specified in requirements.yaml
+	// we should not add it, as it would be anyways processed from requirements.yaml
+
+	for _, existingDependency := range c.Dependencies {
+		var dependencyFound bool
+		for _, req := range reqs.Dependencies {
+			if existingDependency.Metadata.Name == req.Name && existingDependency.Metadata.Version == req.Version {
+				dependencyFound = true
+				break
+			}
+		}
+		if !dependencyFound {
+			chartDependencies = append(chartDependencies, existingDependency)
+		}
+	}
+
+	for _, req := range reqs.Dependencies {
+		if chartDependency := getAliasDependency(c.Dependencies, req); chartDependency != nil {
+			chartDependencies = append(chartDependencies, chartDependency)
+		}
+		if req.Alias != "" {
+			req.Name = req.Alias
+		}
+	}
+	c.Dependencies = chartDependencies
+
 	// set all to true
 	for _, lr := range reqs.Dependencies {
 		lr.Enabled = true
@@ -322,22 +380,17 @@ func getParents(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 }
 
 // processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
-func processImportValues(c *chart.Chart, v *chart.Config) error {
+func processImportValues(c *chart.Chart) error {
 	reqs, err := LoadRequirements(c)
 	if err != nil {
 		return err
 	}
-	// combine chart values and its dependencies' values
-	cvals, err := CoalesceValues(c, v)
+	// combine chart values and empty config to get Values
+	cvals, err := CoalesceValues(c, &chart.Config{})
 	if err != nil {
 		return err
 	}
-	nv := v.GetValues()
-	b := make(map[string]interface{}, len(nv))
-	// convert values to map
-	for kk, vvv := range nv {
-		b[kk] = vvv
-	}
+	b := make(map[string]interface{}, 0)
 	// import values from each dependency if specified in import-values
 	for _, r := range reqs.Dependencies {
 		if len(r.ImportValues) > 0 {
@@ -392,10 +445,10 @@ func processImportValues(c *chart.Chart, v *chart.Config) error {
 }
 
 // ProcessRequirementsImportValues imports specified chart values from child to parent.
-func ProcessRequirementsImportValues(c *chart.Chart, v *chart.Config) error {
+func ProcessRequirementsImportValues(c *chart.Chart) error {
 	pc := getParents(c, nil)
 	for i := len(pc) - 1; i >= 0; i-- {
-		processImportValues(pc[i], v)
+		processImportValues(pc[i])
 	}
 
 	return nil

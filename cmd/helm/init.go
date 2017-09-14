@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
@@ -33,14 +33,14 @@ import (
 )
 
 const initDesc = `
-This command installs Tiller (the helm server side component) onto your
-Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/)
+This command installs Tiller (the Helm server-side component) onto your
+Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/).
 
 As with the rest of the Helm commands, 'helm init' discovers Kubernetes clusters
 by reading $KUBECONFIG (default '~/.kube/config') and using the default context.
 
 To set up just a local environment, use '--client-only'. That will configure
-$HELM_HOME, but not attempt to connect to a remote cluster and install the Tiller
+$HELM_HOME, but not attempt to connect to a Kubernetes cluster and install the Tiller
 deployment.
 
 When installing Tiller, 'helm init' will attempt to install the latest released
@@ -54,8 +54,9 @@ To dump a manifest containing the Tiller deployment YAML, combine the
 `
 
 const (
-	stableRepository = "stable"
-	localRepository  = "local"
+	stableRepository         = "stable"
+	localRepository          = "local"
+	localRepositoryIndexFile = "index.yaml"
 )
 
 var (
@@ -76,14 +77,13 @@ type initCmd struct {
 	out            io.Writer
 	home           helmpath.Home
 	opts           installer.Options
-	kubeClient     internalclientset.Interface
+	kubeClient     kubernetes.Interface
 	serviceAccount string
+	maxHistory     int
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
-	i := &initCmd{
-		out: out,
-	}
+	i := &initCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -100,24 +100,25 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&i.image, "tiller-image", "i", "", "override tiller image")
-	f.BoolVar(&i.canary, "canary-image", false, "use the canary tiller image")
-	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if tiller is already installed")
-	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install tiller")
+	f.StringVarP(&i.image, "tiller-image", "i", "", "override Tiller image")
+	f.BoolVar(&i.canary, "canary-image", false, "use the canary Tiller image")
+	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if Tiller is already installed")
+	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install Tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 
-	f.BoolVar(&tlsEnable, "tiller-tls", false, "install tiller with TLS enabled")
-	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install tiller with TLS enabled and to verify remote certificates")
-	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with tiller")
-	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with tiller")
+	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
+	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
+	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
+	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with Tiller")
 	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
-	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install tiller with net=host")
+	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
+	f.IntVar(&i.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
 
 	return cmd
 }
@@ -148,7 +149,7 @@ func (i *initCmd) tlsOptions() error {
 	return nil
 }
 
-// runInit initializes local config and installs tiller to Kubernetes Cluster
+// run initializes local config and installs Tiller to Kubernetes cluster.
 func (i *initCmd) run() error {
 	if err := i.tlsOptions(); err != nil {
 		return err
@@ -157,6 +158,7 @@ func (i *initCmd) run() error {
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
 	i.opts.ServiceAccount = i.serviceAccount
+	i.opts.MaxHistory = i.maxHistory
 
 	if settings.Debug {
 		writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
@@ -231,7 +233,7 @@ func (i *initCmd) run() error {
 
 	if !i.clientOnly {
 		if i.kubeClient == nil {
-			_, c, err := getKubeClient(kubeContext)
+			_, c, err := getKubeClient(settings.KubeContext)
 			if err != nil {
 				return fmt.Errorf("could not get kubernetes client: %s", err)
 			}
@@ -245,23 +247,23 @@ func (i *initCmd) run() error {
 				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
-				fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been upgraded to the current version.")
+				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
 			} else {
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			fmt.Fprintln(i.out, "\nTiller (the helm server side component) has been installed into your Kubernetes Cluster.")
+			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.")
 		}
 	} else {
-		fmt.Fprintln(i.out, "Not installing tiller due to 'client-only' flag having been set")
+		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
 	}
 
 	fmt.Fprintln(i.out, "Happy Helming!")
 	return nil
 }
 
-// ensureDirectories checks to see if $HELM_HOME exists
+// ensureDirectories checks to see if $HELM_HOME exists.
 //
 // If $HELM_HOME does not exist, this function will create it.
 func ensureDirectories(home helmpath.Home, out io.Writer) error {
@@ -272,6 +274,7 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 		home.LocalRepository(),
 		home.Plugins(),
 		home.Starters(),
+		home.Archive(),
 	}
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
@@ -292,11 +295,11 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository), skipRefresh)
+		sr, err := initStableRepo(home.CacheIndex(stableRepository), out, skipRefresh)
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepoIndexFilePath), home.CacheIndex("local"))
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out)
 		if err != nil {
 			return err
 		}
@@ -311,7 +314,8 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	return nil
 }
 
-func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
+func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool) (*repo.Entry, error) {
+	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
 	c := repo.Entry{
 		Name:  stableRepository,
 		URL:   stableRepositoryURL,
@@ -335,8 +339,9 @@ func initStableRepo(cacheFile string, skipRefresh bool) (*repo.Entry, error) {
 	return &c, nil
 }
 
-func initLocalRepo(indexFile, cacheFile string) (*repo.Entry, error) {
+func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, error) {
 	if fi, err := os.Stat(indexFile); err != nil {
+		fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
 		i := repo.NewIndexFile()
 		if err := i.WriteFile(indexFile, 0644); err != nil {
 			return nil, err

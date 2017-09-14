@@ -1,2 +1,6 @@
-# The pod name
-Name: my-alpine
+image:
+  repository: alpine
+  tag: 3.3
+  pullPolicy: IfNotPresent
+
+restartPolicy: Never

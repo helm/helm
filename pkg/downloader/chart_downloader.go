@@ -202,7 +202,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return u, r.Client, fmt.Errorf("chart %q not found in %s index. (try 'helm repo update'). %s", chartName, r.Config.Name, err)
+		return u, r.Client, fmt.Errorf("chart %q matching %s not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
 	}
 
 	if len(cv.URLs) == 0 {
@@ -213,6 +213,12 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 	u, err = url.Parse(cv.URLs[0])
 	if err != nil {
 		return u, r.Client, fmt.Errorf("invalid chart URL format: %s", ref)
+	}
+
+	// If the URL is relative (no scheme), prepend the chart repo's base URL
+	if !u.IsAbs() {
+		u, err = url.Parse(rc.URL + "/" + u.Path)
+		return u, r.Client, err
 	}
 
 	return u, r.Client, nil

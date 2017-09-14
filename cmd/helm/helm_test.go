@@ -23,7 +23,9 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -33,8 +35,6 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
-	"k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -121,99 +121,15 @@ func releaseMock(opts *releaseOptions) *release.Release {
 	}
 }
 
-type fakeReleaseClient struct {
-	rels []*release.Release
-	err  error
-}
-
-var _ helm.Interface = &fakeReleaseClient{}
-var _ helm.Interface = &helm.Client{}
-
-func (c *fakeReleaseClient) ListReleases(opts ...helm.ReleaseListOption) (*rls.ListReleasesResponse, error) {
-	resp := &rls.ListReleasesResponse{
-		Count:    int64(len(c.rels)),
-		Releases: c.rels,
-	}
-	return resp, c.err
-}
-
-func (c *fakeReleaseClient) InstallRelease(chStr, ns string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
-	return &rls.InstallReleaseResponse{
-		Release: c.rels[0],
-	}, nil
-}
-
-func (c *fakeReleaseClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...helm.InstallOption) (*rls.InstallReleaseResponse, error) {
-	return &rls.InstallReleaseResponse{
-		Release: c.rels[0],
-	}, nil
-}
-
-func (c *fakeReleaseClient) DeleteRelease(rlsName string, opts ...helm.DeleteOption) (*rls.UninstallReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) ReleaseStatus(rlsName string, opts ...helm.StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	if c.rels[0] != nil {
-		return &rls.GetReleaseStatusResponse{
-			Name:      c.rels[0].Name,
-			Info:      c.rels[0].Info,
-			Namespace: c.rels[0].Namespace,
-		}, nil
-	}
-	return nil, fmt.Errorf("No such release: %s", rlsName)
-}
-
-func (c *fakeReleaseClient) GetVersion(opts ...helm.VersionOption) (*rls.GetVersionResponse, error) {
-	return &rls.GetVersionResponse{
-		Version: &version.Version{
-			SemVer: "1.2.3-fakeclient+testonly",
-		},
-	}, nil
-}
-
-func (c *fakeReleaseClient) UpdateRelease(rlsName string, chStr string, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...helm.UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) RollbackRelease(rlsName string, opts ...helm.RollbackOption) (*rls.RollbackReleaseResponse, error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) ReleaseContent(rlsName string, opts ...helm.ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
-	if len(c.rels) > 0 {
-		resp = &rls.GetReleaseContentResponse{
-			Release: c.rels[0],
-		}
-	}
-	return resp, c.err
-}
-
-func (c *fakeReleaseClient) ReleaseHistory(rlsName string, opts ...helm.HistoryOption) (*rls.GetHistoryResponse, error) {
-	return &rls.GetHistoryResponse{Releases: c.rels}, c.err
-}
-
-func (c *fakeReleaseClient) RunReleaseTest(rlsName string, opts ...helm.ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
-	return nil, nil
-}
-
-func (c *fakeReleaseClient) Option(opt ...helm.Option) helm.Interface {
-	return c
-}
-
-// releaseCmd is a command that works with a fakeReleaseClient
-type releaseCmd func(c *fakeReleaseClient, out io.Writer) *cobra.Command
+// releaseCmd is a command that works with a FakeClient
+type releaseCmd func(c *helm.FakeClient, out io.Writer) *cobra.Command
 
 // runReleaseCases runs a set of release cases through the given releaseCmd.
 func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		c := &fakeReleaseClient{
-			rels: []*release.Release{tt.resp},
+		c := &helm.FakeClient{
+			Rels: []*release.Release{tt.resp},
 		}
 		cmd := rcmd(c, &buf)
 		cmd.ParseFlags(tt.flags)
@@ -299,7 +215,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		}
 	}
 
-	localRepoIndexFile := home.LocalRepository(localRepoIndexFilePath)
+	localRepoIndexFile := home.LocalRepository(localRepositoryIndexFile)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
 		i := repo.NewIndexFile()
 		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
@@ -314,4 +230,92 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 
 	t.Logf("$HELM_HOME has been configured at %s.\n", settings.Home.String())
 	return nil
+}
+
+func TestRootCmd(t *testing.T) {
+	cleanup := resetEnv()
+	defer cleanup()
+
+	tests := []struct {
+		name   string
+		args   []string
+		envars map[string]string
+		home   string
+	}{
+		{
+			name: "defaults",
+			args: []string{"home"},
+			home: filepath.Join(os.Getenv("HOME"), "/.helm"),
+		},
+		{
+			name: "with --home set",
+			args: []string{"--home", "/foo"},
+			home: "/foo",
+		},
+		{
+			name: "subcommands with --home set",
+			args: []string{"home", "--home", "/foo"},
+			home: "/foo",
+		},
+		{
+			name:   "with $HELM_HOME set",
+			args:   []string{"home"},
+			envars: map[string]string{"HELM_HOME": "/bar"},
+			home:   "/bar",
+		},
+		{
+			name:   "subcommands with $HELM_HOME set",
+			args:   []string{"home"},
+			envars: map[string]string{"HELM_HOME": "/bar"},
+			home:   "/bar",
+		},
+		{
+			name:   "with $HELM_HOME and --home set",
+			args:   []string{"home", "--home", "/foo"},
+			envars: map[string]string{"HELM_HOME": "/bar"},
+			home:   "/foo",
+		},
+	}
+
+	// ensure not set locally
+	os.Unsetenv("HELM_HOME")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer os.Unsetenv("HELM_HOME")
+
+			for k, v := range tt.envars {
+				os.Setenv(k, v)
+			}
+
+			cmd := newRootCmd(tt.args)
+			cmd.SetOutput(ioutil.Discard)
+			cmd.SetArgs(tt.args)
+			cmd.Run = func(*cobra.Command, []string) {}
+			if err := cmd.Execute(); err != nil {
+				t.Errorf("unexpected error: %s", err)
+			}
+
+			if settings.Home.String() != tt.home {
+				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
+			}
+			homeFlag := cmd.Flag("home").Value.String()
+			homeFlag = os.ExpandEnv(homeFlag)
+			if homeFlag != tt.home {
+				t.Errorf("expected home %q, got %q", tt.home, homeFlag)
+			}
+		})
+	}
+}
+
+func resetEnv() func() {
+	origSettings := settings
+	origEnv := os.Environ()
+	return func() {
+		settings = origSettings
+		for _, pair := range origEnv {
+			kv := strings.SplitN(pair, "=", 2)
+			os.Setenv(kv[0], kv[1])
+		}
+	}
 }

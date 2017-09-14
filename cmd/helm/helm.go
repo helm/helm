@@ -19,7 +19,6 @@ package main // import "k8s.io/helm/cmd/helm"
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -28,20 +27,15 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
-	tiller_env "k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/tlsutil"
-)
-
-const (
-	localRepoIndexFilePath = "index.yaml"
 )
 
 var (
@@ -50,13 +44,9 @@ var (
 	tlsKeyFile    string // path to TLS key file
 	tlsVerify     bool   // enable TLS and verify remote certificates
 	tlsEnable     bool   // enable TLS
-)
 
-var (
-	kubeContext string
-	settings    helm_env.EnvSettings
-	// TODO refactor out this global var
 	tillerTunnel *kube.Tunnel
+	settings     helm_env.EnvSettings
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -79,41 +69,30 @@ Environment:
   $HELM_HOME          set an alternative location for Helm files. By default, these are stored in ~/.helm
   $HELM_HOST          set an alternative Tiller host. The format is host:port
   $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
-  $TILLER_NAMESPACE   set an alternative Tiller namespace (default "kube-namespace")
+  $TILLER_NAMESPACE   set an alternative Tiller namespace (default "kube-system")
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
-func newRootCmd(out io.Writer) *cobra.Command {
-	var helmHomeTemp string
-
+func newRootCmd(args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(*cobra.Command, []string) {
 			tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
 			tlsCertFile = os.ExpandEnv(tlsCertFile)
 			tlsKeyFile = os.ExpandEnv(tlsKeyFile)
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
 	}
-	p := cmd.PersistentFlags()
-	p.StringVar(&helmHomeTemp, "home", helm_env.DefaultHelmHome(), "location of your Helm config. Overrides $HELM_HOME")
-	settings.Home = helmpath.Home(helmHomeTemp)
-	p.StringVar(&settings.TillerHost, "host", helm_env.DefaultHelmHost(), "address of tiller. Overrides $HELM_HOST")
-	p.StringVar(&kubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	p.BoolVar(&settings.Debug, "debug", false, "enable verbose output")
-	p.StringVar(&settings.TillerNamespace, "tiller-namespace", tiller_env.GetTillerNamespace(), "namespace of tiller")
+	flags := cmd.PersistentFlags()
 
-	if os.Getenv(helm_env.PluginDisableEnvVar) != "1" {
-		settings.PlugDirs = os.Getenv(helm_env.PluginEnvVar)
-		if settings.PlugDirs == "" {
-			settings.PlugDirs = settings.Home.Plugins()
-		}
-	}
+	settings.AddFlags(flags)
+
+	out := cmd.OutOrStdout()
 
 	cmd.AddCommand(
 		// chart commands
@@ -147,6 +126,7 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		newHomeCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
+		newTemplateCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
@@ -154,6 +134,11 @@ func newRootCmd(out io.Writer) *cobra.Command {
 		// Deprecated
 		markDeprecated(newRepoUpdateCmd(out), "use 'helm repo update'\n"),
 	)
+
+	flags.Parse(args)
+
+	// set defaults from environment
+	settings.Init(flags)
 
 	// Find and add plugins
 	loadPlugins(cmd, out)
@@ -167,7 +152,7 @@ func init() {
 }
 
 func main() {
-	cmd := newRootCmd(os.Stdout)
+	cmd := newRootCmd(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -180,7 +165,7 @@ func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
 
 func setupConnection(c *cobra.Command, args []string) error {
 	if settings.TillerHost == "" {
-		config, client, err := getKubeClient(kubeContext)
+		config, client, err := getKubeClient(settings.KubeContext)
 		if err != nil {
 			return err
 		}
@@ -230,16 +215,39 @@ func prettyError(err error) error {
 	return errors.New(grpc.ErrorDesc(err))
 }
 
-// getKubeClient is a convenience method for creating kubernetes config and client
-// for a given kubeconfig context
-func getKubeClient(context string) (*rest.Config, *internalclientset.Clientset, error) {
+// configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
+func configForContext(context string) (*rest.Config, error) {
 	config, err := kube.GetConfig(context).ClientConfig()
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get kubernetes config for context '%s': %s", context, err)
+		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
+	}
+	return config, nil
+}
+
+// getKubeClient creates a Kubernetes config and client for a given kubeconfig context.
+func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
+	config, err := configForContext(context)
+	if err != nil {
+		return nil, nil, err
+	}
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
+	}
+	return config, client, nil
+}
+
+// getInternalKubeClient creates a Kubernetes config and an "internal" client for a given kubeconfig context.
+//
+// Prefer the similar getKubeClient if you don't need to use such an internal client.
+func getInternalKubeClient(context string) (*rest.Config, internalclientset.Interface, error) {
+	config, err := configForContext(context)
+	if err != nil {
+		return nil, nil, err
 	}
 	client, err := internalclientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get kubernetes client: %s", err)
+		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
 	}
 	return config, client, nil
 }

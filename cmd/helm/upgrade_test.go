@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -82,6 +83,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 	originalDepsPath := filepath.Join("testdata/testcharts/reqtest")
 	missingDepsPath := filepath.Join("testdata/testcharts/chart-missing-deps")
+	badDepsPath := filepath.Join("testdata/testcharts/chart-bad-requirements")
 	var ch3 *chart.Chart
 	ch3, err = chartutil.Load(originalDepsPath)
 	if err != nil {
@@ -143,9 +145,15 @@ func TestUpgradeCmd(t *testing.T) {
 			resp: releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
 			err:  true,
 		},
+		{
+			name: "upgrade a release with bad dependencies",
+			args: []string{"bonkers-bunny", badDepsPath},
+			resp: releaseMock(&releaseOptions{name: "bonkers-bunny", version: 1, chart: ch3}),
+			err:  true,
+		},
 	}
 
-	cmd := func(c *fakeReleaseClient, out io.Writer) *cobra.Command {
+	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newUpgradeCmd(c, out)
 	}
 

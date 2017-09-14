@@ -48,7 +48,7 @@ $ chmod 700 get_helm.sh
 $ ./get_helm.sh
 ```
 
-Yes, you can `curl ...| bash` that if you want to live on the edge.
+Yes, you can `curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash` that if you want to live on the edge.
 
 ### From Canary Builds
 
@@ -102,7 +102,7 @@ whatever cluster `kubectl` connects to by default (`kubectl config
 view`). Once it connects, it will install `tiller` into the
 `kube-system` namespace.
 
-After `helm init`, you should be able to run `kubectl get po --namespace
+After `helm init`, you should be able to run `kubectl get pods --namespace
 kube-system` and see Tiller running.
 
 You can explicitly tell `helm init` to...
@@ -117,7 +117,7 @@ the client and server version. (If it shows only the client version,
 `helm` cannot yet connect to the server. Use `kubectl` to see if any
 `tiller` pods are running.)
 
-If Helm will look for Tiller in the `kube-system` namespace unless
+Helm will look for Tiller in the `kube-system` namespace unless
 `--tiller-namespace` or `TILLER_NAMESPACE` is set.
 
 ### Installing Tiller Canary Builds

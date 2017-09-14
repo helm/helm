@@ -25,6 +25,7 @@ wordpress/
   Chart.yaml          # A YAML file containing information about the chart
   LICENSE             # OPTIONAL: A plain text file containing the license for the chart
   README.md           # OPTIONAL: A human-readable README file
+  requirements.yaml   # OPTIONAL: A YAML file listing dependencies for the chart
   values.yaml         # The default configuration values for this chart
   charts/             # OPTIONAL: A directory containing any charts upon which this chart depends.
   templates/          # OPTIONAL: A directory of templates that, when combined with values,
@@ -138,47 +139,19 @@ for greater detail.
 
 ## Chart Dependencies
 
-In Helm, one chart may depend on any number of other charts. These
-dependencies are expressed explicitly by copying the dependency charts
-into the `charts/` directory.
+In Helm, one chart may depend on any number of other charts. 
+These dependencies can be dynamically linked through the `requirements.yaml`
+file or brought in to the `charts/` directory and managed manually. 
 
-A dependency can be either a chart archive (`foo-1.2.3.tgz`) or an
-unpacked chart directory. But its name cannot start with `_` or `.`.
-Such files are ignored by the chart loader.
+Although manually managing your dependencies has a few advantages some teams need,
+the preferred method of declaring dependencies is by using a
+`requirements.yaml` file inside of your chart.
 
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
 
-For example, if the WordPress chart depends on the Apache chart, the
-Apache chart (of the correct version) is supplied in the WordPress
-chart's `charts/` directory:
-
-```
-wordpress:
-  Chart.yaml
-  requirements.yaml
-  # ...
-  charts/
-    apache/
-      Chart.yaml
-      # ...
-    mysql/
-      Chart.yaml
-      # ...
-```
-
-The example above shows how the WordPress chart expresses its dependency
-on Apache and MySQL by including those charts inside of its `charts/`
-directory.
-
-**TIP:** _To drop a dependency into your `charts/` directory, use the
-`helm fetch` command or use a `requirements.yaml` file_
 
 ### Managing Dependencies with `requirements.yaml`
-
-While Helm will allow you to manually manage your dependencies, the
-preferred method of declaring dependencies is by using a
-`requirements.yaml` file inside of your chart.
 
 A `requirements.yaml` file is a simple file for listing your
 dependencies.
@@ -228,6 +201,43 @@ charts/
 Managing charts with `requirements.yaml` is a good way to easily keep
 charts updated, and also share requirements information throughout a
 team.
+
+#### Alias field in requirements.yaml
+
+In addition to the other fields above, each requirements entry may contain
+the optional field `alias`.
+
+Adding an alias for a dependency chart would put
+a chart in dependencies using alias as name of new dependency.
+
+One can use `alias` in cases where they need to access a chart
+with other name(s).
+
+```yaml
+# parentchart/requirements.yaml
+dependencies:
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    alias: new-subchart-1
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    alias: new-subchart-2
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+```
+
+In the above example we will get 3 dependencies in all for `parentchart`
+```
+subchart
+new-subchart-1
+new-subchart-2
+```
+
+The manual way of achieving this is by copy/pasting the same chart in the
+`charts/` directory multiple times with different names.
 
 #### Tags and Condition fields in requirements.yaml
 
@@ -404,6 +414,41 @@ myimports:
 
 The parent's final values now contains the `myint` and `mybool` fields imported from subchart1.
 
+### Managing Dependencies manually via the `charts/` directory
+
+If more control over dependencies is desired, these dependencies can
+be expressed explicitly by copying the dependency charts into the
+`charts/` directory.
+
+A dependency can be either a chart archive (`foo-1.2.3.tgz`) or an
+unpacked chart directory. But its name cannot start with `_` or `.`.
+Such files are ignored by the chart loader.
+
+For example, if the WordPress chart depends on the Apache chart, the
+Apache chart (of the correct version) is supplied in the WordPress
+chart's `charts/` directory:
+
+```
+wordpress:
+  Chart.yaml
+  requirements.yaml
+  # ...
+  charts/
+    apache/
+      Chart.yaml
+      # ...
+    mysql/
+      Chart.yaml
+      # ...
+```
+
+The example above shows how the WordPress chart expresses its dependency
+on Apache and MySQL by including those charts inside of its `charts/`
+directory.
+
+**TIP:** _To drop a dependency into your `charts/` directory, use the
+`helm fetch` command_
+
 ## Templates and Values
 
 Helm Chart templates are written in the
@@ -524,7 +569,7 @@ that supplies the necessary values would look like this:
 ```yaml
 imageRegistry: "quay.io/deis"
 dockerTag: "latest"
-pullPolicy: "alwaysPull"
+pullPolicy: "Always"
 storage: "s3"
 ```
 
@@ -550,7 +595,7 @@ generated content will be:
 ```yaml
 imageRegistry: "quay.io/deis"
 dockerTag: "latest"
-pullPolicy: "alwaysPull"
+pullPolicy: "Always"
 storage: "gcs"
 ```
 
@@ -686,17 +731,6 @@ chart. There is no way for a subchart to influence the values of the
 parent chart.
 
 Also, global variables of parent charts take precedence over the global variables from subcharts.
-
-_Global sections are restricted to only simple key/value pairs. They do
-not support nesting._
-
-For example, the following is **illegal** and will not work:
-
-```yaml
-global:
-  foo:  # It is illegal to nest an object inside of global.
-    bar: baz
-```
 
 ### References
 

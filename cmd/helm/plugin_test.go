@@ -64,14 +64,13 @@ func TestManuallyProcessArgs(t *testing.T) {
 }
 
 func TestLoadPlugins(t *testing.T) {
-	// Set helm home to point to testdata
-	old := settings.Home
+	cleanup := resetEnv()
+	defer cleanup()
+
 	settings.Home = "testdata/helmhome"
-	defer func() {
-		settings.Home = old
-	}()
+
+	os.Setenv("HELM_HOME", settings.Home.String())
 	hh := settings.Home
-	settings.PlugDirs = hh.Plugins()
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
@@ -137,15 +136,12 @@ func TestLoadPlugins(t *testing.T) {
 }
 
 func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
-	// Set helm home to point to testdata
-	old := settings.Home
-	oldPlugDirs := settings.PlugDirs
+	cleanup := resetEnv()
+	defer cleanup()
+
 	settings.Home = "testdata/helmhome"
-	settings.PlugDirs = ""
-	defer func() {
-		settings.Home = old
-		settings.PlugDirs = oldPlugDirs
-	}()
+
+	os.Setenv("HELM_NO_PLUGINS", "1")
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
@@ -161,7 +157,6 @@ func TestSetupEnv(t *testing.T) {
 	name := "pequod"
 	settings.Home = helmpath.Home("testdata/helmhome")
 	base := filepath.Join(settings.Home.Plugins(), name)
-	settings.PlugDirs = settings.Home.Plugins()
 	settings.Debug = true
 	defer func() {
 		settings.Debug = false

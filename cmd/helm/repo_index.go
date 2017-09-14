@@ -45,9 +45,7 @@ type repoIndexCmd struct {
 }
 
 func newRepoIndexCmd(out io.Writer) *cobra.Command {
-	index := &repoIndexCmd{
-		out: out,
-	}
+	index := &repoIndexCmd{out: out}
 
 	cmd := &cobra.Command{
 		Use:   "index [flags] [DIR]",

@@ -37,6 +37,12 @@ message Status {
                 FAILED = 4;
                 // Status_DELETING indicates that a delete operation is underway.
                 DELETING = 5;
+                // Status_PENDING_INSTALL indicates that an install operation is underway.
+                PENDING_INSTALL = 6;
+                // Status_PENDING_UPGRADE indicates that an upgrade operation is underway.
+                PENDING_UPGRADE = 7;
+                // Status_PENDING_ROLLBACK indicates that an rollback operation is underway.
+                PENDING_ROLLBACK = 8;
         }
 
         Code code = 1;

@@ -117,6 +117,7 @@ type installCmd struct {
 	timeout      int64
 	wait         bool
 	repoURL      string
+	devel        bool
 
 	certFile string
 	keyFile  string
@@ -147,14 +148,21 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "install [CHART]",
-		Short:             "install a chart archive",
-		Long:              installDesc,
-		PersistentPreRunE: setupConnection,
+		Use:     "install [CHART]",
+		Short:   "install a chart archive",
+		Long:    installDesc,
+		PreRunE: setupConnection,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
+
+			debug("Original chart version: %q", inst.version)
+			if inst.version == "" && inst.devel {
+				debug("setting version to >0.0.0-a")
+				inst.version = ">0.0.0-a"
+			}
+
 			cp, err := locateChartPath(inst.repoURL, args[0], inst.version, inst.verify, inst.keyring,
 				inst.certFile, inst.keyFile, inst.caFile)
 			if err != nil {
@@ -169,7 +177,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.StringVarP(&inst.name, "name", "n", "", "release name. If unspecified, it will autogenerate one for you")
-	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into")
+	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into. Defaults to the current kube config namespace.")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
@@ -178,12 +186,13 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
-	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual kubernetes operation (like Jobs for hooks)")
+	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
 
 	return cmd
 }
@@ -212,7 +221,7 @@ func (i *installCmd) run() error {
 		i.namespace = defaultNamespace()
 	}
 
-	rawVals, err := i.vals()
+	rawVals, err := vals(i.valueFiles, i.values)
 	if err != nil {
 		return err
 	}
@@ -237,9 +246,11 @@ func (i *installCmd) run() error {
 		// If checkDependencies returns an error, we have unfullfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/kubernetes/helm/issues/2209
-		if err := checkDependencies(chartRequested, req, i.out); err != nil {
+		if err := checkDependencies(chartRequested, req); err != nil {
 			return prettyError(err)
 		}
+	} else if err != chartutil.ErrRequirementsNotFound {
+		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
 	//done := make(chan struct{})
@@ -310,13 +321,22 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 	return dest
 }
 
-func (i *installCmd) vals() ([]byte, error) {
+// vals merges values from files specified via -f/--values and
+// directly via --set, marshaling them to YAML
+func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
-	for _, filePath := range i.valueFiles {
+	for _, filePath := range valueFiles {
 		currentMap := map[string]interface{}{}
-		bytes, err := ioutil.ReadFile(filePath)
+
+		var bytes []byte
+		var err error
+		if strings.TrimSpace(filePath) == "-" {
+			bytes, err = ioutil.ReadAll(os.Stdin)
+		} else {
+			bytes, err = ioutil.ReadFile(filePath)
+		}
 		if err != nil {
 			return []byte{}, err
 		}
@@ -329,7 +349,7 @@ func (i *installCmd) vals() ([]byte, error) {
 	}
 
 	// User specified a value via --set
-	for _, value := range i.values {
+	for _, value := range values {
 		if err := strvals.ParseInto(value, base); err != nil {
 			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
 		}
@@ -407,7 +427,11 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		name = chartURL
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, ".")
+	if _, err := os.Stat(settings.Home.Archive()); os.IsNotExist(err) {
+		os.MkdirAll(settings.Home.Archive(), 0744)
+	}
+
+	filename, _, err := dl.DownloadTo(name, version, settings.Home.Archive())
 	if err == nil {
 		lname, err := filepath.Abs(filename)
 		if err != nil {
@@ -436,13 +460,13 @@ func generateName(nameTemplate string) (string, error) {
 }
 
 func defaultNamespace() string {
-	if ns, _, err := kube.GetConfig(kubeContext).Namespace(); err == nil {
+	if ns, _, err := kube.GetConfig(settings.KubeContext).Namespace(); err == nil {
 		return ns
 	}
 	return "default"
 }
 
-func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements, out io.Writer) error {
+func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 	missing := []string{}
 
 	deps := ch.GetDependencies()

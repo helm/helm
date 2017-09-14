@@ -46,6 +46,8 @@ type options struct {
 	reuseName bool
 	// if set, performs pod restart during upgrade/rollback
 	recreate bool
+	// if set, force resource update through delete/recreate if needed
+	force bool
 	// if set, skip running hooks
 	disableHooks bool
 	// name of release
@@ -311,6 +313,13 @@ func RollbackRecreate(recreate bool) RollbackOption {
 	}
 }
 
+// RollbackForce will (if true) force resource update through delete/recreate if needed
+func RollbackForce(force bool) RollbackOption {
+	return func(opts *options) {
+		opts.force = force
+	}
+}
+
 // RollbackVersion sets the version of the release to deploy.
 func RollbackVersion(ver int32) RollbackOption {
 	return func(opts *options) {
@@ -350,6 +359,13 @@ func ReuseValues(reuse bool) UpdateOption {
 func UpgradeRecreate(recreate bool) UpdateOption {
 	return func(opts *options) {
 		opts.recreate = recreate
+	}
+}
+
+// UpgradeForce will (if true) force resource update through delete/recreate if needed
+func UpgradeForce(force bool) UpdateOption {
+	return func(opts *options) {
+		opts.force = force
 	}
 }
 

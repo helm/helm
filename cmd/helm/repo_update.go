@@ -37,9 +37,7 @@ Information is cached locally, where it is used by commands like 'helm search'.
 future releases.
 `
 
-var (
-	errNoRepositories = errors.New("no repositories found. You must add one before updating")
-)
+var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateCmd struct {
 	update func([]*repo.ChartRepository, io.Writer, helmpath.Home)
@@ -55,7 +53,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "update",
 		Aliases: []string{"up"},
-		Short:   "update information on available charts in the chart repositories",
+		Short:   "update information of available charts locally from chart repositories",
 		Long:    updateDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			u.home = settings.Home

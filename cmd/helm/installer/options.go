@@ -19,58 +19,63 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	"fmt"
 
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/helm/pkg/version"
-	"k8s.io/kubernetes/pkg/api"
 )
 
 const defaultImage = "gcr.io/kubernetes-helm/tiller"
 
-// Options control how to install tiller into a cluster, upgrade, and uninstall tiller from a cluster.
+// Options control how to install Tiller into a cluster, upgrade, and uninstall Tiller from a cluster.
 type Options struct {
-	// EnableTLS instructs tiller to serve with TLS enabled.
+	// EnableTLS instructs Tiller to serve with TLS enabled.
 	//
 	// Implied by VerifyTLS. If set the TLSKey and TLSCert are required.
 	EnableTLS bool
 
-	// VerifyTLS instructs tiller to serve with TLS enabled verify remote certificates.
+	// VerifyTLS instructs Tiller to serve with TLS enabled verify remote certificates.
 	//
 	// If set TLSKey, TLSCert, TLSCaCert are required.
 	VerifyTLS bool
 
-	// UseCanary indicates that tiller should deploy using the latest tiller image.
+	// UseCanary indicates that Tiller should deploy using the latest Tiller image.
 	UseCanary bool
 
-	// Namespace is the kubernetes namespace to use to deploy tiller.
+	// Namespace is the Kubernetes namespace to use to deploy Tiller.
 	Namespace string
 
-	// ServiceAccount is the Kubernetes service account to add to tiller
+	// ServiceAccount is the Kubernetes service account to add to Tiller.
 	ServiceAccount string
 
-	// ImageSpec indentifies the image tiller will use when deployed.
+	// ImageSpec indentifies the image Tiller will use when deployed.
 	//
 	// Valid if and only if UseCanary is false.
 	ImageSpec string
 
 	// TLSKeyFile identifies the file containing the pem encoded TLS private
-	// key tiller should use.
+	// key Tiller should use.
 	//
 	// Required and valid if and only if EnableTLS or VerifyTLS is set.
 	TLSKeyFile string
 
 	// TLSCertFile identifies the file containing the pem encoded TLS
-	// certificate tiller should use.
+	// certificate Tiller should use.
 	//
 	// Required and valid if and only if EnableTLS or VerifyTLS is set.
 	TLSCertFile string
 
 	// TLSCaCertFile identifies the file containing the pem encoded TLS CA
-	// certificate tiller should use to verify remotes certificates.
+	// certificate Tiller should use to verify remotes certificates.
 	//
 	// Required and valid if and only if VerifyTLS is set.
 	TLSCaCertFile string
 
-	// EnableHostNetwork installs Tiller with net=host
+	// EnableHostNetwork installs Tiller with net=host.
 	EnableHostNetwork bool
+
+	// MaxHistory sets the maximum number of release versions stored per release.
+	//
+	// Less than or equal to zero means no limit.
+	MaxHistory int
 }
 
 func (opts *Options) selectImage() string {
@@ -84,11 +89,11 @@ func (opts *Options) selectImage() string {
 	}
 }
 
-func (opts *Options) pullPolicy() api.PullPolicy {
+func (opts *Options) pullPolicy() v1.PullPolicy {
 	if opts.UseCanary {
-		return api.PullAlways
+		return v1.PullAlways
 	}
-	return api.PullIfNotPresent
+	return v1.PullIfNotPresent
 }
 
 func (opts *Options) tls() bool { return opts.EnableTLS || opts.VerifyTLS }

@@ -29,6 +29,20 @@ func (m *Template) String() string            { return proto.CompactTextString(m
 func (*Template) ProtoMessage()               {}
 func (*Template) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
 
+func (m *Template) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *Template) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Template)(nil), "hapi.chart.Template")
 }

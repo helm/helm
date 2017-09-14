@@ -50,7 +50,7 @@ func (g *httpGetter) Get(href string) (*bytes.Buffer, error) {
 // newHTTPGetter constructs a valid http/https client as Getter
 func newHTTPGetter(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
 	var client httpGetter
-	if CertFile != "" && KeyFile != "" && CAFile != "" {
+	if CertFile != "" && KeyFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(CertFile, KeyFile, CAFile)
 		if err != nil {
 			return nil, fmt.Errorf("can't create TLS config for client: %s", err.Error())

@@ -275,8 +275,14 @@ func ttpl(tpl string, v map[string]interface{}) (string, error) {
 	return b.String(), nil
 }
 
+// ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
 var testCoalesceValuesYaml = `
 top: yup
+bottom: null
+right: Null
+left: NULL
+front: ~
+back: ""
 
 global:
   name: Ishmael
@@ -316,6 +322,7 @@ func TestCoalesceValues(t *testing.T) {
 		expect string
 	}{
 		{"{{.top}}", "yup"},
+		{"{{.back}}", ""},
 		{"{{.name}}", "moby"},
 		{"{{.global.name}}", "Ishmael"},
 		{"{{.global.subject}}", "Queequeg"},
@@ -341,6 +348,13 @@ func TestCoalesceValues(t *testing.T) {
 	for _, tt := range tests {
 		if o, err := ttpl(tt.tpl, v); err != nil || o != tt.expect {
 			t.Errorf("Expected %q to expand to %q, got %q", tt.tpl, tt.expect, o)
+		}
+	}
+
+	nullKeys := []string{"bottom", "right", "left", "front"}
+	for _, nullKey := range nullKeys {
+		if _, ok := v[nullKey]; ok {
+			t.Errorf("Expected key %q to be removed, still present", nullKey)
 		}
 	}
 }
@@ -434,10 +448,12 @@ chapter:
 	if _, err := d.PathValue("chapter.doesntexist.one"); err == nil {
 		t.Errorf("Non-existent key in middle of path should return error: %s\n%v", err, d)
 	}
+	if _, err := d.PathValue(""); err == nil {
+		t.Error("Asking for the value from an empty path should yield an error")
+	}
 	if v, err := d.PathValue("title"); err == nil {
 		if v != "Moby Dick" {
 			t.Errorf("Failed to return values for root key title")
 		}
 	}
-
 }

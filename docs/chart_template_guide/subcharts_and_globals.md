@@ -175,57 +175,33 @@ Globals are useful for passing information like this, though it does take some p
 
 ## Sharing Templates with Subcharts
 
-Parent charts and subcharts can share templates. This can become very powerful when coupled with `block`s. For example, we can define a `block` in the `subchart` ConfigMap like this:
+Parent charts and subcharts can share templates. Any defined block in any chart is
+available to other charts.
 
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ .Release.Name }}-cfgmap2
-  {{block "labels" . }}from: mysubchart{{ end }}
-data:
-  dessert: {{ .Values.dessert }}
-  salad: {{ .Values.global.salad }}
-```
-
-Running this would produce:
-
-```yaml
-# Source: mychart/charts/mysubchart/templates/configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: gaudy-mastiff-cfgmap2
-  from: mysubchart
-data:
-  dessert: ice cream
-  salad: caesar
-```
-
-Note that the `from:` line says `mysubchart`. In a previous section, we created `mychart/templates/_helpers.tpl`. Let's define a new named template there called `labels` to match the declaration on the block above.
+For example, we can define a simple template like this:
 
 ```yaml
 {{- define "labels" }}from: mychart{{ end }}
 ```
 
-Recall how the labels on templates are _globally shared_. That means that if we create a block named `labels` in one chart, and then define an override named `labels` in another chart, the override will be applied.
+Recall how the labels on templates are _globally shared_. Thus, the `labels` chart
+can be included from any other chart.
 
-Now if we do a `helm install --dry-run --debug mychart`, it will override the block:
+While chart developers have a choice between `include` and `template`, one advantage
+of using `include` is that `include` can dynamically reference templates:
 
 ```yaml
-# Source: mychart/charts/mysubchart/templates/configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: nasal-cheetah-cfgmap2
-  from: mychart
-data:
-  dessert: ice cream
-  salad: caesar
+{{ include $mytemplate }}
 ```
 
-Now `from:` is set to `mychart` because the block was overridden.
+The above will dereference `$mytemplate`. The `template` function, in contrast,
+will only accept a string literal.
 
-Using this method, you can write flexible "base" charts that can be added as subcharts to many different charts, and which will support selective overriding using blocks.
+## Avoid Using Blocks
 
-This section of the guide has focused on subcharts. We've seen how to inherit values, how to use global values, and how to override templates with blocks. In the next section we will turn to debugging, and learn how to catch errors in templates.
+The Go template language provides a `block` keyword that allows developers to provide
+a default implementation which is overridden later. In Helm charts, blocks are not
+the best tool for overriding because it if multiple implementations of the same block
+are provided, the one selected is unpredictable.
+
+The suggestion is to instead use `include`.
