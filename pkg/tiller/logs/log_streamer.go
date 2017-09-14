@@ -2,6 +2,7 @@ package logs
 
 import (
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	"strings"
 )
 
 type Logsub struct {
@@ -9,6 +10,13 @@ type Logsub struct {
 	release string
 	sources []rspb.Log_Source
 	level   rspb.Log_Level
+}
+
+type LogWriter struct {
+	rls string
+	source rspb.Log_Source
+	level rspb.Log_Level
+	ps *Pubsub
 }
 
 type release struct {
@@ -85,3 +93,14 @@ func (ps *Pubsub) PubLog(rls string, source rspb.Log_Source, level rspb.Log_Leve
 	}
 }
 
+func (ps *Pubsub) GetWriter(rls string, source rspb.Log_Source, level rspb.Log_Level) *LogWriter {
+	return &LogWriter{rls: rls, source: source, level: level, ps: ps}
+}
+
+func (lw *LogWriter) Write(p []byte) (n int, err error) {
+	logs := strings.Split(string(p), "\n")
+	for _, l := range logs {
+		lw.ps.PubLog(lw.rls, lw.source, lw.level, l)
+	}
+	return len(p), nil
+}
