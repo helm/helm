@@ -36,6 +36,7 @@ Incorrect:
 {{/* ... */}}
 {{ end -}}
 ```
+It is highly recommended that new charts are created via `helm create` command as the template names are automatically defined as per this best practice.
 
 ## Formatting Templates
 
