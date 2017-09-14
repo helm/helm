@@ -231,9 +231,26 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	moreArchives, err := filepath.Glob(filepath.Join(dir, "**/*.tgz"))
+	if err != nil {
+		return nil, err
+	}
+	archives = append(archives, moreArchives...)
+
 	index := NewIndexFile()
 	for _, arch := range archives {
-		fname := filepath.Base(arch)
+		fname, err := filepath.Rel(dir, arch)
+		if err != nil {
+			return index, err
+		}
+
+		var parentDir string
+		parentDir, fname = filepath.Split(fname)
+		parentURL, err := urlutil.URLJoin(baseURL, parentDir)
+		if err != nil {
+			parentURL = filepath.Join(baseURL, parentDir)
+		}
+
 		c, err := chartutil.Load(arch)
 		if err != nil {
 			// Assume this is not a chart.
@@ -243,7 +260,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 		if err != nil {
 			return index, err
 		}
-		index.Add(c.Metadata, fname, baseURL, hash)
+		index.Add(c.Metadata, fname, parentURL, hash)
 	}
 	return index, nil
 }

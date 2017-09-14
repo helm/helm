@@ -26,6 +26,9 @@ const HookAnno = "helm.sh/hook"
 // HookWeightAnno is the label name for a hook weight
 const HookWeightAnno = "helm.sh/hook-weight"
 
+// HookDeleteAnno is the label name for the delete policy for a hook
+const HookDeleteAnno = "helm.sh/hook-delete-policy"
+
 // Types of hooks
 const (
 	PreInstall         = "pre-install"
@@ -38,6 +41,12 @@ const (
 	PostRollback       = "post-rollback"
 	ReleaseTestSuccess = "test-success"
 	ReleaseTestFailure = "test-failure"
+)
+
+// Type of policy for deleting the hook
+const (
+	HookSucceeded = "hook-succeeded"
+	HookFailed    = "hook-failed"
 )
 
 // FilterTestHooks filters the list of hooks are returns only testing hooks.

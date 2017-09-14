@@ -264,6 +264,9 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 				return err
 			}
 		}
+		if err := move(tmpPath, destPath); err != nil {
+			return err
+		}
 		if err := os.RemoveAll(tmpPath); err != nil {
 			return fmt.Errorf("Failed to remove %v: %v", tmpPath, err)
 		}
@@ -609,4 +612,18 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 	}
 
 	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
+}
+
+// move files from tmppath to destpath
+func move(tmpPath, destPath string) error {
+	files, _ := ioutil.ReadDir(tmpPath)
+	for _, file := range files {
+		filename := file.Name()
+		tmpfile := filepath.Join(tmpPath, filename)
+		destfile := filepath.Join(destPath, filename)
+		if err := os.Rename(tmpfile, destfile); err != nil {
+			return fmt.Errorf("Unable to move local charts to charts dir: %v", err)
+		}
+	}
+	return nil
 }

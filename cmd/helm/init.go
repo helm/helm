@@ -299,7 +299,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"))
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out)
 		if err != nil {
 			return err
 		}
@@ -314,7 +314,9 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	return nil
 }
 
-func initStableRepo(cacheFile string, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
+
+func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helmPath.Home) (*repo.Entry, error) {
+	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
 	c := repo.Entry{
 		Name:  stableRepository,
 		URL:   stableRepositoryURL,
@@ -338,8 +340,9 @@ func initStableRepo(cacheFile string, skipRefresh bool, home helmpath.Home) (*re
 	return &c, nil
 }
 
-func initLocalRepo(indexFile, cacheFile string) (*repo.Entry, error) {
+func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, error) {
 	if fi, err := os.Stat(indexFile); err != nil {
+		fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
 		i := repo.NewIndexFile()
 		if err := i.WriteFile(indexFile, 0644); err != nil {
 			return nil, err

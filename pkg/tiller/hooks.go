@@ -44,16 +44,22 @@ var events = map[string]release.Hook_Event{
 	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
 }
 
-// manifest represents a manifest file, which has a name and some content.
-type manifest struct {
-	name    string
-	content string
-	head    *util.SimpleHead
+// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
+var deletePolices = map[string]release.Hook_DeletePolicy{
+	hooks.HookSucceeded: release.Hook_SUCCEEDED,
+	hooks.HookFailed:    release.Hook_FAILED,
+}
+
+// Manifest represents a manifest file, which has a name and some content.
+type Manifest struct {
+	Name    string
+	Content string
+	Head    *util.SimpleHead
 }
 
 type result struct {
 	hooks   []*release.Hook
-	generic []manifest
+	generic []Manifest
 }
 
 type manifestFile struct {
@@ -71,7 +77,7 @@ type manifestFile struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []manifest, error) {
+func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	for filePath, c := range files {
@@ -113,6 +119,13 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 //		annotations:
 //			helm.sh/hook: pre-install
 //
+// To determine the policy to delete the hook, it looks for a YAML structure like this:
+//
+//  kind: SomeKind
+//  apiVersion: v1
+//  metadata:
+// 		annotations:
+// 			helm.sh/hook-delete-policy: hook-succeeded
 func (file *manifestFile) sort(result *result) error {
 	for _, m := range file.entries {
 		var entry util.SimpleHead
@@ -128,20 +141,20 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		if !hasAnyAnnotation(entry) {
-			result.generic = append(result.generic, manifest{
-				name:    file.path,
-				content: m,
-				head:    &entry,
+			result.generic = append(result.generic, Manifest{
+				Name:    file.path,
+				Content: m,
+				Head:    &entry,
 			})
 			continue
 		}
 
 		hookTypes, ok := entry.Metadata.Annotations[hooks.HookAnno]
 		if !ok {
-			result.generic = append(result.generic, manifest{
-				name:    file.path,
-				content: m,
-				head:    &entry,
+			result.generic = append(result.generic, Manifest{
+				Name:    file.path,
+				Content: m,
+				Head:    &entry,
 			})
 			continue
 		}
@@ -149,30 +162,48 @@ func (file *manifestFile) sort(result *result) error {
 		hw := calculateHookWeight(entry)
 
 		h := &release.Hook{
-			Name:     entry.Metadata.Name,
-			Kind:     entry.Kind,
-			Path:     file.path,
-			Manifest: m,
-			Events:   []release.Hook_Event{},
-			Weight:   hw,
+			Name:           entry.Metadata.Name,
+			Kind:           entry.Kind,
+			Path:           file.path,
+			Manifest:       m,
+			Events:         []release.Hook_Event{},
+			Weight:         hw,
+			DeletePolicies: []release.Hook_DeletePolicy{},
 		}
 
-		isKnownHook := false
+		isUnknownHook := false
 		for _, hookType := range strings.Split(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
 			e, ok := events[hookType]
-			if ok {
-				isKnownHook = true
-				h.Events = append(h.Events, e)
+			if !ok {
+				isUnknownHook = true
+				break
 			}
+			h.Events = append(h.Events, e)
 		}
 
-		if !isKnownHook {
+		if isUnknownHook {
 			log.Printf("info: skipping unknown hook: %q", hookTypes)
 			continue
 		}
 
 		result.hooks = append(result.hooks, h)
+
+		isKnownDeletePolices := false
+		dps, ok := entry.Metadata.Annotations[hooks.HookDeleteAnno]
+		if ok {
+			for _, dp := range strings.Split(dps, ",") {
+				dp = strings.ToLower(strings.TrimSpace(dp))
+				p, exist := deletePolices[dp]
+				if exist {
+					isKnownDeletePolices = true
+					h.DeletePolicies = append(h.DeletePolicies, p)
+				}
+			}
+			if !isKnownDeletePolices {
+				log.Printf("info: skipping unknown hook delete policy: %q", dps)
+			}
+		}
 	}
 
 	return nil

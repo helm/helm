@@ -58,7 +58,7 @@ func Templates(linter *support.Linter) {
 		APIVersions: chartutil.DefaultVersionSet,
 		KubeVersion: &version.Info{
 			Major:     "1",
-			Minor:     "6",
+			Minor:     "7",
 			GoVersion: runtime.Version(),
 			Compiler:  runtime.Compiler,
 			Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),

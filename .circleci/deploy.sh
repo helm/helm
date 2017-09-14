@@ -15,6 +15,11 @@
 # limitations under the License.
 set -euo pipefail
 
+# Skip on pull request builds
+if [[ -n "${CIRCLE_PR_NUMBER:-}" ]]; then
+  exit
+fi
+
 : ${GCLOUD_SERVICE_KEY:?"GCLOUD_SERVICE_KEY environment variable is not set"}
 : ${PROJECT_NAME:?"PROJECT_NAME environment variable is not set"}
 
@@ -27,13 +32,21 @@ else
   exit 1
 fi
 
-echo "Updating gcloud components"
-sudo /opt/google-cloud-sdk/bin/gcloud --quiet components update
+echo "Install docker client"
+VER="17.03.0-ce"
+curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
+tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+mv /tmp/docker/* /usr/bin
+
+echo "Install gcloud components"
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+curl https://sdk.cloud.google.com | bash
+${HOME}/google-cloud-sdk/bin/gcloud --quiet components update
 
 echo "Configuring gcloud authentication"
 echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
-sudo /opt/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
-sudo /opt/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
+${HOME}/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
+${HOME}/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
 docker login -e 1234@5678.com -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
 
 echo "Building the tiller image"
@@ -47,4 +60,4 @@ make build-cross
 make dist checksum VERSION="${VERSION}"
 
 echo "Pushing binaries to gs bucket"
-sudo /opt/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
+${HOME}/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
