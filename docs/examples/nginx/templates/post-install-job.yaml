@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ template "fullname" . }}
+  name: {{ template "nginx.fullname" . }}
   labels:
     # The "heritage" label is used to track which tool deployed a given chart.
     # It is useful for admins who want to see what releases a particular tool
@@ -12,7 +12,7 @@ metadata:
     release: {{ .Release.Name }}
     # This makes it easy to audit chart usage.
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    app: {{ template "name" . }}
+    app: {{ template "nginx.name" . }}
   annotations:
     # This is what defines this resource as a hook. Without this line, the
     # job is considered part of the release.
@@ -20,10 +20,10 @@ metadata:
 spec:
   template:
     metadata:
-      name: {{ template "fullname" . }}
+      name: {{ template "nginx.fullname" . }}
       labels:
         release: {{ .Release.Name }}
-        app: {{ template "name" . }}
+        app: {{ template "nginx.name" . }}
     spec:
       # This shows how to use a simple value. This will look for a passed-in value
       # called restartPolicy. If it is not found, it will use the default value.
