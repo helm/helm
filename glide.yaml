@@ -38,7 +38,6 @@ import:
 - package: github.com/gobwas/glob
   version: ^0.2.1
 - package: github.com/evanphx/json-patch
-- package: github.com/facebookgo/atomicfile
 - package: github.com/facebookgo/symwalk
 - package: github.com/BurntSushi/toml
   version: ~0.3.0
