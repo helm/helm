@@ -202,7 +202,8 @@ func ToToml(v interface{}) string {
 	e := toml.NewEncoder(b)
 	err := e.Encode(v)
 	if err != nil {
-		return err.Error()
+		// Swallow errors inside of a template
+		return ""
 	}
 	return b.String()
 }
