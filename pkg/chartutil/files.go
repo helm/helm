@@ -183,7 +183,7 @@ func ToYaml(v interface{}) string {
 // This is not a general-purpose YAML parser, and will not parse all valid
 // YAML documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
-// m["error"] in the returned map.
+// m["Error"] in the returned map.
 func FromYaml(str string) map[string]interface{} {
 	m := map[string]interface{}{}
 
@@ -225,7 +225,7 @@ func ToJson(v interface{}) string {
 // This is not a general-purpose JSON parser, and will not parse all valid
 // YAML documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
-// m["error"] in the returned map.
+// m["Error"] in the returned map.
 func FromJson(str string) map[string]interface{} {
 	m := map[string]interface{}{}
 
