@@ -24,6 +24,16 @@ import (
 
 const testfile = "testdata/chartfiletest.yaml"
 
+func TestUnmarshalChartfile(t *testing.T) {
+	metadata, err := UnmarshalChartfile([]byte{})
+	if err != nil {
+		t.Error(err)
+	}
+	if err == nil && metadata != nil {
+		t.Errorf("Want nil, but got %t", metadata)
+	}
+}
+
 func TestLoadChartfile(t *testing.T) {
 	f, err := LoadChartfile(testfile)
 	if err != nil {
