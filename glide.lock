@@ -1,5 +1,5 @@
-hash: 311e977050841ebb18e762e7fe42c1b62490dd6f2d37182f6dbfcc369636765c
-updated: 2017-10-03T15:20:32.19833-07:00
+hash: f563d96e00f95924b5c8b3bf32a6f0a3fba23097176937f8d2c65c746bc6bbbb
+updated: 2017-10-04T11:27:05.899491-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -8,7 +8,7 @@ imports:
 - name: github.com/asaskevich/govalidator
   version: 7664702784775e51966f0885f5cd27435916517b
 - name: github.com/Azure/go-autorest
-  version: d7c034a8af24eda120dd6460bfcd6d9ed14e43ca
+  version: 58f6f26e200fa5dfb40c9cd1c83f3e2c860d779d
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -133,7 +133,7 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: 2bba0603135d7d7f5cb73b2125beeda19c09f4ef
+  version: 4bd1920723d7b7c925de087aa32e2187708897f7
   subpackages:
   - proto
   - ptypes/any
