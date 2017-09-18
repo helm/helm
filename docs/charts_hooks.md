@@ -87,7 +87,7 @@ in the future.) It is considered good practice to add a hook weight, and set it
 to `0` if weight is not important.
 
 
-### Hook resources are not managed with correponding releases
+### Hook resources are not managed with corresponding releases
 
 The resources that a hook creates are not tracked or managed as part of the
 release. Once Tiller verifies that the hook has reached its ready state, it
@@ -180,5 +180,4 @@ It is also possible to define policies that determine when to delete correspondi
     "helm.sh/hook-delete-policy": hook-succeeded
 ```
 
-When using `"helm.sh/hook-delete-policy"` annoation, you can choose its value from `"hook-succeeded"` and `"hook-failed"`. The value `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully excuted, while the value `"hook-failed"`specifies Tiller should delete the hook if the hook is failed during execuation.
-
+When using `"helm.sh/hook-delete-policy"` annotation, you can choose its value from `"hook-succeeded"` and `"hook-failed"`. The value `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed, while the value `"hook-failed"`specifies Tiller should delete the hook if the hook failed during execution.
