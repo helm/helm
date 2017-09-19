@@ -112,13 +112,12 @@ func TestToYaml(t *testing.T) {
 }
 
 func TestToToml(t *testing.T) {
-	expect := "foo = \"bar\"\n"
 	v := struct {
 		Foo string `toml:"foo"`
 	}{
 		Foo: "bar",
 	}
-
+	expect := "foo = \"bar\"\n"
 	if got := ToToml(v); got != expect {
 		t.Errorf("Expected %q, got %q", expect, got)
 	}
@@ -129,10 +128,16 @@ func TestToToml(t *testing.T) {
 			"sail": "white",
 		},
 	}
-	got := ToToml(dict)
 	expect = "[mast]\n  sail = \"white\"\n"
-	if got != expect {
+	if got := ToToml(dict); got != expect {
 		t.Errorf("Expected:\n%s\nGot\n%s\n", expect, got)
+	}
+
+	// (error) map no string key
+	invalid := map[int]string{1: ""}
+	expect = ""
+	if got := ToToml(invalid); got != expect {
+		t.Errorf("Expected empty string, got %s", got)
 	}
 }
 
