@@ -76,6 +76,7 @@ var (
 	certFile             = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
 	caCertFile           = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
 	maxHistory           = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
+	printVersion         = flag.Bool("version", false, "print the version number")
 
 	// rootServer is the root gRPC server.
 	//
@@ -92,6 +93,11 @@ var (
 
 func main() {
 	flag.Parse()
+
+	if *printVersion {
+		fmt.Println(version.GetVersion())
+		os.Exit(0)
+	}
 
 	if *enableTracing {
 		log.SetFlags(log.Lshortfile)
