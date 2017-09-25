@@ -1,5 +1,5 @@
-hash: 54e64255ab9112d0183766264214969a8add57903fbe9e96034f9640b9c9cd82
-updated: 2017-07-10T10:52:19.616678852-04:00
+hash: 91eba16992e639203a273b247807bb990901cc0ef7e744991722106fc9db0956
+updated: 2017-09-18T15:49:23.687863166-04:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -172,7 +172,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/Masterminds/sprig
-  version: 9526be0327b26ad31aa70296a7b10704883976d5
+  version: 4c164950cd0a8d3724ddb78982e2c56dc7f47112
 - name: github.com/Masterminds/vcs
   version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
