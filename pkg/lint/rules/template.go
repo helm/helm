@@ -21,10 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/ghodss/yaml"
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/lint/support"
@@ -55,14 +53,8 @@ func Templates(linter *support.Linter) {
 
 	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: "testNamespace"}
 	caps := &chartutil.Capabilities{
-		APIVersions: chartutil.DefaultVersionSet,
-		KubeVersion: &version.Info{
-			Major:     "1",
-			Minor:     "7",
-			GoVersion: runtime.Version(),
-			Compiler:  runtime.Compiler,
-			Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
-		},
+		APIVersions:   chartutil.DefaultVersionSet,
+		KubeVersion:   chartutil.DefaultKubeVersion,
 		TillerVersion: tversion.GetVersionProto(),
 	}
 	valuesToRender, err := chartutil.ToRenderValuesCaps(chart, chart.Values, options, caps)
