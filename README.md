@@ -53,7 +53,7 @@ Get started with the [Quick Start guide](https://docs.helm.sh/using_helm/#quicks
 
 ## Roadmap
 
-The [Helm roadmap is currently located on the wiki](https://github.com/kubernetes/helm/wiki/Roadmap).
+The [Helm roadmap uses Github milestones](https://github.com/kubernetes/helm/milestones) to track the progress of the project.
 
 ## Community, discussion, contribution, and support
 
