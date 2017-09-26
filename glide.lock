@@ -1,5 +1,5 @@
 hash: 0759b118eb4017d612af767460cdec467d6f78013ad1efff1c82676f1df84a75
-updated: 2017-09-26T15:01:33.961357-07:00
+updated: 2017-09-26T15:21:30.833774-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -68,8 +68,6 @@ imports:
   version: ba18e35c5c1b36ef6334cad706eb681153d2d379
 - name: github.com/exponent-io/jsonpath
   version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
-- name: github.com/facebookgo/symwalk
-  version: 42004b9f322246749dd73ad71008b1f3160c0052
 - name: github.com/fatih/camelcase
   version: f6a740d52f961c60348ebb109adde9f4635d7540
 - name: github.com/ghodss/yaml
