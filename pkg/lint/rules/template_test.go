@@ -44,9 +44,11 @@ func TestValidateAllowedExtension(t *testing.T) {
 	}
 }
 
+const namespace = "testNamespace"
+
 func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter)
+	Templates(&linter, namespace)
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -69,7 +71,7 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter)
+	Templates(&linter, namespace)
 	res := linter.Messages
 
 	if len(res) != 0 {

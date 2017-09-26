@@ -42,6 +42,7 @@ or recommendation, it will emit [WARNING] messages.
 `
 
 type lintCmd struct {
+	namespace  string
 	strict bool
 	paths  []string
 	out    io.Writer
@@ -64,6 +65,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to install the release into (only used if --install is set)")
 	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
 
 	return cmd
@@ -82,7 +84,7 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path); err != nil {
+		if linter, err := lintChart(path, l.namespace); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
 		} else {
@@ -114,7 +116,7 @@ func (l *lintCmd) run() error {
 	return nil
 }
 
-func lintChart(path string) (support.Linter, error) {
+func lintChart(path string, namespace string) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -146,5 +148,5 @@ func lintChart(path string) (support.Linter, error) {
 		return linter, errLintNoChart
 	}
 
-	return lint.All(chartPath), nil
+	return lint.All(chartPath, namespace), nil
 }

@@ -31,7 +31,7 @@ import (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter) {
+func Templates(linter *support.Linter, namespace string) {
 	path := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
@@ -51,7 +51,7 @@ func Templates(linter *support.Linter) {
 		return
 	}
 
-	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: "testNamespace"}
+	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: namespace}
 	caps := &chartutil.Capabilities{
 		APIVersions:   chartutil.DefaultVersionSet,
 		KubeVersion:   chartutil.DefaultKubeVersion,
