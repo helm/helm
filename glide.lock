@@ -1,14 +1,14 @@
-hash: 91eba16992e639203a273b247807bb990901cc0ef7e744991722106fc9db0956
-updated: 2017-09-18T15:49:23.687863166-04:00
+hash: f66b2182102bb19545353d4168a4a02fc58590eeb75b1a41dec60834aad8c29e
+updated: 2017-09-26T10:27:19.202679689-04:00
 imports:
 - name: cloud.google.com/go
-  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
+  version: c7cd507af965dbabdcd5611969432dd422f6b628
 - name: github.com/aokoli/goutils
-  version: 9c37978a95bd5c709a15883b6242714ea6709e64
+  version: 3391d3790d23d03408670993e957e8f408993c34
 - name: github.com/asaskevich/govalidator
   version: 7664702784775e51966f0885f5cd27435916517b
 - name: github.com/Azure/go-autorest
-  version: d7c034a8af24eda120dd6460bfcd6d9ed14e43ca
+  version: 58f6f26e200fa5dfb40c9cd1c83f3e2c860d779d
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -18,7 +18,7 @@ imports:
 - name: github.com/chai2010/gettext-go
   version: bf70f2a70fb1b1f36d90d671a72795984eab0fcb
 - name: github.com/cpuguy83/go-md2man
-  version: 71acacd42f85e5e82f70a55327789582a5200a90
+  version: 1d903dcb749992f3741d744c0f8376b4bd7eb3e1
   subpackages:
   - md2man
 - name: github.com/davecgh/go-spew
@@ -57,7 +57,7 @@ imports:
 - name: github.com/docker/go-units
   version: e30f1e79f3cd72542f2026ceec18d3bd67ab859c
 - name: github.com/docker/spdystream
-  version: 449fdfce4d962303d702fec724ef0ad181c92528
+  version: bc6354cbbc295e925e4c611ffe90c1f287ee54db
 - name: github.com/emicklei/go-restful
   version: ff4f55a206334ef123e4f79bbf348980da81ca46
   subpackages:
@@ -89,7 +89,7 @@ imports:
 - name: github.com/go-openapi/spec
   version: 6aced65f8501fe1217321abf0749d354824ba2ff
 - name: github.com/go-openapi/strfmt
-  version: d65c7fdb29eca313476e529628176fe17e58c488
+  version: 610b6cacdcde6852f4de68998bd20ce1dac85b22
 - name: github.com/go-openapi/swag
   version: 1d0bd113de87027671077d3c71eb3ac5d7dbba72
 - name: github.com/gobwas/glob
@@ -137,26 +137,26 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: 2bba0603135d7d7f5cb73b2125beeda19c09f4ef
+  version: 4bd1920723d7b7c925de087aa32e2187708897f7
   subpackages:
   - proto
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/gofuzz
-  version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
+  version: 24818f796faf91cd76ec7bddd72458fbced7a6c1
 - name: github.com/gosuri/uitable
   version: 36ee7e946282a3fb1cfecd476ddc9b35d8847e42
   subpackages:
   - util/strutil
   - util/wordwrap
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
-  version: 0c1b191dbfe51efdabe3c14b9f6f3b96429e0722
+  version: 2500245aa6110c562d17020fb31a2c133d737799
 - name: github.com/hashicorp/golang-lru
-  version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
+  version: 0a025b7e63adc15a622f29b0b2c4c3848243bbf6
 - name: github.com/howeyc/gopass
-  version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
+  version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/huandu/xstrings
-  version: 3959339b333561bf62a38b424fd41517c2c90f40
+  version: d6590c0c31d16526217fa60fbd2067f7afcd78c5
 - name: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/inconshreveable/mousetrap
@@ -176,17 +176,17 @@ imports:
 - name: github.com/Masterminds/vcs
   version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
-  version: d6bea18f789704b5f83375793155289da36a3c7f
+  version: 97311d9f7767e3d6f422ea06661bc2c7a19e8a5d
 - name: github.com/matttproud/golang_protobuf_extensions
   version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
   subpackages:
   - pbutil
 - name: github.com/mitchellh/mapstructure
-  version: 740c764bc6149d3f1806231418adb9f52c11bcbf
+  version: d0303fe809921458f417bcf828397a65db30a7e4
 - name: github.com/naoina/go-stringutil
   version: 6b638e95a32d0c1131db0e7fe83775cbea4a0d0b
 - name: github.com/pborman/uuid
-  version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+  version: e790cca94e6cc75c7064b1332e63811d4aae1a53
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
@@ -254,9 +254,9 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/oauth2
-  version: 3c3a985cb79f52a3190fbc056984415ca6763d01
+  version: 13449ad91cb26cb47661c1b080790392170385fd
 - name: golang.org/x/sys
-  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
+  version: 062cd7e4e68206d8bab9b18396626e855c992658
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -298,32 +298,36 @@ imports:
   subpackages:
   - bson
 - name: gopkg.in/yaml.v2
-  version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
 - name: k8s.io/api
-  version: 4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57
+  version: 926789af7ddda62752e08bc9b93f1d1ebbc7b2de
   subpackages:
   - admissionregistration/v1alpha1
   - apps/v1beta1
+  - apps/v1beta2
   - authentication/v1
   - authentication/v1beta1
   - authorization/v1
   - authorization/v1beta1
   - autoscaling/v1
-  - autoscaling/v2alpha1
+  - autoscaling/v2beta1
   - batch/v1
+  - batch/v1beta1
   - batch/v2alpha1
   - certificates/v1beta1
   - core/v1
   - extensions/v1beta1
   - networking/v1
   - policy/v1beta1
+  - rbac/v1
   - rbac/v1alpha1
   - rbac/v1beta1
+  - scheduling/v1alpha1
   - settings/v1alpha1
   - storage/v1
   - storage/v1beta1
 - name: k8s.io/apiserver
-  version: 087d1a2efeb6296f04bb0f54e7af9890052aa6d7
+  version: 19667a1afc13cc13930c40a20f2c12bbdcaaa246
   subpackages:
   - pkg/admission
   - pkg/apis/apiserver
@@ -338,7 +342,7 @@ imports:
   - pkg/util/feature
   - pkg/util/flag
 - name: k8s.io/kubernetes
-  version: d3ada0119e776222f11ec7945e6d860061339aad
+  version: 4bc5e7f9a6c25dc4c03d4d656f2cefd21540e28c
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - federation/apis/federation
@@ -530,13 +534,15 @@ imports:
   - plugin/pkg/scheduler/schedulercache
   - plugin/pkg/scheduler/util
 - name: k8s.io/metrics
-  version: 8efbc8e22d00b9c600afec5f1c14073fd2412fce
+  version: 4faa73f37a1635813affc8fbc36ba49a15e81a24
   subpackages:
   - pkg/apis/metrics
   - pkg/apis/metrics/v1alpha1
+  - pkg/apis/metrics/v1beta1
   - pkg/client/clientset_generated/clientset
   - pkg/client/clientset_generated/clientset/scheme
   - pkg/client/clientset_generated/clientset/typed/metrics/v1alpha1
+  - pkg/client/clientset_generated/clientset/typed/metrics/v1beta1
 - name: vbom.ml/util
   version: db5cfe13f5cc80a4990d98e2e1b0707a4d1a5394
   repo: https://github.com/fvbommel/util.git
