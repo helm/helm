@@ -25,11 +25,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/lint"
 	"k8s.io/helm/pkg/lint/support"
+	"k8s.io/helm/pkg/strvals"
 )
 
 var longLintHelp = `
@@ -42,6 +44,8 @@ or recommendation, it will emit [WARNING] messages.
 `
 
 type lintCmd struct {
+	valueFiles valueFiles
+	values     []string
 	namespace  string
 	strict     bool
 	paths      []string
@@ -65,6 +69,8 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().VarP(&l.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
+	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to install the release into (only used if --install is set)")
 	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
 
@@ -81,10 +87,16 @@ func (l *lintCmd) run() error {
 		lowestTolerance = support.ErrorSev
 	}
 
+	// Get the raw values
+	rvals, err := l.vals()
+	if err != nil {
+		return err
+	}
+
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path, l.namespace); err != nil {
+		if linter, err := lintChart(path, rvals, l.namespace); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
 		} else {
@@ -116,7 +128,7 @@ func (l *lintCmd) run() error {
 	return nil
 }
 
-func lintChart(path string, namespace string) (support.Linter, error) {
+func lintChart(path string, vals []byte, namespace string) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -148,5 +160,33 @@ func lintChart(path string, namespace string) (support.Linter, error) {
 		return linter, errLintNoChart
 	}
 
-	return lint.All(chartPath, namespace), nil
+	return lint.All(chartPath, vals, namespace), nil
+}
+
+func (l *lintCmd) vals() ([]byte, error) {
+	base := map[string]interface{}{}
+
+	// User specified a values files via -f/--values
+	for _, filePath := range l.valueFiles {
+		currentMap := map[string]interface{}{}
+		bytes, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			return []byte{}, err
+		}
+
+		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+			return []byte{}, fmt.Errorf("failed to parse %s: %s", filePath, err)
+		}
+		// Merge with the previous map
+		base = mergeValues(base, currentMap)
+	}
+
+	// User specified a value via --set
+	for _, value := range l.values {
+		if err := strvals.ParseInto(value, base); err != nil {
+			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+		}
+	}
+
+	return yaml.Marshal(base)
 }
