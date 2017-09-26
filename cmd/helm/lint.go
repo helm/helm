@@ -43,9 +43,9 @@ or recommendation, it will emit [WARNING] messages.
 
 type lintCmd struct {
 	namespace  string
-	strict bool
-	paths  []string
-	out    io.Writer
+	strict     bool
+	paths      []string
+	out        io.Writer
 }
 
 func newLintCmd(out io.Writer) *cobra.Command {
