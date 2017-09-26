@@ -96,7 +96,7 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path, rvals, l.namespace); err != nil {
+		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
 		} else {
@@ -128,7 +128,7 @@ func (l *lintCmd) run() error {
 	return nil
 }
 
-func lintChart(path string, vals []byte, namespace string) (support.Linter, error) {
+func lintChart(path string, vals []byte, namespace string, strict bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -160,7 +160,7 @@ func lintChart(path string, vals []byte, namespace string) (support.Linter, erro
 		return linter, errLintNoChart
 	}
 
-	return lint.All(chartPath, vals, namespace), nil
+	return lint.All(chartPath, vals, namespace, strict), nil
 }
 
 func (l *lintCmd) vals() ([]byte, error) {
