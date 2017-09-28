@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -375,9 +376,7 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helm
 		return &c, nil
 	}
 
-	// In this case, the cacheFile is always absolute. So passing empty string
-	// is safe.
-	if err := r.DownloadIndexFile(home.String()); err != nil {
+	if err := r.DownloadIndexFile(home.Cache()); err != nil {
 		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 
@@ -393,7 +392,12 @@ func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		createLink(indexFile, cacheFile)
+		fp, err := filepath.Rel(indexFile, cacheFile)
+		if err != nil {
+			return nil, err
+		}
+		pth := filepath.Join(fp)
+		createLink(pth, cacheFile)
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
