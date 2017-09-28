@@ -20,10 +20,11 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
 	"os"
+	"path/filepath"
 
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 func createLink(indexFile, cacheFile string, home helmpath.Home) error {
-	return os.Link(indexFile, cacheFile)
+	return os.Link(indexFile, filepath.Join(home.Cache(), cacheFile))
 }
