@@ -162,7 +162,9 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 		// update old release status
 		old.Info.Status.Code = release.Status_SUPERSEDED
-		s.recordRelease(old, true)
+		if err := s.recordRelease(old, true); err != nil {
+			return res, fmt.Errorf("Failed to update existing Release v%d status. Aborting install, no resources were updated", old.Version)
+		}
 
 		// update new release with next revision number
 		// so as to append to the old release's history
@@ -172,14 +174,16 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			Recreate: false,
 			Timeout:  req.Timeout,
 		}
-		s.recordRelease(r, false)
+		if err := s.recordRelease(r, false); err != nil {
+			return res, fmt.Errorf("Failed to record new Release v%d status. Aborting install, no resources were updated", r.Version)
+		}
 		if err := s.ReleaseModule.Update(old, r, updateReq, s.env); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
-			s.recordRelease(old, true)
+			s.recordRelease(old, true) //ignore store errors as can't do much about them anyway
 			s.recordRelease(r, true)
 			return res, err
 		}
@@ -187,7 +191,9 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	default:
 		// nothing to replace, create as normal
 		// regular manifests
-		s.recordRelease(r, false)
+		if err := s.recordRelease(r, false); err != nil {
+			return res, fmt.Errorf("Failed to store initial Release. Aborting install, no resources were updated")
+		}
 		if err := s.ReleaseModule.Create(r, req, s.env); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
