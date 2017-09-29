@@ -68,7 +68,7 @@ func TestBadChart(t *testing.T) {
 func TestInvalidYaml(t *testing.T) {
 	m := All(badYamlFileDir).Messages
 	if len(m) != 1 {
-		t.Errorf("All didn't fail with expected errors, got %#v", m)
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
 	if !strings.Contains(m[0].Err.Error(), "deliberateSyntaxError") {
 		t.Errorf("All didn't have the error for deliberateSyntaxError")
@@ -78,7 +78,7 @@ func TestInvalidYaml(t *testing.T) {
 func TestBadValues(t *testing.T) {
 	m := All(badValuesFileDir).Messages
 	if len(m) != 1 {
-		t.Errorf("All didn't fail with expected errors, got %#v", m)
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
 	if !strings.Contains(m[0].Err.Error(), "cannot unmarshal") {
 		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
