@@ -7,6 +7,7 @@ Helm and Tiller.
 
 - Go 1.6.0 or later
 - Glide 0.12.0 or later
+- Gometalinter
 - kubectl 1.2 or later
 - A Kubernetes cluster (optional)
 - The gRPC toolchain

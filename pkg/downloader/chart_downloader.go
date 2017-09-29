@@ -86,9 +86,21 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	data, err := g.Get(u.String())
+	chartURL := u.String()
+
+	data, err := g.Get(chartURL)
 	if err != nil {
-		return "", nil, err
+		originalError := err
+
+		chartURL, err = fixupURL(chartURL)
+		if err != nil {
+			return "", nil, originalError
+		}
+		fmt.Println(chartURL)
+		data, err = g.Get(chartURL)
+		if err != nil {
+			return "", nil, originalError
+		}
 	}
 
 	name := filepath.Base(u.Path)
@@ -123,6 +135,34 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		}
 	}
 	return destfile, ver, nil
+}
+
+// https://github.com/kubernetes/helm/issues/2937
+// tries to fix URL because of BUG #2937
+// transforms URL from
+// https://url.to.repo/path?key=value/chart-0.1.0.tgz
+// into
+// https://url.to.repo/path/chart-0-1-0.tgz?key=value
+func fixupURL(chartURL string) (string, error) {
+	queryStringStartIndex := strings.Index(chartURL, "?")
+
+	if queryStringStartIndex == -1 {
+		return "", errors.New("Could not fixup URL")
+	}
+	var appendedURLIndex int
+	for i := queryStringStartIndex + 1; i < len(chartURL); i++ {
+		if chartURL[i] == '/' {
+			appendedURLIndex = i
+			break
+		}
+	}
+
+	appendedURL := chartURL[appendedURLIndex:]
+	restURL := chartURL[0:appendedURLIndex]
+
+	uu, _ := url.Parse(restURL)
+	uu.Path = strings.TrimSuffix(uu.Path, "/") + appendedURL
+	return uu.String(), nil
 }
 
 // ResolveChartVersion resolves a chart reference to a URL.
