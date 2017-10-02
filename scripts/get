@@ -111,7 +111,7 @@ downloadFile() {
   HELM_DIST="helm-$TAG-$OS-$ARCH.tar.gz"
   DOWNLOAD_URL="https://kubernetes-helm.storage.googleapis.com/$HELM_DIST"
   CHECKSUM_URL="$DOWNLOAD_URL.sha256"
-  HELM_TMP_ROOT="/tmp/$(whoami)"
+  HELM_TMP_ROOT="/tmp/$(mktemp -d helm-installer-XXX)"
   HELM_TMP_FILE="$HELM_TMP_ROOT/$HELM_DIST"
   HELM_SUM_FILE="$HELM_TMP_ROOT/$HELM_DIST.sha256"
   mkdir -p "$HELM_TMP_ROOT"
