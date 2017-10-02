@@ -6,6 +6,8 @@ metadata:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     namespace: "{{ .Release.Namespace }}"
     release-name: "{{ .Release.Name }}"
+    kube-version/major: "{{ .Capabilities.KubeVersion.Major }}"
+    kube-version/minor: "{{ .Capabilities.KubeVersion.Minor }}"
 spec:
   type: {{ .Values.service.type }}
   ports:

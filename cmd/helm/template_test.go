@@ -104,6 +104,13 @@ func TestTemplateCmd(t *testing.T) {
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "release-name: \"foobar-YWJj-baz\"",
 		},
+		{
+			name:        "check_kube_version",
+			desc:        "verify --kube-version overrides the kubernetes version",
+			args:        []string{chartPath, "--kube-version", "1.6"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectValue: "kube-version/major: \"1\"\n    kube-version/minor: \"6\"",
+		},
 	}
 
 	var buf bytes.Buffer
