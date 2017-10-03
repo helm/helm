@@ -82,7 +82,6 @@ type ChartDownloader struct {
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
 	u, g, err := c.ResolveChartVersion(ref, version)
-
 	if err != nil {
 		return "", nil, err
 	}
@@ -212,7 +211,6 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 
 	// TODO: Seems that picking first URL is not fully correct
 	u, err = url.Parse(cv.URLs[0])
-
 	if err != nil {
 		return u, r.Client, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
