@@ -40,5 +40,15 @@ message Chart {
 
 	// Miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
-	repeated google.protobuf.Any files = 5;
+	repeated Any files = 5;
+}
+
+// Copied from https://github.com/golang/protobuf/blob/master/ptypes/any/any.proto
+message Any {
+  // A resource name whose content describes the type of the
+  // serialized data.
+  string type_url = 1;
+
+  // Data for file.
+  bytes value = 2;
 }

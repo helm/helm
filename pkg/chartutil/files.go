@@ -26,7 +26,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/gobwas/glob"
-	"github.com/golang/protobuf/ptypes/any"
+	any "k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 // Files is a map of files in a chart that can be accessed from a template.
