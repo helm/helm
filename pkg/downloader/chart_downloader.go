@@ -220,7 +220,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 		path := u.Path
 		u, err = url.Parse(rc.URL)
 		if err != nil {
-			return nil, r.Client, err
+			return u, r.Client, err
 		}
 		u.Path = u.Path + path
 		return u, r.Client, err
