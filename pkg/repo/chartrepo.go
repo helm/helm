@@ -62,7 +62,7 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 	}
 	client, err := getterConstructor(cfg.URL, cfg.CertFile, cfg.KeyFile, cfg.CAFile)
 	if err != nil {
-		return nil, fmt.Errorf("Could not construct protocol handler for: %s", u.Scheme)
+		return nil, fmt.Errorf("Could not construct protocol handler for: %s error: %v", u.Scheme, err)
 	}
 
 	return &ChartRepository{
