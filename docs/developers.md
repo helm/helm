@@ -22,7 +22,7 @@ $ make bootstrap build
 ```
 
 NOTE: This will fail if not running from the path `$GOPATH/src/k8s.io/helm`. The
-directory `k8s.io` should not be a symlink or `build` couldn't find the relevant
+directory `k8s.io` should not be a symlink or `build` will not find the relevant
 packages.
 
 This will build both Helm and Tiller. `make bootstrap` will attempt to
