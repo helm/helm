@@ -1,5 +1,5 @@
-hash: 54e64255ab9112d0183766264214969a8add57903fbe9e96034f9640b9c9cd82
-updated: 2017-07-10T10:52:19.616678852-04:00
+hash: 0759b118eb4017d612af767460cdec467d6f78013ad1efff1c82676f1df84a75
+updated: 2017-09-26T15:21:30.833774-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -8,7 +8,7 @@ imports:
 - name: github.com/asaskevich/govalidator
   version: 7664702784775e51966f0885f5cd27435916517b
 - name: github.com/Azure/go-autorest
-  version: d7c034a8af24eda120dd6460bfcd6d9ed14e43ca
+  version: 58f6f26e200fa5dfb40c9cd1c83f3e2c860d779d
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -68,10 +68,6 @@ imports:
   version: ba18e35c5c1b36ef6334cad706eb681153d2d379
 - name: github.com/exponent-io/jsonpath
   version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
-- name: github.com/facebookgo/atomicfile
-  version: 2de1f203e7d5e386a6833233882782932729f27e
-- name: github.com/facebookgo/symwalk
-  version: 42004b9f322246749dd73ad71008b1f3160c0052
 - name: github.com/fatih/camelcase
   version: f6a740d52f961c60348ebb109adde9f4635d7540
 - name: github.com/ghodss/yaml
@@ -137,20 +133,20 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: 2bba0603135d7d7f5cb73b2125beeda19c09f4ef
+  version: 4bd1920723d7b7c925de087aa32e2187708897f7
   subpackages:
   - proto
   - ptypes/any
   - ptypes/timestamp
 - name: github.com/google/gofuzz
-  version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
+  version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/gosuri/uitable
   version: 36ee7e946282a3fb1cfecd476ddc9b35d8847e42
   subpackages:
   - util/strutil
   - util/wordwrap
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
-  version: 0c1b191dbfe51efdabe3c14b9f6f3b96429e0722
+  version: 2500245aa6110c562d17020fb31a2c133d737799
 - name: github.com/hashicorp/golang-lru
   version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
 - name: github.com/howeyc/gopass
@@ -172,7 +168,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/Masterminds/sprig
-  version: 9526be0327b26ad31aa70296a7b10704883976d5
+  version: 4c164950cd0a8d3724ddb78982e2c56dc7f47112
 - name: github.com/Masterminds/vcs
   version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
@@ -223,7 +219,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/technosophos/moniker
-  version: ab470f5e105a44d0c87ea21bacd6a335c4816d83
+  version: 9f956786b91d9786ca11aa5be6104542fa911546
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -254,7 +250,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/oauth2
-  version: 3c3a985cb79f52a3190fbc056984415ca6763d01
+  version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
 - name: golang.org/x/sys
   version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
   subpackages:
@@ -302,34 +298,14 @@ imports:
 - name: k8s.io/api
   version: 4fe9229aaa9d704f8a2a21cdcd50de2bbb6e1b57
   subpackages:
-  - admissionregistration/v1alpha1
-  - apps/v1beta1
-  - authentication/v1
-  - authentication/v1beta1
-  - authorization/v1
-  - authorization/v1beta1
-  - autoscaling/v1
-  - autoscaling/v2alpha1
-  - batch/v1
-  - batch/v2alpha1
-  - certificates/v1beta1
   - core/v1
-  - extensions/v1beta1
-  - networking/v1
-  - policy/v1beta1
-  - rbac/v1alpha1
-  - rbac/v1beta1
-  - settings/v1alpha1
-  - storage/v1
-  - storage/v1beta1
 - name: k8s.io/apiserver
-  version: 087d1a2efeb6296f04bb0f54e7af9890052aa6d7
+  version: 2308857ad3b8b18abf74ff734853973eda9da94d
   subpackages:
   - pkg/admission
   - pkg/apis/apiserver
   - pkg/apis/apiserver/install
   - pkg/apis/apiserver/v1alpha1
-  - pkg/apis/audit
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
   - pkg/authentication/user
@@ -338,7 +314,7 @@ imports:
   - pkg/util/feature
   - pkg/util/flag
 - name: k8s.io/kubernetes
-  version: d3ada0119e776222f11ec7945e6d860061339aad
+  version: d3faa3f8f2e85c8089e80a661955626ae24abf80
   subpackages:
   - cmd/kubeadm/app/apis/kubeadm
   - federation/apis/federation

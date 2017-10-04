@@ -155,7 +155,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		updatedRelease.Info.Status.Code = release.Status_FAILED
 		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
-		s.recordRelease(updatedRelease, false)
+		s.recordRelease(updatedRelease, true)
 		return res, err
 	}
 

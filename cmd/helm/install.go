@@ -46,8 +46,8 @@ import (
 const installDesc = `
 This command installs a chart archive.
 
-The install argument must be either a relative path to a chart directory or the
-name of a chart in the current working directory.
+The install argument must be a chart reference, a path to a packaged chart,
+a path to an unpacked chart directory or a URL.
 
 To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line.

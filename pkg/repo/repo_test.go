@@ -201,16 +201,8 @@ func TestWriteFile(t *testing.T) {
 		t.Errorf("failed to create test-file (%v)", err)
 	}
 	defer os.Remove(repoFile.Name())
-
-	fileMode := os.FileMode(0744)
-	if err := sampleRepository.WriteFile(repoFile.Name(), fileMode); err != nil {
+	if err := sampleRepository.WriteFile(repoFile.Name(), 744); err != nil {
 		t.Errorf("failed to write file (%v)", err)
-	}
-
-	info, _ := os.Stat(repoFile.Name())
-	mode := info.Mode()
-	if mode != fileMode {
-		t.Errorf("incorrect file mode: %s (expected %s)", mode, fileMode)
 	}
 
 	repos, err := LoadRepositoriesFile(repoFile.Name())

@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -59,10 +61,7 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Release.Namespace)
 	}
 
-	updated, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
-	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
-	}
+	updated := compareStoredAndReturnedRelease(t, *rs, *res)
 
 	if len(updated.Hooks) != 1 {
 		t.Fatalf("Expected 1 hook, got %d", len(updated.Hooks))
@@ -79,8 +78,8 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected event 0 to be pre upgrade")
 	}
 
-	if len(res.Release.Manifest) == 0 {
-		t.Errorf("No manifest returned: %v", res.Release)
+	if len(updated.Manifest) == 0 {
+		t.Errorf("Expected manifest in %v", res)
 	}
 
 	if res.Release.Config == nil {
@@ -89,12 +88,8 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Release.Config.Raw)
 	}
 
-	if len(updated.Manifest) == 0 {
-		t.Errorf("Expected manifest in %v", res)
-	}
-
 	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
-		t.Errorf("unexpected output: %s", rel.Manifest)
+		t.Errorf("unexpected output: %s", updated.Manifest)
 	}
 
 	if res.Release.Version != 2 {
@@ -167,6 +162,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 	if res.Release.Config != nil && res.Release.Config.Raw != expect {
 		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
 	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
 }
 
 func TestUpdateRelease_ResetReuseValues(t *testing.T) {
@@ -196,6 +192,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	if res.Release.Config != nil && res.Release.Config.Raw != "" {
 		t.Errorf("Expected chart config to be empty, got %q", res.Release.Config.Raw)
 	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
 }
 
 func TestUpdateReleaseFailure(t *testing.T) {
@@ -204,6 +201,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 	rs.env.KubeClient = newUpdateFailingKubeClient()
+	rs.Log = t.Logf
 
 	req := &services.UpdateReleaseRequest{
 		Name:         rel.Name,
@@ -224,6 +222,8 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_FAILED {
 		t.Errorf("Expected FAILED release. Got %d", updatedStatus)
 	}
+
+	compareStoredAndReturnedRelease(t, *rs, *res)
 
 	edesc := "Upgrade \"angry-panda\" failed: Failed update in kube client"
 	if got := res.Release.Info.Description; got != edesc {
@@ -284,4 +284,17 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
+}
+
+func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res services.UpdateReleaseResponse) *release.Release {
+	storedRelease, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	if err != nil {
+		t.Fatalf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+	}
+
+	if !proto.Equal(storedRelease, res.Release) {
+		t.Errorf("Stored release doesn't match returned Release")
+	}
+
+	return storedRelease
 }
