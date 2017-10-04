@@ -56,3 +56,37 @@ func TestResult(t *testing.T) {
 		t.Error("expected intersect to return bar")
 	}
 }
+
+func TestIsMatchingInfo(t *testing.T) {
+	const name = "foo"
+
+	createInfo := func(name string, gkv schema.GroupVersionKind) *resource.Info {
+		mapping, err := testapi.Default.RESTMapper().RESTMapping(gkv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &resource.Info{
+			Name:    name,
+			Mapping: mapping,
+		}
+	}
+
+	incompatibleResources := []*resource.Info{
+		createInfo(name, schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "Deployment"}),
+		createInfo(name, schema.GroupVersionKind{Group: "apps", Version: "v1beta1", Kind: "Deployment"}),
+		createInfo(name, schema.GroupVersionKind{Group: "extensions", Version: "v1", Kind: "Deployment"}),
+		createInfo(name, schema.GroupVersionKind{Group: "extensions", Version: "v1beta1", Kind: "Pod"}),
+		createInfo(name, schema.GroupVersionKind{Group: "thirdparty.io/extensions", Version: "v1beta1", Kind: "Deployment"}),
+	}
+
+	for i := range incompatibleResources {
+		for j := range incompatibleResources {
+			if j <= i {
+				continue
+			}
+			if isMatchingInfo(incompatibleResources[i], incompatibleResources[j]) {
+				t.Errorf("expected mappings %v and %v to NOT match", incompatibleResources[i], incompatibleResources[j])
+			}
+		}
+	}
+}
