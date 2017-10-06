@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -111,14 +112,14 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 `
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
-{{- $serviceName := include "fullname" . -}}
+{{- $serviceName := include "<CHARTNAME>.fullname" . -}}
 {{- $servicePort := .Values.service.externalPort -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: {{ template "fullname" . }}
+  name: {{ template "<CHARTNAME>.fullname" . }}
   labels:
-    app: {{ template "name" . }}
+    app: {{ template "<CHARTNAME>.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
@@ -147,9 +148,9 @@ spec:
 const defaultDeployment = `apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: {{ template "fullname" . }}
+  name: {{ template "<CHARTNAME>.fullname" . }}
   labels:
-    app: {{ template "name" . }}
+    app: {{ template "<CHARTNAME>.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
@@ -158,7 +159,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ template "name" . }}
+        app: {{ template "<CHARTNAME>.name" . }}
         release: {{ .Release.Name }}
     spec:
       containers:
@@ -186,9 +187,9 @@ spec:
 const defaultService = `apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "fullname" . }}
+  name: {{ template "<CHARTNAME>.fullname" . }}
   labels:
-    app: {{ template "name" . }}
+    app: {{ template "<CHARTNAME>.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
@@ -200,7 +201,7 @@ spec:
       protocol: TCP
       name: {{ .Values.service.name }}
   selector:
-    app: {{ template "name" . }}
+    app: {{ template "<CHARTNAME>.name" . }}
     release: {{ .Release.Name }}
 `
 
@@ -210,16 +211,16 @@ const defaultNotes = `1. Get the application URL by running these commands:
   http://{{ . }}
 {{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
-  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ template "fullname" . }})
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ template "<CHARTNAME>.fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
   echo http://$NODE_IP:$NODE_PORT
 {{- else if contains "LoadBalancer" .Values.service.type }}
      NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch the status of by running 'kubectl get svc -w {{ template "fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ template "fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+           You can watch the status of by running 'kubectl get svc -w {{ template "<CHARTNAME>.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ template "<CHARTNAME>.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo http://$SERVICE_IP:{{ .Values.service.externalPort }}
 {{- else if contains "ClusterIP" .Values.service.type }}
-  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "name" . }},release={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "<CHARTNAME>.name" . }},release={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
   echo "Visit http://127.0.0.1:8080 to use your application"
   kubectl port-forward $POD_NAME 8080:{{ .Values.service.internalPort }}
 {{- end }}
@@ -229,7 +230,7 @@ const defaultHelpers = `{{/* vim: set filetype=mustache: */}}
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "name" -}}
+{{- define "<CHARTNAME>.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
@@ -237,7 +238,7 @@ Expand the name of the chart.
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "fullname" -}}
+{{- define "<CHARTNAME>.fullname" -}}
 {{- $name := default .Chart.Name .Values.nameOverride -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
@@ -318,27 +319,27 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		{
 			// ingress.yaml
 			path:    filepath.Join(cdir, TemplatesDir, IngressFileName),
-			content: []byte(defaultIngress),
+			content: []byte(strings.Replace(defaultIngress, "<CHARTNAME>", chartfile.Name, -1)),
 		},
 		{
 			// deployment.yaml
 			path:    filepath.Join(cdir, TemplatesDir, DeploymentName),
-			content: []byte(defaultDeployment),
+			content: []byte(strings.Replace(defaultDeployment, "<CHARTNAME>", chartfile.Name, -1)),
 		},
 		{
 			// service.yaml
 			path:    filepath.Join(cdir, TemplatesDir, ServiceName),
-			content: []byte(defaultService),
+			content: []byte(strings.Replace(defaultService, "<CHARTNAME>", chartfile.Name, -1)),
 		},
 		{
 			// NOTES.txt
 			path:    filepath.Join(cdir, TemplatesDir, NotesName),
-			content: []byte(defaultNotes),
+			content: []byte(strings.Replace(defaultNotes, "<CHARTNAME>", chartfile.Name, -1)),
 		},
 		{
 			// _helpers.tpl
 			path:    filepath.Join(cdir, TemplatesDir, HelpersName),
-			content: []byte(defaultHelpers),
+			content: []byte(strings.Replace(defaultHelpers, "<CHARTNAME>", chartfile.Name, -1)),
 		},
 	}
 

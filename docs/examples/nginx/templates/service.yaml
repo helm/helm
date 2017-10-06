@@ -6,11 +6,11 @@ metadata:
 {{ toYaml .Values.service.annotations | indent 4 }}
 {{- end }}
   labels:
-    app: {{ template "name" . }}
+    app: {{ template "nginx.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-  name: {{ template "fullname" . }}
+  name: {{ template "nginx.fullname" . }}
 spec:
 # Provides options for the service so chart users have the full choice
   type: "{{ .Values.service.type }}"
@@ -35,5 +35,5 @@ spec:
       nodePort: {{ .Values.service.nodePort }}
       {{- end }}
   selector:
-    app: {{ template "name" . }}
+    app: {{ template "nginx.name" . }}
     release: {{ .Release.Name }}

@@ -4,7 +4,7 @@ metadata:
   # This uses a "fullname" template (see _helpers)
   # Basing names on .Release.Name means that the same chart can be installed
   # multiple times into the same namespace.
-  name: {{ template "fullname" . }}
+  name: {{ template "nginx.fullname" . }}
   labels:
     # The "heritage" label is used to track which tool deployed a given chart.
     # It is useful for admins who want to see what releases a particular tool
@@ -15,7 +15,7 @@ metadata:
     release: {{ .Release.Name }}
     # This makes it easy to audit chart usage.
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    app: {{ template "name" . }}
+    app: {{ template "nginx.name" . }}
 spec:
   replicas: {{ .Values.replicaCount }}
   template:
@@ -26,11 +26,11 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
       labels:
-        app: {{ template "name" . }}
+        app: {{ template "nginx.name" . }}
         release: {{ .Release.Name }}
     spec:
       containers:
-        - name: {{ template "name" . }}
+        - name: {{ template "nginx.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -54,4 +54,4 @@ spec:
       volumes:
         - name: wwwdata-volume
           configMap:
-            name: {{ template "fullname" . }}
+            name: {{ template "nginx.fullname" . }}
