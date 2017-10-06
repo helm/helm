@@ -70,7 +70,7 @@ helm install [CHART]
 ```
       --ca-file string         verify certificates of HTTPS-enabled servers using this CA bundle
       --cert-file string       identify HTTPS client using this SSL certificate file
-      --devel                  use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.
+      --devel                  use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.
       --dry-run                simulate an install
       --key-file string        identify HTTPS client using this SSL key file
       --keyring string         location of public keys used for verification (default "~/.gnupg/pubring.gpg")
