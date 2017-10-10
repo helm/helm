@@ -197,6 +197,127 @@ Tiller can then be re-installed from the client with:
 $ helm init
 ```
 
+## Advanced Usage
+
+`helm init` provides additional flags for modifying Tiller's deployment
+manifest before it is installed.
+
+### Using `--node-selectors`
+
+The `--node-selectors` flag allows us to specify the node labels required
+for scheduling the Tiller pod.
+
+The example below will create the specified label under the nodeSelector
+property.
+
+```
+helm init --node-selectors "beta.kubernetes.io/os"="linux"
+```
+
+The installed deployment manifest will contain our node selector label.
+
+```
+...
+spec:
+  template:
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+...
+```
+
+
+### Using `--override`
+
+`--override` allows you to specify properties of Tiller's
+deployment manifest. Unlike the `--set` command used elsewhere in Helm,
+`helm init --override` manipulates the specified properties of the final
+manifest (there is no "values" file). Therefore you may specify any valid
+value for any valid property in the deployment manifest.
+
+#### Override annotation
+
+In the example below we use `--override` to add the revision property and set
+its value to 1.
+
+```
+helm init --set metadata.annotations."deployment\.kubernetes\.io/revision"="1"
+```
+Output:
+
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+...
+```
+
+#### Override affinity
+
+In the example below we set properties for node affinity. Multiple
+`--override` commands may be combined to modify different properties of the
+same list item.
+
+```
+helm init --override "spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight"="1" --override "spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions[0].key"="e2e-az-name"
+```
+
+The specified properties are combined into the
+"preferredDuringSchedulingIgnoredDuringExecution" property's first
+list item.
+
+```
+...
+spec:
+  strategy: {}
+  template:
+    ...
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: e2e-az-name
+                operator: ""
+            weight: 1
+...
+```
+
+### Using `--output`
+
+The `--output` flag allows us skip the installation of Tiller's deployment
+manifest and simply output the deployment manifest to stdout in either
+JSON or YAML format. The output may then be modified with tools like `jq`
+and installed manually with `kubectl`.
+
+In the example below we execute `helm init` with the `--output json` flag.
+
+```
+helm init --output json
+```
+
+The Tiller installation is skipped and the manifest is output to stdout
+in JSON format.
+
+```
+"apiVersion": "extensions/v1beta1",
+"kind": "Deployment",
+"metadata": {
+    "creationTimestamp": null,
+    "labels": {
+        "app": "helm",
+        "name": "tiller"
+    },
+    "name": "tiller-deploy",
+    "namespace": "kube-system"
+},
+...
+```
+
+
 ## Conclusion
 
 In most cases, installation is as simple as getting a pre-built `helm` binary
