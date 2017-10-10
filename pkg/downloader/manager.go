@@ -206,7 +206,10 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
+	tmpPath, err := ioutil.TempDir("", "tmpcharts")
+	if err != nil {
+		return fmt.Errorf("Unable to create temp directory for writing old charts: %s", err)
+	}
 
 	// Create 'charts' directory if it doesn't already exist.
 	if fi, err := os.Stat(destPath); err != nil {
