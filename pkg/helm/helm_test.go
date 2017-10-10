@@ -103,6 +103,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	var chartName = "alpine"
 	var chartPath = filepath.Join(chartsDir, chartName)
 	var overrides = []byte("key1=value1,key2=value2")
+	var labels = map[string]string{"label1": "value1", "label2": "value2"}
 
 	// Expected InstallReleaseRequest message
 	exp := &tpb.InstallReleaseRequest{
@@ -113,6 +114,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 		DisableHooks: disableHooks,
 		Namespace:    namespace,
 		ReuseName:    reuseName,
+		Labels:       labels,
 	}
 
 	// Options used in InstallRelease
@@ -122,6 +124,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 		ReleaseName(releaseName),
 		InstallReuseName(reuseName),
 		InstallDisableHooks(disableHooks),
+		InstallLabels(labels),
 	}
 
 	// BeforeCall option to intercept Helm client InstallReleaseRequest
@@ -187,6 +190,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	var disableHooks = true
 	var overrides = []byte("key1=value1,key2=value2")
 	var dryRun = false
+	var labels = map[string]string{"label1": "value1", "label2": "value2"}
 
 	// Expected UpdateReleaseRequest message
 	exp := &tpb.UpdateReleaseRequest{
@@ -195,6 +199,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 		Values:       &cpb.Config{Raw: string(overrides)},
 		DryRun:       dryRun,
 		DisableHooks: disableHooks,
+		Labels:       labels,
 	}
 
 	// Options used in UpdateRelease
@@ -202,6 +207,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 		UpgradeDryRun(dryRun),
 		UpdateValueOverrides(overrides),
 		UpgradeDisableHooks(disableHooks),
+		UpgradeLabels(labels),
 	}
 
 	// BeforeCall option to intercept Helm client UpdateReleaseRequest

@@ -78,6 +78,8 @@ type options struct {
 	reuseValues bool
 	// release test options are applied directly to the test release history request
 	testReq rls.TestReleaseRequest
+	// labels are a list of labels to apply to the release configmap
+	labels map[string]string
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -184,6 +186,18 @@ func ReleaseName(name string) InstallOption {
 func InstallTimeout(timeout int64) InstallOption {
 	return func(opts *options) {
 		opts.instReq.Timeout = timeout
+	}
+}
+
+// InstallLabels specifies a map of labels (key->value) to add to the release labels
+func InstallLabels(labels map[string]string) InstallOption {
+	return func(opts *options) {
+		if len(opts.labels) == 0 {
+			opts.labels = make(map[string]string)
+		}
+		for key, value := range labels {
+			opts.labels[key] = value
+		}
 	}
 }
 
@@ -366,6 +380,18 @@ func UpgradeRecreate(recreate bool) UpdateOption {
 func UpgradeForce(force bool) UpdateOption {
 	return func(opts *options) {
 		opts.force = force
+	}
+}
+
+// UpgradeLabels specifies a map of labels (key->value) to add to the release labels
+func UpgradeLabels(labels map[string]string) UpdateOption {
+	return func(opts *options) {
+		if len(opts.labels) == 0 {
+			opts.labels = make(map[string]string)
+		}
+		for key, value := range labels {
+			opts.labels[key] = value
+		}
 	}
 }
 

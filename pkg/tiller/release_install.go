@@ -98,6 +98,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 				LastDeployed:  ts,
 				Status:        &release.Status{Code: release.Status_UNKNOWN},
 				Description:   fmt.Sprintf("Install failed: %s", err),
+				Labels:        req.Labels,
 			},
 			Version: 0,
 		}
@@ -118,6 +119,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 			LastDeployed:  ts,
 			Status:        &release.Status{Code: release.Status_PENDING_INSTALL},
 			Description:   "Initial install underway", // Will be overwritten.
+			Labels:        req.Labels,
 		},
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
