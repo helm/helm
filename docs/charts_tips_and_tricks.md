@@ -96,6 +96,36 @@ For example:
 The above will render the template when .Values.foo is defined, but will fail
 to render and exit when .Values.foo is undefined.
 
+## Creating Image Pull Secrets
+Image pull secrets are essentially a combination of _registry_, _username_, and _password_.  You may need them in an application you are deploying, but to create them requires running base64 a couple of times.  A helper can help you do this.  Here is an example:
+
+Presuming that the values are provided in the values.yaml like so
+```
+imageCredentials:
+  registry: quay.io
+  username: someone
+  password: sillyness
+```  
+
+You can add a helper like so:
+
+```
+{{- define "imagePullSecret" }}
+{{- printf "{\n\t\"auths\": {\n\t\t\"%s\": {\n\t\t\t\"auth\": \"%s\"\n\t\t}\n\t}\n}" .Values.imageCredentials.registry (printf "%s:%s" .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) |b64enc }}
+{{- end }}
+```
+
+And it can be used in a template like `pullsecret.tpl` like so:
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: myregistrykey
+data:
+  .dockerconfigjson: {{ template "imagePullSecret" }}
+type: kubernetes.io/dockerconfigjson
+```
+
 ## Automatically Roll Deployments When ConfigMaps or Secrets change
 
 Often times configmaps or secrets are injected as configuration
