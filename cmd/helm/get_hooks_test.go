@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestGetHooks(t *testing.T) {
@@ -30,8 +31,9 @@ func TestGetHooks(t *testing.T) {
 		{
 			name:     "get hooks with release",
 			args:     []string{"aeneas"},
-			expected: mockHookTemplate,
-			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
+			expected: helm.MockHookTemplate,
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
 			name: "get hooks without args",

@@ -52,7 +52,7 @@ func TestStatusCmd(t *testing.T) {
 			name:     "get status of a deployed release",
 			args:     []string{"flummoxed-chickadee"},
 			expected: outputWithStatus("DEPLOYED\n\n"),
-			rel: releaseMockWithStatus(&release.Status{
+			rel: ReleaseMockWithStatus(&release.Status{
 				Code: release.Status_DEPLOYED,
 			}),
 		},
@@ -60,7 +60,7 @@ func TestStatusCmd(t *testing.T) {
 			name:     "get status of a deployed release with notes",
 			args:     []string{"flummoxed-chickadee"},
 			expected: outputWithStatus("DEPLOYED\n\nNOTES:\nrelease notes\n"),
-			rel: releaseMockWithStatus(&release.Status{
+			rel: ReleaseMockWithStatus(&release.Status{
 				Code:  release.Status_DEPLOYED,
 				Notes: "release notes",
 			}),
@@ -69,7 +69,7 @@ func TestStatusCmd(t *testing.T) {
 			name:     "get status of a deployed release with resources",
 			args:     []string{"flummoxed-chickadee"},
 			expected: outputWithStatus("DEPLOYED\n\nRESOURCES:\nresource A\nresource B\n\n"),
-			rel: releaseMockWithStatus(&release.Status{
+			rel: ReleaseMockWithStatus(&release.Status{
 				Code:      release.Status_DEPLOYED,
 				Resources: "resource A\nresource B\n",
 			}),
@@ -82,7 +82,7 @@ func TestStatusCmd(t *testing.T) {
 					"TEST \tSTATUS \tINFO \tSTARTED \tCOMPLETED \n" +
 					fmt.Sprintf("test run 1\tSUCCESS \textra info\t%s\t%s\n", dateString, dateString) +
 					fmt.Sprintf("test run 2\tFAILURE \t \t%s\t%s\n", dateString, dateString)),
-			rel: releaseMockWithStatus(&release.Status{
+			rel: ReleaseMockWithStatus(&release.Status{
 				Code: release.Status_DEPLOYED,
 				LastTestSuiteRun: &release.TestSuite{
 					StartedAt:   &date,
@@ -138,7 +138,7 @@ func outputWithStatus(status string) string {
 		status)
 }
 
-func releaseMockWithStatus(status *release.Status) *release.Release {
+func ReleaseMockWithStatus(status *release.Status) *release.Release {
 	return &release.Release{
 		Name: "flummoxed-chickadee",
 		Info: &release.Info{

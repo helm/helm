@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestGetManifest(t *testing.T) {
@@ -30,8 +31,9 @@ func TestGetManifest(t *testing.T) {
 		{
 			name:     "get manifest with release",
 			args:     []string{"juno"},
-			expected: mockManifest,
-			resp:     releaseMock(&releaseOptions{name: "juno"}),
+			expected: helm.MockManifest,
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"}),
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"})},
 		},
 		{
 			name: "get manifest without args",

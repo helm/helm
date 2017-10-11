@@ -21,115 +21,30 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
-	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/repo"
 )
-
-var mockHookTemplate = `apiVersion: v1
-kind: Job
-metadata:
-  annotations:
-    "helm.sh/hooks": pre-install
-`
-
-var mockManifest = `apiVersion: v1
-kind: Secret
-metadata:
-  name: fixture
-`
-
-type releaseOptions struct {
-	name       string
-	version    int32
-	chart      *chart.Chart
-	statusCode release.Status_Code
-	namespace  string
-}
-
-func releaseMock(opts *releaseOptions) *release.Release {
-	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
-
-	name := opts.name
-	if name == "" {
-		name = "testrelease-" + string(rand.Intn(100))
-	}
-
-	var version int32 = 1
-	if opts.version != 0 {
-		version = opts.version
-	}
-
-	namespace := opts.namespace
-	if namespace == "" {
-		namespace = "default"
-	}
-
-	ch := opts.chart
-	if opts.chart == nil {
-		ch = &chart.Chart{
-			Metadata: &chart.Metadata{
-				Name:    "foo",
-				Version: "0.1.0-beta.1",
-			},
-			Templates: []*chart.Template{
-				{Name: "templates/foo.tpl", Data: []byte(mockManifest)},
-			},
-		}
-	}
-
-	scode := release.Status_DEPLOYED
-	if opts.statusCode > 0 {
-		scode = opts.statusCode
-	}
-
-	return &release.Release{
-		Name: name,
-		Info: &release.Info{
-			FirstDeployed: &date,
-			LastDeployed:  &date,
-			Status:        &release.Status{Code: scode},
-			Description:   "Release mock",
-		},
-		Chart:     ch,
-		Config:    &chart.Config{Raw: `name: "value"`},
-		Version:   version,
-		Namespace: namespace,
-		Hooks: []*release.Hook{
-			{
-				Name:     "pre-install-hook",
-				Kind:     "Job",
-				Path:     "pre-install-hook.yaml",
-				Manifest: mockHookTemplate,
-				LastRun:  &date,
-				Events:   []release.Hook_Event{release.Hook_PRE_INSTALL},
-			},
-		},
-		Manifest: mockManifest,
-	}
-}
 
 // releaseCmd is a command that works with a FakeClient
 type releaseCmd func(c *helm.FakeClient, out io.Writer) *cobra.Command
 
 // runReleaseCases runs a set of release cases through the given releaseCmd.
 func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
+
 	var buf bytes.Buffer
 	for _, tt := range tests {
 		c := &helm.FakeClient{
-			Rels: []*release.Release{tt.resp},
+			Rels: tt.rels,
 		}
 		cmd := rcmd(c, &buf)
 		cmd.ParseFlags(tt.flags)
@@ -154,6 +69,8 @@ type releaseCase struct {
 	expected string
 	err      bool
 	resp     *release.Release
+	// Rels are the available releases at the start of the test.
+	rels []*release.Release
 }
 
 // tempHelmHome sets up a Helm Home in a temp dir.
@@ -230,6 +147,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 
 	t.Logf("$HELM_HOME has been configured at %s.\n", settings.Home.String())
 	return nil
+
 }
 
 func TestRootCmd(t *testing.T) {

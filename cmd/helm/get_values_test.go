@@ -23,15 +23,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestGetValuesCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
 			name:     "get values with a release",
-			resp:     releaseMock(&releaseOptions{name: "thomas-guide"}),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
 			args:     []string{"thomas-guide"},
 			expected: "name: \"value\"",
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"})},
 		},
 		{
 			name: "get values requires release name arg",
