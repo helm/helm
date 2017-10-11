@@ -17,9 +17,12 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
+	"github.com/technosophos/moniker"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
@@ -30,7 +33,15 @@ import (
 type FakeClient struct {
 	Rels      []*release.Release
 	Responses map[string]release.TestRun_Status
-	Err       error
+	Opts      options
+}
+
+// Option returns the fake release client
+func (c *FakeClient) Option(opts ...Option) Interface {
+	for _, opt := range opts {
+		opt(&c.Opts)
+	}
+	return c
 }
 
 var _ Interface = &FakeClient{}
@@ -42,31 +53,66 @@ func (c *FakeClient) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesR
 		Count:    int64(len(c.Rels)),
 		Releases: c.Rels,
 	}
-	return resp, c.Err
+	return resp, nil
 }
 
 // InstallRelease returns a response with the first Release on the fake release client
 func (c *FakeClient) InstallRelease(chStr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
-	return &rls.InstallReleaseResponse{
-		Release: c.Rels[0],
-	}, nil
+	chart := &chart.Chart{}
+	return c.InstallReleaseFromChart(chart, ns, opts...)
 }
 
 // InstallReleaseFromChart returns a response with the first Release on the fake release client
 func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+	for _, opt := range opts {
+		opt(&c.Opts)
+	}
+
+	releaseName := c.Opts.instReq.Name
+	if releaseName == "" {
+		for i := 0; i < 5; i++ {
+			namer := moniker.New()
+			name := namer.NameSep("-")
+			if len(name) > 53 {
+				name = name[:53]
+			}
+			if _, err := c.ReleaseStatus(name, nil); strings.Contains(err.Error(), "No such release") {
+				releaseName = name
+				break
+			}
+		}
+	}
+
+	// Check to see if the release already exists.
+	rel, err := c.ReleaseStatus(releaseName, nil)
+	if err == nil && rel != nil {
+		return nil, errors.New("cannot re-use a name that is still in use")
+	}
+
+	release := &release.Release{
+		Name:      releaseName,
+		Namespace: ns,
+	}
+
+	c.Rels = append(c.Rels, release)
+
 	return &rls.InstallReleaseResponse{
-		Release: c.Rels[0],
+		Release: release,
 	}, nil
 }
 
 // DeleteRelease returns nil, nil
 func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
-	return nil, nil
-}
+	for i, rel := range c.Rels {
+		if rel.Name == rlsName {
+			c.Rels = append(c.Rels[:i], c.Rels[i+1:]...)
+			return &rls.UninstallReleaseResponse{
+				Release: rel,
+			}, nil
+		}
+	}
 
-// UpdateRelease returns nil, nil
-func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, nil
+	return nil, fmt.Errorf("No such release: %s", rlsName)
 }
 
 // GetVersion returns a fake version
@@ -78,9 +124,20 @@ func (c *FakeClient) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse,
 	}, nil
 }
 
+// UpdateRelease returns nil, nil
+func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	return c.UpdateReleaseFromChart(rlsName, &chart.Chart{}, opts...)
+}
+
 // UpdateReleaseFromChart returns nil, nil
 func (c *FakeClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return nil, nil
+	// Check to see if the release already exists.
+	rel, err := c.ReleaseContent(rlsName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rls.UpdateReleaseResponse{Release: rel.Release}, nil
 }
 
 // RollbackRelease returns nil, nil
@@ -90,15 +147,13 @@ func (c *FakeClient) RollbackRelease(rlsName string, opts ...RollbackOption) (*r
 
 // ReleaseStatus returns a release status response with info from the matching release name in the fake release client.
 func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
-	if len(c.Rels) > 0 {
-		for _, release := range c.Rels {
-			if release.Name == rlsName {
-				return &rls.GetReleaseStatusResponse{
-					Name:      release.Name,
-					Info:      release.Info,
-					Namespace: release.Namespace,
-				}, nil
-			}
+	for _, rel := range c.Rels {
+		if rel.Name == rlsName {
+			return &rls.GetReleaseStatusResponse{
+				Name:      rel.Name,
+				Info:      rel.Info,
+				Namespace: rel.Namespace,
+			}, nil
 		}
 	}
 	return nil, fmt.Errorf("No such release: %s", rlsName)
@@ -106,21 +161,19 @@ func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.G
 
 // ReleaseContent returns the configuration for the matching release name in the fake release client.
 func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
-	if len(c.Rels) > 0 {
-		for _, release := range c.Rels {
-			if release.Name == rlsName {
-				resp = &rls.GetReleaseContentResponse{
-					Release: release,
-				}
-			}
+	for _, rel := range c.Rels {
+		if rel.Name == rlsName {
+			return &rls.GetReleaseContentResponse{
+				Release: rel,
+			}, nil
 		}
 	}
-	return resp, c.Err
+	return resp, fmt.Errorf("No such release: %s", rlsName)
 }
 
 // ReleaseHistory returns a release's revision history.
 func (c *FakeClient) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error) {
-	return &rls.GetHistoryResponse{Releases: c.Rels}, c.Err
+	return &rls.GetHistoryResponse{Releases: c.Rels}, nil
 }
 
 // RunReleaseTest executes a pre-defined tests on a release
@@ -146,9 +199,4 @@ func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (
 	}()
 
 	return results, errc
-}
-
-// Option returns the fake release client
-func (c *FakeClient) Option(opt ...Option) Interface {
-	return c
 }

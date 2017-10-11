@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
@@ -110,6 +111,178 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FakeClient.ReleaseStatus() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
+	installChart := &chart.Chart{}
+	type fields struct {
+		Rels []*release.Release
+	}
+	type args struct {
+		ns   string
+		opts []InstallOption
+	}
+	tests := []struct {
+		name      string
+		fields    fields
+		args      args
+		want      *rls.InstallReleaseResponse
+		relsAfter []*release.Release
+		wantErr   bool
+	}{
+		{
+			name: "Add release to an empty list.",
+			fields: fields{
+				Rels: []*release.Release{},
+			},
+			args: args{
+				ns:   "default",
+				opts: []InstallOption{ReleaseName("new-release")},
+			},
+			want: &rls.InstallReleaseResponse{
+				Release: &release.Release{
+					Name:      "new-release",
+					Namespace: "default",
+				},
+			},
+			relsAfter: []*release.Release{
+				{Name: "new-release", Namespace: "default"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Try to add a release where the name already exists.",
+			fields: fields{
+				Rels: []*release.Release{
+					&release.Release{
+						Name:      "new-release",
+						Namespace: "default",
+					},
+				},
+			},
+			args: args{
+				ns:   "default",
+				opts: []InstallOption{ReleaseName("new-release")},
+			},
+			relsAfter: []*release.Release{
+				{
+					Name:      "new-release",
+					Namespace: "default",
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &FakeClient{
+				Rels: tt.fields.Rels,
+			}
+			got, err := c.InstallReleaseFromChart(installChart, tt.args.ns, tt.args.opts...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FakeClient.InstallReleaseFromChart() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FakeClient.InstallReleaseFromChart() = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(c.Rels, tt.relsAfter) {
+				t.Errorf("FakeClient.InstallReleaseFromChart() rels = %v, expected %v", got, tt.relsAfter)
+			}
+		})
+	}
+}
+
+func TestFakeClient_DeleteRelease(t *testing.T) {
+	type fields struct {
+		Rels []*release.Release
+	}
+	type args struct {
+		rlsName string
+		opts    []DeleteOption
+	}
+	tests := []struct {
+		name      string
+		fields    fields
+		args      args
+		want      *rls.UninstallReleaseResponse
+		relsAfter []*release.Release
+		wantErr   bool
+	}{
+		{
+			name: "Delete a release that exists.",
+			fields: fields{
+				Rels: []*release.Release{
+					{
+						Name: "angry-dolphin",
+					},
+					{
+						Name: "trepid-tapir",
+					},
+				},
+			},
+			args: args{
+				rlsName: "trepid-tapir",
+				opts:    []DeleteOption{},
+			},
+			relsAfter: []*release.Release{
+				{
+					Name: "angry-dolphin",
+				},
+			},
+			want: &rls.UninstallReleaseResponse{
+				Release: &release.Release{Name: "trepid-tapir"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Delete a release that does not exist.",
+			fields: fields{
+				Rels: []*release.Release{
+					{
+						Name: "angry-dolphin",
+					},
+					{
+						Name: "trepid-tapir",
+					},
+				},
+			},
+			args: args{
+				rlsName: "release-that-does-not-exists",
+				opts:    []DeleteOption{},
+			},
+			relsAfter: []*release.Release{
+				{
+					Name: "angry-dolphin",
+				},
+				{
+					Name: "trepid-tapir",
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &FakeClient{
+				Rels: tt.fields.Rels,
+			}
+			got, err := c.DeleteRelease(tt.args.rlsName, tt.args.opts...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FakeClient.DeleteRelease() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FakeClient.DeleteRelease() = %v, want %v", got, tt.want)
+			}
+
+			if !reflect.DeepEqual(c.Rels, tt.relsAfter) {
+				t.Errorf("FakeClient.InstallReleaseFromChart() rels = %v, expected %v", got, tt.relsAfter)
 			}
 		})
 	}
