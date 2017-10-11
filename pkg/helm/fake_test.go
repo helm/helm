@@ -79,8 +79,8 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			name: "Get a single release that exists from list",
 			fields: fields{
 				Rels: []*release.Release{
-					&release.Release{Name: "angry-dolphin", Namespace: "default"},
-					&release.Release{Name: "trepid-tapir", Namespace: "default"},
+					{Name: "angry-dolphin", Namespace: "default"},
+					{Name: "trepid-tapir", Namespace: "default"},
 					releasePresent,
 				},
 			},
