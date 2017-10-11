@@ -266,6 +266,25 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
+		{
+			name: "Delete when only 1 item exists.",
+			fields: fields{
+				Rels: []*release.Release{
+					{
+						Name: "trepid-tapir",
+					},
+				},
+			},
+			args: args{
+				rlsName: "trepid-tapir",
+				opts:    []DeleteOption{},
+			},
+			relsAfter: []*release.Release{},
+			want: &rls.UninstallReleaseResponse{
+				Release: &release.Release{Name: "trepid-tapir"},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
