@@ -104,7 +104,7 @@ func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.G
 	return nil, fmt.Errorf("No such release: %s", rlsName)
 }
 
-// ReleaseContent returns the configuration for the first release in the fake release client
+// ReleaseContent returns the configuration for the matching release name in the fake release client.
 func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
 	if len(c.Rels) > 0 {
 		for _, release := range c.Rels {
