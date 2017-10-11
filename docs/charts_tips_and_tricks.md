@@ -122,7 +122,7 @@ kind: Secret
 metadata:
   name: myregistrykey
 data:
-  .dockerconfigjson: {{ template "imagePullSecret" }}
+  .dockerconfigjson: {{ template "imagePullSecret" . }}
 type: kubernetes.io/dockerconfigjson
 ```
 
