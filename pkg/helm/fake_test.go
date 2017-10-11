@@ -26,8 +26,8 @@ import (
 )
 
 func TestFakeClient_ReleaseStatus(t *testing.T) {
-	releasePresent := &release.Release{Name: "release-present", Namespace: "default"}
-	releaseNotPresent := &release.Release{Name: "release-not-present", Namespace: "default"}
+	releasePresent := ReleaseMock(&MockReleaseOptions{Name: "release-present"})
+	releaseNotPresent := ReleaseMock(&MockReleaseOptions{Name: "release-not-present"})
 
 	type fields struct {
 		Rels []*release.Release
@@ -80,8 +80,8 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			name: "Get a single release that exists from list",
 			fields: fields{
 				Rels: []*release.Release{
-					{Name: "angry-dolphin", Namespace: "default"},
-					{Name: "trepid-tapir", Namespace: "default"},
+					ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin", Namespace: "default"}),
+					ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir", Namespace: "default"}),
 					releasePresent,
 				},
 			},
@@ -143,13 +143,10 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 				opts: []InstallOption{ReleaseName("new-release")},
 			},
 			want: &rls.InstallReleaseResponse{
-				Release: &release.Release{
-					Name:      "new-release",
-					Namespace: "default",
-				},
+				Release: ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
 			},
 			relsAfter: []*release.Release{
-				{Name: "new-release", Namespace: "default"},
+				ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
 			},
 			wantErr: false,
 		},
@@ -157,10 +154,7 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 			name: "Try to add a release where the name already exists.",
 			fields: fields{
 				Rels: []*release.Release{
-					&release.Release{
-						Name:      "new-release",
-						Namespace: "default",
-					},
+					ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
 				},
 			},
 			args: args{
@@ -168,10 +162,7 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 				opts: []InstallOption{ReleaseName("new-release")},
 			},
 			relsAfter: []*release.Release{
-				{
-					Name:      "new-release",
-					Namespace: "default",
-				},
+				ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
 			},
 			want:    nil,
 			wantErr: true,
@@ -217,12 +208,8 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			name: "Delete a release that exists.",
 			fields: fields{
 				Rels: []*release.Release{
-					{
-						Name: "angry-dolphin",
-					},
-					{
-						Name: "trepid-tapir",
-					},
+					ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
+					ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 				},
 			},
 			args: args{
@@ -230,12 +217,10 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 				opts:    []DeleteOption{},
 			},
 			relsAfter: []*release.Release{
-				{
-					Name: "angry-dolphin",
-				},
+				ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
 			},
 			want: &rls.UninstallReleaseResponse{
-				Release: &release.Release{Name: "trepid-tapir"},
+				Release: ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 			},
 			wantErr: false,
 		},
@@ -243,12 +228,8 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			name: "Delete a release that does not exist.",
 			fields: fields{
 				Rels: []*release.Release{
-					{
-						Name: "angry-dolphin",
-					},
-					{
-						Name: "trepid-tapir",
-					},
+					ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
+					ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 				},
 			},
 			args: args{
@@ -256,12 +237,8 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 				opts:    []DeleteOption{},
 			},
 			relsAfter: []*release.Release{
-				{
-					Name: "angry-dolphin",
-				},
-				{
-					Name: "trepid-tapir",
-				},
+				ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
+				ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 			},
 			want:    nil,
 			wantErr: true,
@@ -270,9 +247,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			name: "Delete when only 1 item exists.",
 			fields: fields{
 				Rels: []*release.Release{
-					{
-						Name: "trepid-tapir",
-					},
+					ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 				},
 			},
 			args: args{
@@ -281,7 +256,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			},
 			relsAfter: []*release.Release{},
 			want: &rls.UninstallReleaseResponse{
-				Release: &release.Release{Name: "trepid-tapir"},
+				Release: ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 			},
 			wantErr: false,
 		},
