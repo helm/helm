@@ -87,7 +87,7 @@ helm install [CHART]
       --tls-cert string        path to TLS certificate file (default "$HELM_HOME/cert.pem")
       --tls-key string         path to TLS key file (default "$HELM_HOME/key.pem")
       --tls-verify             enable TLS for request and verify remote
-  -f, --values valueFiles      specify values in a YAML file (can specify multiple) (default [])
+  -f, --values valueFiles      specify values in a YAML file or a URL(can specify multiple) (default [])
       --verify                 verify the package before installing it
       --version string         specify the exact chart version to install. If this is not specified, the latest version is installed
       --wait                   if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout
