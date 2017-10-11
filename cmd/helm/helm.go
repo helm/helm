@@ -239,16 +239,16 @@ func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
 // getInternalKubeClient creates a Kubernetes config and an "internal" client for a given kubeconfig context.
 //
 // Prefer the similar getKubeClient if you don't need to use such an internal client.
-func getInternalKubeClient(context string) (*rest.Config, internalclientset.Interface, error) {
+func getInternalKubeClient(context string) (internalclientset.Interface, error) {
 	config, err := configForContext(context)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	client, err := internalclientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
+		return nil, fmt.Errorf("could not get Kubernetes client: %s", err)
 	}
-	return config, client, nil
+	return client, nil
 }
 
 // ensureHelmClient returns a new helm client impl. if h is not nil.
