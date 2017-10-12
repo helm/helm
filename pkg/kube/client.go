@@ -27,6 +27,10 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	apps "k8s.io/api/apps/v1beta2"
+	batch "k8s.io/api/batch/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,15 +44,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/helper"
-	"k8s.io/kubernetes/pkg/api/v1"
-	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
-	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
-	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/validation"
 	"k8s.io/kubernetes/pkg/printers"
 )
 
@@ -103,13 +104,9 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 }
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
-	schema, err := c.Validator(true, c.SchemaCacheDir)
-	if err != nil {
-		c.Log("warning: failed to load schema: %s", err)
-	}
 	return c.NewBuilder(true).
 		ContinueOnError().
-		Schema(schema).
+		Schema(c.validator()).
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
@@ -117,20 +114,25 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 		Do()
 }
 
-// BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
-	schema, err := c.Validator(true, c.SchemaCacheDir)
+func (c *Client) validator() validation.Schema {
+	const openapi = false // only works on v1.8 clusters
+	schema, err := c.Validator(true, openapi, c.SchemaCacheDir)
 	if err != nil {
 		c.Log("warning: failed to load schema: %s", err)
 	}
+	return schema
+}
 
+// BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
+func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
 	var result Result
+
 	b, err := c.NewUnstructuredBuilder(true)
 	if err != nil {
 		return result, err
 	}
 	result, err = b.ContinueOnError().
-		Schema(schema).
+		Schema(c.validator()).
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
