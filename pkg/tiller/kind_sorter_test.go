@@ -42,16 +42,16 @@ func TestKindSorter(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "CronJob"},
 		},
 		{
+			Name: "2",
+			Head: &util.SimpleHead{Kind: "CustomResourceDefinition"},
+		},
+		{
 			Name: "n",
 			Head: &util.SimpleHead{Kind: "DaemonSet"},
 		},
 		{
 			Name: "r",
 			Head: &util.SimpleHead{Kind: "Deployment"},
-		},
-		{
-			Name: "1",
-			Head: &util.SimpleHead{Kind: "StorageClass"},
 		},
 		{
 			Name: "!",
@@ -122,6 +122,10 @@ func TestKindSorter(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "StatefulSet"},
 		},
 		{
+			Name: "1",
+			Head: &util.SimpleHead{Kind: "StorageClass"},
+		},
+		{
 			Name: "w",
 			Head: &util.SimpleHead{Kind: "APIService"},
 		},
@@ -132,8 +136,8 @@ func TestKindSorter(t *testing.T) {
 		order       SortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "abcde1fghijklmnopqrstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsrqponlkjihgf1edcba!"},
+		{"install", InstallOrder, "abcde1fgh2ijklmnopqrstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsrqponlkji2hgf1edcba!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
