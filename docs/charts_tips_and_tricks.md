@@ -97,9 +97,9 @@ The above will render the template when .Values.foo is defined, but will fail
 to render and exit when .Values.foo is undefined.
 
 ## Creating Image Pull Secrets
-Image pull secrets are essentially a combination of _registry_, _username_, and _password_.  You may need them in an application you are deploying, but to create them requires running base64 a couple of times.  A helper can help you do this.  Here is an example:
+Image pull secrets are essentially a combination of _registry_, _username_, and _password_.  You may need them in an application you are deploying, but to create them requires running _base64_ a couple of times.  We can write a helper template to compose the Docker configuration file for use as the Secret's payload.  Here is an example:
 
-Presuming that the values are provided in the values.yaml like so
+First, assume that the credentials are defined in the `values.yaml` file like so:
 ```
 imageCredentials:
   registry: quay.io
@@ -107,15 +107,14 @@ imageCredentials:
   password: sillyness
 ```  
 
-You can add a helper like so:
-
+We then define our helper template as follows:
 ```
 {{- define "imagePullSecret" }}
 {{- printf "{\"auths\": {\"%s\": {\"auth\": \"%s\"}}}" .Values.imageCredentials.registry (printf "%s:%s" .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) | b64enc }}
 {{- end }}
 ```
 
-And it can be used in a template like `pullsecret.tpl` like so:
+Finally, we use the helper template in a larger template to create the Secret manifest:
 ```
 apiVersion: v1
 kind: Secret
