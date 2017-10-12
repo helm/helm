@@ -4,7 +4,7 @@ jobs:
     working_directory: /go/src/k8s.io/helm
     parallelism: 3
     docker:
-      - image: golang:1.8
+      - image: golang:1.9
     environment:
       PROJECT_NAME: "kubernetes-helm"
     steps:
@@ -14,7 +14,7 @@ jobs:
           name: install dependencies
           command: make bootstrap
       - save_cache:
-          key: vendor-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+          key: vendor-{{ checksum "Gopkg.toml" }}-{{ checksum "Gopkg.lock" }}
           paths:
             - vendor
       - run:

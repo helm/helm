@@ -8,9 +8,7 @@ APP               = helm
 
 # go option
 GO        ?= go
-PKG       := $(shell glide novendor)
 TAGS      :=
-TESTS     := .
 TESTFLAGS :=
 LDFLAGS   :=
 GOFLAGS   :=
@@ -90,7 +88,7 @@ test: test-unit
 test-unit:
 	@echo
 	@echo "==> Running unit tests <=="
-	HELM_HOME=/no/such/dir $(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+	HELM_HOME=/no/such/dir $(GO) test $(GOFLAGS) ./... $(TESTFLAGS)
 
 .PHONY: test-style
 test-style:
@@ -117,15 +115,15 @@ clean:
 coverage:
 	@scripts/coverage.sh
 
-HAS_GLIDE := $(shell command -v glide;)
+HAS_DEP := $(shell command -v dep;)
 HAS_GOX := $(shell command -v gox;)
 HAS_GIT := $(shell command -v git;)
 HAS_HG := $(shell command -v hg;)
 
 .PHONY: bootstrap
 bootstrap:
-ifndef HAS_GLIDE
-	go get -u github.com/Masterminds/glide
+ifndef HAS_DEP
+	go get -u github.com/golang/dep/cmd/dep
 endif
 ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
@@ -137,7 +135,7 @@ endif
 ifndef HAS_HG
 	$(error You must install Mercurial)
 endif
-	glide install --strip-vendor
+	dep ensure
 	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
 	scripts/setup-apimachinery.sh
 
