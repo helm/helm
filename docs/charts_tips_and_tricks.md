@@ -111,7 +111,7 @@ You can add a helper like so:
 
 ```
 {{- define "imagePullSecret" }}
-{{- printf "{\n\t\"auths\": {\n\t\t\"%s\": {\n\t\t\t\"auth\": \"%s\"\n\t\t}\n\t}\n}" .Values.imageCredentials.registry (printf "%s:%s" .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) |b64enc }}
+{{- printf "{\"auths\": {\"%s\": {\"auth\": \"%s\"}}}" .Values.imageCredentials.registry (printf "%s:%s" .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) | b64enc }}
 {{- end }}
 ```
 
@@ -121,9 +121,9 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: myregistrykey
+type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: {{ template "imagePullSecret" . }}
-type: kubernetes.io/dockerconfigjson
 ```
 
 ## Automatically Roll Deployments When ConfigMaps or Secrets change
