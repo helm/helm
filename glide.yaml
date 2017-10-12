@@ -27,14 +27,22 @@ import:
   - ptypes/timestamp
 - package: google.golang.org/grpc
   version: 1.2.1
+  # 1.8.1 libs are hosed and need some manual intervention, so pinning to 1.8.0 for now
+  # so others aren't getting errors when running `glide up`
 - package: k8s.io/kubernetes
-  version: ~1.8.0
+  version: 1.8.0
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
 - package: golang.org/x/crypto
   subpackages:
   - openpgp
+  # pin version of golang.org/x/sys that is compatible with golang.org/x/crypto
+- package: golang.org/x/sys
+  version: 43eea11
+  subpackages:
+  - unix
+  - windows
 - package: github.com/gobwas/glob
   version: ^0.2.1
 - package: github.com/evanphx/json-patch

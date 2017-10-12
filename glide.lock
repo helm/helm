@@ -1,5 +1,5 @@
-hash: f5e472b397d20aaa131c8eada3966fdbbf65457073bd1ee8fb8b349bf39c522a
-updated: 2017-10-09T13:32:53.067503253-07:00
+hash: 650f1d4cd9e9dc5ba76480a5465923ce1bbd11b8fa956b644aaf975e8f7e1f33
+updated: 2017-10-12T13:08:50.435765-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -285,7 +285,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sys
-  version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
+  version: 43eea11bc92608addb41b8a406b0407495c106f6
   subpackages:
   - unix
   - windows
