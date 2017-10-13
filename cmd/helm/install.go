@@ -160,8 +160,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 			debug("Original chart version: %q", inst.version)
 			if inst.version == "" && inst.devel {
-				debug("setting version to >0.0.0-a")
-				inst.version = ">0.0.0-a"
+				debug("setting version to >0.0.0-0")
+				inst.version = ">0.0.0-0"
 			}
 
 			cp, err := locateChartPath(inst.repoURL, args[0], inst.version, inst.verify, inst.keyring,
@@ -193,7 +193,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
+	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 
 	return cmd
 }

@@ -38,7 +38,7 @@ helm upgrade [RELEASE] [CHART]
 ```
       --ca-file string       verify certificates of HTTPS-enabled servers using this CA bundle
       --cert-file string     identify HTTPS client using this SSL certificate file
-      --devel                use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.
+      --devel                use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.
       --dry-run              simulate an upgrade
       --force                force resource update through delete/recreate if needed
   -i, --install              if a release by this name doesn't already exist, run an install
