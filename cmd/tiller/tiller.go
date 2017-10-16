@@ -69,6 +69,7 @@ const (
 var (
 	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
+	enableHistograms     = flag.Bool("prometheus-histograms", false, "enable reporting of RPC request latencies via prometheus histograms")
 	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
 	tlsEnable            = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
@@ -183,6 +184,12 @@ func start() {
 
 		// Register gRPC server to prometheus to initialized matrix
 		goprom.Register(rootServer)
+
+		if *enableHistograms {
+			goprom.EnableHandlingTimeHistogram()
+			logger.Println("Prometheus histograms reporting is enabled")
+		}
+
 		addPrometheusHandler(mux)
 
 		if err := http.ListenAndServe(probeAddr, mux); err != nil {
