@@ -230,6 +230,10 @@ There are two ways to pass configuration data during install:
 - `--set`: Specify overrides on the command line.
 
 If both are used, `--set` values are merged into `--values` with higher precedence.
+Overrides specified with `--set` are persisted in a configmap. Values that have been
+`--set` can be viewed for a given release with `helm get values <release-name>`. 
+Values that have been `--set` can be cleared by running `helm upgrade` with `--reset-values`
+specified.
 
 #### The Format and Limitations of `--set`
 
