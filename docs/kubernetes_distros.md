@@ -27,7 +27,7 @@ Kubernetes bootstrapped with `kubeadm` is known to work on the following Linux
 distributions:
 
 - Ubuntu 16.04
-- CAN SOMEONE CONFIRM ON FEDORA?
+- Fedora release 25
 
 Some versions of Helm (v2.0.0-beta2) require you to `export KUBECONFIG=/etc/kubernetes/admin.conf`
 or create a `~/.kube/config`.
