@@ -7,7 +7,7 @@
 Helm is a tool for managing Kubernetes charts. Charts are packages of
 pre-configured Kubernetes resources.
 
-Use Helm to...
+Use Helm to:
 
 - Find and use [popular software packaged as Kubernetes charts](https://github.com/kubernetes/charts)
 - Share your own applications as Kubernetes charts
