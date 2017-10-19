@@ -69,8 +69,8 @@ func NewForSource(source, version string, home helmpath.Home) (Installer, error)
 	// Check if source is a local directory
 	if isLocalReference(source) {
 		return NewLocalInstaller(source, home)
-	} else if isRemoteHttpArchive(source) {
-		return NewHttpInstaller(source, home)
+	} else if isRemoteHTTPArchive(source) {
+		return NewHTTPInstaller(source, home)
 	}
 	return NewVCSInstaller(source, version, home)
 }
@@ -90,10 +90,10 @@ func isLocalReference(source string) bool {
 	return err == nil
 }
 
-// isRemoteHttpArchive checks if the source is a http/https url and is an archive
-func isRemoteHttpArchive(source string) bool {
+// isRemoteHTTPArchive checks if the source is a http/https url and is an archive
+func isRemoteHTTPArchive(source string) bool {
 	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
-		for suffix, _ := range Extractors {
+		for suffix := range Extractors {
 			if strings.HasSuffix(source, suffix) {
 				return true
 			}
