@@ -28,8 +28,8 @@ helm history [flags] RELEASE_NAME
 ### Options
 
 ```
+      --col-width uint       specifies the max column width of output (default 60)
       --max int32            maximum number of revision to include in history (default 256)
-      --output string        specifies the output format: short|wide (default "short")
       --tls                  enable TLS for request
       --tls-ca-cert string   path to TLS CA certificate file (default "$HELM_HOME/ca.pem")
       --tls-cert string      path to TLS certificate file (default "$HELM_HOME/cert.pem")

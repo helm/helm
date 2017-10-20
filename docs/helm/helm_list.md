@@ -40,6 +40,7 @@ helm list [flags] [FILTER]
 
 ```
   -a, --all                  show all releases, not just the ones marked DEPLOYED
+      --col-width uint       specifies the max column width of output (default 60)
   -d, --date                 sort by release date
       --deleted              show deleted releases
       --deleting             show releases that are currently being deleted
@@ -48,7 +49,6 @@ helm list [flags] [FILTER]
   -m, --max int              maximum number of releases to fetch (default 256)
       --namespace string     show releases within a specific namespace
   -o, --offset string        next release name in the list, used to offset from start value
-      --output string        specifies the output format: short|wide (default "short")
       --pending              show pending releases
   -r, --reverse              reverse the sort order
   -q, --short                output short (quiet) listing format

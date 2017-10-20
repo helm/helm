@@ -74,7 +74,7 @@ type listCmd struct {
 	superseded bool
 	pending    bool
 	client     helm.Interface
-	output     string
+	colWidth   uint
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -113,7 +113,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
 	f.BoolVar(&list.pending, "pending", false, "show pending releases")
 	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
-	f.StringVar(&list.output, "output", "short", "specifies the output format: short|wide")
+	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
 
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
@@ -164,7 +164,7 @@ func (l *listCmd) run() error {
 		}
 		return nil
 	}
-	fmt.Fprintln(l.out, formatList(rels, l.output))
+	fmt.Fprintln(l.out, formatList(rels, l.colWidth))
 	return nil
 }
 
@@ -209,15 +209,10 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 	return status
 }
 
-func formatList(rels []*release.Release, output string) string {
+func formatList(rels []*release.Release, colWidth uint) string {
 	table := uitable.New()
-	switch output {
-	case "wide":
-		break
-	default:
-		table.MaxColWidth = 60
-	}
 
+	table.MaxColWidth = colWidth
 	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
