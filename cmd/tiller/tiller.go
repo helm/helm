@@ -69,7 +69,7 @@ const (
 var (
 	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
-	enableHistograms     = flag.Bool("prometheus-histograms", false, "enable reporting of RPC request latencies via prometheus histograms")
+	prometheusHistograms = flag.String("prometheus-histograms", "", "comma-separated list of prometheus histogram bucket sizes for RPC request latencies reporting, e.g. '0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10'")
 	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
 	tlsEnable            = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
@@ -185,9 +185,10 @@ func start() {
 		// Register gRPC server to prometheus to initialized matrix
 		goprom.Register(rootServer)
 
-		if *enableHistograms {
-			goprom.EnableHandlingTimeHistogram()
-			logger.Println("Prometheus histograms reporting is enabled")
+		buckets := histogramBuckets()
+		if len(buckets) > 0 {
+			goprom.EnableHandlingTimeHistogram(goprom.WithHistogramBuckets(buckets))
+			logger.Printf("Prometheus histograms reporting is enabled with buckets %v", buckets)
 		}
 
 		addPrometheusHandler(mux)
@@ -264,3 +265,19 @@ func historyMaxFromEnv() int {
 
 func tlsEnableEnvVarDefault() bool { return os.Getenv(tlsEnableEnvVar) != "" }
 func tlsVerifyEnvVarDefault() bool { return os.Getenv(tlsVerifyEnvVar) != "" }
+
+func histogramBuckets() []float64 {
+	val := strings.Split(*prometheusHistograms, ",")
+
+	buckets := []float64{}
+	for _, le := range val {
+		n, err := strconv.ParseFloat(le, 64)
+		if err != nil {
+			log.Printf("Invalid histogram bucket size: %q", le)
+			continue
+		}
+		buckets = append(buckets, n)
+	}
+
+	return buckets
+}
