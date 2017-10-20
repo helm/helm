@@ -111,10 +111,10 @@ kind: Secret
 metadata:
   name: {{ .name }}
   labels:
-# Many helm templates would use `.` below, but that will not work, 
-# however `$` will work here 
+    # Many helm templates would use `.` below, but that will not work, 
+    # however `$` will work here 
     app: {{ template "fullname" $ }}
-# I cannot reference .Chart.Name, but I can do $.Chart.Name
+    # I cannot reference .Chart.Name, but I can do $.Chart.Name
     chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
     release: "{{ $.Release.Name }}"
     heritage: "{{ $.Release.Service }}"
