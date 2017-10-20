@@ -29,7 +29,7 @@ helm history [flags] RELEASE_NAME
 
 ```
       --max int32            maximum number of revision to include in history (default 256)
-      --output string        specifies the output format (default "short")
+      --output string        specifies the output format: short|wide (default "short")
       --tls                  enable TLS for request
       --tls-ca-cert string   path to TLS CA certificate file (default "$HELM_HOME/ca.pem")
       --tls-cert string      path to TLS certificate file (default "$HELM_HOME/cert.pem")

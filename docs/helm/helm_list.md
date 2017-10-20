@@ -48,7 +48,7 @@ helm list [flags] [FILTER]
   -m, --max int              maximum number of releases to fetch (default 256)
       --namespace string     show releases within a specific namespace
   -o, --offset string        next release name in the list, used to offset from start value
-      --output string        specifies the output format (default "short")
+      --output string        specifies the output format: short|wide (default "short")
       --pending              show pending releases
   -r, --reverse              reverse the sort order
   -q, --short                output short (quiet) listing format

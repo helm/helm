@@ -76,7 +76,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.Int32Var(&his.max, "max", 256, "maximum number of revision to include in history")
-	f.StringVar(&his.output, "output", "short", "specifies the output format")
+	f.StringVar(&his.output, "output", "short", "specifies the output format: short|wide")
 
 	return cmd
 }

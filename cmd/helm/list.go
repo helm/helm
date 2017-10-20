@@ -113,7 +113,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
 	f.BoolVar(&list.pending, "pending", false, "show pending releases")
 	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
-	f.StringVar(&list.output, "output", "short", "specifies the output format")
+	f.StringVar(&list.output, "output", "short", "specifies the output format: short|wide")
 
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
