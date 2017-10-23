@@ -345,7 +345,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out, home)
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.RelativeIndex("local"), out, home)
 		if err != nil {
 			return err
 		}
@@ -392,12 +392,12 @@ func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Hom
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		fp, err := filepath.Rel(cacheFile, indexFile)
+		fp, err := filepath.Rel(filepath.Join(home.Cache(), cacheFile), indexFile)
 		if err != nil {
 			return nil, err
 		}
 		pth := home.Path(fp)
-		createLink(pth, cacheFile)
+		createLink(pth, filepath.Join(home.Cache(), cacheFile))
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
