@@ -8,6 +8,7 @@ entries:
       sources:
       - https://github.com/kubernetes/helm
       version: 0.1.0
+      appVersion: 1.2.3
       description: Deploy a basic Alpine Linux pod
       keywords: []
       maintainers: []
@@ -20,6 +21,7 @@ entries:
       sources:
       - https://github.com/kubernetes/helm
       version: 0.2.0
+      appVersion: 2.3.4
       description: Deploy a basic Alpine Linux pod
       keywords: []
       maintainers: []
