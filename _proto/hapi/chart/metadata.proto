@@ -25,6 +25,9 @@ message Maintainer {
 
 	// Email is an optional email address to contact the named maintainer
 	string email = 2;
+
+	// Url is an optional URL to an address for the named maintainer
+	string url = 3;
 }
 
 //	Metadata for a Chart file. This models the structure of a Chart.yaml file.
