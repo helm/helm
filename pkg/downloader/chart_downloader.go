@@ -217,12 +217,15 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 
 	// If the URL is relative (no scheme), prepend the chart repo's base URL
 	if !u.IsAbs() {
-		path := u.Path
-		u, err = url.Parse(rc.URL)
+		repoURL, err := url.Parse(rc.URL)
 		if err != nil {
-			return u, r.Client, err
+			return repoURL, r.Client, err
 		}
-		u.Path = u.Path + path
+		q := repoURL.Query()
+		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
+		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
+		u = repoURL.ResolveReference(u)
+		u.RawQuery = q.Encode()
 		return u, r.Client, err
 	}
 
