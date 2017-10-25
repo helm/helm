@@ -35,6 +35,7 @@ import (
 
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/rudder"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller"
@@ -71,12 +72,15 @@ var (
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
 	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
-	tlsEnable            = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
-	tlsVerify            = flag.Bool("tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
-	keyFile              = flag.String("tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
-	certFile             = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
-	caCertFile           = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
-	maxHistory           = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
+	rudderAddress        = flag.String("rudder-address", rudder.RudderDefaultAddress,
+		fmt.Sprintf("rudder address:port (default: %s). ignored if experimental-release is omitted",
+			rudder.RudderDefaultAddress))
+	tlsEnable  = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
+	tlsVerify  = flag.Bool("tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
+	keyFile    = flag.String("tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
+	certFile   = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
+	caCertFile = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
+	maxHistory = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
 
 	// rootServer is the root gRPC server.
 	//
@@ -103,6 +107,12 @@ func main() {
 }
 
 func start() {
+	if *rudderAddress != rudder.RudderDefaultAddress && !*remoteReleaseModules {
+		log.Fatal(
+			"Rudder address will be ignored without --experimental-release flag.",
+			"Add --experimental-release or remove --rudder-address.",
+		)
+	}
 
 	clientset, err := kube.New(nil).ClientSet()
 	if err != nil {
@@ -170,7 +180,15 @@ func start() {
 	srvErrCh := make(chan error)
 	probeErrCh := make(chan error)
 	go func() {
-		svc := tiller.NewReleaseServer(env, clientset, *remoteReleaseModules)
+		var addressToUse string
+		if *remoteReleaseModules {
+			addressToUse = *rudderAddress
+		}
+		svc, err := tiller.NewReleaseServer(env, clientset, addressToUse)
+		if err != nil {
+			srvErrCh <- err
+			return
+		}
 		svc.Log = newLogger("tiller").Printf
 		services.RegisterReleaseServiceServer(rootServer, svc)
 		if err := rootServer.Serve(lstn); err != nil {

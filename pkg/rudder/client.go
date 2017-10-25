@@ -18,6 +18,7 @@ package rudder // import "k8s.io/helm/pkg/rudder"
 
 import (
 	"fmt"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -25,67 +26,51 @@ import (
 	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
 )
 
-// GrpcPort specifies port on which rudder will spawn a server
+// RudderDefaultAddress will be used if none is provided with command lines argumnets.
 const (
-	GrpcPort = 10001
+	RudderDefaultAddress = "127.0.0.1:10001"
 )
 
-var grpcAddr = fmt.Sprintf("127.0.0.1:%d", GrpcPort)
+// NewClient creates new instance of Client.
+func NewClient(address string) (*Client, error) {
+	//TODO(mkwiek): parametrize this
+	conn, err := grpc.Dial(
+		address,
+		grpc.WithInsecure(),
+		grpc.WithBlock(),
+		grpc.WithTimeout(3*time.Second))
+	if err != nil {
+		return nil, fmt.Errorf("error establishing connection with rudder using address %s: %v", address, err)
+	}
+	return &Client{client: rudderAPI.NewReleaseModuleServiceClient(conn)}, nil
+}
+
+// Client wraps rudder grpc client.
+type Client struct {
+	client rudderAPI.ReleaseModuleServiceClient
+}
 
 // InstallRelease calls Rudder InstallRelease method which should create provided release
-func InstallRelease(rel *rudderAPI.InstallReleaseRequest) (*rudderAPI.InstallReleaseResponse, error) {
-	//TODO(mkwiek): parametrize this
-	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-
-	defer conn.Close()
-	client := rudderAPI.NewReleaseModuleServiceClient(conn)
-	return client.InstallRelease(context.Background(), rel)
+func (c *Client) InstallRelease(rel *rudderAPI.InstallReleaseRequest) (*rudderAPI.InstallReleaseResponse, error) {
+	return c.client.InstallRelease(context.Background(), rel)
 }
 
 // UpgradeRelease calls Rudder UpgradeRelease method which should perform update
-func UpgradeRelease(req *rudderAPI.UpgradeReleaseRequest) (*rudderAPI.UpgradeReleaseResponse, error) {
-	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	client := rudderAPI.NewReleaseModuleServiceClient(conn)
-	return client.UpgradeRelease(context.Background(), req)
+func (c *Client) UpgradeRelease(req *rudderAPI.UpgradeReleaseRequest) (*rudderAPI.UpgradeReleaseResponse, error) {
+	return c.client.UpgradeRelease(context.Background(), req)
 }
 
 // RollbackRelease calls Rudder RollbackRelease method which should perform update
-func RollbackRelease(req *rudderAPI.RollbackReleaseRequest) (*rudderAPI.RollbackReleaseResponse, error) {
-	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	client := rudderAPI.NewReleaseModuleServiceClient(conn)
-	return client.RollbackRelease(context.Background(), req)
+func (c *Client) RollbackRelease(req *rudderAPI.RollbackReleaseRequest) (*rudderAPI.RollbackReleaseResponse, error) {
+	return c.client.RollbackRelease(context.Background(), req)
 }
 
 // ReleaseStatus calls Rudder ReleaseStatus method which should perform update
-func ReleaseStatus(req *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
-	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	client := rudderAPI.NewReleaseModuleServiceClient(conn)
-	return client.ReleaseStatus(context.Background(), req)
+func (c *Client) ReleaseStatus(req *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
+	return c.client.ReleaseStatus(context.Background(), req)
 }
 
 // DeleteRelease calls Rudder DeleteRelease method which should uninstall provided release
-func DeleteRelease(rel *rudderAPI.DeleteReleaseRequest) (*rudderAPI.DeleteReleaseResponse, error) {
-	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
-	}
-
-	defer conn.Close()
-	client := rudderAPI.NewReleaseModuleServiceClient(conn)
-	return client.DeleteRelease(context.Background(), rel)
+func (c *Client) DeleteRelease(rel *rudderAPI.DeleteReleaseRequest) (*rudderAPI.DeleteReleaseResponse, error) {
+	return c.client.DeleteRelease(context.Background(), rel)
 }

@@ -87,10 +87,15 @@ type ReleaseServer struct {
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, useRemote bool) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, rudderAddress string) (
+	*ReleaseServer, error) {
 	var releaseModule ReleaseModule
-	if useRemote {
-		releaseModule = &RemoteReleaseModule{}
+	var err error
+	if len(rudderAddress) != 0 {
+		releaseModule, err = NewRemoteReleaseModule(rudderAddress)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		releaseModule = &LocalReleaseModule{
 			clientset: clientset,
@@ -102,7 +107,7 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 		clientset:     clientset,
 		ReleaseModule: releaseModule,
 		Log:           func(_ string, _ ...interface{}) {},
-	}
+	}, nil
 }
 
 // reuseValues copies values from the current release to a new release if the
