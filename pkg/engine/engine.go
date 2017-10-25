@@ -168,7 +168,7 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
 		basePath, err := vals.PathValue("Template.BasePath")
 		if err != nil {
-			return "", fmt.Errorf("Cannot retrieve Template.Basepath from values inside tpl function", tpl, err.Error())
+			return "", fmt.Errorf("Cannot retrieve Template.Basepath from values inside tpl function: %s (%s)", tpl, err.Error())
 		}
 
 		r := renderable{
@@ -182,7 +182,7 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 		templates := map[string]renderable{}
 		templateName, err := vals.PathValue("Template.Name")
 		if err != nil {
-			return "", fmt.Errorf("Cannot retrieve Template.Name from values inside tpl function", tpl, err.Error())
+			return "", fmt.Errorf("Cannot retrieve Template.Name from values inside tpl function: %s (%s)", tpl, err.Error())
 		}
 
 		templates[templateName.(string)] = r
