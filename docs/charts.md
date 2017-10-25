@@ -460,14 +460,14 @@ Suppose that a chart named "A" creates the following Kubernetes objects
 - statefulset "A-StatefulSet"
 - service "A-Service"
 
-A is dependent on chart B that creates objects
+Furthermore, A is dependent on chart B that creates objects
 
 - namespace "B-Namespace"
 - replicaset "B-ReplicaSet"
 - service "B-Service"
 
-After installation/upgrade of chart A a single Helm release is created. The release will 
-create all the above Kubernetes objects in the following order:
+After installation/upgrade of chart A a single Helm release is created/modified. The release will 
+create/update all of the above Kubernetes objects in the following order:
 
 - A-Namespace
 - B-Namespace
@@ -476,11 +476,16 @@ create all the above Kubernetes objects in the following order:
 - A-Service
 - B-Service
 
-This is because the Kubernetes objects from all the charts are aggregrated into a single set; then sorted  
-by type followed by name; and then created/updated in that order. Hence a single release is created
-with all the objects for the chart and its dependencies.
+This is because when Helm installs/upgrades charts, 
+the Kubernetes objects from the charts and all its dependencies are 
 
-The install order of types is given by the enumeration InstallOrder in kind_sorter.go 
+- aggregrated into a single set; then 
+- sorted by type followed by name; and then 
+- created/updated in that order. 
+
+Hence a single release is created with all the objects for the chart and its dependencies.
+
+The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go 
 (see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26).
 
 ## Templates and Values
