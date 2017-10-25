@@ -449,6 +449,40 @@ directory.
 **TIP:** _To drop a dependency into your `charts/` directory, use the
 `helm fetch` command_
 
+### Operational aspects of using dependencies
+
+The above sections explain how to specify chart dependencies, but how does this affect
+chart installation using `helm install` and `helm upgrade`?
+
+Suppose that a chart named "A" creates the following Kubernetes objects
+
+- namespace "A-Namespace"
+- statefulset "A-StatefulSet"
+- service "A-Service"
+
+A is dependent on chart B that creates objects
+
+- namespace "B-Namespace"
+- replicaset "B-ReplicaSet"
+- service "B-Service"
+
+After installation/upgrade of chart A a single Helm release is created. The release will 
+create all the above Kubernetes objects in the following order:
+
+- A-Namespace
+- B-Namespace
+- A-StatefulSet
+- B-ReplicaSet
+- A-Service
+- B-Service
+
+This is because the Kubernetes objects from all the charts are aggregrated into a single set; then sorted  
+by type followed by name; and then created/updated in that order. Hence a single release is created
+with all the objects for the chart and its dependencies.
+
+The install order of types is given by the enumeration InstallOrder in kind_sorter.go 
+(see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26).
+
 ## Templates and Values
 
 Helm Chart templates are written in the
