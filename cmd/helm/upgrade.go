@@ -98,8 +98,8 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 
 			if upgrade.version == "" && upgrade.devel {
-				debug("setting version to >0.0.0-a")
-				upgrade.version = ">0.0.0-a"
+				debug("setting version to >0.0.0-0")
+				upgrade.version = ">0.0.0-0"
 			}
 
 			upgrade.release = args[0]
@@ -111,7 +111,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
+	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
@@ -131,7 +131,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
+	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 

@@ -18,8 +18,8 @@ helm\-install \- install a chart archive
 This command installs a chart archive.
 
 .PP
-The install argument must be either a relative path to a chart directory or the
-name of a chart in the current working directory.
+The install argument must be a chart reference, a path to a packaged chart,
+a path to an unpacked chart directory or a URL.
 
 .PP
 To override values in a chart, use either the '\-\-values' flag and pass in a file
@@ -192,7 +192,7 @@ charts in a repository, use 'helm search'.
 
 .PP
 \fB\-f\fP, \fB\-\-values\fP=[]
-    specify values in a YAML file (can specify multiple)
+    specify values in a YAML file or a URL(can specify multiple)
 
 .PP
 \fB\-\-verify\fP[=false]

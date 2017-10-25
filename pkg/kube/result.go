@@ -83,5 +83,5 @@ func (r Result) Intersect(rs Result) Result {
 
 // isMatchingInfo returns true if infos match on Name and GroupVersionKind.
 func isMatchingInfo(a, b *resource.Info) bool {
-	return a.Name == b.Name && a.Mapping.GroupVersionKind == b.Mapping.GroupVersionKind
+	return a.Name == b.Name && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind
 }

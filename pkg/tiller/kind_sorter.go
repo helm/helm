@@ -32,9 +32,11 @@ var InstallOrder SortOrder = []string{
 	"LimitRange",
 	"Secret",
 	"ConfigMap",
+	"StorageClass",
 	"PersistentVolume",
 	"PersistentVolumeClaim",
 	"ServiceAccount",
+	"CustomResourceDefinition",
 	"ClusterRole",
 	"ClusterRoleBinding",
 	"Role",
@@ -71,9 +73,11 @@ var UninstallOrder SortOrder = []string{
 	"Role",
 	"ClusterRoleBinding",
 	"ClusterRole",
+	"CustomResourceDefinition",
 	"ServiceAccount",
 	"PersistentVolumeClaim",
 	"PersistentVolume",
+	"StorageClass",
 	"ConfigMap",
 	"Secret",
 	"LimitRange",
@@ -116,8 +120,12 @@ func (k *kindSorter) Less(i, j int) bool {
 	b := k.manifests[j]
 	first, aok := k.ordering[a.Head.Kind]
 	second, bok := k.ordering[b.Head.Kind]
+	// if same kind (including unknown) sub sort alphanumeric
 	if first == second {
-		// same kind (including unknown) so sub sort alphanumeric
+		// if both are unknown and of different kind sort by kind alphabetically
+		if !aok && !bok && a.Head.Kind != b.Head.Kind {
+			return a.Head.Kind < b.Head.Kind
+		}
 		return a.Name < b.Name
 	}
 	// unknown kind is last

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ template "fullname" . }}
+  name: {{ template "alpine.fullname" . }}
   labels:
     # The "heritage" label is used to track which tool deployed a given chart.
     # It is useful for admins who want to see what releases a particular tool
@@ -12,7 +12,7 @@ metadata:
     release: {{ .Release.Name }}
     # This makes it easy to audit chart usage.
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    app: {{ template "name" . }}
+    app: {{ template "alpine.name" . }}
 spec:
   # This shows how to use a simple value. This will look for a passed-in value called restartPolicy.
   restartPolicy: {{ .Values.restartPolicy }}

@@ -62,7 +62,7 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 	}
 	client, err := getterConstructor(cfg.URL, cfg.CertFile, cfg.KeyFile, cfg.CAFile)
 	if err != nil {
-		return nil, fmt.Errorf("Could not construct protocol handler for: %s", u.Scheme)
+		return nil, fmt.Errorf("Could not construct protocol handler for: %s error: %v", u.Scheme, err)
 	}
 
 	return &ChartRepository{
@@ -110,8 +110,13 @@ func (r *ChartRepository) Load() error {
 // is for pre-2.2.0 repo files.
 func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	var indexURL string
+	parsedURL, err := url.Parse(r.Config.URL)
+	if err != nil {
+		return err
+	}
+	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
 
-	indexURL = strings.TrimSuffix(r.Config.URL, "/") + "/index.yaml"
+	indexURL = parsedURL.String()
 	resp, err := r.Client.Get(indexURL)
 	if err != nil {
 		return err

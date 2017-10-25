@@ -142,3 +142,81 @@ func (mock *MockConfigMapsInterface) Delete(name string, opts *metav1.DeleteOpti
 	delete(mock.objects, name)
 	return nil
 }
+
+// newTestFixture initializes a MockSecretsInterface.
+// Secrets are created for each release provided.
+func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
+	var mock MockSecretsInterface
+	mock.Init(t, releases...)
+
+	return NewSecrets(&mock)
+}
+
+// MockSecretsInterface mocks a kubernetes SecretsInterface
+type MockSecretsInterface struct {
+	internalversion.SecretInterface
+
+	objects map[string]*api.Secret
+}
+
+// Init initializes the MockSecretsInterface with the set of releases.
+func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+	mock.objects = map[string]*api.Secret{}
+
+	for _, rls := range releases {
+		objkey := testKey(rls.Name, rls.Version)
+
+		secret, err := newSecretsObject(objkey, rls, nil)
+		if err != nil {
+			t.Fatalf("Failed to create secret: %s", err)
+		}
+		mock.objects[objkey] = secret
+	}
+}
+
+// Get returns the Secret by name.
+func (mock *MockSecretsInterface) Get(name string, options metav1.GetOptions) (*api.Secret, error) {
+	object, ok := mock.objects[name]
+	if !ok {
+		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
+	}
+	return object, nil
+}
+
+// List returns the a of Secret.
+func (mock *MockSecretsInterface) List(opts metav1.ListOptions) (*api.SecretList, error) {
+	var list api.SecretList
+	for _, secret := range mock.objects {
+		list.Items = append(list.Items, *secret)
+	}
+	return &list, nil
+}
+
+// Create creates a new Secret.
+func (mock *MockSecretsInterface) Create(secret *api.Secret) (*api.Secret, error) {
+	name := secret.ObjectMeta.Name
+	if object, ok := mock.objects[name]; ok {
+		return object, apierrors.NewAlreadyExists(api.Resource("tests"), name)
+	}
+	mock.objects[name] = secret
+	return secret, nil
+}
+
+// Update updates a Secret.
+func (mock *MockSecretsInterface) Update(secret *api.Secret) (*api.Secret, error) {
+	name := secret.ObjectMeta.Name
+	if _, ok := mock.objects[name]; !ok {
+		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
+	}
+	mock.objects[name] = secret
+	return secret, nil
+}
+
+// Delete deletes a Secret by name.
+func (mock *MockSecretsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
+	if _, ok := mock.objects[name]; !ok {
+		return apierrors.NewNotFound(api.Resource("tests"), name)
+	}
+	delete(mock.objects, name)
+	return nil
+}

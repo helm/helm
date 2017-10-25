@@ -27,6 +27,10 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	apps "k8s.io/api/apps/v1beta2"
+	batch "k8s.io/api/batch/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,15 +44,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/helper"
-	"k8s.io/kubernetes/pkg/api/v1"
-	apps "k8s.io/kubernetes/pkg/apis/apps/v1beta1"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
-	batch "k8s.io/kubernetes/pkg/apis/batch/v1"
-	"k8s.io/kubernetes/pkg/apis/extensions/v1beta1"
 	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/validation"
 	"k8s.io/kubernetes/pkg/printers"
 )
 
@@ -103,13 +104,9 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 }
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
-	schema, err := c.Validator(true, c.SchemaCacheDir)
-	if err != nil {
-		c.Log("warning: failed to load schema: %s", err)
-	}
 	return c.NewBuilder(true).
 		ContinueOnError().
-		Schema(schema).
+		Schema(c.validator()).
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
@@ -117,20 +114,25 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 		Do()
 }
 
-// BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
-	schema, err := c.Validator(true, c.SchemaCacheDir)
+func (c *Client) validator() validation.Schema {
+	const openapi = false // only works on v1.8 clusters
+	schema, err := c.Validator(true, openapi, c.SchemaCacheDir)
 	if err != nil {
 		c.Log("warning: failed to load schema: %s", err)
 	}
+	return schema
+}
 
+// BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
+func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
 	var result Result
+
 	b, err := c.NewUnstructuredBuilder(true)
 	if err != nil {
 		return result, err
 	}
 	result, err = b.ContinueOnError().
-		Schema(schema).
+		Schema(c.validator()).
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
@@ -157,6 +159,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	var objPods = make(map[string][]api.Pod)
+
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
 		c.Log("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
@@ -171,10 +176,24 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
 		objs[vk] = append(objs[vk], info.Object)
+
+		//Get the relation pods
+		objPods, err = c.getSelectRelationPod(info, objPods)
+		if err != nil {
+			c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+		}
+
 		return nil
 	})
 	if err != nil {
 		return "", err
+	}
+
+	//here, we will add the objPods to the objs
+	for key, podItems := range objPods {
+		for i := range podItems {
+			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
+		}
 	}
 
 	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
@@ -627,4 +646,68 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	})
 
 	return err
+}
+
+//get an kubernetes resources's relation pods
+// kubernetes resource used select labels to relate pods
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]api.Pod) (map[string][]api.Pod, error) {
+	if info == nil {
+		return objPods, nil
+	}
+
+	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
+
+	versioned, err := c.AsVersionedObject(info.Object)
+	if runtime.IsNotRegisteredError(err) {
+		return objPods, nil
+	}
+	if err != nil {
+		return objPods, err
+	}
+
+	// We can ignore this error because it will only error if it isn't a type that doesn't
+	// have pods. In that case, we don't care
+	selector, _ := getSelectorFromObject(versioned)
+
+	selectorString := labels.Set(selector).AsSelector().String()
+
+	// If we have an empty selector, this likely is a service or config map, so bail out now
+	if selectorString == "" {
+		return objPods, nil
+	}
+
+	client, _ := c.ClientSet()
+
+	pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
+		FieldSelector: fields.Everything().String(),
+		LabelSelector: labels.Set(selector).AsSelector().String(),
+	})
+	if err != nil {
+		return objPods, err
+	}
+
+	for _, pod := range pods.Items {
+		if pod.APIVersion == "" {
+			pod.APIVersion = "v1"
+		}
+
+		if pod.Kind == "" {
+			pod.Kind = "Pod"
+		}
+		vk := pod.GroupVersionKind().Version + "/" + pod.GroupVersionKind().Kind
+
+		if !isFoundPod(objPods[vk], pod) {
+			objPods[vk] = append(objPods[vk], pod)
+		}
+	}
+	return objPods, nil
+}
+
+func isFoundPod(podItem []api.Pod, pod api.Pod) bool {
+	for _, value := range podItem {
+		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
+			return true
+		}
+	}
+	return false
 }

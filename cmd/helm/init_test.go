@@ -27,13 +27,15 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	testcore "k8s.io/client-go/testing"
+
+	"encoding/json"
 
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -302,4 +304,54 @@ func TestInitCmd_tlsOptions(t *testing.T) {
 			t.Errorf("%s: got %#+v, want %#+v", tt.describe, cmd.opts, expect)
 		}
 	}
+}
+
+// TestInitCmd_output tests that init -o formats are unmarshal-able
+func TestInitCmd_output(t *testing.T) {
+	// This is purely defensive in this case.
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dbg := settings.Debug
+	settings.Debug = true
+	defer func() {
+		os.Remove(home)
+		settings.Debug = dbg
+	}()
+	fc := fake.NewSimpleClientset()
+	tests := []struct {
+		expectF    func([]byte, interface{}) error
+		expectName string
+	}{
+		{
+			json.Unmarshal,
+			"json",
+		},
+		{
+			yaml.Unmarshal,
+			"yaml",
+		},
+	}
+	for _, s := range tests {
+		var buf bytes.Buffer
+		cmd := &initCmd{
+			out:        &buf,
+			home:       helmpath.Home(home),
+			kubeClient: fc,
+			opts:       installer.Options{Output: installer.OutputFormat(s.expectName)},
+			namespace:  v1.NamespaceDefault,
+		}
+		if err := cmd.run(); err != nil {
+			t.Fatal(err)
+		}
+		if got := len(fc.Actions()); got != 0 {
+			t.Errorf("expected no server calls, got %d", got)
+		}
+		d := &v1beta1.Deployment{}
+		if err = s.expectF(buf.Bytes(), &d); err != nil {
+			t.Errorf("error unmarshalling init %s output %s %s", s.expectName, err, buf.String())
+		}
+	}
+
 }

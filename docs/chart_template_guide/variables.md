@@ -96,6 +96,34 @@ data:
   food: "pizza"
 ```
 
-Variables are not "global". They are scoped to the block in which they are declared. Earlier, we assigned `$relname` in the top level of the template. That variable will be in scope for the entire template. But in our last example, `$key` and `$val` will only be in scope inside of the `{{range...}}{{end}}` block.
+Variables are normally not "global". They are scoped to the block in which they are declared. Earlier, we assigned `$relname` in the top level of the template. That variable will be in scope for the entire template. But in our last example, `$key` and `$val` will only be in scope inside of the `{{range...}}{{end}}` block.
+
+However, there is one variable that is always global - `$` - this
+variable will always point to the root context.  This can be very
+useful when you are looping in a range need to know the chart's release
+name.
+
+An example illustrating this:
+```yaml
+{{- range .Values.tlsSecrets }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .name }}
+  labels:
+    # Many helm templates would use `.` below, but that will not work, 
+    # however `$` will work here 
+    app: {{ template "fullname" $ }}
+    # I cannot reference .Chart.Name, but I can do $.Chart.Name
+    chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
+    release: "{{ $.Release.Name }}"
+    heritage: "{{ $.Release.Service }}"
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ .certificate }}
+  tls.key: {{ .key }}
+---
+{{- end }}
+```
 
 So far we have looked at just one template declared in just one file. But one of the powerful features of the Helm template language is its ability to declare multiple templates and use them together. We'll turn to that in the next section.

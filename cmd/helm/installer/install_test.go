@@ -23,13 +23,14 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	testcore "k8s.io/client-go/testing"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -330,7 +331,7 @@ func TestInstall_canary(t *testing.T) {
 func TestUpgrade(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
-	existingDeployment := deployment(&Options{
+	existingDeployment, _ := deployment(&Options{
 		Namespace:      v1.NamespaceDefault,
 		ImageSpec:      "imageToReplace",
 		ServiceAccount: "serviceAccountToReplace",
@@ -371,7 +372,7 @@ func TestUpgrade(t *testing.T) {
 func TestUpgrade_serviceNotFound(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
-	existingDeployment := deployment(&Options{
+	existingDeployment, _ := deployment(&Options{
 		Namespace: v1.NamespaceDefault,
 		ImageSpec: "imageToReplace",
 		UseCanary: false,
@@ -418,4 +419,108 @@ func tlsTestFile(t *testing.T, path string) string {
 		t.Fatalf("tls test file %s does not exist", path)
 	}
 	return path
+}
+func TestDeploymentManifest_WithNodeSelectors(t *testing.T) {
+	tests := []struct {
+		opts   Options
+		name   string
+		expect map[string]interface{}
+	}{
+		{
+			Options{Namespace: v1.NamespaceDefault, NodeSelectors: "app=tiller"},
+			"nodeSelector app=tiller",
+			map[string]interface{}{"app": "tiller"},
+		},
+		{
+			Options{Namespace: v1.NamespaceDefault, NodeSelectors: "app=tiller,helm=rocks"},
+			"nodeSelector app=tiller, helm=rocks",
+			map[string]interface{}{"app": "tiller", "helm": "rocks"},
+		},
+		// note: nodeSelector key and value are strings
+		{
+			Options{Namespace: v1.NamespaceDefault, NodeSelectors: "app=tiller,minCoolness=1"},
+			"nodeSelector app=tiller, helm=rocks",
+			map[string]interface{}{"app": "tiller", "minCoolness": "1"},
+		},
+	}
+	for _, tt := range tests {
+		o, err := DeploymentManifest(&tt.opts)
+		if err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+
+		var d v1beta1.Deployment
+		if err := yaml.Unmarshal([]byte(o), &d); err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+		// Verify that environment variables in Deployment reflect the use of TLS being enabled.
+		got := d.Spec.Template.Spec.NodeSelector
+		for k, v := range tt.expect {
+			if got[k] != v {
+				t.Errorf("%s: expected nodeSelector value %q, got %q", tt.name, tt.expect, got)
+			}
+		}
+	}
+}
+func TestDeploymentManifest_WithSetValues(t *testing.T) {
+	tests := []struct {
+		opts       Options
+		name       string
+		expectPath string
+		expect     interface{}
+	}{
+		{
+			Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec.nodeselector.app=tiller"}},
+			"setValues spec.template.spec.nodeSelector.app=tiller",
+			"spec.template.spec.nodeSelector.app",
+			"tiller",
+		},
+		{
+			Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.replicas=2"}},
+			"setValues spec.replicas=2",
+			"spec.replicas",
+			2,
+		},
+		{
+			Options{Namespace: v1.NamespaceDefault, Values: []string{"spec.template.spec.activedeadlineseconds=120"}},
+			"setValues spec.template.spec.activedeadlineseconds=120",
+			"spec.template.spec.activeDeadlineSeconds",
+			120,
+		},
+	}
+	for _, tt := range tests {
+		o, err := DeploymentManifest(&tt.opts)
+		if err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+		values, err := chartutil.ReadValues([]byte(o))
+		if err != nil {
+			t.Errorf("Error converting Deployment manifest to Values: %s", err)
+		}
+		// path value
+		pv, err := values.PathValue(tt.expectPath)
+		if err != nil {
+			t.Errorf("Error retrieving path value from Deployment Values: %s", err)
+		}
+
+		// convert our expected value to match the result type for comparison
+		ev := tt.expect
+		switch pvt := pv.(type) {
+		case float64:
+			floatType := reflect.TypeOf(float64(0))
+			v := reflect.ValueOf(ev)
+			v = reflect.Indirect(v)
+			if !v.Type().ConvertibleTo(floatType) {
+				t.Fatalf("Error converting expected value %v to float64", v.Type())
+			}
+			fv := v.Convert(floatType)
+			if fv.Float() != pvt {
+				t.Errorf("%s: expected value %q, got %q", tt.name, tt.expect, pv)
+			}
+		default:
+			if pv != tt.expect {
+				t.Errorf("%s: expected value %q, got %q", tt.name, tt.expect, pv)
+			}
+		}
+	}
 }

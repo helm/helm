@@ -8,8 +8,8 @@ install a chart archive
 
 This command installs a chart archive.
 
-The install argument must be either a relative path to a chart directory or the
-name of a chart in the current working directory.
+The install argument must be a chart reference, a path to a packaged chart,
+a path to an unpacked chart directory or a URL.
 
 To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line.
@@ -70,7 +70,7 @@ helm install [CHART]
 ```
       --ca-file string         verify certificates of HTTPS-enabled servers using this CA bundle
       --cert-file string       identify HTTPS client using this SSL certificate file
-      --devel                  use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.
+      --devel                  use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.
       --dry-run                simulate an install
       --key-file string        identify HTTPS client using this SSL key file
       --keyring string         location of public keys used for verification (default "~/.gnupg/pubring.gpg")
@@ -87,7 +87,7 @@ helm install [CHART]
       --tls-cert string        path to TLS certificate file (default "$HELM_HOME/cert.pem")
       --tls-key string         path to TLS key file (default "$HELM_HOME/key.pem")
       --tls-verify             enable TLS for request and verify remote
-  -f, --values valueFiles      specify values in a YAML file (can specify multiple) (default [])
+  -f, --values valueFiles      specify values in a YAML file or a URL(can specify multiple) (default [])
       --verify                 verify the package before installing it
       --version string         specify the exact chart version to install. If this is not specified, the latest version is installed
       --wait                   if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout

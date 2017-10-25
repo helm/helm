@@ -42,6 +42,10 @@ func TestKindSorter(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "CronJob"},
 		},
 		{
+			Name: "2",
+			Head: &util.SimpleHead{Kind: "CustomResourceDefinition"},
+		},
+		{
 			Name: "n",
 			Head: &util.SimpleHead{Kind: "DaemonSet"},
 		},
@@ -118,6 +122,10 @@ func TestKindSorter(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "StatefulSet"},
 		},
 		{
+			Name: "1",
+			Head: &util.SimpleHead{Kind: "StorageClass"},
+		},
+		{
 			Name: "w",
 			Head: &util.SimpleHead{Kind: "APIService"},
 		},
@@ -128,8 +136,8 @@ func TestKindSorter(t *testing.T) {
 		order       SortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "abcdefghijklmnopqrstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsrqponlkjihgfedcba!"},
+		{"install", InstallOrder, "abcde1fgh2ijklmnopqrstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsrqponlkji2hgf1edcba!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
@@ -175,7 +183,7 @@ func TestKindSorterSubSort(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "ClusterRoleBinding"},
 		},
 		{
-			Name: "u3",
+			Name: "u2",
 			Head: &util.SimpleHead{Kind: "Unknown"},
 		},
 		{
@@ -183,8 +191,8 @@ func TestKindSorterSubSort(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "Unknown"},
 		},
 		{
-			Name: "u2",
-			Head: &util.SimpleHead{Kind: "Unknown"},
+			Name: "t3",
+			Head: &util.SimpleHead{Kind: "Unknown2"},
 		},
 	}
 	for _, test := range []struct {
@@ -193,7 +201,7 @@ func TestKindSorterSubSort(t *testing.T) {
 		expected    string
 	}{
 		// expectation is sorted by kind (unknown is last) and then sub sorted alphabetically within each group
-		{"cm,clusterRole,clusterRoleBinding,Unknown", InstallOrder, "01Aa!zu1u2u3"},
+		{"cm,clusterRole,clusterRoleBinding,Unknown,Unknown2", InstallOrder, "01Aa!zu1u2t3"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
