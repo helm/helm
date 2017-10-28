@@ -10,13 +10,17 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
+      - restore_cache:
+          keys:
+            - glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+            - glide- # used as a fall through if the checksum fails to find exact entry
       - run:
           name: install dependencies
           command: make bootstrap
       - save_cache:
-          key: vendor-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+          key: glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
           paths:
-            - vendor
+            - /root/.glide  # Where the glide cache is stored
       - run:
           name: test
           command: .circleci/test.sh
