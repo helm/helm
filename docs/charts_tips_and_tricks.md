@@ -18,11 +18,11 @@ We also added two special template functions: `include` and `required`. The `inc
 function allows you to bring in another template, and then pass the results to other
 template functions.
 
-For example, this template snippet includes a template called `mytpl.tpl`, then
+For example, this template snippet includes a template called `mytpl`, then
 lowercases the result, then wraps that in double quotes.
 
 ```yaml
-value: {{include "mytpl.tpl" . | lower | quote}}
+value: {{include "mytpl" . | lower | quote}}
 ```
 
 The `required` function allows you to declare a particular
@@ -144,7 +144,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/config: {{ .Files.Get "path/to/config" | sha256sum }}
 [...]
 ```
 
