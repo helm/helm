@@ -26,9 +26,9 @@ import (
 	"google.golang.org/grpc/grpclog"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
+	"github.com/spf13/pflag"
 	"k8s.io/helm/pkg/kube"
 	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
-	"k8s.io/helm/pkg/rudder"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/version"
 )
@@ -36,24 +36,43 @@ import (
 var kubeClient *kube.Client
 var clientset internalclientset.Interface
 
+type options struct {
+	listen string
+}
+
+func (opts *options) registerFlags() {
+	pflag.StringVarP(&opts.listen, "listen", "l", "127.0.0.1:10001",
+		"Socket for rudder grpc server (default: 127.0.0.1:10001).")
+}
+
+func (opts *options) parseFlags() {
+	pflag.Parse()
+}
+
+func (opts *options) regAndParseFlags() {
+	opts.registerFlags()
+	opts.parseFlags()
+}
+
 func main() {
+	opts := new(options)
+	opts.regAndParseFlags()
 	var err error
 	kubeClient = kube.New(nil)
 	clientset, err = kubeClient.ClientSet()
 	if err != nil {
 		grpclog.Fatalf("Cannot initialize Kubernetes connection: %s", err)
 	}
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", rudder.GrpcPort))
+	grpclog.Printf("Creating tcp socket on %s\n", opts.listen)
+	lis, err := net.Listen("tcp", opts.listen)
 	if err != nil {
 		grpclog.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
 	rudderAPI.RegisterReleaseModuleServiceServer(grpcServer, &ReleaseModuleServiceServer{})
 
-	grpclog.Print("Server starting")
+	grpclog.Printf("Starting server on %s\n", opts.listen)
 	grpcServer.Serve(lis)
-	grpclog.Print("Server started")
 }
 
 // ReleaseModuleServiceServer provides implementation for rudderAPI.ReleaseModuleServiceServer
