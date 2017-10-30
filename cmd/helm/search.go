@@ -125,9 +125,9 @@ func (s *searchCmd) formatSearchResults(res []*search.Result) string {
 	}
 	table := uitable.New()
 	table.MaxColWidth = 50
-	table.AddRow("NAME", "VERSION", "DESCRIPTION")
+	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
 	for _, r := range res {
-		table.AddRow(r.Name, r.Chart.Version, r.Chart.Description)
+		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
 	}
 	return table.String()
 }
