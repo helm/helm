@@ -134,9 +134,8 @@ be updated with a subsequent `helm upgrade`, but if the
 deployment spec itself didn't change the application keeps running
 with the old configuration resulting in an inconsistent deployment.
 
-The `sha256sum` function can be used together with the `include`
-function to ensure a deployments template section is updated if another
-spec changes: 
+The `sha256sum` function can be used to ensure a deployment's
+annotation section is updated if another file changes: 
 
 ```yaml
 kind: Deployment
@@ -147,6 +146,9 @@ spec:
         checksum/config: {{ .Files.Get "path/to/config" | sha256sum }}
 [...]
 ```
+
+See also the `helm upgrade --recreate-pods` flag for a slightly
+different way of addressing this issue.
 
 ## Tell Tiller Not To Delete a Resource
 
