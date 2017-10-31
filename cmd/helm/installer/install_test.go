@@ -207,6 +207,10 @@ func TestInstall(t *testing.T) {
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
 		}
+		ports := len(obj.Spec.Template.Spec.Containers[0].Ports)
+		if ports != 2 {
+			t.Errorf("expected ports = 2, got '%d'", ports)
+		}
 		return true, obj, nil
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {

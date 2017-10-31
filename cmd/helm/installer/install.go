@@ -168,6 +168,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 							ImagePullPolicy: opts.pullPolicy(),
 							Ports: []v1.ContainerPort{
 								{ContainerPort: 44134, Name: "tiller"},
+								{ContainerPort: 44135, Name: "http"},
 							},
 							Env: []v1.EnvVar{
 								{Name: "TILLER_NAMESPACE", Value: opts.Namespace},
