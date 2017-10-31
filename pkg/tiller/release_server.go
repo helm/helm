@@ -244,12 +244,12 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 	return chartutil.NewVersionSet(versions...), nil
 }
 
-func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, *chart.Config, error) {
 	// Guard to make sure Tiller is at the right version to handle this chart.
 	sver := version.GetVersion()
 	if ch.Metadata.TillerVersion != "" &&
 		!version.IsCompatibleRange(ch.Metadata.TillerVersion, sver) {
-		return nil, nil, "", fmt.Errorf("Chart incompatible with Tiller %s", sver)
+		return nil, nil, "", nil, fmt.Errorf("Chart incompatible with Tiller %s", sver)
 	}
 
 	if ch.Metadata.KubeVersion != "" {
@@ -257,15 +257,22 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		gitVersion := cap.KubeVersion.String()
 		k8sVersion := strings.Split(gitVersion, "+")[0]
 		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, k8sVersion) {
-			return nil, nil, "", fmt.Errorf("Chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
+			return nil, nil, "", nil, fmt.Errorf("Chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
 		}
 	}
 
 	s.Log("rendering %s chart using values", ch.GetMetadata().Name)
 	renderer := s.engine(ch)
+	if ch.Metadata.ExpandValues {
+		newVals, err := renderer.ExpandValues(values)
+		if err != nil {
+			return nil, nil, "", nil, err
+		}
+		values = newVals
+	}
 	files, err := renderer.Render(ch, values)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", nil, err
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -303,7 +310,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 			b.WriteString("\n---\n# Source: " + name + "\n")
 			b.WriteString(content)
 		}
-		return nil, b, "", err
+		return nil, b, "", nil, err
 	}
 
 	// Aggregate all valid manifests into one big doc.
@@ -313,7 +320,18 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		b.WriteString(m.Content)
 	}
 
-	return hooks, b, notes, nil
+	if !ch.Metadata.ExpandValues {
+		return hooks, b, notes, nil, nil
+	}
+	var finalValsStr string
+	finalVals, err := values.Table("Values")
+	if err == nil {
+		finalValsStr, err = finalVals.YAML()
+	}
+	if err != nil {
+		return nil, b, "", nil, err
+	}
+	return hooks, b, notes, &chart.Config{Raw: finalValsStr}, nil
 }
 
 // recordRelease with an update operation in case reuse has been set.

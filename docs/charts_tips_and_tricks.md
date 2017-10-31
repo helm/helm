@@ -14,9 +14,11 @@ First, we added almost all of the functions in the
 for security reasons: `env` and `expandenv` (which would have given chart authors
 access to Tiller's environment).
 
-We also added two special template functions: `include` and `required`. The `include`
-function allows you to bring in another template, and then pass the results to other
-template functions.
+We also added four special template functions: `include`, `required`, `tpl`, and
+`tval`.
+
+The `include` function allows you to bring in another template, and then pass the
+results to other template functions.
 
 For example, this template snippet includes a template called `mytpl`, then
 lowercases the result, then wraps that in double quotes.
@@ -35,6 +37,9 @@ is required, and will print an error message when that entry is missing:
 ```yaml
 value: {{required "A valid .Values.who entry required!" .Values.who }}
 ```
+
+The `tval` function enables templated values to be used. There are further
+details [here](https://github.com/kubernetes/helm/blob/master/docs/charts.md#templated-values).
 
 ## Quote Strings, Don't Quote Integers
 

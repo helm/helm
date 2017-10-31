@@ -57,6 +57,7 @@ maintainers: # (optional)
     email: The maintainer's email (optional for each maintainer)
     url: A URL for the maintainer (optional for each maintainer)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
+expandValues: Whether or not any templates found in values should be recursively expanded (optional, boolean)
 icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
 deprecated: Whether this chart is deprecated (optional, boolean)
@@ -775,6 +776,95 @@ chart. There is no way for a subchart to influence the values of the
 parent chart.
 
 Also, global variables of parent charts take precedence over the global variables from subcharts.
+
+### Templated Values
+
+If the `expandValues` flag in `Chart.yaml` is set to `true` then values can be composed
+using other values, via a custom `tval` function. Since all files must be comprised of
+valid YAML, all such values are composed within YAML strings. For example:
+
+```yaml
+a: expanded
+b: 'this will be {{ tval "a" }}' # => 'this will be expanded'
+```
+
+Expansion is performed recursively and multiple templates can be referenced:
+
+```yaml
+a: expanded
+b:
+  1: this
+  2: will
+  3: be
+  4: '{{ tval "a" }}'
+c: '{{ tval "b.1" }} {{ tval "b.2" }} {{ tval "b.3" }} {{ tval "b.4" }}' # => 'this will be expanded'
+```
+
+You can also use all of the usual templating functions:
+
+```yaml
+connection: '1.2.3.4:56'
+port: '{{ index (splitList ":" (tval "connection")) 1 }}' # => 56
+```
+
+As you can see in the above examples, the `.Values` prefix that you would need to write
+elsewhere is implicit here. You can still explicitly reference values that way if you
+wish but then there will be no recursive expansion. For example, for a release called
+`zealous-zebu`:
+
+```yaml
+a: 'My release is called {{ .Release.Name }}'
+b: '{{ .Values.a }}' # Will not recursively expand; you will get the literal string 'My release is called {{ .Release.Name }}'
+c: '{{ tval "a" }}' # Will recursively expand; you will get 'My release is called zealous-zebu'
+```
+
+One immediate application of this feature is to create extra values that are derived
+from existing ones. For example, suppose that you wish to specify some database names
+automatically based upon the release name:
+
+```yaml
+databases:
+  cities: 'db-{{ .Release.Name }}-cities'
+  cities-dev: '{{ tval "databases.cities" }}-dev'
+```
+
+Another use case is for passing values down to child charts, without having to duplicate
+the configuration in question. Suppose that in `requirements.yaml` you have configured
+the following:
+
+```yaml
+dependencies:
+  - name: child
+    ...
+```
+
+You can then pass through values from the parent chart by writing something like this in
+the parent's `values.yaml`:
+
+```yaml
+a: abc
+b: def
+
+child:
+  c: '{{ tval "a" }}'
+  d: '{{ tval "b" }}ghi'
+  e: jkl
+```
+
+That is, you can pass values through unchanged (`c`), pass them through modified (`d`),
+and of course inject additional values (`e`). As usual, the child chart will see these
+as `.Values.c` etc.
+
+When this feature is enabled, if you wish to embed the literal string `{{` in a value
+then you will need to write something like this:
+
+```yaml
+a: '{{`{{ actual braces }}`}}'
+```
+
+Note that the `tval` function is not available in any other context. Also, 
+values used for [requirement conditions](#tags-and-condition-fields-in-requirementsyaml)
+cannot be templated.
 
 ### References
 

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
 )
@@ -44,23 +45,28 @@ MANIFEST:
 {{.Release.Manifest}}
 `
 
-func printRelease(out io.Writer, rel *release.Release) error {
+func printRelease(out io.Writer, rel *release.Release, finalVals *chart.Config) error {
 	if rel == nil {
 		return nil
 	}
 
-	cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
-	if err != nil {
-		return err
-	}
-	cfgStr, err := cfg.YAML()
-	if err != nil {
-		return err
+	var valsStr string
+	if finalVals == nil {
+		vals, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
+		if err != nil {
+			return err
+		}
+		valsStr, err = vals.YAML()
+		if err != nil {
+			return err
+		}
+	} else {
+		valsStr = finalVals.Raw
 	}
 
 	data := map[string]interface{}{
 		"Release":        rel,
-		"ComputedValues": cfgStr,
+		"ComputedValues": valsStr,
 		"ReleaseDate":    timeconv.Format(rel.Info.LastDeployed, time.ANSIC),
 	}
 	return tpl(printReleaseTemplate, data, out)

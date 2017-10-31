@@ -166,49 +166,53 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 
 	// Add the 'tpl' function here
 	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
-		basePath, err := vals.PathValue("Template.BasePath")
-		if err != nil {
-			return "", fmt.Errorf("Cannot retrieve Template.Basepath from values inside tpl function: %s (%s)", tpl, err.Error())
+		dummyName := "___tpl_template"
+		spec := renderSpec{
+			tpls: map[string]renderable{dummyName: {tpl: tpl, vals: vals}},
 		}
-
-		r := renderable{
-			tpl:      tpl,
-			vals:     vals,
-			basePath: basePath.(string),
-		}
-
-		templates := map[string]renderable{}
-		templateName, err := vals.PathValue("Template.Name")
-		if err != nil {
-			return "", fmt.Errorf("Cannot retrieve Template.Name from values inside tpl function: %s (%s)", tpl, err.Error())
-		}
-
-		templates[templateName.(string)] = r
-
-		result, err := e.render(templates)
+		result, err := e.renderFromSpec(&spec)
 		if err != nil {
 			return "", fmt.Errorf("Error during tpl function execution for %q: %s", tpl, err.Error())
 		}
-		return result[templateName.(string)], nil
+		return result[dummyName], nil
 	}
 
 	return funcMap
 }
 
-// render takes a map of templates/values and renders them.
-func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
+func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
+	spec := renderSpec{
+		tpls: tpls,
+		// We want to parse the templates in a predictable order. The order favors
+		// higher-level (in file system) templates over deeply nested templates.
+		order: sortTemplates(tpls),
+		// Don't render partials. We don't care about the direct output of partials.
+		// They are only included from other templates.
+		filter:     func(name string) bool { return !strings.HasPrefix(path.Base(name), "_") },
+		addTplMeta: true,
+	}
+	return e.renderFromSpec(&spec)
+}
+
+type renderSpec struct {
+	tpls       map[string]renderable
+	order      []string
+	filter     func(string) bool
+	addTplMeta bool
+}
+
+type preparedTemplate struct {
+	tpl     *template.Template
+	funcMap template.FuncMap
+}
+
+func (e *Engine) renderPrepare() (*preparedTemplate, error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
-	//
 	// The idea with this process is to make it possible for more complex templates
 	// to share common blocks, but to make the entire thing feel like a file-based
 	// template engine.
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("rendering template failed: %v", r)
-		}
-	}()
 	t := template.New("gotpl")
 	if e.Strict {
 		t.Option("missingkey=error")
@@ -220,52 +224,78 @@ func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string,
 
 	funcMap := e.alterFuncMap(t)
 
-	// We want to parse the templates in a predictable order. The order favors
-	// higher-level (in file system) templates over deeply nested templates.
-	keys := sortTemplates(tpls)
-
-	files := []string{}
-
-	for _, fname := range keys {
-		r := tpls[fname]
-		t = t.New(fname).Funcs(funcMap)
-		if _, err := t.Parse(r.tpl); err != nil {
-			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
-		}
-		files = append(files, fname)
-	}
-
-	// Adding the engine's currentTemplates to the template context
+	// Add the engine's currentTemplates to the template context
 	// so they can be referenced in the tpl function
-	for fname, r := range e.CurrentTemplates {
-		if t.Lookup(fname) == nil {
-			t = t.New(fname).Funcs(funcMap)
+	for name, r := range e.CurrentTemplates {
+		if t.Lookup(name) == nil {
+			t = t.New(name).Funcs(funcMap)
 			if _, err := t.Parse(r.tpl); err != nil {
-				return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
+				return nil, fmt.Errorf("parse error in %q: %s", name, err)
 			}
 		}
 	}
 
-	rendered = make(map[string]string, len(files))
-	var buf bytes.Buffer
-	for _, file := range files {
-		// Don't render partials. We don't care out the direct output of partials.
-		// They are only included from other templates.
-		if strings.HasPrefix(path.Base(file), "_") {
-			continue
-		}
-		// At render time, add information about the template that is being rendered.
-		vals := tpls[file].vals
-		vals["Template"] = map[string]interface{}{"Name": file, "BasePath": tpls[file].basePath}
-		if err := t.ExecuteTemplate(&buf, file, vals); err != nil {
-			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
-		}
+	return &preparedTemplate{tpl: t, funcMap: funcMap}, nil
+}
 
-		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
-		// is set. Since missing=error will never get here, we do not need to handle
-		// the Strict case.
-		rendered[file] = strings.Replace(buf.String(), "<no value>", "", -1)
-		buf.Reset()
+func (e *Engine) renderSingle(t *template.Template, name string, vals chartutil.Values, buf *bytes.Buffer) (result string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("rendering template failed: %v", r)
+		}
+	}()
+
+	buf.Reset()
+	if err := t.ExecuteTemplate(buf, name, vals); err != nil {
+		return "", fmt.Errorf("render error in %q: %s", name, err)
+	}
+	// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
+	// is set. Since missing=error will never get here, we do not need to handle
+	// the Strict case.
+	result = strings.Replace(buf.String(), "<no value>", "", -1)
+	return result, nil
+}
+
+func (e *Engine) renderFromSpec(spec *renderSpec) (rendered map[string]string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("rendering template failed: %v", r)
+		}
+	}()
+
+	prep, err := e.renderPrepare()
+	if err != nil {
+		return nil, err
+	}
+
+	if spec.order == nil {
+		spec.order = make([]string, 0, len(spec.tpls))
+		for key := range spec.tpls {
+			spec.order = append(spec.order, key)
+		}
+		sort.Strings(spec.order)
+	}
+
+	t := prep.tpl
+	for _, name := range spec.order {
+		t = t.New(name).Funcs(prep.funcMap)
+		if _, err := t.Parse(spec.tpls[name].tpl); err != nil {
+			return nil, fmt.Errorf("parse error in %q: %s", name, err)
+		}
+	}
+
+	rendered = make(map[string]string, len(spec.order))
+	var buf bytes.Buffer
+	for _, name := range spec.order {
+		if spec.filter == nil || spec.filter(name) {
+			if spec.addTplMeta {
+				// At render time, add information about the template that is being rendered.
+				spec.tpls[name].vals["Template"] = map[string]interface{}{"Name": name, "BasePath": spec.tpls[name].basePath}
+			}
+			if rendered[name], err = e.renderSingle(t, name, spec.tpls[name].vals, &buf); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return rendered, nil

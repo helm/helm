@@ -24,6 +24,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
@@ -36,7 +37,7 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 		return nil, err
 	}
 	s.Log("preparing update for %s", req.Name)
-	currentRelease, updatedRelease, err := s.prepareUpdate(req)
+	currentRelease, updatedRelease, finalVals, err := s.prepareUpdate(req)
 	if err != nil {
 		if req.Force {
 			// Use the --force, Luke.
@@ -53,12 +54,14 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	}
 
 	s.Log("performing update for %s", req.Name)
-	res, err := s.performUpdate(currentRelease, updatedRelease, req)
-	if err != nil {
-		return res, err
-	}
-
-	if !req.DryRun {
+	res := &services.UpdateReleaseResponse{Release: updatedRelease, FinalValues: finalVals}
+	if req.DryRun {
+		s.Log("dry run for %s", updatedRelease.Name)
+		res.Release.Info.Description = "Dry run complete"
+	} else {
+		if err := s.performUpdate(currentRelease, updatedRelease, req); err != nil {
+			return res, err
+		}
 		s.Log("updating status for updated release for %s", req.Name)
 		if err := s.env.Releases.Update(updatedRelease); err != nil {
 			return res, err
@@ -69,26 +72,26 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 }
 
 // prepareUpdate builds an updated release for an update operation.
-func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
+func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, *chart.Config, error) {
 	if req.Chart == nil {
-		return nil, nil, errMissingChart
+		return nil, nil, nil, errMissingChart
 	}
 
 	// finds the deployed release with the given name
 	currentRelease, err := s.env.Releases.Deployed(req.Name)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// If new values were not supplied in the upgrade, re-use the existing values.
 	if err := s.reuseValues(req, currentRelease); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// finds the non-deleted release with the given name
 	lastRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Increment revision count. This is passed to templates, and also stored on
@@ -106,16 +109,16 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 
 	caps, err := capabilities(s.clientset.Discovery())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
+	hooks, manifestDoc, notesTxt, finalVals, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Store an updated release.
@@ -139,7 +142,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		updatedRelease.Info.Status.Notes = notesTxt
 	}
 	err = validateManifest(s.env.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
-	return currentRelease, updatedRelease, err
+	return currentRelease, updatedRelease, finalVals, err
 }
 
 // performUpdateForce performs the same action as a `helm delete && helm install --replace`.
@@ -150,7 +153,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		return nil, err
 	}
 
-	newRelease, err := s.prepareRelease(&services.InstallReleaseRequest{
+	newRelease, finalVals, err := s.prepareRelease(&services.InstallReleaseRequest{
 		Chart:        req.Chart,
 		Values:       req.Values,
 		DryRun:       req.DryRun,
@@ -161,7 +164,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		Timeout:      req.Timeout,
 		Wait:         req.Wait,
 	})
-	res := &services.UpdateReleaseResponse{Release: newRelease}
+	res := &services.UpdateReleaseResponse{Release: newRelease, FinalValues: finalVals}
 	if err != nil {
 		s.Log("failed update prepare step: %s", err)
 		// On dry run, append the manifest contents to a failed release. This is
@@ -249,19 +252,11 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	return res, nil
 }
 
-func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
-	res := &services.UpdateReleaseResponse{Release: updatedRelease}
-
-	if req.DryRun {
-		s.Log("dry run for %s", updatedRelease.Name)
-		res.Release.Info.Description = "Dry run complete"
-		return res, nil
-	}
-
+func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) error {
 	// pre-upgrade hooks
 	if !req.DisableHooks {
 		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PreUpgrade, req.Timeout); err != nil {
-			return res, err
+			return err
 		}
 	} else {
 		s.Log("update hooks disabled for %s", req.Name)
@@ -273,13 +268,13 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
 		s.recordRelease(updatedRelease, true)
-		return res, err
+		return err
 	}
 
 	// post-upgrade hooks
 	if !req.DisableHooks {
 		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PostUpgrade, req.Timeout); err != nil {
-			return res, err
+			return err
 		}
 	}
 
@@ -289,5 +284,5 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
 	updatedRelease.Info.Description = "Upgrade complete"
 
-	return res, nil
+	return nil
 }
