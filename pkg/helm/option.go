@@ -348,7 +348,8 @@ func ResetValues(reset bool) UpdateOption {
 	}
 }
 
-// ReuseValues will (if true) trigger resetting the values to their original state.
+// ReuseValues will cause Tiller to reuse the values from the last release.
+// This is ignored if ResetValues is true.
 func ReuseValues(reuse bool) UpdateOption {
 	return func(opts *options) {
 		opts.reuseValues = reuse
