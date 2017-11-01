@@ -12,3 +12,7 @@ repositories:
     url: "http://dl.example.com"
   - name: testing-querystring
     url: "http://example.com?key=value"
+  - name: testing-relative
+    url: "http://example.com/helm"
+  - name: testing-relative-trailing-slash
+    url: "http://example.com/helm/"
