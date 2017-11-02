@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -24,10 +25,13 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"bytes"
+	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
+	"time"
 )
 
 var listHelp = `
@@ -73,7 +77,17 @@ type listCmd struct {
 	namespace  string
 	superseded bool
 	pending    bool
+	format     string
 	client     helm.Interface
+}
+
+type listRelease struct {
+	Name      string
+	Revision  int32
+	Updated   string
+	Status    string
+	Namespace string
+	Chart     string
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -112,6 +126,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
 	f.BoolVar(&list.pending, "pending", false, "show pending releases")
 	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
+	f.StringVar(&list.format, "format", "text", "format output as text, json, or yaml")
 
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
@@ -150,19 +165,20 @@ func (l *listCmd) run() error {
 		return nil
 	}
 
-	if res.Next != "" && !l.short {
+	if res.Next != "" && !l.short && l.format == "text" {
 		fmt.Fprintf(l.out, "\tnext: %s\n", res.Next)
 	}
 
-	rels := res.Releases
-
+	format := l.format
 	if l.short {
-		for _, r := range rels {
-			fmt.Fprintln(l.out, r.Name)
-		}
-		return nil
+		format = "short"
 	}
-	fmt.Fprintln(l.out, formatList(rels))
+
+	formatted, err := formatList(res.Releases, format)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(l.out, formatted)
 	return nil
 }
 
@@ -207,7 +223,26 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 	return status
 }
 
-func formatList(rels []*release.Release) string {
+func formatList(rels []*release.Release, format string) (string, error) {
+	var res string
+	var err error
+
+	switch format {
+	case "text":
+		res = formatText(rels)
+	case "short":
+		res = formatShort(rels)
+	case "json":
+		res = fmt.Sprintf("%s\n", formatJSON(rels))
+	case "yaml":
+		res = fmt.Sprintf("%s", formatYAML(rels))
+	default:
+		err = fmt.Errorf("invalid format \"%s\"", format)
+	}
+	return res, err
+}
+
+func formatText(rels []*release.Release) string {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
@@ -219,5 +254,44 @@ func formatList(rels []*release.Release) string {
 		n := r.Namespace
 		table.AddRow(r.Name, v, t, s, c, n)
 	}
-	return table.String()
+	return fmt.Sprintf("%s\n", table.String())
+}
+
+func formatShort(rels []*release.Release) string {
+	var buffer bytes.Buffer
+	for _, r := range rels {
+		_, err := buffer.WriteString(fmt.Sprintf("%s\n", r.Name))
+		if err != nil {
+			panic(err)
+		}
+	}
+	return buffer.String()
+}
+
+func formatJSON(rels []*release.Release) []byte {
+	listReleases := []listRelease{}
+	for _, r := range rels {
+		lr := listRelease{
+			Name:      r.Name,
+			Revision:  r.Version,
+			Updated:   timeconv.Format(r.Info.LastDeployed, time.RFC3339),
+			Status:    r.Info.Status.Code.String(),
+			Chart:     fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			Namespace: r.Namespace,
+		}
+		listReleases = append(listReleases, lr)
+	}
+	res, err := json.MarshalIndent(listReleases, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func formatYAML(rels []*release.Release) []byte {
+	res, err := yaml.JSONToYAML(formatJSON(rels))
+	if err != nil {
+		panic(err)
+	}
+	return res
 }

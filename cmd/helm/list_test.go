@@ -49,6 +49,22 @@ func TestListCmd(t *testing.T) {
 			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \tNAMESPACE\natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\tdefault  \n",
 		},
 		{
+			name: "list format JSON",
+			args: []string{"--format", "json"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "atlas"}),
+			},
+			expected: "\"Name\": \"atlas\",\n",
+		},
+		{
+			name: "list format YAML",
+			args: []string{"--format", "yaml"},
+			resp: []*release.Release{
+				releaseMock(&releaseOptions{name: "atlas"}),
+			},
+			expected: "- Chart: foo-0.1.0-beta.1\n  Name: atlas\n  Namespace: default\n  Revision: 1\n  Status: DEPLOYED\n",
+		},
+		{
 			name: "list, one deployed, one failed",
 			args: []string{"-q"},
 			resp: []*release.Release{
