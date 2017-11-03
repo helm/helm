@@ -234,8 +234,8 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
-	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_SUPERSEDED {
-		t.Errorf("Expected SUPERSEDED status on previous Release version. Got %v", oldStatus)
+	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_DEPLOYED {
+		t.Errorf("Expected Deployed status on previous Release version. Got %v", oldStatus)
 	}
 }
 
