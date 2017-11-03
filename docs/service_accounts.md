@@ -110,3 +110,61 @@ NAME                  READY  STATUS             RESTARTS  AGE
 wayfaring-yak-alpine  0/1    ContainerCreating  0         0s
 ```
 
+# Helm and Service Accounts
+In order for a helm client to talk to a tiller, it will need certain privileges to be granted.
+
+Specifically, the helm client will need to be able to `create` `pods/portforward` and
+be able to `list` `pods` in the namespace where tiller is running.
+
+## Example: Service account for a helm client
+
+In this example, we will assume tiller is running in a namespace called `tiller-world`
+and that the helm client is running in a namespace called `helm-world`  By default,
+tiller is running in the `kube-system` namespace.
+
+In helm-user.yaml:
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: helm-user-serviceaccount
+  namespace: helm-world
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: helm-user-role
+  namespace: tiller-world
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods/portforward
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: helm-user-role-binding
+  namespace: tiller-world
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: helm-user-role
+subjects:
+- kind: ServiceAccount
+  name: helm-user-serviceaccount
+  namespace: helm-world
+```
+
+Please note that the role and rolebindings must be placed in the namespace
+that tiller is running in, while the service account must be in the namespace
+that the helm client is to be run in.  (the pod using the helm client must
+be using the service account created here)
