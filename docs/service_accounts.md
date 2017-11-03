@@ -122,7 +122,7 @@ In this example, we will assume tiller is running in a namespace called `tiller-
 and that the helm client is running in a namespace called `helm-world`  By default,
 tiller is running in the `kube-system` namespace.
 
-In helm-user.yaml:
+In `helm-user.yaml`:
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -164,7 +164,7 @@ subjects:
   namespace: helm-world
 ```
 
-Please note that the role and rolebindings must be placed in the namespace
+Please note that the `role` and `rolebinding` must be placed in the namespace
 that tiller is running in, while the service account must be in the namespace
 that the helm client is to be run in.  (the pod using the helm client must
 be using the service account created here)
