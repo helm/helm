@@ -426,7 +426,7 @@ func WithMaxHistory(max int32) HistoryOption {
 // NewContext creates a versioned context.
 func NewContext() context.Context {
 	md := metadata.Pairs("x-helm-api-client", version.GetVersion())
-	return metadata.NewContext(context.TODO(), md)
+	return metadata.NewOutgoingContext(context.TODO(), md)
 }
 
 // ReleaseTestOption allows configuring optional request data for
