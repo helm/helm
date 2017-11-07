@@ -241,7 +241,7 @@ In the example below we use `--override` to add the revision property and set
 its value to 1.
 
 ```
-helm init --set metadata.annotations."deployment\.kubernetes\.io/revision"="1"
+helm init --override metadata.annotations."deployment\.kubernetes\.io/revision"="1"
 ```
 Output:
 
