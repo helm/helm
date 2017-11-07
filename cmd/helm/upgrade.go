@@ -153,7 +153,7 @@ func (u *upgradeCmd) run() error {
 		// inside of the grpc.rpcError message.
 		releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
 
-		if err != nil {
+		if err == nil {
 			previousReleaseNamespace := releaseHistory.Releases[0].Namespace
 			if previousReleaseNamespace != u.namespace {
 				fmt.Fprintf(u.out, "WARNING: Namespace doesn't match with previous. Release will be deployed to %s\n", previousReleaseNamespace)
