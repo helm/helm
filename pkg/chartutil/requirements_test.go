@@ -419,6 +419,12 @@ func TestDependentChartWithSubChartsAbsentInRequirements(t *testing.T) {
 
 }
 
+func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
+	if _, err := Load("testdata/dependent-chart-helmignore"); err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+}
+
 func TestDependentChartsWithSubchartsAllSpecifiedInRequirements(t *testing.T) {
 	c, err := Load("testdata/dependent-chart-with-all-in-requirements-yaml")
 	if err != nil {
