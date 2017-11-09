@@ -151,7 +151,15 @@ func (u *upgradeCmd) run() error {
 		// The returned error is a grpc.rpcError that wraps the message from the original error.
 		// So we're stuck doing string matching against the wrapped error, which is nested somewhere
 		// inside of the grpc.rpcError message.
-		_, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
+		releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
+
+		if err == nil {
+			previousReleaseNamespace := releaseHistory.Releases[0].Namespace
+			if previousReleaseNamespace != u.namespace {
+				fmt.Fprintf(u.out, "WARNING: Namespace doesn't match with previous. Release will be deployed to %s\n", previousReleaseNamespace)
+			}
+		}
+
 		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(u.release).Error()) {
 			fmt.Fprintf(u.out, "Release %q does not exist. Installing it now.\n", u.release)
 			ic := &installCmd{
