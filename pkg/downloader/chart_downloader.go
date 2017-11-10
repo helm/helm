@@ -93,7 +93,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	name := filepath.Base(u.Path)
 	destfile := filepath.Join(dest, name)
-	if err := ioutil.WriteFile(destfile, data.Bytes(), 0655); err != nil {
+	if err := ioutil.WriteFile(destfile, data.Bytes(), 0644); err != nil {
 		return destfile, nil, err
 	}
 
@@ -109,7 +109,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return destfile, ver, nil
 		}
 		provfile := destfile + ".prov"
-		if err := ioutil.WriteFile(provfile, body.Bytes(), 0655); err != nil {
+		if err := ioutil.WriteFile(provfile, body.Bytes(), 0644); err != nil {
 			return destfile, nil, err
 		}
 
