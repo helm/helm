@@ -17,7 +17,11 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"strings"
+
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // resourcePolicyAnno is the annotation name for a resource policy
@@ -29,11 +33,16 @@ const resourcePolicyAnno = "helm.sh/resource-policy"
 //   during an uninstallRelease action.
 const keepPolicy = "keep"
 
-func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
+func filterManifestsToKeep(manifests []Manifest, kubeClient environment.KubeClient, namespace string) ([]Manifest, []Manifest) {
 	remaining := []Manifest{}
 	keep := []Manifest{}
 
 	for _, m := range manifests {
+		// check if m is in fact present from k8s client's POV.
+		output, err := kubeClient.Get(namespace, bytes.NewBufferString(m.Content))
+		if err != nil || strings.Contains(output, kube.MissingGetHeader) {
+			continue
+		}
 
 		if m.Head.Metadata == nil || m.Head.Metadata.Annotations == nil || len(m.Head.Metadata.Annotations) == 0 {
 			remaining = append(remaining, m)
