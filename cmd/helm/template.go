@@ -261,11 +261,11 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if t.outputDir != nil {
-			writeToFile(t.outputDir, name, data)
+		if t.outputDir != "" {
+			writeToFile(t.outputDir, m.name, data)
 			continue
 		}
-		fmt.Printf("---\n# Source: %s\n", name)
+		fmt.Printf("---\n# Source: %s\n", m.name)
 		fmt.Printf(data)
 	}
 	return nil
