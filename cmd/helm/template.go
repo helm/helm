@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -39,6 +40,7 @@ import (
 	tversion "k8s.io/helm/pkg/version"
 )
 
+const defaultDirectoryPermission = 0755
 const templateDesc = `
 Render chart templates locally and display the output.
 
@@ -64,6 +66,7 @@ type templateCmd struct {
 	releaseName  string
 	renderFiles  []string
 	kubeVersion  string
+	outputDir    string
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -88,6 +91,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", "", "override the Kubernetes version used as Capabilities.KubeVersion.Major/Minor (e.g. 1.7)")
+	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 
 	return cmd
 }
@@ -123,6 +127,14 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			if _, err := os.Stat(af); err != nil {
 				return fmt.Errorf("could not resolve template path: %s", err)
 			}
+		}
+	}
+
+	// verify that output-dir exists if provided
+	if t.outputDir != "" {
+		_, err = os.Stat(t.outputDir)
+		if os.IsNotExist(err) {
+			panic(fmt.Sprintf("output-dir '%s' does not exist", t.outputDir))
 		}
 	}
 
@@ -248,8 +260,49 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		if strings.HasPrefix(b, "_") {
 			continue
 		}
+
+		if t.outputDir != "" {
+			writeToFile(t.outputDir, m.Name, data)
+			continue
+		}
 		fmt.Printf("---\n# Source: %s\n", m.Name)
 		fmt.Println(data)
 	}
 	return nil
+}
+
+// write the <data> to <output-dir>/<name>
+func writeToFile(outputDir string, name string, data string) {
+	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+	ensureDirectoryForFile(outfileName)
+
+	f, err := os.Create(outfileName)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s", name, data))
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("wrote %s\n", outfileName)
+	return
+}
+
+// check if the directory exists to create file. creates if don't exists
+func ensureDirectoryForFile(file string) {
+	baseDir := path.Dir(file)
+	_, err := os.Stat(baseDir)
+	if !os.IsNotExist(err) {
+		return
+	}
+
+	err = os.MkdirAll(baseDir, defaultDirectoryPermission)
+	if err != nil {
+		panic(err)
+	}
 }
