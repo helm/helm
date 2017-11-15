@@ -65,7 +65,7 @@ func CertPoolFromFile(filename string) (*x509.CertPool, error) {
 func CertFromFilePair(certFile, keyFile string) (*tls.Certificate, error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		return nil, fmt.Errorf("can't load key pair from cert %s and key %s", certFile, keyFile)
+		return nil, fmt.Errorf("can't load key pair from cert %s and key %s: %s", certFile, keyFile, err)
 	}
 	return &cert, err
 }
