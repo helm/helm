@@ -4,6 +4,8 @@ This document explains how to create strong SSL/TLS connections between Helm and
 Tiller. The emphasis here is on creating an internal CA, and using both the
 cryptographic and identity functions of SSL.
 
+> Support for TLS-based auth was introduced in Helm 2.3.0
+
 Configuring SSL is considered an advanced topic, and knowledge of Helm and Tiller
 is assumed.
 
@@ -15,6 +17,10 @@ also verifies Tiller's identity by certificate authority.
 
 There are numerous possible configurations for setting up certificates and authorities,
 but the method we cover here will work for most situations.
+
+> As of Helm 2.7.2, Tiller _requires_ that the client certificate be validated
+> by its CA. In prior versions, Tiller used a weaker validation strategy that
+> allowed self-signed certificates.
 
 In this guide, we will show how to:
 
@@ -69,7 +75,7 @@ very important. The key in particular should be handled with particular care.
 Often, you will want to generate an intermediate signing key. For the sake of brevity,
 we will be signing keys with our root CA.
 
-## Generating Certificates
+### Generating Certificates
 
 We will be generating two certificates, each representing a type of certificate:
 
@@ -256,6 +262,27 @@ $ cp helm.key.pem $(helm home)/key.pem
 
 With this, you can simply run `helm ls --tls` to enable TLS.
 
+### Troubleshooting
+
+*Running a command, I get `Error: transport is closing`*
+
+This is almost always due to a configuration error in which the client is missing
+a certificate (`--tls-cert`) or the certificate is bad.
+
+*I'm using a certificate, but get `Error: remote error: tls: bad certificate`*
+
+This means that Tiller's CA cannot verify your certificate. In the examples above,
+we used a single CA to generate both the client and server certificates. In these
+examples, the CA has _signed_ the client's certificate. We then load that CA
+up to Tiller. So when the client certificate is sent to the server, Tiller
+checks the client certificate against the CA.
+
+*If I use `--tls-verify` on the client, I get `Error: x509: certificate is valid for tiller-server, not localhost`*
+
+If you plan to use `--tls-verify` on the client, you will need to make sure that
+the host name that Helm connects to matches the host name on the certificate. In
+some cases this is awkward, since Helm will connect over localhost, or the FQDN is
+not available for public resolution.
 
 ## References
 
