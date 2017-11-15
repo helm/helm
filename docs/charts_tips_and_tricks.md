@@ -143,7 +143,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ .Files.Get "path/to/config" | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
 [...]
 ```
 
