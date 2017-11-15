@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -39,6 +40,7 @@ import (
 	tversion "k8s.io/helm/pkg/version"
 )
 
+const defaultDirectoryPermission = 0755
 const templateDesc = `
 Render chart templates locally and display the output.
 
@@ -64,6 +66,7 @@ type templateCmd struct {
 	releaseName  string
 	renderFiles  []string
 	kubeVersion  string
+	outputDir    string
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -123,6 +126,14 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			if _, err := os.Stat(af); err != nil {
 				return fmt.Errorf("could not resolve template path: %s", err)
 			}
+		}
+	}
+
+	// verify that output-dir exists if provided
+	if outputDir != "" {
+		_, err = os.Stat(outputDir)
+		if os.IsNotExist(err) {
+			panic(fmt.Sprintf("output-dir '%s' does not exist", outputDir))
 		}
 	}
 
@@ -248,8 +259,58 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		if strings.HasPrefix(b, "_") {
 			continue
 		}
-		fmt.Printf("---\n# Source: %s\n", m.Name)
-		fmt.Println(data)
+		writeData(m.name, data)
 	}
 	return nil
+}
+
+func writeData(name string, data string) {
+	if outputDir != "" {
+		writeToFile(name, data)
+		return
+	}
+
+	writeToStdout(name, data)
+}
+
+// write the <data> to stdout
+func writeToStdout(name string, data string) {
+	fmt.Printf("---\n# Source: %s\n", name)
+	fmt.Printf(data)
+}
+
+// write the <data> to <output-dir>/<name>
+func writeToFile(name string, data string) {
+	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+	ensureDirectoryForFile(outfileName)
+
+	f, err := os.Create(outfileName)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s", name, data))
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("wrote %s\n", outfileName)
+	return
+}
+
+// check if the directory exists to create file. creates if don't exists
+func ensureDirectoryForFile(file string) {
+	baseDir := path.Dir(file)
+	_, err := os.Stat(baseDir)
+	if !os.IsNotExist(err) {
+		return
+	}
+
+	err = os.MkdirAll(baseDir, defaultDirectoryPermission)
+	if err != nil {
+		panic(err)
+	}
 }
