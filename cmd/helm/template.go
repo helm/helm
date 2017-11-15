@@ -262,10 +262,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 
 		if t.outputDir != "" {
-			writeToFile(t.outputDir, m.name, data)
+			writeToFile(t.outputDir, m.Name, data)
 			continue
 		}
-		fmt.Printf("---\n# Source: %s\n", m.name)
+		fmt.Printf("---\n# Source: %s\n", m.Name)
 		fmt.Printf(data)
 	}
 	return nil
