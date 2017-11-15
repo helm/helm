@@ -91,6 +91,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", "", "override the Kubernetes version used as Capabilities.KubeVersion.Major/Minor (e.g. 1.7)")
+	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 
 	return cmd
 }
@@ -130,10 +131,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// verify that output-dir exists if provided
-	if outputDir != "" {
-		_, err = os.Stat(outputDir)
+	if t.outputDir != "" {
+		_, err = os.Stat(t.outputDir)
 		if os.IsNotExist(err) {
-			panic(fmt.Sprintf("output-dir '%s' does not exist", outputDir))
+			panic(fmt.Sprintf("output-dir '%s' does not exist", t.outputDir))
 		}
 	}
 
@@ -259,28 +260,19 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		if strings.HasPrefix(b, "_") {
 			continue
 		}
-		writeData(m.name, data)
+
+		if t.outputDir != nil {
+			writeToFile(t.outputDir, name, data)
+			continue
+		}
+		fmt.Printf("---\n# Source: %s\n", name)
+		fmt.Printf(data)
 	}
 	return nil
 }
 
-func writeData(name string, data string) {
-	if outputDir != "" {
-		writeToFile(name, data)
-		return
-	}
-
-	writeToStdout(name, data)
-}
-
-// write the <data> to stdout
-func writeToStdout(name string, data string) {
-	fmt.Printf("---\n# Source: %s\n", name)
-	fmt.Printf(data)
-}
-
 // write the <data> to <output-dir>/<name>
-func writeToFile(name string, data string) {
+func writeToFile(outputDir string, name string, data string) {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 	ensureDirectoryForFile(outfileName)
 
