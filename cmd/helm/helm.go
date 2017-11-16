@@ -45,6 +45,10 @@ var (
 	tlsVerify     bool   // enable TLS and verify remote certificates
 	tlsEnable     bool   // enable TLS
 
+	tlsCaCertDefault = "$HELM_HOME/ca.pem"
+	tlsCertDefault   = "$HELM_HOME/cert.pem"
+	tlsKeyDefault    = "$HELM_HOME/key.pem"
+
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
 )
@@ -263,6 +267,16 @@ func newClient() helm.Interface {
 	options := []helm.Option{helm.Host(settings.TillerHost)}
 
 	if tlsVerify || tlsEnable {
+		if tlsCaCertFile == "" {
+			tlsCaCertFile = os.ExpandEnv(tlsCaCertDefault)
+		}
+		if tlsCertFile == "" {
+			tlsCertFile = os.ExpandEnv(tlsCertDefault)
+		}
+		if tlsKeyFile == "" {
+			tlsKeyFile = os.ExpandEnv(tlsKeyDefault)
+		}
+		debug("Key=%q, Cert=%q, CA=%q\n", tlsKeyFile, tlsCertFile, tlsCaCertFile)
 		tlsopts := tlsutil.Options{KeyFile: tlsKeyFile, CertFile: tlsCertFile, InsecureSkipVerify: true}
 		if tlsVerify {
 			tlsopts.CaCertFile = tlsCaCertFile
@@ -281,12 +295,6 @@ func newClient() helm.Interface {
 // addFlagsTLS adds the flags for supporting client side TLS to the
 // helm command (only those that invoke communicate to Tiller.)
 func addFlagsTLS(cmd *cobra.Command) *cobra.Command {
-	// defaults
-	var (
-		tlsCaCertDefault = "$HELM_HOME/ca.pem"
-		tlsCertDefault   = "$HELM_HOME/cert.pem"
-		tlsKeyDefault    = "$HELM_HOME/key.pem"
-	)
 
 	// add flags
 	cmd.Flags().StringVar(&tlsCaCertFile, "tls-ca-cert", tlsCaCertDefault, "path to TLS CA certificate file")
