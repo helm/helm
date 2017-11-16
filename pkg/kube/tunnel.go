@@ -59,7 +59,6 @@ func NewTunnel(client rest.Interface, config *rest.Config, namespace, podName st
 // Close disconnects a tunnel connection
 func (t *Tunnel) Close() {
 	close(t.stopChan)
-	close(t.readyChan)
 }
 
 // ForwardPort opens a tunnel to a kubernetes pod
