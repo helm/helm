@@ -232,7 +232,7 @@ during upgrades, templates are re-executed. When a template run
 generates data that differs from the last run, that will trigger an
 update of that resource.
 
-## Update a release idempotently
+## Upgrade a release idempotently
 
 In order to use the same command when installing and upgrading a release, use the following comand:
 ```shell
