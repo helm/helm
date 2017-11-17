@@ -64,15 +64,20 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			}
 			del.client = ensureHelmClient(del.client)
 
+			var err error = nil
 			for i := 0; i < len(args); i++ {
 				del.name = args[i]
-				if err := del.run(); err != nil {
-					return err
+				if relErr := del.run(); relErr != nil {
+					if err != nil {
+						err = fmt.Errorf("%s, %s", err, relErr)
+					} else {
+						err = fmt.Errorf("%s", relErr)
+					}
+				} else {
+					fmt.Fprintf(out, "release \"%s\" deleted\n", del.name)
 				}
-
-				fmt.Fprintf(out, "release \"%s\" deleted\n", del.name)
 			}
-			return nil
+			return err
 		},
 	}
 

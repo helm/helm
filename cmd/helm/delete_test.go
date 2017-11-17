@@ -61,6 +61,13 @@ func TestDelete(t *testing.T) {
 			args: []string{},
 			err:  true,
 		},
+		{
+			name:     "delete after failure",
+			args:     []string{"return-error", "aeneas"},
+			flags:    []string{},
+			expected: "release \"aeneas\" deleted\n",
+			err:      true,
+		},
 	}
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newDeleteCmd(c, out)
