@@ -283,7 +283,7 @@ func writeToFile(outputDir string, name string, data string) {
 
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s", name, data))
+	_, err = f.WriteString(fmt.Sprintf("#---\n# Source: %s\n%s", name, data))
 
 	if err != nil {
 		panic(err)
