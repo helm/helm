@@ -41,6 +41,9 @@ import (
 )
 
 const defaultDirectoryPermission = 0755
+
+var whitespaceRegex = regexp.MustCompile(`^\s*$`)
+
 const templateDesc = `
 Render chart templates locally and display the output.
 
@@ -262,6 +265,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 
 		if t.outputDir != "" {
+			// blank template after execution
+			if whitespaceRegex.MatchString(data) {
+				continue
+			}
 			writeToFile(t.outputDir, m.Name, data)
 			continue
 		}
