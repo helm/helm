@@ -60,19 +60,19 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				return false, err
 			}
 			switch value := obj.(type) {
-			case (*v1.ReplicationController):
+			case *v1.ReplicationController:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector)
 				if err != nil {
 					return false, err
 				}
 				pods = append(pods, list...)
-			case (*v1.Pod):
+			case *v1.Pod:
 				pod, err := kcs.Core().Pods(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				pods = append(pods, *pod)
-			case (*extensions.Deployment):
+			case *extensions.Deployment:
 				currentDeployment, err := kcs.Extensions().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
@@ -87,37 +87,37 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					currentDeployment,
 				}
 				deployments = append(deployments, newDeployment)
-			case (*extensions.DaemonSet):
+			case *extensions.DaemonSet:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
 				}
 				pods = append(pods, list...)
-			case (*appsv1beta1.StatefulSet):
+			case *appsv1beta1.StatefulSet:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
 				}
 				pods = append(pods, list...)
-			case (*appsv1beta2.StatefulSet):
+			case *appsv1beta2.StatefulSet:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
 				}
 				pods = append(pods, list...)
-			case (*extensions.ReplicaSet):
+			case *extensions.ReplicaSet:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
 				}
 				pods = append(pods, list...)
-			case (*v1.PersistentVolumeClaim):
+			case *v1.PersistentVolumeClaim:
 				claim, err := kcs.Core().PersistentVolumeClaims(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				pvc = append(pvc, *claim)
-			case (*v1.Service):
+			case *v1.Service:
 				svc, err := kcs.Core().Services(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
