@@ -231,3 +231,10 @@ cryptographic keys, and so on. These are fine to use. But be aware that
 during upgrades, templates are re-executed. When a template run
 generates data that differs from the last run, that will trigger an
 update of that resource.
+
+## Upgrade a release idempotently
+
+In order to use the same command when installing and upgrading a release, use the following comand:
+```shell
+helm upgrade --install <release name> --values <values file> <chart directory>
+```
