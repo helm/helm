@@ -137,7 +137,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	if t.outputDir != "" {
 		_, err = os.Stat(t.outputDir)
 		if os.IsNotExist(err) {
-			panic(fmt.Sprintf("output-dir '%s' does not exist", t.outputDir))
+			return fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
 		}
 	}
 
@@ -269,7 +269,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			if whitespaceRegex.MatchString(data) {
 				continue
 			}
-			writeToFile(t.outputDir, m.Name, data)
+			err = writeToFile(t.outputDir, m.Name, data)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 		fmt.Printf("---\n# Source: %s\n", m.Name)
@@ -279,13 +282,17 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 }
 
 // write the <data> to <output-dir>/<name>
-func writeToFile(outputDir string, name string, data string) {
+func writeToFile(outputDir string, name string, data string) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
-	ensureDirectoryForFile(outfileName)
+
+	err := ensureDirectoryForFile(outfileName)
+	if err != nil {
+		return err
+	}
 
 	f, err := os.Create(outfileName)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	defer f.Close()
@@ -293,23 +300,24 @@ func writeToFile(outputDir string, name string, data string) {
 	_, err = f.WriteString(fmt.Sprintf("##---\n# Source: %s\n%s", name, data))
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	fmt.Printf("wrote %s\n", outfileName)
-	return
+	return nil
 }
 
 // check if the directory exists to create file. creates if don't exists
-func ensureDirectoryForFile(file string) {
+func ensureDirectoryForFile(file string) error {
 	baseDir := path.Dir(file)
 	_, err := os.Stat(baseDir)
-	if !os.IsNotExist(err) {
-		return
+	if err != nil && !os.IsNotExist(err) {
+		return err
 	}
 
 	err = os.MkdirAll(baseDir, defaultDirectoryPermission)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
