@@ -434,11 +434,11 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		if parsedChartURL.IsAbs() {
 			name = chartURL
 		} else {
-			parsedRepoUrl, err := url.Parse(repoURL)
+			parsedRepoURL, err := url.Parse(repoURL)
 			if err != nil {
 				return "", err
 			}
-			name = parsedRepoUrl.ResolveReference(parsedChartURL).String()
+			name = parsedRepoURL.ResolveReference(parsedChartURL).String()
 		}
 
 	}
