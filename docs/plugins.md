@@ -40,6 +40,8 @@ $ helm plugin install https://github.com/technosophos/helm-template
 If you have a plugin tar distribution, simply untar the plugin into the
 `$(helm home)/plugins` directory.
 
+You can also install tarball plugins directly from url by issuing `helm plugin install http://domain/path/to/plugin.tar.gz`
+
 ## Building Plugins
 
 In many ways, a plugin is similar to a chart. Each plugin has a top-level

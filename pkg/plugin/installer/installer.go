@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 
 	"k8s.io/helm/pkg/helm/helmpath"
+	"strings"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
@@ -68,6 +69,8 @@ func NewForSource(source, version string, home helmpath.Home) (Installer, error)
 	// Check if source is a local directory
 	if isLocalReference(source) {
 		return NewLocalInstaller(source, home)
+	} else if isRemoteHTTPArchive(source) {
+		return NewHTTPInstaller(source, home)
 	}
 	return NewVCSInstaller(source, version, home)
 }
@@ -85,6 +88,18 @@ func FindSource(location string, home helmpath.Home) (Installer, error) {
 func isLocalReference(source string) bool {
 	_, err := os.Stat(source)
 	return err == nil
+}
+
+// isRemoteHTTPArchive checks if the source is a http/https url and is an archive
+func isRemoteHTTPArchive(source string) bool {
+	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+		for suffix := range Extractors {
+			if strings.HasSuffix(source, suffix) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isPlugin checks if the directory contains a plugin.yaml file.
