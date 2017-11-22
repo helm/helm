@@ -48,6 +48,30 @@ func TestSearchCmd(t *testing.T) {
 			expect: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod\ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
 		},
 		{
+			name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
+			args:   []string{"alpine"},
+			flags:  []string{"--version", ">= 0.1, < 0.2"},
+			expect: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
+		},
+		{
+			name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
+			args:   []string{"alpine"},
+			flags:  []string{"--versions", "--version", ">= 0.1, < 0.2"},
+			expect: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
+		},
+		{
+			name:   "search for 'alpine' with version constraint, expect one match with version 0.2.0",
+			args:   []string{"alpine"},
+			flags:  []string{"--version", ">= 0.1"},
+			expect: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod",
+		},
+		{
+			name:   "search for 'alpine' with version constraint and --versions, expect two matches",
+			args:   []string{"alpine"},
+			flags:  []string{"--versions", "--version", ">= 0.1"},
+			expect: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod\ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
+		},
+		{
 			name:   "search for 'syzygy', expect no matches",
 			args:   []string{"syzygy"},
 			expect: "No results found",
