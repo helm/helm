@@ -23,6 +23,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -289,6 +290,11 @@ func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error)
 	opts := []grpc.DialOption{
 		grpc.WithTimeout(5 * time.Second),
 		grpc.WithBlock(),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			// Send keepalive every 30 seconds to prevent the connection from
+			// getting closed by upstreams
+			Time: time.Duration(30) * time.Second,
+		}),
 	}
 	switch {
 	case h.opts.useTLS:
