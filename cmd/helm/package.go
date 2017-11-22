@@ -140,7 +140,7 @@ func (p *packageCmd) run() error {
 	}
 
 	if filepath.Base(path) != ch.Metadata.Name {
-		return fmt.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Metadata.Name)
+		return fmt.Errorf("directory name (%s) and %s name (%s) must match", filepath.Base(path), chartutil.ChartfileName, ch.Metadata.Name)
 	}
 
 	if reqs, err := chartutil.LoadRequirements(ch); err == nil {

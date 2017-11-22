@@ -19,7 +19,6 @@ package chartutil
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -103,14 +102,14 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 	}
 
 	if c.Metadata == nil {
-		return "", errors.New("no Chart.yaml data")
+		return "", ErrChartMetadataMissing
 	}
 
 	cfile := c.Metadata
 	if cfile.Name == "" {
-		return "", errors.New("no chart name specified (Chart.yaml)")
+		return "", ErrChartNameEmpty
 	} else if cfile.Version == "" {
-		return "", errors.New("no chart version specified (Chart.yaml)")
+		return "", ErrChartVersionEmpty
 	}
 
 	filename := fmt.Sprintf("%s-%s.tgz", cfile.Name, cfile.Version)
@@ -159,13 +158,13 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeToTar(out, base+"/Chart.yaml", cdata); err != nil {
+	if err := writeToTar(out, base+"/"+ChartfileName, cdata); err != nil {
 		return err
 	}
 
 	// Save values.yaml
 	if c.Values != nil && len(c.Values.Raw) > 0 {
-		if err := writeToTar(out, base+"/values.yaml", []byte(c.Values.Raw)); err != nil {
+		if err := writeToTar(out, base+"/"+ValuesfileName, []byte(c.Values.Raw)); err != nil {
 			return err
 		}
 	}
@@ -188,7 +187,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 
 	// Save dependencies
 	for _, dep := range c.Dependencies {
-		if err := writeTarContents(out, dep, base+"/charts"); err != nil {
+		if err := writeTarContents(out, dep, base+"/"+ChartsDir); err != nil {
 			return err
 		}
 	}

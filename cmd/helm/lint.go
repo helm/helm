@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -69,7 +68,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-var errLintNoChart = errors.New("No chart found for linting (missing Chart.yaml)")
+var errLintNoChart = fmt.Errorf("No chart found for linting (missing %s)", chartutil.ChartfileName)
 
 func (l *lintCmd) run() error {
 	var lowestTolerance int
@@ -142,7 +141,7 @@ func lintChart(path string) (support.Linter, error) {
 	}
 
 	// Guard: Error out of this is not a chart.
-	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
+	if _, err := os.Stat(filepath.Join(chartPath, chartutil.ChartfileName)); err != nil {
 		return linter, errLintNoChart
 	}
 

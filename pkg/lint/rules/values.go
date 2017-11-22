@@ -27,15 +27,14 @@ import (
 
 // Values lints a chart's values.yaml file.
 func Values(linter *support.Linter) {
-	file := "values.yaml"
-	vf := filepath.Join(linter.ChartDir, file)
-	fileExists := linter.RunLinterRule(support.InfoSev, file, validateValuesFileExistence(linter, vf))
+	vf := filepath.Join(linter.ChartDir, chartutil.ValuesfileName)
+	fileExists := linter.RunLinterRule(support.InfoSev, chartutil.ValuesfileName, validateValuesFileExistence(linter, vf))
 
 	if !fileExists {
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(linter, vf))
+	linter.RunLinterRule(support.ErrorSev, chartutil.ValuesfileName, validateValuesFile(linter, vf))
 }
 
 func validateValuesFileExistence(linter *support.Linter, valuesPath string) error {

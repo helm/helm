@@ -101,7 +101,7 @@ icon: https://example.com/64x64.png
 	if err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "chart metadata (Chart.yaml) missing" {
+	if err != ErrChartMetadataMissing {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
 
