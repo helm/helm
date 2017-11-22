@@ -26,7 +26,7 @@ import:
   - ptypes/any
   - ptypes/timestamp
 - package: google.golang.org/grpc
-  version: 1.2.1
+  version: 1.7.2
   # 1.8.1 libs are hosed and need some manual intervention, so pinning to 1.8.0 for now
   # so others aren't getting errors when running `glide up`
 - package: k8s.io/kubernetes

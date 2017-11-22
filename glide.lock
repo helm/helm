@@ -1,5 +1,5 @@
-hash: 397d714c3a444071879981d3e6575931bd637166e845c6577eaea08ffde7e33d
-updated: 2017-10-27T11:04:22.887120936-04:00
+hash: 3d0ff2a6cf119f719abbd2606da14a00073627972be81a6e68404ad92c2d4cd5
+updated: 2017-11-04T13:04:46.410949815+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -320,18 +320,27 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
-- name: google.golang.org/grpc
-  version: 8050b9cbc271307e5a716a9d782803d09b0d6f2d
+- name: google.golang.org/genproto
+  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
   subpackages:
+  - googleapis/rpc/status
+- name: google.golang.org/grpc
+  version: 5ffe3083946d5603a0578721101dc8165b1d5b5f
+  subpackages:
+  - balancer
   - codes
+  - connectivity
   - credentials
+  - grpclb/grpc_lb_v1/messages
   - grpclog
   - internal
   - keepalive
   - metadata
   - naming
   - peer
+  - resolver
   - stats
+  - status
   - tap
   - transport
 - name: gopkg.in/inf.v0
