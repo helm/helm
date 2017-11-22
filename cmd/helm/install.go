@@ -424,7 +424,22 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		if err != nil {
 			return "", err
 		}
-		name = chartURL
+
+		parsedChartURL, err := url.Parse(chartURL)
+		if err != nil {
+			return "", err
+		}
+
+		if parsedChartURL.IsAbs() {
+			name = chartURL
+		} else {
+			parsedRepoUrl, err := url.Parse(repoURL)
+			if err != nil {
+				return "", err
+			}
+			name = parsedRepoUrl.ResolveReference(parsedChartURL).String()
+		}
+
 	}
 
 	if _, err := os.Stat(settings.Home.Archive()); os.IsNotExist(err) {
