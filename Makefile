@@ -2,7 +2,7 @@ DOCKER_REGISTRY   ?= gcr.io
 IMAGE_PREFIX      ?= kubernetes-helm
 SHORT_NAME        ?= tiller
 SHORT_NAME_RUDDER ?= rudder
-TARGETS           = darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
 DIST_DIRS         = find * -type d -exec
 APP               = helm
 
