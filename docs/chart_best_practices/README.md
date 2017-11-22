@@ -16,5 +16,6 @@ may find that their internal interests override our suggestions here.
 - [Labels and Annotations](labels.md): Helm has a _heritage_ of labeling and annotating.
 - Kubernetes Resources:
 	- [Pods and Pod Specs](pods.md): See the best practices for working with pod specifications.
+	- [Role-Based Access Control](rbac.md): Guidance on creating and using service accounts, roles, and role bindings.
 	- [Third Party Resources](third_party_resources.md): Third Party Resources (TPRs) have their own associated best practices.
 
