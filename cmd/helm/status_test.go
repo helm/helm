@@ -66,9 +66,29 @@ func TestStatusCmd(t *testing.T) {
 			}),
 		},
 		{
+			name:     "get status of a deployed release with notes in json",
+			args:     []string{"flummoxed-chickadee"},
+			flags:    []string{"-o", "json"},
+			expected: `{"name":"flummoxed-chickadee","info":{"status":{"code":1,"notes":"release notes"},"first_deployed":{"seconds":242085845},"last_deployed":{"seconds":242085845}}}`,
+			rel: releaseMockWithStatus(&release.Status{
+				Code:  release.Status_DEPLOYED,
+				Notes: "release notes",
+			}),
+		},
+		{
 			name:     "get status of a deployed release with resources",
 			args:     []string{"flummoxed-chickadee"},
 			expected: outputWithStatus("DEPLOYED\n\nRESOURCES:\nresource A\nresource B\n\n"),
+			rel: releaseMockWithStatus(&release.Status{
+				Code:      release.Status_DEPLOYED,
+				Resources: "resource A\nresource B\n",
+			}),
+		},
+		{
+			name:     "get status of a deployed release with resources in YAML",
+			args:     []string{"flummoxed-chickadee"},
+			flags:    []string{"-o", "yaml"},
+			expected: "info:\nfirst_deployed:\nseconds:242085845\nlast_deployed:\nseconds:242085845\nstatus:\ncode:1\nresources:|\nresourceA\nresourceB\nname:flummoxed-chickadee\n",
 			rel: releaseMockWithStatus(&release.Status{
 				Code:      release.Status_DEPLOYED,
 				Resources: "resource A\nresource B\n",
