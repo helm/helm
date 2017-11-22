@@ -85,7 +85,7 @@ There are five different ways you can express the chart you want to install:
 2. By path to a packaged chart: helm install ./nginx-1.2.3.tgz
 3. By path to an unpacked chart directory: helm install ./nginx
 4. By absolute URL: helm install https://example.com/charts/nginx-1.2.3.tgz
-5. By chart reference and repo url: helm install --repo https://example.com/charts nginx
+5. By chart reference and repo url: helm install --repo https://example.com/charts/ nginx
 
 CHART REFERENCES
 
@@ -425,22 +425,7 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		if err != nil {
 			return "", err
 		}
-
-		parsedChartURL, err := url.Parse(chartURL)
-		if err != nil {
-			return "", err
-		}
-
-		if parsedChartURL.IsAbs() {
-			name = chartURL
-		} else {
-			parsedRepoURL, err := url.Parse(repoURL)
-			if err != nil {
-				return "", err
-			}
-			name = parsedRepoURL.ResolveReference(parsedChartURL).String()
-		}
-
+		name = chartURL
 	}
 
 	if _, err := os.Stat(settings.Home.Archive()); os.IsNotExist(err) {
@@ -459,7 +444,7 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		return filename, err
 	}
 
-	return filename, fmt.Errorf("file %q not found", name)
+	return filename, fmt.Errorf("failed to download %q", name)
 }
 
 func generateName(nameTemplate string) (string, error) {
