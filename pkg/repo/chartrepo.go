@@ -184,7 +184,7 @@ func (r *ChartRepository) generateIndex() error {
 }
 
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repostiories
+// without adding repo to repositories
 func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
 
 	// Download and write the index file to a temporary location
@@ -227,5 +227,28 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 		return "", fmt.Errorf("%s has no downloadable URLs", errMsg)
 	}
 
-	return cv.URLs[0], nil
+	chartURL := cv.URLs[0]
+
+	absoluteChartURL, err := ResolveReferenceURL(repoURL, chartURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to make chart URL absolute: %v", err)
+	}
+
+	return absoluteChartURL, nil
+}
+
+// ResolveReferenceURL resolves refURL relative to baseURL.
+// If refURL is absolute, it simply returns refURL.
+func ResolveReferenceURL(baseURL, refURL string) (string, error) {
+	parsedBaseURL, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse %s as URL: %v", baseURL, err)
+	}
+
+	parsedRefURL, err := url.Parse(refURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse %s as URL: %v", refURL, err)
+	}
+
+	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
 }

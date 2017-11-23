@@ -277,3 +277,21 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 }
+
+func TestResolveReferenceURL(t *testing.T) {
+	chartURL, err := ResolveReferenceURL("http://localhost:8123/charts/", "nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz" {
+		t.Errorf("%s", chartURL)
+	}
+
+	chartURL, err = ResolveReferenceURL("http://localhost:8123", "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
+		t.Errorf("%s", chartURL)
+	}
+}
