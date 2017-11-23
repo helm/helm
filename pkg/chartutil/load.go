@@ -243,7 +243,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 	files := []*BufferedFile{}
 	topdir += string(filepath.Separator)
 
-	err = filepath.Walk(topdir, func(name string, fi os.FileInfo, err error) error {
+	walk := func(name string, fi os.FileInfo, err error) error {
 		n := strings.TrimPrefix(name, topdir)
 		if n == "" {
 			// No need to process top level. Avoid bug with helmignore .* matching
@@ -278,10 +278,45 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 		files = append(files, &BufferedFile{Name: n, Data: data})
 		return nil
-	})
-	if err != nil {
+	}
+	if err = filepath.Walk(topdir, symWalk(topdir, "", walk)); err != nil {
 		return c, err
 	}
 
 	return LoadFiles(files)
+}
+
+// symWalk walks topdir with optional symbolic link dir, symdir. The symdir will
+// be used as the path name sent to walkFn.
+func symWalk(topdir, symdir string, walkFn filepath.WalkFunc) filepath.WalkFunc {
+	return func(name string, fi os.FileInfo, err error) error {
+		// Recover the symbolic path instead of the real path.
+		if symdir != "" {
+			relative, err := filepath.Rel(topdir, name)
+			if err != nil {
+				return err
+			}
+			name = filepath.Join(symdir, relative)
+		}
+
+		// Recursively walk symlinked directories.
+		if isSymlink(fi) {
+			resolved, err := filepath.EvalSymlinks(name)
+			if err != nil {
+				return fmt.Errorf("error evaluating symlink %s: %s", name, err)
+			}
+			if fi, err = os.Lstat(resolved); err != nil {
+				return err
+			}
+			if fi.IsDir() {
+				return filepath.Walk(resolved, symWalk(resolved, name, walkFn))
+			}
+		}
+
+		return walkFn(name, fi, err)
+	}
+}
+
+func isSymlink(fi os.FileInfo) bool {
+	return fi.Mode()&os.ModeSymlink != 0
 }
