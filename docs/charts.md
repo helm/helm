@@ -36,7 +36,7 @@ wordpress/
 Helm reserves use of the `charts/` and `templates/` directories, and of
 the listed file names. Other files will be left as they are.
 
-While the `charts` and `template` directories are optional there must be at least one chart dependancy or template file for the chart to be valid.
+While the `charts` and `template` directories are optional there must be at least one chart dependency or template file for the chart to be valid.
 
 ## The Chart.yaml File
 
