@@ -229,26 +229,26 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 
 	chartURL := cv.URLs[0]
 
-	absoluteChartURL, err := MakeAbsoluteChartURL(repoURL, chartURL)
+	absoluteChartURL, err := ResolveReferenceURL(repoURL, chartURL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to make chart URL absolute: %v", err)
 	}
 
 	return absoluteChartURL, nil
 }
 
-// MakeAbsoluteChartURL resolves chartURL relative to repoURL.
-// If chartURL is absolute, it returns chartURL.
-func MakeAbsoluteChartURL(repoURL, chartURL string) (string, error) {
-	parsedRepoURL, err := url.Parse(repoURL)
+// ResolveReferenceURL resolves refURL relative to baseURL.
+// If refURL is absolute, it simply returns refURL.
+func ResolveReferenceURL(baseURL, refURL string) (string, error) {
+	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to parse %s as URL: %v", baseURL, err)
 	}
 
-	parsedChartURL, err := url.Parse(chartURL)
+	parsedRefURL, err := url.Parse(refURL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to parse %s as URL: %v", refURL, err)
 	}
 
-	return parsedRepoURL.ResolveReference(parsedChartURL).String(), nil
+	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
 }

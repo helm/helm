@@ -278,8 +278,8 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 	}
 }
 
-func TestMakeAbsoluteChartURL(t *testing.T) {
-	chartURL, err := MakeAbsoluteChartURL("http://localhost:8123/charts/", "nginx-0.2.0.tgz")
+func TestResolveReferenceURL(t *testing.T) {
+	chartURL, err := ResolveReferenceURL("http://localhost:8123/charts/", "nginx-0.2.0.tgz")
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -287,7 +287,7 @@ func TestMakeAbsoluteChartURL(t *testing.T) {
 		t.Errorf("%s", chartURL)
 	}
 
-	chartURL, err = MakeAbsoluteChartURL("http://localhost:8123", "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz")
+	chartURL, err = ResolveReferenceURL("http://localhost:8123", "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz")
 	if err != nil {
 		t.Errorf("%s", err)
 	}
