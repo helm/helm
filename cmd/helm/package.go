@@ -56,6 +56,7 @@ type packageCmd struct {
 	key              string
 	keyring          string
 	version          string
+	appVersion       string
 	destination      string
 	dependencyUpdate bool
 
@@ -99,6 +100,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&pkg.key, "key", "", "name of the key to use when signing. Used if --sign is true")
 	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
 	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
+	f.StringVar(&pkg.appVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
 
@@ -137,6 +139,11 @@ func (p *packageCmd) run() error {
 			return err
 		}
 		debug("Setting version to %s", p.version)
+	}
+
+	if p.appVersion != "" {
+		ch.Metadata.AppVersion = p.appVersion
+		debug("Setting appVersion to %s", p.appVersion)
 	}
 
 	if filepath.Base(path) != ch.Metadata.Name {
