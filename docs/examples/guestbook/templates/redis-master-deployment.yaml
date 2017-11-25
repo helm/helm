@@ -1,0 +1,29 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ "redis-master" }}
+  labels:
+    app: {{ template "gbhelm.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ "1" }}
+  template:
+    metadata:
+      labels:
+        app: {{ "redis" }}
+        tier: {{"backend"}}
+        role: {{"master"}}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ "master" }}
+          image: "{{ .Values.image.redis_master.repository }}:{{ .Values.image.redis_master.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ "6379" }}
+          resources:
+            requests:
+              cpu: {{"100m"}}
+              memory: {{"100Mi"}}

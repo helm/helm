@@ -17,3 +17,9 @@ and it illustrates more complex template usage.
 It deploys a `deployment` (which creates a `replica set`), a `config
 map`, and a `service`. The replica set starts an nginx pod. The config
 map stores the files that the nginx server can serve.
+
+## Guestbook
+
+The `guestbook` chart is a simple multi-tier app. The first tier is Apache httpd-based app that uses Redis master-slave cluster (the second tier). 
+
+The app comprises of `deployment` for the each tier that are accessible thru its corresponding `service`

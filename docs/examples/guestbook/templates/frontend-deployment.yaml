@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ "frontend" }}
+  labels:
+    app: {{ template "gbhelm.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ "1" }}
+  template:
+    metadata:
+      labels:
+        app: {{ "guestbook" }}
+        tier: {{"frontend"}}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ "php-redis" }}
+          image: "{{ .Values.image.frontend_deployment.repository }}:{{ .Values.image.frontend_deployment.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.frontend.port }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.frontend.port }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.frontend.port }}
+          resources:
+            requests:
+              cpu: {{"100m"}}
+              memory: {{"100Mi"}}
+          env:
+          - name: {{"GET_HOSTS_FROM"}}
+            value: {{"dns"}}

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ "frontend" }}
+  labels:
+    app: {{ "guestbook" }}
+    tier: {{ "frontend" }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.frontend.type }}
+  ports:
+    - port: {{.Values.service.frontend.port}}
+  selector:
+    app: {{.Values.service.frontend.selector.app}}
+    tier: {{.Values.service.frontend.selector.tier}}

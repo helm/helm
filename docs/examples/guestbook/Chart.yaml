@@ -1,0 +1,9 @@
+apiVersion: v1
+name: guestbook
+version: 0.1.0
+description: Guestbook Helm chart for Kubernetes.
+sources:
+   - https://github.com/kubernetes/kubernetes/tree/master/examples/guestbook
+maintainers:
+   - name: Yahav Biran
+   - email: ybiran@colostate.edu

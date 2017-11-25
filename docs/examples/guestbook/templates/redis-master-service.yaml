@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ "redis-master" }}
+  labels:
+    app: {{ "redis" }}
+    role: {{ "master" }}
+    tier: {{ "backend" }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  ports:
+    - port: {{ .Values.service.redis_master.port }}
+      targetPort: {{ .Values.service.redis_master.targetPort }}
+  selector:
+    app: {{  .Values.service.redis_master.selector.app}}
+    role: {{ .Values.service.redis_master.selector.role }}
+    tier: {{ .Values.service.redis_master.selector.tier }}
