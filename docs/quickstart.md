@@ -21,7 +21,7 @@ my-cluster
 ```
 
 If your cluster has Role-Based Access Control (RBAC) enabled, you may want
-to [configure a service account and rules](service_account.md) before proceeding.
+to [configure a service account and rules](rbac.md) before proceeding.
 
 ## Install Helm
 
