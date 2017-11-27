@@ -120,12 +120,7 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
 
 	indexURL = parsedURL.String()
-	var resp *bytes.Buffer
-	if r.Config.Username == "" || r.Config.Password == "" {
-		resp, err = r.Client.Get(indexURL)
-	} else {
-		resp, err = r.Client.GetWithCredentials(indexURL, r.Config.Username, r.Config.Password)
-	}
+	resp, err := r.Client.GetWithCredentials(indexURL, r.Config.Username, r.Config.Password)
 
 	if err != nil {
 		return err
