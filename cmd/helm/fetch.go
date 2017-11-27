@@ -52,6 +52,8 @@ type fetchCmd struct {
 	destdir  string
 	version  string
 	repoURL  string
+	username string
+	password string
 
 	verify      bool
 	verifyLater bool
@@ -138,14 +140,14 @@ func (f *fetchCmd) run() error {
 	}
 
 	if f.repoURL != "" {
-		chartURL, err := repo.FindChartInRepoURL(f.repoURL, f.chartRef, f.version, f.certFile, f.keyFile, f.caFile, getter.All(settings))
+		chartURL, err := repo.FindChartInRepoURL(f.repoURL, f.username, f.password, f.chartRef, f.version, f.certFile, f.keyFile, f.caFile, getter.All(settings))
 		if err != nil {
 			return err
 		}
 		f.chartRef = chartURL
 	}
 
-	saved, v, err := c.DownloadTo(f.chartRef, f.version, dest)
+	saved, v, err := c.DownloadTo(f.chartRef, f.username, f.password, f.version, dest)
 	if err != nil {
 		return err
 	}

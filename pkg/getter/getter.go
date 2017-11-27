@@ -27,6 +27,8 @@ import (
 type Getter interface {
 	//Get file content by url string
 	Get(url string) (*bytes.Buffer, error)
+	//Get file content by url, username and password strings
+	GetWithCredentials(href, username, password string) (*bytes.Buffer, error)
 }
 
 // Constructor is the function for every getter which creates a specific instance
