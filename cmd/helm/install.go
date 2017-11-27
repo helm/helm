@@ -386,7 +386,7 @@ func (i *installCmd) printRelease(rel *release.Release) {
 //
 // If 'verify' is true, this will attempt to also verify the chart.
 func locateChartPath(repoURL, username, password, name, version string, verify bool, keyring,
-certFile, keyFile, caFile string) (string, error) {
+	certFile, keyFile, caFile string) (string, error) {
 	name = strings.TrimSpace(name)
 	version = strings.TrimSpace(version)
 	if fi, err := os.Stat(name); err == nil {

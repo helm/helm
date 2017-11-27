@@ -49,7 +49,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 		Use:   "add [flags] [NAME] [URL] [USERNAME] [PASSWORD]",
 		Short: "add a chart repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			argsDesc := []string {
+			argsDesc := []string{
 				"name for the chart repository",
 				"the url of the chart repository",
 				"the username for the chart repository",
@@ -60,8 +60,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 				if err := checkArgsLength(len(args), argsDesc[0], argsDesc[1]); err != nil {
 					return err
 				}
-			} else
-			if err := checkArgsLength(len(args), argsDesc[0], argsDesc[1], argsDesc[2], argsDesc[3]); err != nil {
+			} else if err := checkArgsLength(len(args), argsDesc[0], argsDesc[1], argsDesc[2], argsDesc[3]); err != nil {
 				return err
 			}
 
@@ -87,7 +86,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (a *repoAddCmd) run() error {
-	if err := addRepository(a.name, a.url, a.username, a.password , a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
+	if err := addRepository(a.name, a.url, a.username, a.password, a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
 		return err
 	}
 	fmt.Fprintf(a.out, "%q has been added to your repositories\n", a.name)

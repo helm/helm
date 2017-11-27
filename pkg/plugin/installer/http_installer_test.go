@@ -35,7 +35,9 @@ type TestHTTPGetter struct {
 
 func (t *TestHTTPGetter) Get(href string) (*bytes.Buffer, error) { return t.MockResponse, t.MockError }
 
-func (t *TestHTTPGetter) GetWithCredentials(href, username, password string) (*bytes.Buffer, error) { return t.MockResponse, t.MockError }
+func (t *TestHTTPGetter) GetWithCredentials(href, username, password string) (*bytes.Buffer, error) {
+	return t.MockResponse, t.MockError
+}
 
 // Fake plugin tarball data
 var fakePluginB64 = "H4sIAKRj51kAA+3UX0vCUBgGcC9jn+Iwuk3Peza3GeyiUlJQkcogCOzgli7dJm4TvYk+a5+k479UqquUCJ/fLs549sLO2TnvWnJa9aXnjwujYdYLovxMhsPcfnHOLdNkOXthM/IVQQYjg2yyLLJ4kXGhLp5j0z3P41tZksqxmspL3B/O+j/XtZu1y8rdYzkOZRCxduKPk53ny6Wwz/GfIIf1As8lxzGJSmoHNLJZphKHG4YpTCE0wVk3DULfpSJ3DMMqkj3P5JfMYLdX1Vr9Ie/5E5cstcdC8K04iGLX5HaJuKpWL17F0TCIBi5pf/0pjtLhun5j3f9v6r7wfnI/H0eNp9d1/5P6Gez0vzo7wsoxfrAZbTny/o9k6J8z/VkO/LPlWdC1iVpbEEcq5nmeJ13LEtmbV0k2r2PrOs9PuuNglC5rL1Y5S/syXRQmutaNw1BGnnp8Wq3UG51WvX1da3bKtZtCN/R09DwAAAAAAAAAAAAAAAAAAADAb30AoMczDwAoAAA="

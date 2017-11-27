@@ -258,7 +258,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		Getters:  getter.All(environment.EnvSettings{}),
 	}
 	cname := "/signtest-0.1.0.tgz"
-	where, _, err := c.DownloadTo(srv.URL()+cname,"", "", "", dest)
+	where, _, err := c.DownloadTo(srv.URL()+cname, "", "", "", dest)
 	if err != nil {
 		t.Error(err)
 		return
