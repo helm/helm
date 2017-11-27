@@ -221,7 +221,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(environment.EnvSettings{}))
+	chartURL, err := FindChartInRepoURL(srv.URL, "", "", "nginx", "", "", "", "", getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -229,7 +229,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(environment.EnvSettings{}))
+	chartURL, err = FindChartInRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", getter.All(environment.EnvSettings{}))
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -239,7 +239,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 }
 
 func TestErrorFindChartInRepoURL(t *testing.T) {
-	_, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", getter.All(environment.EnvSettings{}))
+	_, err := FindChartInRepoURL("http://someserver/something", "", "", "nginx", "", "", "", "", getter.All(environment.EnvSettings{}))
 	if err == nil {
 		t.Errorf("Expected error for bad chart URL, but did not get any errors")
 	}
@@ -253,7 +253,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	_, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", getter.All(environment.EnvSettings{}))
+	_, err = FindChartInRepoURL(srv.URL, "", "", "nginx1", "", "", "", "", getter.All(environment.EnvSettings{}))
 	if err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	}
@@ -261,7 +261,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	_, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", getter.All(environment.EnvSettings{}))
+	_, err = FindChartInRepoURL(srv.URL, "", "", "nginx1", "0.1.0", "", "", "", getter.All(environment.EnvSettings{}))
 	if err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	}
@@ -269,7 +269,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	_, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", getter.All(environment.EnvSettings{}))
+	_, err = FindChartInRepoURL(srv.URL, "", "", "chartWithNoURL", "", "", "", "", getter.All(environment.EnvSettings{}))
 	if err == nil {
 		t.Errorf("Expected error for no chart URLs available, but did not get any errors")
 	}
