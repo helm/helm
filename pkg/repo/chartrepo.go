@@ -29,7 +29,6 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/provenance"
-	"bytes"
 )
 
 // Entry represents a collection of parameters for chart repository
