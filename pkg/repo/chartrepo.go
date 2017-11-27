@@ -29,6 +29,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/provenance"
+	"bytes"
 )
 
 // Entry represents a collection of parameters for chart repository
@@ -36,6 +37,8 @@ type Entry struct {
 	Name     string `json:"name"`
 	Cache    string `json:"cache"`
 	URL      string `json:"url"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 	CertFile string `json:"certFile"`
 	KeyFile  string `json:"keyFile"`
 	CAFile   string `json:"caFile"`
@@ -117,7 +120,13 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
 
 	indexURL = parsedURL.String()
-	resp, err := r.Client.Get(indexURL)
+	var resp *bytes.Buffer
+	if r.Config.Username == "" || r.Config.Password == "" {
+		resp, err = r.Client.Get(indexURL)
+	} else {
+		resp, err = r.Client.GetWithCredentials(indexURL, r.Config.Username, r.Config.Password)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -185,7 +194,7 @@ func (r *ChartRepository) generateIndex() error {
 
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
-func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
+func FindChartInRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
 
 	// Download and write the index file to a temporary location
 	tempIndexFile, err := ioutil.TempFile("", "tmp-repo-file")
@@ -196,6 +205,8 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 
 	c := Entry{
 		URL:      repoURL,
+		Username: username,
+		Password: password,
 		CertFile: certFile,
 		KeyFile:  keyFile,
 		CAFile:   caFile,

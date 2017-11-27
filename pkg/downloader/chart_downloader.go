@@ -80,13 +80,13 @@ type ChartDownloader struct {
 //
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
-func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
+func (c *ChartDownloader) DownloadTo(ref, username, password, version, dest string) (string, *provenance.Verification, error) {
 	u, g, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
 		return "", nil, err
 	}
 
-	data, err := g.Get(u.String())
+	data, err := g.GetWithCredentials(u.String(), username, password)
 	if err != nil {
 		return "", nil, err
 	}

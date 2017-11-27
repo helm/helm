@@ -34,6 +34,15 @@ type httpGetter struct {
 
 //Get performs a Get from repo.Getter and returns the body.
 func (g *httpGetter) Get(href string) (*bytes.Buffer, error) {
+	return g.get(href, "", "")
+}
+
+//Get performs a Get from repo.Getter using credentials and returns the body.
+func (g *httpGetter) GetWithCredentials(href, username, password string) (*bytes.Buffer, error) {
+	return g.get(href, username, password)
+}
+
+func (g *httpGetter) get(href, username, password string) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
 
 	// Set a helm specific user agent so that a repo server and metrics can
@@ -43,6 +52,10 @@ func (g *httpGetter) Get(href string) (*bytes.Buffer, error) {
 		return buf, err
 	}
 	req.Header.Set("User-Agent", "Helm/"+strings.TrimPrefix(version.GetVersion(), "v"))
+
+	if username != "" && password != "" {
+		req.SetBasicAuth(username, password)
+	}
 
 	resp, err := g.client.Do(req)
 	if err != nil {

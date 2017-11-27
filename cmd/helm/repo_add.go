@@ -30,6 +30,8 @@ import (
 type repoAddCmd struct {
 	name     string
 	url      string
+	username string
+	password string
 	home     helmpath.Home
 	noupdate bool
 
@@ -44,15 +46,31 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	add := &repoAddCmd{out: out}
 
 	cmd := &cobra.Command{
-		Use:   "add [flags] [NAME] [URL]",
+		Use:   "add [flags] [NAME] [URL] [USERNAME] [PASSWORD]",
 		Short: "add a chart repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
+			argsDesc := []string {
+				"name for the chart repository",
+				"the url of the chart repository",
+				"the username for the chart repository",
+				"the password of the chart repository",
+			}
+
+			if len(args) <= 2 {
+				if err := checkArgsLength(len(args), argsDesc[0], argsDesc[1]); err != nil {
+					return err
+				}
+			} else
+			if err := checkArgsLength(len(args), argsDesc[0], argsDesc[1], argsDesc[2], argsDesc[3]); err != nil {
 				return err
 			}
 
 			add.name = args[0]
 			add.url = args[1]
+			if len(args) == 4 {
+				add.username = args[2]
+				add.password = args[3]
+			}
 			add.home = settings.Home
 
 			return add.run()
@@ -69,14 +87,14 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (a *repoAddCmd) run() error {
-	if err := addRepository(a.name, a.url, a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
+	if err := addRepository(a.name, a.url, a.username, a.password , a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
 		return err
 	}
 	fmt.Fprintf(a.out, "%q has been added to your repositories\n", a.name)
 	return nil
 }
 
-func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFile string, noUpdate bool) error {
+func addRepository(name, url, username, password string, home helmpath.Home, certFile, keyFile, caFile string, noUpdate bool) error {
 	f, err := repo.LoadRepositoriesFile(home.RepositoryFile())
 	if err != nil {
 		return err
@@ -91,6 +109,8 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 		Name:     name,
 		Cache:    cif,
 		URL:      url,
+		Username: username,
+		Password: password,
 		CertFile: certFile,
 		KeyFile:  keyFile,
 		CAFile:   caFile,

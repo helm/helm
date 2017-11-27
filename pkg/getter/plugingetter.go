@@ -79,6 +79,10 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
+func (p *pluginGetter) GetWithCredentials(href, username, password string) (*bytes.Buffer, error) {
+	return p.Get(href)
+}
+
 // newPluginGetter constructs a valid plugin getter
 func newPluginGetter(command string, settings environment.EnvSettings, name, base string) Constructor {
 	return func(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
