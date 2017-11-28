@@ -81,9 +81,20 @@ type ChartDownloader struct {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, username, password, version, dest string) (string, *provenance.Verification, error) {
-	u, g, err := c.ResolveChartVersion(ref, version)
+	u, g, e, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
 		return "", nil, err
+	}
+
+	// If this method did not receive credentials, and the chart repository is
+	// configured with credentials, we should use the configured credentials.
+	if e != nil {
+		if username == "" {
+			username = e.Username
+		}
+		if password == "" {
+			password = e.Password
+		}
 	}
 
 	data, err := g.GetWithCredentials(u.String(), username, password)
@@ -139,15 +150,15 @@ func (c *ChartDownloader) DownloadTo(ref, username, password, version, dest stri
 //		* If version is non-empty, this will return the URL for that version
 //		* If version is empty, this will return the URL for the latest version
 //		* If no version can be found, an error is returned
-func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, getter.Getter, error) {
+func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, getter.Getter, *repo.Entry, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
-		return nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
+		return nil, nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
 	rf, err := repo.LoadRepositoriesFile(c.HelmHome.RepositoryFile())
 	if err != nil {
-		return u, nil, err
+		return u, nil, nil, err
 	}
 
 	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
@@ -163,73 +174,73 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 			if err == ErrNoOwnerRepo {
 				getterConstructor, err := c.Getters.ByScheme(u.Scheme)
 				if err != nil {
-					return u, nil, err
+					return u, nil, nil, err
 				}
 				getter, err := getterConstructor(ref, "", "", "")
-				return u, getter, err
+				return u, getter, nil, err
 			}
-			return u, nil, err
+			return u, nil, nil, err
 		}
 		r, err := repo.NewChartRepository(rc, c.Getters)
 		// If we get here, we don't need to go through the next phase of looking
 		// up the URL. We have it already. So we just return.
-		return u, r.Client, err
+		return u, r.Client, r.Config, err
 	}
 
 	// See if it's of the form: repo/path_to_chart
 	p := strings.SplitN(u.Path, "/", 2)
 	if len(p) < 2 {
-		return u, nil, fmt.Errorf("Non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
+		return u, nil, nil, fmt.Errorf("Non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
 	}
 
 	repoName := p[0]
 	chartName := p[1]
 	rc, err := pickChartRepositoryConfigByName(repoName, rf.Repositories)
 	if err != nil {
-		return u, nil, err
+		return u, nil, nil, err
 	}
 
 	r, err := repo.NewChartRepository(rc, c.Getters)
 	if err != nil {
-		return u, nil, err
+		return u, nil, nil, err
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
 	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
 	if err != nil {
-		return u, r.Client, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
+		return u, r.Client, r.Config, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
 	}
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return u, r.Client, fmt.Errorf("chart %q matching %s not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
+		return u, r.Client, r.Config, fmt.Errorf("chart %q matching %s not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
 	}
 
 	if len(cv.URLs) == 0 {
-		return u, r.Client, fmt.Errorf("chart %q has no downloadable URLs", ref)
+		return u, r.Client, r.Config, fmt.Errorf("chart %q has no downloadable URLs", ref)
 	}
 
 	// TODO: Seems that picking first URL is not fully correct
 	u, err = url.Parse(cv.URLs[0])
 	if err != nil {
-		return u, r.Client, fmt.Errorf("invalid chart URL format: %s", ref)
+		return u, r.Client, r.Config, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
 	// If the URL is relative (no scheme), prepend the chart repo's base URL
 	if !u.IsAbs() {
 		repoURL, err := url.Parse(rc.URL)
 		if err != nil {
-			return repoURL, r.Client, err
+			return repoURL, r.Client, r.Config, err
 		}
 		q := repoURL.Query()
 		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
 		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
 		u = repoURL.ResolveReference(u)
 		u.RawQuery = q.Encode()
-		return u, r.Client, err
+		return u, r.Client, r.Config, err
 	}
 
-	return u, r.Client, nil
+	return u, r.Client, r.Config, nil
 }
 
 // VerifyChart takes a path to a chart archive and a keyring, and verifies the chart.
