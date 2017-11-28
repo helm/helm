@@ -107,7 +107,7 @@ func TestReset_deployedReleases(t *testing.T) {
 
 	var buf bytes.Buffer
 	resp := []*release.Release{
-		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
+		helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 	}
 	c := &helm.FakeClient{
 		Rels: resp,
@@ -139,7 +139,7 @@ func TestReset_forceFlag(t *testing.T) {
 
 	var buf bytes.Buffer
 	resp := []*release.Release{
-		releaseMock(&releaseOptions{name: "atlas-guide", statusCode: release.Status_DEPLOYED}),
+		helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 	}
 	c := &helm.FakeClient{
 		Rels: resp,
