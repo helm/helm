@@ -199,7 +199,7 @@ start up.
 If you want to customize the manifest, you can save that output to a file and then
 use `kubectl create` to load it into your cluster.
 
-> We strongly recommend enabling RBAC on your cluster and adding [service accounts](service_accounts.md)
+> We strongly recommend enabling RBAC on your cluster and adding [service accounts](rbac.md)
 > with RBACS.
 
 Otherwise, you can remove the `--dry-run` and `--debug` flags. We also recommend
