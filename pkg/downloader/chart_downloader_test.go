@@ -61,7 +61,7 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		u, _, err := c.ResolveChartVersion(tt.ref, tt.version)
+		u, _, _, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
 				continue
