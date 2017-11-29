@@ -28,10 +28,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	goprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -155,6 +157,10 @@ func start() {
 			logger.Fatalf("Could not create server TLS configuration: %v", err)
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(cfg)))
+		opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle: 10 * time.Minute,
+			// If needed, we can configure the max connection age
+		}))
 	}
 
 	rootServer = tiller.NewServer(opts...)
