@@ -159,9 +159,9 @@ func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient env
 		return rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)}
 	}
 
-	filesToKeep, filesToDelete := filterManifestsToKeep(files, kubeClient, rel.Namespace)
+	filesToKeep, filesToDelete := filterManifestsToKeep(files)
 	if len(filesToKeep) > 0 {
-		kept = summarizeKeptManifests(filesToKeep)
+		kept = summarizeKeptManifests(filesToKeep, kubeClient, rel.Namespace)
 	}
 
 	errs = []error{}

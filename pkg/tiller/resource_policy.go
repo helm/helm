@@ -33,7 +33,7 @@ const resourcePolicyAnno = "helm.sh/resource-policy"
 //   during an uninstallRelease action.
 const keepPolicy = "keep"
 
-func filterManifestsToKeep(manifests []Manifest, kubeClient environment.KubeClient, namespace string) ([]Manifest, []Manifest) {
+func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 	remaining := []Manifest{}
 	keep := []Manifest{}
 
@@ -58,7 +58,7 @@ func filterManifestsToKeep(manifests []Manifest, kubeClient environment.KubeClie
 	return keep, remaining
 }
 
-func summarizeKeptManifests(manifests []Manifest) string {
+func summarizeKeptManifests(manifests []Manifest, kubeClient environment.KubeClient, namespace string) string {
 	message := "These resources were kept due to the resource policy:\n"
 	for _, m := range manifests {
 		// check if m is in fact present from k8s client's POV.
