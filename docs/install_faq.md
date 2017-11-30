@@ -43,7 +43,7 @@ Set the `$HELM_HOME` environment variable, and then run `helm init`:
 
 ```console
 export HELM_HOME=/some/path
-helm init --client-only
+helm init
 ```
 
 Note that if you have existing repositories, you will need to re-add them
