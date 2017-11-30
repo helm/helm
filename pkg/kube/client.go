@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -202,7 +203,15 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// track of tab widths.
 	buf := new(bytes.Buffer)
 	p, _ := c.Printer(nil, printers.PrintOptions{})
-	for t, ot := range objs {
+
+	objsKeys := make([]string, 0, len(objs))
+	for key := range objs {
+		objsKeys = append(objsKeys, key)
+	}
+	sort.Strings(objsKeys)
+
+	for _, t := range objsKeys {
+		ot := objs[t]
 		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
 			return "", err
 		}
