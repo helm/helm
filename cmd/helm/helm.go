@@ -173,7 +173,7 @@ func setupConnection(c *cobra.Command, args []string) error {
 			return err
 		}
 
-		tunnel, err := portforwarder.New(settings.TillerNamespace, client, config)
+		tunnel, err := portforwarder.New(settings.TillerNamespace, client, config, settings.TunnelLocalPort)
 		if err != nil {
 			return err
 		}

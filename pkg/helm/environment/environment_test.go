@@ -37,6 +37,7 @@ func TestEnvSettings(t *testing.T) {
 		// expected values
 		home, host, ns, kcontext, plugins string
 		debug                             bool
+		port                              int
 	}{
 		{
 			name:    "defaults",
@@ -47,30 +48,33 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:    "with flags set",
-			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
+			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns", "--port=44443"},
 			home:    "/foo",
 			plugins: helmpath.Home("/foo").Plugins(),
 			host:    "here",
 			ns:      "myns",
 			debug:   true,
+			port:    44443,
 		},
 		{
 			name:    "with envvars set",
 			args:    []string{},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns"},
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "TUNNEL_LOCAL_PORT": "44444"},
 			home:    "/bar",
 			plugins: helmpath.Home("/bar").Plugins(),
 			host:    "there",
 			ns:      "yourns",
 			debug:   true,
+			port:    44444,
 		},
 		{
 			name:    "with flags and envvars set",
-			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
+			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns", "--port=44443"},
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade", "TUNNEL_LOCAL_PORT": "44444"},
 			home:    "/foo",
 			plugins: "glade",
 			host:    "here",
+			port:    44443,
 			ns:      "myns",
 			debug:   true,
 		},
@@ -101,6 +105,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.TillerHost != tt.host {
 				t.Errorf("expected host %q, got %q", tt.host, settings.TillerHost)
+			}
+			if settings.TunnelLocalPort != tt.port {
+				t.Errorf("expected port %d, got %d", tt.port, settings.TunnelLocalPort)
 			}
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)

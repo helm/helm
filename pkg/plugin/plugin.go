@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	helm_env "k8s.io/helm/pkg/helm/environment"
@@ -190,6 +191,8 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 
 		"TILLER_HOST":      settings.TillerHost,
 		"TILLER_NAMESPACE": settings.TillerNamespace,
+
+		"TUNNEL_LOCAL_PORT": strconv.Itoa(settings.TunnelLocalPort),
 	} {
 		os.Setenv(key, val)
 	}

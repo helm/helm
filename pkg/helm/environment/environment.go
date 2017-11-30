@@ -39,6 +39,8 @@ var DefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 type EnvSettings struct {
 	// TillerHost is the host and port of Tiller.
 	TillerHost string
+	// TunnelLocalPort is the local port for portforward tunnel.
+	TunnelLocalPort int
 	// TillerNamespace is the namespace in which Tiller runs.
 	TillerNamespace string
 	// Home is the local path to the Helm home directory.
@@ -59,6 +61,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to kubeconfig file. Overrides $KUBECONFIG")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
+	fs.IntVar(&s.TunnelLocalPort, "port", 0, "local port for portforward tunnel. Overrides $TUNNEL_LOCAL_PORT")
 }
 
 // Init sets values from the environment.
@@ -83,6 +86,7 @@ var envMap = map[string]string{
 	"host":             "HELM_HOST",
 	"kubeconfig":       "KUBECONFIG",
 	"tiller-namespace": "TILLER_NAMESPACE",
+	"port":             "TUNNEL_LOCAL_PORT",
 }
 
 func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
