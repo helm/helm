@@ -59,7 +59,7 @@ func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 }
 
 func summarizeKeptManifests(manifests []Manifest, kubeClient environment.KubeClient, namespace string) string {
-	message := "These resources were kept due to the resource policy:\n"
+	var message string
 	for _, m := range manifests {
 		// check if m is in fact present from k8s client's POV.
 		output, err := kubeClient.Get(namespace, bytes.NewBufferString(m.Content))
@@ -68,6 +68,9 @@ func summarizeKeptManifests(manifests []Manifest, kubeClient environment.KubeCli
 		}
 
 		details := "[" + m.Head.Kind + "] " + m.Head.Metadata.Name + "\n"
+		if message == "" {
+			message = "These resources were kept due to the resource policy:\n"
+		}
 		message = message + details
 	}
 	return message
