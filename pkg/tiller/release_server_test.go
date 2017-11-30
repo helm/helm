@@ -306,7 +306,7 @@ type updateFailingKubeClient struct {
 	environment.PrintingKubeClient
 }
 
-func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait, restrictNs bool) error {
 	return errors.New("Failed update in kube client")
 }
 
@@ -320,7 +320,7 @@ type hookFailingKubeClient struct {
 	environment.PrintingKubeClient
 }
 
-func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
+func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait, restrictNs bool) error {
 	return errors.New("Failed watch")
 }
 

@@ -127,7 +127,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		rel.Info.Status.Notes = notesTxt
 	}
 
-	err = validateManifest(s.env.KubeClient, req.Namespace, manifestDoc.Bytes())
+	err = validateManifest(s.env.KubeClient, req.Namespace, req.RestrictToNamespace, manifestDoc.Bytes())
 	return rel, err
 }
 
@@ -143,7 +143,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 	// pre-install hooks
 	if !req.DisableHooks {
-		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout); err != nil {
+		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout, req.RestrictToNamespace); err != nil {
 			return res, err
 		}
 	} else {
@@ -168,9 +168,10 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
 		updateReq := &services.UpdateReleaseRequest{
-			Wait:     req.Wait,
-			Recreate: false,
-			Timeout:  req.Timeout,
+			Wait:                req.Wait,
+			Recreate:            false,
+			Timeout:             req.Timeout,
+			RestrictToNamespace: req.RestrictToNamespace,
 		}
 		s.recordRelease(r, false)
 		if err := s.ReleaseModule.Update(old, r, updateReq, s.env); err != nil {
@@ -200,7 +201,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 	// post-install hooks
 	if !req.DisableHooks {
-		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PostInstall, req.Timeout); err != nil {
+		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PostInstall, req.Timeout, req.RestrictToNamespace); err != nil {
 			msg := fmt.Sprintf("Release %q failed post-install: %s", r.Name, err)
 			s.Log("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED

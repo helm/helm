@@ -193,7 +193,7 @@ func TestUpdate(t *testing.T) {
 	reaper := &fakeReaper{}
 	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
 	c := newTestClient(rf)
-	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
+	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false, true); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
@@ -246,6 +246,18 @@ func TestBuild(t *testing.T) {
 			reader:    strings.NewReader(guestbookManifest),
 			count:     6,
 		}, {
+			name:       "Invalid scoped resource",
+			namespace:  "test",
+			reader:     strings.NewReader(testNonNamespacedResourceManifest),
+			err:        true,
+			errMessage: `resource "my-node" is not namespaced`,
+		}, {
+			name:       "Invalid namespace in resource",
+			namespace:  "test",
+			reader:     strings.NewReader(testExplicitNamespaceManifest),
+			err:        true,
+			errMessage: `resource "your-secret" is using wrong namespace "kube-system"`,
+		}, {
 			name:        "Invalid schema",
 			namespace:   "test",
 			reader:      strings.NewReader(testInvalidServiceManifest),
@@ -271,7 +283,7 @@ func TestBuild(t *testing.T) {
 		}
 
 		// Test for an invalid manifest
-		infos, err := c.Build(tt.namespace, tt.reader)
+		infos, err := c.Build(tt.namespace, true, tt.reader)
 		if err != nil && err.Error() != tt.errMessage {
 			t.Errorf("%q. expected error message: %v, got %v", tt.name, tt.errMessage, err)
 		} else if err != nil && !tt.err {
@@ -330,7 +342,7 @@ func TestGet(t *testing.T) {
 
 	// Test Success
 	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
-	o, err := c.Get("default", data)
+	o, err := c.Get("default", true, data)
 	if err != nil {
 		t.Errorf("Expected missing results, got %q", err)
 	}
@@ -340,7 +352,7 @@ func TestGet(t *testing.T) {
 
 	// Test failure
 	data = strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: starfish")
-	o, err = c.Get("default", data)
+	o, err = c.Get("default", true, data)
 	if err != nil {
 		t.Errorf("Expected missing results, got %q", err)
 	}
@@ -399,7 +411,7 @@ func TestPerform(t *testing.T) {
 			tf.Validator = validator
 		}
 
-		infos, err := c.Build(tt.namespace, tt.reader)
+		infos, err := c.Build(tt.namespace, true, tt.reader)
 		if err != nil && err.Error() != tt.errMessage {
 			t.Errorf("%q. Error while building manifests: %v", tt.name, err)
 		}
@@ -472,7 +484,7 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 
 		c := newTestClient(f)
 
-		phase, err := c.WaitAndGetCompletedPodPhase("test", objBody(codec, &testPodList), 1*time.Second)
+		phase, err := c.WaitAndGetCompletedPodPhase("test", objBody(codec, &testPodList), 1*time.Second, true)
 		if (err != nil) != tt.err {
 			t.Fatalf("Expected error but there was none.")
 		}
@@ -488,22 +500,22 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)
-	if err := c.Create("test", strings.NewReader(guestbookManifest), 300, false); err != nil {
+	if err := c.Create("test", strings.NewReader(guestbookManifest), 300, false, true); err != nil {
 		t.Fatal(err)
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
 	c = New(nil)
-	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest), 300, false); err != nil {
+	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest), 300, false, true); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.Delete("test-delete", strings.NewReader(testEndpointManifest)); err != nil {
+	if err := c.Delete("test-delete", true, strings.NewReader(testEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}
 
 	// ensures that delete does not fail if a resource is not found
-	if err := c.Delete("test-delete", strings.NewReader(testSvcEndpointManifest)); err != nil {
+	if err := c.Delete("test-delete", true, strings.NewReader(testSvcEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -540,6 +552,25 @@ subsets:
       - ip: "1.2.3.4"
     ports:
       - port: 9376
+`
+
+const testNonNamespacedResourceManifest = `
+kind: Node
+apiVersion: v1
+metadata:
+  name: my-node
+spec:
+  unschedulable: true
+`
+
+const testExplicitNamespaceManifest = `
+kind: Secret
+apiVersion: v1
+metadata:
+  name: your-secret
+  namespace: kube-system
+data:
+  password: eW91ciBiYXNlIGFyZSBiZWxvbmcgdG8gdXM=
 `
 
 const guestbookManifest = `

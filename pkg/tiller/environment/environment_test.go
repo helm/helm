@@ -40,32 +40,32 @@ func (e *mockEngine) Render(chrt *chart.Chart, v chartutil.Values) (map[string]s
 
 type mockKubeClient struct{}
 
-func (k *mockKubeClient) Create(ns string, r io.Reader, timeout int64, shouldWait bool) error {
+func (k *mockKubeClient) Create(ns string, r io.Reader, timeout int64, shouldWait, restrictNs bool) error {
 	return nil
 }
-func (k *mockKubeClient) Get(ns string, r io.Reader) (string, error) {
+func (k *mockKubeClient) Get(ns string, restrictNs bool, r io.Reader) (string, error) {
 	return "", nil
 }
-func (k *mockKubeClient) Delete(ns string, r io.Reader) error {
+func (k *mockKubeClient) Delete(ns string, restrictNs bool, r io.Reader) error {
 	return nil
 }
-func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait, restrictNs bool) error {
 	return nil
 }
-func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
+func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait, restrictNs bool) error {
 	return nil
 }
-func (k *mockKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
+func (k *mockKubeClient) Build(ns string, restrictNs bool, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (k *mockKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
+func (k *mockKubeClient) BuildUnstructured(ns string, restrictNs bool, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration, restrictNs bool) (api.PodPhase, error) {
 	return api.PodUnknown, nil
 }
 
-func (k *mockKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+func (k *mockKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration, restrictNs bool) (api.PodPhase, error) {
 	return "", nil
 }
 
@@ -104,7 +104,7 @@ func TestKubeClient(t *testing.T) {
 		b.WriteString(content)
 	}
 
-	if err := env.KubeClient.Create("sharry-bobbins", b, 300, false); err != nil {
+	if err := env.KubeClient.Create("sharry-bobbins", b, 300, false, true); err != nil {
 		t.Errorf("Kubeclient failed: %s", err)
 	}
 }

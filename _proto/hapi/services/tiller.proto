@@ -209,6 +209,8 @@ message UpdateReleaseRequest {
 	bool reuse_values = 10;
 	// Force resource update through delete/recreate if needed.
 	bool force = 11;
+	// RestrictToNamespace, if true, will reject a chart that tries to create non-namespaced resources or resources in a namespace other than `namespace`
+	bool restrict_to_namespace = 12;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -234,6 +236,8 @@ message RollbackReleaseRequest {
 	bool wait = 7;
 	// Force resource update through delete/recreate if needed.
 	bool force = 8;
+	// RestrictToNamespace, if true, will reject a chart that tries to create non-namespaced resources or resources in a namespace other than `namespace`
+	bool restrict_to_namespace = 12;
 }
 
 // RollbackReleaseResponse is the response to an update request.
@@ -271,6 +275,8 @@ message InstallReleaseRequest {
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
 	bool wait = 9;
+	// RestrictToNamespace, if true, will reject a chart that tries to create non-namespaced resources or resources in a namespace other than `namespace`
+	bool restrict_to_namespace = 10;
 }
 
 // InstallReleaseResponse is the response from a release installation.
@@ -288,6 +294,8 @@ message UninstallReleaseRequest {
 	bool purge = 3;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 4;
+	// RestrictToNamespace, if true, will reject a chart that tries to create non-namespaced resources or resources in a namespace other than `namespace`
+	bool restrict_to_namespace = 12;
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.

@@ -91,7 +91,7 @@ func (r *ReleaseModuleServiceServer) Version(ctx context.Context, in *rudderAPI.
 func (r *ReleaseModuleServiceServer) InstallRelease(ctx context.Context, in *rudderAPI.InstallReleaseRequest) (*rudderAPI.InstallReleaseResponse, error) {
 	grpclog.Print("install")
 	b := bytes.NewBufferString(in.Release.Manifest)
-	err := kubeClient.Create(in.Release.Namespace, b, 500, false)
+	err := kubeClient.Create(in.Release.Namespace, b, 500, false, false)
 	if err != nil {
 		grpclog.Printf("error when creating release: %v", err)
 	}
@@ -109,7 +109,7 @@ func (r *ReleaseModuleServiceServer) DeleteRelease(ctx context.Context, in *rudd
 		return resp, fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)
 	}
 
-	kept, errs := tiller.DeleteRelease(rel, vs, kubeClient)
+	kept, errs := tiller.DeleteRelease(rel, vs, kubeClient, false)
 	rel.Manifest = kept
 
 	allErrors := ""
@@ -131,7 +131,7 @@ func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *ru
 	grpclog.Print("rollback")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
-	err := kubeClient.Update(in.Target.Namespace, c, t, in.Force, in.Recreate, in.Timeout, in.Wait)
+	err := kubeClient.Update(in.Target.Namespace, c, t, in.Force, in.Recreate, in.Timeout, in.Wait, false)
 	return &rudderAPI.RollbackReleaseResponse{}, err
 }
 
@@ -140,7 +140,7 @@ func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *rud
 	grpclog.Print("upgrade")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
-	err := kubeClient.Update(in.Target.Namespace, c, t, in.Force, in.Recreate, in.Timeout, in.Wait)
+	err := kubeClient.Update(in.Target.Namespace, c, t, in.Force, in.Recreate, in.Timeout, in.Wait, false)
 	// upgrade response object should be changed to include status
 	return &rudderAPI.UpgradeReleaseResponse{}, err
 }
@@ -149,7 +149,7 @@ func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *rud
 func (r *ReleaseModuleServiceServer) ReleaseStatus(ctx context.Context, in *rudderAPI.ReleaseStatusRequest) (*rudderAPI.ReleaseStatusResponse, error) {
 	grpclog.Print("status")
 
-	resp, err := kubeClient.Get(in.Release.Namespace, bytes.NewBufferString(in.Release.Manifest))
+	resp, err := kubeClient.Get(in.Release.Namespace, false, bytes.NewBufferString(in.Release.Manifest))
 	in.Release.Info.Status.Resources = resp
 	return &rudderAPI.ReleaseStatusResponse{
 		Release: in.Release,

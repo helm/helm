@@ -370,6 +370,34 @@ func UpgradeForce(force bool) UpdateOption {
 	}
 }
 
+// InstallRestrictToNamespace rejects charts that try to create resources outside their namespace
+func InstallRestrictToNamespace(restrict bool) InstallOption {
+	return func(opts *options) {
+		opts.instReq.RestrictToNamespace = restrict
+	}
+}
+
+// UpdateRestrictToNamespace rejects charts that try to create resources outside their namespace
+func UpdateRestrictToNamespace(restrict bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.RestrictToNamespace = restrict
+	}
+}
+
+// DeleteRestrictToNamespace rejects charts that try to create resources outside their namespace
+func DeleteRestrictToNamespace(restrict bool) DeleteOption {
+	return func(opts *options) {
+		opts.uninstallReq.RestrictToNamespace = restrict
+	}
+}
+
+// RollbackRestrictToNamespace rejects charts that try to create resources outside their namespace
+func RollbackRestrictToNamespace(restrict bool) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.RestrictToNamespace = restrict
+	}
+}
+
 // ContentOption allows setting optional attributes when
 // performing a GetReleaseContent tiller rpc.
 type ContentOption func(*options)

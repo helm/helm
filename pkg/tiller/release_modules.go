@@ -52,26 +52,26 @@ type LocalReleaseModule struct {
 // Create creates a release via kubeclient from provided environment
 func (m *LocalReleaseModule) Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error {
 	b := bytes.NewBufferString(r.Manifest)
-	return env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait)
+	return env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait, req.RestrictToNamespace)
 }
 
 // Update performs an update from current to target release
 func (m *LocalReleaseModule) Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error {
 	c := bytes.NewBufferString(current.Manifest)
 	t := bytes.NewBufferString(target.Manifest)
-	return env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait)
+	return env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait, req.RestrictToNamespace)
 }
 
 // Rollback performs a rollback from current to target release
 func (m *LocalReleaseModule) Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error {
 	c := bytes.NewBufferString(current.Manifest)
 	t := bytes.NewBufferString(target.Manifest)
-	return env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait)
+	return env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait, req.RestrictToNamespace)
 }
 
 // Status returns kubectl-like formatted status of release objects
 func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
-	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
+	return env.KubeClient.Get(r.Namespace, false, bytes.NewBufferString(r.Manifest))
 }
 
 // Delete deletes the release and returns manifests that were kept in the deletion process
@@ -80,7 +80,7 @@ func (m *LocalReleaseModule) Delete(rel *release.Release, req *services.Uninstal
 	if err != nil {
 		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}
 	}
-	return DeleteRelease(rel, vs, env.KubeClient)
+	return DeleteRelease(rel, vs, env.KubeClient, req.RestrictToNamespace)
 }
 
 // RemoteReleaseModule is a ReleaseModule which calls Rudder service to operate on a release
@@ -148,7 +148,7 @@ func (m *RemoteReleaseModule) Delete(r *release.Release, req *services.Uninstall
 }
 
 // DeleteRelease is a helper that allows Rudder to delete a release without exposing most of Tiller inner functions
-func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient environment.KubeClient) (kept string, errs []error) {
+func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient environment.KubeClient, restrictNs bool) (kept string, errs []error) {
 	manifests := relutil.SplitManifests(rel.Manifest)
 	_, files, err := sortManifests(manifests, vs, UninstallOrder)
 	if err != nil {
@@ -170,7 +170,7 @@ func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient env
 		if b.Len() == 0 {
 			continue
 		}
-		if err := kubeClient.Delete(rel.Namespace, b); err != nil {
+		if err := kubeClient.Delete(rel.Namespace, restrictNs, b); err != nil {
 			log.Printf("uninstall: Failed deletion of %q: %s", rel.Name, err)
 			if err == kube.ErrNoObjectsVisited {
 				// Rewrite the message from "no objects visited"

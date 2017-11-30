@@ -70,7 +70,7 @@ func TestDeleteTestPods(t *testing.T) {
 	}
 
 	for _, testManifest := range mockTestSuite.TestManifests {
-		if _, err := mockTestEnv.KubeClient.Get(mockTestEnv.Namespace, bytes.NewBufferString(testManifest)); err == nil {
+		if _, err := mockTestEnv.KubeClient.Get(mockTestEnv.Namespace, true, bytes.NewBufferString(testManifest)); err == nil {
 			t.Error("Expected error, got nil")
 		}
 	}
@@ -149,7 +149,7 @@ func newGetFailingKubeClient() *getFailingKubeClient {
 	}
 }
 
-func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
+func (p *getFailingKubeClient) Get(ns string, restrictNs bool, r io.Reader) (string, error) {
 	return "", errors.New("in the end, they did not find Nemo")
 }
 
@@ -163,7 +163,7 @@ func newDeleteFailingKubeClient() *deleteFailingKubeClient {
 	}
 }
 
-func (p *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
+func (p *deleteFailingKubeClient) Delete(ns string, restrictNs bool, r io.Reader) error {
 	return errors.New("delete failed")
 }
 
@@ -177,6 +177,6 @@ func newCreateFailingKubeClient() *createFailingKubeClient {
 	}
 }
 
-func (p *createFailingKubeClient) Create(ns string, r io.Reader, t int64, shouldWait bool) error {
+func (p *createFailingKubeClient) Create(ns string, r io.Reader, t int64, shouldWait, restrictNs bool) error {
 	return errors.New("We ran out of budget and couldn't create finding-nemo")
 }

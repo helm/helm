@@ -324,7 +324,7 @@ func newPodSucceededKubeClient() *podSucceededKubeClient {
 	}
 }
 
-func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (api.PodPhase, error) {
+func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration, restrictNs bool) (api.PodPhase, error) {
 	return api.PodSucceeded, nil
 }
 
@@ -338,6 +338,6 @@ func newPodFailedKubeClient() *podFailedKubeClient {
 	}
 }
 
-func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (api.PodPhase, error) {
+func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration, restrictNs bool) (api.PodPhase, error) {
 	return api.PodFailed, nil
 }

@@ -80,7 +80,7 @@ type ResourceActorFunc func(*resource.Info) error
 // Create creates Kubernetes resources from an io.reader.
 //
 // Namespace will set the namespace.
-func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
+func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool, restrictNs bool) error {
 	client, err := c.ClientSet()
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 		return err
 	}
 	c.Log("building resources from manifest")
-	infos, buildErr := c.BuildUnstructured(namespace, reader)
+	infos, buildErr := c.BuildUnstructured(namespace, restrictNs, reader)
 	if buildErr != nil {
 		return buildErr
 	}
@@ -124,13 +124,14 @@ func (c *Client) validator() validation.Schema {
 }
 
 // BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
+func (c *Client) BuildUnstructured(namespace string, restrictNs bool, reader io.Reader) (Result, error) {
 	var result Result
 
 	b, err := c.NewUnstructuredBuilder(true)
 	if err != nil {
 		return result, err
 	}
+
 	result, err = b.ContinueOnError().
 		Schema(c.validator()).
 		NamespaceParam(namespace).
@@ -138,24 +139,47 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 		Stream(reader, "").
 		Flatten().
 		Do().Infos()
+
+	if restrictNs {
+		for _, info := range result {
+			if !info.Namespaced() {
+				return nil, fmt.Errorf("resource %q is not namespaced", info.Name)
+			}
+			if info.Namespace != namespace {
+				return nil, fmt.Errorf("resource %q is using wrong namespace %q", info.Name, info.Namespace)
+			}
+		}
+	}
+
 	return result, scrubValidationError(err)
 }
 
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
-func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
-	var result Result
+func (c *Client) Build(namespace string, restrictNs bool, reader io.Reader) (Result, error) {
 	result, err := c.newBuilder(namespace, reader).Infos()
+
+	if restrictNs {
+		for _, info := range result {
+			if !info.Namespaced() {
+				return nil, fmt.Errorf("resource %q is not namespaced", info.Name)
+			}
+			if info.Namespace != namespace {
+				return nil, fmt.Errorf("resource %q is using wrong namespace %q", info.Name, info.Namespace)
+			}
+		}
+	}
+
 	return result, scrubValidationError(err)
 }
 
 // Get gets Kubernetes resources as pretty-printed string.
 //
 // Namespace will set the namespace.
-func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
+func (c *Client) Get(namespace string, restrictNs bool, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
 	objs := make(map[string][]runtime.Object)
-	infos, err := c.BuildUnstructured(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, restrictNs, reader)
 	if err != nil {
 		return "", err
 	}
@@ -231,14 +255,14 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 // not present in the target configuration.
 //
 // Namespace will set the namespaces.
-func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
-	original, err := c.BuildUnstructured(namespace, originalReader)
+func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait, restrictNs bool) error {
+	original, err := c.BuildUnstructured(namespace, restrictNs, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
 	c.Log("building resources from updated manifest")
-	target, err := c.BuildUnstructured(namespace, targetReader)
+	target, err := c.BuildUnstructured(namespace, restrictNs, targetReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
@@ -302,8 +326,8 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 // Delete deletes Kubernetes resources from an io.reader.
 //
 // Namespace will set the namespace.
-func (c *Client) Delete(namespace string, reader io.Reader) error {
-	infos, err := c.BuildUnstructured(namespace, reader)
+func (c *Client) Delete(namespace string, restrictNs bool, reader io.Reader) error {
+	infos, err := c.BuildUnstructured(namespace, restrictNs, reader)
 	if err != nil {
 		return err
 	}
@@ -340,8 +364,8 @@ func (c *Client) watchTimeout(t time.Duration) ResourceActorFunc {
 //   ascertained by watching the Status fields in a job's output.
 //
 // Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	infos, err := c.Build(namespace, reader)
+func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait, restrictNs bool) error {
+	infos, err := c.Build(namespace, restrictNs, reader)
 	if err != nil {
 		return err
 	}
@@ -610,8 +634,8 @@ func scrubValidationError(err error) error {
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
-	infos, err := c.Build(namespace, reader)
+func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration, restrictNs bool) (api.PodPhase, error) {
+	infos, err := c.Build(namespace, restrictNs, reader)
 	if err != nil {
 		return api.PodUnknown, err
 	}

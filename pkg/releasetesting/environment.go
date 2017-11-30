@@ -39,7 +39,7 @@ type Environment struct {
 
 func (env *Environment) createTestPod(test *test) error {
 	b := bytes.NewBufferString(test.manifest)
-	if err := env.KubeClient.Create(env.Namespace, b, env.Timeout, false); err != nil {
+	if err := env.KubeClient.Create(env.Namespace, b, env.Timeout, false, true); err != nil {
 		log.Printf(err.Error())
 		test.result.Info = err.Error()
 		test.result.Status = release.TestRun_FAILURE
@@ -51,7 +51,7 @@ func (env *Environment) createTestPod(test *test) error {
 
 func (env *Environment) getTestPodStatus(test *test) (api.PodPhase, error) {
 	b := bytes.NewBufferString(test.manifest)
-	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, b, time.Duration(env.Timeout)*time.Second)
+	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, b, time.Duration(env.Timeout)*time.Second, true)
 	if err != nil {
 		log.Printf("Error getting status for pod %s: %s", test.result.Name, err)
 		test.result.Info = err.Error()
@@ -114,7 +114,7 @@ func (env *Environment) streamMessage(msg string, status release.TestRun_Status)
 // DeleteTestPods deletes resources given in testManifests
 func (env *Environment) DeleteTestPods(testManifests []string) {
 	for _, testManifest := range testManifests {
-		err := env.KubeClient.Delete(env.Namespace, bytes.NewBufferString(testManifest))
+		err := env.KubeClient.Delete(env.Namespace, true, bytes.NewBufferString(testManifest))
 		if err != nil {
 			env.streamError(err.Error())
 		}
