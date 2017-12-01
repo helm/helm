@@ -268,13 +268,13 @@ func newClient() helm.Interface {
 
 	if tlsVerify || tlsEnable {
 		if tlsCaCertFile == "" {
-			tlsCaCertFile = os.ExpandEnv(tlsCaCertDefault)
+			tlsCaCertFile = settings.Home.TLSCaCert()
 		}
 		if tlsCertFile == "" {
-			tlsCertFile = os.ExpandEnv(tlsCertDefault)
+			tlsCertFile = settings.Home.TLSCert()
 		}
 		if tlsKeyFile == "" {
-			tlsKeyFile = os.ExpandEnv(tlsKeyDefault)
+			tlsKeyFile = settings.Home.TLSKey()
 		}
 		debug("Key=%q, Cert=%q, CA=%q\n", tlsKeyFile, tlsCertFile, tlsCaCertFile)
 		tlsopts := tlsutil.Options{KeyFile: tlsKeyFile, CertFile: tlsCertFile, InsecureSkipVerify: true}
