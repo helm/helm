@@ -53,6 +53,11 @@ import (
 	"k8s.io/kubernetes/pkg/printers"
 )
 
+const (
+	// MissingGetHeader is added to Get's outout when a resource is not found.
+	MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
+)
+
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = goerrors.New("no objects visited")
 
@@ -217,7 +222,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		}
 	}
 	if len(missing) > 0 {
-		buf.WriteString("==> MISSING\nKIND\t\tNAME\n")
+		buf.WriteString(MissingGetHeader)
 		for _, s := range missing {
 			fmt.Fprintln(buf, s)
 		}

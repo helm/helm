@@ -17,7 +17,11 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"strings"
+
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // resourcePolicyAnno is the annotation name for a resource policy
@@ -34,7 +38,6 @@ func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 	keep := []Manifest{}
 
 	for _, m := range manifests {
-
 		if m.Head.Metadata == nil || m.Head.Metadata.Annotations == nil || len(m.Head.Metadata.Annotations) == 0 {
 			remaining = append(remaining, m)
 			continue
@@ -55,10 +58,19 @@ func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 	return keep, remaining
 }
 
-func summarizeKeptManifests(manifests []Manifest) string {
-	message := "These resources were kept due to the resource policy:\n"
+func summarizeKeptManifests(manifests []Manifest, kubeClient environment.KubeClient, namespace string) string {
+	var message string
 	for _, m := range manifests {
+		// check if m is in fact present from k8s client's POV.
+		output, err := kubeClient.Get(namespace, bytes.NewBufferString(m.Content))
+		if err != nil || strings.Contains(output, kube.MissingGetHeader) {
+			continue
+		}
+
 		details := "[" + m.Head.Kind + "] " + m.Head.Metadata.Name + "\n"
+		if message == "" {
+			message = "These resources were kept due to the resource policy:\n"
+		}
 		message = message + details
 	}
 	return message
