@@ -82,7 +82,22 @@ func (h Home) Plugins() string {
 	return h.Path("plugins")
 }
 
-// Archive returns the path to download chart archives
+// Archive returns the path to download chart archives.
 func (h Home) Archive() string {
 	return h.Path("cache", "archive")
+}
+
+// TLSCaCert returns the path to fetch the CA certificate.
+func (h Home) TLSCaCert() string {
+	return h.Path("ca.pem")
+}
+
+// TLSCert returns the path to fetch the client certificate.
+func (h Home) TLSCert() string {
+	return h.Path("cert.pem")
+}
+
+// TLSKey returns the path to fetch the client public key.
+func (h Home) TLSKey() string {
+	return h.Path("key.pem")
 }

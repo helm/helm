@@ -35,4 +35,7 @@ func TestHelmHome(t *testing.T) {
 	isEq(t, hh.CacheIndex("t"), "r:\\repository\\cache\\t-index.yaml")
 	isEq(t, hh.Starters(), "r:\\starters")
 	isEq(t, hh.Archive(), "r:\\cache\\archive")
+	isEq(t, hh.TLSCaCert(), "r:\\ca.pem")
+	isEq(t, hh.TLSCert(), "r:\\cert.pem")
+	isEq(t, hh.TLSKey(), "r:\\key.pem")
 }
