@@ -177,8 +177,6 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 			basePath: basePath.(string),
 		}
 
-		println(vals.Table)
-
 		templates := map[string]renderable{}
 		templateName, err := vals.PathValue("Template.Name")
 		if err != nil {
