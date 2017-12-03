@@ -98,6 +98,13 @@ func TestTemplateCmd(t *testing.T) {
 			expectValue: "name: apache",
 		},
 		{
+			name:        "check_values_files_json",
+			desc:        "verify --values files values exist",
+			args:        []string{chartPath, "--values", chartPath + "/charts/subchartA/values.json"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectValue: "name: apache",
+		},
+		{
 			name:        "check_name_template",
 			desc:        "verify --name-template result exists",
 			args:        []string{chartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
