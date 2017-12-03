@@ -17,7 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/ghodss/yaml"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -33,6 +35,7 @@ This command downloads a values file for a given release.
 type getValuesCmd struct {
 	release   string
 	allValues bool
+	outfmt    string
 	out       io.Writer
 	client    helm.Interface
 	version   int32
@@ -60,7 +63,28 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd.Flags().Int32Var(&get.version, "revision", 0, "get the named release with revision")
 	cmd.Flags().BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
+	cmd.Flags().StringVarP(&get.outfmt, "output", "o", "yaml", "output the status in the specified format (json or yaml)")
 	return cmd
+}
+
+func (g *getValuesCmd) printValues(vals string) error {
+	switch g.outfmt {
+	case "json":
+		out := map[string]interface{}{}
+		err := yaml.Unmarshal([]byte(vals), &out)
+		if err != nil {
+			return err
+		}
+		json, err := json.MarshalIndent(out, "", "    ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(g.out, string(json))
+
+	default:
+		fmt.Fprintln(g.out, vals)
+	}
+	return nil
 }
 
 // getValues implements 'helm get values'
@@ -69,7 +93,7 @@ func (g *getValuesCmd) run() error {
 	if err != nil {
 		return prettyError(err)
 	}
-
+	cfg := res.Release.Config.Raw
 	// If the user wants all values, compute the values and return.
 	if g.allValues {
 		cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config)
@@ -80,10 +104,9 @@ func (g *getValuesCmd) run() error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(g.out, cfgStr)
+		g.printValues(cfgStr)
 		return nil
 	}
-
-	fmt.Fprintln(g.out, res.Release.Config.Raw)
+	g.printValues(cfg)
 	return nil
 }

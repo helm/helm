@@ -17,6 +17,7 @@ helm get values [flags] RELEASE_NAME
 
 ```
   -a, --all                  dump all (computed) values
+  -o, --output string        output the status in the specified format (json or yaml) (default "yaml")
       --revision int32       get the named release with revision
       --tls                  enable TLS for request
       --tls-ca-cert string   path to TLS CA certificate file (default "$HELM_HOME/ca.pem")

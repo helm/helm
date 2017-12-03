@@ -45,3 +45,24 @@ func TestGetValuesCmd(t *testing.T) {
 	}
 	runReleaseCases(t, tests, cmd)
 }
+
+func TestGetValuesCmdJson(t *testing.T) {
+	tests := []releaseCase{
+		{
+			name:     "get values with a release in JSON",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
+			flags:    []string{"--output", "json"},
+			args:     []string{"thomas-guide"},
+			expected: "{\n    \"name\": \"value\"\n}\n",
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"})},
+		},
+		{
+			name: "get values requires release name arg",
+			err:  true,
+		},
+	}
+	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
+		return newGetValuesCmd(c, out)
+	}
+	runReleaseCases(t, tests, cmd)
+}
