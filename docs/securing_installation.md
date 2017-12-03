@@ -72,6 +72,9 @@ Because of the relative longevity of Helm, the Helm chart ecosystem evolved with
 
 As with all shared software, in a controlled or shared environment you must validate all software you install yourself _before_ you install it. If you have secured Tiller with TLS and have installed it with permissions to only one or a subset of namespaces, some charts may fail to install -- but in these environments, that is exactly what you want. If you need to use the chart, you may have to work with the creator or modify it yourself in order to use it securely in a mulitenant cluster with proper RBAC rules applied.
 
+### gRPC Tools and Secured Tiller Configurations
+
+Many very useful tools use the gRPC interface directly, and having been built against the default installation -- which provides cluster-wide access -- may fail once security configurations have been applied. RBAC policies are controlled by you or by the cluster operator, and either can be adjusted for the tool, or the tool can be configured to work properly within the contraints of specific RBAC policies applied to Tiller. The same may need to be done if the gRPC endpoint is secured: the tools need their own secure TLS configuration in order to use a specific Tiller instance. The combination of RBAC policies and a secured gRPC endpoint configured in conjunction with gRPC tools enables you to control your cluster environment as you should.
 
 ## Best Practices for Securing Helm and Tiller
 
