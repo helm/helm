@@ -66,6 +66,16 @@ type Client struct {
 	Log func(string, ...interface{})
 }
 
+type Obj struct {
+	vk     string
+	object runtime.Object
+}
+type Objs []Obj
+
+func (objs Objs) Len() int           { return len(objs) }
+func (objs Objs) Swap(i, j int)      { objs[i], objs[j] = objs[j], objs[i] }
+func (objs Objs) Less(i, j int) bool { return objs[i].vk < objs[j].vk }
+
 // New creates a new Client.
 func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
@@ -155,7 +165,7 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
-	objs := make(map[string][]runtime.Object)
+	objs := []Obj{}
 	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return "", err
@@ -176,7 +186,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], info.Object)
+		objs = append(objs, Obj{vk: vk, object: info.Object})
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
@@ -193,7 +203,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	//here, we will add the objPods to the objs
 	for key, podItems := range objPods {
 		for i := range podItems {
-			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
+			objs = append(objs, Obj{vk: key + "(related)", object: &podItems[i]})
 		}
 	}
 
@@ -204,24 +214,25 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	buf := new(bytes.Buffer)
 	p, _ := c.Printer(nil, printers.PrintOptions{})
 
-	objsKeys := make([]string, 0, len(objs))
-	for key := range objs {
-		objsKeys = append(objsKeys, key)
-	}
-	sort.Strings(objsKeys)
+	sort.Sort(Objs(objs))
 
-	for _, t := range objsKeys {
-		ot := objs[t]
-		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
-			return "", err
-		}
-		for _, o := range ot {
-			if err := p.PrintObj(o, buf); err != nil {
-				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
+	var lastVk string
+	for _, t := range objs {
+		vk := t.vk
+		object := t.object
+		if vk != lastVk {
+			if lastVk != "" {
+				if _, err := buf.WriteString("\n"); err != nil {
+					return "", err
+				}
+			}
+			if _, err := buf.WriteString("==> " + vk + "\n"); err != nil {
 				return "", err
 			}
+			lastVk = vk
 		}
-		if _, err := buf.WriteString("\n"); err != nil {
+		if err := p.PrintObj(object, buf); err != nil {
+			c.Log("failed to print object type %s, object: %q :\n %v", object, vk, err)
 			return "", err
 		}
 	}
