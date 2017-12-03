@@ -4,6 +4,8 @@ There are two parts to Helm: The Helm client (`helm`) and the Helm
 server (Tiller). This guide shows how to install the client, and then
 proceeds to show two ways to install the server.
 
+**IMPORTANT**: If you are responsible for ensuring your cluster is a controlled environment, especially when resources are shared, it is strongly recommended to install Tiller using a secured configuration. For guidance, see [Securing your Helm Installation](securing_installation.md).
+
 ## Installing the Helm Client
 
 The Helm client can be installed either from source, or from pre-built binary
