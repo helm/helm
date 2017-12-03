@@ -23,7 +23,7 @@ The following assumes you have a Kubernetes configuration file (a _kubeconfig_ f
 
 ## Understanding the Security Context of your Cluster
 
-`helm init` installs Tiller into the cluster in the `default` namespace and without any RBAC rules applied. Again, this is entirely appropriate for local development and other private scenarios because it enables you to be productive immediately. It also enables you to continue running Helm with existing Kubernetes clusters that do not have role-based access control (RBAC) support until you can move your workloads to a more recent Kubernetes version.
+`helm init` installs Tiller into the cluster in the `default` namespace and without any RBAC rules applied. This is appropriate for local development and other private scenarios because it enables you to be productive immediately. It also enables you to continue running Helm with existing Kubernetes clusters that do not have role-based access control (RBAC) support until you can move your workloads to a more recent Kubernetes version.
 
 There are four main areas to consider when securing a tiller installation:
 
@@ -34,20 +34,33 @@ There are four main areas to consider when securing a tiller installation:
 
 ### RBAC
 
-Modern system design realizes that bugs exist and that humans can be fooled; Kubernetes is no different. This is why although such systems have user-based security enforcement mechanisms, additional enforcememt mechanisms exist to provide multiple layers of restrictions to enable the proper usage but protect against malicious exploitation of either a weakness in the code or access to a user's credentials. 
+Recent versions of Kubernetes employ a [role-based access control (or RBAC)](https://en.wikipedia.org/wiki/Role-based_access_control) system as do modern operating systems to help mitigate the damage that can done if credentials are misused or bugs exist. Even in where an identity is hijacked, the identity has only so many permissions to a controlled space. This effectively adds a layer of security to limit the scope of any attack with that identity. 
 
-Recent versions of Kubernetes employ a role-based access control (or RBAC) system as do modern operating systems to help mitigate the damage that can done if credentials are misused or bugs exist.
+Helm and Tiller are designed to install, remove, and modify logical applications that can contain many service interacting together. As a result, often its usefulness involves cluster-wide operations, which in a multitenant cluster means that great care must be taken with access to a cluster-wide Tiller installation to prevent undue access. 
 
-### The Tiller gRPC Endpoint
+Specific users and teams -- developers, operators, system and network administrators -- will need their own portion of the cluster in which they can use Helm and Tiller without risking other portions of the cluster. This means using a Kubernetes cluster with RBAC enabled and Tiller configured to enforce them. For more information about using RBAC in Kubernetes, see [Using RBAC Authorization](rbac.md).
+
+
+### The Tiller gRPC Endpoint and TLS
+
+The gRPC endpoint that Tiller offers is available inside the cluster (not external to the cluster) without authorization with the default installation. That means that without applying authentication, any process in the cluster can use the gRPC endpoint to perform operations inside the cluster. In a local or secured private cluster, this enables rapid usage and is normal. 
+
+Shared and production clusters -- for the most part -- should use Helm 2.3.0 at a minimum and configure TLS for the Tiller gRPC endpoints to ensure that within the cluster usage of the gRPC endpoint is only for the properly authenticated identity. Doing so enables any number of Tiller instances to be deployed in any number of namespaces and yet no unauthenticated usage of any gRPC endpoint is possible. Finally, usage of Helm with the `--tiller-tls-verify` option to enforce TLS in any communication with gRPC endpoints.
+
+For the proper steps to configure Tiller and use Helm properly with TLS configured, see [Using SSL between Helm and Tiller](tiller_ssl.md).
+
+
+
 
 ### Tiller's Release Information
+
 
 ### Thinking about Charts
 
 Charts can be vectors to install anything. 
 
-## Best Practices for Securing Helm and Tiller
 
+## Best Practices for Securing Helm and Tiller
 
 1. Create a cluster with RBAC enabled
 2. To ensure trusted agent model is secure, you must Tiller gRPC with TLS 
