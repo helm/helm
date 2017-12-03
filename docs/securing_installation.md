@@ -36,9 +36,16 @@ There are four main areas to consider when securing a tiller installation:
 
 Recent versions of Kubernetes employ a [role-based access control (or RBAC)](https://en.wikipedia.org/wiki/Role-based_access_control) system as do modern operating systems to help mitigate the damage that can done if credentials are misused or bugs exist. Even in where an identity is hijacked, the identity has only so many permissions to a controlled space. This effectively adds a layer of security to limit the scope of any attack with that identity. 
 
-Helm and Tiller are designed to install, remove, and modify logical applications that can contain many service interacting together. As a result, often its usefulness involves cluster-wide operations, which in a multitenant cluster means that great care must be taken with access to a cluster-wide Tiller installation to prevent undue access. 
+Helm and Tiller are designed to install, remove, and modify logical applications that can contain many service interacting together. As a result, often its usefulness involves cluster-wide operations, which in a multitenant cluster means that great care must be taken with access to a cluster-wide Tiller installation to prevent improper activity. 
 
 Specific users and teams -- developers, operators, system and network administrators -- will need their own portion of the cluster in which they can use Helm and Tiller without risking other portions of the cluster. This means using a Kubernetes cluster with RBAC enabled and Tiller configured to enforce them. For more information about using RBAC in Kubernetes, see [Using RBAC Authorization](rbac.md).
+
+#### Tiller and User Permissions
+Tiller in its current form (2.7.x) does not provide a way to map user credentials to specific permissions within Kubernetes. When Tiller is running inside of the cluster, it operates with the permissions of its service account. If no service account name is supplied to Tiller, it runs with the default service account. This means that all Tiller operations on that server are executed using the Tiller pod's credentials and permissions. 
+
+The properly limit what Tiller itself can do, the standard Kubernetes RBAC mechanisms must be attached to Tiller, including Roles and RoleBindings that place explicit limits on what things a Tiller instance can install, and where. 
+
+This situation may change in the future. While the community has several methods that might address this, at the moment performing actions using the rights of the client, instead of the rights of Tiller, is contingent upon the outcome of the Pod Identity Working Group, which has taken on the task of solving the problem in a general way. 
 
 
 ### The Tiller gRPC Endpoint and TLS
@@ -48,6 +55,8 @@ In the default installation the gRPC endpoint that Tiller offers is available in
 Shared and production clusters -- for the most part -- should use Helm 2.3.0 at a minimum and configure TLS for the Tiller gRPC endpoints to ensure that within the cluster usage of the gRPC endpoint is only for the properly authenticated identity. Doing so enables any number of Tiller instances to be deployed in any number of namespaces and yet no unauthenticated usage of any gRPC endpoint is possible. Finally, usage of Helm with the `--tiller-tls-verify` option to enforce TLS in any communication with gRPC endpoints.
 
 For the proper steps to configure Tiller and use Helm properly with TLS configured, see [Using SSL between Helm and Tiller](tiller_ssl.md).
+
+When Helm clients are connecting from outside of the cluster, the security between the Helm client and the API server is managed by Kubernetes itself. You may want to ensure that this link is secure. Note that if you are using the TLS configuration recommended above, not even the Kubernetes API server has access to the unencrypted messages between the client and Tiller.
 
 ### Tiller's Release Information
 
@@ -71,7 +80,7 @@ The following guidelines reiterate the Best Practices for securing Helm and Till
 1. Create a cluster with RBAC enabled
 2. Configure each Tiller gRPC to use TLS 
 3. Release information should be a Kubernetes Secret 
-4. Install one Tiller per user, team, or other organizational entity depending on your scenario
+4. Install one Tiller per user, team, or other organizational entity with the `--service-account` flag, Roles, and RoleBindings
 5. Use Helm with the `--tiller-tls-verify` flag to enforce verification
 
 If these steps are followed, an example `helm init` command might look something like this: 
@@ -86,13 +95,10 @@ $ helm init \
 –service-account=accountname  
 ```
 
-This command will start Tiller with both strong authentication over gRPC, and a service account to which RBACs can be applied. 
+This command will start Tiller with both strong authentication over gRPC, and a service account to which RBAC policies have been applied. 
 
 
-## Other Considerations
-Tiller in its current form (2.7.x) does not provide a way to map user credentials to specific permissions within Kubernetes. That is, Tiller will not let you say that for one particular Tiller server, user A has one set of rights, and user B has another. All Tiller operations on that server are executed using the Tiller pod's credentials and permissions. This situation may change in the future.
 
-When Helm clients are connecting from outside of the cluster, the security between the Helm client and the API server is managed by Kubernetes itself. You may want to ensure that this link is secure. Note that if you are using the TLS configuration recommended above, not even the Kubernetes API server has access to the unencrypted messages between the client and Tiller.
 
 
 
