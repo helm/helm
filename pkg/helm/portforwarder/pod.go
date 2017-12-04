@@ -17,7 +17,7 @@ limitations under the License.
 package portforwarder
 
 import (
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 )
 
 // These functions are adapted from the "kubernetes" repository's file

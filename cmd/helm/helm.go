@@ -45,6 +45,10 @@ var (
 	tlsVerify     bool   // enable TLS and verify remote certificates
 	tlsEnable     bool   // enable TLS
 
+	tlsCaCertDefault = "$HELM_HOME/ca.pem"
+	tlsCertDefault   = "$HELM_HOME/cert.pem"
+	tlsKeyDefault    = "$HELM_HOME/key.pem"
+
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
 )
@@ -174,7 +178,7 @@ func setupConnection(c *cobra.Command, args []string) error {
 			return err
 		}
 
-		settings.TillerHost = fmt.Sprintf("localhost:%d", tunnel.Local)
+		settings.TillerHost = fmt.Sprintf("127.0.0.1:%d", tunnel.Local)
 		debug("Created tunnel using local port: '%d'\n", tunnel.Local)
 	}
 
@@ -216,7 +220,7 @@ func prettyError(err error) error {
 
 // configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
 func configForContext(context string) (*rest.Config, error) {
-	config, err := kube.GetConfig(context).ClientConfig()
+	config, err := kube.GetConfig(context, settings.KubeConfig).ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
 	}
@@ -239,16 +243,16 @@ func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
 // getInternalKubeClient creates a Kubernetes config and an "internal" client for a given kubeconfig context.
 //
 // Prefer the similar getKubeClient if you don't need to use such an internal client.
-func getInternalKubeClient(context string) (*rest.Config, internalclientset.Interface, error) {
+func getInternalKubeClient(context string) (internalclientset.Interface, error) {
 	config, err := configForContext(context)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	client, err := internalclientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
+		return nil, fmt.Errorf("could not get Kubernetes client: %s", err)
 	}
-	return config, client, nil
+	return client, nil
 }
 
 // ensureHelmClient returns a new helm client impl. if h is not nil.
@@ -263,6 +267,16 @@ func newClient() helm.Interface {
 	options := []helm.Option{helm.Host(settings.TillerHost)}
 
 	if tlsVerify || tlsEnable {
+		if tlsCaCertFile == "" {
+			tlsCaCertFile = settings.Home.TLSCaCert()
+		}
+		if tlsCertFile == "" {
+			tlsCertFile = settings.Home.TLSCert()
+		}
+		if tlsKeyFile == "" {
+			tlsKeyFile = settings.Home.TLSKey()
+		}
+		debug("Key=%q, Cert=%q, CA=%q\n", tlsKeyFile, tlsCertFile, tlsCaCertFile)
 		tlsopts := tlsutil.Options{KeyFile: tlsKeyFile, CertFile: tlsCertFile, InsecureSkipVerify: true}
 		if tlsVerify {
 			tlsopts.CaCertFile = tlsCaCertFile
@@ -281,12 +295,6 @@ func newClient() helm.Interface {
 // addFlagsTLS adds the flags for supporting client side TLS to the
 // helm command (only those that invoke communicate to Tiller.)
 func addFlagsTLS(cmd *cobra.Command) *cobra.Command {
-	// defaults
-	var (
-		tlsCaCertDefault = "$HELM_HOME/ca.pem"
-		tlsCertDefault   = "$HELM_HOME/cert.pem"
-		tlsKeyDefault    = "$HELM_HOME/key.pem"
-	)
 
 	// add flags
 	cmd.Flags().StringVar(&tlsCaCertFile, "tls-ca-cert", tlsCaCertDefault, "path to TLS CA certificate file")

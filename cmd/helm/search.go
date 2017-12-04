@@ -109,10 +109,17 @@ func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, err
 	}
 
 	data := res[:0]
+	foundNames := map[string]bool{}
 	for _, r := range res {
+		if _, found := foundNames[r.Name]; found {
+			continue
+		}
 		v, err := semver.NewVersion(r.Chart.Version)
 		if err != nil || constraint.Check(v) {
 			data = append(data, r)
+			if !s.versions {
+				foundNames[r.Name] = true // If user hasn't requested all versions, only show the latest that matches
+			}
 		}
 	}
 
@@ -125,9 +132,9 @@ func (s *searchCmd) formatSearchResults(res []*search.Result) string {
 	}
 	table := uitable.New()
 	table.MaxColWidth = 50
-	table.AddRow("NAME", "VERSION", "DESCRIPTION")
+	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
 	for _, r := range res {
-		table.AddRow(r.Name, r.Chart.Version, r.Chart.Description)
+		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
 	}
 	return table.String()
 }
@@ -149,7 +156,7 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 			continue
 		}
 
-		i.AddRepo(n, ind, s.versions)
+		i.AddRepo(n, ind, s.versions || len(s.version) > 0)
 	}
 	return i, nil
 }

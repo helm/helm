@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -36,46 +35,46 @@ func TestInstall(t *testing.T) {
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name aeneas", " "),
 			expected: "aeneas",
-			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, no hooks
 		{
 			name:     "install without hooks",
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name aeneas --no-hooks", " "),
-			expected: "juno",
-			resp:     releaseMock(&releaseOptions{name: "juno"}),
+			expected: "aeneas",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, values from cli
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--set foo=bar", " "),
-			resp:     releaseMock(&releaseOptions{name: "virgil"}),
+			flags:    strings.Split("--name virgil --set foo=bar", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
 			expected: "virgil",
 		},
 		// Install, values from cli via multiple --set
 		{
 			name:     "install with multiple values",
 			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--set foo=bar", "--set bar=foo"),
-			resp:     releaseMock(&releaseOptions{name: "virgil"}),
+			flags:    strings.Split("--name virgil --set foo=bar --set bar=foo", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
 			expected: "virgil",
 		},
 		// Install, values from yaml
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("-f testdata/testcharts/alpine/extra_values.yaml", " "),
-			resp:     releaseMock(&releaseOptions{name: "virgil"}),
+			flags:    strings.Split("--name virgil -f testdata/testcharts/alpine/extra_values.yaml", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
 			expected: "virgil",
 		},
 		// Install, values from multiple yaml
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("-f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml", " "),
-			resp:     releaseMock(&releaseOptions{name: "virgil"}),
+			flags:    strings.Split("--name virgil -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
 			expected: "virgil",
 		},
 		// Install, no charts
@@ -90,23 +89,23 @@ func TestInstall(t *testing.T) {
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name aeneas --replace", " "),
 			expected: "aeneas",
-			resp:     releaseMock(&releaseOptions{name: "aeneas"}),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, with timeout
 		{
 			name:     "install with a timeout",
 			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--timeout 120", " "),
+			flags:    strings.Split("--name foobar --timeout 120", " "),
 			expected: "foobar",
-			resp:     releaseMock(&releaseOptions{name: "foobar"}),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "foobar"}),
 		},
 		// Install, with wait
 		{
 			name:     "install with a wait",
 			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--wait", " "),
+			flags:    strings.Split("--name apollo --wait", " "),
 			expected: "apollo",
-			resp:     releaseMock(&releaseOptions{name: "apollo"}),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
 		},
 		// Install, using the name-template
 		{
@@ -114,7 +113,7 @@ func TestInstall(t *testing.T) {
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    []string{"--name-template", "{{upper \"foobar\"}}"},
 			expected: "FOOBAR",
-			resp:     releaseMock(&releaseOptions{name: "FOOBAR"}),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "FOOBAR"}),
 		},
 		// Install, perform chart verification along the way.
 		{

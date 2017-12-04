@@ -36,6 +36,8 @@ wordpress/
 Helm reserves use of the `charts/` and `templates/` directories, and of
 the listed file names. Other files will be left as they are.
 
+While the `charts` and `template` directories are optional there must be at least one chart dependency or template file for the chart to be valid.
+
 ## The Chart.yaml File
 
 The `Chart.yaml` file is required for a chart. It contains the following fields:
@@ -52,6 +54,7 @@ sources:
 maintainers: # (optional)
   - name: The maintainer's name (required for each maintainer)
     email: The maintainer's email (optional for each maintainer)
+    url: A URL for the maintainer (optional for each maintainer)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
 icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
@@ -449,6 +452,45 @@ directory.
 **TIP:** _To drop a dependency into your `charts/` directory, use the
 `helm fetch` command_
 
+### Operational aspects of using dependencies
+
+The above sections explain how to specify chart dependencies, but how does this affect
+chart installation using `helm install` and `helm upgrade`?
+
+Suppose that a chart named "A" creates the following Kubernetes objects
+
+- namespace "A-Namespace"
+- statefulset "A-StatefulSet"
+- service "A-Service"
+
+Furthermore, A is dependent on chart B that creates objects
+
+- namespace "B-Namespace"
+- replicaset "B-ReplicaSet"
+- service "B-Service"
+
+After installation/upgrade of chart A a single Helm release is created/modified. The release will 
+create/update all of the above Kubernetes objects in the following order:
+
+- A-Namespace
+- B-Namespace
+- A-StatefulSet
+- B-ReplicaSet
+- A-Service
+- B-Service
+
+This is because when Helm installs/upgrades charts, 
+the Kubernetes objects from the charts and all its dependencies are 
+
+- aggregrated into a single set; then 
+- sorted by type followed by name; and then 
+- created/updated in that order. 
+
+Hence a single release is created with all the objects for the chart and its dependencies.
+
+The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go 
+(see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26).
+
 ## Templates and Values
 
 Helm Chart templates are written in the
@@ -548,9 +590,10 @@ sensitive_.
   `Chart.Maintainers`.
 - `Files`: A map-like object containing all non-special files in the chart. This
   will not give you access to templates, but will give you access to additional
-  files that are present. Files can be accessed using `{{index .Files "file.name"}}`
-  or using the `{{.Files.Get name}}` or `{{.Files.GetString name}}` functions. You can
-  also access the contents of the file as `[]byte` using `{{.Files.GetBytes}}`
+  files that are present (unless they are excluded using `.helmignore`). Files can be
+  accessed using `{{index .Files "file.name"}}` or using the `{{.Files.Get name}}` or
+  `{{.Files.GetString name}}` functions. You can also access the contents of the file
+  as `[]byte` using `{{.Files.GetBytes}}`
 - `Capabilities`: A map-like object that contains information about the versions
   of Kubernetes (`{{.Capabilities.KubeVersion}}`, Tiller
   (`{{.Capabilities.TillerVersion}}`, and the supported Kubernetes API versions

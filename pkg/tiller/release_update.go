@@ -69,8 +69,8 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, errMissingChart
 	}
 
-	// finds the non-deleted release with the given name
-	currentRelease, err := s.env.Releases.Last(req.Name)
+	// finds the deployed release with the given name
+	currentRelease, err := s.env.Releases.Deployed(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -80,9 +80,15 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
+	// finds the non-deleted release with the given name
+	lastRelease, err := s.env.Releases.Last(req.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Increment revision count. This is passed to templates, and also stored on
 	// the release object.
-	revision := currentRelease.Version + 1
+	revision := lastRelease.Version + 1
 
 	ts := timeconv.Now()
 	options := chartutil.ReleaseOptions{
@@ -151,7 +157,6 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	if err := s.ReleaseModule.Update(originalRelease, updatedRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		s.Log("warning: %s", msg)
-		originalRelease.Info.Status.Code = release.Status_SUPERSEDED
 		updatedRelease.Info.Status.Code = release.Status_FAILED
 		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)

@@ -18,11 +18,11 @@ We also added two special template functions: `include` and `required`. The `inc
 function allows you to bring in another template, and then pass the results to other
 template functions.
 
-For example, this template snippet includes a template called `mytpl.tpl`, then
+For example, this template snippet includes a template called `mytpl`, then
 lowercases the result, then wraps that in double quotes.
 
 ```yaml
-value: {{include "mytpl.tpl" . | lower | quote}}
+value: {{include "mytpl" . | lower | quote}}
 ```
 
 The `required` function allows you to declare a particular
@@ -96,6 +96,35 @@ For example:
 The above will render the template when .Values.foo is defined, but will fail
 to render and exit when .Values.foo is undefined.
 
+## Creating Image Pull Secrets
+Image pull secrets are essentially a combination of _registry_, _username_, and _password_.  You may need them in an application you are deploying, but to create them requires running _base64_ a couple of times.  We can write a helper template to compose the Docker configuration file for use as the Secret's payload.  Here is an example:
+
+First, assume that the credentials are defined in the `values.yaml` file like so:
+```
+imageCredentials:
+  registry: quay.io
+  username: someone
+  password: sillyness
+```  
+
+We then define our helper template as follows:
+```
+{{- define "imagePullSecret" }}
+{{- printf "{\"auths\": {\"%s\": {\"auth\": \"%s\"}}}" .Values.imageCredentials.registry (printf "%s:%s" .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) | b64enc }}
+{{- end }}
+```
+
+Finally, we use the helper template in a larger template to create the Secret manifest:
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: myregistrykey
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: {{ template "imagePullSecret" . }}
+```
+
 ## Automatically Roll Deployments When ConfigMaps or Secrets change
 
 Often times configmaps or secrets are injected as configuration
@@ -105,9 +134,8 @@ be updated with a subsequent `helm upgrade`, but if the
 deployment spec itself didn't change the application keeps running
 with the old configuration resulting in an inconsistent deployment.
 
-The `sha256sum` function can be used together with the `include`
-function to ensure a deployments template section is updated if another
-spec changes: 
+The `sha256sum` function can be used to ensure a deployment's
+annotation section is updated if another file changes: 
 
 ```yaml
 kind: Deployment
@@ -115,9 +143,12 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
 [...]
 ```
+
+See also the `helm upgrade --recreate-pods` flag for a slightly
+different way of addressing this issue.
 
 ## Tell Tiller Not To Delete a Resource
 
@@ -200,3 +231,10 @@ cryptographic keys, and so on. These are fine to use. But be aware that
 during upgrades, templates are re-executed. When a template run
 generates data that differs from the last run, that will trigger an
 update of that resource.
+
+## Upgrade a release idempotently
+
+In order to use the same command when installing and upgrading a release, use the following comand:
+```shell
+helm upgrade --install <release name> --values <values file> <chart directory>
+```

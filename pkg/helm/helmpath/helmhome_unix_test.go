@@ -39,6 +39,9 @@ func TestHelmHome(t *testing.T) {
 	isEq(t, hh.RelativeIndex("t"), "t-index.yaml")
 	isEq(t, hh.Starters(), "/r/starters")
 	isEq(t, hh.Archive(), "/r/cache/archive")
+	isEq(t, hh.TLSCaCert(), "/r/ca.pem")
+	isEq(t, hh.TLSCert(), "/r/cert.pem")
+	isEq(t, hh.TLSKey(), "/r/key.pem")
 }
 
 func TestHelmHome_expand(t *testing.T) {

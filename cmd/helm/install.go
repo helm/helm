@@ -41,6 +41,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
+	"net/url"
 )
 
 const installDesc = `
@@ -75,21 +76,22 @@ To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined. This will still require a
 round-trip to the Tiller server.
 
-If --verify is set, the chart MUST have a provenance file, and the provenenace
-fall MUST pass all verification steps.
+If --verify is set, the chart MUST have a provenance file, and the provenance
+file MUST pass all verification steps.
 
-There are four different ways you can express the chart you want to install:
+There are five different ways you can express the chart you want to install:
 
 1. By chart reference: helm install stable/mariadb
 2. By path to a packaged chart: helm install ./nginx-1.2.3.tgz
 3. By path to an unpacked chart directory: helm install ./nginx
 4. By absolute URL: helm install https://example.com/charts/nginx-1.2.3.tgz
+5. By chart reference and repo url: helm install --repo https://example.com/charts/ nginx
 
 CHART REFERENCES
 
 A chart reference is a convenient way of reference a chart in a chart repository.
 
-When you use a chart reference ('stable/mariadb'), Helm will look in the local
+When you use a chart reference with a repo prefix ('stable/mariadb'), Helm will look in the local
 configuration for a chart repository named 'stable', and will then look for a
 chart in that repository whose name is 'mariadb'. It will install the latest
 version of that chart unless you also supply a version number with the
@@ -118,6 +120,7 @@ type installCmd struct {
 	wait         bool
 	repoURL      string
 	devel        bool
+	depUp        bool
 
 	certFile string
 	keyFile  string
@@ -159,8 +162,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 			debug("Original chart version: %q", inst.version)
 			if inst.version == "" && inst.devel {
-				debug("setting version to >0.0.0-a")
-				inst.version = ">0.0.0-a"
+				debug("setting version to >0.0.0-0")
+				inst.version = ">0.0.0-0"
 			}
 
 			cp, err := locateChartPath(inst.repoURL, args[0], inst.version, inst.verify, inst.keyring,
@@ -175,7 +178,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
+	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
 	f.StringVarP(&inst.name, "name", "n", "", "release name. If unspecified, it will autogenerate one for you")
 	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into. Defaults to the current kube config namespace.")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
@@ -192,7 +195,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-a'. If --version is set, this is ignored.")
+	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&inst.depUp, "dep-up", false, "run helm dependency update before installing the chart")
 
 	return cmd
 }
@@ -230,7 +234,22 @@ func (i *installCmd) run() error {
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/kubernetes/helm/issues/2209
 		if err := checkDependencies(chartRequested, req); err != nil {
-			return prettyError(err)
+			if i.depUp {
+				man := &downloader.Manager{
+					Out:        i.out,
+					ChartPath:  i.chartPath,
+					HelmHome:   settings.Home,
+					Keyring:    defaultKeyring(),
+					SkipUpdate: false,
+					Getters:    getter.All(settings),
+				}
+				if err := man.Update(); err != nil {
+					return prettyError(err)
+				}
+			} else {
+				return prettyError(err)
+			}
+
 		}
 	} else if err != chartutil.ErrRequirementsNotFound {
 		return fmt.Errorf("cannot load requirements: %v", err)
@@ -316,8 +335,9 @@ func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 		if strings.TrimSpace(filePath) == "-" {
 			bytes, err = ioutil.ReadAll(os.Stdin)
 		} else {
-			bytes, err = ioutil.ReadFile(filePath)
+			bytes, err = readFile(filePath)
 		}
+
 		if err != nil {
 			return []byte{}, err
 		}
@@ -424,7 +444,7 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		return filename, err
 	}
 
-	return filename, fmt.Errorf("file %q not found", name)
+	return filename, fmt.Errorf("failed to download %q", name)
 }
 
 func generateName(nameTemplate string) (string, error) {
@@ -441,7 +461,7 @@ func generateName(nameTemplate string) (string, error) {
 }
 
 func defaultNamespace() string {
-	if ns, _, err := kube.GetConfig(settings.KubeContext).Namespace(); err == nil {
+	if ns, _, err := kube.GetConfig(settings.KubeContext, settings.KubeConfig).Namespace(); err == nil {
 		return ns
 	}
 	return "default"
@@ -468,4 +488,24 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 		return fmt.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+//readFile load a file from the local directory or a remote file with a url.
+func readFile(filePath string) ([]byte, error) {
+	u, _ := url.Parse(filePath)
+	p := getter.All(settings)
+
+	// FIXME: maybe someone handle other protocols like ftp.
+	getterConstructor, err := p.ByScheme(u.Scheme)
+
+	if err != nil {
+		return ioutil.ReadFile(filePath)
+	} else {
+		getter, err := getterConstructor(filePath, "", "", "")
+		if err != nil {
+			return []byte{}, err
+		}
+		data, err := getter.Get(filePath)
+		return data.Bytes(), err
+	}
 }

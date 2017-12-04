@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -197,6 +198,38 @@ func TestPackage(t *testing.T) {
 				t.Errorf("%q: provenance file is empty", tt.name)
 			}
 		}
+	}
+}
+
+func TestSetAppVersion(t *testing.T) {
+	var ch *chart.Chart
+	expectedAppVersion := "app-version-foo"
+	tmp, _ := ioutil.TempDir("", "helm-package-app-version-")
+	defer os.RemoveAll(tmp)
+
+	c := newPackageCmd(&bytes.Buffer{})
+	flags := map[string]string{
+		"destination": tmp,
+		"app-version": expectedAppVersion,
+	}
+	setFlags(c, flags)
+	err := c.RunE(c, []string{"testdata/testcharts/alpine"})
+	if err != nil {
+		t.Errorf("unexpected error %q", err)
+	}
+
+	chartPath := filepath.Join(tmp, "alpine-0.1.0.tgz")
+	if fi, err := os.Stat(chartPath); err != nil {
+		t.Errorf("expected file %q, got err %q", chartPath, err)
+	} else if fi.Size() == 0 {
+		t.Errorf("file %q has zero bytes.", chartPath)
+	}
+	ch, err = chartutil.Load(chartPath)
+	if err != nil {
+		t.Errorf("unexpected error loading packaged chart: %v", err)
+	}
+	if ch.Metadata.AppVersion != expectedAppVersion {
+		t.Errorf("expected app-version %q, found %q", expectedAppVersion, ch.Metadata.AppVersion)
 	}
 }
 

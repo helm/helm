@@ -78,7 +78,7 @@ func splitMethod(fullMethod string) (string, string) {
 }
 
 func versionFromContext(ctx context.Context) string {
-	if md, ok := metadata.FromContext(ctx); ok {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		if v, ok := md["x-helm-api-client"]; ok && len(v) > 0 {
 			return v[0]
 		}

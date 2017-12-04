@@ -27,7 +27,7 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
   - `Capabilities.TillerVersion` provides a way to look up the Tiller version. It has the following values: `SemVer`, `GitCommit`, and `GitTreeState`.
 - `Template`: Contains information about the current template that is being executed
   - `Name`: A namespaced filepath to the current template (e.g. `mychart/templates/mytemplate.yaml`)
-  - `BasePath`: The namespaced path to the templates directory of the current chart (e.g. `mychart/templates`). This can be used to [include template files](https://github.com/kubernetes/helm/blob/master/docs/charts_tips_and_tricks.md#automatically-roll-deployments-when-configmaps-or-secrets-change)
+  - `BasePath`: The namespaced path to the templates directory of the current chart (e.g. `mychart/templates`).
 
 The values are available to any top-level template. As we will see later, this does not necessarily mean that they will be available _everywhere_.
 

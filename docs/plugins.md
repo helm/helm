@@ -31,15 +31,16 @@ plugins do the "detail work" of performing a desired action.
 
 ## Installing a Plugin
 
-A Helm plugin management system is in the works. But in the short term, plugins
-are installed by copying the plugin directory into `$(helm home)/plugins`.
+Plugins are installed using the `$ helm plugin install <path|url> command. You can pass in a path to a plugin on your local file system or a url of a remote VCS repo. The `helm plugin install` command clones or copies the plugin at the path/url given into `$ (helm home)/plugins`
 
 ```console
-$ cp -a myplugin/ $(helm home)/plugins/
+$ helm plugin install https://github.com/technosophos/helm-template
 ```
 
 If you have a plugin tar distribution, simply untar the plugin into the
 `$(helm home)/plugins` directory.
+
+You can also install tarball plugins directly from url by issuing `helm plugin install http://domain/path/to/plugin.tar.gz`
 
 ## Building Plugins
 

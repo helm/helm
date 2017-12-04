@@ -419,6 +419,25 @@ func TestDependentChartWithSubChartsAbsentInRequirements(t *testing.T) {
 
 }
 
+func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
+	if _, err := Load("testdata/dependent-chart-helmignore"); err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+}
+
+func TestDependentChartsWithSubChartsSymlink(t *testing.T) {
+	c, err := Load("testdata/joonix")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	if c.Metadata.Name != "joonix" {
+		t.Fatalf("Unexpected chart name: %s", c.Metadata.Name)
+	}
+	if n := len(c.Dependencies); n != 1 {
+		t.Fatalf("Expected 1 dependency for this chart, but got %d", n)
+	}
+}
+
 func TestDependentChartsWithSubchartsAllSpecifiedInRequirements(t *testing.T) {
 	c, err := Load("testdata/dependent-chart-with-all-in-requirements-yaml")
 	if err != nil {

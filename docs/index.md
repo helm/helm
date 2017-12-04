@@ -6,6 +6,8 @@
   - [Frequently Asked Questions](install_faq.md)
 - [Using Helm](using_helm.md) - Learn the Helm tools
   - [Plugins](plugins.md)
+  - [Role-based Access Control](rbac.md)
+  - [TLS/SSL for Helm and Tiller](tiller_ssl.md) - Use Helm-to-Tiller encryption
 - [Developing Charts](charts.md) - An introduction to chart development
 	- [Chart Lifecycle Hooks](charts_hooks.md)
 	- [Chart Tips and Tricks](charts_tips_and_tricks.md)

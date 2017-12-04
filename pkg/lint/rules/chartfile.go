@@ -141,6 +141,8 @@ func validateChartMaintainer(cf *chart.Metadata) error {
 			return errors.New("each maintainer requires a name")
 		} else if maintainer.Email != "" && !govalidator.IsEmail(maintainer.Email) {
 			return fmt.Errorf("invalid email '%s' for maintainer '%s'", maintainer.Email, maintainer.Name)
+		} else if maintainer.Url != "" && !govalidator.IsURL(maintainer.Url) {
+			return fmt.Errorf("invalid url '%s' for maintainer '%s'", maintainer.Url, maintainer.Name)
 		}
 	}
 	return nil
