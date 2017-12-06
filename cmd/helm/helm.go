@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/tlsutil"
+	"k8s.io/helm/pkg/version"
 )
 
 var (
@@ -224,6 +225,8 @@ func configForContext(context string) (*rest.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
 	}
+	config.UserAgent = fmt.Sprintf("%s/%s",
+		os.Args[0], version.FormatVersion(version.GetVersionProto(), true))
 	return config, nil
 }
 

@@ -16,7 +16,11 @@ limitations under the License.
 
 package version // import "k8s.io/helm/pkg/version"
 
-import "k8s.io/helm/pkg/proto/hapi/version"
+import (
+	"fmt"
+
+	"k8s.io/helm/pkg/proto/hapi/version"
+)
 
 var (
 	// Version is the current version of the Helm.
@@ -51,4 +55,12 @@ func GetVersionProto() *version.Version {
 		GitCommit:    GitCommit,
 		GitTreeState: GitTreeState,
 	}
+}
+
+// FormatVersion returns the semver string with git commit
+func FormatVersion(v *version.Version, short bool) string {
+	if short {
+		return fmt.Sprintf("%s+g%s", v.SemVer, v.GitCommit[:7])
+	}
+	return fmt.Sprintf("%#v", v)
 }

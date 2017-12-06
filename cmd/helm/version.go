@@ -26,7 +26,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"k8s.io/helm/pkg/helm"
-	pb "k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -92,7 +91,7 @@ func (v *versionCmd) run() error {
 
 	if v.showClient {
 		cv := version.GetVersionProto()
-		fmt.Fprintf(v.out, "Client: %s\n", formatVersion(cv, v.short))
+		fmt.Fprintf(v.out, "Client: %s\n", version.FormatVersion(cv, v.short))
 	}
 
 	if !v.showServer {
@@ -107,13 +106,6 @@ func (v *versionCmd) run() error {
 		debug("%s", err)
 		return errors.New("cannot connect to Tiller")
 	}
-	fmt.Fprintf(v.out, "Server: %s\n", formatVersion(resp.Version, v.short))
+	fmt.Fprintf(v.out, "Server: %s\n", version.FormatVersion(resp.Version, v.short))
 	return nil
-}
-
-func formatVersion(v *pb.Version, short bool) string {
-	if short {
-		return fmt.Sprintf("%s+g%s", v.SemVer, v.GitCommit[:7])
-	}
-	return fmt.Sprintf("%#v", v)
 }

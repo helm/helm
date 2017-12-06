@@ -23,10 +23,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/spf13/pflag"
 	apps "k8s.io/api/apps/v1beta2"
 	batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
@@ -41,7 +43,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/helm/pkg/version"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/helper"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
@@ -70,10 +75,41 @@ type Client struct {
 	Log func(string, ...interface{})
 }
 
+type clientConfig struct {
+	inner clientcmd.ClientConfig
+}
+
+var _ clientcmd.ClientConfig = &clientConfig{}
+
+func (c *clientConfig) RawConfig() (clientcmdapi.Config, error) {
+	return c.inner.RawConfig()
+}
+
+func (c *clientConfig) ClientConfig() (*rest.Config, error) {
+	cfg, err := c.inner.ClientConfig()
+	if err != nil {
+		return cfg, err
+	}
+	cfg.UserAgent = fmt.Sprintf("%s/%s",
+		os.Args[0], version.FormatVersion(version.GetVersionProto(), true))
+	return cfg, err
+}
+
+func (c *clientConfig) Namespace() (string, bool, error) {
+	return c.inner.Namespace()
+}
+
+func (c *clientConfig) ConfigAccess() clientcmd.ConfigAccess {
+	return c.inner.ConfigAccess()
+}
+
 // New creates a new Client.
 func New(config clientcmd.ClientConfig) *Client {
+	if config == nil {
+		config = &clientConfig{cmdutil.DefaultClientConfig(pflag.NewFlagSet("", pflag.ContinueOnError))}
+	}
 	return &Client{
-		Factory:        cmdutil.NewFactory(config),
+		Factory:        cmdutil.NewFactory(&clientConfig{config}),
 		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
 		Log:            func(_ string, _ ...interface{}) {},
 	}
