@@ -18,6 +18,7 @@ package tiller
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -99,6 +100,18 @@ func rsFixture() *ReleaseServer {
 			clientset: clientset,
 		},
 		env:       MockEnvironment(),
+		clientset: clientset,
+		Log:       func(_ string, _ ...interface{}) {},
+	}
+}
+
+func rsFixtureWithDriver(driver driver.Driver) *ReleaseServer {
+	clientset := fake.NewSimpleClientset()
+	return &ReleaseServer{
+		ReleaseModule: &LocalReleaseModule{
+			clientset: clientset,
+		},
+		env:       MockEnvironmentDriver(driver),
 		clientset: clientset,
 		Log:       func(_ string, _ ...interface{}) {},
 	}
@@ -263,6 +276,52 @@ func TestUniqName(t *testing.T) {
 	}
 }
 
+func TestRecordRelease(t *testing.T) {
+	driver := &mockDriverError{}
+	rs := rsFixtureWithDriver(driver)
+
+	rel := releaseStub()
+
+	driverError := fmt.Errorf("driver failure")
+
+	tests := []struct {
+		description string
+		reuse       bool
+		error       error
+	}{
+		{
+			description: "no reuse, no error",
+			reuse:       false,
+			error:       nil,
+		},
+		{
+			description: "reuse, no error",
+			reuse:       true,
+			error:       nil,
+		},
+		{
+			description: "no reuse, error",
+			reuse:       false,
+			error:       driverError,
+		},
+		{
+			description: "reuse, error",
+			reuse:       true,
+			error:       driverError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			driver.err = tc.error
+			err := rs.recordRelease(rel, tc.reuse)
+			if tc.error != err {
+				t.Errorf("expected error didn't happen, want %v, got %v", tc.error, err)
+			}
+		})
+	}
+}
+
 func releaseWithKeepStub(rlsName string) *release.Release {
 	ch := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -291,6 +350,13 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 func MockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
+	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
+	return e
+}
+
+func MockEnvironmentDriver(driver driver.Driver) *environment.Environment {
+	e := environment.New()
+	e.Releases = storage.Init(driver)
 	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
 	return e
 }
@@ -353,3 +419,20 @@ func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)       {}
 func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error    { return nil }
 func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error    { return nil }
 func (rs mockRunReleaseTestServer) Context() context.Context       { return helm.NewContext() }
+
+type mockDriverError struct {
+	rel *release.Release
+	err error
+}
+
+func (de mockDriverError) Name() string                                  { return "mockDriverError" }
+func (de mockDriverError) Create(key string, rls *release.Release) error { return de.err }
+func (de mockDriverError) Update(key string, rls *release.Release) error { return de.err }
+func (de mockDriverError) Delete(key string) (*release.Release, error)   { return de.rel, de.err }
+func (de mockDriverError) Get(key string) (*release.Release, error)      { return de.rel, de.err }
+func (de mockDriverError) Query(labels map[string]string) ([]*release.Release, error) {
+	return []*release.Release{de.rel}, de.err
+}
+func (de mockDriverError) List(filter func(*release.Release) bool) ([]*release.Release, error) {
+	return []*release.Release{de.rel}, de.err
+}

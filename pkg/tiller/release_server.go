@@ -307,14 +307,17 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	return hooks, b, notes, nil
 }
 
-func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
+func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) error {
 	if reuse {
 		if err := s.env.Releases.Update(r); err != nil {
 			s.Log("warning: Failed to update release %s: %s", r.Name, err)
+			return err
 		}
 	} else if err := s.env.Releases.Create(r); err != nil {
 		s.Log("warning: Failed to record release %s: %s", r.Name, err)
+		return err
 	}
+	return nil
 }
 
 func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook string, timeout int64) error {
