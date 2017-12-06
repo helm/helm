@@ -90,14 +90,6 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (v *versionCmd) run() error {
-	if settings.Debug {
-		k8sVersion, err := getK8sVersion()
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(v.out, "Kubernetes: %#v\n", k8sVersion)
-	}
-
 	if v.showClient {
 		cv := version.GetVersionProto()
 		fmt.Fprintf(v.out, "Client: %s\n", formatVersion(cv, v.short))
@@ -105,6 +97,14 @@ func (v *versionCmd) run() error {
 
 	if !v.showServer {
 		return nil
+	}
+
+	if settings.Debug {
+		k8sVersion, err := getK8sVersion()
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(v.out, "Kubernetes: %#v\n", k8sVersion)
 	}
 
 	resp, err := v.client.GetVersion()
