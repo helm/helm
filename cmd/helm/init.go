@@ -390,7 +390,7 @@ func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(indexFile, cacheFile)
+		createLink(indexFile, cacheFile)
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
