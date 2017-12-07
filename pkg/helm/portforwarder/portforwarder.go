@@ -34,14 +34,14 @@ var (
 )
 
 // New creates a new and initialized tunnel.
-func New(namespace string, client kubernetes.Interface, config *rest.Config) (*kube.Tunnel, error) {
+func New(namespace string, client kubernetes.Interface, config *rest.Config, localPort int) (*kube.Tunnel, error) {
 	podName, err := getTillerPodName(client.CoreV1(), namespace)
 	if err != nil {
 		return nil, err
 	}
 	const tillerPort = 44134
 	t := kube.NewTunnel(client.Core().RESTClient(), config, namespace, podName, tillerPort)
-	return t, t.ForwardPort()
+	return t, t.ForwardPort(localPort)
 }
 
 func getTillerPodName(client corev1.PodsGetter, namespace string) (string, error) {

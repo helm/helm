@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -179,6 +180,7 @@ func TestSetupEnv(t *testing.T) {
 		{"HELM_PATH_STARTER", settings.Home.Starters()},
 		{"TILLER_HOST", settings.TillerHost},
 		{"TILLER_NAMESPACE", settings.TillerNamespace},
+		{"TUNNEL_LOCAL_PORT", strconv.Itoa(settings.TunnelLocalPort)},
 	} {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
