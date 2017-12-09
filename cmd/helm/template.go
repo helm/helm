@@ -186,6 +186,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	err = chartutil.ProcessRequirementsExportValues(c)
+	if err != nil {
+		return err
+	}
 
 	// Set up engine.
 	renderer := engine.New()

@@ -279,11 +279,19 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
+	// `imports`
+	e["subchart1.mytags.back-end"] = "false"
+	e["subchart1.mytags.front-end"] = "true"
+
 	verifyRequirementsImportValues(t, c, v, e)
 }
 func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Config, e map[string]string) {
 
 	err := ProcessRequirementsImportValues(c)
+	if err != nil {
+		t.Errorf("Error processing import values requirements %v", err)
+	}
+	err = ProcessRequirementsExportValues(c)
 	if err != nil {
 		t.Errorf("Error processing import values requirements %v", err)
 	}

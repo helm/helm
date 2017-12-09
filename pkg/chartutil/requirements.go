@@ -66,6 +66,9 @@ type Dependency struct {
 	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
 	// string or pair of child/parent sublist items.
 	ImportValues []interface{} `json:"import-values,omitempty"`
+	// ExportValues holds the mapping of source values to parent key to be exported. Each item can be a
+	// string or pair of child/parent sublist items.
+	ExportValues []interface{} `json:"export-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty"`
 }
@@ -445,11 +448,75 @@ func processImportValues(c *chart.Chart) error {
 	return nil
 }
 
+// processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
+func processExportValues(c *chart.Chart) error {
+	reqs, err := LoadRequirements(c)
+	if err != nil {
+		return err
+	}
+	// combine chart values and empty config to get Values
+	cvals, err := CoalesceValues(c, &chart.Config{})
+	if err != nil {
+		return err
+	}
+	b := make(map[string]interface{}, 0)
+	// import values from each dependency if specified in import-values
+	for _, r := range reqs.Dependencies {
+		if len(r.ExportValues) > 0 {
+			var outiv []interface{}
+			for _, riv := range r.ExportValues {
+				iv := riv.(map[string]interface{})
+				nm := map[string]string{
+					"child":  iv["child"].(string),
+					"parent": iv["parent"].(string),
+				}
+				outiv = append(outiv, nm)
+				s := nm["parent"]
+				// get child table
+				vv, err := cvals.Table(s)
+				if err != nil {
+					log.Printf("Warning: ExportValues missing table: %v", err)
+					continue
+				}
+				name := r.Name
+				if r.Alias != "" {
+					name = r.Alias
+				}
+				// create value map from child to be merged into parent
+				vm := pathToMap(name+"."+nm["child"], vv.AsMap())
+				b = coalesceTables(cvals, vm)
+			}
+			// set our formatted import values
+			r.ExportValues = outiv
+		}
+	}
+	b = coalesceTables(b, cvals)
+	y, err := yaml.Marshal(b)
+	if err != nil {
+		return err
+	}
+
+	// set the new values
+	c.Values = &chart.Config{Raw: string(y)}
+
+	return nil
+}
+
 // ProcessRequirementsImportValues imports specified chart values from child to parent.
 func ProcessRequirementsImportValues(c *chart.Chart) error {
 	pc := getParents(c, nil)
 	for i := len(pc) - 1; i >= 0; i-- {
 		processImportValues(pc[i])
+	}
+
+	return nil
+}
+
+// ProcessRequirementsExportValues exports specified chart values from parent to child.
+func ProcessRequirementsExportValues(c *chart.Chart) error {
+	pc := getParents(c, nil)
+	for i := len(pc) - 1; i >= 0; i-- {
+		processExportValues(pc[i])
 	}
 
 	return nil
