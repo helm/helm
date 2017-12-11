@@ -99,8 +99,8 @@ It's easy to see what has been released using Helm:
 
 ```console
 $ helm ls
-NAME           	VERSION	 UPDATED                       	STATUS         	CHART
-smiling-penguin	 1      	Wed Sep 28 12:59:46 2016      	DEPLOYED       	mysql-0.1.0
+NAME             VERSION   UPDATED                   STATUS    CHART
+smiling-penguin  1         Wed Sep 28 12:59:46 2016  DEPLOYED  mysql-0.1.0
 ```
 
 The `helm list` function will show you a list of all deployed releases.
