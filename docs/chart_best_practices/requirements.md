@@ -7,10 +7,12 @@ This section of the guide covers best practices for `requirements.yaml` files.
 Where possible, use version ranges instead of pinning to an exact version. The suggested default is to use a patch-level version match:
 
 ```yaml
-version: ^1.2.0
+version: ~1.2.3
 ```
 
-This will match version 1.2.0 and any patches to that release (1.2.1, 1.2.999, and so on)
+This will match version `1.2.3` and any patches to that release.  In other words, `~1.2.3` is equivalent to `>= 1.2.3, < 1.3.0`
+
+For the complete version matching syntax, please see the [semver documentation](https://github.com/Masterminds/semver#checking-version-constraints)
 
 ### Repository URLs
 
