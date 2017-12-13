@@ -44,9 +44,14 @@ func TestValidateAllowedExtension(t *testing.T) {
 	}
 }
 
+var values = []byte("nameOverride: ''\nhttpPort: 80")
+
+const namespace = "testNamespace"
+const strict = false
+
 func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter)
+	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -69,7 +74,7 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter)
+	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
 
 	if len(res) != 0 {

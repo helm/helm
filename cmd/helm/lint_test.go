@@ -21,16 +21,19 @@ import (
 )
 
 var (
+	values            = []byte{}
+	namespace         = "testNamespace"
+	strict            = false
 	archivedChartPath = "testdata/testcharts/compressedchart-0.1.0.tgz"
 	chartDirPath      = "testdata/testcharts/decompressedchart/"
 )
 
 func TestLintChart(t *testing.T) {
-	if _, err := lintChart(chartDirPath); err != nil {
+	if _, err := lintChart(chartDirPath, values, namespace, strict); err != nil {
 		t.Errorf("%s", err)
 	}
 
-	if _, err := lintChart(archivedChartPath); err != nil {
+	if _, err := lintChart(archivedChartPath, values, namespace, strict); err != nil {
 		t.Errorf("%s", err)
 	}
 

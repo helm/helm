@@ -24,13 +24,13 @@ import (
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string) support.Linter {
+func All(basedir string, values []byte, namespace string, strict bool) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
 	linter := support.Linter{ChartDir: chartDir}
 	rules.Chartfile(&linter)
 	rules.Values(&linter)
-	rules.Templates(&linter)
+	rules.Templates(&linter, values, namespace, strict)
 	return linter
 }
