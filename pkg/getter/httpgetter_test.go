@@ -28,7 +28,7 @@ func TestHTTPGetter(t *testing.T) {
 	}
 
 	if hg, ok := g.(*HttpGetter); !ok {
-		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
+		t.Fatal("Expected newHTTPGetter to produce an HttpGetter")
 	} else if hg.client != http.DefaultClient {
 		t.Fatal("Expected newHTTPGetter to return a default HTTP client.")
 	}
@@ -37,12 +37,24 @@ func TestHTTPGetter(t *testing.T) {
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "ca.pem"), join(cd, "crt.pem"), join(cd, "key.pem")
-	g, err = newHTTPGetter("http://example.com/", pub, priv, ca)
+	g, err = newHTTPGetter("https://example.com/", pub, priv, ca)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if hg, ok := g.(*HttpGetter); !ok {
+		t.Fatal("Expected newHTTPGetter to produce an HttpGetter")
+	} else if hg.client == http.DefaultClient {
+		t.Fatal("Expected newHTTPGetter to return a non-default HTTP client")
+	}
 
-	if _, ok := g.(*HttpGetter); !ok {
-		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
+	// Test with SSL, caFile only
+	g, err = newHTTPGetter("https://example.com/", "", "", ca)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hg, ok := g.(*HttpGetter); !ok {
+		t.Fatal("Expected newHTTPGetter to produce an HttpGetter")
+	} else if hg.client == http.DefaultClient {
+		t.Fatal("Expected newHTTPGetter to return a non-default HTTP client")
 	}
 }
