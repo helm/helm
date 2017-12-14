@@ -78,12 +78,20 @@ type options struct {
 	reuseValues bool
 	// release test options are applied directly to the test release history request
 	testReq rls.TestReleaseRequest
+	// logger for tiller output messages
+	logger TillerOutputLogger
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
 func Host(host string) Option {
 	return func(opts *options) {
 		opts.host = host
+	}
+}
+
+func WithLogger(logger TillerOutputLogger) Option {
+	return func(opts *options) {
+		opts.logger = logger
 	}
 }
 

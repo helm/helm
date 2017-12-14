@@ -340,6 +340,22 @@ func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
 func (l *mockListServer) SetTrailer(m metadata.MD)       {}
 func (l *mockListServer) SetHeader(m metadata.MD) error  { return nil }
 
+type mockInstallServer struct {
+	val *services.InstallReleaseResponse
+}
+
+func (l *mockInstallServer) Send(res *services.InstallReleaseResponse) error {
+	l.val = res
+	return nil
+}
+
+func (l *mockInstallServer) Context() context.Context       { return helm.NewContext() }
+func (l *mockInstallServer) SendMsg(v interface{}) error    { return nil }
+func (l *mockInstallServer) RecvMsg(v interface{}) error    { return nil }
+func (l *mockInstallServer) SendHeader(m metadata.MD) error { return nil }
+func (l *mockInstallServer) SetTrailer(m metadata.MD)       {}
+func (l *mockInstallServer) SetHeader(m metadata.MD) error  { return nil }
+
 type mockRunReleaseTestServer struct {
 	stream grpc.ServerStream
 }

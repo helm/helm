@@ -266,6 +266,9 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 func newClient() helm.Interface {
 	options := []helm.Option{helm.Host(settings.TillerHost)}
 
+	logger := new(helm.ConsoleLogger)
+	options = append(options, helm.WithLogger(logger))
+
 	if tlsVerify || tlsEnable {
 		if tlsCaCertFile == "" {
 			tlsCaCertFile = settings.Home.TLSCaCert()

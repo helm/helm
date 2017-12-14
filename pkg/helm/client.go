@@ -334,7 +334,34 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.InstallRelease(ctx, req)
+	client, err := rlc.InstallRelease(ctx, req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var releaseResponse *rls.InstallReleaseResponse
+
+	for {
+		result, err := client.Recv()
+
+		if err == io.EOF {
+			return releaseResponse, nil
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		switch x := result.Response.(type) {
+		case *rls.InstallReleaseResponse_Release:
+			releaseResponse = result
+			break
+		case *rls.InstallReleaseResponse_LogItem:
+			h.opts.logger.Log(x.LogItem.Level, x.LogItem.Message)
+			break
+		}
+	}
 }
 
 // Executes tiller.UninstallRelease RPC.

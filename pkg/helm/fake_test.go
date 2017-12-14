@@ -143,7 +143,9 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 				opts: []InstallOption{ReleaseName("new-release")},
 			},
 			want: &rls.InstallReleaseResponse{
-				Release: ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
+				Response: &rls.InstallReleaseResponse_Release{
+					Release: ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
+				},
 			},
 			relsAfter: []*release.Release{
 				ReleaseMock(&MockReleaseOptions{Name: "new-release"}),

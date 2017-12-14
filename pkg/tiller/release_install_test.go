@@ -29,7 +29,6 @@ import (
 )
 
 func TestInstallRelease(t *testing.T) {
-	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -43,7 +42,10 @@ func TestInstallRelease(t *testing.T) {
 			},
 		},
 	}
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
+
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -93,7 +95,6 @@ func TestInstallRelease(t *testing.T) {
 }
 
 func TestInstallRelease_WithNotes(t *testing.T) {
-	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -108,7 +109,9 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 			},
 		},
 	}
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -162,7 +165,6 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 }
 
 func TestInstallRelease_WithNotesRendered(t *testing.T) {
-	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -177,7 +179,9 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 			},
 		},
 	}
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -233,7 +237,6 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 
 func TestInstallRelease_TillerVersion(t *testing.T) {
 	version.Version = "2.2.0"
-	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -247,7 +250,8 @@ func TestInstallRelease_TillerVersion(t *testing.T) {
 			},
 		},
 	}
-	_, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
 	if err != nil {
 		t.Fatalf("Expected valid range. Got %q", err)
 	}
@@ -255,7 +259,6 @@ func TestInstallRelease_TillerVersion(t *testing.T) {
 
 func TestInstallRelease_WrongTillerVersion(t *testing.T) {
 	version.Version = "2.2.0"
-	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -269,7 +272,8 @@ func TestInstallRelease_WrongTillerVersion(t *testing.T) {
 			},
 		},
 	}
-	_, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
 	if err == nil {
 		t.Fatalf("Expected to fail because of wrong version")
 	}
@@ -281,7 +285,6 @@ func TestInstallRelease_WrongTillerVersion(t *testing.T) {
 }
 
 func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
-	c := helm.NewContext()
 	rs := rsFixture()
 
 	// TODO: Refactor this into a mock.
@@ -307,7 +310,9 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 		},
 	}
 
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -332,14 +337,15 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 }
 
 func TestInstallRelease_DryRun(t *testing.T) {
-	c := helm.NewContext()
 	rs := rsFixture()
 
 	req := &services.InstallReleaseRequest{
 		Chart:  chartStub(),
 		DryRun: true,
 	}
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
 	if err != nil {
 		t.Errorf("Failed install: %s", err)
 	}
@@ -385,7 +391,6 @@ func TestInstallRelease_DryRun(t *testing.T) {
 }
 
 func TestInstallRelease_NoHooks(t *testing.T) {
-	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -393,7 +398,9 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 		Chart:        chartStub(),
 		DisableHooks: true,
 	}
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
 	if err != nil {
 		t.Errorf("Failed install: %s", err)
 	}
@@ -404,7 +411,6 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 }
 
 func TestInstallRelease_FailedHooks(t *testing.T) {
-	c := helm.NewContext()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 	rs.env.KubeClient = newHookFailingKubeClient()
@@ -412,7 +418,9 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	req := &services.InstallReleaseRequest{
 		Chart: chartStub(),
 	}
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
 	if err == nil {
 		t.Error("Expected failed install")
 	}
@@ -434,7 +442,9 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 		ReuseName: true,
 		Name:      rel.Name,
 	}
-	res, err := rs.InstallRelease(c, req)
+	mrs := &mockInstallServer{}
+	err := rs.InstallRelease(req, mrs)
+	res := mrs.val.Response.(*services.InstallReleaseResponse_Release)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}

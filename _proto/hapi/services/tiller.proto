@@ -61,7 +61,7 @@ service ReleaseService {
 	}
 
 	// InstallRelease requests installation of a chart as a new release.
-	rpc InstallRelease(InstallReleaseRequest) returns (InstallReleaseResponse) {
+	rpc InstallRelease(InstallReleaseRequest) returns (stream InstallReleaseResponse) {
 	}
 
 	// UninstallRelease requests deletion of a named release.
@@ -273,9 +273,23 @@ message InstallReleaseRequest {
 	bool wait = 9;
 }
 
+message LogItem {
+	enum Level {
+		INFO = 0;
+		ERROR = 1;
+	}
+
+	Level level = 1;
+	string message = 2;
+}
+
 // InstallReleaseResponse is the response from a release installation.
 message InstallReleaseResponse {
-	hapi.release.Release release = 1;
+	// One of the following will be filled in.
+	oneof response {
+		hapi.release.Release release = 1;
+		LogItem logItem = 2;
+	}
 }
 
 // UninstallReleaseRequest represents a request to uninstall a named release.

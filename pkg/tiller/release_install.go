@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	ctx "golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -30,28 +28,71 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 )
 
+type ClientLogger struct {
+	stream services.ReleaseService_InstallReleaseServer
+}
+
+func (logger *ClientLogger) log(level services.LogItem_Level, message string) (error) {
+	log := &services.InstallReleaseResponse{
+		Response: &services.InstallReleaseResponse_LogItem {
+			&services.LogItem{
+				Level:   level,
+				Message: message,
+			},
+		},
+	}
+
+	return logger.stream.Send(log)
+}
+
+func (logger *ClientLogger) Info(message string) (error) {
+	return logger.log(services.LogItem_INFO, message)
+}
+
+func (logger *ClientLogger) Error(message string) (error) {
+	return logger.log(services.LogItem_ERROR, message)
+}
+
 // InstallRelease installs a release and stores the release record.
-func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+func (s *ReleaseServer) InstallRelease(req *services.InstallReleaseRequest, stream services.ReleaseService_InstallReleaseServer) (error) {
+	clientLogger := ClientLogger{
+		stream: stream,
+	}
+
 	s.Log("preparing install for %s", req.Name)
 	rel, err := s.prepareRelease(req)
 	if err != nil {
 		s.Log("failed install prepare step: %s", err)
-		res := &services.InstallReleaseResponse{Release: rel}
 
 		// On dry run, append the manifest contents to a failed release. This is
 		// a stop-gap until we can revisit an error backchannel post-2.0.
 		if req.DryRun && strings.HasPrefix(err.Error(), "YAML parse error") {
 			err = fmt.Errorf("%s\n%s", err, rel.Manifest)
 		}
-		return res, err
+
+		return err
 	}
 
 	s.Log("performing install for %s", req.Name)
+
+	err = clientLogger.Info(fmt.Sprintf("performing install for %s", req.Name))
+
+	if err != nil {
+		return err
+	}
+
 	res, err := s.performRelease(rel, req)
 	if err != nil {
 		s.Log("failed install perform step: %s", err)
 	}
-	return res, err
+
+	sendErr := stream.Send(res)
+
+	if sendErr != nil {
+		return sendErr
+	}
+
+	return err
 }
 
 // prepareRelease builds a release for an install operation.
@@ -133,11 +174,17 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 
 // performRelease runs a release.
 func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
-	res := &services.InstallReleaseResponse{Release: r}
+	res := &services.InstallReleaseResponse{
+		Response: &services.InstallReleaseResponse_Release {
+			Release: r,
+		},
+	}
 
 	if req.DryRun {
 		s.Log("dry run for %s", r.Name)
-		res.Release.Info.Description = "Dry run complete"
+
+		releaseResponse := res.Response.(*services.InstallReleaseResponse_Release)
+		releaseResponse.Release.Info.Description = "Dry run complete"
 		return res, nil
 	}
 
