@@ -19,6 +19,7 @@ package repo
 import "testing"
 import "io/ioutil"
 import "os"
+import "strings"
 
 const testRepositoriesFile = "testdata/repositories.yaml"
 
@@ -213,5 +214,14 @@ func TestWriteFile(t *testing.T) {
 		if !repos.Has(repo.Name) {
 			t.Errorf("expected repository %s not found", repo.Name)
 		}
+	}
+}
+
+func TestRepoNotExists(t *testing.T) {
+	_, err := LoadRepositoriesFile("/this/path/does/not/exist.yaml")
+	if err == nil {
+		t.Errorf("expected err to be non-nil when path does not exist")
+	} else if !strings.Contains(err.Error(), "You might need to run `helm init`") {
+		t.Errorf("expected prompt to run `helm init` when repositories file does not exist")
 	}
 }
