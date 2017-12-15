@@ -286,6 +286,15 @@ func runesUntil(in io.RuneReader, stop map[rune]bool) ([]rune, rune, error) {
 			if e != nil {
 				return v, next, e
 			}
+			switch next {
+			case 'n':
+				next = '\n'
+			case 'r':
+				next = '\r'
+			case 't':
+				next = '\t'
+			}
+
 			v = append(v, next)
 		default:
 			v = append(v, r)

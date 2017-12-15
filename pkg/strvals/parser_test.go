@@ -255,6 +255,10 @@ func TestParseSet(t *testing.T) {
 			str:    "nested[1][1]=1",
 			expect: map[string]interface{}{"nested": []interface{}{nil, []interface{}{nil, 1}}},
 		},
+		{
+			str:    "escapes=hello\\n\\tworld",
+			expect: map[string]interface{}{"escapes": "hello\n\tworld"},
+		},
 	}
 
 	for _, tt := range tests {

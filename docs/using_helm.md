@@ -300,6 +300,12 @@ nodeSelector:
   kubernetes.io/role: master
 ```
 
+Other escape sequences are supported:
+- ```\\n```
+- ```\\r```
+- ```\\t```
+- any unsupported sequence will keep the following character
+
 Deeply nested data structures can be difficult to express using `--set`. Chart
 designers are encouraged to consider the `--set` usage when designing the format
 of a `values.yaml` file.
