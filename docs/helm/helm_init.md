@@ -53,6 +53,7 @@ helm init
       --tiller-tls-verify        install Tiller with TLS enabled and to verify remote certificates
       --tls-ca-cert string       path to CA root certificate
       --upgrade                  upgrade if Tiller is already installed
+      --wait                     block until Tiller is running and ready to receive requests
 ```
 
 ### Options inherited from parent commands
