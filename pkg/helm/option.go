@@ -89,6 +89,7 @@ func Host(host string) Option {
 	}
 }
 
+// WithLogger adds tiller logger to client.
 func WithLogger(logger TillerOutputLogger) Option {
 	return func(opts *options) {
 		opts.logger = logger

@@ -1,3 +1,19 @@
+/*
+Copyright 2016 The Kubernetes Authors All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package helm
 
 import (
@@ -5,19 +21,22 @@ import (
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
+// TillerOutputLogger logger interface.
 type TillerOutputLogger interface {
 	Log(level rls.LogItem_Level, message string)
 }
 
-type ConsoleLogger struct {}
+// ConsoleLogger write tiller logs to stdout.
+type ConsoleLogger struct{}
 
-func (logger *ConsoleLogger) Log(level rls.LogItem_Level, message string)  {
+// Log format & write messages to stdout.
+func (logger *ConsoleLogger) Log(level rls.LogItem_Level, message string) {
 	switch level {
-		case rls.LogItem_INFO:
-			fmt.Println(message)
-			break
-		case rls.LogItem_ERROR:
-			fmt.Println(fmt.Sprintf("Error: %s", message))
-			break
+	case rls.LogItem_INFO:
+		fmt.Println(message)
+		break
+	case rls.LogItem_ERROR:
+		fmt.Println(fmt.Sprintf("Error: %s", message))
+		break
 	}
 }

@@ -80,7 +80,7 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	c.Rels = append(c.Rels, release)
 
 	return &rls.InstallReleaseResponse{
-		Response: &rls.InstallReleaseResponse_Release {
+		Response: &rls.InstallReleaseResponse_Release{
 			Release: release,
 		},
 	}, nil

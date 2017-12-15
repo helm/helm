@@ -28,14 +28,15 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 )
 
+// ClientLogger send logs to client.
 type ClientLogger struct {
 	stream services.ReleaseService_InstallReleaseServer
 }
 
-func (logger *ClientLogger) log(level services.LogItem_Level, message string) (error) {
+func (logger *ClientLogger) log(level services.LogItem_Level, message string) error {
 	log := &services.InstallReleaseResponse{
-		Response: &services.InstallReleaseResponse_LogItem {
-			&services.LogItem{
+		Response: &services.InstallReleaseResponse_LogItem{
+			LogItem: &services.LogItem{
 				Level:   level,
 				Message: message,
 			},
@@ -45,16 +46,18 @@ func (logger *ClientLogger) log(level services.LogItem_Level, message string) (e
 	return logger.stream.Send(log)
 }
 
-func (logger *ClientLogger) Info(message string) (error) {
+// Info log message with info level.
+func (logger *ClientLogger) Info(message string) error {
 	return logger.log(services.LogItem_INFO, message)
 }
 
-func (logger *ClientLogger) Error(message string) (error) {
+// Error log message with error level.
+func (logger *ClientLogger) Error(message string) error {
 	return logger.log(services.LogItem_ERROR, message)
 }
 
 // InstallRelease installs a release and stores the release record.
-func (s *ReleaseServer) InstallRelease(req *services.InstallReleaseRequest, stream services.ReleaseService_InstallReleaseServer) (error) {
+func (s *ReleaseServer) InstallRelease(req *services.InstallReleaseRequest, stream services.ReleaseService_InstallReleaseServer) error {
 	clientLogger := ClientLogger{
 		stream: stream,
 	}
@@ -175,7 +178,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 // performRelease runs a release.
 func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	res := &services.InstallReleaseResponse{
-		Response: &services.InstallReleaseResponse_Release {
+		Response: &services.InstallReleaseResponse_Release{
 			Release: r,
 		},
 	}
