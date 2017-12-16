@@ -118,6 +118,32 @@ There are some strategies for working with plugin commands:
   Helm will use `usage` and `description` for `helm help` and `helm help myplugin`,
   but will not handle `helm myplugin --help`.
 
+## Downloader Plugins
+By default, Helm is able to fetch Charts using HTTP/S. As of Helm 2.4.0, plugins
+can have a special capability to download Charts from arbitrary sources.
+
+Plugins shall declare this special capability in the `plugin.yaml` file (top level):
+
+```
+downloaders:
+- command: "bin/mydownloader"
+  protocols:
+  - "myprotocol"
+  - "myprotocols"
+```
+
+If such plugin is installed, Helm can interact with the repository using the specified
+protocol scheme by invoking the `command`. The special repository shall be added
+similarily to the regular ones: `helm repo add favorite myprotocol://example.com/`
+The rules for the special repos are the same to the regular ones: Helm must be able
+to download the `index.yaml` file in order to discover and cache the list of
+available Charts.
+
+The defined command will be invoked with the following scheme:
+`command certFile keyFile caFile full-URL`. The SSL credentials are coming from the
+repo definition, stored in `$HELM_HOME/repository/repositories.yaml`. Downloader
+plugin is expected to dump the raw content to stdout and report errors on stderr.
+
 ## Environment Variables
 
 When Helm executes a plugin, it passes the outer environment to the plugin, and
