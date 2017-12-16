@@ -105,9 +105,18 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string) {
 	if len(parts) > 1 {
 		baseArgs = parts[1:]
 	}
-	if !p.Metadata.IgnoreFlags {
-		baseArgs = append(baseArgs, extraArgs...)
+	extraIndex := len(extraArgs)
+	// determine the index of the first flag if we need to ignore them
+	if p.Metadata.IgnoreFlags {
+		for i, arg := range extraArgs {
+			if strings.HasPrefix(arg, "--") {
+				extraIndex = i
+				break
+			}
+		}
 	}
+	baseArgs = append(baseArgs, extraArgs[0:extraIndex]...)
+
 	return main, baseArgs
 }
 

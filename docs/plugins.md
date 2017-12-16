@@ -90,7 +90,9 @@ Restrictions on `name`:
 
 The `ignoreFlags` switch tells Helm to _not_ pass flags to the plugin. So if a
 plugin is called with `helm myplugin --foo` and `ignoreFlags: true`, then `--foo`
-is silently discarded.
+is silently discarded. The arguments provided until the first tag are kept, so
+`helm myplugin myarg --foo` and `ignoreFlags: true` will be equivalent to `helm
+myplugin myarg`.
 
 The `useTunnel` switch indicates that the plugin needs a tunnel to Tiller. This
 should be set to `true` _anytime a plugin talks to Tiller_. It will cause Helm

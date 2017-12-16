@@ -28,37 +28,45 @@ func TestPrepareCommand(t *testing.T) {
 			Command: "echo -n foo",
 		},
 	}
-	argv := []string{"--debug", "--foo", "bar"}
-
-	cmd, args := p.PrepareCommand(argv)
-	if cmd != "echo" {
-		t.Errorf("Expected echo, got %q", cmd)
+	testCases := []struct {
+		argv        []string
+		expect      []string
+		ignoreFlags bool
+	}{
+		{
+			argv:   []string{"--debug", "--foo", "bar"},
+			expect: []string{"-n", "foo", "--debug", "--foo", "bar"},
+		},
+		{
+			argv:   []string{},
+			expect: []string{"-n", "foo"},
+		},
+		{
+			argv:        []string{"--debug", "--foo", "bar"},
+			expect:      []string{"-n", "foo"},
+			ignoreFlags: true,
+		},
+		{
+			argv:        []string{"arg1", "arg2", "--debug", "--foo", "bar", "arg3"},
+			expect:      []string{"-n", "foo", "arg1", "arg2"},
+			ignoreFlags: true,
+		},
 	}
-
-	if l := len(args); l != 5 {
-		t.Errorf("expected 5 args, got %d", l)
-	}
-
-	expect := []string{"-n", "foo", "--debug", "--foo", "bar"}
-	for i := 0; i < len(args); i++ {
-		if expect[i] != args[i] {
-			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
+	for _, tc := range testCases {
+		p.Metadata.IgnoreFlags = tc.ignoreFlags
+		cmd, args := p.PrepareCommand(tc.argv)
+		if cmd != "echo" {
+			t.Errorf("Expected echo, got %q", cmd)
 		}
-	}
 
-	// Test with IgnoreFlags. This should omit --debug, --foo, bar
-	p.Metadata.IgnoreFlags = true
-	cmd, args = p.PrepareCommand(argv)
-	if cmd != "echo" {
-		t.Errorf("Expected echo, got %q", cmd)
-	}
-	if l := len(args); l != 2 {
-		t.Errorf("expected 2 args, got %d", l)
-	}
-	expect = []string{"-n", "foo"}
-	for i := 0; i < len(args); i++ {
-		if expect[i] != args[i] {
-			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
+		if l, le := len(args), len(tc.expect); l != le {
+			t.Errorf("expected %d args, got %d", le, l)
+		}
+
+		for i := 0; i < len(args); i++ {
+			if tc.expect[i] != args[i] {
+				t.Errorf("Expected arg=%q, got %q", tc.expect[i], args[i])
+			}
 		}
 	}
 }
