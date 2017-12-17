@@ -109,7 +109,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string) {
 	// determine the index of the first flag if we need to ignore them
 	if p.Metadata.IgnoreFlags {
 		for i, arg := range extraArgs {
-			if strings.HasPrefix(arg, "--") {
+			if strings.HasPrefix(arg, "-") {
 				extraIndex = i
 				break
 			}
