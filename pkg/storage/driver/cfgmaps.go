@@ -44,7 +44,7 @@ type ConfigMaps struct {
 	Log  func(string, ...interface{})
 }
 
-// NewConfigMaps initializes a new ConfigMaps wrapping an implmenetation of
+// NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
 // the kubernetes ConfigMapsInterface.
 func NewConfigMaps(impl internalversion.ConfigMapInterface) *ConfigMaps {
 	return &ConfigMaps{
