@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -257,6 +256,17 @@ func CreateFrom(chartfile *chart.Metadata, dest string, src string) error {
 	}
 
 	schart.Metadata = chartfile
+
+	var updatedTemplates []*chart.Template
+
+	for _, template := range schart.Templates {
+		newData := Transform(string(template.Data), "<CHARTNAME>", schart.Metadata.Name)
+		updatedTemplates = append(updatedTemplates, &chart.Template{Name: template.Name, Data: newData})
+	}
+
+	schart.Templates = updatedTemplates
+	schart.Values = &chart.Config{Raw: string(Transform(schart.Values.Raw, "<CHARTNAME>", schart.Metadata.Name))}
+
 	return SaveDir(schart, dest)
 }
 
@@ -324,27 +334,27 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		{
 			// ingress.yaml
 			path:    filepath.Join(cdir, TemplatesDir, IngressFileName),
-			content: []byte(strings.Replace(defaultIngress, "<CHARTNAME>", chartfile.Name, -1)),
+			content: Transform(defaultIngress, "<CHARTNAME>", chartfile.Name),
 		},
 		{
 			// deployment.yaml
 			path:    filepath.Join(cdir, TemplatesDir, DeploymentName),
-			content: []byte(strings.Replace(defaultDeployment, "<CHARTNAME>", chartfile.Name, -1)),
+			content: Transform(defaultDeployment, "<CHARTNAME>", chartfile.Name),
 		},
 		{
 			// service.yaml
 			path:    filepath.Join(cdir, TemplatesDir, ServiceName),
-			content: []byte(strings.Replace(defaultService, "<CHARTNAME>", chartfile.Name, -1)),
+			content: Transform(defaultService, "<CHARTNAME>", chartfile.Name),
 		},
 		{
 			// NOTES.txt
 			path:    filepath.Join(cdir, TemplatesDir, NotesName),
-			content: []byte(strings.Replace(defaultNotes, "<CHARTNAME>", chartfile.Name, -1)),
+			content: Transform(defaultNotes, "<CHARTNAME>", chartfile.Name),
 		},
 		{
 			// _helpers.tpl
 			path:    filepath.Join(cdir, TemplatesDir, HelpersName),
-			content: []byte(strings.Replace(defaultHelpers, "<CHARTNAME>", chartfile.Name, -1)),
+			content: Transform(defaultHelpers, "<CHARTNAME>", chartfile.Name),
 		},
 	}
 
