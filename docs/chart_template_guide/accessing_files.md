@@ -144,7 +144,7 @@ couple utility methods on the `Files` type.
 For further organization, it is especially useful to use these methods in
 conjunction with the `Glob` method.
 
-Given the directory structure from the [Glob][Glob patterns] example above:
+Given the directory structure from the [Glob](#glob-patterns) example above:
 
 ```yaml
 apiVersion: v1
