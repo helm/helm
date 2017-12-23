@@ -6,7 +6,7 @@ To get going, let's take a brief look at a Helm chart.
 
 ## Charts
 
-As described in the [Charts Guide](../charts.md), Helm charts are structured like
+As described in the [Charts Guide](charts.md), Helm charts are structured like
 this:
 
 ```
