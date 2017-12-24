@@ -42,7 +42,12 @@ import (
 
 const defaultDirectoryPermission = 0755
 
-var whitespaceRegex = regexp.MustCompile(`^\s*$`)
+var (
+	whitespaceRegex = regexp.MustCompile(`^\s*$`)
+
+	// defaultKubeVersion is the default value of --kube-version flag
+	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+)
 
 const templateDesc = `
 Render chart templates locally and display the output.
@@ -92,7 +97,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&t.namespace, "namespace", "", "namespace to install the release into")
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
-	f.StringVar(&t.kubeVersion, "kube-version", "", "override the Kubernetes version used as Capabilities.KubeVersion.Major/Minor (e.g. 1.7)")
+	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 
 	return cmd
@@ -194,17 +199,16 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		KubeVersion:   chartutil.DefaultKubeVersion,
 		TillerVersion: tversion.GetVersionProto(),
 	}
-	// If --kube-versionis set, try to parse it as SemVer, and override the
+
 	// kubernetes version
-	if t.kubeVersion != "" {
-		kv, err := semver.NewVersion(t.kubeVersion)
-		if err != nil {
-			return fmt.Errorf("could not parse a kubernetes version: %v", err)
-		}
-		caps.KubeVersion.Major = fmt.Sprint(kv.Major())
-		caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
-		caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
+	kv, err := semver.NewVersion(t.kubeVersion)
+	if err != nil {
+		return fmt.Errorf("could not parse a kubernetes version: %v", err)
 	}
+	caps.KubeVersion.Major = fmt.Sprint(kv.Major())
+	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
+	caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
+
 	vals, err := chartutil.ToRenderValuesCaps(c, config, options, caps)
 	if err != nil {
 		return err
