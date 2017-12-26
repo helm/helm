@@ -61,6 +61,12 @@ func (h Home) CacheIndex(name string) string {
 	return h.Path("repository", "cache", target)
 }
 
+// RelativeIndex returns the relative path to an index for the given named repository.
+func (h Home) RelativeIndex(name string) string {
+	target := fmt.Sprintf("%s-index.yaml", name)
+	return filepath.Join(target)
+}
+
 // Starters returns the path to the Helm starter packs.
 func (h Home) Starters() string {
 	return h.Path("starters")

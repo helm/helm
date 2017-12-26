@@ -86,7 +86,7 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 		return fmt.Errorf("repository name (%s) already exists, please specify a different name", name)
 	}
 
-	cif := home.CacheIndex(name)
+	cif := home.RelativeIndex(name)
 	c := repo.Entry{
 		Name:     name,
 		Cache:    cif,

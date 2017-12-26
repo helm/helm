@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -337,11 +338,11 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository), out, skipRefresh)
+		sr, err := initStableRepo(home.RelativeIndex(stableRepository), out, skipRefresh, home)
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out)
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.RelativeIndex("local"), out, home)
 		if err != nil {
 			return err
 		}
@@ -356,7 +357,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	return nil
 }
 
-func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool) (*repo.Entry, error) {
+func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
 	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
 	c := repo.Entry{
 		Name:  stableRepository,
@@ -372,16 +373,14 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool) (*repo.En
 		return &c, nil
 	}
 
-	// In this case, the cacheFile is always absolute. So passing empty string
-	// is safe.
-	if err := r.DownloadIndexFile(""); err != nil {
+	if err := r.DownloadIndexFile(home.Cache()); err != nil {
 		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 
 	return &c, nil
 }
 
-func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, error) {
+func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Home) (*repo.Entry, error) {
 	if fi, err := os.Stat(indexFile); err != nil {
 		fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
 		i := repo.NewIndexFile()
@@ -390,7 +389,12 @@ func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		os.Symlink(indexFile, cacheFile)
+		fp, err := filepath.Rel(filepath.Join(home.Cache(), cacheFile), indexFile)
+		if err != nil {
+			return nil, err
+		}
+		pth := home.Path(fp)
+		os.Symlink(pth, filepath.Join(home.Cache(), cacheFile))
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
