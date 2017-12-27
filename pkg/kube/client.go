@@ -274,7 +274,8 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
-			return fmt.Errorf("no resource with the name %q found", info.Name)
+			kind := info.Mapping.GroupVersionKind.Kind
+			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
