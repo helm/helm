@@ -111,8 +111,9 @@ downloadFile() {
   HELM_DIST="helm-$TAG-$OS-$ARCH.tar.gz"
   DOWNLOAD_URL="https://kubernetes-helm.storage.googleapis.com/$HELM_DIST"
   CHECKSUM_URL="$DOWNLOAD_URL.sha256"
-  HELM_TMP_FILE="/tmp/$HELM_DIST"
-  HELM_SUM_FILE="/tmp/$HELM_DIST.sha256"
+  HELM_TMP_ROOT="$(mktemp -dt helm-installer-XXXXXX)"
+  HELM_TMP_FILE="$HELM_TMP_ROOT/$HELM_DIST"
+  HELM_SUM_FILE="$HELM_TMP_ROOT/$HELM_DIST.sha256"
   echo "Downloading $DOWNLOAD_URL"
   if type "curl" > /dev/null; then
     curl -SsL "$CHECKSUM_URL" -o "$HELM_SUM_FILE"
@@ -129,7 +130,7 @@ downloadFile() {
 # installFile verifies the SHA256 for the file, then unpacks and
 # installs it.
 installFile() {
-  HELM_TMP="/tmp/$PROJECT_NAME"
+  HELM_TMP="$HELM_TMP_ROOT/$PROJECT_NAME"
   local sum=$(openssl sha1 -sha256 ${HELM_TMP_FILE} | awk '{print $2}')
   local expected_sum=$(cat ${HELM_SUM_FILE})
   if [ "$sum" != "$expected_sum" ]; then
@@ -156,6 +157,7 @@ fail_trap() {
     fi
     echo -e "\tFor support, go to https://github.com/kubernetes/helm."
   fi
+  cleanup
   exit $result
 }
 
@@ -180,6 +182,11 @@ help () {
   echo -e "\te.g. --version v2.4.0  or -v latest"
 }
 
+# cleanup temporary files to avoid https://github.com/kubernetes/helm/issues/2977
+cleanup() {
+  rm -rf "$HELM_TMP_ROOT"
+}
+
 # Execution
 
 #Stop execution on any error
@@ -200,7 +207,7 @@ while [[ $# -gt 0 ]]; do
            exit 0
        fi
        ;;
-    '--help'|-h) 
+    '--help'|-h)
        help
        exit 0
        ;;
@@ -220,3 +227,4 @@ if ! checkHelmInstalledVersion; then
   installFile
 fi
 testVersion
+cleanup
