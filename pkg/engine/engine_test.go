@@ -538,7 +538,7 @@ func TestAlterFuncMap(t *testing.T) {
 		Metadata: &chart.Metadata{Name: "TplFunction"},
 		Templates: []*chart.Template{
 			{Name: "templates/base", Data: []byte(`{{ tpl "{{include ` + "`" + `TplFunction/templates/_partial` + "`" + ` .  | quote }}" .}}`)},
-			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}}`)},
+			{Name: "templates/_partial", Data: []byte(`{{.Template.Name}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
 		Dependencies: []*chart.Chart{},
@@ -558,7 +558,7 @@ func TestAlterFuncMap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedTplStrWithInclude := "\"TestRelease\""
+	expectedTplStrWithInclude := "\"TplFunction/templates/base\""
 	if gotStrTplWithInclude := outTplWithInclude["TplFunction/templates/base"]; gotStrTplWithInclude != expectedTplStrWithInclude {
 		t.Errorf("Expected %q, got %q (%v)", expectedTplStrWithInclude, gotStrTplWithInclude, outTplWithInclude)
 	}
