@@ -60,9 +60,9 @@ runAsRoot() {
 # verifySupported checks that the os/arch combination is supported for
 # binary builds.
 verifySupported() {
-  local supported="linux-amd64\ndarwin-amd64\nlinux-386"
+  local supported="darwin-386\ndarwin-amd64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nwindows-386\nwindows-amd64"
   if ! echo "${supported}" | grep -q "${OS}-${ARCH}"; then
-    echo "No prebuild binary for ${OS}-${ARCH}."
+    echo "No prebuilt binary for ${OS}-${ARCH}."
     echo "To build from source, go to https://github.com/kubernetes/helm"
     exit 1
   fi
