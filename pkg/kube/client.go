@@ -218,9 +218,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 
 	var lastVk string
 	for _, t := range objs {
-		vk := t.vk
-		object := t.object
-		if vk != lastVk {
+		if t.vk != lastVk {
 			if lastVk != "" {
 				if _, err := buf.WriteString("\n"); err != nil {
 					return "", err
@@ -229,10 +227,10 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 			if _, err := buf.WriteString("==> " + vk + "\n"); err != nil {
 				return "", err
 			}
-			lastVk = vk
+			lastVk = t.vk
 		}
-		if err := p.PrintObj(object, buf); err != nil {
-			c.Log("failed to print object type %s, object: %q :\n %v", object, vk, err)
+		if err := p.PrintObj(t.object, buf); err != nil {
+			c.Log("failed to print object type %s, object: %q :\n %v", t.object, vk, err)
 			return "", err
 		}
 	}
