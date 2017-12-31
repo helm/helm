@@ -61,7 +61,7 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		u, _, _, err := c.ResolveChartVersion(tt.ref, tt.version)
+		u, _, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
 				continue
@@ -195,7 +195,7 @@ func TestDownloadTo(t *testing.T) {
 		Getters:  getter.All(environment.EnvSettings{}),
 	}
 	cname := "/signtest-0.1.0.tgz"
-	where, v, err := c.DownloadTo(srv.URL()+cname, "", "", "", dest)
+	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
 		t.Error(err)
 		return
@@ -258,7 +258,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		Getters:  getter.All(environment.EnvSettings{}),
 	}
 	cname := "/signtest-0.1.0.tgz"
-	where, _, err := c.DownloadTo(srv.URL()+cname, "", "", "", dest)
+	where, _, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
 		t.Error(err)
 		return
