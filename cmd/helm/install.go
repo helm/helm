@@ -418,6 +418,8 @@ func locateChartPath(repoURL, username, password, name, version string, verify b
 		Out:      os.Stdout,
 		Keyring:  keyring,
 		Getters:  getter.All(settings),
+		Username: username,
+		Password: password,
 	}
 	if verify {
 		dl.Verify = downloader.VerifyAlways
@@ -435,7 +437,7 @@ func locateChartPath(repoURL, username, password, name, version string, verify b
 		os.MkdirAll(settings.Home.Archive(), 0744)
 	}
 
-	filename, _, err := dl.DownloadTo(name, username, password, version, settings.Home.Archive())
+	filename, _, err := dl.DownloadTo(name, version, settings.Home.Archive())
 	if err == nil {
 		lname, err := filepath.Abs(filename)
 		if err != nil {

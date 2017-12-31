@@ -197,14 +197,6 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		return err
 	}
 
-	dl := ChartDownloader{
-		Out:      m.Out,
-		Verify:   m.Verify,
-		Keyring:  m.Keyring,
-		HelmHome: m.HelmHome,
-		Getters:  m.Getters,
-	}
-
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
 
@@ -251,7 +243,17 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			break
 		}
 
-		if _, _, err := dl.DownloadTo(churl, username, password, "", destPath); err != nil {
+		dl := ChartDownloader{
+			Out:      m.Out,
+			Verify:   m.Verify,
+			Keyring:  m.Keyring,
+			HelmHome: m.HelmHome,
+			Getters:  m.Getters,
+			Username: username,
+			Password: password,
+		}
+
+		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
 			saveError = fmt.Errorf("could not download %s: %s", churl, err)
 			break
 		}

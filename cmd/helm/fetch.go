@@ -119,6 +119,8 @@ func (f *fetchCmd) run() error {
 		Keyring:  f.keyring,
 		Verify:   downloader.VerifyNever,
 		Getters:  getter.All(settings),
+		Username: f.username,
+		Password: f.password,
 	}
 
 	if f.verify {
@@ -147,7 +149,7 @@ func (f *fetchCmd) run() error {
 		f.chartRef = chartURL
 	}
 
-	saved, v, err := c.DownloadTo(f.chartRef, f.username, f.password, f.version, dest)
+	saved, v, err := c.DownloadTo(f.chartRef, f.version, dest)
 	if err != nil {
 		return err
 	}
