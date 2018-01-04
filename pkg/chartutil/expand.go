@@ -81,3 +81,67 @@ func ExpandFile(dest, src string) error {
 	defer h.Close()
 	return Expand(dest, h)
 }
+
+// Expand uncompresses and extracts a chart into the specified directory.
+// Return the directory when extracting successfully.
+func ExpandWithPath(dir string, r io.Reader) (string, error) {
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return "", err
+	}
+	defer gr.Close()
+	tr := tar.NewReader(gr)
+	expandDir := ""
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return "", err
+		}
+
+		//split header name and create missing directories
+		d, _ := filepath.Split(header.Name)
+		fullDir := filepath.Join(dir, d)
+		_, err = os.Stat(fullDir)
+		if err != nil && d != "" {
+			if err := os.MkdirAll(fullDir, 0700); err != nil {
+				return "", err
+			}
+		}
+		//get first fullDir which saves the uncompressed chart
+		if expandDir == "" {
+			expandDir = fullDir
+		}
+
+		path := filepath.Clean(filepath.Join(dir, header.Name))
+		info := header.FileInfo()
+		if info.IsDir() {
+			if err = os.MkdirAll(path, info.Mode()); err != nil {
+				return "", err
+			}
+			continue
+		}
+
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+		_, err = io.Copy(file, tr)
+		if err != nil {
+			return "", err
+		}
+	}
+	return expandDir, nil
+}
+
+// ExpandFile expands the src file into the dest directory.
+func ExpandFileWithPath(dest, src string) (string, error) {
+	h, err := os.Open(src)
+	if err != nil {
+		return "", err
+	}
+	defer h.Close()
+	return ExpandWithPath(dest, h)
+}
