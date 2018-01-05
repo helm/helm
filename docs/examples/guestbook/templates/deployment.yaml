@@ -1,0 +1,52 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "guestbook.fullname" . }}
+  labels:
+    app: {{ template "guestbook.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "guestbook.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.frontend.internalPort }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.frontend.internalPort }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.frontend.internalPort }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+          env:
+          - name: {{"GET_HOSTS_FROM"}}
+            value: {{"env"}}
+          - name: {{"REDIS_MASTER_SERVICE_HOST"}}
+          {{- if .Values.redis.enabled }}
+            value: {{ template "redis.fullname" . }}
+          {{- else }}
+            value: {{ .Values.externalDatabase.host | quote }}
+          {{- end }}
+          - name: {{"REDIS_SLAVE_SERVICE_HOST"}}
+          {{- if .Values.redis.enabled }}
+            value: {{ template "redis.fullname" . }}
+          {{- else }}
+            value: {{ .Values.externalDatabase.host | quote }}
+          {{- end }}
