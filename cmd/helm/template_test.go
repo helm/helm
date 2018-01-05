@@ -155,7 +155,7 @@ func TestTemplateCmd(t *testing.T) {
 				fmt.Fprintln(os.Stderr, "reading standard input:", err)
 			}
 			if v, ok := m[tt.expectKey]; ok {
-				if strings.Contains(v, tt.expectValue) == false {
+				if !strings.Contains(v, tt.expectValue) {
 					t.Errorf("failed to match expected value %s in %s", tt.expectValue, v)
 				}
 			} else {

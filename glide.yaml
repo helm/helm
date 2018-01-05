@@ -27,10 +27,8 @@ import:
   - ptypes/timestamp
 - package: google.golang.org/grpc
   version: 1.7.2
-  # 1.8.1 libs are hosed and need some manual intervention, so pinning to 1.8.0 for now
-  # so others aren't getting errors when running `glide up`
 - package: k8s.io/kubernetes
-  version: 1.8.0
+  version: ~1.9.0
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
@@ -56,6 +54,15 @@ import:
 - package: vbom.ml/util
   repo: https://github.com/fvbommel/util.git
   vcs: git
+
+- package: k8s.io/kube-openapi
+  version: 39a7bf85c140f972372c2a0d1ee40adbf0c8bfe1
+
+- package: cloud.google.com/go/compute
+  repo: https://github.com/GoogleCloudPlatform/google-cloud-go.git
+
+ignore:
+  - k8s.io/api
 
 testImports:
 - package: github.com/stretchr/testify

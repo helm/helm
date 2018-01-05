@@ -220,7 +220,7 @@ func hasAnyAnnotation(entry util.SimpleHead) bool {
 }
 
 func calculateHookWeight(entry util.SimpleHead) int32 {
-	hws, _ := entry.Metadata.Annotations[hooks.HookWeightAnno]
+	hws := entry.Metadata.Annotations[hooks.HookWeightAnno]
 	hw, err := strconv.Atoi(hws)
 	if err != nil {
 		hw = 0

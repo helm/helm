@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
-
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -41,7 +41,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
-	"net/url"
 )
 
 const installDesc = `

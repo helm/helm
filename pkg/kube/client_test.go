@@ -30,16 +30,16 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest/fake"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
-	"k8s.io/kubernetes/pkg/kubectl/validation"
 	"k8s.io/kubernetes/pkg/printers"
 	watchjson "k8s.io/kubernetes/pkg/watch/json"
 )
@@ -48,34 +48,34 @@ func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 }
 
-func newPod(name string) api.Pod {
-	return newPodWithStatus(name, api.PodStatus{}, "")
+func newPod(name string) core.Pod {
+	return newPodWithStatus(name, core.PodStatus{}, "")
 }
 
-func newPodWithStatus(name string, status api.PodStatus, namespace string) api.Pod {
-	ns := api.NamespaceDefault
+func newPodWithStatus(name string, status core.PodStatus, namespace string) core.Pod {
+	ns := core.NamespaceDefault
 	if namespace != "" {
 		ns = namespace
 	}
-	return api.Pod{
+	return core.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
 			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
 		},
-		Spec: api.PodSpec{
-			Containers: []api.Container{{
+		Spec: core.PodSpec{
+			Containers: []core.Container{{
 				Name:  "app:v4",
 				Image: "abc/app:v4",
-				Ports: []api.ContainerPort{{Name: "http", ContainerPort: 80}},
+				Ports: []core.ContainerPort{{Name: "http", ContainerPort: 80}},
 			}},
 		},
 		Status: status,
 	}
 }
 
-func newPodList(names ...string) api.PodList {
-	var list api.PodList
+func newPodList(names ...string) core.PodList {
+	var list core.PodList
 	for _, name := range names {
 		list.Items = append(list.Items, newPod(name))
 	}
@@ -148,14 +148,14 @@ func TestUpdate(t *testing.T) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
 	listC := newPodList("starfish", "otter", "dolphin")
-	listB.Items[0].Spec.Containers[0].Ports = []api.ContainerPort{{Name: "https", ContainerPort: 443}}
-	listC.Items[0].Spec.Containers[0].Ports = []api.ContainerPort{{Name: "https", ContainerPort: 443}}
+	listB.Items[0].Spec.Containers[0].Ports = []core.ContainerPort{{Name: "https", ContainerPort: 443}}
+	listC.Items[0].Spec.Containers[0].Ports = []core.ContainerPort{{Name: "https", ContainerPort: 443}}
 
 	var actions []string
 
 	f, tf, codec, _ := cmdtesting.NewAPIFactory()
 	tf.UnstructuredClient = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: dynamic.ContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
@@ -193,7 +193,7 @@ func TestUpdate(t *testing.T) {
 	reaper := &fakeReaper{}
 	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
 	c := newTestClient(rf)
-	if err := c.Update(api.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
+	if err := c.Update(core.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
@@ -232,13 +232,11 @@ func TestUpdate(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	tests := []struct {
-		name        string
-		namespace   string
-		reader      io.Reader
-		count       int
-		swaggerFile string
-		err         bool
-		errMessage  string
+		name      string
+		namespace string
+		reader    io.Reader
+		count     int
+		err       bool
 	}{
 		{
 			name:      "Valid input",
@@ -246,36 +244,23 @@ func TestBuild(t *testing.T) {
 			reader:    strings.NewReader(guestbookManifest),
 			count:     6,
 		}, {
-			name:        "Invalid schema",
-			namespace:   "test",
-			reader:      strings.NewReader(testInvalidServiceManifest),
-			swaggerFile: "../../vendor/k8s.io/kubernetes/api/swagger-spec/" + testapi.Default.GroupVersion().Version + ".json",
-			err:         true,
-			errMessage:  `error validating "": error validating data: expected type int, for field spec.ports[0].port, got string`,
+			name:      "Invalid schema",
+			namespace: "test",
+			reader:    strings.NewReader(testInvalidServiceManifest),
+			err:       true,
 		},
 	}
 
 	for _, tt := range tests {
-		f, tf, _, _ := cmdtesting.NewAPIFactory()
+		f, _, _, _ := cmdtesting.NewAPIFactory()
 		c := newTestClient(f)
-		if tt.swaggerFile != "" {
-			data, err := ioutil.ReadFile(tt.swaggerFile)
-			if err != nil {
-				t.Fatalf("could not read swagger spec: %s", err)
-			}
-			validator, err := validation.NewSwaggerSchemaFromBytes(data, nil)
-			if err != nil {
-				t.Fatalf("could not load swagger spec: %s", err)
-			}
-			tf.Validator = validator
-		}
 
 		// Test for an invalid manifest
 		infos, err := c.Build(tt.namespace, tt.reader)
-		if err != nil && err.Error() != tt.errMessage {
-			t.Errorf("%q. expected error message: %v, got %v", tt.name, tt.errMessage, err)
-		} else if err != nil && !tt.err {
-			t.Errorf("%q. Got error message when no error should have occurred: %v, got %v", tt.name, tt.errMessage, err)
+		if err != nil && !tt.err {
+			t.Errorf("%q. Got error message when no error should have occurred: %v", tt.name, err)
+		} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
+			t.Errorf("%q. error message was not scrubbed", tt.name)
 		}
 
 		if len(infos) != tt.count {
@@ -309,7 +294,7 @@ func TestGet(t *testing.T) {
 	f, tf, _, _ := cmdtesting.NewAPIFactory()
 	tf.Printer = &testPrinter{}
 	tf.UnstructuredClient = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: dynamic.ContentConfig().NegotiatedSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
@@ -351,13 +336,12 @@ func TestGet(t *testing.T) {
 
 func TestPerform(t *testing.T) {
 	tests := []struct {
-		name        string
-		namespace   string
-		reader      io.Reader
-		count       int
-		swaggerFile string
-		err         bool
-		errMessage  string
+		name       string
+		namespace  string
+		reader     io.Reader
+		count      int
+		err        bool
+		errMessage string
 	}{
 		{
 			name:      "Valid input",
@@ -385,20 +369,8 @@ func TestPerform(t *testing.T) {
 			return nil
 		}
 
-		f, tf, _, _ := cmdtesting.NewAPIFactory()
+		f, _, _, _ := cmdtesting.NewAPIFactory()
 		c := newTestClient(f)
-		if tt.swaggerFile != "" {
-			data, err := ioutil.ReadFile(tt.swaggerFile)
-			if err != nil {
-				t.Fatalf("could not read swagger spec: %s", err)
-			}
-			validator, err := validation.NewSwaggerSchemaFromBytes(data, nil)
-			if err != nil {
-				t.Fatalf("could not load swagger spec: %s", err)
-			}
-			tf.Validator = validator
-		}
-
 		infos, err := c.Build(tt.namespace, tt.reader)
 		if err != nil && err.Error() != tt.errMessage {
 			t.Errorf("%q. Error while building manifests: %v", tt.name, err)
@@ -420,27 +392,27 @@ func TestPerform(t *testing.T) {
 
 func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 	tests := []struct {
-		podPhase      api.PodPhase
-		expectedPhase api.PodPhase
+		podPhase      core.PodPhase
+		expectedPhase core.PodPhase
 		err           bool
 		errMessage    string
 	}{
 		{
-			podPhase:      api.PodPending,
-			expectedPhase: api.PodUnknown,
+			podPhase:      core.PodPending,
+			expectedPhase: core.PodUnknown,
 			err:           true,
 			errMessage:    "watch closed before Until timeout",
 		}, {
-			podPhase:      api.PodRunning,
-			expectedPhase: api.PodUnknown,
+			podPhase:      core.PodRunning,
+			expectedPhase: core.PodUnknown,
 			err:           true,
 			errMessage:    "watch closed before Until timeout",
 		}, {
-			podPhase:      api.PodSucceeded,
-			expectedPhase: api.PodSucceeded,
+			podPhase:      core.PodSucceeded,
+			expectedPhase: core.PodSucceeded,
 		}, {
-			podPhase:      api.PodFailed,
-			expectedPhase: api.PodFailed,
+			podPhase:      core.PodFailed,
+			expectedPhase: core.PodFailed,
 		},
 	}
 
@@ -448,11 +420,10 @@ func TestWaitAndGetCompletedPodPhase(t *testing.T) {
 		f, tf, codec, ns := cmdtesting.NewAPIFactory()
 		actions := make(map[string]string)
 
-		var testPodList api.PodList
-		testPodList.Items = append(testPodList.Items, newPodWithStatus("bestpod", api.PodStatus{Phase: tt.podPhase}, "test"))
+		var testPodList core.PodList
+		testPodList.Items = append(testPodList.Items, newPodWithStatus("bestpod", core.PodStatus{Phase: tt.podPhase}, "test"))
 
 		tf.Client = &fake.RESTClient{
-			APIRegistry:          api.Registry,
 			NegotiatedSerializer: ns,
 			Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 				p, m := req.URL.Path, req.Method

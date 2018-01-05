@@ -25,7 +25,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
@@ -40,8 +39,7 @@ import (
 
 const notesText = "my notes here"
 
-var manifestWithHook = `apiVersion: v1
-kind: ConfigMap
+var manifestWithHook = `kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
@@ -49,9 +47,7 @@ metadata:
 data:
   name: value`
 
-var manifestWithTestHook = `
-apiVersion: v1
-kind: Pod
+var manifestWithTestHook = `kind: Pod
 metadata:
   name: finding-nemo,
   annotations:
@@ -63,8 +59,7 @@ spec:
     cmd: fake-command
 `
 
-var manifestWithKeep = `apiVersion: v1
-kind: ConfigMap
+var manifestWithKeep = `kind: ConfigMap
 metadata:
   name: test-cm-keep
   annotations:
@@ -73,8 +68,7 @@ data:
   name: value
 `
 
-var manifestWithUpgradeHooks = `apiVersion: v1
-kind: ConfigMap
+var manifestWithUpgradeHooks = `kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
@@ -82,8 +76,7 @@ metadata:
 data:
   name: value`
 
-var manifestWithRollbackHooks = `apiVersion: v1
-kind: ConfigMap
+var manifestWithRollbackHooks = `kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
@@ -340,9 +333,7 @@ func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
 func (l *mockListServer) SetTrailer(m metadata.MD)       {}
 func (l *mockListServer) SetHeader(m metadata.MD) error  { return nil }
 
-type mockRunReleaseTestServer struct {
-	stream grpc.ServerStream
-}
+type mockRunReleaseTestServer struct{}
 
 func (rs mockRunReleaseTestServer) Send(m *services.TestReleaseResponse) error {
 	return nil

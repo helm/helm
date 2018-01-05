@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -228,7 +228,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //    "OWNER"          - owner of the configmap, currently "TILLER".
 //    "NAME"           - name of the release.
 //
-func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*api.ConfigMap, error) {
+func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*core.ConfigMap, error) {
 	const owner = "TILLER"
 
 	// encode the release
@@ -248,7 +248,7 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*api.Config
 	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
 
 	// create and return configmap object
-	return &api.ConfigMap{
+	return &core.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   key,
 			Labels: lbs.toMap(),

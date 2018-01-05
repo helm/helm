@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -228,7 +228,7 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 //    "OWNER"          - owner of the secret, currently "TILLER".
 //    "NAME"           - name of the release.
 //
-func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*api.Secret, error) {
+func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*core.Secret, error) {
 	const owner = "TILLER"
 
 	// encode the release
@@ -248,7 +248,7 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*api.Secret, e
 	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
 
 	// create and return secret object
-	return &api.Secret{
+	return &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   key,
 			Labels: lbs.toMap(),

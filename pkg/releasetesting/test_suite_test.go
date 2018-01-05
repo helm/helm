@@ -26,7 +26,7 @@ import (
 	"golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -324,8 +324,8 @@ func newPodSucceededKubeClient() *podSucceededKubeClient {
 	}
 }
 
-func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (api.PodPhase, error) {
-	return api.PodSucceeded, nil
+func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	return core.PodSucceeded, nil
 }
 
 type podFailedKubeClient struct {
@@ -338,6 +338,6 @@ func newPodFailedKubeClient() *podFailedKubeClient {
 	}
 }
 
-func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (api.PodPhase, error) {
-	return api.PodFailed, nil
+func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	return core.PodFailed, nil
 }

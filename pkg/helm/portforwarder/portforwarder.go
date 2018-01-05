@@ -40,7 +40,7 @@ func New(namespace string, client kubernetes.Interface, config *rest.Config) (*k
 		return nil, err
 	}
 	const tillerPort = 44134
-	t := kube.NewTunnel(client.Core().RESTClient(), config, namespace, podName, tillerPort)
+	t := kube.NewTunnel(client.CoreV1().RESTClient(), config, namespace, podName, tillerPort)
 	return t, t.ForwardPort()
 }
 

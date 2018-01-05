@@ -31,6 +31,7 @@ import (
 	batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,9 +43,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/helper"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
+	"k8s.io/kubernetes/pkg/apis/core"
 	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -109,7 +109,8 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 }
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
-	return c.NewBuilder(true).
+	return c.NewBuilder().
+		Internal().
 		ContinueOnError().
 		Schema(c.validator()).
 		NamespaceParam(namespace).
@@ -120,8 +121,7 @@ func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result
 }
 
 func (c *Client) validator() validation.Schema {
-	const openapi = false // only works on v1.8 clusters
-	schema, err := c.Validator(true, openapi, c.SchemaCacheDir)
+	schema, err := c.Validator(true)
 	if err != nil {
 		c.Log("warning: failed to load schema: %s", err)
 	}
@@ -132,12 +132,9 @@ func (c *Client) validator() validation.Schema {
 func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
 	var result Result
 
-	b, err := c.NewUnstructuredBuilder(true)
-	if err != nil {
-		return result, err
-	}
-	result, err = b.ContinueOnError().
-		Schema(c.validator()).
+	result, err := c.NewBuilder().
+		Unstructured().
+		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
@@ -165,7 +162,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
-	var objPods = make(map[string][]api.Pod)
+	var objPods = make(map[string][]core.Pod)
 
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
@@ -400,12 +397,12 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
 
-	if helper.Semantic.DeepEqual(oldData, newData) {
+	if apiequality.Semantic.DeepEqual(oldData, newData) {
 		return nil, types.StrategicMergePatchType, nil
 	}
 
 	// Get a versioned object
-	versionedObject, err := api.Scheme.New(mapping.GroupVersionKind)
+	versionedObject, err := mapping.ConvertToVersion(target, mapping.GroupVersionKind.GroupVersion())
 	switch {
 	case runtime.IsNotRegisteredError(err):
 		// fall back to generic JSON merge patch
@@ -590,9 +587,9 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 	}
 
 	for _, c := range o.Status.Conditions {
-		if c.Type == batchinternal.JobComplete && c.Status == api.ConditionTrue {
+		if c.Type == batchinternal.JobComplete && c.Status == core.ConditionTrue {
 			return true, nil
-		} else if c.Type == batchinternal.JobFailed && c.Status == api.ConditionTrue {
+		} else if c.Type == batchinternal.JobFailed && c.Status == core.ConditionTrue {
 			return true, fmt.Errorf("Job failed: %s", c.Reason)
 		}
 	}
@@ -616,26 +613,26 @@ func scrubValidationError(err error) error {
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
 	infos, err := c.Build(namespace, reader)
 	if err != nil {
-		return api.PodUnknown, err
+		return core.PodUnknown, err
 	}
 	info := infos[0]
 
 	kind := info.Mapping.GroupVersionKind.Kind
 	if kind != "Pod" {
-		return api.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
+		return core.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
 	}
 
 	if err := c.watchPodUntilComplete(timeout, info); err != nil {
-		return api.PodUnknown, err
+		return core.PodUnknown, err
 	}
 
 	if err := info.Get(); err != nil {
-		return api.PodUnknown, err
+		return core.PodUnknown, err
 	}
-	status := info.Object.(*api.Pod).Status.Phase
+	status := info.Object.(*core.Pod).Status.Phase
 
 	return status, nil
 }
@@ -656,7 +653,7 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 
 //get an kubernetes resources's relation pods
 // kubernetes resource used select labels to relate pods
-func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]api.Pod) (map[string][]api.Pod, error) {
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {
 	if info == nil {
 		return objPods, nil
 	}
@@ -709,7 +706,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 	return objPods, nil
 }
 
-func isFoundPod(podItem []api.Pod, pod api.Pod) bool {
+func isFoundPod(podItem []core.Pod, pod core.Pod) bool {
 	for _, value := range podItem {
 		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
 			return true
