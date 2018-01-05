@@ -22,7 +22,7 @@ import (
 	"log"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -49,7 +49,7 @@ func (env *Environment) createTestPod(test *test) error {
 	return nil
 }
 
-func (env *Environment) getTestPodStatus(test *test) (api.PodPhase, error) {
+func (env *Environment) getTestPodStatus(test *test) (core.PodPhase, error) {
 	b := bytes.NewBufferString(test.manifest)
 	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, b, time.Duration(env.Timeout)*time.Second)
 	if err != nil {

@@ -236,7 +236,7 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 	// for calls to Discovery().ServerGroups(). So in this case, we return
 	// the default API list. This is also a safe value to return in any other
 	// odd-ball case.
-	if groups == nil {
+	if groups.Size() == 0 {
 		return chartutil.DefaultVersionSet, nil
 	}
 

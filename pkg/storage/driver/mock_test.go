@@ -22,7 +22,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -78,12 +78,12 @@ func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps 
 type MockConfigMapsInterface struct {
 	internalversion.ConfigMapInterface
 
-	objects map[string]*api.ConfigMap
+	objects map[string]*core.ConfigMap
 }
 
 // Init initializes the MockConfigMapsInterface with the set of releases.
 func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Release) {
-	mock.objects = map[string]*api.ConfigMap{}
+	mock.objects = map[string]*core.ConfigMap{}
 
 	for _, rls := range releases {
 		objkey := testKey(rls.Name, rls.Version)
@@ -97,17 +97,17 @@ func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Releas
 }
 
 // Get returns the ConfigMap by name.
-func (mock *MockConfigMapsInterface) Get(name string, options metav1.GetOptions) (*api.ConfigMap, error) {
+func (mock *MockConfigMapsInterface) Get(name string, options metav1.GetOptions) (*core.ConfigMap, error) {
 	object, ok := mock.objects[name]
 	if !ok {
-		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
+		return nil, apierrors.NewNotFound(core.Resource("tests"), name)
 	}
 	return object, nil
 }
 
 // List returns the a of ConfigMaps.
-func (mock *MockConfigMapsInterface) List(opts metav1.ListOptions) (*api.ConfigMapList, error) {
-	var list api.ConfigMapList
+func (mock *MockConfigMapsInterface) List(opts metav1.ListOptions) (*core.ConfigMapList, error) {
+	var list core.ConfigMapList
 	for _, cfgmap := range mock.objects {
 		list.Items = append(list.Items, *cfgmap)
 	}
@@ -115,20 +115,20 @@ func (mock *MockConfigMapsInterface) List(opts metav1.ListOptions) (*api.ConfigM
 }
 
 // Create creates a new ConfigMap.
-func (mock *MockConfigMapsInterface) Create(cfgmap *api.ConfigMap) (*api.ConfigMap, error) {
+func (mock *MockConfigMapsInterface) Create(cfgmap *core.ConfigMap) (*core.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if object, ok := mock.objects[name]; ok {
-		return object, apierrors.NewAlreadyExists(api.Resource("tests"), name)
+		return object, apierrors.NewAlreadyExists(core.Resource("tests"), name)
 	}
 	mock.objects[name] = cfgmap
 	return cfgmap, nil
 }
 
 // Update updates a ConfigMap.
-func (mock *MockConfigMapsInterface) Update(cfgmap *api.ConfigMap) (*api.ConfigMap, error) {
+func (mock *MockConfigMapsInterface) Update(cfgmap *core.ConfigMap) (*core.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
-		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
+		return nil, apierrors.NewNotFound(core.Resource("tests"), name)
 	}
 	mock.objects[name] = cfgmap
 	return cfgmap, nil
@@ -137,7 +137,7 @@ func (mock *MockConfigMapsInterface) Update(cfgmap *api.ConfigMap) (*api.ConfigM
 // Delete deletes a ConfigMap by name.
 func (mock *MockConfigMapsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
-		return apierrors.NewNotFound(api.Resource("tests"), name)
+		return apierrors.NewNotFound(core.Resource("tests"), name)
 	}
 	delete(mock.objects, name)
 	return nil
@@ -156,12 +156,12 @@ func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
 type MockSecretsInterface struct {
 	internalversion.SecretInterface
 
-	objects map[string]*api.Secret
+	objects map[string]*core.Secret
 }
 
 // Init initializes the MockSecretsInterface with the set of releases.
 func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) {
-	mock.objects = map[string]*api.Secret{}
+	mock.objects = map[string]*core.Secret{}
 
 	for _, rls := range releases {
 		objkey := testKey(rls.Name, rls.Version)
@@ -175,17 +175,17 @@ func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) 
 }
 
 // Get returns the Secret by name.
-func (mock *MockSecretsInterface) Get(name string, options metav1.GetOptions) (*api.Secret, error) {
+func (mock *MockSecretsInterface) Get(name string, options metav1.GetOptions) (*core.Secret, error) {
 	object, ok := mock.objects[name]
 	if !ok {
-		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
+		return nil, apierrors.NewNotFound(core.Resource("tests"), name)
 	}
 	return object, nil
 }
 
 // List returns the a of Secret.
-func (mock *MockSecretsInterface) List(opts metav1.ListOptions) (*api.SecretList, error) {
-	var list api.SecretList
+func (mock *MockSecretsInterface) List(opts metav1.ListOptions) (*core.SecretList, error) {
+	var list core.SecretList
 	for _, secret := range mock.objects {
 		list.Items = append(list.Items, *secret)
 	}
@@ -193,20 +193,20 @@ func (mock *MockSecretsInterface) List(opts metav1.ListOptions) (*api.SecretList
 }
 
 // Create creates a new Secret.
-func (mock *MockSecretsInterface) Create(secret *api.Secret) (*api.Secret, error) {
+func (mock *MockSecretsInterface) Create(secret *core.Secret) (*core.Secret, error) {
 	name := secret.ObjectMeta.Name
 	if object, ok := mock.objects[name]; ok {
-		return object, apierrors.NewAlreadyExists(api.Resource("tests"), name)
+		return object, apierrors.NewAlreadyExists(core.Resource("tests"), name)
 	}
 	mock.objects[name] = secret
 	return secret, nil
 }
 
 // Update updates a Secret.
-func (mock *MockSecretsInterface) Update(secret *api.Secret) (*api.Secret, error) {
+func (mock *MockSecretsInterface) Update(secret *core.Secret) (*core.Secret, error) {
 	name := secret.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
-		return nil, apierrors.NewNotFound(api.Resource("tests"), name)
+		return nil, apierrors.NewNotFound(core.Resource("tests"), name)
 	}
 	mock.objects[name] = secret
 	return secret, nil
@@ -215,7 +215,7 @@ func (mock *MockSecretsInterface) Update(secret *api.Secret) (*api.Secret, error
 // Delete deletes a Secret by name.
 func (mock *MockSecretsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
-		return apierrors.NewNotFound(api.Resource("tests"), name)
+		return apierrors.NewNotFound(core.Resource("tests"), name)
 	}
 	delete(mock.objects, name)
 	return nil

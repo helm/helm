@@ -19,12 +19,12 @@ package kube // import "k8s.io/helm/pkg/kube"
 import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 func createNamespace(client internalclientset.Interface, namespace string) error {
-	ns := &api.Namespace{
+	ns := &core.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
 		},
@@ -33,7 +33,7 @@ func createNamespace(client internalclientset.Interface, namespace string) error
 	return err
 }
 
-func getNamespace(client internalclientset.Interface, namespace string) (*api.Namespace, error) {
+func getNamespace(client internalclientset.Interface, namespace string) (*core.Namespace, error) {
 	return client.Core().Namespaces().Get(namespace, metav1.GetOptions{})
 }
 

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 
 	"k8s.io/helm/pkg/helm"
@@ -46,7 +46,7 @@ func TestResetCmd(t *testing.T) {
 		home:       helmpath.Home(home),
 		client:     c,
 		kubeClient: fc,
-		namespace:  api.NamespaceDefault,
+		namespace:  core.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -80,7 +80,7 @@ func TestResetCmd_removeHelmHome(t *testing.T) {
 		home:           helmpath.Home(home),
 		client:         c,
 		kubeClient:     fc,
-		namespace:      api.NamespaceDefault,
+		namespace:      core.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -118,7 +118,7 @@ func TestReset_deployedReleases(t *testing.T) {
 		home:       helmpath.Home(home),
 		client:     c,
 		kubeClient: fc,
-		namespace:  api.NamespaceDefault,
+		namespace:  core.NamespaceDefault,
 	}
 	err = cmd.run()
 	expected := "there are still 1 deployed releases (Tip: use --force)"
@@ -151,7 +151,7 @@ func TestReset_forceFlag(t *testing.T) {
 		home:       helmpath.Home(home),
 		client:     c,
 		kubeClient: fc,
-		namespace:  api.NamespaceDefault,
+		namespace:  core.NamespaceDefault,
 	}
 	if err := cmd.run(); err != nil {
 		t.Errorf("unexpected error: %v", err)

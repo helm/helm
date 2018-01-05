@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	extensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+
 	"k8s.io/helm/pkg/chartutil"
 )
 
@@ -37,14 +38,14 @@ import (
 //
 // Returns an error if the command failed.
 func Install(client kubernetes.Interface, opts *Options) error {
-	if err := createDeployment(client.Extensions(), opts); err != nil {
+	if err := createDeployment(client.ExtensionsV1beta1(), opts); err != nil {
 		return err
 	}
-	if err := createService(client.Core(), opts.Namespace); err != nil {
+	if err := createService(client.CoreV1(), opts.Namespace); err != nil {
 		return err
 	}
 	if opts.tls() {
-		if err := createSecret(client.Core(), opts); err != nil {
+		if err := createSecret(client.CoreV1(), opts); err != nil {
 			return err
 		}
 	}
@@ -55,21 +56,21 @@ func Install(client kubernetes.Interface, opts *Options) error {
 //
 // Returns an error if the command failed.
 func Upgrade(client kubernetes.Interface, opts *Options) error {
-	obj, err := client.Extensions().Deployments(opts.Namespace).Get(deploymentName, metav1.GetOptions{})
+	obj, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Get(deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
 	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
 	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
-	if _, err := client.Extensions().Deployments(opts.Namespace).Update(obj); err != nil {
+	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
 	// If the service does not exists that would mean we are upgrading from a Tiller version
 	// that didn't deploy the service, so install it.
-	_, err = client.Core().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
+	_, err = client.CoreV1().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return createService(client.Core(), opts.Namespace)
+		return createService(client.CoreV1(), opts.Namespace)
 	}
 	return err
 }

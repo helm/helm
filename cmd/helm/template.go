@@ -29,9 +29,9 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
@@ -62,7 +62,6 @@ type templateCmd struct {
 	valueFiles   valueFiles
 	chartPath    string
 	out          io.Writer
-	client       helm.Interface
 	values       []string
 	nameTemplate string
 	showNotes    bool
@@ -252,7 +251,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, m := range tiller.SortByKind(listManifests) {
-		if len(t.renderFiles) > 0 && in(m.Name, rf) == false {
+		if len(t.renderFiles) > 0 && !in(m.Name, rf) {
 			continue
 		}
 		data := m.Content
@@ -315,9 +314,5 @@ func ensureDirectoryForFile(file string) error {
 		return err
 	}
 
-	err = os.MkdirAll(baseDir, defaultDirectoryPermission)
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.MkdirAll(baseDir, defaultDirectoryPermission)
 }

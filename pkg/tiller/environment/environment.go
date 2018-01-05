@@ -26,7 +26,7 @@ import (
 	"io"
 	"time"
 
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -142,7 +142,7 @@ type KubeClient interface {
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error)
+	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -194,9 +194,9 @@ func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kub
 }
 
 // WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
-func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (api.PodPhase, error) {
+func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
 	_, err := io.Copy(p.Out, reader)
-	return api.PodUnknown, err
+	return core.PodUnknown, err
 }
 
 // Environment provides the context for executing a client request.
