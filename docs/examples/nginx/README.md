@@ -13,7 +13,7 @@ pattern:
 - A `Deployment` is used to create a Replica Set of nginx pods.
   ([templates/deployment.yaml](templates/deployment.yaml))
 - A `Service` is used to create a gateway to the pods running in the
-  replica set ([templates/svc.yaml](templates/service.yaml))
+  replica set ([templates/service.yaml](templates/service.yaml))
 
 The [values.yaml](values.yaml) exposes a few of the configuration options in the
 charts, though there are some that are not exposed there (like
