@@ -81,8 +81,6 @@ func makeTree(t *testing.T) {
 	})
 }
 
-func markTree(n *Node) { walkTree(n, "", func(path string, n *Node) { n.mark++ }) }
-
 func checkMarks(t *testing.T, report bool) {
 	walkTree(tree, tree.name, func(path string, n *Node) {
 		if n.mark != 1 && report {
