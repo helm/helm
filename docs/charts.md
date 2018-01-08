@@ -489,7 +489,7 @@ the Kubernetes objects from the charts and all its dependencies are
 Hence a single release is created with all the objects for the chart and its dependencies.
 
 The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go 
-(see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26).
+(see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26)).
 
 ## Templates and Values
 
