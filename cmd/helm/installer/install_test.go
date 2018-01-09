@@ -419,7 +419,7 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 func TestUgrade_newerVersion(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
-	existingDeployment,_ := deployment(&Options{
+	existingDeployment, _ := deployment(&Options{
 		Namespace:      v1.NamespaceDefault,
 		ImageSpec:      "imageToReplace:v100.5.0",
 		ServiceAccount: "serviceAccountToReplace",
