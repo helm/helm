@@ -76,6 +76,7 @@ type initCmd struct {
 	upgrade        bool
 	namespace      string
 	dryRun         bool
+	forceUpgrade   bool
 	skipRefresh    bool
 	out            io.Writer
 	home           helmpath.Home
@@ -106,6 +107,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVarP(&i.image, "tiller-image", "i", "", "override Tiller image")
 	f.BoolVar(&i.canary, "canary-image", false, "use the canary Tiller image")
 	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if Tiller is already installed")
+	f.BoolVar(&i.forceUpgrade, "force-upgrade", false, "force upgrade of Tiller to the current helm version")
 	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install Tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
@@ -164,6 +166,7 @@ func (i *initCmd) run() error {
 	i.opts.Namespace = i.namespace
 	i.opts.UseCanary = i.canary
 	i.opts.ImageSpec = i.image
+	i.opts.ForceUpgrade = i.forceUpgrade
 	i.opts.ServiceAccount = i.serviceAccount
 	i.opts.MaxHistory = i.maxHistory
 

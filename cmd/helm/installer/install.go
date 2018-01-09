@@ -17,10 +17,12 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -30,6 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	extensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/helm/pkg/version"
 
 	"k8s.io/helm/pkg/chartutil"
 )
@@ -60,6 +63,10 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	if err != nil {
 		return err
 	}
+	existingImage := obj.Spec.Template.Spec.Containers[0].Image
+	if !isNewerVersion(existingImage) && !opts.ForceUpgrade {
+		return errors.New("current Tiller version is newer, use --force-upgrade to downgrade")
+	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
 	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
 	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
@@ -73,6 +80,17 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 		return createService(client.CoreV1(), opts.Namespace)
 	}
 	return err
+}
+
+// isNewerVersion returns whether the current version is newer than the give image's version
+func isNewerVersion(image string) bool {
+	split := strings.Split(image, ":")
+	if len(split) < 2 {
+		// If we don't know the version, we consider the current version newer
+		return true
+	}
+	imageVersion := split[1]
+	return semver.MustParse(version.Version).GreaterThan(semver.MustParse(imageVersion))
 }
 
 // createDeployment creates the Tiller Deployment resource.

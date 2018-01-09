@@ -337,7 +337,7 @@ func TestUpgrade(t *testing.T) {
 	serviceAccount := "newServiceAccount"
 	existingDeployment, _ := deployment(&Options{
 		Namespace:      v1.NamespaceDefault,
-		ImageSpec:      "imageToReplace",
+		ImageSpec:      "imageToReplace:v1.0.0",
 		ServiceAccount: "serviceAccountToReplace",
 		UseCanary:      false,
 	})
@@ -413,6 +413,66 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 
 	if actions := fc.Actions(); len(actions) != 4 {
 		t.Errorf("unexpected actions: %v, expected 4 actions got %d", actions, len(actions))
+	}
+}
+
+func TestUgrade_newerVersion(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	serviceAccount := "newServiceAccount"
+	existingDeployment, _ := deployment(&Options{
+		Namespace:      v1.NamespaceDefault,
+		ImageSpec:      "imageToReplace:v100.5.0",
+		ServiceAccount: "serviceAccountToReplace",
+		UseCanary:      false,
+	})
+	existingService := service(v1.NamespaceDefault)
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingDeployment, nil
+	})
+	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		i := obj.Spec.Template.Spec.Containers[0].Image
+		if i != image {
+			t.Errorf("expected image = '%s', got '%s'", image, i)
+		}
+		sa := obj.Spec.Template.Spec.ServiceAccountName
+		if sa != serviceAccount {
+			t.Errorf("expected serviceAccountName = '%s', got '%s'", serviceAccount, sa)
+		}
+		return true, obj, nil
+	})
+	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingService, nil
+	})
+
+	opts := &Options{
+		Namespace:      v1.NamespaceDefault,
+		ImageSpec:      image,
+		ServiceAccount: serviceAccount,
+		ForceUpgrade:   false,
+	}
+	if err := Upgrade(fc, opts); err == nil {
+		t.Errorf("Expected error because the deployed version is newer")
+	}
+
+	if actions := fc.Actions(); len(actions) != 1 {
+		t.Errorf("unexpected actions: %v, expected 1 action got %d", actions, len(actions))
+	}
+
+	opts = &Options{
+		Namespace:      v1.NamespaceDefault,
+		ImageSpec:      image,
+		ServiceAccount: serviceAccount,
+		ForceUpgrade:   true,
+	}
+	if err := Upgrade(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 4 {
+		t.Errorf("unexpected actions: %v, expected 4 action got %d", actions, len(actions))
 	}
 }
 
