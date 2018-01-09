@@ -47,6 +47,9 @@ type Options struct {
 	// ServiceAccount is the Kubernetes service account to add to Tiller.
 	ServiceAccount string
 
+	// Force allows to force upgrading tiller if deployed version is greater than current version
+	ForceUpgrade bool
+
 	// ImageSpec indentifies the image Tiller will use when deployed.
 	//
 	// Valid if and only if UseCanary is false.
