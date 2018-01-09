@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -392,11 +391,9 @@ func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Hom
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		fp, err := filepath.Rel(home.Cache(), indexFile)
-		if err != nil {
+		if err := createLink(indexFile, cacheFile, home); err != nil {
 			return nil, err
 		}
-		createLink(fp, filepath.Join(home.Cache(), cacheFile))
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}

@@ -20,8 +20,15 @@ package main
 
 import (
 	"os"
+	"path/filepath"
+
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
-func createLink(indexFile, cacheFile string) {
-	os.Symlink(indexFile, cacheFile)
+func createLink(indexFile, cacheFile string, home helmpath.Home) error {
+	fp, err := filepath.Rel(home.Cache(), indexFile)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(fp, filepath.Join(home.Cache(), cacheFile))
 }

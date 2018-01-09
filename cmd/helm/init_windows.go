@@ -20,8 +20,10 @@ package main
 
 import (
 	"os"
+
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
-func createLink(indexFile, cacheFile string) {
-	os.Link(indexFile, cacheFile)
+func createLink(indexFile, cacheFile string, home helmpath.Home) error {
+	return os.Link(indexFile, cacheFile)
 }
