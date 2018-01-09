@@ -39,3 +39,7 @@ Helm requires that kubelet have access to a copy of the `socat` program to proxy
 ## Openshift
 
 Helm works straightforward on OpenShift Online, OpenShift Dedicated, OpenShift Container Platform (version >= 3.6) or OpenShift Origin (version >= 3.6). To learn more read [this blog](https://blog.openshift.com/getting-started-helm-openshift/) post.
+
+## Platform9
+
+Helm Client and Helm Server (Tiller) are pre-installed with [Platform9 Managed Kubernetes](https://platform9.com/managed-kubernetes/?utm_source=helm_distro_notes). Platform9 provides access to all official Helm charts through the App Catalog UI and native Kubernetes CLI. Additional repositories can be manually added. Further details are availble in this [Platform9 Application Catalog article](https://platform9.com/support/deploying-kubernetes-apps-platform9-managed-kubernetes/?utm_source=helm_distro_notes).
