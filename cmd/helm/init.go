@@ -392,12 +392,11 @@ func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Hom
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		fp, err := filepath.Rel(filepath.Join(home.Cache(), cacheFile), indexFile)
+		fp, err := filepath.Rel(home.Cache(), indexFile)
 		if err != nil {
 			return nil, err
 		}
-		pth := home.Path(fp)
-		createLink(pth, filepath.Join(home.Cache(), cacheFile))
+		createLink(fp, filepath.Join(home.Cache(), cacheFile))
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
