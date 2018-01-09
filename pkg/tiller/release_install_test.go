@@ -452,3 +452,49 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 		t.Errorf("Release status is %q", getres.Info.Status.Code)
 	}
 }
+
+func TestInstallRelease_KubeVersion(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello", KubeVersion: ">=0.0.0"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+		},
+	}
+	_, err := rs.InstallRelease(c, req)
+	fmt.Println(err)
+	if err != nil {
+		t.Fatalf("Expected valid range. Got %q", err)
+	}
+}
+
+func TestInstallRelease_WrongKubeVersion(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	// TODO: Refactor this into a mock.
+	req := &services.InstallReleaseRequest{
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello", KubeVersion: ">=5.0.0"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+		},
+	}
+	_, err := rs.InstallRelease(c, req)
+	if err == nil {
+		t.Fatalf("Expected to fail because of wrong version")
+	}
+
+	expect := "Chart requires kubernetesVersion"
+	if !strings.Contains(err.Error(), expect) {
+		t.Errorf("Expected %q to contain %q", err.Error(), expect)
+	}
+}
