@@ -347,7 +347,7 @@ exports:
     myint: 99
 ```
 
-Since we are specifying the key `data` in our import list, Helm looks in the the `exports` field of the child 
+Since we are specifying the key `data` in our import list, Helm looks in the `exports` field of the child 
 chart for `data` key and imports its contents. 
 
 The final parent values would contain our exported field:
