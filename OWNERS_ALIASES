@@ -1,0 +1,16 @@
+# See the OWNERS docs: https://git.k8s.io/community/docs/devel/owners.md
+
+aliases:
+  helm-admins:
+    - sgoings
+    - technosophos
+    - vaikas-google
+  helm-maintainers:
+    - technosophos
+    - sgoings
+    - sparkprime
+    - michelleN
+    - sebgoa
+    - adamreese
+    - bmelville
+    - vaikas-google

@@ -1,16 +1,8 @@
-maintainers:
-  - adamreese
-  - bacongobbler
-  - jascott1
-  - michelleN
-  - migmartri
-  - nebril
-  - prydonius
-  - seh
-  - technosophos
-  - thomastaylor312
-  - vaikas-google
-  - viglesiasce
+# See the OWNERS docs: https://git.k8s.io/community/docs/devel/owners.md
+
+approvers:
+  - helm-admins
+  - helm-maintainers
 reviewers:
   - adamreese
   - bacongobbler
