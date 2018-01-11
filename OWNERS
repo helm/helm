@@ -1,7 +1,6 @@
 # See the OWNERS docs: https://git.k8s.io/community/docs/devel/owners.md
 
 approvers:
-  - sig-apps-leads
   - helm-admins
   - helm-maintainers
 reviewers:

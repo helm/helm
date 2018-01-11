@@ -1,11 +1,6 @@
 # See the OWNERS docs: https://git.k8s.io/community/docs/devel/owners.md
 
 aliases:
-  sig-apps-leads:
-    - michelleN
-    - mattfarina
-    - prydonius
-    - kow3ns
   helm-admins:
     - sgoings
     - technosophos
