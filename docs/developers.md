@@ -87,7 +87,19 @@ GCR registry.
 For development, we highly recommend using the
 [Kubernetes Minikube](https://github.com/kubernetes/minikube)
 developer-oriented distribution. Once this is installed, you can use
-`helm init` to install into the cluster.
+`helm init` to install into the cluster. Note that version of tiller you're using for
+development may not be available in Google Cloud Container Registry. If you're getting
+image pull errors, you can override the version of Tiller. Example:
+
+```console
+helm init --tiller-image=gcr.io/kubernetes-helm/tiller:2.7.2
+```
+
+Or use the latest version:
+
+```console
+helm init --canary-image
+```
 
 For developing on Tiller, it is sometimes more expedient to run Tiller locally
 instead of packaging it into an image and running it in-cluster. You can do
@@ -129,7 +141,7 @@ The code for the Helm project is organized as follows:
 - The individual programs are located in `cmd/`. Code inside of `cmd/`
   is not designed for library re-use.
 - Shared libraries are stored in `pkg/`.
-- The raw ProtoBuf files are stored in `_proto/hapi` (where `hapi` stands for 
+- The raw ProtoBuf files are stored in `_proto/hapi` (where `hapi` stands for
   the Helm Application Programming Interface).
 - The Go files generated from the `proto` definitions are stored in `pkg/proto`.
 - The `scripts/` directory contains a number of utility scripts. Most of these
