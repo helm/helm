@@ -27,7 +27,7 @@ The `values.yaml` file is also important to templates. This file contains the
 _default values_ for a chart. These values may be overridden by users during
 `helm install` or `helm upgrade`.
 
-The `Charts.yaml` file contains a description of the chart. You can access it
+The `Chart.yaml` file contains a description of the chart. You can access it
 from within a template. The `charts/` directory _may_ contain other charts (which
 we call _subcharts_). Later in this guide we will see how those work when it
 comes to template rendering.
