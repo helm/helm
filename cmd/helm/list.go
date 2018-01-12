@@ -156,7 +156,7 @@ func (l *listCmd) run() error {
 		fmt.Fprintf(l.out, "\tnext: %s\n", res.Next)
 	}
 
-	rels := res.Releases
+	rels := filterList(res.Releases)
 
 	if l.short {
 		for _, r := range rels {
@@ -166,6 +166,30 @@ func (l *listCmd) run() error {
 	}
 	fmt.Fprintln(l.out, formatList(rels, l.colWidth))
 	return nil
+}
+
+// filterList returns a list scrubbed of old releases.
+func filterList(rels []*release.Release) []*release.Release {
+	idx := map[string]int32{}
+
+	for _, r := range rels {
+		name, version := r.GetName(), r.GetVersion()
+		if max, ok := idx[name]; ok {
+			// check if we have a greater version already
+			if max > version {
+				continue
+			}
+		}
+		idx[name] = version
+	}
+
+	uniq := make([]*release.Release, 0, len(idx))
+	for _, r := range rels {
+		if idx[r.GetName()] == r.GetVersion() {
+			uniq = append(uniq, r)
+		}
+	}
+	return uniq
 }
 
 // statusCodes gets the list of status codes that are to be included in the results.

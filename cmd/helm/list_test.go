@@ -118,6 +118,14 @@ func TestListCmd(t *testing.T) {
 			},
 			expected: "thomas-guide\nwild-idea\ncrazy-maps",
 		},
+		{
+			name: "with old releases",
+			resp: []*release.Release{
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_FAILED}),
+			},
+			expected: "thomas-guide",
+		},
 	}
 
 	var buf bytes.Buffer
