@@ -51,14 +51,15 @@ func (h *Client) Option(opts ...Option) *Client {
 
 // ListReleases lists the current releases.
 func (h *Client) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
-	req := &h.opts.listReq
+	req := &reqOpts.listReq
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -79,19 +80,20 @@ func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.I
 // InstallReleaseFromChart installs a new chart and returns the release response.
 func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	// apply the install options
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
-	req := &h.opts.instReq
+	req := &reqOpts.instReq
 	req.Chart = chart
 	req.Namespace = ns
-	req.DryRun = h.opts.dryRun
-	req.DisableHooks = h.opts.disableHooks
-	req.ReuseName = h.opts.reuseName
+	req.DryRun = reqOpts.dryRun
+	req.DisableHooks = reqOpts.disableHooks
+	req.ReuseName = reqOpts.reuseName
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -110,11 +112,12 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 // DeleteRelease uninstalls a named release and returns the response.
 func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
 	// apply the uninstall options
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
 
-	if h.opts.dryRun {
+	if reqOpts.dryRun {
 		// In the dry run case, just see if the release exists
 		r, err := h.ReleaseContent(rlsName)
 		if err != nil {
@@ -123,13 +126,13 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
 	}
 
-	req := &h.opts.uninstallReq
+	req := &reqOpts.uninstallReq
 	req.Name = rlsName
-	req.DisableHooks = h.opts.disableHooks
+	req.DisableHooks = reqOpts.disableHooks
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -149,24 +152,24 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOptio
 
 // UpdateReleaseFromChart updates a release to a new/different chart.
 func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-
 	// apply the update options
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
-	req := &h.opts.updateReq
+	req := &reqOpts.updateReq
 	req.Chart = chart
-	req.DryRun = h.opts.dryRun
+	req.DryRun = reqOpts.dryRun
 	req.Name = rlsName
-	req.DisableHooks = h.opts.disableHooks
-	req.Recreate = h.opts.recreate
-	req.Force = h.opts.force
-	req.ResetValues = h.opts.resetValues
-	req.ReuseValues = h.opts.reuseValues
+	req.DisableHooks = reqOpts.disableHooks
+	req.Recreate = reqOpts.recreate
+	req.Force = reqOpts.force
+	req.ResetValues = reqOpts.resetValues
+	req.ReuseValues = reqOpts.reuseValues
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -184,14 +187,15 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 
 // GetVersion returns the server version.
 func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
 	req := &rls.GetVersionRequest{}
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -200,19 +204,20 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 
 // RollbackRelease rolls back a release to the previous version.
 func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
-	req := &h.opts.rollbackReq
-	req.Recreate = h.opts.recreate
-	req.Force = h.opts.force
-	req.DisableHooks = h.opts.disableHooks
-	req.DryRun = h.opts.dryRun
+	req := &reqOpts.rollbackReq
+	req.Recreate = reqOpts.recreate
+	req.Force = reqOpts.force
+	req.DisableHooks = reqOpts.disableHooks
+	req.DryRun = reqOpts.dryRun
 	req.Name = rlsName
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -221,15 +226,16 @@ func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.R
 
 // ReleaseStatus returns the given release's status.
 func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
-	req := &h.opts.statusReq
+	req := &reqOpts.statusReq
 	req.Name = rlsName
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -238,15 +244,16 @@ func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetRe
 
 // ReleaseContent returns the configuration for a given release.
 func (h *Client) ReleaseContent(rlsName string, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
-	req := &h.opts.contentReq
+	req := &reqOpts.contentReq
 	req.Name = rlsName
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -255,16 +262,17 @@ func (h *Client) ReleaseContent(rlsName string, opts ...ContentOption) (*rls.Get
 
 // ReleaseHistory returns a release's revision history.
 func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error) {
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
 
-	req := &h.opts.histReq
+	req := &reqOpts.histReq
 	req.Name = rlsName
 	ctx := NewContext()
 
-	if h.opts.before != nil {
-		if err := h.opts.before(ctx, req); err != nil {
+	if reqOpts.before != nil {
+		if err := reqOpts.before(ctx, req); err != nil {
 			return nil, err
 		}
 	}
@@ -273,11 +281,12 @@ func (h *Client) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.Get
 
 // RunReleaseTest executes a pre-defined test on a release.
 func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
+	reqOpts := h.opts
 	for _, opt := range opts {
-		opt(&h.opts)
+		opt(&reqOpts)
 	}
 
-	req := &h.opts.testReq
+	req := &reqOpts.testReq
 	req.Name = rlsName
 	ctx := NewContext()
 
