@@ -379,7 +379,14 @@ func deleteResource(c *Client, info *resource.Info) error {
 	if err != nil {
 		// If there is no reaper for this resources, delete it.
 		if kubectl.IsNoSuchReaperError(err) {
-			return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
+			propagationPolicy := metav1.DeletePropagationBackground
+			return resource.NewHelper(info.Client, info.Mapping).DeleteWithOptions(
+				info.Namespace,
+				info.Name,
+				&metav1.DeleteOptions{
+					PropagationPolicy: &propagationPolicy,
+				},
+			)
 		}
 		return err
 	}
