@@ -109,7 +109,7 @@ func TestTemplateCmd(t *testing.T) {
 			desc:        "verify --kube-version overrides the kubernetes version",
 			args:        []string{chartPath, "--kube-version", "1.6"},
 			expectKey:   "subchart1/templates/service.yaml",
-			expectValue: "kube-version/major: \"1\"\n    kube-version/minor: \"6\"",
+			expectValue: "kube-version/major: \"1\"\n    kube-version/minor: \"6\"\n    kube-version/gitversion: \"v1.6.0\"",
 		},
 	}
 
