@@ -35,4 +35,5 @@ type Interface interface {
 	ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error)
 	GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error)
 	RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error)
+	PingTiller() error
 }
