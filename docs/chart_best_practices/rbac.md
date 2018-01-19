@@ -10,14 +10,34 @@ RBAC resources are:
 - RoleBinding (namespaced)
 - ClusterRoleBinding
 
-## RBAC-related values
+## YAML Configuration
 
-RBAC-related values in a chart should be namespaced under an `rbac` top-level key.  At a minimum this key should contain these sub-keys (explained below):
+RBAC and ServiceAccount configuration should happen under separate keys. They are separate things. Splitting these two concepts out in the YAML disambiguates them and make this clearer.
 
-- `create`
-- `serviceAccountName`
+```yaml
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
 
-Other keys under `rbac` may also be listed and used as well.
+serviceAccount:
+  # Specifies whether a ServiceAccount should be created
+  create: true
+  # The name of the ServiceAccount to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+```
+
+This structure can be extended for more complex charts that require multiple ServiceAccounts.
+
+```yaml
+serviceAccounts:
+  client:
+    create: true
+    name:
+  server: 
+    create: true
+    name:
+```
 
 ## RBAC Resources Should be Created by Default
 
@@ -25,4 +45,19 @@ Other keys under `rbac` may also be listed and used as well.
 
 ## Using RBAC Resources
 
-`rbac.serviceAccountName` should set the name of the ServiceAccount to be used by access-controlled resources created by the chart.  If `rbac.create` is true, then a ServiceAccount with this name should be created.  If `rbac.create` is false, then it should not be created, but it should still be associated with the same resources so that manually-created RBAC resources created later that reference it will function correctly.  (Note that this effectively makes `rbac.serviceAccountName` a required value in these charts.)
+`serviceAccount.name` should set to the name of the ServiceAccount to be used by access-controlled resources created by the chart.  If `serviceAccount.create` is true, then a ServiceAccount with this name should be created.  If the name is not set, then a name is generated using the `fullname` template, If `serviceAccount.create` is false, then it should not be created, but it should still be associated with the same resources so that manually-created RBAC resources created later that reference it will function correctly.  If `serviceAccount.create` is false and the name is not specified, then the default ServiceAccount is used.
+
+The following helper template should be used for the ServiceAccount.
+
+```yaml
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "mychart.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+    {{ default (include "mychart.fullname" .) .Values.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+```
