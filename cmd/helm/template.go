@@ -203,6 +203,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 		caps.KubeVersion.Major = fmt.Sprint(kv.Major())
 		caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
+		caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
 	}
 	vals, err := chartutil.ToRenderValuesCaps(c, config, options, caps)
 	if err != nil {

@@ -29,11 +29,12 @@ var (
 
 	// DefaultKubeVersion is the default kubernetes version
 	DefaultKubeVersion = &version.Info{
-		Major:     "1",
-		Minor:     "9",
-		GoVersion: runtime.Version(),
-		Compiler:  runtime.Compiler,
-		Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		Major:      "1",
+		Minor:      "9",
+		GitVersion: "v1.9.0",
+		GoVersion:  runtime.Version(),
+		Compiler:   runtime.Compiler,
+		Platform:   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 	}
 )
 
