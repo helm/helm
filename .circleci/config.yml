@@ -16,7 +16,7 @@ jobs:
             - glide- # used as a fall through if the checksum fails to find exact entry
       - run:
           name: install dependencies
-          command: make bootstrap
+          command: .circleci/bootstrap.sh
       - save_cache:
           key: glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
           paths:
