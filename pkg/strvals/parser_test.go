@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
+	"io/ioutil"
 )
 
 func TestSetIndex(t *testing.T) {
@@ -284,7 +285,7 @@ func TestParseSet(t *testing.T) {
 	}
 }
 
-func TestParseInto(t *testing.T) {
+func TestParseIntoHappyPath(t *testing.T) {
 	got := map[string]interface{}{
 		"outer": map[string]interface{}{
 			"inner1": "overwrite",
@@ -300,10 +301,45 @@ func TestParseInto(t *testing.T) {
 		},
 	}
 
-	if err := ParseInto(input, got); err != nil {
+	checkParserOutput(input, got, t, expect)
+}
+
+func TestParseIntoNestedInterface(t *testing.T) {
+	currentMap := map[string]interface{}{}
+	bytes, err := ioutil.ReadFile("testdata/parser_val_nested.yaml")
+	if err != nil {
 		t.Fatal(err)
 	}
 
+	if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+		t.Fatal(err)
+	}
+
+	input := "toplevel.flatlevel1=overwritefl1"
+
+	expect := map[string]interface{}{
+		"toplevel": map[string]interface{}{
+			"env": []interface{}{
+				map[string]interface{}{
+					"key":   "abckey",
+					"value": "abcval",
+				}, map[string]interface{}{
+					"key":   "defkey",
+					"value": "defval",
+				},
+			},
+			"flatlevel1": "overwritefl1",
+			"flatlevel2": "def",
+		},
+	}
+
+	checkParserOutput(input, currentMap, t, expect)
+}
+
+func checkParserOutput(input string, got map[string]interface{}, t *testing.T, expect map[string]interface{}) {
+	if err := ParseInto(input, got); err != nil {
+		t.Fatal(err)
+	}
 	y1, err := yaml.Marshal(expect)
 	if err != nil {
 		t.Fatal(err)
@@ -312,7 +348,6 @@ func TestParseInto(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error serializing parsed value: %s", err)
 	}
-
 	if string(y1) != string(y2) {
 		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
 	}

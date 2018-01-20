@@ -1,0 +1,8 @@
+toplevel:
+   env:
+   - key: abckey
+     value: abcval
+   - key: defkey
+     value: defval
+   flatlevel1: abc
+   flatlevel2: def

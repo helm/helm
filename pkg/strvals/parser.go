@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"reflect"
 )
 
 // ErrNotList indicates that a non-list was treated as a list.
@@ -147,7 +148,24 @@ func (t *parser) key(data map[string]interface{}) error {
 			// First, create or find the target map.
 			inner := map[string]interface{}{}
 			if _, ok := data[string(k)]; ok {
-				inner = data[string(k)].(map[string]interface{})
+				// when reading nested object yamls, the unmarshal will create a map[interface{}]interface{})
+				// below logic tries to account for that and attempts to cast the key into a string again
+				if simpleStringMapCast, ok := data[string(k)].(map[string]interface{}); ok {
+					inner = simpleStringMapCast
+				} else {
+					if interfaceKeyCasted, ok := data[string(k)].(map[interface{}]interface{}); ok {
+						for key, val := range interfaceKeyCasted {
+							keyString, casted := key.(string)
+							if !casted {
+								return fmt.Errorf("couldn't cast map key %q to string for value key %q", key, string(k))
+							}
+							inner[keyString] = val
+						}
+					} else {
+						return fmt.Errorf("don't know how to handle map type %q for key %q",
+							reflect.TypeOf(data[string(k)]), string(k))
+					}
+				}
 			}
 
 			// Recurse
