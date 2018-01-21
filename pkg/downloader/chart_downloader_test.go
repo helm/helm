@@ -115,16 +115,16 @@ func TestDownload(t *testing.T) {
 	// test with server backed by basic auth
 	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" && password != "password" {
+		if !ok || username != "username" || password != "password" {
 			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
 		}
 		fmt.Fprint(w, expect)
 	}))
+
 	defer basicAuthSrv.Close()
 
 	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
-	u.User = url.UserPassword("username", "password")
-	got, err = getter.Get(u.String())
+	got, err = getter.GetWithCredentials(u.String(), "username", "password")
 	if err != nil {
 		t.Fatal(err)
 	}
