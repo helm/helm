@@ -428,40 +428,39 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err := target.Get(); err != nil {
 			return fmt.Errorf("error trying to refresh resource information: %v", err)
 		}
-		return nil
-	}
+	} else {
+		// send patch to server
+		helper := resource.NewHelper(target.Client, target.Mapping)
 
-	// send patch to server
-	helper := resource.NewHelper(target.Client, target.Mapping)
+		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
+		if err != nil {
+			kind := target.Mapping.GroupVersionKind.Kind
+			log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
 
-	obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
-	if err != nil {
-		kind := target.Mapping.GroupVersionKind.Kind
-		log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
+			if force {
+				// Attempt to delete...
+				if err := deleteResource(c, target); err != nil {
+					return err
+				}
+				log.Printf("Deleted %s: %q", kind, target.Name)
 
-		if force {
-			// Attempt to delete...
-			if err := deleteResource(c, target); err != nil {
+				// ... and recreate
+				if err := createResource(target); err != nil {
+					return fmt.Errorf("Failed to recreate resource: %s", err)
+				}
+				log.Printf("Created a new %s called %q\n", kind, target.Name)
+
+				// No need to refresh the target, as we recreated the resource based
+				// on it. In addition, it might not exist yet and a call to `Refresh`
+				// may fail.
+			} else {
+				log.Print("Use --force to force recreation of the resource")
 				return err
 			}
-			log.Printf("Deleted %s: %q", kind, target.Name)
-
-			// ... and recreate
-			if err := createResource(target); err != nil {
-				return fmt.Errorf("Failed to recreate resource: %s", err)
-			}
-			log.Printf("Created a new %s called %q\n", kind, target.Name)
-
-			// No need to refresh the target, as we recreated the resource based
-			// on it. In addition, it might not exist yet and a call to `Refresh`
-			// may fail.
 		} else {
-			log.Print("Use --force to force recreation of the resource")
-			return err
+			// When patch succeeds without needing to recreate, refresh target.
+			target.Refresh(obj, true)
 		}
-	} else {
-		// When patch succeeds without needing to recreate, refresh target.
-		target.Refresh(obj, true)
 	}
 
 	if !recreate {
