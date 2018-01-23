@@ -6,7 +6,7 @@
 
 So you're in charge of a new release for helm? Cool. Here's what to do...
 
-![TODO: Nothing](../images/nothing.png)
+![TODO: Nothing](images/nothing.png)
 
 Just kidding! :trollface:
 
