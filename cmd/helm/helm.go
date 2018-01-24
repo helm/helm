@@ -17,7 +17,6 @@ limitations under the License.
 package main // import "k8s.io/helm/cmd/helm"
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/status"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
@@ -209,13 +208,16 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 
 // prettyError unwraps or rewrites certain errors to make them more user-friendly.
 func prettyError(err error) error {
+	// Add this check can prevent the object creation if err is nil.
 	if err == nil {
 		return nil
 	}
-	// This is ridiculous. Why is 'grpc.rpcError' not exported? The least they
-	// could do is throw an interface on the lib that would let us get back
-	// the desc. Instead, we have to pass ALL errors through this.
-	return errors.New(grpc.ErrorDesc(err))
+	// If it's grpc's error, make it more user-friendly.
+	if s, ok := status.FromError(err); ok {
+		return s.Err()
+	}
+	// Else return the original error.
+	return err
 }
 
 // configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
