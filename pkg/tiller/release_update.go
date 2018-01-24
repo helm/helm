@@ -42,7 +42,7 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 
 	if !req.DryRun {
 		s.Log("creating updated release for %s", req.Name)
-		if err := s.env.Releases.Create(updatedRelease); err != nil {
+		if err := s.recordRelease(updatedRelease, false); err != nil {
 			return nil, err
 		}
 	}
