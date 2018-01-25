@@ -325,7 +325,7 @@ tooling to introspect user-settable values.
 The keys containing the values to be imported can be specified in the parent chart's `requirements.yaml` file 
 using a YAML list. Each item in the list is a key which is imported from the child chart's `exports` field. 
 
-To import values not contained in the `exports` key, use the [child/parent](#using-the-child/parent-format) format.
+To import values not contained in the `exports` key, use the [child-parent](#using-the-child-parent-format) format.
 Examples of both formats are described below.
 
 ##### Using the exports format
@@ -360,9 +360,9 @@ myint: 99
 ```
 
 Please note the parent key `data` is not contained in the parent's final values. If you need to specify the 
-parent key, use the 'child/parent' format. 
+parent key, use the 'child-parent' format. 
 
-##### Using the child/parent format
+##### Using the child-parent format
 
 To access values that are not contained in the `exports` key of the child chart's values, you will need to 
 specify the source key of the values to be imported (`child`) and the destination path in the parent chart's 
