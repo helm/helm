@@ -33,7 +33,7 @@ If you are creating a patch release, you may want to use the following instead:
 ```shell
 export PREVIOUS_PATCH_RELEASE=vX.Y.Z
 export RELEASE_NAME=vX.Y.Z+1
-export RELEASE_BRANCH_NAME="release-$RELEASE_NAME"
+export RELEASE_BRANCH_NAME="release-X.Y"
 export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc1"
 ```
 
@@ -74,6 +74,25 @@ git cherry-pick -x <commit-id>
 This new branch is going to be the base for the release, which we are going to iterate upon later.
 
 ## 2. Change the Version Number in Git
+
+When doing a minor release, make sure to update pkg/version/version.go with the new release version.
+
+```shell
+$ git diff pkg/version/version.go
+diff --git a/pkg/version/version.go b/pkg/version/version.go
+index 2109a0a..6f5a1a4 100644
+--- a/pkg/version/version.go
++++ b/pkg/version/version.go
+@@ -26,7 +26,7 @@ var (
+        // Increment major number for new feature additions and behavioral changes.
+        // Increment minor number for bug fixes and performance enhancements.
+        // Increment patch number for critical fixes to existing releases.
+-       Version = "v2.6"
++       Version = "v2.7"
+
+        // BuildMetadata is extra build time data
+        BuildMetadata = "unreleased"
+```
 
 The README stores links to the latest release for helm. We want to change the version to the first release candidate which we are releasing (more on that in step 5).
 
