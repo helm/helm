@@ -222,7 +222,7 @@ func prettyError(err error) error {
 
 // configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
 func configForContext(context string) (*rest.Config, error) {
-	config, err := kube.GetConfig(context, settings.KubeConfig).ClientConfig()
+	config, err := kube.GetConfig(context).ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
 	}
