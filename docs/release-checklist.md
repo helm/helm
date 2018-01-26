@@ -33,7 +33,7 @@ If you are creating a patch release, you may want to use the following instead:
 ```shell
 export PREVIOUS_PATCH_RELEASE=vX.Y.Z
 export RELEASE_NAME=vX.Y.Z+1
-export RELEASE_BRANCH_NAME="release-$RELEASE_NAME"
+export RELEASE_BRANCH_NAME="release-X.Y"
 export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc1"
 ```
 
