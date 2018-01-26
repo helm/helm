@@ -184,7 +184,7 @@ func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (
 	return results, errc
 }
 
-// PingTiller pings the Tiller pod and ensure's that it is up and runnning
+// PingTiller pings the Tiller pod and ensure's that it is up and running
 func (c *FakeClient) PingTiller() error {
 	return nil
 }
