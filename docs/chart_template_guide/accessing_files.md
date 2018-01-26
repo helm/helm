@@ -18,7 +18,7 @@ Helm provides access to files through the `.Files` object. Before we get going w
 - [Path helpers](#path-helpers)
 - [Glob patterns](#glob-patterns)
 - [ConfigMap and Secrets utility functions](#configmap-and-secrets-utility-functions)
-- [Secrets](#secrets)
+- [Encoding](#encoding)
 - [Lines](#lines)
 
 <!-- tocstop -->
@@ -163,9 +163,9 @@ data:
 {{ (.Files.Glob "bar/*").AsSecrets | indent 2 }}
 ```
 
-## Secrets
+## Encoding
 
-When working with a Secret resource, you can import a file and have the template base-64 encode it for you:
+You can import a file and have the template base-64 encode it to ensure successful transmission:
 
 ```yaml
 apiVersion: v1
