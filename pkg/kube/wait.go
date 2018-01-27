@@ -139,6 +139,18 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					return false, err
 				}
 				pods = append(pods, list...)
+			case *appsv1.DaemonSet:
+				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
+			case *appsv1beta2.DaemonSet:
+				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
 			case *appsv1.StatefulSet:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
@@ -158,6 +170,18 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				pods = append(pods, list...)
 			case *extensions.ReplicaSet:
+				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
+			case *appsv1beta2.ReplicaSet:
+				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
+				if err != nil {
+					return false, err
+				}
+				pods = append(pods, list...)
+			case *appsv1.ReplicaSet:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector.MatchLabels)
 				if err != nil {
 					return false, err
