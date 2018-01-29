@@ -52,6 +52,16 @@ many cases, cause parsing errors inside of Kubernetes.
 port: {{ .Values.Port }}
 ```
 
+This remark does not apply to env variables values which are expected to be string, even if they represent integers:
+
+```
+env:
+  -name: HOST
+    value: "http://host"
+  -name: PORT
+    value: "1234"
+```
+
 ## Using the 'include' Function
 
 Go provides a way of including one template in another using a built-in
