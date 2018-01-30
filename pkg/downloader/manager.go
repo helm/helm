@@ -690,11 +690,11 @@ func copyFile(source string, destination string) (err error) {
 	_, err = io.Copy(destinationFile, sourceFile)
 	if err == nil {
 		stats, err := os.Stat(source)
-		if err != nil {
-			err = os.Chmod(destination, stats.Mode())
+		if err == nil {
+			return os.Chmod(destination, stats.Mode())
 		}
 	}
-	return
+	return err
 }
 
 func copyDir(source string, destination string) (err error) {
