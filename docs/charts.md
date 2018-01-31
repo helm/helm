@@ -58,7 +58,7 @@ maintainers: # (optional)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
 icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
-deprecated: Whether or not this chart is deprecated (optional, boolean)
+deprecated: Whether this chart is deprecated (optional, boolean)
 tillerVersion: The version of Tiller that this chart requires. This should be expressed as a SemVer range: ">2.0.0" (optional)
 ```
 
@@ -175,7 +175,7 @@ dependencies:
   that you must also use `helm repo add` to add that repo locally.
 
 Once you have a dependencies file, you can run `helm dependency update`
-and it will use your dependency file to download all of the specified
+and it will use your dependency file to download all the specified
 charts into your `charts/` directory for you.
 
 ```console
@@ -294,7 +294,7 @@ In the above example all charts with the tag `front-end` would be disabled but s
 `front-end` tag and `subchart1` will be enabled.  
 
 Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be
-enabled. Also note that although `subchart2` has a condition specified in `requirements.yaml`, there
+enabled. Also notes that although `subchart2` has a condition specified in `requirements.yaml`, there
 is no corresponding path and value in the parent's values so that condition has no effect.  
 
 ##### Using the CLI with Tags and Conditions
