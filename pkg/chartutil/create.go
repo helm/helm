@@ -93,6 +93,10 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# Override chart app names with caution, here be dragons!
+nameOverride: ""
+fullnameOverride: ""
 `
 
 const defaultIgnore = `# Patterns to ignore when building packages.
