@@ -211,12 +211,22 @@ func (u *upgradeCmd) run() error {
 		helm.ResetValues(u.resetValues),
 		helm.ReuseValues(u.reuseValues),
 		helm.UpgradeWait(u.wait))
-	if err != nil {
-		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
-	}
 
 	if settings.Debug {
-		printRelease(u.out, resp.Release)
+		// If there is an error while waiting, make a call without waiting to get the updated release content
+		if (resp == nil || resp.Release == nil) && u.wait {
+			if res, e := u.client.ReleaseContent(u.release); e != nil {
+				fmt.Fprintf(u.out, "Error reading release content: %v", prettyError(e))
+			} else {
+				printRelease(u.out, res.Release)
+			}
+		} else {
+			printRelease(u.out, resp.Release)
+		}
+	}
+
+	if err != nil {
+		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
 
 	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
