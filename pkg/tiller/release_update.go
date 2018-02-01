@@ -72,9 +72,12 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 	// finds the deployed release with the given name
 	currentRelease, err := s.env.Releases.Deployed(req.Name)
 	if err != nil {
-		return nil, nil, err
+		// try to find a failed release we can upgrade
+		currentRelease, err = s.env.Releases.Failed(req.Name)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
-
 	// If new values were not supplied in the upgrade, re-use the existing values.
 	if err := s.reuseValues(req, currentRelease); err != nil {
 		return nil, nil, err

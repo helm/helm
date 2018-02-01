@@ -309,6 +309,20 @@ func newHookFailingKubeClient() *hookFailingKubeClient {
 	}
 }
 
+func newInstallFailingKubClient() *installFailingKubeClient {
+	return &installFailingKubeClient{
+		PrintingKubeClient: environment.PrintingKubeClient{Out: os.Stdout},
+	}
+}
+
+type installFailingKubeClient struct {
+	environment.PrintingKubeClient
+}
+
+func (h *installFailingKubeClient) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
+	return errors.New("Failed create")
+}
+
 type hookFailingKubeClient struct {
 	environment.PrintingKubeClient
 }

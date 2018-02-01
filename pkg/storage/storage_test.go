@@ -325,6 +325,31 @@ func TestStorageLast(t *testing.T) {
 	}
 }
 
+func TestStorageFailed(t *testing.T) {
+	storage := Init(driver.NewMemory())
+
+	const name = "angry-bird"
+
+	// Set up storage with test releases.
+	setup := func() {
+		// release records
+		rls0 := ReleaseTestData{Name: name, Version: 1, Status: rspb.Status_FAILED}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+	}
+	setup()
+
+	h, err := storage.Failed(name)
+	if err != nil {
+		t.Fatalf("Failed to query for failed release (%v): %v\n", name, err)
+	}
+	if h.Info.Status.Code != rspb.Status_FAILED {
+		t.Errorf("Expected a failed status, got %s", h.Info.Status.Code)
+	}
+
+}
+
 type ReleaseTestData struct {
 	Name      string
 	Version   int32

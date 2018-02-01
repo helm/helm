@@ -239,6 +239,49 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	}
 }
 
+func TestUpdateInstalledFailure(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+
+	rs.env.KubeClient = newInstallFailingKubClient()
+	rs.Log = t.Logf
+
+	_, err := rs.InstallRelease(c, &services.InstallReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/something", Data: []byte("hello: world")},
+			},
+		},
+	})
+	if err == nil {
+		t.Error("Expected failed install")
+	}
+	// check that the first release failed
+	_, err = rs.env.Releases.Failed(rel.Name)
+	if err != nil {
+		t.Fatalf("Failed to get failed: %s", err)
+	}
+
+	okReq := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+			},
+		},
+	}
+	// try to update a release where the previous version was a failure
+	_, err = rs.UpdateRelease(c, okReq)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+}
+
 func TestUpdateReleaseNoHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
