@@ -139,6 +139,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
 	f.StringArrayVar(&i.opts.Values, "override", []string{}, "override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 
+	f.IntVar(&i.opts.ProbeServerPort, "probe-server-port", 0, "overrides the default probe server port for Tiller")
 	return cmd
 }
 

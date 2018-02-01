@@ -94,6 +94,11 @@ type Options struct {
 
 	// Set merges additional values into the Tiller Deployment manifest.
 	Values []string
+
+	// ProbeServerPort sets the Readiness/Liveness Probes container port for Tiller
+	//
+	// Less than or equal to 0 means it will continue to the use the default 44135.
+	ProbeServerPort int
 }
 
 func (opts *Options) selectImage() string {
@@ -132,6 +137,14 @@ func (opts *Options) valuesMap(m map[string]interface{}) (map[string]interface{}
 		}
 	}
 	return m, nil
+}
+
+func (opts *Options) probeServerPort() int32 {
+	probeServerPort := int32(44135)
+	if opts.ProbeServerPort > 0 {
+		probeServerPort = int32(opts.ProbeServerPort)
+	}
+	return probeServerPort
 }
 
 // OutputFormat defines valid values for init output (json, yaml)
