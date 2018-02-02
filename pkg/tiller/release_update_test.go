@@ -282,6 +282,62 @@ func TestUpdateInstalledFailure(t *testing.T) {
 	}
 }
 
+func TestUpdateInstalledFailureUpdateConfig(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+
+	rs.env.KubeClient = newInstallFailingKubClient()
+	rs.Log = t.Logf
+
+	instResp, err := rs.InstallRelease(c, &services.InstallReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/something", Data: []byte("hello: world")},
+			},
+			Values: &chart.Config{
+				Values: map[string]*chart.Value{"animal": {Value: "goat"}},
+			},
+		},
+	})
+	if err == nil {
+		t.Error("Expected failed install")
+	}
+	if instResp.Release.Chart.Values.Values["animal"].Value != "goat" {
+		t.Errorf("expected %s in the chart values got %s", "goat", instResp.Release.Chart.Values.Values["animal"].Value)
+	}
+
+	// check that the first release failed
+	_, err = rs.env.Releases.Failed(rel.Name)
+	if err != nil {
+		t.Fatalf("Failed to get failed: %s", err)
+	}
+
+	okReq := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+			},
+			Values: &chart.Config{
+				Values: map[string]*chart.Value{"animal": {Value: "cow"}},
+			},
+		},
+	}
+	// try to update a release where the previous version was a failure
+	resp, err := rs.UpdateRelease(c, okReq)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	if resp.Release.Chart.Values.Values["animal"].Value != "cow" {
+		t.Errorf("should have override value in chart, after upgrading a failed release")
+	}
+}
+
 func TestUpdateReleaseNoHooks(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
