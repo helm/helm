@@ -9,7 +9,6 @@ import:
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - package: github.com/Masterminds/vcs
   version: ~1.11.0
-
   # Pin version of mergo that is compatible with both sprig and Kubernetes
 - package: github.com/imdario/mergo
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
@@ -27,15 +26,13 @@ import:
   - ptypes/timestamp
 - package: google.golang.org/grpc
   version: 1.7.2
-- package: k8s.io/kubernetes
-  version: ~1.9.0
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
 - package: golang.org/x/crypto
   subpackages:
   - openpgp
-  # pin version of golang.org/x/sys that is compatible with golang.org/x/crypto
+# pin version of golang.org/x/sys that is compatible with golang.org/x/crypto
 - package: golang.org/x/sys
   version: 43eea11
   subpackages:
@@ -55,14 +52,19 @@ import:
   repo: https://github.com/fvbommel/util.git
   vcs: git
 
-- package: k8s.io/kube-openapi
-  version: 39a7bf85c140f972372c2a0d1ee40adbf0c8bfe1
+- package: k8s.io/kubernetes
+  version: ~1.9.2
+- package: k8s.io/client-go
+  version: ~6.0.0
+- package: k8s.io/api
+  version: kubernetes-1.9.2
+- package: k8s.io/apimachinery
+  version: kubernetes-1.9.2
+- package: k8s.io/apiserver
+  version: kubernetes-1.9.2
 
 - package: cloud.google.com/go/compute
   repo: https://github.com/GoogleCloudPlatform/google-cloud-go.git
-
-ignore:
-  - k8s.io/api
 
 testImports:
 - package: github.com/stretchr/testify
