@@ -45,7 +45,7 @@ Tiller in its current form does not provide a way to map user credentials to spe
 
 To properly limit what Tiller itself can do, the standard Kubernetes RBAC mechanisms must be attached to Tiller, including Roles and RoleBindings that place explicit limits on what things a Tiller instance can install, and where. 
 
-This situation may change in the future. While the community has several methods that might address this, at the moment performing actions using the rights of the client, instead of the rights of Tiller, is contingent upon the outcome of the Pod Identity Working Group, which has taken on the task of solving the problem in a general way. 
+This situation may change in the future. While the community has several methods that might address this, at the moment performing actions using the rights of the client, instead of the rights of Tiller, is contingent upon the outcome of the Pod Identity Working Group, which has taken on the task of solving the problem general. 
 
 
 ### The Tiller gRPC Endpoint and TLS
