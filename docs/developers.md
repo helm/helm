@@ -27,7 +27,7 @@ packages.
 This will build both Helm and Tiller. `make bootstrap` will attempt to
 install certain tools if they are missing.
 
-To run all of the tests (without running the tests for `vendor/`), run
+To run all the tests (without running the tests for `vendor/`), run
 `make test`.
 
 To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
