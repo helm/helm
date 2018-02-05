@@ -69,6 +69,11 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
 	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
+	if opts.MaxHistory > 0 {
+		obj.Spec.Template.Spec.Containers[0].Env = append(obj.Spec.Template.Spec.Containers[0].Env, []v1.EnvVar{
+			{Name: "TILLER_HISTORY_MAX", Value: fmt.Sprintf("%d", opts.MaxHistory)},
+		}...)
+	}
 	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
 	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
