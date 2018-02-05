@@ -214,7 +214,7 @@ together in one GitHub repository.
 
 **Deis's [Workflow](https://github.com/deis/workflow/tree/master/charts/workflow):**
 This chart exposes the entire Deis PaaS system with one chart. But it's different
-from the SAP chart in that this master chart is built from each component, and
+from the SAP chart in that this umbrella chart is built from each component, and
 each component is tracked in a different Git repository. Check out the
 `requirements.yaml` file to see how this chart is composed by their CI/CD
 pipeline.
