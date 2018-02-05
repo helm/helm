@@ -244,7 +244,7 @@ update of that resource.
 
 ## Upgrade a release idempotently
 
-In order to use the same command when installing and upgrading a release, use the following comand:
+In order to use the same command when installing and upgrading a release, use the following command:
 ```shell
 helm upgrade --install <release name> --values <values file> <chart directory>
 ```
