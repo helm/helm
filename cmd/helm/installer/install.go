@@ -26,6 +26,7 @@ import (
 	"github.com/ghodss/yaml"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -70,9 +71,9 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
 	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
 	if opts.MaxHistory > 0 {
-		obj.Spec.Template.Spec.Containers[0].Env = append(obj.Spec.Template.Spec.Containers[0].Env, []v1.EnvVar{
-			{Name: "TILLER_HISTORY_MAX", Value: fmt.Sprintf("%d", opts.MaxHistory)},
-		}...)
+		obj.Spec.Template.Spec.Containers[0].Env = updateEnv(obj.Spec.Template.Spec.Containers[0].Env,
+			[]v1.EnvVar{{Name: "TILLER_HISTORY_MAX", Value: fmt.Sprintf("%d", opts.MaxHistory)}},
+			[]string{""})
 	}
 	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
 	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
@@ -365,3 +366,37 @@ func generateSecret(opts *Options) (*v1.Secret, error) {
 }
 
 func read(path string) (b []byte, err error) { return ioutil.ReadFile(path) }
+
+func findEnv(env []v1.EnvVar, name string) (v1.EnvVar, bool) {
+	for _, e := range env {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return v1.EnvVar{}, false
+}
+
+func updateEnv(existing []v1.EnvVar, env []v1.EnvVar, remove []string) []v1.EnvVar {
+	out := []v1.EnvVar{}
+	covered := sets.NewString(remove...)
+	for _, e := range existing {
+		if covered.Has(e.Name) {
+			continue
+		}
+		newer, ok := findEnv(env, e.Name)
+		if ok {
+			covered.Insert(e.Name)
+			out = append(out, newer)
+			continue
+		}
+		out = append(out, e)
+	}
+	for _, e := range env {
+		if covered.Has(e.Name) {
+			continue
+		}
+		covered.Insert(e.Name)
+		out = append(out, e)
+	}
+	return out
+}
