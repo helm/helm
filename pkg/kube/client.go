@@ -27,10 +27,12 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	apps "k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -428,40 +430,39 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err := target.Get(); err != nil {
 			return fmt.Errorf("error trying to refresh resource information: %v", err)
 		}
-		return nil
-	}
+	} else {
+		// send patch to server
+		helper := resource.NewHelper(target.Client, target.Mapping)
 
-	// send patch to server
-	helper := resource.NewHelper(target.Client, target.Mapping)
+		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
+		if err != nil {
+			kind := target.Mapping.GroupVersionKind.Kind
+			log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
 
-	obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
-	if err != nil {
-		kind := target.Mapping.GroupVersionKind.Kind
-		log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
+			if force {
+				// Attempt to delete...
+				if err := deleteResource(c, target); err != nil {
+					return err
+				}
+				log.Printf("Deleted %s: %q", kind, target.Name)
 
-		if force {
-			// Attempt to delete...
-			if err := deleteResource(c, target); err != nil {
+				// ... and recreate
+				if err := createResource(target); err != nil {
+					return fmt.Errorf("Failed to recreate resource: %s", err)
+				}
+				log.Printf("Created a new %s called %q\n", kind, target.Name)
+
+				// No need to refresh the target, as we recreated the resource based
+				// on it. In addition, it might not exist yet and a call to `Refresh`
+				// may fail.
+			} else {
+				log.Print("Use --force to force recreation of the resource")
 				return err
 			}
-			log.Printf("Deleted %s: %q", kind, target.Name)
-
-			// ... and recreate
-			if err := createResource(target); err != nil {
-				return fmt.Errorf("Failed to recreate resource: %s", err)
-			}
-			log.Printf("Created a new %s called %q\n", kind, target.Name)
-
-			// No need to refresh the target, as we recreated the resource based
-			// on it. In addition, it might not exist yet and a call to `Refresh`
-			// may fail.
 		} else {
-			log.Print("Use --force to force recreation of the resource")
-			return err
+			// When patch succeeds without needing to recreate, refresh target.
+			target.Refresh(obj, true)
 		}
-	} else {
-		// When patch succeeds without needing to recreate, refresh target.
-		target.Refresh(obj, true)
 	}
 
 	if !recreate {
@@ -508,18 +509,41 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 	switch typed := obj.(type) {
+
 	case *v1.ReplicationController:
 		return typed.Spec.Selector, nil
-	case *v1beta1.ReplicaSet:
+
+	case *extv1beta1.ReplicaSet:
 		return typed.Spec.Selector.MatchLabels, nil
-	case *v1beta1.Deployment:
+	case *appsv1.ReplicaSet:
 		return typed.Spec.Selector.MatchLabels, nil
-	case *v1beta1.DaemonSet:
+
+	case *extv1beta1.Deployment:
 		return typed.Spec.Selector.MatchLabels, nil
+	case *appsv1beta1.Deployment:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *appsv1beta2.Deployment:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *appsv1.Deployment:
+		return typed.Spec.Selector.MatchLabels, nil
+
+	case *extv1beta1.DaemonSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *appsv1beta2.DaemonSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *appsv1.DaemonSet:
+		return typed.Spec.Selector.MatchLabels, nil
+
 	case *batch.Job:
 		return typed.Spec.Selector.MatchLabels, nil
-	case *apps.StatefulSet:
+
+	case *appsv1beta1.StatefulSet:
 		return typed.Spec.Selector.MatchLabels, nil
+	case *appsv1beta2.StatefulSet:
+		return typed.Spec.Selector.MatchLabels, nil
+	case *appsv1.StatefulSet:
+		return typed.Spec.Selector.MatchLabels, nil
+
 	default:
 		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
 	}
