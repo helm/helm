@@ -200,7 +200,7 @@ If you want to customize the manifest, you can save that output to a file and th
 use `kubectl create` to load it into your cluster.
 
 > We strongly recommend enabling RBAC on your cluster and adding [service accounts](rbac.md)
-> with RBACS.
+> with RBAC.
 
 Otherwise, you can remove the `--dry-run` and `--debug` flags. We also recommend
 putting Tiller in a non-system namespace (`--tiller-namespace=something`) and enable
