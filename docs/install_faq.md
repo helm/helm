@@ -106,12 +106,12 @@ Error: Error forwarding ports: error upgrading connection: dial tcp: lookup kube
 A: We have seen this issue with Ubuntu and Kubeadm in multi-node clusters. The
 issue is that the nodes expect certain DNS records to be obtainable via global
 DNS. Until this is resolved upstream, you can work around the issue as
-follows:
+follows. On each of the control plane nodes:
 
-1) Add entries to `/etc/hosts` on the master mapping your hostnames to their public IPs
-2) Install `dnsmasq` on the master (e.g. `apt install -y dnsmasq`)
-3) Kill the k8s api server container on master (kubelet will recreate it)
-4) Then `systemctl restart docker` (or reboot the master) for it to pick up the /etc/resolv.conf changes
+1) Add entries to `/etc/hosts`, mapping your hostnames to their public IPs
+2) Install `dnsmasq` (e.g. `apt install -y dnsmasq`)
+3) Remove the k8s api server container (kubelet will recreate it)
+4) Then `systemctl restart docker` (or reboot the node) for it to pick up the /etc/resolv.conf changes
 
 See this issue for more information: https://github.com/kubernetes/helm/issues/1455
 
