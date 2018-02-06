@@ -141,9 +141,15 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
-	upgradedRel := upgradeReleaseVersion(rel)
+	v2 := upgradeReleaseVersion(rel)
 	rs.env.Releases.Update(rel)
-	rs.env.Releases.Create(upgradedRel)
+	rs.env.Releases.Create(v2)
+	v3 := upgradeReleaseVersion(v2)
+	// retain the original release as DEPLOYED while the update should fail
+	v2.Info.Status.Code = release.Status_DEPLOYED
+	v3.Info.Status.Code = release.Status_FAILED
+	rs.env.Releases.Update(v2)
+	rs.env.Releases.Create(v3)
 
 	req := &services.RollbackReleaseRequest{
 		Name:         rel.Name,
@@ -154,6 +160,14 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	_, err := rs.RollbackRelease(c, req)
 	if err != nil {
 		t.Fatalf("Failed rollback: %s", err)
+	}
+	// check that v2 is now in a SUPERSEDED state
+	oldRel, err := rs.env.Releases.Get(rel.Name, 2)
+	if err != nil {
+		t.Fatalf("Failed to retrieve v1: %s", err)
+	}
+	if oldRel.Info.Status.Code != release.Status_SUPERSEDED {
+		t.Errorf("Expected v2 to be in a SUPERSEDED state, got %q", oldRel.Info.Status.Code)
 	}
 }
 
