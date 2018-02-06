@@ -399,14 +399,25 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
 
+	// While different objects need different merge types, the parent function
+	// that calls this does not try to create a patch when the data (first
+	// returned object) is nil. We can skip calculating the the merge type as
+	// the returned merge type is ignored.
 	if apiequality.Semantic.DeepEqual(oldData, newData) {
 		return nil, types.StrategicMergePatchType, nil
 	}
 
 	// Get a versioned object
 	versionedObject, err := mapping.ConvertToVersion(target, mapping.GroupVersionKind.GroupVersion())
+
+	// Unstructured objects, such as CRDs, may not have an not registered error
+	// returned from ConvertToVersion. Anything that's unstructured should
+	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
+	// on objects like CRDs.
+	_, isUnstructured := versionedObject.(runtime.Unstructured)
+
 	switch {
-	case runtime.IsNotRegisteredError(err):
+	case runtime.IsNotRegisteredError(err), isUnstructured:
 		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, types.MergePatchType, err
