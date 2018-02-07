@@ -36,7 +36,8 @@ var maxMsgSize = 1024 * 1024 * 20
 // DefaultServerOpts returns the set of default grpc ServerOption's that Tiller requires.
 func DefaultServerOpts() []grpc.ServerOption {
 	return []grpc.ServerOption{
-		grpc.MaxMsgSize(maxMsgSize),
+		grpc.MaxRecvMsgSize(maxMsgSize),
+		grpc.MaxSendMsgSize(maxMsgSize),
 		grpc.UnaryInterceptor(newUnaryInterceptor()),
 		grpc.StreamInterceptor(newStreamInterceptor()),
 	}
