@@ -96,6 +96,8 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	f.StringVar(&fch.username, "username", "", "chart repository username")
+	f.StringVar(&fch.password, "password", "", "chart repository password")
 	f.BoolVar(&fch.untar, "untar", false, "if set to true, will untar the chart after downloading it")
 	f.StringVar(&fch.untardir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
 	f.BoolVar(&fch.verify, "verify", false, "verify the package against its signature")
@@ -142,7 +144,7 @@ func (f *fetchCmd) run() error {
 	}
 
 	if f.repoURL != "" {
-		chartURL, err := repo.FindChartInRepoURL(f.repoURL, f.username, f.password, f.chartRef, f.version, f.certFile, f.keyFile, f.caFile, getter.All(settings))
+		chartURL, err := repo.FindChartInAuthRepoURL(f.repoURL, f.username, f.password, f.chartRef, f.version, f.certFile, f.keyFile, f.caFile, getter.All(settings))
 		if err != nil {
 			return err
 		}

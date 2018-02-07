@@ -425,7 +425,7 @@ func locateChartPath(repoURL, username, password, name, version string, verify b
 		dl.Verify = downloader.VerifyAlways
 	}
 	if repoURL != "" {
-		chartURL, err := repo.FindChartInRepoURL(repoURL, username, password, name, version,
+		chartURL, err := repo.FindChartInAuthRepoURL(repoURL, username, password, name, version,
 			certFile, keyFile, caFile, getter.All(settings))
 		if err != nil {
 			return "", err

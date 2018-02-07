@@ -46,30 +46,15 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	add := &repoAddCmd{out: out}
 
 	cmd := &cobra.Command{
-		Use:   "add [flags] [NAME] [URL] [USERNAME] [PASSWORD]",
+		Use:   "add [flags] [NAME] [URL]",
 		Short: "add a chart repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			argsDesc := []string{
-				"name for the chart repository",
-				"the url of the chart repository",
-				"the username for the chart repository",
-				"the password of the chart repository",
-			}
-
-			if len(args) <= 2 {
-				if err := checkArgsLength(len(args), argsDesc[0], argsDesc[1]); err != nil {
-					return err
-				}
-			} else if err := checkArgsLength(len(args), argsDesc[0], argsDesc[1], argsDesc[2], argsDesc[3]); err != nil {
+			if err := checkArgsLength(len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
 				return err
 			}
 
 			add.name = args[0]
 			add.url = args[1]
-			if len(args) == 4 {
-				add.username = args[2]
-				add.password = args[3]
-			}
 			add.home = settings.Home
 
 			return add.run()
@@ -77,6 +62,8 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	f.StringVar(&add.username, "username", "", "chart repository username")
+	f.StringVar(&add.password, "password", "", "chart repository password")
 	f.BoolVar(&add.noupdate, "no-update", false, "raise error if repo is already registered")
 	f.StringVar(&add.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&add.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
