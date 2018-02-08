@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package hapi.release;
+
+option go_package = "release";
+
+message LogLine {
+	string timestamp = 1;
+	string data = 2;
+}
+
+message JobLogChunk {
+  string job_name = 1;
+  string pod_name = 2;
+  string container_name = 3;
+  repeated LogLine log_lines = 4;
+}
+
+message WatchFeed {
+  JobLogChunk job_log_chunk = 1;
+
+  /*
+   * WatchFeed could contain one or multiple events from tiller at the same time.
+   * All events are related to the process of making release and needed for the helm-client.
+   * For now there is only one event: JobLogChunk, needed for helm-client to show hooks logs during release.
+   *
+   * Suggestions for future events:
+   *   JobStarted job_started = n;
+   *   JobStarted job_finished = n;
+   *   DeploymentStatus deployment_status = n;
+   *   SomethingUseful something_useful = n;
+   *   SomethingUseless something_useless = n;
+   */
+}

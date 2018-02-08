@@ -18,12 +18,14 @@ package tiller
 
 import (
 	"fmt"
+	// "io"
 	"strings"
 
-	ctx "golang.org/x/net/context"
+	// ctx "golang.org/x/net/context"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
@@ -31,7 +33,7 @@ import (
 )
 
 // InstallRelease installs a release and stores the release record.
-func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+func (s *ReleaseServer) InstallRelease(req *services.InstallReleaseRequest, stream services.ReleaseService_InstallReleaseServer) error {
 	s.Log("preparing install for %s", req.Name)
 	rel, err := s.prepareRelease(req)
 	if err != nil {
@@ -43,15 +45,22 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 		if req.DryRun && strings.HasPrefix(err.Error(), "YAML parse error") {
 			err = fmt.Errorf("%s\n%s", err, rel.Manifest)
 		}
-		return res, err
+
+		if sendErr := stream.Send(res); sendErr != nil {
+			return sendErr
+		}
+		return err
 	}
 
 	s.Log("performing install for %s", req.Name)
-	res, err := s.performRelease(rel, req)
+	res, err := s.performRelease(rel, req, stream)
 	if err != nil {
 		s.Log("failed install perform step: %s", err)
 	}
-	return res, err
+	if sendErr := stream.Send(res); sendErr != nil {
+		return sendErr
+	}
+	return err
 }
 
 // prepareRelease builds a release for an install operation.
@@ -142,7 +151,7 @@ func hasCRDHook(hs []*release.Hook) bool {
 }
 
 // performRelease runs a release.
-func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest, stream services.ReleaseService_InstallReleaseServer) (*services.InstallReleaseResponse, error) {
 	res := &services.InstallReleaseResponse{Release: r}
 	manifestDoc := []byte(r.Manifest)
 
@@ -182,7 +191,28 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 	// pre-install hooks
 	if !req.DisableHooks {
-		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout); err != nil {
+		handleLogChunk := kube.WriteJobLogChunkFunc(func(chunk *kube.JobLogChunk) error {
+			chunkResp := &services.InstallReleaseResponse{
+				WatchFeed: &release.WatchFeed{
+					JobLogChunk: &release.JobLogChunk{},
+				},
+			}
+			chunkResp.WatchFeed.JobLogChunk.LogLines = make([]*release.LogLine, 0)
+
+			for _, line := range chunk.LogLines {
+				ll := &release.LogLine{
+					Timestamp: line.Timestamp,
+					Data:      line.Data,
+				}
+				chunkResp.WatchFeed.JobLogChunk.LogLines = append(chunkResp.WatchFeed.JobLogChunk.LogLines, ll)
+			}
+
+			return stream.Send(chunkResp)
+		})
+
+		// TODO watch job with feed only if job have annotation "helm/watch-logs": "true"
+		// TODO otherwise watch as ordinary hook just like before, using WatchUntilReady
+		if err := s.execHookWithWatchFeed(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout, handleLogChunk); err != nil {
 			return res, err
 		}
 	} else {

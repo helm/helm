@@ -141,6 +141,8 @@ type KubeClient interface {
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error)
+
+	WatchJobsTillDone(namespace string, reader io.Reader, watchFeed kube.WatchFeed, timeout time.Duration) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to

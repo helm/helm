@@ -11,6 +11,7 @@ It is generated from these files:
 	hapi/release/status.proto
 	hapi/release/test_run.proto
 	hapi/release/test_suite.proto
+	hapi/release/watch_feed.proto
 
 It has these top-level messages:
 	Hook
@@ -19,6 +20,9 @@ It has these top-level messages:
 	Status
 	TestRun
 	TestSuite
+	LogLine
+	JobLogChunk
+	WatchFeed
 */
 package release
 

@@ -22,6 +22,7 @@ import "hapi/release/release.proto";
 import "hapi/release/info.proto";
 import "hapi/release/test_run.proto";
 import "hapi/release/status.proto";
+import "hapi/release/watch_feed.proto";
 import "hapi/version/version.proto";
 
 option go_package = "services";
@@ -61,7 +62,7 @@ service ReleaseService {
 	}
 
 	// InstallRelease requests installation of a chart as a new release.
-	rpc InstallRelease(InstallReleaseRequest) returns (InstallReleaseResponse) {
+	rpc InstallRelease(InstallReleaseRequest) returns (stream InstallReleaseResponse) { // TODO: think about compatibility
 	}
 
 	// UninstallRelease requests deletion of a named release.
@@ -286,6 +287,7 @@ message InstallReleaseRequest {
 // InstallReleaseResponse is the response from a release installation.
 message InstallReleaseResponse {
 	hapi.release.Release release = 1;
+	hapi.release.WatchFeed watch_feed = 2; // TODO: think about compatibility
 }
 
 // UninstallReleaseRequest represents a request to uninstall a named release.
