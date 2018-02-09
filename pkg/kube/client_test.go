@@ -36,7 +36,10 @@ import (
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/kubectl"
+	"k8s.io/kubernetes/pkg/kubectl/categories"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -289,6 +292,77 @@ func (t *testPrinter) AfterPrint(io.Writer, string) error {
 	return t.Err
 }
 
+type testFactory struct {
+	cmdutil.Factory
+	internalclientset.Interface
+	ErrorResponse error
+}
+
+type testCore struct {
+	internalversion.CoreInterface
+	internalversion.NamespaceInterface
+}
+
+func (s *testFactory) ClientSet() (internalclientset.Interface, error) {
+	return s, s.ErrorResponse
+}
+
+func (s *testFactory) Core() internalversion.CoreInterface {
+	return new(testCore)
+}
+
+func (s *testCore) Namespaces() internalversion.NamespaceInterface {
+	return s
+}
+
+func (s *testCore) Get(name string, options apiv1.GetOptions) (*core.Namespace, error) {
+	return nil, nil
+}
+
+func (s *testCore) NewBuilder(internal, unstructured *resource.Mapper, categoryExpander categories.CategoryExpander) *resource.Builder {
+	return nil
+}
+
+func TestCreate(t *testing.T) {
+	list := newPodList("starfish", "otter")
+	f, tf, _, _ := cmdtesting.NewAPIFactory()
+	tf.Printer = &testPrinter{}
+	tf.UnstructuredClient = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		NegotiatedSerializer: dynamic.ContentConfig().NegotiatedSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/starfish" && m == "GET":
+				return newResponse(404, notFoundBody())
+			case p == "/namespaces/default/pods/otter" && m == "GET":
+				return newResponse(200, &list.Items[1])
+			case p == "/namespaces/default/pods" && m == "POST":
+				return newResponse(200, &list.Items[1])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+	c := newTestClient(&testFactory{
+		Factory: f,
+	})
+
+	newPod := strings.NewReader(testNewPod)
+	if err := c.Create("default", newPod, 3, false); err != nil {
+		t.Errorf("creating a new resource with a valid manifest should succeed, got: %q", err)
+	}
+
+	existingPod := strings.NewReader(testExistingPod)
+	err := c.Create("default", existingPod, 3, false)
+	if err == nil {
+		t.Skip("This test is pending. still need to implement exit on existing resource.")
+		t.Errorf("creating a resource which already exists should with proper error, got: %q", err)
+	}
+}
+
 func TestGet(t *testing.T) {
 	list := newPodList("starfish", "otter")
 	f, tf, _, _ := cmdtesting.NewAPIFactory()
@@ -478,6 +552,34 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+const testNewPod = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: otter
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox
+    command: ['sh', '-c', 'echo Hello Kubernetes! && sleep 3600']
+`
+
+const testExistingPod = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: starfish 
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox
+    command: ['sh', '-c', 'echo Hello Kubernetes! && sleep 3600']
+`
 
 const testServiceManifest = `
 kind: Service
