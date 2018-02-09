@@ -161,6 +161,9 @@ func start() {
 			MaxConnectionIdle: 10 * time.Minute,
 			// If needed, we can configure the max connection age
 		}))
+		opts = append(opts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime: time.Duration(20) * time.Second, // For compatibility with the client keepalive.ClientParameters
+		}))
 	}
 
 	rootServer = tiller.NewServer(opts...)
