@@ -315,7 +315,7 @@ func (s *testCore) Namespaces() internalversion.NamespaceInterface {
 	return s
 }
 
-func (s *testCore) Get(name string, options apiv1.GetOptions) (*core.Namespace, error) {
+func (s *testCore) Get(name string, options metav1.GetOptions) (*core.Namespace, error) {
 	return nil, nil
 }
 
