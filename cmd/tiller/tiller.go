@@ -157,14 +157,15 @@ func start() {
 			logger.Fatalf("Could not create server TLS configuration: %v", err)
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(cfg)))
-		opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle: 10 * time.Minute,
-			// If needed, we can configure the max connection age
-		}))
-		opts = append(opts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-			MinTime: time.Duration(20) * time.Second, // For compatibility with the client keepalive.ClientParameters
-		}))
 	}
+
+	opts = append(opts, grpc.KeepaliveParams(keepalive.ServerParameters{
+		MaxConnectionIdle: 10 * time.Minute,
+		// If needed, we can configure the max connection age
+	}))
+	opts = append(opts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+		MinTime: time.Duration(20) * time.Second, // For compatibility with the client keepalive.ClientParameters
+	}))
 
 	rootServer = tiller.NewServer(opts...)
 
