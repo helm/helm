@@ -77,7 +77,7 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&d.force, "force", "f", false, "forces Tiller uninstall even if there are releases installed, or if Tiller is not in ready state")
+	f.BoolVarP(&d.force, "force", "f", false, "forces Tiller uninstall even if there are releases installed, or if Tiller is not in ready state. Releases are not deleted.)")
 	f.BoolVar(&d.removeHelmHome, "remove-helm-home", false, "if set deletes $HELM_HOME")
 
 	return cmd
@@ -101,7 +101,7 @@ func (d *resetCmd) run() error {
 	}
 
 	if !d.force && res != nil && len(res.Releases) > 0 {
-		return fmt.Errorf("there are still %d deployed releases (Tip: use --force)", len(res.Releases))
+		return fmt.Errorf("there are still %d deployed releases (Tip: use --force to remove Tiller. Releases will not be deleted.)", len(res.Releases))
 	}
 
 	if err := installer.Uninstall(d.kubeClient, &installer.Options{Namespace: d.namespace}); err != nil {
