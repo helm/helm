@@ -87,6 +87,11 @@ type initCmd struct {
 	serviceAccount string
 	maxHistory     int
 	wait           bool
+	tlsEnable      bool
+	tlsVerify      bool
+	tlsKeyFile     string
+	tlsCertFile    string
+	tlsCaCertFile  string
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -103,6 +108,11 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			i.namespace = settings.TillerNamespace
 			i.home = settings.Home
 			i.client = ensureHelmClient(i.client)
+			i.tlsEnable = settings.TLSEnable
+			i.tlsVerify = settings.TLSVerify
+			i.tlsKeyFile = settings.TLSKeyFile
+			i.tlsCertFile = settings.TLSCertFile
+			i.tlsCaCertFile = settings.TLSCaCertFile
 
 			return i.run()
 		},
@@ -117,12 +127,6 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
-
-	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
-	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
-	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
-	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with Tiller")
-	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
@@ -141,22 +145,22 @@ func newInitCmd(out io.Writer) *cobra.Command {
 // tlsOptions sanitizes the tls flags as well as checks for the existence of required
 // tls files indicated by those flags, if any.
 func (i *initCmd) tlsOptions() error {
-	i.opts.EnableTLS = tlsEnable || tlsVerify
-	i.opts.VerifyTLS = tlsVerify
+	i.opts.EnableTLS = i.tlsEnable || i.tlsVerify
+	i.opts.VerifyTLS = i.tlsVerify
 
 	if i.opts.EnableTLS {
 		missing := func(file string) bool {
 			_, err := os.Stat(file)
 			return os.IsNotExist(err)
 		}
-		if i.opts.TLSKeyFile = tlsKeyFile; i.opts.TLSKeyFile == "" || missing(i.opts.TLSKeyFile) {
+		if i.opts.TLSKeyFile = i.tlsKeyFile; i.opts.TLSKeyFile == "" || missing(i.opts.TLSKeyFile) {
 			return errors.New("missing required TLS key file")
 		}
-		if i.opts.TLSCertFile = tlsCertFile; i.opts.TLSCertFile == "" || missing(i.opts.TLSCertFile) {
+		if i.opts.TLSCertFile = i.tlsCertFile; i.opts.TLSCertFile == "" || missing(i.opts.TLSCertFile) {
 			return errors.New("missing required TLS certificate file")
 		}
 		if i.opts.VerifyTLS {
-			if i.opts.TLSCaCertFile = tlsCaCertFile; i.opts.TLSCaCertFile == "" || missing(i.opts.TLSCaCertFile) {
+			if i.opts.TLSCaCertFile = i.tlsCaCertFile; i.opts.TLSCaCertFile == "" || missing(i.opts.TLSCaCertFile) {
 				return errors.New("missing required TLS CA file")
 			}
 		}

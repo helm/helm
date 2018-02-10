@@ -49,6 +49,16 @@ type EnvSettings struct {
 	KubeContext string
 	// KubeConfig is the name of the kubeconfig file.
 	KubeConfig string
+	// TLSCaCertFile is the path to TLS CA certificate file for Helm to verify the Tiller server certificate
+	TLSCaCertFile string
+	// TLSCertFile is the path to Helm TLS client certificate file for authenticating to Tiller
+	TLSCertFile string
+	// TLSKeyFile is the path to Helm TLS client key file for authenticating to Tiller
+	TLSKeyFile string
+	// TLSVerify enables TLS between Helm and Tiller and verification of the Tiller server certificate
+	TLSVerify bool
+	// TLSEnable enables TLS between Helm and Tiller
+	TLSEnable bool
 }
 
 // AddFlags binds flags to the given flagset.
@@ -59,12 +69,27 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to kubeconfig file. Overrides $KUBECONFIG")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
+	fs.StringVar(&s.TLSCaCertFile, "tls-ca-cert", "", "path to TLS CA certificate file for Helm to verify Tiller server certificate")
+	fs.StringVar(&s.TLSCertFile, "tls-cert", "", "path to Helm TLS client certificate file for authenticating to Tiller")
+	fs.StringVar(&s.TLSKeyFile, "tls-key", "", "path to Helm TLS client key file for authenticating to Tiller")
+	fs.BoolVar(&s.TLSVerify, "tls-verify", false, "enable TLS connection between Helm and Tiller and verify Tiller server certificate")
+	fs.BoolVar(&s.TLSEnable, "tls", false, "enable TLS connection between Helm and Tiller")
 }
 
 // Init sets values from the environment.
 func (s *EnvSettings) Init(fs *pflag.FlagSet) {
 	for name, envar := range envMap {
 		setFlagFromEnv(name, envar, fs)
+	}
+	// TLS defaults that depend on Home value
+	if s.TLSCaCertFile == "" {
+		s.TLSCaCertFile = s.Home.TLSCaCert()
+	}
+	if s.TLSCertFile == "" {
+		s.TLSCertFile = s.Home.TLSCert()
+	}
+	if s.TLSKeyFile == "" {
+		s.TLSKeyFile = s.Home.TLSKey()
 	}
 }
 
@@ -83,6 +108,11 @@ var envMap = map[string]string{
 	"host":             "HELM_HOST",
 	"kubeconfig":       "KUBECONFIG",
 	"tiller-namespace": "TILLER_NAMESPACE",
+	"tls-ca-cert":      "HELM_TLS_CA_CERT",
+	"tls-cert":         "HELM_TLS_CERT",
+	"tls-key":          "HELM_TLS_KEY",
+	"tls-verify":       "HELM_TLS_VERIFY",
+	"tls":              "HELM_TLS_ENABLE",
 }
 
 func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
@@ -90,7 +120,7 @@ func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
 		return
 	}
 	if v, ok := os.LookupEnv(envar); ok {
-		fs.Set(name, v)
+		fs.Set(name, os.ExpandEnv(v))
 	}
 }
 

@@ -72,9 +72,9 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd.Flags().Int32Var(&get.version, "revision", 0, "get the named release with revision")
 
-	cmd.AddCommand(addFlagsTLS(newGetValuesCmd(nil, out)))
-	cmd.AddCommand(addFlagsTLS(newGetManifestCmd(nil, out)))
-	cmd.AddCommand(addFlagsTLS(newGetHooksCmd(nil, out)))
+	cmd.AddCommand(newGetValuesCmd(nil, out))
+	cmd.AddCommand(newGetManifestCmd(nil, out))
+	cmd.AddCommand(newGetHooksCmd(nil, out))
 
 	return cmd
 }
