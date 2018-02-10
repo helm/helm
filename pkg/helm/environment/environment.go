@@ -47,7 +47,7 @@ type EnvSettings struct {
 	Debug bool
 	// KubeContext is the name of the kubeconfig context.
 	KubeContext string
-	// TLSCaCertFile is the path to TLS CA certificate file for Helm to verify the Tiller server certificate
+	// TLSCaCertFile is the path to TLS CA certificate file used to verify the Helm client and Tiller server certificates
 	TLSCaCertFile string
 	// TLSCertFile is the path to Helm TLS client certificate file for authenticating to Tiller
 	TLSCertFile string
@@ -66,7 +66,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
-	fs.StringVar(&s.TLSCaCertFile, "tls-ca-cert", "", "path to TLS CA certificate file for Helm to verify Tiller server certificate")
+	fs.StringVar(&s.TLSCaCertFile, "tls-ca-cert", "", "path to TLS CA certificate file used to verify the Helm client and Tiller server certificates")
 	fs.StringVar(&s.TLSCertFile, "tls-cert", "", "path to Helm TLS client certificate file for authenticating to Tiller")
 	fs.StringVar(&s.TLSKeyFile, "tls-key", "", "path to Helm TLS client key file for authenticating to Tiller")
 	fs.BoolVar(&s.TLSVerify, "tls-verify", false, "enable TLS connection between Helm and Tiller and verify Tiller server certificate")

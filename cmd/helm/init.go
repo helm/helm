@@ -107,12 +107,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			}
 			i.namespace = settings.TillerNamespace
 			i.home = settings.Home
-			i.client = ensureHelmClient(i.client)
-			i.tlsEnable = settings.TLSEnable
-			i.tlsVerify = settings.TLSVerify
-			i.tlsKeyFile = settings.TLSKeyFile
-			i.tlsCertFile = settings.TLSCertFile
 			i.tlsCaCertFile = settings.TLSCaCertFile
+			i.client = ensureHelmClient(i.client)
 
 			return i.run()
 		},
@@ -127,6 +123,11 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
+
+	f.BoolVar(&i.tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
+	f.BoolVar(&i.tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS and Helm client certificate verification enabled")
+	f.StringVar(&i.tlsKeyFile, "tiller-tls-key", "", "path to Tiller TLS server key file")
+	f.StringVar(&i.tlsCertFile, "tiller-tls-cert", "", "path to Tiller TLS server certificate file")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
@@ -154,10 +155,10 @@ func (i *initCmd) tlsOptions() error {
 			return os.IsNotExist(err)
 		}
 		if i.opts.TLSKeyFile = i.tlsKeyFile; i.opts.TLSKeyFile == "" || missing(i.opts.TLSKeyFile) {
-			return errors.New("missing required TLS key file")
+			return errors.New("missing required TLS server key file")
 		}
 		if i.opts.TLSCertFile = i.tlsCertFile; i.opts.TLSCertFile == "" || missing(i.opts.TLSCertFile) {
-			return errors.New("missing required TLS certificate file")
+			return errors.New("missing required TLS server certificate file")
 		}
 		if i.opts.VerifyTLS {
 			if i.opts.TLSCaCertFile = i.tlsCaCertFile; i.opts.TLSCaCertFile == "" || missing(i.opts.TLSCaCertFile) {

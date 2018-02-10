@@ -65,11 +65,11 @@ Environment:
   $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
   $TILLER_NAMESPACE   set an alternative Tiller namespace (default "kube-system")
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
-  $HELM_TLS_CA_CERT   path to TLS CA certificate file to verify Tiller server certificate (default "$HELM_HOME/ca.pem")
+  $HELM_TLS_CA_CERT   path to TLS CA certificate used to verify the Helm client and Tiller server certificates (default "$HELM_HOME/ca.pem")
   $HELM_TLS_CERT      path to TLS client certificate file for authenticating to Tiller (default "$HELM_HOME/cert.pem")
-  $HELM_TLS_KEY       path to TLS cient key file for authenticating to Tiller (default "$HELM_HOME/key.pem")
-  $HELM_TLS_VERIFY    enable TLS for request and verify remote (default "false")
-  $HELM_TLS_ENABLE    enable TLS for request (default "false")
+  $HELM_TLS_KEY       path to TLS client key file for authenticating to Tiller (default "$HELM_HOME/key.pem")
+  $HELM_TLS_VERIFY    enable TLS connection between Helm and Tiller and verify Tiller server certificate (default "false")
+  $HELM_TLS_ENABLE    enable TLS connection between Helm and Tiller (default "false")
 `
 
 func newRootCmd(args []string) *cobra.Command {
