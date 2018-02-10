@@ -193,10 +193,11 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			if err != nil {
 				return err
 			}
-			defer outFile.Close()
 			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
 				return err
 			}
+			outFile.Close()
 		default:
 			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
 		}

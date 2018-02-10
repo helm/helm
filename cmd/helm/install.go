@@ -460,7 +460,7 @@ func generateName(nameTemplate string) (string, error) {
 }
 
 func defaultNamespace() string {
-	if ns, _, err := kube.GetConfig(settings.KubeContext, settings.KubeConfig).Namespace(); err == nil {
+	if ns, _, err := kube.GetConfig(settings.KubeContext).Namespace(); err == nil {
 		return ns
 	}
 	return "default"
@@ -499,12 +499,12 @@ func readFile(filePath string) ([]byte, error) {
 
 	if err != nil {
 		return ioutil.ReadFile(filePath)
-	} else {
-		getter, err := getterConstructor(filePath, "", "", "")
-		if err != nil {
-			return []byte{}, err
-		}
-		data, err := getter.Get(filePath)
-		return data.Bytes(), err
 	}
+
+	getter, err := getterConstructor(filePath, "", "", "")
+	if err != nil {
+		return []byte{}, err
+	}
+	data, err := getter.Get(filePath)
+	return data.Bytes(), err
 }
