@@ -355,8 +355,7 @@ func TestCreate(t *testing.T) {
 	existingPod := strings.NewReader(fmt.Sprintf(testNewPodFormatString, existingResourceName))
 	err := c.Create("default", existingPod, 3, false)
 	if err == nil {
-		t.Skip("This test is pending. still need to implement exit on existing resource.")
-		t.Errorf("creating a resource which already exists should with proper error, got: %q", err)
+		t.Errorf("creating a resource which already exists should fail with error, got: %q", err)
 	}
 }
 

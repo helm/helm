@@ -100,6 +100,12 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 	if buildErr != nil {
 		return buildErr
 	}
+
+	c.Log("checking %d resources for existing conflicts", len(infos))
+	if err := c.existingResourceConflict(infos); err != nil {
+		return err
+	}
+
 	c.Log("creating %d resource(s)", len(infos))
 	if err := perform(infos, createResource); err != nil {
 		return err
@@ -108,6 +114,26 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 		return c.waitForResources(time.Duration(timeout)*time.Second, infos)
 	}
 	return nil
+}
+
+func (s *Client) existingResourceConflict(infos Result) error {
+	err := infos.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+
+			return fmt.Errorf("Could not get information about the resource: %s", err)
+		}
+
+		return fmt.Errorf("Existing resource conflict: %s", info.Name)
+	})
+	return err
 }
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
