@@ -85,7 +85,7 @@ type ChartDownloader struct {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
-	u, r, err := c.ResolveChartVersion(ref, version)
+	u, r, err := c.ResolveChartVersionAndGetRepo(ref, version)
 	if err != nil {
 		return "", nil, err
 	}
@@ -156,7 +156,16 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 //		* If version is non-empty, this will return the URL for that version
 //		* If version is empty, this will return the URL for the latest version
 //		* If no version can be found, an error is returned
-func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, *repo.ChartRepository, error) {
+func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, getter.Getter, error) {
+	u, r, err := c.ResolveChartVersionAndGetRepo(ref, version)
+	if r != nil {
+		return u, r.Client, err
+	}
+	return u, nil, err
+}
+
+// Same as the ResolveChartVersion method, but returns the chart repositoryy.
+func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*url.URL, *repo.ChartRepository, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid chart URL format: %s", ref)
