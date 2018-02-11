@@ -39,7 +39,6 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/kubectl"
-	"k8s.io/kubernetes/pkg/kubectl/categories"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -319,12 +318,10 @@ func (s *testCore) Get(name string, options metav1.GetOptions) (*core.Namespace,
 	return nil, nil
 }
 
-func (s *testCore) NewBuilder(internal, unstructured *resource.Mapper, categoryExpander categories.CategoryExpander) *resource.Builder {
-	return nil
-}
-
 func TestCreate(t *testing.T) {
-	list := newPodList("starfish", "otter")
+	newResourceName := "starfish"
+	existingResourceName := "otter"
+	list := newPodList(newResourceName, existingResourceName)
 	f, tf, _, _ := cmdtesting.NewAPIFactory()
 	tf.Printer = &testPrinter{}
 	tf.UnstructuredClient = &fake.RESTClient{
@@ -334,9 +331,9 @@ func TestCreate(t *testing.T) {
 			p, m := req.URL.Path, req.Method
 			t.Logf("got request %s %s", p, m)
 			switch {
-			case p == "/namespaces/default/pods/starfish" && m == "GET":
+			case p == fmt.Sprintf("/namespaces/default/pods/%s", newResourceName) && m == "GET":
 				return newResponse(404, notFoundBody())
-			case p == "/namespaces/default/pods/otter" && m == "GET":
+			case p == fmt.Sprintf("/namespaces/default/pods/%s", existingResourceName) && m == "GET":
 				return newResponse(200, &list.Items[1])
 			case p == "/namespaces/default/pods" && m == "POST":
 				return newResponse(200, &list.Items[1])
@@ -350,12 +347,12 @@ func TestCreate(t *testing.T) {
 		Factory: f,
 	})
 
-	newPod := strings.NewReader(testNewPod)
+	newPod := strings.NewReader(fmt.Sprintf(testNewPodFormatString, newResourceName))
 	if err := c.Create("default", newPod, 3, false); err != nil {
 		t.Errorf("creating a new resource with a valid manifest should succeed, got: %q", err)
 	}
 
-	existingPod := strings.NewReader(testExistingPod)
+	existingPod := strings.NewReader(fmt.Sprintf(testNewPodFormatString, existingResourceName))
 	err := c.Create("default", existingPod, 3, false)
 	if err == nil {
 		t.Skip("This test is pending. still need to implement exit on existing resource.")
@@ -553,25 +550,11 @@ func TestReal(t *testing.T) {
 	}
 }
 
-const testNewPod = `
+const testNewPodFormatString = `
 apiVersion: v1
 kind: Pod
 metadata:
-  name: otter
-  labels:
-    app: myapp
-spec:
-  containers:
-  - name: myapp-container
-    image: busybox
-    command: ['sh', '-c', 'echo Hello Kubernetes! && sleep 3600']
-`
-
-const testExistingPod = `
-apiVersion: v1
-kind: Pod
-metadata:
-  name: starfish 
+  name: %s 
   labels:
     app: myapp
 spec:
