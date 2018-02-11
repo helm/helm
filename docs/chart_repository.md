@@ -276,9 +276,9 @@ If the charts are backed by HTTP basic authentication, you can also supply the
 username and password here:
 
 ``console
-$ helm repo add fantastic-charts https://fantastic-charts.storage.googleapis.com --username my-username--password my-password
+$ helm repo add fantastic-charts https://fantastic-charts.storage.googleapis.com --username my-username --password my-password
 $ helm repo list
-fantastic-charts    https://username:password@fantastic-charts.storage.googleapis.com
+fantastic-charts    https://fantastic-charts.storage.googleapis.com
 ```
 
 **Note:** A repository will not be added if it does not contain a valid
