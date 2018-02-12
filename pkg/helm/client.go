@@ -293,7 +293,7 @@ func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-ch
 	return h.test(ctx, req)
 }
 
-// PingTiller pings the Tiller pod and ensure's that it is up and runnning
+// PingTiller pings the Tiller pod and ensure's that it is up and running
 func (h *Client) PingTiller() error {
 	ctx := NewContext()
 	return h.ping(ctx)
