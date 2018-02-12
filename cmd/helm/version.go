@@ -55,6 +55,7 @@ type versionCmd struct {
 	showClient bool
 	showServer bool
 	short      bool
+	template   string
 }
 
 func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -85,18 +86,26 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&version.showClient, "client", "c", false, "client version only")
 	f.BoolVarP(&version.showServer, "server", "s", false, "server version only")
 	f.BoolVar(&version.short, "short", false, "print the version number")
+	f.StringVar(&version.template, "template", "", "template for version string format")
 
 	return cmd
 }
 
 func (v *versionCmd) run() error {
+	// Store map data for template rendering
+	data := map[string]interface{}{}
+
 	if v.showClient {
 		cv := version.GetVersionProto()
-		fmt.Fprintf(v.out, "Client: %s\n", formatVersion(cv, v.short))
+		if v.template != "" {
+			data["Client"] = cv
+		} else {
+			fmt.Fprintf(v.out, "Client: %s\n", formatVersion(cv, v.short))
+		}
 	}
 
 	if !v.showServer {
-		return nil
+		return tpl(v.template, data, v.out)
 	}
 
 	if settings.Debug {
@@ -115,8 +124,13 @@ func (v *versionCmd) run() error {
 		debug("%s", err)
 		return errors.New("cannot connect to Tiller")
 	}
-	fmt.Fprintf(v.out, "Server: %s\n", formatVersion(resp.Version, v.short))
-	return nil
+
+	if v.template != "" {
+		data["Server"] = resp.Version
+	} else {
+		fmt.Fprintf(v.out, "Server: %s\n", formatVersion(resp.Version, v.short))
+	}
+	return tpl(v.template, data, v.out)
 }
 
 func getK8sVersion() (*apiVersion.Info, error) {
