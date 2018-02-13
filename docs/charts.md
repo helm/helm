@@ -849,7 +849,7 @@ considerations in mind:
 - The `Chart.yaml` will be overwritten by the generator.
 - Users will expect to modify such a chart's contents, so documentation
   should indicate how users can do so.
-- All occurances of `<CHARTNAME>` will be replaced with the specified chart
+- All occurences of `<CHARTNAME>` will be replaced with the specified chart
   name so that starter charts can be used as templates.
 
 Currently the only way to add a chart to `$HELM_HOME/starters` is to manually
