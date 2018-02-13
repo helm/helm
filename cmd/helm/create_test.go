@@ -33,7 +33,7 @@ func TestCreateCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tdir)
+	defer os.RemoveAll(tdir)
 
 	// CD into it
 	pwd, err := os.Getwd()
@@ -79,7 +79,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tdir)
+	defer os.RemoveAll(tdir)
 
 	thome, err := tempHelmHome(t)
 	if err != nil {
