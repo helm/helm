@@ -37,7 +37,7 @@ func TestUpdateCmd(t *testing.T) {
 
 	cleanup := resetEnv()
 	defer func() {
-		os.Remove(thome.String())
+		os.RemoveAll(thome.String())
 		cleanup()
 	}()
 
