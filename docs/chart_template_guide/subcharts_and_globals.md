@@ -83,7 +83,7 @@ mysubchart:
   dessert: ice cream
 ```
 
-Note the last two lines. Any directives inside of the `mysubchart` section will be sent to the `mysubchart` chart. So if we run `helm install --dry-run --debug mychart`, once of the things we will see is the `mysubchart` ConfigMap:
+Note the last two lines. Any directives inside of the `mysubchart` section will be sent to the `mysubchart` chart. So if we run `helm install --dry-run --debug mychart`, one of the things we will see is the `mysubchart` ConfigMap:
 
 ```yaml
 # Source: mychart/charts/mysubchart/templates/configmap.yaml
