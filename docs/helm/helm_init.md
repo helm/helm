@@ -55,6 +55,7 @@ helm init
       --tls-ca-cert string       path to CA root certificate
       --upgrade                  upgrade if Tiller is already installed
       --wait                     block until Tiller is running and ready to receive requests
+      --wait-timeout int         time in seconds to wait for tiller pod readiness (default 300)
 ```
 
 ### Options inherited from parent commands

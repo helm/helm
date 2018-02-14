@@ -300,7 +300,7 @@ func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-ch
 // PingTiller pings the Tiller pod and ensure's that it is up and running
 func (h *Client) PingTiller() error {
 	ctx := NewContext()
-	return h.ping(ctx)
+	return h.pingTiller(ctx)
 }
 
 // connect returns a gRPC connection to Tiller or error. The gRPC dial options
@@ -480,8 +480,8 @@ func (h *Client) test(ctx context.Context, req *rls.TestReleaseRequest) (<-chan 
 	return ch, errc
 }
 
-// Executes tiller.Ping RPC.
-func (h *Client) ping(ctx context.Context) error {
+// Executes tiller.PingTiller RPC.
+func (h *Client) pingTiller(ctx context.Context) error {
 	c, err := h.connect(ctx)
 	if err != nil {
 		return err
@@ -489,5 +489,7 @@ func (h *Client) ping(ctx context.Context) error {
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.PingTiller(ctx)
+	_, err = rlc.PingTiller(ctx, &rls.PingTillerRequest{})
+
+	return err
 }

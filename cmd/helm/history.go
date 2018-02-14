@@ -61,7 +61,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 		Long:    historyHelp,
 		Short:   "fetch release history",
 		Aliases: []string{"hist"},
-		PreRunE: setupConnection,
+		PreRunE: setupConnectionCobraPreRunHook,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch {
 			case len(args) == 0:
