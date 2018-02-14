@@ -46,7 +46,7 @@ func TestInitCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(home)
+	defer os.RemoveAll(home)
 
 	var buf bytes.Buffer
 	fc := fake.NewSimpleClientset()
@@ -80,7 +80,7 @@ func TestInitCmd_exists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(home)
+	defer os.RemoveAll(home)
 
 	var buf bytes.Buffer
 	fc := fake.NewSimpleClientset(&v1beta1.Deployment{
@@ -113,7 +113,7 @@ func TestInitCmd_clientOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(home)
+	defer os.RemoveAll(home)
 
 	var buf bytes.Buffer
 	fc := fake.NewSimpleClientset()
@@ -184,7 +184,7 @@ func TestEnsureHome(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(home)
+	defer os.RemoveAll(home)
 
 	b := bytes.NewBuffer(nil)
 	hh := helmpath.Home(home)
