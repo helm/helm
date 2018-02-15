@@ -154,9 +154,15 @@ func (u *upgradeCmd) run() error {
 		releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
 
 		if err == nil {
+			if u.namespace == "" {
+				u.namespace = defaultNamespace()
+			}
 			previousReleaseNamespace := releaseHistory.Releases[0].Namespace
 			if previousReleaseNamespace != u.namespace {
-				fmt.Fprintf(u.out, "WARNING: Namespace doesn't match with previous. Release will be deployed to %s\n", previousReleaseNamespace)
+				fmt.Fprintf(u.out,
+					"WARNING: Namespace %q doesn't match with previous. Release will be deployed to %s\n",
+					u.namespace, previousReleaseNamespace,
+				)
 			}
 		}
 
