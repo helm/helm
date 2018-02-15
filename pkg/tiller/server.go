@@ -31,7 +31,7 @@ import (
 
 // maxMsgSize use 20MB as the default message size limit.
 // grpc library default is 4MB
-var maxMsgSize = 1024 * 1024 * 20
+const maxMsgSize = 1024 * 1024 * 20
 
 // DefaultServerOpts returns the set of default grpc ServerOption's that Tiller requires.
 func DefaultServerOpts() []grpc.ServerOption {
