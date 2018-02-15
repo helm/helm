@@ -6,7 +6,7 @@ In the "Flow Control" section we introduced three actions for declaring and mana
 
 An important detail to keep in mind when naming templates: **template names are global**. If you declare two templates with the same name, whichever one is loaded last will be the one used. Because templates in subcharts are compiled together with top-level templates, you should be careful to name your templates with _chart-specific names_.
 
-One popular naming convention is to prefix each defined template with the name of the chart: `{{ define "mychart.labels" }}` or `{{ define "mychart_labels" }}`. By using the specific chart name as a prefix we can avoid any conflicts that may arise due to two different charts that implement templates of the same name.
+One popular naming convention is to prefix each defined template with the name of the chart: `{{ define "mychart.labels" }}`. By using the specific chart name as a prefix we can avoid any conflicts that may arise due to two different charts that implement templates of the same name.
 
 ## Partials and `_` files
 
@@ -25,7 +25,7 @@ These files are used to store partials and helpers. In fact, when we first creat
 The `define` action allows us to create a named template inside of a template file. Its syntax goes like this:
 
 ```yaml
-{{ define "MY_NAME" }}
+{{ define "MY.NAME" }}
   # body of template here
 {{ end }}
 ```
@@ -33,7 +33,7 @@ The `define` action allows us to create a named template inside of a template fi
 For example, we can define a template to encapsulate a Kubernetes block of labels:
 
 ```yaml
-{{- define "mychart_labels" }}
+{{- define "mychart.labels" }}
   labels:
     generator: helm
     date: {{ now | htmlDate }}
@@ -43,7 +43,7 @@ For example, we can define a template to encapsulate a Kubernetes block of label
 Now we can embed this template inside of our existing ConfigMap, and then include it with the `template` action:
 
 ```yaml
-{{- define "mychart_labels" }}
+{{- define "mychart.labels" }}
   labels:
     generator: helm
     date: {{ now | htmlDate }}
@@ -52,7 +52,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-configmap
-  {{- template "mychart_labels" }}
+  {{- template "mychart.labels" }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
@@ -60,7 +60,7 @@ data:
   {{- end }}
 ```
 
-When the template engine reads this file, it will store away the reference to `mychart_labels` until `template "mychart_labels"` is called. Then it will render that template inline. So the result will look like this:
+When the template engine reads this file, it will store away the reference to `mychart.labels` until `template "mychart.labels"` is called. Then it will render that template inline. So the result will look like this:
 
 ```yaml
 # Source: mychart/templates/configmap.yaml
@@ -81,7 +81,7 @@ Conventionally, Helm charts put these templates inside of a partials file, usual
 
 ```yaml
 {{/* Generate basic labels */}}
-{{- define "mychart_labels" }}
+{{- define "mychart.labels" }}
   labels:
     generator: helm
     date: {{ now | htmlDate }}
@@ -97,7 +97,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-configmap
-  {{- template "mychart_labels" }}
+  {{- template "mychart.labels" }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
@@ -105,7 +105,7 @@ data:
   {{- end }}
 ```
 
-As mentioned above, **template names are global**. As a result of this, if two templates are declared with the same name the last occurance will be the one that is used. Since templates in subcharts are compiled together with top-level templates, it is best to name your templates with _chart specific names_. A popular naming convention is to prefix each defined template with the name of the chart: `{{ define "mychart.labels" }}` or `{{ define "mychart_labels" }}`.
+As mentioned above, **template names are global**. As a result of this, if two templates are declared with the same name the last occurance will be the one that is used. Since templates in subcharts are compiled together with top-level templates, it is best to name your templates with _chart specific names_. A popular naming convention is to prefix each defined template with the name of the chart: `{{ define "mychart.labels" }}`.
 
 ## Setting the scope of a template
 
@@ -113,7 +113,7 @@ In the template we defined above, we did not use any objects. We just used funct
 
 ```yaml
 {{/* Generate basic labels */}}
-{{- define "mychart_labels" }}
+{{- define "mychart.labels" }}
   labels:
     generator: helm
     date: {{ now | htmlDate }}
@@ -140,7 +140,7 @@ metadata:
 What happened to the name and version? They weren't in the scope for our defined template. When a named template (created with `define`) is rendered, it will receive the scope passed in by the `template` call. In our example, we included the template like this:
 
 ```yaml
-{{- template "mychart_labels" }}
+{{- template "mychart.labels" }}
 ```
 
 No scope was passed in, so within the template we cannot access anything in `.`. This is easy enough to fix, though. We simply pass a scope to the template:
@@ -150,7 +150,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-configmap
-  {{- template "mychart_labels" . }}
+  {{- template "mychart.labels" . }}
 ```
 
 Note that we pass `.` at the end of the `template` call. We could just as easily pass `.Values` or `.Values.favorite` or whatever scope we want. But what we want is the top-level scope.
@@ -177,7 +177,7 @@ Now `{{ .Chart.Name }}` resolves to `mychart`, and `{{ .Chart.Version }}` resolv
 Say we've defined a simple template that looks like this:
 
 ```yaml
-{{- define "mychart_app" -}}
+{{- define "mychart.app" -}}
 app_name: {{ .Chart.Name }}
 app_version: "{{ .Chart.Version }}+{{ .Release.Time.Seconds }}"
 {{- end -}}
@@ -191,13 +191,13 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-configmap
   labels:
-    {{ template "mychart_app" .}}
+    {{ template "mychart.app" .}}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
-  {{ template "mychart_app" . }}
+  {{ template "mychart.app" . }}
 ```
 
 The output will not be what we expect:
@@ -231,13 +231,13 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-configmap
   labels:
-{{ include "mychart_app" . | indent 4 }}
+{{ include "mychart.app" . | indent 4 }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
-{{ include "mychart_app" . | indent 2 }}
+{{ include "mychart.app" . | indent 2 }}
 ```
 
 Now the produced YAML is correctly indented for each section:
