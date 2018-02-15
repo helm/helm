@@ -30,6 +30,10 @@ import (
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
+// maxMsgSize use 20MB as the default message size limit.
+// grpc library default is 4MB
+const maxMsgSize = 1024 * 1024 * 20
+
 // Client manages client side of the Helm-Tiller protocol.
 type Client struct {
 	opts options
@@ -310,6 +314,7 @@ func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error)
 			// getting closed by upstreams
 			Time: time.Duration(30) * time.Second,
 		}),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
 	}
 	switch {
 	case h.opts.useTLS:
