@@ -307,7 +307,6 @@ func (h *Client) PingTiller() error {
 // are constructed here.
 func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error) {
 	opts := []grpc.DialOption{
-		grpc.WithTimeout(5 * time.Second),
 		grpc.WithBlock(),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			// Send keepalive every 30 seconds to prevent the connection from
@@ -322,7 +321,9 @@ func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error)
 	default:
 		opts = append(opts, grpc.WithInsecure())
 	}
-	if conn, err = grpc.Dial(h.opts.host, opts...); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if conn, err = grpc.DialContext(ctx, h.opts.host, opts...); err != nil {
 		return nil, err
 	}
 	return conn, nil
