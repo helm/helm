@@ -165,7 +165,7 @@ message GetReleaseStatusResponse {
 	// Info contains information about the release.
 	hapi.release.Info info = 2;
 
-  // Namesapce the release was released into
+  // Namespace the release was released into
   string namespace = 3;
 }
 
