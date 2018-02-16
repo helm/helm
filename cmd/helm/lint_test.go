@@ -21,11 +21,13 @@ import (
 )
 
 var (
-	values            = []byte{}
-	namespace         = "testNamespace"
-	strict            = false
-	archivedChartPath = "testdata/testcharts/compressedchart-0.1.0.tgz"
-	chartDirPath      = "testdata/testcharts/decompressedchart/"
+	values                       = []byte{}
+	namespace                    = "testNamespace"
+	strict                       = false
+	archivedChartPath            = "testdata/testcharts/compressedchart-0.1.0.tgz"
+	archivedChartPathWithHyphens = "testdata/testcharts/compressedchart-with-hyphens-0.1.0.tgz"
+	invalidArchivedChartPath     = "testdata/testcharts/invalidcompressedchart0.1.0.tgz"
+	chartDirPath                 = "testdata/testcharts/decompressedchart/"
 )
 
 func TestLintChart(t *testing.T) {
@@ -37,4 +39,11 @@ func TestLintChart(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
+	if _, err := lintChart(archivedChartPathWithHyphens, values, namespace, strict); err != nil {
+		t.Errorf("%s", err)
+	}
+
+	if _, err := lintChart(invalidArchivedChartPath, values, namespace, strict); err == nil {
+		t.Errorf("Expected a chart parsing error")
+	}
 }

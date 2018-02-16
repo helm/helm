@@ -149,7 +149,11 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 			return linter, err
 		}
 
-		base := strings.Split(filepath.Base(path), "-")[0]
+		lastHyphenIndex := strings.LastIndex(filepath.Base(path), "-")
+		if lastHyphenIndex <= 0 {
+			return linter, fmt.Errorf("unable to parse chart archive %q, missing '-'", filepath.Base(path))
+		}
+		base := filepath.Base(path)[:lastHyphenIndex]
 		chartPath = filepath.Join(tempDir, base)
 	} else {
 		chartPath = path
