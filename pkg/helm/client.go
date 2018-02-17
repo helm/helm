@@ -310,6 +310,7 @@ func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error)
 			// getting closed by upstreams
 			Time: time.Duration(30) * time.Second,
 		}),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024 * 1024 * 20)),
 	}
 	switch {
 	case h.opts.useTLS:
