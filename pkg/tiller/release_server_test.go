@@ -19,6 +19,7 @@ package tiller
 import (
 	"errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"testing"
@@ -284,7 +285,7 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 func MockEnvironment() *environment.Environment {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())
-	e.KubeClient = &environment.PrintingKubeClient{Out: os.Stdout}
+	e.KubeClient = &environment.PrintingKubeClient{Out: ioutil.Discard}
 	return e
 }
 
@@ -305,7 +306,7 @@ func (u *updateFailingKubeClient) Update(namespace string, originalReader, modif
 
 func newHookFailingKubeClient() *hookFailingKubeClient {
 	return &hookFailingKubeClient{
-		PrintingKubeClient: environment.PrintingKubeClient{Out: os.Stdout},
+		PrintingKubeClient: environment.PrintingKubeClient{Out: ioutil.Discard},
 	}
 }
 
