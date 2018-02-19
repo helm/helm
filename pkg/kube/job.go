@@ -121,9 +121,9 @@ func (pod *PodWatchMonitor) RefreshManifest() error {
 }
 
 func (pod *PodWatchMonitor) GetReadyCondition() (res *core.PodCondition) {
-	for _, podCondition := range pod.Manifest.Status.Conditions {
-		if podCondition.Type == "Ready" {
-			res = &podCondition
+	for i, _ := range pod.Manifest.Status.Conditions {
+		if pod.Manifest.Status.Conditions[i].Type == "Ready" {
+			res = &pod.Manifest.Status.Conditions[i]
 			break
 		}
 	}
@@ -131,9 +131,9 @@ func (pod *PodWatchMonitor) GetReadyCondition() (res *core.PodCondition) {
 }
 
 func (pod *PodWatchMonitor) GetInitContainerStatus(containerName string) (res *core.ContainerStatus) {
-	for _, containerStatus := range pod.Manifest.Status.ContainerStatuses {
-		if containerStatus.Name == containerName {
-			res = &containerStatus
+	for i, _ := range pod.Manifest.Status.InitContainerStatuses {
+		if pod.Manifest.Status.InitContainerStatuses[i].Name == containerName {
+			res = &pod.Manifest.Status.InitContainerStatuses[i]
 			break
 		}
 	}
@@ -141,9 +141,9 @@ func (pod *PodWatchMonitor) GetInitContainerStatus(containerName string) (res *c
 }
 
 func (pod *PodWatchMonitor) GetContainerStatus(containerName string) (res *core.ContainerStatus) {
-	for _, containerStatus := range pod.Manifest.Status.ContainerStatuses {
-		if containerStatus.Name == containerName {
-			res = &containerStatus
+	for i, _ := range pod.Manifest.Status.ContainerStatuses {
+		if pod.Manifest.Status.ContainerStatuses[i].Name == containerName {
+			res = &pod.Manifest.Status.ContainerStatuses[i]
 			break
 		}
 	}
