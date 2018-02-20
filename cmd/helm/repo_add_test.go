@@ -36,7 +36,7 @@ func TestRepoAddCmd(t *testing.T) {
 	cleanup := resetEnv()
 	defer func() {
 		srv.Stop()
-		os.Remove(thome.String())
+		os.RemoveAll(thome.String())
 		cleanup()
 	}()
 	if err := ensureTestHome(thome, t); err != nil {
@@ -72,7 +72,7 @@ func TestRepoAdd(t *testing.T) {
 	hh := thome
 	defer func() {
 		ts.Stop()
-		os.Remove(thome.String())
+		os.RemoveAll(thome.String())
 		cleanup()
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
