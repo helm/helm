@@ -75,7 +75,7 @@ func TestUpdateCharts(t *testing.T) {
 	cleanup := resetEnv()
 	defer func() {
 		ts.Stop()
-		os.Remove(thome.String())
+		os.RemoveAll(thome.String())
 		cleanup()
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
