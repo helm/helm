@@ -2,21 +2,44 @@ package kube
 
 import (
 	"bytes"
-	_ "fmt"
+	"fmt"
 	"io"
-	"sort"
+	_ "sort"
 	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/fields"
+	_ "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 )
 
+var (
+	WatchFeedStub = &WatchFeedProto{
+		WriteJobLogChunkFunc: func(JobLogChunk) error { return nil },
+		WriteJobPodErrorFunc: func(JobPodError) error { return nil },
+	}
+)
+
 type WatchFeed interface {
-	WriteJobLogChunk(*JobLogChunk) error
+	WriteJobLogChunk(JobLogChunk) error
+	WriteJobPodError(JobPodError) error
+}
+
+// Prototype-struct helper to create feed with callbacks specified in-place of creation (such as WatchFeedStub var)
+type WatchFeedProto struct {
+	WriteJobLogChunkFunc func(JobLogChunk) error
+	WriteJobPodErrorFunc func(JobPodError) error
+}
+
+func (proto *WatchFeedProto) WriteJobLogChunk(arg JobLogChunk) error {
+	return proto.WriteJobLogChunkFunc(arg)
+}
+func (proto *WatchFeedProto) WriteJobPodError(arg JobPodError) error {
+	return proto.WriteJobPodErrorFunc(arg)
 }
 
 type LogLine struct {
@@ -24,217 +47,325 @@ type LogLine struct {
 	Data      string
 }
 
-type JobLogChunk struct {
-	JobName       string
+type PodLogChunk struct {
 	PodName       string
 	ContainerName string
 	LogLines      []LogLine
 }
 
-type WriteJobLogChunkFunc func(*JobLogChunk) error
+type PodError struct {
+	Message       string
+	PodName       string
+	ContainerName string
+}
 
-func (f WriteJobLogChunkFunc) WriteJobLogChunk(chunk *JobLogChunk) error {
-	return f(chunk)
+type JobLogChunk struct {
+	PodLogChunk
+	JobName string
+}
+
+type JobPodError struct {
+	PodError
+	JobName string
 }
 
 type WatchMonitor struct {
-	kube      *Client
-	timeout   time.Duration
-	watchFeed WatchFeed
+	Kube    *Client
+	Timeout time.Duration
 
-	Namespace    string
-	ResourceName string
-	UID          types.UID
+	Namespace              string
+	ResourceName           string
+	InitialResourceVersion string
 }
 
 type PodWatchMonitor struct {
 	WatchMonitor
 
-	Manifest *core.Pod
+	PodLogChunk chan *PodLogChunk
+	PodError    chan PodError
+	Error       chan error
 
-	InitContainersNames          []string
-	ProcessedInitContainersNames []string
-	ProcessedInitContainersIDs   []string
+	ContainerMonitorStates          map[string]string
+	ProcessedContainerLogTimestamps map[string]time.Time
 
-	ContainersNames          []string
-	ProcessedContainersNames []string
-	ProcessedContainersIDs   []string
+	InitContainersNames []string
+	ContainersNames     []string
 }
 
-func (pod *PodWatchMonitor) GetMonitoredContainersNames() []string {
-	res := make([]string, 0)
-
-FilterProcessedContainersNames:
-	for _, name := range pod.ContainersNames {
-		for _, processedContainerName := range pod.ProcessedContainersNames {
-			if processedContainerName == name {
-				continue FilterProcessedContainersNames
-			}
-		}
-		res = append(res, name)
-	}
-
-	return res
-}
-
-func (pod *PodWatchMonitor) SetContainerProcessed(containerName string, containerID string) {
-	pod.ProcessedContainersNames = append(pod.ProcessedContainersNames, containerName)
-	pod.ProcessedContainersIDs = append(pod.ProcessedContainersIDs, containerID)
-}
-
-func (pod *PodWatchMonitor) GetMonitoredInitContainersNames() []string {
-	res := make([]string, 0)
-
-FilterProcessedInitContainersNames:
-	for _, name := range pod.InitContainersNames {
-		for _, processedInitContainerName := range pod.ProcessedInitContainersNames {
-			if processedInitContainerName == name {
-				continue FilterProcessedInitContainersNames
-			}
-		}
-		res = append(res, name)
-	}
-
-	return res
-}
-
-func (pod *PodWatchMonitor) SetInitContainerProcessed(containerName string, containerID string) {
-	pod.ProcessedInitContainersNames = append(pod.ProcessedInitContainersNames, containerName)
-	pod.ProcessedInitContainersIDs = append(pod.ProcessedInitContainersIDs, containerID)
-}
-
-func (pod *PodWatchMonitor) RefreshManifest() error {
-	client, err := pod.kube.ClientSet()
+func (pod *PodWatchMonitor) FollowContainerLogs(containerName string) error {
+	client, err := pod.Kube.ClientSet()
 	if err != nil {
 		return err
 	}
 
-	manifest, err := client.Core().
-		Pods(pod.Namespace).
-		Get(pod.ResourceName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	pod.Manifest = manifest
-
-	return nil
-}
-
-func (pod *PodWatchMonitor) GetReadyCondition() (res *core.PodCondition) {
-	for i, _ := range pod.Manifest.Status.Conditions {
-		if pod.Manifest.Status.Conditions[i].Type == "Ready" {
-			res = &pod.Manifest.Status.Conditions[i]
-			break
-		}
-	}
-	return
-}
-
-func (pod *PodWatchMonitor) GetInitContainerStatus(containerName string) (res *core.ContainerStatus) {
-	for i, _ := range pod.Manifest.Status.InitContainerStatuses {
-		if pod.Manifest.Status.InitContainerStatuses[i].Name == containerName {
-			res = &pod.Manifest.Status.InitContainerStatuses[i]
-			break
-		}
-	}
-	return
-}
-
-func (pod *PodWatchMonitor) GetContainerStatus(containerName string) (res *core.ContainerStatus) {
-	for i, _ := range pod.Manifest.Status.ContainerStatuses {
-		if pod.Manifest.Status.ContainerStatuses[i].Name == containerName {
-			res = &pod.Manifest.Status.ContainerStatuses[i]
-			break
-		}
-	}
-	return
-}
-
-func (pod *PodWatchMonitor) GetContainerLogs(containerName string) ([]LogLine, error) {
-	client, err := pod.kube.ClientSet()
-	if err != nil {
-		return nil, err
-	}
+	// var sinceTime *metav1.Time
+	// if v, found := pod.ProcessedContainerLogTimestamps[containerName]; found {
+	// 	sinceTime = &metav1.Time{v}
+	// }
 
 	req := client.Core().
 		Pods(pod.Namespace).
 		GetLogs(pod.ResourceName, &core.PodLogOptions{
 			Container:  containerName,
 			Timestamps: true,
+			Follow:     true,
 		})
 
 	readCloser, err := req.Stream()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer readCloser.Close()
 
-	buf := bytes.Buffer{}
-	_, err = io.Copy(&buf, readCloser)
+	lineBuf := bytes.Buffer{}
+	rawBuf := make([]byte, 4096)
 
-	res := make([]LogLine, 0)
-	for _, line := range strings.Split(strings.TrimSuffix(buf.String(), "\n"), "\n") {
-		lineParts := strings.SplitN(line, " ", 2)
-		// TODO: receive only new log lines, save state into PodWatchMonitor
-		if len(lineParts) == 2 {
-			ll := LogLine{
-				Timestamp: lineParts[0],
-				Data:      lineParts[1],
+	for {
+		n, err := readCloser.Read(rawBuf)
+		if err != nil && err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		chunkLines := make([]LogLine, 0)
+		for i := 0; i < n; i++ {
+			if rawBuf[i] == '\n' {
+				lineParts := strings.SplitN(lineBuf.String(), " ", 2)
+				if len(lineParts) == 2 {
+					chunkLines = append(chunkLines, LogLine{Timestamp: lineParts[0], Data: lineParts[1]})
+				}
+
+				lineBuf.Reset()
+				continue
 			}
-			res = append(res, ll)
+
+			lineBuf.WriteByte(rawBuf[i])
+		}
+
+		pod.PodLogChunk <- &PodLogChunk{
+			PodName:       pod.ResourceName,
+			ContainerName: containerName,
+			LogLines:      chunkLines,
 		}
 	}
 
-	return res, nil
+	return nil
+
+	// buf := bytes.Buffer{}
+	// _, err = io.Copy(&buf, readCloser)
+
+	// lines := strings.Split(strings.TrimSuffix(buf.String(), "\n"), "\n")
+
+	// res := make([]LogLine, 0)
+	// for _, line := range lines {
+	// 	lineParts := strings.SplitN(line, " ", 2)
+	// 	if len(lineParts) == 2 {
+	// 		ll := LogLine{
+	// 			Timestamp: lineParts[0],
+	// 			Data:      lineParts[1],
+	// 		}
+	// 		res = append(res, ll)
+	// 		pod.Kube.Log(">>> %s", ll)
+	// 	}
+	// }
+
+	// if len(res) > 0 {
+	// 	t, err := time.Parse(time.RFC3339, res[len(res)-1].Timestamp)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	pod.ProcessedContainerLogTimestamps[containerName] = t
+	// }
+
+	// logLines, err := pod.GetContainerLogs(containerName)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// pod.PodLogChunk <- &PodLogChunk{
+	// 	PodName:       pod.ResourceName,
+	// 	ContainerName: containerName,
+	// 	LogLines:      logLines,
+	// }
+
+	// return res, nil
+}
+
+func (pod *PodWatchMonitor) WatchContainerLogs(containerName string) error {
+	for {
+		for _, containerName := range pod.ContainersNames {
+			switch pod.ContainerMonitorStates[containerName] {
+			case "Running", "Terminated":
+				return pod.FollowContainerLogs(containerName)
+			case "Waiting":
+			default:
+			}
+		}
+		time.Sleep(time.Duration(200) * time.Millisecond)
+	}
+
+	return nil
+}
+
+func (pod *PodWatchMonitor) Watch() error {
+	for _, containerName := range pod.ContainersNames {
+		go func() {
+			err := pod.WatchContainerLogs(containerName)
+			if err != nil {
+				pod.Error <- err
+			}
+		}()
+	}
+
+	client, err := pod.Kube.ClientSet()
+	if err != nil {
+		return err
+	}
+
+	watcher, err := client.Core().Pods(pod.Namespace).
+		Watch(metav1.ListOptions{
+			ResourceVersion: pod.InitialResourceVersion,
+			Watch:           true,
+			FieldSelector:   fields.OneTermEqualSelector("metadata.name", pod.ResourceName).String(),
+		})
+	if err != nil {
+		return err
+	}
+
+	_, err = watch.Until(pod.Timeout, watcher, func(e watch.Event) (bool, error) {
+		pod.Kube.Log("[DEBUG] Pod %s event: %+v", pod.ResourceName, e)
+
+		object, ok := e.Object.(*core.Pod)
+		if !ok {
+			return true, fmt.Errorf("Expected %s to be a *core.Pod, got %T", pod.ResourceName, e.Object)
+		}
+
+		for _, cs := range object.Status.ContainerStatuses {
+			oldState := pod.ContainerMonitorStates[cs.Name]
+
+			if cs.State.Waiting != nil {
+				pod.ContainerMonitorStates[cs.Name] = "Waiting"
+
+				switch cs.State.Waiting.Reason {
+				case "ImagePullBackOff", "ErrImagePull", "CrashLoopBackOff":
+					pod.PodError <- PodError{
+						ContainerName: cs.Name,
+						PodName:       pod.ResourceName,
+						Message:       fmt.Sprintf("%s: %s", cs.State.Waiting.Reason, cs.State.Waiting.Message),
+					}
+				}
+			}
+			if cs.State.Running != nil {
+				pod.ContainerMonitorStates[cs.Name] = "Running"
+			}
+			if cs.State.Terminated != nil {
+				pod.ContainerMonitorStates[cs.Name] = "Running"
+			}
+
+			if oldState != pod.ContainerMonitorStates[cs.Name] {
+				pod.Kube.Log("Pod %s container %s state changed %v -> %v", pod.ResourceName, cs.Name, oldState, pod.ContainerMonitorStates[cs.Name])
+			}
+		}
+
+		return false, nil
+	})
+
+	return nil
 }
 
 type JobWatchMonitor struct {
 	WatchMonitor
 
-	MonitoredPodsQueue []*PodWatchMonitor
-	ProcessedPodsUIDs  []types.UID
+	State string
+
+	Started     chan bool
+	Succeeded   chan bool
+	Error       chan error
+	AddedPod    chan *PodWatchMonitor
+	PodLogChunk chan *PodLogChunk
+	PodError    chan PodError
+
+	MonitoredPods []*PodWatchMonitor
 }
 
-func (job *JobWatchMonitor) WaitTillResourceVersionAdded(resourceVersion string, jobInfo *resource.Info) error {
-	w, err := resource.
-		NewHelper(jobInfo.Client, jobInfo.Mapping).
-		WatchSingle(job.Namespace, job.ResourceName, resourceVersion)
+func (job *JobWatchMonitor) Watch() error {
+	client, err := job.Kube.ClientSet()
 	if err != nil {
 		return err
 	}
 
-	_, err = watch.Until(job.timeout, w, func(e watch.Event) (bool, error) {
-		if e.Type == watch.Added {
-			return true, nil
+	watcher, err := client.Batch().Jobs(job.Namespace).
+		Watch(metav1.ListOptions{
+			ResourceVersion: job.InitialResourceVersion,
+			Watch:           true,
+			FieldSelector:   fields.OneTermEqualSelector("metadata.name", job.ResourceName).String(),
+		})
+	if err != nil {
+		return err
+	}
+
+	_, err = watch.Until(job.Timeout, watcher, func(e watch.Event) (bool, error) {
+		job.Kube.Log("[DEBUG] Job %s event: %+v", job.ResourceName, e)
+
+		switch job.State {
+		case "":
+			if e.Type == watch.Added {
+				job.Started <- true
+
+				oldState := job.State
+				job.State = "Started"
+				job.Kube.Log("[DEBUG] Job %s watcher state changed %v -> %v", job.ResourceName, oldState, job.State)
+
+				job.Kube.Log("[DEBUG] Starting job %s pods watcher", job.ResourceName)
+				go func() {
+					err := job.WatchPods()
+					if err != nil {
+						job.Error <- err
+					}
+				}()
+			}
+
+		case "Started":
+			object, ok := e.Object.(*batch.Job)
+			if !ok {
+				return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", job.ResourceName, e.Object)
+			}
+
+			for _, c := range object.Status.Conditions {
+				if c.Type == batch.JobComplete && c.Status == core.ConditionTrue {
+					oldState := job.State
+					job.State = "Succeeded"
+					job.Kube.Log("[DEBUG] Job %s watcher state changed %v -> %v", job.ResourceName, oldState, job.State)
+
+					job.Kube.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", job.ResourceName, object.Status.Active, object.Status.Failed, object.Status.Succeeded)
+
+					return true, nil
+				} else if c.Type == batch.JobFailed && c.Status == core.ConditionTrue {
+					oldState := job.State
+					job.State = "Failed"
+					job.Kube.Log("[DEBUG] Job %s watcher state changed %v -> %v", job.ResourceName, oldState, job.State)
+
+					return true, fmt.Errorf("Job failed: %s", c.Reason)
+				}
+			}
+
+		default:
+			return true, fmt.Errorf("Unknown job %s watcher state: %s", job.ResourceName, job.State)
 		}
+
 		return false, nil
 	})
 
-	return err
-}
-
-func (job *JobWatchMonitor) TakeNextMonitoredPod() *PodWatchMonitor {
-	if len(job.MonitoredPodsQueue) == 0 {
-		return nil
+	if err != nil {
+		return err
 	}
 
-	var res *PodWatchMonitor
-	res, job.MonitoredPodsQueue = job.MonitoredPodsQueue[0], job.MonitoredPodsQueue[1:]
-	return res
+	return nil
 }
 
-func (job *JobWatchMonitor) SetPodProcessed(uid types.UID) {
-	job.ProcessedPodsUIDs = append(job.ProcessedPodsUIDs, uid)
-}
-
-func (job *JobWatchMonitor) SchedulePodMonitoring(pod *PodWatchMonitor) {
-	job.MonitoredPodsQueue = append(job.MonitoredPodsQueue, pod)
-}
-
-func (job *JobWatchMonitor) RefreshMonitoredPods() error {
-	job.kube.Log("RefreshMonitoredPods") // TODO: remove
-
-	client, err := job.kube.ClientSet()
+func (job *JobWatchMonitor) WatchPods() error {
+	client, err := job.Kube.ClientSet()
 	if err != nil {
 		return err
 	}
@@ -245,231 +376,77 @@ func (job *JobWatchMonitor) RefreshMonitoredPods() error {
 	if err != nil {
 		return err
 	}
-	job.kube.Log("jobManifest: %+v", jobManifest) // TODO: remove
 
 	selector, err := metav1.LabelSelectorAsSelector(jobManifest.Spec.Selector)
 	if err != nil {
 		return err
 	}
 
-	podList, err := client.Core().
+	podListWatcher, err := client.Core().
 		Pods(job.Namespace).
-		List(metav1.ListOptions{LabelSelector: selector.String()})
+		Watch(metav1.ListOptions{
+			Watch:         true,
+			LabelSelector: selector.String(),
+		})
 	if err != nil {
 		return err
 	}
-	job.kube.Log("podList: %+v", podList) // TODO: remove
 
-	// TODO filter out pods that does not belong to controller-uid=job-uid
+	// TODO calculate timeout since job-watch started
+	_, err = watch.Until(job.Timeout, podListWatcher, func(e watch.Event) (bool, error) {
+		job.Kube.Log("[DEBUG] Job %s pods list event: %+v", job.ResourceName, e)
 
-	// Add new pods to monitor queue in chronological order by creation timestamp
-	podItems := make([]core.Pod, 0)
-	for _, item := range podList.Items {
-		podItems = append(podItems, item)
-	}
-	sort.Slice(podItems, func(i, j int) bool {
-		return podItems[i].CreationTimestamp.Time.Before(podItems[j].CreationTimestamp.Time)
-	})
-
-searchNewPods:
-	for _, item := range podItems {
-		// filter out under processing
-		for _, monitoredPod := range job.MonitoredPodsQueue {
-			// TODO is there a need to check resource-version change?
-			if monitoredPod.UID == item.UID {
-				continue searchNewPods
-			}
+		podObject, ok := e.Object.(*core.Pod)
+		if !ok {
+			return true, fmt.Errorf("Expected %s to be a *core.Pod, got %T", job.ResourceName, e.Object)
 		}
-		// filter out already processed
-		for _, processedPodUID := range job.ProcessedPodsUIDs {
-			if processedPodUID == item.UID {
-				continue searchNewPods
+
+		for _, pod := range job.MonitoredPods {
+			if pod.ResourceName == podObject.Name {
+				// Already under monitoring
+				return false, nil
 			}
 		}
 
+		// TODO constructor from job & podObject
 		pod := &PodWatchMonitor{
 			WatchMonitor: WatchMonitor{
-				kube:      job.kube,
-				timeout:   job.timeout,
-				watchFeed: job.watchFeed,
+				Kube:    job.Kube,
+				Timeout: job.Timeout,
 
-				Namespace:    job.Namespace,
-				ResourceName: item.Name,
-				UID:          item.UID,
+				Namespace:              job.Namespace,
+				ResourceName:           podObject.Name,
+				InitialResourceVersion: "",
 			},
+
+			PodLogChunk: job.PodLogChunk,
+			PodError:    job.PodError,
+			Error:       job.Error,
+
+			ContainerMonitorStates:          make(map[string]string),
+			ProcessedContainerLogTimestamps: make(map[string]time.Time),
 		}
-		if err = pod.RefreshManifest(); err != nil {
-			return err
-		}
-		for _, containerConf := range pod.Manifest.Spec.InitContainers {
+
+		for _, containerConf := range podObject.Spec.InitContainers {
 			pod.InitContainersNames = append(pod.InitContainersNames, containerConf.Name)
 		}
-		for _, containerConf := range pod.Manifest.Spec.Containers {
+		for _, containerConf := range podObject.Spec.Containers {
 			pod.ContainersNames = append(pod.ContainersNames, containerConf.Name)
 		}
 
-		job.MonitoredPodsQueue = append(job.MonitoredPodsQueue, pod)
-	}
+		job.MonitoredPods = append(job.MonitoredPods, pod)
 
-	job.kube.Log("RefreshMonitoredPods done: MonitoredPodsQueue: %+v", job.MonitoredPodsQueue) // TODO: remove
-
-	return nil
-}
-
-func (c *Client) watchJobTillDone(jobInfo *resource.Info, watchFeed WatchFeed, timeout time.Duration) error {
-	if jobInfo.Mapping.GroupVersionKind.Kind != "Job" {
-		return nil
-	}
-
-	uid, err := jobInfo.Mapping.UID(jobInfo.Object)
-	if err != nil {
-		return err
-	}
-
-	job := &JobWatchMonitor{
-		WatchMonitor: WatchMonitor{
-			kube:      c,
-			timeout:   timeout,
-			watchFeed: watchFeed,
-
-			Namespace:    jobInfo.Namespace,
-			ResourceName: jobInfo.Name,
-			UID:          uid,
-		},
-	}
-
-	if err := job.WaitTillResourceVersionAdded(jobInfo.ResourceVersion, jobInfo); err != nil {
-		return err // TODO
-	}
-
-	if err = job.RefreshMonitoredPods(); err != nil {
-		return err // TODO
-	}
-
-	var processPod *PodWatchMonitor
-
-	// TODO: split method into corresponding functions
-
-TakeNextMonitoredPod:
-	for {
-		if processPod = job.TakeNextMonitoredPod(); processPod == nil {
-			break
-		}
-
-		if err := processPod.RefreshManifest(); err != nil {
-			c.Log("Pod %s refresh manifest failed: %s", processPod.ResourceName, err)
-			// TODO stream system-error to feed
-			job.SetPodProcessed(processPod.UID)
-			continue TakeNextMonitoredPod
-		}
-
-		c.Log("Pod manifest refreshed, ResourceVersion: %s", processPod.Manifest.ResourceVersion)
-
-		if processPod.Manifest.Status.Phase == core.PodPending {
-			c.Log("Pod %s is in PENDING state", processPod.ResourceName)
-
-			if podReadyCondition := processPod.GetReadyCondition(); podReadyCondition != nil {
-				c.Log("Pod %s ready condition: %+v", processPod.ResourceName, podReadyCondition)
-				if podReadyCondition.Status != core.ConditionTrue {
-					// TODO: init-containers-statuses
-					for _, containerStatus := range processPod.Manifest.Status.ContainerStatuses {
-						if containerStatus.Ready {
-							continue
-						}
-						if containerStatus.State.Waiting != nil {
-							c.Log("Pod %s container %s is in waiting state: %s: %s", processPod.ResourceName, containerStatus.Name, containerStatus.State.Waiting.Reason, containerStatus.State.Waiting.Message)
-
-							switch containerStatus.State.Waiting.Reason {
-							case "ImagePullBackOff", "ErrImagePull":
-								// TODO stream bad_image user-error
-								processPod.SetContainerProcessed(containerStatus.Name, containerStatus.ContainerID)
-							case "CrashLoopBackOff":
-								// TODO stream container_crash user-error
-								processPod.SetContainerProcessed(containerStatus.Name, containerStatus.ContainerID)
-							}
-						}
-						if containerStatus.State.Terminated != nil {
-							// TODO dig more, think more.
-							// TODO not necessary because in that container state we still able to reach containers logs
-							// TODO what about failed state? we should stream user-error about incorrectly terminated container
-							// TODO init-container should be finally terminated in normal situation
-							// TODO that error should follow logs and not preceede them
-							// TODO so it is needed to move that if into after send-logs-for-container section
-
-							c.Log("Pod %s container %s (%s) is in terminated state: %s: %s", processPod.ResourceName, containerStatus.Name, containerStatus.State.Terminated.ContainerID, containerStatus.State.Terminated.Reason, containerStatus.State.Terminated.Message)
-							processPod.SetContainerProcessed(containerStatus.Name, containerStatus.ContainerID)
-						}
-					}
-
-					job.SchedulePodMonitoring(processPod)
-					time.Sleep(time.Duration(1) * time.Second) // TODO remove this
-					continue TakeNextMonitoredPod
-					// TODO: fetch state and stream to feed userspace-error
-				}
-			}
-		}
-
-		// TODO: init-containers
-
-	ProcessContainers:
-		for _, containerName := range processPod.GetMonitoredContainersNames() {
-			c.Log("Process pod %s container %s", processPod.ResourceName, containerName)
-			if containerStatus := processPod.GetContainerStatus(containerName); containerStatus != nil {
-				c.Log("Process pod %s container %s status: %+v", processPod.ResourceName, containerName, containerStatus)
-				if containerStatus.State.Waiting != nil {
-					if containerStatus.State.Waiting.Reason == "RunContainerError" {
-						// TODO: stream userspace-error container_stuck to watch feed
-						processPod.SetContainerProcessed(containerName, containerStatus.ContainerID)
-						continue ProcessContainers
-					}
-				}
-			} else {
-				c.Log("Process pod %s container %s status not available", processPod.ResourceName, containerName)
-			}
-
-			logLines, err := processPod.GetContainerLogs(containerName)
+		go func() {
+			err := pod.Watch()
 			if err != nil {
-				c.Log("Error getting job %s pod %s container %s log chunk: %s", job.ResourceName, processPod.ResourceName, containerName, err)
+				job.Error <- err
 			}
+		}()
 
-			chunk := &JobLogChunk{
-				JobName:       job.ResourceName,
-				PodName:       processPod.ResourceName,
-				ContainerName: containerName,
-				LogLines:      logLines,
-			}
-			if err = job.watchFeed.WriteJobLogChunk(chunk); err != nil {
-				c.Log("Error writing job %s pod %s container %s log chunk to watch feed: %s", chunk.JobName, chunk.PodName, chunk.ContainerName, err)
-			}
-		}
+		job.AddedPod <- pod
 
-		if len(processPod.GetMonitoredContainersNames()) > 0 {
-			job.SchedulePodMonitoring(processPod)
-		}
-
-		time.Sleep(time.Duration(1) * time.Second) // TODO: show logs flawlessly without any suspension if there is something to show, also use ticker
-	}
-
-	// TODO: wait till job done event
-	// TODO: make refresh for pods while waiting: job.RefreshMonitoredPods()
-	// TODO: it is not necessary to refresh list on every tick
-
-	// TODO: add following event watch before ending this function
-	// 	switch e.Type {
-	// 	case watch.Added, watch.Modified:
-	// 		c.Log("o = %v", o)
-	// 		c.Log("o.Status = %v", o.Status)
-	// 		c.Log("o.Status.Conditions = %v", o.Status.Conditions)
-	// 		for _, c := range o.Status.Conditions {
-	// 			if c.Type == batchinternal.JobComplete && c.Status == core.ConditionTrue {
-	// 				return true, nil
-	// 			} else if c.Type == batchinternal.JobFailed && c.Status == core.ConditionTrue {
-	// 				return true, fmt.Errorf("Job failed: %s", c.Reason)
-	// 			}
-	// 		}
-	// 		c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", jobInfo.Name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
-	// 		return false, nil
-	// 	}
+		return false, nil
+	})
 
 	return nil
 }
@@ -483,4 +460,62 @@ func (c *Client) WatchJobsTillDone(namespace string, reader io.Reader, watchFeed
 	return perform(infos, func(info *resource.Info) error {
 		return c.watchJobTillDone(info, watchFeed, timeout)
 	})
+}
+
+func (c *Client) watchJobTillDone(jobInfo *resource.Info, watchFeed WatchFeed, timeout time.Duration) error {
+	if jobInfo.Mapping.GroupVersionKind.Kind != "Job" {
+		return nil
+	}
+
+	// TODO: constructor
+	job := &JobWatchMonitor{
+		WatchMonitor: WatchMonitor{
+			Kube:    c,
+			Timeout: timeout,
+
+			Namespace:              jobInfo.Namespace,
+			ResourceName:           jobInfo.Name,
+			InitialResourceVersion: jobInfo.ResourceVersion,
+		},
+
+		Started:     make(chan bool, 0),
+		Succeeded:   make(chan bool, 0),
+		AddedPod:    make(chan *PodWatchMonitor, 10),
+		PodLogChunk: make(chan *PodLogChunk, 1000),
+
+		PodError: make(chan PodError, 0),
+		Error:    make(chan error, 0),
+	}
+
+	c.Log("[DEBUG] Starting job %s watcher", job.ResourceName)
+	go func() {
+		err := job.Watch()
+		if err != nil {
+			job.Error <- err
+		}
+	}()
+
+	for {
+		select {
+		case <-job.Started:
+			c.Log("Job %s started", job.ResourceName)
+			// TODO watchFeed
+		case <-job.Succeeded:
+			return nil
+		case err := <-job.Error:
+			return err
+		case pod := <-job.AddedPod:
+			c.Log("Job %s pod %s added", job.ResourceName, pod.ResourceName)
+		case podLogChunk := <-job.PodLogChunk:
+			watchFeed.WriteJobLogChunk(JobLogChunk{
+				PodLogChunk: *podLogChunk,
+				JobName:     job.ResourceName,
+			})
+		case podError := <-job.PodError:
+			watchFeed.WriteJobPodError(JobPodError{
+				JobName:  job.ResourceName,
+				PodError: podError,
+			})
+		}
+	}
 }

@@ -191,28 +191,47 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 
 	// pre-install hooks
 	if !req.DisableHooks {
-		handleLogChunk := kube.WriteJobLogChunkFunc(func(chunk *kube.JobLogChunk) error {
-			chunkResp := &services.InstallReleaseResponse{
-				WatchFeed: &release.WatchFeed{
-					JobLogChunk: &release.JobLogChunk{},
-				},
-			}
-			chunkResp.WatchFeed.JobLogChunk.LogLines = make([]*release.LogLine, 0)
-
-			for _, line := range chunk.LogLines {
-				ll := &release.LogLine{
-					Timestamp: line.Timestamp,
-					Data:      line.Data,
+		watchFeed := &kube.WatchFeedProto{
+			WriteJobLogChunkFunc: func(chunk kube.JobLogChunk) error {
+				chunkResp := &services.InstallReleaseResponse{
+					WatchFeed: &release.WatchFeed{
+						JobLogChunk: &release.JobLogChunk{
+							JobName:       chunk.JobName,
+							PodName:       chunk.PodName,
+							ContainerName: chunk.ContainerName,
+							LogLines:      make([]*release.LogLine, 0),
+						},
+					},
 				}
-				chunkResp.WatchFeed.JobLogChunk.LogLines = append(chunkResp.WatchFeed.JobLogChunk.LogLines, ll)
-			}
 
-			return stream.Send(chunkResp)
-		})
+				for _, line := range chunk.LogLines {
+					ll := &release.LogLine{
+						Timestamp: line.Timestamp,
+						Data:      line.Data,
+					}
+					chunkResp.WatchFeed.JobLogChunk.LogLines = append(chunkResp.WatchFeed.JobLogChunk.LogLines, ll)
+				}
+
+				return stream.Send(chunkResp)
+			},
+			WriteJobPodErrorFunc: func(obj kube.JobPodError) error {
+				chunkResp := &services.InstallReleaseResponse{
+					WatchFeed: &release.WatchFeed{
+						JobPodError: &release.JobPodError{
+							JobName:       obj.JobName,
+							PodName:       obj.PodName,
+							ContainerName: obj.ContainerName,
+							Message:       obj.Message,
+						},
+					},
+				}
+				return stream.Send(chunkResp)
+			},
+		}
 
 		// TODO watch job with feed only if job have annotation "helm/watch-logs": "true"
 		// TODO otherwise watch as ordinary hook just like before, using WatchUntilReady
-		if err := s.execHookWithWatchFeed(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout, handleLogChunk); err != nil {
+		if err := s.execHookWithWatchFeed(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout, watchFeed); err != nil {
 			return res, err
 		}
 	} else {

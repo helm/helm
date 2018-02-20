@@ -22,6 +22,7 @@ It has these top-level messages:
 	TestSuite
 	LogLine
 	JobLogChunk
+	JobPodError
 	WatchFeed
 */
 package release

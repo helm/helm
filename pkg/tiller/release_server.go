@@ -365,7 +365,7 @@ func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 }
 
 func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook string, timeout int64) error {
-	return s.execHookWithWatchFeed(hs, name, namespace, hook, timeout, kube.WriteJobLogChunkFunc(func(*kube.JobLogChunk) error { return nil }))
+	return s.execHookWithWatchFeed(hs, name, namespace, hook, timeout, kube.WatchFeedStub)
 }
 
 func (s *ReleaseServer) execHookWithWatchFeed(hs []*release.Hook, name, namespace, hook string, timeout int64, watchFeed kube.WatchFeed) error {

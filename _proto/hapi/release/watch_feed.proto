@@ -16,8 +16,16 @@ message JobLogChunk {
   repeated LogLine log_lines = 4;
 }
 
+message JobPodError {
+  string job_name = 1;
+  string pod_name = 2;
+  string container_name = 3;
+  string message = 4;
+}
+
 message WatchFeed {
   JobLogChunk job_log_chunk = 1;
+  JobPodError job_pod_error = 2;
 
   /*
    * WatchFeed could contain one or multiple events from tiller at the same time.

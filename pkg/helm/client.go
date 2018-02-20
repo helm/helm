@@ -388,8 +388,9 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 		}
 
 		if resp.WatchFeed.GetJobLogChunk() != nil {
-			for _, line := range resp.WatchFeed.GetJobLogChunk().LogLines {
-				fmt.Printf("%s %s\n", line.Timestamp, line.Data) // TODO: make normal formatting as follows.
+			chunk := resp.WatchFeed.GetJobLogChunk()
+			for _, line := range chunk.LogLines {
+				fmt.Printf("{job %s / pod %s / container %s} %s %s\n", chunk.JobName, chunk.PodName, chunk.ContainerName, line.Timestamp, line.Data) // TODO: make normal formatting as follows.
 				// TODO The client could work like state machine:
 				// TODO when receiving job-pod-container log chunk print header "==> job X pod X container Y logs <==\n",
 				// TODO just like `tail -f *` works on multiple files at the same time.
@@ -399,6 +400,8 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 				// TODO The main reason to stream userspace-events like ImagePullBackOff or CrashLoopBackOff is
 				// TODO to give user enough info so that user can debug templates without accessing cluster using kubectl.
 			}
+		} else if resp.WatchFeed.GetJobPodError() != nil {
+			fmt.Printf("ERROR: %v", resp.WatchFeed.GetJobPodError()) // TODO: normal formatting
 		} else {
 			finalResp = resp // TODO verify/debug this code
 		}
