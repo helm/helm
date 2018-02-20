@@ -139,6 +139,11 @@ func TestRollbackRelease(t *testing.T) {
 func TestRollbackWithReleaseVersion(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
+	rs.Log = t.Logf
+	rs.env.Releases.Log = t.Logf
+	rel2 := releaseStub()
+	rel2.Name = "other"
+	rs.env.Releases.Create(rel2)
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 	v2 := upgradeReleaseVersion(rel)
@@ -168,6 +173,14 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	}
 	if oldRel.Info.Status.Code != release.Status_SUPERSEDED {
 		t.Errorf("Expected v2 to be in a SUPERSEDED state, got %q", oldRel.Info.Status.Code)
+	}
+	// make sure we didn't update some other deployments.
+	otherRel, err := rs.env.Releases.Get(rel2.Name, 1)
+	if err != nil {
+		t.Fatalf("Failed to retrieve other v1: %s", err)
+	}
+	if otherRel.Info.Status.Code != release.Status_DEPLOYED {
+		t.Errorf("Expected other deployed release to stay untouched, got %q", otherRel.Info.Status.Code)
 	}
 }
 
