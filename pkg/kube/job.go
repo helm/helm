@@ -164,8 +164,16 @@ func (pod *PodWatchMonitor) WatchContainerLogs(containerName string) error {
 }
 
 func (pod *PodWatchMonitor) Watch() error {
-	for i := range pod.ContainersNames {
-		containerName := pod.ContainersNames[i]
+	allContainersNames := make([]string, 0)
+	for _, containerName := range pod.InitContainersNames {
+		allContainersNames = append(allContainersNames, containerName)
+	}
+	for _, containerName := range pod.ContainersNames {
+		allContainersNames = append(allContainersNames, containerName)
+	}
+
+	for i := range allContainersNames {
+		containerName := allContainersNames[i]
 		go func() {
 			err := pod.WatchContainerLogs(containerName)
 			if err != nil {
@@ -197,6 +205,7 @@ func (pod *PodWatchMonitor) Watch() error {
 			return true, fmt.Errorf("Expected %s to be a *core.Pod, got %T", pod.ResourceName, e.Object)
 		}
 
+		// TODO: enable InitContainerStatuses
 		for _, cs := range object.Status.ContainerStatuses {
 			oldState := pod.ContainerMonitorStates[cs.Name]
 
@@ -295,6 +304,8 @@ func (job *JobWatchMonitor) Watch() error {
 					job.Kube.Log("[DEBUG] Job %s watcher state changed %v -> %v", job.ResourceName, oldState, job.State)
 
 					job.Kube.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", job.ResourceName, object.Status.Active, object.Status.Failed, object.Status.Succeeded)
+
+					job.Succeeded <- true
 
 					return true, nil
 				} else if c.Type == batch.JobFailed && c.Status == core.ConditionTrue {
@@ -455,8 +466,8 @@ func (c *Client) watchJobTillDone(jobInfo *resource.Info, watchFeed WatchFeed, t
 		select {
 		case <-job.Started:
 			c.Log("Job %s started", job.ResourceName)
-			// TODO watchFeed
 		case <-job.Succeeded:
+			c.Log("Job %s succeeded", job.ResourceName)
 			return nil
 		case err := <-job.Error:
 			return err
