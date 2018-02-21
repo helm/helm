@@ -27,7 +27,9 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -104,7 +106,7 @@ func semverCompare(image string) int {
 
 // createDeployment creates the Tiller Deployment resource.
 func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) error {
-	obj, err := deployment(opts)
+	obj, err := generateDeployment(opts)
 	if err != nil {
 		return err
 	}
@@ -113,40 +115,66 @@ func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) 
 
 }
 
-// deployment gets the deployment object that installs Tiller.
-func deployment(opts *Options) (*v1beta1.Deployment, error) {
-	return generateDeployment(opts)
+// Deployment gets the deployment object that installs Tiller.
+func Deployment(opts *Options) (*v1beta1.Deployment, error) {
+	dep, err := generateDeployment(opts)
+	if err != nil {
+		return nil, err
+	}
+	dep.TypeMeta = metav1.TypeMeta{
+		Kind:       "Deployment",
+		APIVersion: "extensions/v1beta1",
+	}
+	return dep, nil
 }
 
 // createService creates the Tiller service resource
 func createService(client corev1.ServicesGetter, namespace string) error {
-	obj := service(namespace)
+	obj := generateService(namespace)
 	_, err := client.Services(obj.Namespace).Create(obj)
 	return err
 }
 
-// service gets the service object that installs Tiller.
-func service(namespace string) *v1.Service {
-	return generateService(namespace)
-}
-
-// DeploymentManifest gets the manifest (as a string) that describes the Tiller Deployment
-// resource.
-func DeploymentManifest(opts *Options) (string, error) {
-	obj, err := deployment(opts)
-	if err != nil {
-		return "", err
+// Service gets the service object that installs Tiller.
+func Service(namespace string) *v1.Service {
+	svc := generateService(namespace)
+	svc.TypeMeta = metav1.TypeMeta{
+		Kind:       "Service",
+		APIVersion: "v1",
 	}
-	buf, err := yaml.Marshal(obj)
-	return string(buf), err
+	return svc
 }
 
-// ServiceManifest gets the manifest (as a string) that describes the Tiller Service
-// resource.
-func ServiceManifest(namespace string) (string, error) {
-	obj := service(namespace)
-	buf, err := yaml.Marshal(obj)
-	return string(buf), err
+// TillerManifests gets the Deployment, Service, and Secret (if tls-enabled) manifests
+func TillerManifests(opts *Options) ([]byte, error) {
+	dep, err := Deployment(opts)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	svc := Service(opts.Namespace)
+
+	objs := []runtime.Object{dep, svc}
+
+	if opts.EnableTLS {
+		secret, err := Secret(opts)
+		if err != nil {
+			return []byte{}, err
+		}
+		objs = append(objs, secret)
+	}
+
+	list := &metav1.List{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "List",
+			APIVersion: "v1",
+		},
+	}
+	if err := meta.SetList(list, objs); err != nil {
+		return []byte{}, err
+	}
+	buf, err := yaml.Marshal(list)
+	return buf, err
 }
 
 func generateLabels(labels map[string]string) map[string]string {
@@ -323,14 +351,19 @@ func generateService(namespace string) *v1.Service {
 	return s
 }
 
-// SecretManifest gets the manifest (as a string) that describes the Tiller Secret resource.
-func SecretManifest(opts *Options) (string, error) {
-	o, err := generateSecret(opts)
+// Secret gets the Tiller secret resource.
+func Secret(opts *Options) (*v1.Secret, error) {
+	secret, err := generateSecret(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	buf, err := yaml.Marshal(o)
-	return string(buf), err
+
+	secret.TypeMeta = metav1.TypeMeta{
+		Kind:       "Secret",
+		APIVersion: "v1",
+	}
+
+	return secret, nil
 }
 
 // createSecret creates the Tiller secret resource.
