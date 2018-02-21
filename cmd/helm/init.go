@@ -176,58 +176,29 @@ func (i *initCmd) run() error {
 	i.opts.ServiceAccount = i.serviceAccount
 	i.opts.MaxHistory = i.maxHistory
 
-	writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
-		w := i.out
-		if !first {
-			// YAML starting document boundary marker
-			if _, err := fmt.Fprintln(w, "---"); err != nil {
-				return err
-			}
-		}
-		if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprint(w, body); err != nil {
-			return err
-		}
-		if !last {
-			return nil
-		}
-		// YAML ending document boundary marker
-		_, err := fmt.Fprintln(w, "...")
-		return err
-	}
 	if len(i.opts.Output) > 0 {
-		var body string
+		var body []byte
 		var err error
-		const tm = `{"apiVersion":"extensions/v1beta1","kind":"Deployment",`
-		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
+		if body, err = installer.TillerManifests(&i.opts); err != nil {
 			return err
 		}
 		switch i.opts.Output.String() {
 		case "json":
 			var out bytes.Buffer
-			jsonb, err := yaml.ToJSON([]byte(body))
+			jsonb, err := yaml.ToJSON(body)
 			if err != nil {
 				return err
 			}
-			buf := bytes.NewBuffer(make([]byte, 0, len(tm)+len(jsonb)-1))
-			buf.WriteString(tm)
-			// Drop the opening object delimiter ('{').
-			buf.Write(jsonb[1:])
+			buf := bytes.NewBuffer(jsonb)
 			if err := json.Indent(&out, buf.Bytes(), "", "    "); err != nil {
 				return err
 			}
 			if _, err = i.out.Write(out.Bytes()); err != nil {
 				return err
 			}
-
 			return nil
 		case "yaml":
-			if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
+			if _, err = i.out.Write(body); err != nil {
 				return err
 			}
 			return nil
@@ -236,34 +207,16 @@ func (i *initCmd) run() error {
 		}
 	}
 	if settings.Debug {
-
-		var body string
+		var body []byte
 		var err error
 
-		// write Deployment manifest
-		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
-			return err
-		}
-		if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
+		// write Tiller manifests
+		if body, err = installer.TillerManifests(&i.opts); err != nil {
 			return err
 		}
 
-		// write Service manifest
-		if body, err = installer.ServiceManifest(i.namespace); err != nil {
+		if _, err = i.out.Write(body); err != nil {
 			return err
-		}
-		if err := writeYAMLManifest("v1", "Service", body, false, !i.opts.EnableTLS); err != nil {
-			return err
-		}
-
-		// write Secret manifest
-		if i.opts.EnableTLS {
-			if body, err = installer.SecretManifest(&i.opts); err != nil {
-				return err
-			}
-			if err := writeYAMLManifest("v1", "Secret", body, false, true); err != nil {
-				return err
-			}
 		}
 	}
 
