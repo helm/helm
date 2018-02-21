@@ -33,6 +33,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
 - [helm-last](https://github.com/adamreese/helm-last) - Plugin to show the latest release
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
+- [helm-local](https://github.com/adamreese/helm-local) - Plugin to run Tiller as a local daemon
 - [App Registry](https://github.com/app-registry/helm-plugin) - Plugin to manage charts via the [App Registry specification](https://github.com/app-registry/spec)
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
 - [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
@@ -55,7 +56,7 @@ Tools layered on top of Helm or Tiller.
 - [Landscaper](https://github.com/Eneco/landscaper/) - "Landscaper takes a set of Helm Chart references with values (a desired state), and realizes this in a Kubernetes cluster."
 - [Rudder](https://github.com/AcalephStorage/rudder) - RESTful (JSON) proxy for Tiller's API
 - [Helmfile](https://github.com/roboll/helmfile) - Helmfile is a declarative spec for deploying helm charts
-- [Autohelm](https://github.com/reactiveops/autohelm) - Autohelm is _another_ simple declarative spec for deploying helm charts. Written in python and supports git urls as a source for helm charts. 
+- [Autohelm](https://github.com/reactiveops/autohelm) - Autohelm is _another_ simple declarative spec for deploying helm charts. Written in python and supports git urls as a source for helm charts.
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
 - [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
