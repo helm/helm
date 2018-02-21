@@ -19,6 +19,7 @@ package helm // import "k8s.io/helm/pkg/helm"
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"golang.org/x/net/context"
@@ -377,6 +378,20 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 
 	var finalResp *rls.InstallReleaseResponse
 
+	currentLogHeader := ""
+	setLogHeader := func(logHeader string) {
+		if currentLogHeader != logHeader {
+			if currentLogHeader != "" {
+				fmt.Println()
+			}
+			fmt.Printf("%s\n", logHeader)
+			currentLogHeader = logHeader
+		}
+	}
+	formatJobHeader := func(jobName string, podName string, containerName string) string {
+		return fmt.Sprintf("==> Job \"%s\", Pod \"%s\", Container \"%s\" <==", jobName, podName, containerName)
+	}
+
 	stream, err := rlc.InstallRelease(ctx, req)
 	for {
 		resp, err := stream.Recv()
@@ -389,19 +404,18 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 
 		if resp.WatchFeed.GetJobLogChunk() != nil {
 			chunk := resp.WatchFeed.GetJobLogChunk()
+
+			setLogHeader(formatJobHeader(chunk.JobName, chunk.PodName, chunk.ContainerName))
+
 			for _, line := range chunk.LogLines {
-				fmt.Printf("{job %s / pod %s / container %s} %s %s\n", chunk.JobName, chunk.PodName, chunk.ContainerName, line.Timestamp, line.Data) // TODO: make normal formatting as follows.
-				// TODO The client could work like state machine:
-				// TODO when receiving job-pod-container log chunk print header "==> job X pod X container Y logs <==\n",
-				// TODO just like `tail -f *` works on multiple files at the same time.
-				// TODO When receiving job-pod-container log chunk for another pod or container or job,
-				// TODO client print new header and follow with log lines.
-				// TODO Also there will be other than log-chunk events: userspace-error or system-error.
-				// TODO The main reason to stream userspace-events like ImagePullBackOff or CrashLoopBackOff is
-				// TODO to give user enough info so that user can debug templates without accessing cluster using kubectl.
+				fmt.Println(line.Data)
 			}
 		} else if resp.WatchFeed.GetJobPodError() != nil {
-			fmt.Printf("ERROR: %v", resp.WatchFeed.GetJobPodError()) // TODO: normal formatting
+			jobPodError := resp.WatchFeed.GetJobPodError()
+
+			setLogHeader(formatJobHeader(jobPodError.JobName, jobPodError.PodName, jobPodError.ContainerName))
+
+			fmt.Fprintf(os.Stderr, "ERROR: %s", jobPodError.Message)
 		} else {
 			finalResp = resp // TODO verify/debug this code
 		}
