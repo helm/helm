@@ -98,11 +98,6 @@ func (pod *PodWatchMonitor) FollowContainerLogs(containerName string) error {
 		return err
 	}
 
-	// var sinceTime *metav1.Time
-	// if v, found := pod.ProcessedContainerLogTimestamps[containerName]; found {
-	// 	sinceTime = &metav1.Time{v}
-	// }
-
 	req := client.Core().
 		Pods(pod.Namespace).
 		GetLogs(pod.ResourceName, &core.PodLogOptions{
@@ -151,57 +146,17 @@ func (pod *PodWatchMonitor) FollowContainerLogs(containerName string) error {
 	}
 
 	return nil
-
-	// buf := bytes.Buffer{}
-	// _, err = io.Copy(&buf, readCloser)
-
-	// lines := strings.Split(strings.TrimSuffix(buf.String(), "\n"), "\n")
-
-	// res := make([]LogLine, 0)
-	// for _, line := range lines {
-	// 	lineParts := strings.SplitN(line, " ", 2)
-	// 	if len(lineParts) == 2 {
-	// 		ll := LogLine{
-	// 			Timestamp: lineParts[0],
-	// 			Data:      lineParts[1],
-	// 		}
-	// 		res = append(res, ll)
-	// 		pod.Kube.Log(">>> %s", ll)
-	// 	}
-	// }
-
-	// if len(res) > 0 {
-	// 	t, err := time.Parse(time.RFC3339, res[len(res)-1].Timestamp)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	pod.ProcessedContainerLogTimestamps[containerName] = t
-	// }
-
-	// logLines, err := pod.GetContainerLogs(containerName)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// pod.PodLogChunk <- &PodLogChunk{
-	// 	PodName:       pod.ResourceName,
-	// 	ContainerName: containerName,
-	// 	LogLines:      logLines,
-	// }
-
-	// return res, nil
 }
 
 func (pod *PodWatchMonitor) WatchContainerLogs(containerName string) error {
 	for {
-		for _, containerName := range pod.ContainersNames {
-			switch pod.ContainerMonitorStates[containerName] {
-			case "Running", "Terminated":
-				return pod.FollowContainerLogs(containerName)
-			case "Waiting":
-			default:
-			}
+		switch pod.ContainerMonitorStates[containerName] {
+		case "Running", "Terminated":
+			return pod.FollowContainerLogs(containerName)
+		case "Waiting":
+		default:
 		}
+
 		time.Sleep(time.Duration(200) * time.Millisecond)
 	}
 
@@ -209,7 +164,8 @@ func (pod *PodWatchMonitor) WatchContainerLogs(containerName string) error {
 }
 
 func (pod *PodWatchMonitor) Watch() error {
-	for _, containerName := range pod.ContainersNames {
+	for i := range pod.ContainersNames {
+		containerName := pod.ContainersNames[i]
 		go func() {
 			err := pod.WatchContainerLogs(containerName)
 			if err != nil {
