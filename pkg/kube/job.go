@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 )
 
 var (
@@ -198,15 +198,20 @@ func (pod *PodWatchMonitor) Watch() error {
 	}
 
 	_, err = watch.Until(pod.Timeout, watcher, func(e watch.Event) (bool, error) {
-		pod.Kube.Log("[DEBUG] Pod %s event: %+v", pod.ResourceName, e)
-
 		object, ok := e.Object.(*core.Pod)
 		if !ok {
 			return true, fmt.Errorf("Expected %s to be a *core.Pod, got %T", pod.ResourceName, e.Object)
 		}
 
-		// TODO: enable InitContainerStatuses
+		allContainerStatuses := make([]core.ContainerStatus, 0)
+		for _, cs := range object.Status.InitContainerStatuses {
+			allContainerStatuses = append(allContainerStatuses, cs)
+		}
 		for _, cs := range object.Status.ContainerStatuses {
+			allContainerStatuses = append(allContainerStatuses, cs)
+		}
+
+		for _, cs := range allContainerStatuses {
 			oldState := pod.ContainerMonitorStates[cs.Name]
 
 			if cs.State.Waiting != nil {
@@ -252,6 +257,8 @@ type JobWatchMonitor struct {
 	PodError    chan PodError
 
 	MonitoredPods []*PodWatchMonitor
+
+	FinalJobStatus batch.JobStatus
 }
 
 func (job *JobWatchMonitor) Watch() error {
@@ -271,18 +278,15 @@ func (job *JobWatchMonitor) Watch() error {
 	}
 
 	_, err = watch.Until(job.Timeout, watcher, func(e watch.Event) (bool, error) {
-		job.Kube.Log("[DEBUG] Job %s event: %+v", job.ResourceName, e)
-
 		switch job.State {
 		case "":
 			if e.Type == watch.Added {
 				job.Started <- true
 
-				oldState := job.State
 				job.State = "Started"
-				job.Kube.Log("[DEBUG] Job %s watcher state changed %v -> %v", job.ResourceName, oldState, job.State)
 
-				job.Kube.Log("[DEBUG] Starting job %s pods watcher", job.ResourceName)
+				job.Kube.Log("Starting to watch job %s pods", job.ResourceName)
+
 				go func() {
 					err := job.WatchPods()
 					if err != nil {
@@ -299,19 +303,15 @@ func (job *JobWatchMonitor) Watch() error {
 
 			for _, c := range object.Status.Conditions {
 				if c.Type == batch.JobComplete && c.Status == core.ConditionTrue {
-					oldState := job.State
 					job.State = "Succeeded"
-					job.Kube.Log("[DEBUG] Job %s watcher state changed %v -> %v", job.ResourceName, oldState, job.State)
 
-					job.Kube.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", job.ResourceName, object.Status.Active, object.Status.Failed, object.Status.Succeeded)
+					job.FinalJobStatus = object.Status
 
 					job.Succeeded <- true
 
 					return true, nil
 				} else if c.Type == batch.JobFailed && c.Status == core.ConditionTrue {
-					oldState := job.State
 					job.State = "Failed"
-					job.Kube.Log("[DEBUG] Job %s watcher state changed %v -> %v", job.ResourceName, oldState, job.State)
 
 					return true, fmt.Errorf("Job failed: %s", c.Reason)
 				}
@@ -359,10 +359,8 @@ func (job *JobWatchMonitor) WatchPods() error {
 		return err
 	}
 
-	// TODO calculate timeout since job-watch started
+	// TODO: calculate timeout since job-watch started
 	_, err = watch.Until(job.Timeout, podListWatcher, func(e watch.Event) (bool, error) {
-		job.Kube.Log("[DEBUG] Job %s pods list event: %+v", job.ResourceName, e)
-
 		podObject, ok := e.Object.(*core.Pod)
 		if !ok {
 			return true, fmt.Errorf("Expected %s to be a *core.Pod, got %T", job.ResourceName, e.Object)
@@ -375,7 +373,7 @@ func (job *JobWatchMonitor) WatchPods() error {
 			}
 		}
 
-		// TODO constructor from job & podObject
+		// TODO: constructor from job & podObject
 		pod := &PodWatchMonitor{
 			WatchMonitor: WatchMonitor{
 				Kube:    job.Kube,
@@ -383,7 +381,7 @@ func (job *JobWatchMonitor) WatchPods() error {
 
 				Namespace:              job.Namespace,
 				ResourceName:           podObject.Name,
-				InitialResourceVersion: "",
+				InitialResourceVersion: "", // this will make PodWatchMonitor receive podObject again and handle its state properly by itself
 			},
 
 			PodLogChunk: job.PodLogChunk,
@@ -418,18 +416,18 @@ func (job *JobWatchMonitor) WatchPods() error {
 	return nil
 }
 
-func (c *Client) WatchJobsTillDone(namespace string, reader io.Reader, watchFeed WatchFeed, timeout time.Duration) error {
+func (c *Client) WatchJobsUntilReady(namespace string, reader io.Reader, watchFeed WatchFeed, timeout time.Duration) error {
 	infos, err := c.Build(namespace, reader)
 	if err != nil {
 		return err
 	}
 
 	return perform(infos, func(info *resource.Info) error {
-		return c.watchJobTillDone(info, watchFeed, timeout)
+		return c.watchJobUntilReady(info, watchFeed, timeout)
 	})
 }
 
-func (c *Client) watchJobTillDone(jobInfo *resource.Info, watchFeed WatchFeed, timeout time.Duration) error {
+func (c *Client) watchJobUntilReady(jobInfo *resource.Info, watchFeed WatchFeed, timeout time.Duration) error {
 	if jobInfo.Mapping.GroupVersionKind.Kind != "Job" {
 		return nil
 	}
@@ -454,7 +452,6 @@ func (c *Client) watchJobTillDone(jobInfo *resource.Info, watchFeed WatchFeed, t
 		Error:    make(chan error, 0),
 	}
 
-	c.Log("[DEBUG] Starting job %s watcher", job.ResourceName)
 	go func() {
 		err := job.Watch()
 		if err != nil {
@@ -467,7 +464,7 @@ func (c *Client) watchJobTillDone(jobInfo *resource.Info, watchFeed WatchFeed, t
 		case <-job.Started:
 			c.Log("Job %s started", job.ResourceName)
 		case <-job.Succeeded:
-			c.Log("Job %s succeeded", job.ResourceName)
+			c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", job.ResourceName, job.FinalJobStatus.Active, job.FinalJobStatus.Failed, job.FinalJobStatus.Succeeded)
 			return nil
 		case err := <-job.Error:
 			return err

@@ -389,6 +389,7 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 		}
 	}
 	formatJobHeader := func(jobName string, podName string, containerName string) string {
+		// tail -f on multiple files prints similar headers
 		return fmt.Sprintf("==> Job \"%s\", Pod \"%s\", Container \"%s\" <==", jobName, podName, containerName)
 	}
 
@@ -415,7 +416,7 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 
 			setLogHeader(formatJobHeader(jobPodError.JobName, jobPodError.PodName, jobPodError.ContainerName))
 
-			fmt.Fprintf(os.Stderr, "ERROR: %s", jobPodError.Message)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", jobPodError.Message)
 		} else {
 			finalResp = resp // TODO verify/debug this code
 		}

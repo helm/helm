@@ -403,7 +403,17 @@ func (s *ReleaseServer) execHookWithWatchFeed(hs []*release.Hook, name, namespac
 
 		// We can't watch CRDs
 		if hook != hooks.CRDInstall {
-			if err := kubeCli.WatchJobsTillDone(namespace, b, watchFeed, time.Duration(timeout)*time.Second); err != nil {
+			var err error
+			if true {
+				// TODO: Watch with watchFeed only if helm/watch=true annotation is set,
+				// TODO: because this code is new and experimental, so WatchUntilReady
+				// TODO: will be used by default.
+				err = kubeCli.WatchJobsUntilReady(namespace, b, watchFeed, time.Duration(timeout)*time.Second)
+			} else {
+				err = kubeCli.WatchUntilReady(namespace, b, timeout, false)
+			}
+
+			if err != nil {
 				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
 				// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 				// under failed condition. If so, then clear the corresponding resource object in the hook
