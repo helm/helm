@@ -167,15 +167,13 @@ func TestInitCmd_dryRun(t *testing.T) {
 		t.Errorf("expected no server calls, got %d", got)
 	}
 
-	docs := bytes.Split(buf.Bytes(), []byte("\n---"))
-	if got, want := len(docs), 2; got != want {
-		t.Fatalf("Expected document count of %d, got %d", want, got)
+	list := &metav1.List{}
+	if err := yaml.Unmarshal(buf.Bytes(), &list); err != nil {
+		t.Errorf("Expected parseable List, got %q\n\t%s", buf.String(), err)
 	}
-	for _, doc := range docs {
-		var y map[string]interface{}
-		if err := yaml.Unmarshal(doc, &y); err != nil {
-			t.Errorf("Expected parseable YAML, got %q\n\t%s", doc, err)
-		}
+
+	if got, want := len(list.Items), 2; got != want {
+		t.Fatalf("Expected resource count of %d, got %d", want, got)
 	}
 }
 
