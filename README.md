@@ -59,7 +59,7 @@ The [Helm roadmap uses Github milestones](https://github.com/kubernetes/helm/mil
 
 You can reach the Helm community and developers via the following channels:
 
-- [Kubernetes Slack](https://slack.k8s.io):
+- [Kubernetes Slack](http://slack.k8s.io):
   - #helm-users
   - #helm-dev
   - #charts
