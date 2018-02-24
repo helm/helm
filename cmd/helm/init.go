@@ -176,46 +176,62 @@ func (i *initCmd) run() error {
 	i.opts.ServiceAccount = i.serviceAccount
 	i.opts.MaxHistory = i.maxHistory
 
+	writeYAMLManifests := func(manifests []string) error {
+		w := i.out
+		for _, manifest := range manifests {
+			if _, err := fmt.Fprintln(w, "---"); err != nil {
+				return err
+			}
+
+			if _, err := fmt.Fprintln(w, manifest); err != nil {
+				return err
+			}
+		}
+
+		// YAML ending document boundary marker
+		_, err := fmt.Fprintln(w, "...")
+		return err
+	}
 	if len(i.opts.Output) > 0 {
-		var body []byte
+		var manifests []string
 		var err error
-		if body, err = installer.TillerManifests(&i.opts); err != nil {
+		if manifests, err = installer.TillerManifests(&i.opts); err != nil {
 			return err
 		}
 		switch i.opts.Output.String() {
 		case "json":
-			var out bytes.Buffer
-			jsonb, err := yaml.ToJSON(body)
-			if err != nil {
-				return err
-			}
-			buf := bytes.NewBuffer(jsonb)
-			if err := json.Indent(&out, buf.Bytes(), "", "    "); err != nil {
-				return err
-			}
-			if _, err = i.out.Write(out.Bytes()); err != nil {
-				return err
+			for _, manifest := range manifests {
+				var out bytes.Buffer
+				jsonb, err := yaml.ToJSON([]byte(manifest))
+				if err != nil {
+					return err
+				}
+				buf := bytes.NewBuffer(jsonb)
+				if err := json.Indent(&out, buf.Bytes(), "", "    "); err != nil {
+					return err
+				}
+				if _, err = i.out.Write(out.Bytes()); err != nil {
+					return err
+				}
+				fmt.Fprint(i.out, "\n")
 			}
 			return nil
 		case "yaml":
-			if _, err = i.out.Write(body); err != nil {
-				return err
-			}
-			return nil
+			return writeYAMLManifests(manifests)
 		default:
 			return fmt.Errorf("unknown output format: %q", i.opts.Output)
 		}
 	}
 	if settings.Debug {
-		var body []byte
+		var manifests []string
 		var err error
 
 		// write Tiller manifests
-		if body, err = installer.TillerManifests(&i.opts); err != nil {
+		if manifests, err = installer.TillerManifests(&i.opts); err != nil {
 			return err
 		}
 
-		if _, err = i.out.Write(body); err != nil {
+		if err = writeYAMLManifests(manifests); err != nil {
 			return err
 		}
 	}

@@ -27,7 +27,6 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -146,10 +145,10 @@ func Service(namespace string) *v1.Service {
 }
 
 // TillerManifests gets the Deployment, Service, and Secret (if tls-enabled) manifests
-func TillerManifests(opts *Options) ([]byte, error) {
+func TillerManifests(opts *Options) ([]string, error) {
 	dep, err := Deployment(opts)
 	if err != nil {
-		return []byte{}, err
+		return []string{}, err
 	}
 
 	svc := Service(opts.Namespace)
@@ -159,22 +158,21 @@ func TillerManifests(opts *Options) ([]byte, error) {
 	if opts.EnableTLS {
 		secret, err := Secret(opts)
 		if err != nil {
-			return []byte{}, err
+			return []string{}, err
 		}
 		objs = append(objs, secret)
 	}
 
-	list := &metav1.List{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "List",
-			APIVersion: "v1",
-		},
+	manifests := make([]string, len(objs))
+	for i, obj := range objs {
+		o, err := yaml.Marshal(obj)
+		if err != nil {
+			return []string{}, err
+		}
+		manifests[i] = string(o)
 	}
-	if err := meta.SetList(list, objs); err != nil {
-		return []byte{}, err
-	}
-	buf, err := yaml.Marshal(list)
-	return buf, err
+
+	return manifests, err
 }
 
 func generateLabels(labels map[string]string) map[string]string {
