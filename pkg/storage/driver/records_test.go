@@ -78,7 +78,7 @@ func TestRecordsRemove(t *testing.T) {
 	for _, tt := range tests {
 		if r := rs.Remove(tt.key); r == nil {
 			if !tt.ok {
-				t.Fatalf("Failed to %q (key = %s). Expected nil, got %s",
+				t.Fatalf("Failed to %q (key = %s). Expected nil, got %v",
 					tt.desc,
 					tt.key,
 					r,
