@@ -21,9 +21,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/helm/pkg/helm/helmpath"
-	"strings"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
