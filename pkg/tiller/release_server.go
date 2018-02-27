@@ -316,6 +316,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	return hooks, b, notes, nil
 }
 
+// recordRelease with an update operation in case reuse has been set.
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
 		if err := s.env.Releases.Update(r); err != nil {
