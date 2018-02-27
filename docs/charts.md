@@ -45,6 +45,7 @@ The `Chart.yaml` file is required for a chart. It contains the following fields:
 ```yaml
 name: The name of the chart (required)
 version: A SemVer 2 version (required)
+kubeVersion: A SemVer range of compatible Kubernetes versions (optional)
 description: A single-sentence description of this project (optional)
 keywords:
   - A list of keywords about this project (optional)
