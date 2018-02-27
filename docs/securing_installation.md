@@ -52,7 +52,7 @@ This situation may change in the future. While the community has several methods
 
 In the default installation the gRPC endpoint that Tiller offers is available inside the cluster (not external to the cluster) without authentication configuration applied. Without applying authentication, any process in the cluster can use the gRPC endpoint to perform operations inside the cluster. In a local or secured private cluster, this enables rapid usage and is normal. (When running outside the cluster, Helm authenticates through the Kubernetes API server to reach Tiller, leveraging existing Kubernetes authentication support.)
 
-Shared and production clusters -- for the most part -- should use Helm 2.7.2 at a minimum and configure TLS for each the Tiller gRPC endpoint to ensure that within the cluster usage of gRPC endpoints is only for the properly authenticated identity for that endpoint. Doing so enables any number of Tiller instances to be deployed in any number of namespaces and yet no unauthenticated usage of any gRPC endpoint is possible. Finally, usage of Helm `init` with the `--tiller-tls-verify` option to install Tiller with TLS enabled and to verify remote certificates, and other Helm commands should use the `--tls` with all other commands.
+Shared and production clusters -- for the most part -- should use Helm 2.7.2 at a minimum and configure TLS for each Tiller gRPC endpoint to ensure that within the cluster usage of gRPC endpoints is only for the properly authenticated identity for that endpoint. Doing so enables any number of Tiller instances to be deployed in any number of namespaces and yet no unauthenticated usage of any gRPC endpoint is possible. Finally, usa Helm `init` with the `--tiller-tls-verify` option to install Tiller with TLS enabled and to verify remote certificates, and all other Helm commands should use the `--tls` option.
 
 For more information about the proper steps to configure Tiller and use Helm properly with TLS configured, see [Using SSL between Helm and Tiller](tiller_ssl.md).
 
@@ -91,13 +91,13 @@ The following guidelines reiterate the Best Practices for securing Helm and Till
 If these steps are followed, an example `helm init` command might look something like this: 
  
 ```bash
-$ helm init \ 
-–tiller-tls \ 
-–tiller-tls-verify \ 
-–tiller-tls-ca-cert=ca.pem \ 
-–tiller-tls-cert=cert.pem \ 
-–tiller-tls-key=key.pem \ 
-–service-account=accountname  
+$ helm init \
+--tiller-tls \
+--tiller-tls-verify \
+--tiller-tls-ca-cert=ca.pem \
+--tiller-tls-cert=cert.pem \
+--tiller-tls-key=key.pem \
+--service-account=accountname  
 ```
 
 This command will start Tiller with both strong authentication over gRPC, and a service account to which RBAC policies have been applied. 
