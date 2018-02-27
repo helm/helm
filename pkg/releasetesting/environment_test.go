@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"os"
+	"io/ioutil"
 	"testing"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -145,7 +145,7 @@ type getFailingKubeClient struct {
 
 func newGetFailingKubeClient() *getFailingKubeClient {
 	return &getFailingKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
 	}
 }
 
@@ -159,7 +159,7 @@ type deleteFailingKubeClient struct {
 
 func newDeleteFailingKubeClient() *deleteFailingKubeClient {
 	return &deleteFailingKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
 	}
 }
 
@@ -173,7 +173,7 @@ type createFailingKubeClient struct {
 
 func newCreateFailingKubeClient() *createFailingKubeClient {
 	return &createFailingKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
 	}
 }
 
