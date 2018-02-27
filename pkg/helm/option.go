@@ -375,7 +375,7 @@ func UpgradeForce(force bool) UpdateOption {
 type ContentOption func(*options)
 
 // ContentReleaseVersion will instruct Tiller to retrieve the content
-// of a paritcular version of a release.
+// of a particular version of a release.
 func ContentReleaseVersion(version int32) ContentOption {
 	return func(opts *options) {
 		opts.contentReq.Version = version
