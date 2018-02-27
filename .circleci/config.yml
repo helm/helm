@@ -9,7 +9,8 @@ jobs:
       PROJECT_NAME: "kubernetes-helm"
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 17.11.0-ce
       - restore_cache:
           keys:
             - glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
