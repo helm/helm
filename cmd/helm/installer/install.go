@@ -114,7 +114,9 @@ func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) 
 
 }
 
-// Deployment gets the deployment object that installs Tiller.
+// Deployment gets a deployment object that can be used to generate a manifest
+// as a string. This object should not be submitted directly to the Kubernetes
+// api
 func Deployment(opts *Options) (*v1beta1.Deployment, error) {
 	dep, err := generateDeployment(opts)
 	if err != nil {
@@ -134,7 +136,8 @@ func createService(client corev1.ServicesGetter, namespace string) error {
 	return err
 }
 
-// Service gets the service object that installs Tiller.
+// Service gets a service object that can be used to generate a manifest as a
+// string. This object should not be submitted directly to the Kubernetes api
 func Service(namespace string) *v1.Service {
 	svc := generateService(namespace)
 	svc.TypeMeta = metav1.TypeMeta{
@@ -349,7 +352,8 @@ func generateService(namespace string) *v1.Service {
 	return s
 }
 
-// Secret gets the Tiller secret resource.
+// Secret gets a secret object that can be used to generate a manifest as a
+// string. This object should not be submitted directly to the Kubernetes api
 func Secret(opts *Options) (*v1.Secret, error) {
 	secret, err := generateSecret(opts)
 	if err != nil {
