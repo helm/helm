@@ -18,7 +18,6 @@ package storage // import "k8s.io/helm/pkg/storage"
 
 import (
 	"fmt"
-	"strings"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
@@ -128,13 +127,30 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		"OWNER":  "TILLER",
 		"STATUS": "DEPLOYED",
 	})
-	if err == nil {
-		return ls[0], nil
-	}
-	if strings.Contains(err.Error(), "not found") {
+	if err != nil || len(ls) == 0 {
 		return nil, fmt.Errorf("%q has no deployed releases", name)
 	}
-	return nil, err
+
+	return ls[0], nil
+}
+
+// Failed returns the failed release with the provided release name, or
+// returns ErrReleaseNotFound if not found.
+func (s *Storage) Failed(name string) (*rspb.Release, error) {
+	s.Log("getting failed release from %q history", name)
+
+	ls, err := s.Driver.Query(map[string]string{
+		"NAME":   name,
+		"OWNER":  "TILLER",
+		"STATUS": "FAILED",
+	})
+
+	if err != nil || len(ls) == 0 {
+		return nil, fmt.Errorf("%q has no failed releases", name)
+	}
+
+	return ls[0], nil
+
 }
 
 // History returns the revision history for the release with the provided name, or
