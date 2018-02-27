@@ -10,7 +10,7 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker:
-          version: 17.11.0-ce
+          version: 17.09.0-ce
       - restore_cache:
           keys:
             - glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
