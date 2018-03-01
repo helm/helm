@@ -409,9 +409,7 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helm
 		return &c, nil
 	}
 
-	// In this case, the cacheFile is always absolute. So passing empty string
-	// is safe.
-	if err := r.DownloadIndexFile(""); err != nil {
+	if err := r.DownloadIndexFile(home.Cache()); err != nil {
 		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 
