@@ -53,7 +53,7 @@ data:
   myvalue: "Hello World"
   drink: {{ .Values.favorite.drink | default "tea" | quote }}
   food: {{ .Values.favorite.food | upper | quote }}
-  {{ if eq .Values.favorite.drink "coffee" }}mug: true{{ end }}
+  {{ if ( .Values.favorite.drink ) and eq .Values.favorite.drink "coffee" }}mug: true{{ end }}
 ```
 
 Since we commented out `drink: coffee` in our last example, the output should not include a `mug: true` flag. But if we add that line back into our `values.yaml` file, the output should look like this:
