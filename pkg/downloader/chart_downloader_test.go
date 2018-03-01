@@ -99,11 +99,11 @@ func TestDownload(t *testing.T) {
 		t.Fatal("No http provider found")
 	}
 
-	getter, err := provider.New(srv.URL, "", "", "")
+	g, err := provider.New(srv.URL, "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := getter.Get(srv.URL)
+	got, err := g.Get(srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,12 @@ func TestDownload(t *testing.T) {
 	defer basicAuthSrv.Close()
 
 	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
-	got, err = getter.GetWithCredentials(u.String(), "username", "password")
+	httpgetter, err := getter.NewHTTPGetter(u.String(), "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	httpgetter.SetCredentials("username", "password")
+	got, err = httpgetter.Get(u.String())
 	if err != nil {
 		t.Fatal(err)
 	}
