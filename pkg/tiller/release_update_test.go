@@ -225,9 +225,9 @@ func TestUpdateReleaseFailure(t *testing.T) {
 
 	compareStoredAndReturnedRelease(t, *rs, *res)
 
-	edesc := "Upgrade \"angry-panda\" failed: Failed update in kube client"
-	if got := res.Release.Info.Description; got != edesc {
-		t.Errorf("Expected description %q, got %q", edesc, got)
+	expectedDescription := "Upgrade \"angry-panda\" failed: Failed update in kube client"
+	if got := res.Release.Info.Description; got != expectedDescription {
+		t.Errorf("Expected description %q, got %q", expectedDescription, got)
 	}
 
 	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
@@ -236,6 +236,50 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	}
 	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_DEPLOYED {
 		t.Errorf("Expected Deployed status on previous Release version. Got %v", oldStatus)
+	}
+}
+
+func TestUpdateReleaseFailure_Force(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := namedReleaseStub("forceful-luke", release.Status_FAILED)
+	rs.env.Releases.Create(rel)
+	rs.Log = t.Logf
+
+	req := &services.UpdateReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/something", Data: []byte("text: 'Did you ever hear the tragedy of Darth Plagueis the Wise? I thought not. It’s not a story the Jedi would tell you. It’s a Sith legend. Darth Plagueis was a Dark Lord of the Sith, so powerful and so wise he could use the Force to influence the Midichlorians to create life... He had such a knowledge of the Dark Side that he could even keep the ones he cared about from dying. The Dark Side of the Force is a pathway to many abilities some consider to be unnatural. He became so powerful... The only thing he was afraid of was losing his power, which eventually, of course, he did. Unfortunately, he taught his apprentice everything he knew, then his apprentice killed him in his sleep. Ironic. He could save others from death, but not himself.'")},
+			},
+		},
+		Force: true,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Errorf("Expected successful update, got %v", err)
+	}
+
+	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_DEPLOYED {
+		t.Errorf("Expected DEPLOYED release. Got %d", updatedStatus)
+	}
+
+	compareStoredAndReturnedRelease(t, *rs, *res)
+
+	expectedDescription := "Upgrade complete"
+	if got := res.Release.Info.Description; got != expectedDescription {
+		t.Errorf("Expected description %q, got %q", expectedDescription, got)
+	}
+
+	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
+	if err != nil {
+		t.Errorf("Expected to be able to get previous release")
+	}
+	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_DELETED {
+		t.Errorf("Expected Deleted status on previous Release version. Got %v", oldStatus)
 	}
 }
 
