@@ -58,6 +58,7 @@ Tools layered on top of Helm or Tiller.
 - [Rudder](https://github.com/AcalephStorage/rudder) - RESTful (JSON) proxy for Tiller's API
 - [Helmfile](https://github.com/roboll/helmfile) - Helmfile is a declarative spec for deploying helm charts
 - [Autohelm](https://github.com/reactiveops/autohelm) - Autohelm is _another_ simple declarative spec for deploying helm charts. Written in python and supports git urls as a source for helm charts.
+- [Helmsman](https://github.com/Praqma/helmsman) - Helmsman is a helm-charts-as-code tool which enables installing/upgrading/protecting/moving/deleting releases from version controlled desired state files (described in a simple TOML format).  
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
 - [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
