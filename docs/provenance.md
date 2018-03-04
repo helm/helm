@@ -52,6 +52,12 @@ $ helm package --sign --key 'helm signing key' --keyring path/to/keyring.secret 
 **TIP:** for GnuPG users, your secret keyring is in `~/.gnupg/secring.gpg`. You can
 use `gpg --list-secret-keys` to list the keys you have.
 
+**Warning:**  the latest GnuPG version store your secret keyring using a new format 'kbx' on the default location  '~/.gnupg/pubring.kbx'. Please use the following command to convert your keyring to the legacy gpg format:
+
+```
+$ gpg --export-secret-keys >~/.gnupg/secring.gpg
+```
+
 At this point, you should see both `mychart-0.1.0.tgz` and `mychart-0.1.0.tgz.prov`.
 Both files should eventually be uploaded to your desired chart repository.
 
