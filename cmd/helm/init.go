@@ -310,7 +310,9 @@ func (i *initCmd) run() error {
 			if err := i.ping(); err != nil {
 				return err
 			}
-			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.")
+			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.\n\n"+
+				"Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
+				"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
 		}
 	} else {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
