@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -86,7 +87,10 @@ func addRepository(name, url string, home helmpath.Home, certFile, keyFile, caFi
 		return fmt.Errorf("repository name (%s) already exists, please specify a different name", name)
 	}
 
-	cif := home.CacheIndex(name)
+	cif, err := filepath.Rel(home.Cache(), home.CacheIndex(name))
+	if err != nil {
+		return err
+	}
 	c := repo.Entry{
 		Name:     name,
 		Cache:    cif,
