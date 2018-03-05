@@ -31,6 +31,8 @@ import (
 
 var (
 	tillerPodLabels labels.Set = labels.Set{"app": "helm", "name": "tiller"}
+	// ErrTillerNotFound thrown when a running tiller instance is not found
+	ErrTillerNotFound = fmt.Errorf("could not find a ready tiller pod")
 )
 
 // New creates a new and initialized tunnel.
@@ -67,5 +69,5 @@ func getFirstRunningPod(client corev1.PodsGetter, namespace string, selector lab
 			return &p, nil
 		}
 	}
-	return nil, fmt.Errorf("could not find a ready tiller pod")
+	return nil, ErrTillerNotFound
 }
