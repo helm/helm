@@ -86,6 +86,7 @@ type initCmd struct {
 	kubeClient     kubernetes.Interface
 	serviceAccount string
 	maxHistory     int
+	replicas       int
 	wait           bool
 }
 
@@ -130,6 +131,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 	f.IntVar(&i.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
+	f.IntVar(&i.replicas, "replicas", 1, "amount of tiller instances to run on the cluster")
 
 	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
 	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
@@ -175,6 +177,7 @@ func (i *initCmd) run() error {
 	i.opts.ForceUpgrade = i.forceUpgrade
 	i.opts.ServiceAccount = i.serviceAccount
 	i.opts.MaxHistory = i.maxHistory
+	i.opts.Replicas = i.replicas
 
 	writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
 		w := i.out

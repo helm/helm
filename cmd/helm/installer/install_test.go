@@ -211,6 +211,10 @@ func TestInstall(t *testing.T) {
 		if ports != 2 {
 			t.Errorf("expected ports = 2, got '%d'", ports)
 		}
+		replicas := obj.Spec.Replicas
+		if int(*replicas) != 1 {
+			t.Errorf("expected replicas = 1, got '%d'", replicas)
+		}
 		return true, obj, nil
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -233,6 +237,29 @@ func TestInstall(t *testing.T) {
 
 	if actions := fc.Actions(); len(actions) != 2 {
 		t.Errorf("unexpected actions: %v, expected 2 actions got %d", actions, len(actions))
+	}
+}
+
+func TestInstallHA(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		replicas := obj.Spec.Replicas
+		if int(*replicas) != 2 {
+			t.Errorf("expected replicas = 2, got '%d'", replicas)
+		}
+		return true, obj, nil
+	})
+
+	opts := &Options{
+		Namespace: v1.NamespaceDefault,
+		ImageSpec: image,
+		Replicas:  2,
+	}
+	if err := Install(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
 	}
 }
 
