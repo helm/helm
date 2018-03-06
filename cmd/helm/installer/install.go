@@ -183,6 +183,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 			Labels:    labels,
 		},
 		Spec: v1beta1.DeploymentSpec{
+			Replicas: opts.getReplicas(),
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
