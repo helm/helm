@@ -17,6 +17,7 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
@@ -321,7 +323,7 @@ func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error)
 	default:
 		opts = append(opts, grpc.WithInsecure())
 	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, h.opts.connectTimeout)
 	defer cancel()
 	if conn, err = grpc.DialContext(ctx, h.opts.host, opts...); err != nil {
 		return nil, err
@@ -488,6 +490,17 @@ func (h *Client) ping(ctx context.Context) error {
 	}
 	defer c.Close()
 
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.PingTiller(ctx)
+	healthClient := healthpb.NewHealthClient(c)
+	resp, err := healthClient.Check(ctx, &healthpb.HealthCheckRequest{Service: "Tiller"})
+	if err != nil {
+		return err
+	}
+	switch resp.GetStatus() {
+	case healthpb.HealthCheckResponse_SERVING:
+		return nil
+	case healthpb.HealthCheckResponse_NOT_SERVING:
+		return fmt.Errorf("tiller is not serving requests at this time, Please try again later")
+	default:
+		return fmt.Errorf("tiller healthcheck returned an unknown status")
+	}
 }
