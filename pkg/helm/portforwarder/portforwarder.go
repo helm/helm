@@ -30,12 +30,12 @@ import (
 )
 
 var (
-	tillerPodLabels labels.Set = labels.Set{"app": "helm", "name": "tiller"}
+	tillerPodLabels = labels.Set{"app": "helm", "name": "tiller"}
 )
 
 // New creates a new and initialized tunnel.
 func New(namespace string, client kubernetes.Interface, config *rest.Config) (*kube.Tunnel, error) {
-	podName, err := getTillerPodName(client.CoreV1(), namespace)
+	podName, err := GetTillerPodName(client.CoreV1(), namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,8 @@ func New(namespace string, client kubernetes.Interface, config *rest.Config) (*k
 	return t, t.ForwardPort()
 }
 
-func getTillerPodName(client corev1.PodsGetter, namespace string) (string, error) {
+// GetTillerPodName fetches the name of tiller pod running in the given namespace.
+func GetTillerPodName(client corev1.PodsGetter, namespace string) (string, error) {
 	selector := tillerPodLabels.AsSelector()
 	pod, err := getFirstRunningPod(client, namespace, selector)
 	if err != nil {

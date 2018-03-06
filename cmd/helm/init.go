@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -310,12 +312,12 @@ func (i *initCmd) run() error {
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			if err := i.ping(); err != nil {
-				return err
-			}
 			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.\n\n"+
 				"Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
 				"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
+		}
+		if err := i.ping(); err != nil {
+			return err
 		}
 	} else {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
@@ -327,6 +329,19 @@ func (i *initCmd) run() error {
 
 func (i *initCmd) ping() error {
 	if i.wait {
+		_, kubeClient, err := getKubeClient(settings.KubeContext)
+		if err != nil {
+			return err
+		}
+		if !watchTillerUntilReady(settings.TillerNamespace, kubeClient, settings.TillerConnectionTimeout) {
+			return fmt.Errorf("tiller was not found. polling deadline exceeded")
+		}
+
+		// establish a connection to Tiller now that we've effectively guaranteed it's available
+		if err := setupConnection(); err != nil {
+			return err
+		}
+		i.client = newClient()
 		if err := i.client.PingTiller(); err != nil {
 			return fmt.Errorf("could not ping Tiller: %s", err)
 		}
@@ -444,4 +459,35 @@ func ensureRepoFileFormat(file string, out io.Writer) error {
 	}
 
 	return nil
+}
+
+// watchTillerUntilReady waits for the tiller pod to become available. This is useful in situations where we
+// want to wait before we call New().
+//
+// Returns true if it exists. If the timeout was reached and it could not find the pod, it returns false.
+func watchTillerUntilReady(namespace string, client kubernetes.Interface, timeout int64) bool {
+	deadlinePollingChan := time.NewTimer(time.Duration(timeout) * time.Second).C
+	checkTillerPodTicker := time.NewTicker(500 * time.Millisecond)
+	doneChan := make(chan bool)
+
+	defer checkTillerPodTicker.Stop()
+
+	go func() {
+		for range checkTillerPodTicker.C {
+			_, err := portforwarder.GetTillerPodName(client.CoreV1(), namespace)
+			if err == nil {
+				doneChan <- true
+				break
+			}
+		}
+	}()
+
+	for {
+		select {
+		case <-deadlinePollingChan:
+			return false
+		case <-doneChan:
+			return true
+		}
+	}
 }
