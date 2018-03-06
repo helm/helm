@@ -52,7 +52,7 @@ $ helm package --sign --key 'helm signing key' --keyring path/to/keyring.secret 
 **TIP:** for GnuPG users, your secret keyring is in `~/.gnupg/secring.gpg`. You can
 use `gpg --list-secret-keys` to list the keys you have.
 
-**Warning:**  the latest GnuPG version store your secret keyring using a new format 'kbx' on the default location  '~/.gnupg/pubring.kbx'. Please use the following command to convert your keyring to the legacy gpg format:
+**Warning:**  the GnuPG v2 store your secret keyring using a new format 'kbx' on the default location  '~/.gnupg/pubring.kbx'. Please use the following command to convert your keyring to the legacy gpg format:
 
 ```
 $ gpg --export-secret-keys >~/.gnupg/secring.gpg
