@@ -91,10 +91,10 @@ var indexfileEntries = map[string]repo.ChartVersions{
 			},
 		},
 		{
-			URLs: []string{"http://example.com/charts/santa-maria-1.2.2.tgz"},
+			URLs: []string{"http://example.com/charts/santa-maria-1.2.2-rc-1.tgz"},
 			Metadata: &chart.Metadata{
 				Name:        "santa-maria",
-				Version:     "1.2.2",
+				Version:     "1.2.2-RC-1",
 				Description: "Three boat",
 			},
 		},
