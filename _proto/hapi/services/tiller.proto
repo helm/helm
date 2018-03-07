@@ -19,6 +19,7 @@ package hapi.services.tiller;
 import "hapi/chart/chart.proto";
 import "hapi/chart/config.proto";
 import "hapi/release/release.proto";
+import "hapi/release/log.proto";
 import "hapi/release/info.proto";
 import "hapi/release/test_run.proto";
 import "hapi/release/status.proto";
@@ -56,7 +57,11 @@ service ReleaseService {
 	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
 	}
 
-	// UpdateRelease updates release content.
+	// GetReleaseLogs returns a stream of logging information from the release
+	rpc GetReleaseLogs(stream GetReleaseLogsRequest) returns (stream GetReleaseLogsResponse) {
+	}
+
+    // UpdateRelease updates release content.
 	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
 	}
 
@@ -181,6 +186,14 @@ message GetReleaseContentRequest {
 message GetReleaseContentResponse {
 	// The release content
 	hapi.release.Release release = 1;
+}
+
+message GetReleaseLogsRequest {
+	hapi.release.LogSubscription subscription = 1;
+}
+
+message GetReleaseLogsResponse {
+    hapi.release.Log log = 1;
 }
 
 // UpdateReleaseRequest updates a release.

@@ -28,6 +28,8 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"fmt"
+	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 // maxMsgSize use 20MB as the default message size limit.
@@ -228,6 +230,15 @@ func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.R
 	return h.rollback(ctx, req)
 }
 
+// ReleaseLogs returns a channel streaming log data from the release
+func (h *Client) ReleaseLogs(rlsName string, level release.Log_Level, done <-chan struct{}, sources ...release.Log_Source) (<-chan *rls.GetReleaseLogsResponse, error) {
+	ctx := NewContext()
+	sub := &release.LogSubscription{Release: rlsName, Level: level, Sources: sources}
+	req := &rls.GetReleaseLogsRequest{Subscription: sub}
+
+	return h.logs(ctx, req, done)
+}
+
 // ReleaseStatus returns the given release's status.
 func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
 	reqOpts := h.opts
@@ -404,6 +415,47 @@ func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (
 
 	rlc := rls.NewReleaseServiceClient(c)
 	return rlc.GetReleaseStatus(ctx, req)
+}
+
+// Executes tiller.GetReleaseLogs RPC.
+func (h *Client) logs(ctx context.Context, req *rls.GetReleaseLogsRequest, done <-chan struct{}) (<-chan *rls.GetReleaseLogsResponse, error) {
+	c, err := h.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rlc := rls.NewReleaseServiceClient(c)
+	s, err := rlc.GetReleaseLogs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(chan *rls.GetReleaseLogsResponse)
+
+	go func() {
+		<-done
+		s.CloseSend()
+	}()
+
+	go func() {
+		defer close(out)
+		defer c.Close()
+		for {
+			rs, err := s.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				fmt.Println("gRPC error streaming logs: ", grpc.ErrorDesc(err))
+				return
+			}
+			out <- rs
+		}
+	}()
+
+	s.Send(req)
+
+	return out, nil
 }
 
 // Executes tiller.GetReleaseContent RPC.

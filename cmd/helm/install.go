@@ -200,6 +200,23 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
+//func streamLogs(client helm.Interface, rlsName string, done <-chan struct{}) error {
+//	logs, err := client.ReleaseLogs(rlsName, done)
+//	if err != nil {
+//		return err
+//	}
+//
+//	go func() {
+//		select {
+//		case log := <-logs:
+//			fmt.Println(log.Log)
+//		case <-done:
+//			return
+//		}
+//	}()
+//	return nil
+//}
+
 func (i *installCmd) run() error {
 	debug("CHART PATH: %s\n", i.chartPath)
 
@@ -254,6 +271,8 @@ func (i *installCmd) run() error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
+	//done := make(chan struct{})
+	//streamLogs(i.client, i.name, done)
 	res, err := i.client.InstallReleaseFromChart(
 		chartRequested,
 		i.namespace,
