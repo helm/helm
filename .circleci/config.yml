@@ -4,7 +4,7 @@ jobs:
     working_directory: /go/src/k8s.io/helm
     parallelism: 3
     docker:
-      - image: golang:1.8
+      - image: golang:1.10
     environment:
       PROJECT_NAME: "kubernetes-helm"
     steps:
