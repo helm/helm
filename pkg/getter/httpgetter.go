@@ -76,6 +76,7 @@ func newHTTPGetter(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
 		client.client = &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
+				Proxy:           http.ProxyFromEnvironment,
 			},
 		}
 	} else {
