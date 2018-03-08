@@ -53,15 +53,15 @@ import:
   vcs: git
 
 - package: k8s.io/kubernetes
-  version: 1.9.2
+  version: 1.9.3
 - package: k8s.io/client-go
   version: ~6.0.0
 - package: k8s.io/api
-  version: kubernetes-1.9.2
+  version: kubernetes-1.9.3
 - package: k8s.io/apimachinery
-  version: kubernetes-1.9.2
+  version: kubernetes-1.9.3
 - package: k8s.io/apiserver
-  version: kubernetes-1.9.2
+  version: kubernetes-1.9.3
 
 - package: cloud.google.com/go/compute
   repo: https://github.com/GoogleCloudPlatform/google-cloud-go.git
