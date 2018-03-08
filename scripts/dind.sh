@@ -13,10 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+set -euo pipefail
 
-scripts/portforward.sh 8080&
+scripts/portforward.sh 8080 &
 
-wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh
-chmod +x dind-cluster-v1.7.sh
-RUN_ON_BTRFS_ANYWAY=trololo bash -x ./dind-cluster-v1.7.sh up
+wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.9.sh
+chmod +x dind-cluster-v1.9.sh
+RUN_ON_BTRFS_ANYWAY=trololo bash -x ./dind-cluster-v1.9.sh up
 export PATH="$HOME/.kubeadm-dind-cluster:$PATH"

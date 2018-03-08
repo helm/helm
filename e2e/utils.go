@@ -30,10 +30,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var url string
-var tillerHost string
-var helmBinPath string
-var localTiller bool
+var (
+	url         string
+	tillerHost  string
+	helmBinPath string
+	localTiller bool
+)
 
 func init() {
 	flag.StringVar(&url, "cluster-url", "http://127.0.0.1:8080", "apiserver address to use with restclient")
@@ -57,7 +59,7 @@ func KubeClient() (*kubernetes.Clientset, error) {
 
 func DeleteNS(clientset kubernetes.Interface, namespace *v1.Namespace) {
 	defer GinkgoRecover()
-	err := clientset.Core().Namespaces().Delete(namespace.Name, nil)
+	err := clientset.CoreV1().Namespaces().Delete(namespace.Name, nil)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -69,7 +71,7 @@ func WaitForPod(clientset kubernetes.Interface, namespace string, name string, p
 	defer GinkgoRecover()
 	var podUpdated *v1.Pod
 	Eventually(func() error {
-		podUpdated, err := clientset.Core().Pods(namespace).Get(name, metav1.GetOptions{})
+		podUpdated, err := clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}

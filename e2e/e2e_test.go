@@ -25,9 +25,11 @@ import (
 )
 
 var _ = Describe("Basic Suite", func() {
-	var helm HelmManager
-	var namespace *v1.Namespace
-	var clientset kubernetes.Interface
+	var (
+		helm      HelmManager
+		namespace *v1.Namespace
+		clientset kubernetes.Interface
+	)
 
 	BeforeEach(func() {
 		var err error
@@ -39,7 +41,7 @@ var _ = Describe("Basic Suite", func() {
 				GenerateName: "e2e-helm-",
 			},
 		}
-		namespace, err = clientset.Core().Namespaces().Create(namespaceObj)
+		namespace, err = clientset.CoreV1().Namespaces().Create(namespaceObj)
 		Expect(err).NotTo(HaveOccurred())
 		helm = &BinaryHelmManager{
 			Namespace:         namespace.Name,

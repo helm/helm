@@ -62,20 +62,17 @@ type BinaryHelmManager struct {
 }
 
 func (m *BinaryHelmManager) InstallTiller() error {
-	arg := make([]string, 0, 5)
-	var err error
-	arg = append(arg, "init", "--tiller-namespace", m.Namespace)
+	args := []string{"init"}
 	if m.UseCanary {
-		arg = append(arg, "--canary-image")
+		args = append(args, "--canary-image")
 	}
 	if m.UseServiceAccount {
-		arg = append(arg, "--service-account", "tiller")
-		if err = m.InstallServiceAccounts(); err != nil {
+		args = append(args, "--service-account", "tiller")
+		if err := m.InstallServiceAccounts(); err != nil {
 			return err
 		}
 	}
-	_, err = m.executeUsingHelm(arg...)
-	if err != nil {
+	if _, err := m.executeUsingHelm(args...); err != nil {
 		return err
 	}
 	By("Waiting for tiller pod")
@@ -84,16 +81,12 @@ func (m *BinaryHelmManager) InstallTiller() error {
 }
 
 func (m *BinaryHelmManager) DeleteTiller(removeHelmHome bool) error {
-	arg := []string{}
-	arg = append(arg, "reset", "--tiller-namespace", m.Namespace, "--force")
+	args := []string{"reset", "--force"}
 	if removeHelmHome {
-		arg = append(arg, "--remove-helm-home")
+		args = append(args, "--remove-helm-home")
 	}
-	_, err := m.executeUsingHelm(arg...)
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err := m.executeUsingHelm(args...)
+	return err
 }
 
 func (m *BinaryHelmManager) Install(chartName string, values map[string]string) (string, error) {
@@ -106,7 +99,7 @@ func (m *BinaryHelmManager) Install(chartName string, values map[string]string) 
 
 // Status reports nil if release is considered to be succesfull
 func (m *BinaryHelmManager) Status(releaseName string) error {
-	stdout, err := m.executeUsingHelm("status", releaseName, "--tiller-namespace", m.Namespace)
+	stdout, err := m.executeUsingHelm("status", releaseName)
 	if err != nil {
 		return err
 	}
@@ -118,41 +111,37 @@ func (m *BinaryHelmManager) Status(releaseName string) error {
 }
 
 func (m *BinaryHelmManager) Delete(releaseName string) error {
-	_, err := m.executeUsingHelm("delete", releaseName, "--tiller-namespace", m.Namespace)
+	_, err := m.executeUsingHelm("delete", releaseName)
 	return err
 }
 
 func (m *BinaryHelmManager) Upgrade(chartName, releaseName string, values map[string]string) error {
-	arg := make([]string, 0, 9)
-	arg = append(arg, "upgrade", releaseName, chartName)
+	args := []string{"upgrade", releaseName, chartName}
 	if len(values) > 0 {
-		arg = append(arg, "--set", prepareArgsFromValues(values))
+		args = append(args, "--set", prepareArgsFromValues(values))
 	}
-	_, err := m.executeUsingHelmInNamespace(arg...)
+	_, err := m.executeUsingHelmInNamespace(args...)
 	return err
 }
 
 func (m *BinaryHelmManager) Rollback(releaseName string, revision int) error {
-	arg := make([]string, 0, 6)
-	arg = append(arg, "rollback", releaseName, strconv.Itoa(revision), "--tiller-namespace", m.Namespace)
-	_, err := m.executeUsingHelm(arg...)
+	_, err := m.executeUsingHelm("rollback", releaseName, strconv.Itoa(revision))
 	return err
 }
 
-func (m *BinaryHelmManager) executeUsingHelmInNamespace(arg ...string) (string, error) {
-	arg = append(arg, "--namespace", m.Namespace, "--tiller-namespace", m.Namespace)
-	return m.executeUsingHelm(arg...)
+func (m *BinaryHelmManager) executeUsingHelmInNamespace(args ...string) (string, error) {
+	return m.executeUsingHelm(append(args, "--namespace", m.Namespace)...)
 }
 
-func (m *BinaryHelmManager) executeUsingHelm(arg ...string) (string, error) {
+func (m *BinaryHelmManager) executeUsingHelm(args ...string) (string, error) {
 	if m.TillerHost != "" {
-		arg = append(arg, "--host", m.TillerHost)
+		args = append(args, "--host", m.TillerHost)
 	}
-	return m.executeUsingBinary(m.HelmBin, arg...)
+	return m.executeUsingBinary(m.HelmBin, append(args, "--tiller-namespace", m.Namespace)...)
 }
 
-func (m *BinaryHelmManager) executeUsingBinary(binary string, arg ...string) (string, error) {
-	cmd := exec.Command(binary, arg...)
+func (m *BinaryHelmManager) executeUsingBinary(binary string, args ...string) (string, error) {
+	cmd := exec.Command(binary, args...)
 	Logf("Running command %+v\n", cmd.Args)
 	stdout, err := cmd.Output()
 	if err != nil {
@@ -169,13 +158,12 @@ func (m *BinaryHelmManager) executeUsingBinary(binary string, arg ...string) (st
 }
 
 func (m *BinaryHelmManager) executeCommandWithValues(releaseName, command string, values map[string]string) (string, error) {
-	arg := make([]string, 0, 8)
-	arg = append(arg, command, releaseName)
+	args := []string{command, releaseName}
 	if len(values) > 0 {
 		vals := prepareArgsFromValues(values)
-		arg = append(arg, "--set", vals)
+		args = append(args, "--set", vals)
 	}
-	return m.executeUsingHelmInNamespace(arg...)
+	return m.executeUsingHelmInNamespace(args...)
 }
 
 func (m *BinaryHelmManager) InstallServiceAccounts() error {
@@ -214,7 +202,7 @@ func getStatusFromHelmOutput(output string) string {
 
 func waitTillerPod(clientset kubernetes.Interface, namespace string) {
 	Eventually(func() bool {
-		pods, err := clientset.Core().Pods(namespace).List(metav1.ListOptions{})
+		pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 		if err != nil {
 			return false
 		}
