@@ -165,7 +165,7 @@ func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
 	return cmd
 }
 
-func setupConnection(c *cobra.Command, args []string) error {
+func setupConnection() error {
 	if settings.TillerHost == "" {
 		config, client, err := getKubeClient(settings.KubeContext)
 		if err != nil {
@@ -266,7 +266,7 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 }
 
 func newClient() helm.Interface {
-	options := []helm.Option{helm.Host(settings.TillerHost)}
+	options := []helm.Option{helm.Host(settings.TillerHost), helm.ConnectTimeout(settings.TillerConnectionTimeout)}
 
 	if tlsVerify || tlsEnable {
 		if tlsCaCertFile == "" {
