@@ -275,7 +275,7 @@ type GetReleaseStatusResponse struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	// Info contains information about the release.
 	Info *hapi_release4.Info `protobuf:"bytes,2,opt,name=info" json:"info,omitempty"`
-	// Namesapce the release was released into
+	// Namespace the release was released into
 	Namespace string `protobuf:"bytes,3,opt,name=namespace" json:"namespace,omitempty"`
 }
 
@@ -949,8 +949,6 @@ type ReleaseServiceClient interface {
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
 	// RunReleaseTest executes the tests defined of a named release
 	RunReleaseTest(ctx context.Context, in *TestReleaseRequest, opts ...grpc.CallOption) (ReleaseService_RunReleaseTestClient, error)
-	// PingTiller sends a test/ping signal to Tiller to ensure that it's up
-	PingTiller(ctx context.Context) error
 }
 
 type releaseServiceClient struct {
@@ -1078,14 +1076,6 @@ func (c *releaseServiceClient) RunReleaseTest(ctx context.Context, in *TestRelea
 		return nil, err
 	}
 	return x, nil
-}
-
-func (c *releaseServiceClient) PingTiller(ctx context.Context) error {
-	err := grpc.Invoke(ctx, "/hapi.services.tiller.ReleaseService/PingTiller", "Ping", nil, c.cc, grpc.FailFast(false))
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 type ReleaseService_RunReleaseTestClient interface {
@@ -1310,10 +1300,6 @@ func _ReleaseService_RunReleaseTest_Handler(srv interface{}, stream grpc.ServerS
 	return srv.(ReleaseServiceServer).RunReleaseTest(m, &releaseServiceRunReleaseTestServer{stream})
 }
 
-func _ReleaseService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	return "Pong", nil
-}
-
 type ReleaseService_RunReleaseTestServer interface {
 	Send(*TestReleaseResponse) error
 	grpc.ServerStream
@@ -1362,10 +1348,6 @@ var _ReleaseService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHistory",
 			Handler:    _ReleaseService_GetHistory_Handler,
-		},
-		{
-			MethodName: "PingTiller",
-			Handler:    _ReleaseService_Ping_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
