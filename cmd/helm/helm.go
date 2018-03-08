@@ -165,14 +165,34 @@ func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
 	return cmd
 }
 
-func setupConnection(c *cobra.Command, args []string) error {
-	if settings.TillerHost == "" {
-		config, client, err := getKubeClient(settings.KubeContext)
-		if err != nil {
+func waitTillerPodAndSetupConnection(waitTimeout int) error {
+	kubeConfig, kubeClient, err := getKubeClient(settings.KubeContext)
+	if err != nil {
+		return err
+	}
+
+	if portforwarder.WaitTillerPod(kubeClient.CoreV1(), settings.TillerNamespace, waitTimeout) {
+		if err = setupConnection(kubeClient, kubeConfig); err != nil {
 			return err
 		}
+	} else {
+		return fmt.Errorf("tiller pod not found, polling deadline exceeded")
+	}
 
-		tunnel, err := portforwarder.New(settings.TillerNamespace, client, config)
+	return nil
+}
+
+func setupConnectionCobraPreRunHook(_ *cobra.Command, _ []string) error {
+	kubeConfig, kubeClient, err := getKubeClient(settings.KubeContext)
+	if err != nil {
+		return err
+	}
+	return setupConnection(kubeClient, kubeConfig)
+}
+
+func setupConnection(kubeClient kubernetes.Interface, kubeConfig *rest.Config) error {
+	if settings.TillerHost == "" {
+		tunnel, err := portforwarder.New(settings.TillerNamespace, kubeClient, kubeConfig)
 		if err != nil {
 			return err
 		}
@@ -181,7 +201,7 @@ func setupConnection(c *cobra.Command, args []string) error {
 		debug("Created tunnel using local port: '%d'\n", tunnel.Local)
 	}
 
-	// Set up the gRPC config.
+	// Set up the gRPC kubeConfig.
 	debug("SERVER: %q\n", settings.TillerHost)
 
 	// Plugin support.

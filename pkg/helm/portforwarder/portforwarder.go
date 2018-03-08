@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"k8s.io/helm/pkg/kube"
+	"time"
 )
 
 var (
@@ -51,6 +52,38 @@ func getTillerPodName(client corev1.PodsGetter, namespace string) (string, error
 		return "", err
 	}
 	return pod.ObjectMeta.GetName(), nil
+}
+
+func WaitTillerPod(client corev1.PodsGetter, namespace string, waitTimeout int) bool {
+	deadlinePollingChan := time.NewTimer(time.Duration(waitTimeout) * time.Second).C
+	checkTillerPodTicker := time.NewTicker(500 * time.Millisecond)
+	doneChan := make(chan bool)
+
+	go func() {
+		for range checkTillerPodTicker.C {
+			_, err := getTillerPodName(client, namespace)
+			if err == nil {
+				doneChan <- true
+				break
+			}
+		}
+	}()
+
+	podExists := false
+loop:
+	for {
+		select {
+		case <-deadlinePollingChan:
+			break loop
+		case <-doneChan:
+			podExists = true
+			break loop
+		}
+	}
+
+	checkTillerPodTicker.Stop()
+
+	return podExists
 }
 
 func getFirstRunningPod(client corev1.PodsGetter, namespace string, selector labels.Selector) (*v1.Pod, error) {

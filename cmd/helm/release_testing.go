@@ -51,7 +51,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Use:     "test [RELEASE]",
 		Short:   "test a release",
 		Long:    releaseTestDesc,
-		PreRunE: setupConnection,
+		PreRunE: setupConnectionCobraPreRunHook,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name"); err != nil {
 				return err

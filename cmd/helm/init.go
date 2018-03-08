@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -80,7 +79,6 @@ type initCmd struct {
 	forceUpgrade   bool
 	skipRefresh    bool
 	out            io.Writer
-	client         helm.Interface
 	home           helmpath.Home
 	opts           installer.Options
 	kubeClient     kubernetes.Interface
@@ -88,6 +86,7 @@ type initCmd struct {
 	maxHistory     int
 	replicas       int
 	wait           bool
+	waitTimeout    int
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -103,7 +102,6 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			}
 			i.namespace = settings.TillerNamespace
 			i.home = settings.Home
-			i.client = ensureHelmClient(i.client)
 
 			return i.run()
 		},
@@ -118,6 +116,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
+	f.IntVar(&i.waitTimeout, "wait-timeout", 300, "time in seconds to wait for tiller pod readiness")
 
 	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
 	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
@@ -301,7 +300,7 @@ func (i *initCmd) run() error {
 				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
-				if err := i.ping(); err != nil {
+				if err := i.ensureTillerReady(); err != nil {
 					return err
 				}
 				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
@@ -310,7 +309,7 @@ func (i *initCmd) run() error {
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			if err := i.ping(); err != nil {
+			if err := i.ensureTillerReady(); err != nil {
 				return err
 			}
 			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.\n\n"+
@@ -325,9 +324,14 @@ func (i *initCmd) run() error {
 	return nil
 }
 
-func (i *initCmd) ping() error {
+func (i *initCmd) ensureTillerReady() error {
 	if i.wait {
-		if err := i.client.PingTiller(); err != nil {
+		if err := waitTillerPodAndSetupConnection(i.waitTimeout); err != nil {
+			return err
+		}
+
+		client := newClient()
+		if err := client.PingTiller(); err != nil {
 			return fmt.Errorf("could not ping Tiller: %s", err)
 		}
 	}

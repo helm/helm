@@ -83,6 +83,10 @@ service ReleaseService {
     // RunReleaseTest executes the tests defined of a named release
     rpc RunReleaseTest(TestReleaseRequest) returns (stream TestReleaseResponse) {
     }
+
+    // PingTiller sends a test/pingTiller signal to Tiller to ensure that it's up
+    rpc PingTiller(PingTillerRequest) returns (PingTillerResponse) {
+    }
 }
 
 // ListReleasesRequest requests a list of releases.
@@ -334,4 +338,10 @@ message TestReleaseResponse {
 	string msg = 1;
 	hapi.release.TestRun.Status status = 2;
 
+}
+
+message PingTillerRequest {
+}
+
+message PingTillerResponse {
 }

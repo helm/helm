@@ -57,7 +57,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Use:     "rollback [flags] [RELEASE] [REVISION]",
 		Short:   "roll back a release to a previous revision",
 		Long:    rollbackDesc,
-		PreRunE: setupConnection,
+		PreRunE: setupConnectionCobraPreRunHook,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "revision number"); err != nil {
 				return err
