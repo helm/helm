@@ -18,6 +18,7 @@ package helm
 
 import (
 	"crypto/tls"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -78,6 +79,8 @@ type options struct {
 	reuseValues bool
 	// release test options are applied directly to the test release history request
 	testReq rls.TestReleaseRequest
+	// connectTimeout specifies the time duration Helm will wait to establish a connection to tiller
+	connectTimeout time.Duration
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -177,6 +180,13 @@ func ValueOverrides(raw []byte) InstallOption {
 func ReleaseName(name string) InstallOption {
 	return func(opts *options) {
 		opts.instReq.Name = name
+	}
+}
+
+// ConnectTimeout specifies the duration (in seconds) Helm will wait to establish a connection to tiller
+func ConnectTimeout(timeout int64) Option {
+	return func(opts *options) {
+		opts.connectTimeout = time.Duration(timeout) * time.Second
 	}
 }
 

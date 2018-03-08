@@ -103,7 +103,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				if _, err := processParent(cmd, args); err != nil {
 					return err
 				}
-				return setupConnection(cmd, args)
+				return setupConnection()
 			}
 		}
 
