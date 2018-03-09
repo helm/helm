@@ -57,12 +57,11 @@ func (h Home) Cache() string {
 
 // CacheIndex returns the path to an index for the given named repository.
 func (h Home) CacheIndex(name string) string {
-	target := fmt.Sprintf("%s-index.yaml", name)
-	return h.Path("repository", "cache", target)
+	return h.Path("repository", "cache", h.CacheRelativeIndex(name))
 }
 
-// RelativeIndex returns the relative path to an index for the given named repository.
-func (h Home) RelativeIndex(name string) string {
+// CacheRelativeIndex returns the relative path to an index for the given named repository from the cache path.
+func (h Home) CacheRelativeIndex(name string) string {
 	target := fmt.Sprintf("%s-index.yaml", name)
 	return filepath.Join(target)
 }
