@@ -42,6 +42,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-monitor](https://github.com/ContainerSolutions/helm-monitor) - Plugin to monitor a release and rollback based on Prometheus/ElasticSearch query
 - [helm-k8comp](https://github.com/cststack/k8comp) - Plugin to create Helm Charts from hiera using k8comp
 - [helm-hashtag](https://github.com/balboah/helm-hashtag) - Plugin for tracking docker tag hash digests as values
+- [helm-unittest](https://github.com/lrills/helm-unittest) - Plugin for unit testing chart locally with YAML
 
 We also encourage GitHub authors to use the [helm-plugin](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories)
 tag on their plugin repositories.
