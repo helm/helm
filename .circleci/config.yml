@@ -13,15 +13,15 @@ jobs:
           version: 17.09.0-ce
       - restore_cache:
           keys:
-            - glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
-            - glide- # used as a fall through if the checksum fails to find exact entry
+            - dep-{{ checksum "Gopkg.toml" }}-{{ checksum "Gopkg.lock" }}
+            - dep- # used as a fall through if the checksum fails to find exact entry
       - run:
           name: install dependencies
           command: .circleci/bootstrap.sh
       - save_cache:
-          key: glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+          key: dep-{{ checksum "Gopkg.toml" }}-{{ checksum "Gopkg.lock" }}
           paths:
-            - /root/.glide  # Where the glide cache is stored
+            - /go/pkg/dep  # Where the dep cache is stored
       - run:
           name: test
           command: .circleci/test.sh
