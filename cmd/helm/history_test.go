@@ -17,9 +17,10 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
-	"regexp"
+	"io"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
 	rpb "k8s.io/helm/pkg/proto/hapi/release"
@@ -34,34 +35,27 @@ func TestHistoryCmd(t *testing.T) {
 		})
 	}
 
-	tests := []struct {
-		cmds string
-		desc string
-		args []string
-		resp []*rpb.Release
-		xout string
-	}{
+	tests := []releaseCase{
 		{
-			cmds: "helm history RELEASE_NAME",
-			desc: "get history for release",
+			name: "get history for release",
 			args: []string{"angry-bird"},
-			resp: []*rpb.Release{
+			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 2, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 1, rpb.Status_SUPERSEDED),
 			},
-			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n1       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n2       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
+			expected: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n1       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n2       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
 		},
 		{
-			cmds: "helm history --max=MAX RELEASE_NAME",
-			desc: "get history with max limit set",
-			args: []string{"--max=2", "angry-bird"},
-			resp: []*rpb.Release{
+			name:  "get history with max limit set",
+			args:  []string{"angry-bird"},
+			flags: []string{"--max", "2"},
+			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			xout: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
+			expected: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
 		},
 		{
 			cmds: "helm history --max=MAX RELEASE_NAME -o yaml",
@@ -85,19 +79,7 @@ func TestHistoryCmd(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
-	for _, tt := range tests {
-		frc := &helm.FakeClient{Rels: tt.resp}
-		cmd := newHistoryCmd(frc, &buf)
-		cmd.ParseFlags(tt.args)
-
-		if err := cmd.RunE(cmd, tt.args); err != nil {
-			t.Fatalf("%q\n\t%s: unexpected error: %v", tt.cmds, tt.desc, err)
-		}
-		re := regexp.MustCompile(tt.xout)
-		if !re.Match(buf.Bytes()) {
-			t.Fatalf("%q\n\t%s:\nexpected\n\t%q\nactual\n\t%q", tt.cmds, tt.desc, tt.xout, buf.String())
-		}
-		buf.Reset()
-	}
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
+		return newHistoryCmd(c, out)
+	})
 }
