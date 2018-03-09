@@ -19,6 +19,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"path"
 	"sort"
 	"strings"
@@ -204,6 +205,11 @@ func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
 	// The idea with this process is to make it possible for more complex templates
 	// to share common blocks, but to make the entire thing feel like a file-based
 	// template engine.
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("rendering template failed: %v\n", err)
+		}
+	}()
 	t := template.New("gotpl")
 	if e.Strict {
 		t.Option("missingkey=error")
