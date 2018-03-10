@@ -23,11 +23,23 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"encoding/json"
+	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
 )
+
+type releaseInfo struct {
+	Revision    int32  `json:"revision" yaml:"revision"`
+	Updated     string `json:"updated" yaml:"updated"`
+	Status      string `json:"status" yaml:"status"`
+	Chart       string `json:"chart" yaml:"chart"`
+	Description string `json:"description" yaml:"description"`
+}
+
+type releaseHistory []releaseInfo
 
 var historyHelp = `
 History prints historical revisions for a given release.
@@ -46,11 +58,12 @@ The historical release set is printed as a formatted table, e.g:
 `
 
 type historyCmd struct {
-	max      int32
-	rls      string
-	out      io.Writer
-	helmc    helm.Interface
-	colWidth uint
+	max          int32
+	rls          string
+	out          io.Writer
+	helmc        helm.Interface
+	colWidth     uint
+	outputFormat string
 }
 
 func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
@@ -77,6 +90,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.Int32Var(&his.max, "max", 256, "maximum number of revision to include in history")
 	f.UintVar(&his.colWidth, "col-width", 60, "specifies the max column width of output")
+	f.StringVarP(&his.outputFormat, "output", "o", "", "prints the output in the specified format ('json' or 'yaml' or defaults to 'table')")
 
 	return cmd
 }
@@ -90,15 +104,29 @@ func (cmd *historyCmd) run() error {
 		return nil
 	}
 
-	fmt.Fprintln(cmd.out, formatHistory(r.Releases, cmd.colWidth))
+	releaseHistory := getReleaseHistory(r.Releases)
+
+	var history []byte
+	var formattingError error
+
+	switch cmd.outputFormat {
+	case "yaml":
+		history, formattingError = yaml.Marshal(releaseHistory)
+	case "json":
+		history, formattingError = json.Marshal(releaseHistory)
+	default:
+		history = formatAsTable(releaseHistory, cmd.colWidth)
+	}
+
+	if formattingError != nil {
+		return prettyError(formattingError)
+	}
+
+	fmt.Fprintln(cmd.out, string(history))
 	return nil
 }
 
-func formatHistory(rls []*release.Release, colWidth uint) string {
-	tbl := uitable.New()
-
-	tbl.MaxColWidth = colWidth
-	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "DESCRIPTION")
+func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	for i := len(rls) - 1; i >= 0; i-- {
 		r := rls[i]
 		c := formatChartname(r.Chart)
@@ -106,9 +134,30 @@ func formatHistory(rls []*release.Release, colWidth uint) string {
 		s := r.Info.Status.Code.String()
 		v := r.Version
 		d := r.Info.Description
-		tbl.AddRow(v, t, s, c, d)
+
+		rInfo := releaseInfo{
+			Revision:    v,
+			Updated:     t,
+			Status:      s,
+			Chart:       c,
+			Description: d,
+		}
+		history = append(history, rInfo)
 	}
-	return tbl.String()
+
+	return history
+}
+
+func formatAsTable(releases releaseHistory, colWidth uint) []byte {
+	tbl := uitable.New()
+
+	tbl.MaxColWidth = colWidth
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "DESCRIPTION")
+	for i := 0; i <= len(releases)-1; i++ {
+		r := releases[i]
+		tbl.AddRow(r.Revision, r.Updated, r.Status, r.Chart, r.Description)
+	}
+	return tbl.Bytes()
 }
 
 func formatChartname(c *chart.Chart) string {
