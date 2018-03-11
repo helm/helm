@@ -4,7 +4,7 @@ In the previous section we looked at the built-in objects that Helm templates of
 
 - The `values.yaml` file in the chart
 - If this is a subchart, the `values.yaml` file of a parent chart
-- A values file if passed into `helm install` or `helm update` with the `-f` flag (`helm install -f myvals.yaml ./mychart`)
+- A values file if passed into `helm install` or `helm upgrade` with the `-f` flag (`helm install -f myvals.yaml ./mychart`)
 - Individual parameters passed with `--set` (such as `helm install --set foo=bar ./mychart`)
 
 The list above is in order of specificity: `values.yaml` is the default, which can be overridden by a parent chart's `values.yaml`, which can in turn be overridden by a user-supplied values file, which can in turn be overridden by `--set` parameters.

@@ -49,7 +49,7 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Use:     "manifest [flags] RELEASE_NAME",
 		Short:   "download the manifest for a named release",
 		Long:    getManifestHelp,
-		PreRunE: setupConnection,
+		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired
