@@ -90,7 +90,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.Int32Var(&his.max, "max", 256, "maximum number of revision to include in history")
 	f.UintVar(&his.colWidth, "col-width", 60, "specifies the max column width of output")
-	f.StringVarP(&his.outputFormat, "output", "o", "", "prints the output in the specified format ('json' or 'yaml' or defaults to 'table')")
+	f.StringVarP(&his.outputFormat, "output", "o", "table", "prints the output in the specified format ('json' or 'yaml' or defaults to 'table')")
 
 	return cmd
 }
@@ -114,8 +114,10 @@ func (cmd *historyCmd) run() error {
 		history, formattingError = yaml.Marshal(releaseHistory)
 	case "json":
 		history, formattingError = json.Marshal(releaseHistory)
-	default:
+	case "table":
 		history = formatAsTable(releaseHistory, cmd.colWidth)
+	default:
+		return fmt.Errorf("unknown output format %q", cmd.outputFormat)
 	}
 
 	if formattingError != nil {
