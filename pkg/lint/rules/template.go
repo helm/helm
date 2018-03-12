@@ -101,7 +101,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		linter.RunLinterRule(support.ErrorSev, path, validateAllowedExtension(fileName))
 
 		// We only apply the following lint rules to yaml files
-		if filepath.Ext(fileName) != ".yaml" {
+		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
 			continue
 		}
 
@@ -138,7 +138,7 @@ func validateTemplatesDir(templatesPath string) error {
 
 func validateAllowedExtension(fileName string) error {
 	ext := filepath.Ext(fileName)
-	validExtensions := []string{".yaml", ".tpl", ".txt"}
+	validExtensions := []string{".yaml", ".yml", ".tpl", ".txt"}
 
 	for _, b := range validExtensions {
 		if b == ext {
@@ -146,7 +146,7 @@ func validateAllowedExtension(fileName string) error {
 		}
 	}
 
-	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .tpl, or .txt", ext)
+	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
 }
 
 func validateYamlContent(err error) error {
