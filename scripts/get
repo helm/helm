@@ -78,7 +78,7 @@ checkDesiredVersion() {
   # Use the GitHub releases webpage for the project to find the desired version for this project.
   local release_url="https://github.com/kubernetes/helm/releases/${DESIRED_VERSION:-latest}"
   if type "curl" > /dev/null; then
-    TAG=$(curl -SsL $release_url | awk '/\/tag\//' | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+    TAG=$(curl -SsL $release_url | awk '/\/tag\//' | grep -v no-underline | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
   elif type "wget" > /dev/null; then
     TAG=$(wget -q -O - $release_url | awk '/\/tag\//' | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
   fi
