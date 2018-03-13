@@ -4,14 +4,11 @@ maintainers:
   - jascott1
   - mattfarina
   - michelleN
-  - migmartri
   - nebril
   - prydonius
-  - seh
   - SlickNik
   - technosophos
   - thomastaylor312
-  - vaikas-google
   - viglesiasce
 reviewers:
   - adamreese
@@ -23,10 +20,11 @@ reviewers:
   - migmartri
   - nebril
   - prydonius
-  - sebgoa
-  - seh
   - SlickNik
   - technosophos
   - thomastaylor312
-  - vaikas-google
   - viglesiasce
+emeritus:
+  - migmartri
+  - seh
+  - vaikas-google
