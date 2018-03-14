@@ -50,13 +50,18 @@ The install argument must be a chart reference, a path to a packaged chart,
 a path to an unpacked chart directory or a URL.
 
 To override values in a chart, use either the '--values' flag and pass in a file
-or use the '--set' flag and pass configuration from the command line.
+or use the '--set' flag and pass configuration from the command line, to force
+a string value use '--set-string'.
 
 	$ helm install -f myvalues.yaml ./redis
 
 or
 
 	$ helm install --set name=prod ./redis
+
+or
+
+	$ helm install --set-string long_int=1234567890 ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -113,6 +118,7 @@ type installCmd struct {
 	out          io.Writer
 	client       helm.Interface
 	values       []string
+	stringValues []string
 	nameTemplate string
 	version      string
 	timeout      int64
@@ -186,6 +192,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
 	f.StringArrayVar(&inst.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&inst.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
@@ -211,7 +218,7 @@ func (i *installCmd) run() error {
 		i.namespace = defaultNamespace()
 	}
 
-	rawVals, err := vals(i.valueFiles, i.values)
+	rawVals, err := vals(i.valueFiles, i.values, i.stringValues)
 	if err != nil {
 		return err
 	}
@@ -325,8 +332,8 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 }
 
 // vals merges values from files specified via -f/--values and
-// directly via --set, marshaling them to YAML
-func vals(valueFiles valueFiles, values []string) ([]byte, error) {
+// directly via --set or --set-string, marshaling them to YAML
+func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -356,6 +363,13 @@ func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 	for _, value := range values {
 		if err := strvals.ParseInto(value, base); err != nil {
 			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+		}
+	}
+
+	// User specified a value via --set-string
+	for _, value := range stringValues {
+		if err := strvals.ParseIntoString(value, base); err != nil {
+			return []byte{}, fmt.Errorf("failed parsing --set-string data: %s", err)
 		}
 	}
 
