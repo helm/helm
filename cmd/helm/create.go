@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -78,7 +79,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&cc.starter, "starter", "p", "", "the named Helm starter scaffold")
+	cmd.Flags().StringVarP(&cc.starter, "starter", "p", "", "the name or path of the Helm starter scaffold")
 	return cmd
 }
 
@@ -97,6 +98,12 @@ func (c *createCmd) run() error {
 	if c.starter != "" {
 		// Create from the starter
 		lstarter := filepath.Join(c.home.Starters(), c.starter)
+		// Check without helm home
+		if _, err := os.Stat(lstarter); os.IsNotExist(err) {
+			if _, err := os.Stat(c.starter); err == nil {
+				lstarter = c.starter
+			}
+		}
 		return chartutil.CreateFrom(cfile, filepath.Dir(c.name), lstarter)
 	}
 
