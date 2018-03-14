@@ -45,18 +45,38 @@ func ToYAML(s string) (string, error) {
 func Parse(s string) (map[string]interface{}, error) {
 	vals := map[string]interface{}{}
 	scanner := bytes.NewBufferString(s)
-	t := newParser(scanner, vals)
+	t := newParser(scanner, vals, false)
 	err := t.parse()
 	return vals, err
 }
 
-//ParseInto parses a strvals line and merges the result into dest.
+// Parse parses a set line and forces a string value.
+//
+// A set line is of the form name1=value1,name2=value2
+func ParseString(s string) (map[string]interface{}, error) {
+	vals := map[string]interface{}{}
+	scanner := bytes.NewBufferString(s)
+	t := newParser(scanner, vals, true)
+	err := t.parse()
+	return vals, err
+}
+
+// ParseInto parses a strvals line and merges the result into dest.
 //
 // If the strval string has a key that exists in dest, it overwrites the
 // dest version.
 func ParseInto(s string, dest map[string]interface{}) error {
 	scanner := bytes.NewBufferString(s)
-	t := newParser(scanner, dest)
+	t := newParser(scanner, dest, false)
+	return t.parse()
+}
+
+// ParseIntoString parses a strvals line nad merges the result into dest.
+//
+// This method always returns a string as the value.
+func ParseIntoString(s string, dest map[string]interface{}) error {
+	scanner := bytes.NewBufferString(s)
+	t := newParser(scanner, dest, true)
 	return t.parse()
 }
 
@@ -65,10 +85,11 @@ func ParseInto(s string, dest map[string]interface{}) error {
 type parser struct {
 	sc   *bytes.Buffer
 	data map[string]interface{}
+	st   bool
 }
 
-func newParser(sc *bytes.Buffer, data map[string]interface{}) *parser {
-	return &parser{sc: sc, data: data}
+func newParser(sc *bytes.Buffer, data map[string]interface{}, stringBool bool) *parser {
+	return &parser{sc: sc, data: data, st: stringBool}
 }
 
 func (t *parser) parse() error {
@@ -133,7 +154,7 @@ func (t *parser) key(data map[string]interface{}) error {
 				return e
 			case ErrNotList:
 				v, e := t.val()
-				set(data, string(k), typedVal(v))
+				set(data, string(k), typedVal(v, t.st))
 				return e
 			default:
 				return e
@@ -206,7 +227,7 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 			return setIndex(list, i, ""), err
 		case ErrNotList:
 			v, e := t.val()
-			return setIndex(list, i, typedVal(v)), e
+			return setIndex(list, i, typedVal(v, t.st)), e
 		default:
 			return list, e
 		}
@@ -265,10 +286,10 @@ func (t *parser) valList() ([]interface{}, error) {
 			if r, _, e := t.sc.ReadRune(); e == nil && r != ',' {
 				t.sc.UnreadRune()
 			}
-			list = append(list, typedVal(v))
+			list = append(list, typedVal(v, t.st))
 			return list, nil
 		case last == ',':
-			list = append(list, typedVal(v))
+			list = append(list, typedVal(v, t.st))
 		}
 	}
 }
@@ -298,7 +319,7 @@ func inMap(k rune, m map[rune]bool) bool {
 	return ok
 }
 
-func typedVal(v []rune) interface{} {
+func typedVal(v []rune, st bool) interface{} {
 	val := string(v)
 	if strings.EqualFold(val, "true") {
 		return true
@@ -308,8 +329,8 @@ func typedVal(v []rune) interface{} {
 		return false
 	}
 
-	// If this value does not start with zero, try parsing it to an int
-	if len(val) != 0 && val[0] != '0' {
+	// If this value does not start with zero, and not returnString, try parsing it to an int
+	if !st && len(val) != 0 && val[0] != '0' {
 		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return iv
 		}
