@@ -491,9 +491,12 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 
 //readFile load a file from the local directory or a remote file with a url.
 func readFile(filePath string) ([]byte, error) {
-	u, _ := url.Parse(filePath)
-	p := getter.All(settings)
+	u, err := url.Parse(filePath)
+	if err != nil {
+		return ioutil.ReadFile(filePath)
+	}
 
+	p := getter.All(settings)
 	// FIXME: maybe someone handle other protocols like ftp.
 	getterConstructor, err := p.ByScheme(u.Scheme)
 

@@ -17,7 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -27,7 +31,29 @@ import (
 	"k8s.io/helm/pkg/helm"
 )
 
-func TestInstall(t *testing.T) {
+func TestInstallCmd(t *testing.T) {
+	// Prepare mock server for some test cases
+	httpHandler := func(writer http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/extra_values.yaml":
+			fmt.Fprint(writer, "foo: bar")
+		case "/more_values.yaml":
+			fmt.Fprint(writer, "foo: baz")
+		default:
+			panic(http.ErrAbortHandler)
+		}
+	}
+	httpSrv := httptest.NewServer(http.HandlerFunc(httpHandler))
+	defer httpSrv.Close()
+
+	// Force debug flag so that results can be inspected in detail. However, suppress stdout noise.
+	wasDebug, origStdout := settings.Debug, os.Stdout
+	settings.Debug = true
+	os.Stdout, _ = os.Open(os.DevNull)
+	defer func() {
+		settings.Debug, os.Stdout = wasDebug, origStdout
+	}()
+
 	tests := []releaseCase{
 		// Install, base case
 		{
@@ -35,7 +61,6 @@ func TestInstall(t *testing.T) {
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name aeneas", " "),
 			expected: "aeneas",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, no hooks
 		{
@@ -43,45 +68,65 @@ func TestInstall(t *testing.T) {
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name aeneas --no-hooks", " "),
 			expected: "aeneas",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, values from cli
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name virgil --set foo=bar", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			expected: `(?s)NAME:\s*virgil.+USER-SUPPLIED VALUES:\s*foo: bar`,
 		},
 		// Install, values from cli via multiple --set
 		{
 			name:     "install with multiple values",
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name virgil --set foo=bar --set bar=foo", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			expected: `(?s)NAME:\s*virgil.+USER-SUPPLIED VALUES:\s*bar: foo\s*foo: bar`,
 		},
 		// Install, values from yaml
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name virgil -f testdata/testcharts/alpine/extra_values.yaml", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			expected: `(?s)NAME:\s*virgil.+USER-SUPPLIED VALUES:\s*foo: bar`,
+		},
+		{
+			name:     "install with values",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name virgil -f "+httpSrv.URL+"/extra_values.yaml", " "),
+			expected: `(?s)NAME:\s*virgil.+USER-SUPPLIED VALUES:\s*foo: bar`,
 		},
 		// Install, values from multiple yaml
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
 			flags:    strings.Split("--name virgil -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			expected: `(?s)NAME:\s*virgil.+USER-SUPPLIED VALUES:\s*foo: baz`,
+		},
+		{
+			name:     "install with values",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name virgil -f "+httpSrv.URL+"/extra_values.yaml --values "+httpSrv.URL+"/more_values.yaml", " "),
+			expected: `(?s)NAME:\s*virgil.+USER-SUPPLIED VALUES:\s*foo: baz`,
 		},
 		// Install, no charts
 		{
 			name: "install with no chart specified",
 			args: []string{},
 			err:  true,
+		},
+		// Install, bad values arg
+		{
+			name:  "install chart with bad --values #1",
+			args:  []string{"testdata/testcharts/alpine"},
+			flags: strings.Split("--name virgil -f missing", " "),
+			err:   true,
+		},
+		{
+			name:  "install chart with bad --values #2",
+			args:  []string{"testdata/testcharts/alpine"},
+			flags: strings.Split("--name virgil --values url.parsing=will:fail,for:sure", " "),
+			err:   true,
 		},
 		// Install, re-use name
 		{
