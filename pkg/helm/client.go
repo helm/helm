@@ -27,9 +27,14 @@ import (
 	"google.golang.org/grpc/keepalive"
 
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/helm/portforwarder"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // maxMsgSize use 20MB as the default message size limit.
@@ -39,6 +44,32 @@ const maxMsgSize = 1024 * 1024 * 20
 // Client manages client side of the Helm-Tiller protocol.
 type Client struct {
 	opts options
+}
+
+// TillerHost returns a port forwarded tiller hostname
+func TillerHost(namespace, context string) (string, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		config, err = kube.GetConfig(context).ClientConfig()
+	}
+	if err != nil {
+		return "", fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
+	}
+
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("could not get Kubernetes client: %s", err)
+	}
+
+	if namespace == "" {
+		namespace = environment.DefaultTillerNamespace
+	}
+	tunnel, err := portforwarder.New(namespace, client, config)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("127.0.0.1:%d", tunnel.Local), nil
 }
 
 // NewClient creates a new client.
