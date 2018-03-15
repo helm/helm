@@ -122,7 +122,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	if len(t.renderFiles) > 0 {
 		for _, f := range t.renderFiles {
 			if !filepath.IsAbs(f) {
-				af, err = filepath.Abs(t.chartPath + "/" + f)
+				af, err = filepath.Abs(filepath.Join(t.chartPath, f))
 				if err != nil {
 					return fmt.Errorf("could not resolve template path: %s", err)
 				}
@@ -232,9 +232,9 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	}
 	in := func(needle string, haystack []string) bool {
 		// make needle path absolute
-		d := strings.Split(needle, "/")
+		d := strings.Split(needle, string(os.PathSeparator))
 		dd := d[1:]
-		an := t.chartPath + "/" + strings.Join(dd, "/")
+		an := filepath.Join(t.chartPath, strings.Join(dd, string(os.PathSeparator)))
 
 		for _, h := range haystack {
 			if h == an {
