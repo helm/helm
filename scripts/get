@@ -49,11 +49,11 @@ initOS() {
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
   local CMD="$*"
-  
+
   if [ $EUID -ne 0 ]; then
     CMD="sudo $CMD"
   fi
-  
+
   $CMD
 }
 
@@ -134,7 +134,7 @@ installFile() {
   local sum=$(openssl sha1 -sha256 ${HELM_TMP_FILE} | awk '{print $2}')
   local expected_sum=$(cat ${HELM_SUM_FILE})
   if [ "$sum" != "$expected_sum" ]; then
-    echo "SHA sum of $HELM_TMP does not match. Aborting."
+    echo "SHA sum of ${HELM_TMP_FILE} does not match. Aborting."
     exit 1
   fi
 
