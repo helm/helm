@@ -83,7 +83,7 @@ func (s *searchCmd) run(args []string) error {
 		q := strings.Join(args, " ")
 		res, err = index.Search(q, searchMaxScore, s.regexp)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 
