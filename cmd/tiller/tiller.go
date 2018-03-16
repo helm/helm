@@ -58,6 +58,8 @@ const (
 	tlsCertsEnvVar = "TILLER_TLS_CERTS"
 	// historyMaxEnvVar is the name of the env var for setting max history.
 	historyMaxEnvVar = "TILLER_HISTORY_MAX"
+	// maxMsgSizeEnvVar is the name of the env var for setting gRPC message size limit.
+	maxMsgSizeEnvVar = "TILLER_MAX_MSG_SIZE"
 
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
@@ -82,6 +84,7 @@ var (
 	caCertFile           = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
 	maxHistory           = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
 	printVersion         = flag.Bool("version", false, "print the version number")
+	maxMsgSize           = flag.Int("max-msg-size", maxMsgSizeFromEnv(), "gRPC message size limit")
 
 	// rootServer is the root gRPC server.
 	//
@@ -171,6 +174,12 @@ func start() {
 	opts = append(opts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
 		MinTime: time.Duration(20) * time.Second, // For compatibility with the client keepalive.ClientParameters
 	}))
+
+	// If set, configure gRPC max msg size
+	if *maxMsgSize > 0 {
+		opts = append(opts, grpc.MaxRecvMsgSize(*maxMsgSize))
+		opts = append(opts, grpc.MaxSendMsgSize(*maxMsgSize))
+	}
 
 	rootServer = tiller.NewServer(opts...)
 	healthpb.RegisterHealthServer(rootServer, healthSrv)
@@ -286,3 +295,16 @@ func historyMaxFromEnv() int {
 
 func tlsEnableEnvVarDefault() bool { return os.Getenv(tlsEnableEnvVar) != "" }
 func tlsVerifyEnvVarDefault() bool { return os.Getenv(tlsVerifyEnvVar) != "" }
+
+func maxMsgSizeFromEnv() int {
+	val := os.Getenv(maxMsgSizeEnvVar)
+	if val == "" {
+		return 0
+	}
+	ret, err := strconv.Atoi(val)
+	if err != nil {
+		log.Printf("Invalid max msg size %q. Defaulting to %d.", val, tiller.DefaultMaxMsgSize)
+		return 0
+	}
+	return ret
+}
