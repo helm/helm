@@ -13,11 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-set -euo pipefail
+set -exuo pipefail
 
 exit_code=0
 
-if ! hash gometalinter.v1 2>/dev/null ; then
+if ! hash gometalinter.v1 2>/dev/null; then
   go get -u gopkg.in/alecthomas/gometalinter.v1
   gometalinter.v1 --install
 fi

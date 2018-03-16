@@ -15,5 +15,4 @@
 # limitations under the License.
 set -euo pipefail
 
-apt-get update -y && apt-get install -yq zip
 make bootstrap

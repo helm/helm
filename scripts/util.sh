@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 set -euo pipefail
 
 # Example:  kube::util::trap_add 'echo "in trap DEBUG"' DEBUG
@@ -28,7 +27,7 @@ kube::util::trap_add() {
     local new_cmd
 
     # Grab the currently defined trap commands for this trap
-    existing_cmd=`trap -p "${trap_add_name}" |  awk -F"'" '{print $2}'`
+    existing_cmd=$(trap -p "${trap_add_name}" | awk -F"'" '{print $2}')
 
     if [[ -z "${existing_cmd}" ]]; then
       new_cmd="${trap_add_cmd}"

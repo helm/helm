@@ -13,8 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-set -euo pipefail
+set -exuo pipefail
 
 source scripts/util.sh
 
@@ -38,7 +37,6 @@ bin/helm init --client-only
 mkdir -p ${KUBE_TEMP}/docs/helm
 bin/helm docs --dir ${KUBE_TEMP}/docs/helm
 HELM_HOME=$OLD_HELM_HOME
-
 
 FILES=$(find ${KUBE_TEMP} -type f)
 

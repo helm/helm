@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-set -euo pipefail
+set -exuo pipefail
 
 # Skip on pull request builds
 if [[ -n "${CIRCLE_PR_NUMBER:-}" ]]; then
@@ -33,21 +33,10 @@ else
   exit
 fi
 
-echo "Install docker client"
-VER="17.09.0-ce"
-curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
-tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-mv /tmp/docker/* /usr/bin
-
-echo "Install gcloud components"
-export CLOUDSDK_CORE_DISABLE_PROMPTS=1
-curl https://sdk.cloud.google.com | bash
-${HOME}/google-cloud-sdk/bin/gcloud --quiet components update
-
 echo "Configuring gcloud authentication"
-echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
-${HOME}/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
-${HOME}/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
+echo "${GCLOUD_SERVICE_KEY}" | base64 --decode >"${HOME}/gcloud-service-key.json"
+gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
+gcloud config set project "${PROJECT_NAME}"
 docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
 
 echo "Building the tiller image"
@@ -61,4 +50,4 @@ make build-cross
 make dist checksum VERSION="${VERSION}"
 
 echo "Pushing binaries to gs bucket"
-${HOME}/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
+gsutil cp ./_dist/* "gs://${PROJECT_NAME}"

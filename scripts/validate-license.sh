@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-set -euo pipefail
+set -exuo pipefail
 IFS=$'\n\t'
 
 find_files() {
@@ -28,7 +28,7 @@ find_files() {
 }
 
 failed=($(find_files | xargs grep -L 'Licensed under the Apache License, Version 2.0 (the "License");'))
-if (( ${#failed[@]} > 0 )); then
+if ((${#failed[@]} > 0)); then
   echo "Some source files are missing license headers."
   for f in "${failed[@]}"; do
     echo "  $f"

@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 set -euo pipefail
 
 source scripts/util.sh
@@ -46,7 +45,7 @@ ${SED} -i -e "s:${HOME}:~:" ${FILES}
 for i in ${FILES}; do
   ret=0
   truepath=$(echo ${i} | ${SED} "s:${KUBE_TEMP}/::")
-  diff -NauprB -I 'Auto generated' "${i}" "${truepath}" > /dev/null || ret=$?
+  diff -NauprB -I 'Auto generated' "${i}" "${truepath}" >/dev/null || ret=$?
   if [[ $ret -ne 0 ]]; then
     echo "${truepath} changed. Updating.."
     cp "${i}" "${truepath}"
