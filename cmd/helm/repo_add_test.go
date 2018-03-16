@@ -17,10 +17,13 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
+	"io"
 	"os"
 	"testing"
 
+	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
 )
@@ -49,17 +52,13 @@ func TestRepoAddCmd(t *testing.T) {
 		{
 			name:     "add a repository",
 			args:     []string{testName, srv.URL()},
-			expected: testName + " has been added to your repositories",
+			expected: "\"" + testName + "\" has been added to your repositories",
 		},
 	}
 
-	for _, tt := range tests {
-		buf := bytes.NewBuffer(nil)
-		c := newRepoAddCmd(buf)
-		if err := c.RunE(c, tt.args); err != nil {
-			t.Errorf("%q: expected %q, got %q", tt.name, tt.expected, err)
-		}
-	}
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
+		return newRepoAddCmd(out)
+	})
 }
 
 func TestRepoAdd(t *testing.T) {
