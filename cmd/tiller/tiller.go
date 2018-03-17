@@ -177,8 +177,7 @@ func start() {
 
 	// If set, configure gRPC max msg size
 	if *maxMsgSize > 0 {
-		opts = append(opts, grpc.MaxRecvMsgSize(*maxMsgSize))
-		opts = append(opts, grpc.MaxSendMsgSize(*maxMsgSize))
+		opts = append(opts, grpc.MaxRecvMsgSize(*maxMsgSize), grpc.MaxSendMsgSize(*maxMsgSize))
 	}
 
 	rootServer = tiller.NewServer(opts...)
