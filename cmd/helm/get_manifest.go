@@ -55,9 +55,7 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				return errReleaseRequired
 			}
 			get.release = args[0]
-			if get.client == nil {
-				get.client = helm.NewClient(helm.Host(settings.TillerHost))
-			}
+			get.client = ensureHelmClient(get.client)
 			return get.run()
 		},
 	}
