@@ -468,7 +468,6 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 		},
 	}
 	_, err := rs.InstallRelease(c, req)
-	fmt.Println(err)
 	if err != nil {
 		t.Fatalf("Expected valid range. Got %q", err)
 	}
