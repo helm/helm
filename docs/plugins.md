@@ -4,7 +4,7 @@ Helm 2.1.0 introduced the concept of a client-side Helm _plugin_. A plugin is a
 tool that can be accessed through the `helm` CLI, but which is not part of the
 built-in Helm codebase.
 
-Existing plugins can be found on [related](related.md#helm-plugins) section or by searching [Github](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories).
+Existing plugins can be found on [related](https://docs.helm.sh/related#helm-plugins) section or by searching [Github](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories).
 
 This guide explains how to use and create plugins.
 
