@@ -92,7 +92,7 @@ There are three potential sources of values:
 
 - A chart's `values.yaml` file
 - A values file supplied by `helm install -f` or `helm upgrade -f`
-- The values passed to a `--set` flag on `helm install` or `helm upgrade`
+- The values passed to a `--set` or `--set-string` flag on `helm install` or `helm upgrade`
 
 When designing the structure of your values, keep in mind that users of your
 chart may want to override them via either the `-f` flag or with the `--set`
