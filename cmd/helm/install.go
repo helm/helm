@@ -229,7 +229,7 @@ func (i *installCmd) run() error {
 	}
 
 	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
-		// If checkDependencies returns an error, we have unfullfilled dependencies.
+		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/kubernetes/helm/issues/2209
 		if err := checkDependencies(chartRequested, req); err != nil {
