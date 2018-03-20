@@ -443,7 +443,7 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		return filename, err
 	}
 
-	return filename, fmt.Errorf("failed to download %q", name)
+	return filename, fmt.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
 }
 
 func generateName(nameTemplate string) (string, error) {
