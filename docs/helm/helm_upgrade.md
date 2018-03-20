@@ -46,6 +46,7 @@ helm upgrade [RELEASE] [CHART]
       --keyring string       path to the keyring that contains public signing keys (default "~/.gnupg/pubring.gpg")
       --namespace string     namespace to install the release into (only used if --install is set). Defaults to the current kube config namespace
       --no-hooks             disable pre/post upgrade hooks
+      --password string      chart repository password where to locate the requested chart
       --recreate-pods        performs pods restart for the resource if applicable
       --repo string          chart repository url where to locate the requested chart
       --reset-values         when upgrading, reset the values to the ones built into the chart
@@ -57,6 +58,7 @@ helm upgrade [RELEASE] [CHART]
       --tls-cert string      path to TLS certificate file (default "$HELM_HOME/cert.pem")
       --tls-key string       path to TLS key file (default "$HELM_HOME/key.pem")
       --tls-verify           enable TLS for request and verify remote
+      --username string      chart repository username where to locate the requested chart
   -f, --values valueFiles    specify values in a YAML file or a URL(can specify multiple) (default [])
       --verify               verify the provenance of the chart before upgrading
       --version string       specify the exact chart version to use. If this is not specified, the latest version is used

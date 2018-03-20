@@ -21,7 +21,9 @@ helm inspect chart [CHART]
       --cert-file string   verify certificates of HTTPS-enabled servers using this CA bundle
       --key-file string    identify HTTPS client using this SSL key file
       --keyring string     path to the keyring containing public verification keys (default "~/.gnupg/pubring.gpg")
+      --password string    chart repository password where to locate the requested chart
       --repo string        chart repository url where to locate the requested chart
+      --username string    chart repository username where to locate the requested chart
       --verify             verify the provenance data for this chart
       --version string     version of the chart. By default, the newest chart is shown
 ```

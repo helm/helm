@@ -18,6 +18,8 @@ helm repo add [flags] [NAME] [URL]
       --cert-file string   identify HTTPS client using this SSL certificate file
       --key-file string    identify HTTPS client using this SSL key file
       --no-update          raise error if repo is already registered
+      --password string    chart repository password
+      --username string    chart repository username
 ```
 
 ### Options inherited from parent commands

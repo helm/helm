@@ -51,7 +51,7 @@ func TestRepoRemove(t *testing.T) {
 	if err := removeRepoLine(b, testName, hh); err == nil {
 		t.Errorf("Expected error removing %s, but did not get one.", testName)
 	}
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", true); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
 		t.Error(err)
 	}
 

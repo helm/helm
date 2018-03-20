@@ -36,6 +36,8 @@ type Entry struct {
 	Name     string `json:"name"`
 	Cache    string `json:"cache"`
 	URL      string `json:"url"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 	CertFile string `json:"certFile"`
 	KeyFile  string `json:"keyFile"`
 	CAFile   string `json:"caFile"`
@@ -117,7 +119,12 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
 
 	indexURL = parsedURL.String()
-	resp, err := r.Client.Get(indexURL)
+	g, err := getter.NewHTTPGetter(indexURL, r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile)
+	if err != nil {
+		return err
+	}
+	g.SetCredentials(r.Config.Username, r.Config.Password)
+	resp, err := g.Get(indexURL)
 	if err != nil {
 		return err
 	}
@@ -186,6 +193,13 @@ func (r *ChartRepository) generateIndex() error {
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
 func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
+	return FindChartInAuthRepoURL(repoURL, "", "", chartName, chartVersion, certFile, keyFile, caFile, getters)
+}
+
+// FindChartInRepoURL finds chart in chart repository pointed by repoURL
+// without adding repo to repositories.
+// Unlike the FindChartInRepoURL function, this function also receives credentials for the chart repository.
+func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
 
 	// Download and write the index file to a temporary location
 	tempIndexFile, err := ioutil.TempFile("", "tmp-repo-file")
@@ -196,6 +210,8 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 
 	c := Entry{
 		URL:      repoURL,
+		Username: username,
+		Password: password,
 		CertFile: certFile,
 		KeyFile:  keyFile,
 		CAFile:   caFile,

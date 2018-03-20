@@ -197,14 +197,6 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		return err
 	}
 
-	dl := ChartDownloader{
-		Out:      m.Out,
-		Verify:   m.Verify,
-		Keyring:  m.Keyring,
-		HelmHome: m.HelmHome,
-		Getters:  m.Getters,
-	}
-
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
 
@@ -245,10 +237,20 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/kubernetes/helm/issues/1439
-		churl, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %s", churl, err)
 			break
+		}
+
+		dl := ChartDownloader{
+			Out:      m.Out,
+			Verify:   m.Verify,
+			Keyring:  m.Keyring,
+			HelmHome: m.HelmHome,
+			Getters:  m.Getters,
+			Username: username,
+			Password: password,
 		}
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
@@ -476,22 +478,30 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (string, error) {
+func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
 	for _, cr := range repos {
 		if urlutil.Equal(repoURL, cr.Config.URL) {
-			entry, err := findEntryByName(name, cr)
+			var entry repo.ChartVersions
+			entry, err = findEntryByName(name, cr)
 			if err != nil {
-				return "", err
+				return
 			}
-			ve, err := findVersionedEntry(version, entry)
+			var ve *repo.ChartVersion
+			ve, err = findVersionedEntry(version, entry)
 			if err != nil {
-				return "", err
+				return
 			}
-
-			return normalizeURL(repoURL, ve.URLs[0])
+			url, err = normalizeURL(repoURL, ve.URLs[0])
+			if err != nil {
+				return
+			}
+			username = cr.Config.Username
+			password = cr.Config.Password
+			return
 		}
 	}
-	return "", fmt.Errorf("chart %s not found in %s", name, repoURL)
+	err = fmt.Errorf("chart %s not found in %s", name, repoURL)
+	return
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.

@@ -118,6 +118,8 @@ type installCmd struct {
 	timeout      int64
 	wait         bool
 	repoURL      string
+	username     string
+	password     string
 	devel        bool
 	depUp        bool
 
@@ -165,7 +167,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				inst.version = ">0.0.0-0"
 			}
 
-			cp, err := locateChartPath(inst.repoURL, args[0], inst.version, inst.verify, inst.keyring,
+			cp, err := locateChartPath(inst.repoURL, inst.username, inst.password, args[0], inst.version, inst.verify, inst.keyring,
 				inst.certFile, inst.keyFile, inst.caFile)
 			if err != nil {
 				return err
@@ -191,6 +193,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&inst.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&inst.password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -381,7 +385,7 @@ func (i *installCmd) printRelease(rel *release.Release) {
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func locateChartPath(repoURL, name, version string, verify bool, keyring,
+func locateChartPath(repoURL, username, password, name, version string, verify bool, keyring,
 	certFile, keyFile, caFile string) (string, error) {
 	name = strings.TrimSpace(name)
 	version = strings.TrimSpace(version)
@@ -414,12 +418,14 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		Out:      os.Stdout,
 		Keyring:  keyring,
 		Getters:  getter.All(settings),
+		Username: username,
+		Password: password,
 	}
 	if verify {
 		dl.Verify = downloader.VerifyAlways
 	}
 	if repoURL != "" {
-		chartURL, err := repo.FindChartInRepoURL(repoURL, name, version,
+		chartURL, err := repo.FindChartInAuthRepoURL(repoURL, username, password, name, version,
 			certFile, keyFile, caFile, getter.All(settings))
 		if err != nil {
 			return "", err
