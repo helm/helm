@@ -58,24 +58,24 @@ func TestHistoryCmd(t *testing.T) {
 			expected: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
 		},
 		{
-			cmds: "helm history --max=MAX RELEASE_NAME -o yaml",
-			desc: "get history with yaml output format",
-			args: []string{"--max=2", "-o=yaml", "angry-bird"},
-			resp: []*rpb.Release{
+			name:  "get history with yaml output format",
+			args:  []string{"angry-bird"},
+			flags: []string{"--output", "yaml"},
+			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			xout: "- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 3\n  status: SUPERSEDED\n  updated: (.*)\n- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 4\n  status: DEPLOYED\n  updated: (.*)\n\n",
+			expected: "- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 3\n  status: SUPERSEDED\n  updated: (.*)\n- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 4\n  status: DEPLOYED\n  updated: (.*)\n\n",
 		},
 		{
-			cmds: "helm history --max=MAX RELEASE_NAME -o json",
-			desc: "get history with json output format",
-			args: []string{"--max=2", "-o=json", "angry-bird"},
-			resp: []*rpb.Release{
+			name:  "get history with json output format",
+			args:  []string{"angry-bird"},
+			flags: []string{"--output", "json"},
+			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			xout: `[{"revision":3,"updated":".*","status":"SUPERSEDED","chart":"foo\-0.1.0-beta.1","description":"Release mock"},{"revision":4,"updated":".*","status":"DEPLOYED","chart":"foo\-0.1.0-beta.1","description":"Release mock"}]\n`,
+			expected: `[{"revision":3,"updated":".*","status":"SUPERSEDED","chart":"foo\-0.1.0-beta.1","description":"Release mock"},{"revision":4,"updated":".*","status":"DEPLOYED","chart":"foo\-0.1.0-beta.1","description":"Release mock"}]\n`,
 		},
 	}
 
