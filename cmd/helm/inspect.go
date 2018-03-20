@@ -59,6 +59,8 @@ type inspectCmd struct {
 	out       io.Writer
 	version   string
 	repoURL   string
+	username  string
+	password  string
 
 	certFile string
 	keyFile  string
@@ -88,7 +90,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
@@ -107,7 +109,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
@@ -126,7 +128,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
@@ -145,7 +147,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
@@ -180,6 +182,18 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.repoURL, repoURL, "", repoURLdesc)
 	}
+
+	username := "username"
+	usernamedesc := "chart repository username where to locate the requested chart"
+	inspectCommand.Flags().StringVar(&insp.username, username, "", usernamedesc)
+	valuesSubCmd.Flags().StringVar(&insp.username, username, "", usernamedesc)
+	chartSubCmd.Flags().StringVar(&insp.username, username, "", usernamedesc)
+
+	password := "password"
+	passworddesc := "chart repository password where to locate the requested chart"
+	inspectCommand.Flags().StringVar(&insp.password, password, "", passworddesc)
+	valuesSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
+	chartSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
 
 	certFile := "cert-file"
 	certFiledesc := "verify certificates of HTTPS-enabled servers using this CA bundle"

@@ -80,6 +80,7 @@ helm install [CHART]
       --name-template string   specify template used to name the release
       --namespace string       namespace to install the release into. Defaults to the current kube config namespace.
       --no-hooks               prevent hooks from running during install
+      --password string        chart repository password where to locate the requested chart
       --replace                re-use the given name, even if that name is already used. This is unsafe in production
       --repo string            chart repository url where to locate the requested chart
       --set stringArray        set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
@@ -89,6 +90,7 @@ helm install [CHART]
       --tls-cert string        path to TLS certificate file (default "$HELM_HOME/cert.pem")
       --tls-key string         path to TLS key file (default "$HELM_HOME/key.pem")
       --tls-verify             enable TLS for request and verify remote
+      --username string        chart repository username where to locate the requested chart
   -f, --values valueFiles      specify values in a YAML file or a URL(can specify multiple) (default [])
       --verify                 verify the package before installing it
       --version string         specify the exact chart version to install. If this is not specified, the latest version is installed

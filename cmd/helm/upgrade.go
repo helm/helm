@@ -73,6 +73,8 @@ type upgradeCmd struct {
 	reuseValues  bool
 	wait         bool
 	repoURL      string
+	username     string
+	password     string
 	devel        bool
 
 	certFile string
@@ -128,6 +130,8 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values, and merge in any new values. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&upgrade.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&upgrade.password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -139,7 +143,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (u *upgradeCmd) run() error {
-	chartPath, err := locateChartPath(u.repoURL, u.chart, u.version, u.verify, u.keyring, u.certFile, u.keyFile, u.caFile)
+	chartPath, err := locateChartPath(u.repoURL, u.username, u.password, u.chart, u.version, u.verify, u.keyring, u.certFile, u.keyFile, u.caFile)
 	if err != nil {
 		return err
 	}

@@ -148,6 +148,11 @@ Charts repository hosts its charts, so you may want to take a
 **Note:** A public GCS bucket can be accessed via simple HTTPS at this address
 `https://bucket-name.storage.googleapis.com/`.
 
+### JFrog Artifactory
+
+You can also set up chart repositories using JFrog Artifactory.
+Read more about chart repositories with JFrog Artifactory [here](https://www.jfrog.com/confluence/display/RTF/Helm+Chart+Repositories)
+
 ### Github Pages example
 
 In a similar way you can create charts repository using GitHub Pages.
@@ -270,10 +275,10 @@ fantastic-charts    https://fantastic-charts.storage.googleapis.com
 If the charts are backed by HTTP basic authentication, you can also supply the
 username and password here:
 
-```console
-$ helm repo add fantastic-charts https://username:password@fantastic-charts.storage.googleapis.com
+``console
+$ helm repo add fantastic-charts https://fantastic-charts.storage.googleapis.com --username my-username --password my-password
 $ helm repo list
-fantastic-charts    https://username:password@fantastic-charts.storage.googleapis.com
+fantastic-charts    https://fantastic-charts.storage.googleapis.com
 ```
 
 **Note:** A repository will not be added if it does not contain a valid
