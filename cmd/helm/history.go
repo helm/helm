@@ -17,14 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
-	"encoding/json"
-	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -32,11 +32,11 @@ import (
 )
 
 type releaseInfo struct {
-	Revision    int32  `json:"revision" yaml:"revision"`
-	Updated     string `json:"updated" yaml:"updated"`
-	Status      string `json:"status" yaml:"status"`
-	Chart       string `json:"chart" yaml:"chart"`
-	Description string `json:"description" yaml:"description"`
+	Revision    int32  `json:"revision"`
+	Updated     string `json:"updated"`
+	Status      string `json:"status"`
+	Chart       string `json:"chart"`
+	Description string `json:"description"`
 }
 
 type releaseHistory []releaseInfo
