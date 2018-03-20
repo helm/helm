@@ -147,7 +147,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, args[0], insp.version, insp.verify, insp.keyring,
+			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
 				return err
