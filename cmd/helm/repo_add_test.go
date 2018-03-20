@@ -80,7 +80,7 @@ func TestRepoAdd(t *testing.T) {
 
 	settings.Home = thome
 
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", true); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
 		t.Error(err)
 	}
 
@@ -93,11 +93,11 @@ func TestRepoAdd(t *testing.T) {
 		t.Errorf("%s was not successfully inserted into %s", testName, hh.RepositoryFile())
 	}
 
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", false); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", false); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 }
