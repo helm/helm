@@ -30,7 +30,7 @@ apply to [third_party](third_party/) and [vendor](vendor/).
 
 Whether you are a user or contributor, official support channels include:
 
-- GitHub [issues](https://github.com/kubenetes/helm/issues/new)
+- GitHub [issues](https://github.com/kubernetes/helm/issues/new)
 - Slack: #Helm room in the [Kubernetes Slack](http://slack.kubernetes.io/)
 
 Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of.
