@@ -180,4 +180,19 @@ It is also possible to define policies that determine when to delete correspondi
     "helm.sh/hook-delete-policy": hook-succeeded
 ```
 
-When using `"helm.sh/hook-delete-policy"` annotation, you can choose its value from `"hook-succeeded"` and `"hook-failed"`. The value `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed, while the value `"hook-failed"`specifies Tiller should delete the hook if the hook failed during execution.
+You can choose one or more defined annotation values:
+* `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed.
+* `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
+* `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
+
+### Automatically delete hook from previous release
+
+When helm release being updated it is possible, that hook resource already exists in cluster. By default helm will try to create resource and fail with `"... already exists"` error.
+
+One might choose `"helm.sh/hook-delete-policy": "before-hook-creation"` over `"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"` because:
+
+* It is convinient to keep failed hook job resource in kubernetes for example for manual debug.
+* It may be necessary to keep succeeded hook resource in kubernetes for some reason.
+* At the same time it is not desireable to do manual resource deletion before helm release upgrade.
+
+`"helm.sh/hook-delete-policy": "before-hook-creation"` annotation on hook causes tiller to remove the hook from previous release if there is one before the new hook is launched and can be used with another policies.
