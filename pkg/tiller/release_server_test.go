@@ -18,18 +18,25 @@ package tiller
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	"k8s.io/kubernetes/pkg/kubectl/resource"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -345,3 +352,460 @@ func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)       {}
 func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error    { return nil }
 func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error    { return nil }
 func (rs mockRunReleaseTestServer) Context() context.Context       { return helm.NewContext() }
+
+type mockHooksManifest struct {
+	Metadata struct {
+		Name        string
+		Annotations map[string]string
+	}
+}
+type mockHooksKubeClient struct {
+	Resources map[string]*mockHooksManifest
+}
+
+var errResourceExists = errors.New("resource already exists")
+
+func (kc *mockHooksKubeClient) makeManifest(r io.Reader) (*mockHooksManifest, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	manifest := &mockHooksManifest{}
+	err = yaml.Unmarshal(b, manifest)
+	if err != nil {
+		return nil, err
+	}
+
+	return manifest, nil
+}
+func (kc *mockHooksKubeClient) Create(ns string, r io.Reader, timeout int64, shouldWait bool) error {
+	manifest, err := kc.makeManifest(r)
+	if err != nil {
+		return err
+	}
+
+	if _, hasKey := kc.Resources[manifest.Metadata.Name]; hasKey {
+		return errResourceExists
+	}
+
+	kc.Resources[manifest.Metadata.Name] = manifest
+
+	return nil
+}
+func (kc *mockHooksKubeClient) Get(ns string, r io.Reader) (string, error) {
+	return "", nil
+}
+func (kc *mockHooksKubeClient) Delete(ns string, r io.Reader) error {
+	manifest, err := kc.makeManifest(r)
+	if err != nil {
+		return err
+	}
+
+	delete(kc.Resources, manifest.Metadata.Name)
+
+	return nil
+}
+func (kc *mockHooksKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
+	paramManifest, err := kc.makeManifest(r)
+	if err != nil {
+		return err
+	}
+
+	manifest, hasManifest := kc.Resources[paramManifest.Metadata.Name]
+	if !hasManifest {
+		return fmt.Errorf("mockHooksKubeClient.WatchUntilReady: no such resource %s found", paramManifest.Metadata.Name)
+	}
+
+	if manifest.Metadata.Annotations["mockHooksKubeClient/Emulate"] == "hook-failed" {
+		return fmt.Errorf("mockHooksKubeClient.WatchUntilReady: hook-failed")
+	}
+
+	return nil
+}
+func (kc *mockHooksKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+	return nil
+}
+func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
+	return []*resource.Info{}, nil
+}
+func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
+	return []*resource.Info{}, nil
+}
+func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	return core.PodUnknown, nil
+}
+
+func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
+	e := environment.New()
+	e.Releases = storage.Init(driver.NewMemory())
+	e.KubeClient = kubeClient
+
+	clientset := fake.NewSimpleClientset()
+	return &ReleaseServer{
+		ReleaseModule: &LocalReleaseModule{
+			clientset: clientset,
+		},
+		env:       e,
+		clientset: clientset,
+		Log:       func(_ string, _ ...interface{}) {},
+	}
+}
+
+func deletePolicyHookStub(hookName string, extraAnnotations map[string]string, DeletePolicies []release.Hook_DeletePolicy) *release.Hook {
+	extraAnnotationsStr := ""
+	for k, v := range extraAnnotations {
+		extraAnnotationsStr += fmt.Sprintf("    \"%s\": \"%s\"\n", k, v)
+	}
+
+	return &release.Hook{
+		Name: hookName,
+		Kind: "Job",
+		Path: hookName,
+		Manifest: fmt.Sprintf(`kind: Job
+metadata:
+  name: %s
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+%sdata:
+name: value`, hookName, extraAnnotationsStr),
+		Events: []release.Hook_Event{
+			release.Hook_PRE_INSTALL,
+			release.Hook_PRE_UPGRADE,
+		},
+		DeletePolicies: DeletePolicies,
+	}
+}
+
+func execHookShouldSucceed(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
+	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+	if err != nil {
+		return fmt.Errorf("expected hook %s to be successful: %s", hook.Name, err)
+	}
+	return nil
+}
+
+func execHookShouldFail(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
+	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+	if err == nil {
+		return fmt.Errorf("expected hook %s to be failed", hook.Name)
+	}
+	return nil
+}
+
+func execHookShouldFailWithError(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string, expectedError error) error {
+	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+	if err != expectedError {
+		return fmt.Errorf("expected hook %s to fail with error %v, got %v", hook.Name, expectedError, err)
+	}
+	return nil
+}
+
+type deletePolicyContext struct {
+	ReleaseServer *ReleaseServer
+	ReleaseName   string
+	Namespace     string
+	HookName      string
+	KubeClient    *mockHooksKubeClient
+}
+
+func newDeletePolicyContext() *deletePolicyContext {
+	kubeClient := &mockHooksKubeClient{
+		Resources: make(map[string]*mockHooksManifest),
+	}
+
+	return &deletePolicyContext{
+		KubeClient:    kubeClient,
+		ReleaseServer: deletePolicyStub(kubeClient),
+		ReleaseName:   "flying-carp",
+		Namespace:     "river",
+		HookName:      "migration-job",
+	}
+}
+
+func TestSuccessfulHookWithoutDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+	hook := deletePolicyHookStub(ctx.HookName, nil, nil)
+
+	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be created by kube client", hook.Name)
+	}
+}
+
+func TestFailedHookWithoutDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{"mockHooksKubeClient/Emulate": "hook-failed"},
+		nil,
+	)
+
+	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be created by kube client", hook.Name)
+	}
+}
+
+func TestSuccessfulHookWithSucceededDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{"helm.sh/hook-delete-policy": "hook-succeeded"},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED},
+	)
+
+	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
+		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
+	}
+}
+
+func TestSuccessfulHookWithFailedDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{"helm.sh/hook-delete-policy": "hook-failed"},
+		[]release.Hook_DeletePolicy{release.Hook_FAILED},
+	)
+
+	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
+	}
+}
+
+func TestFailedHookWithSucceededDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"mockHooksKubeClient/Emulate": "hook-failed",
+			"helm.sh/hook-delete-policy":  "hook-succeeded",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED},
+	)
+
+	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
+	}
+}
+
+func TestFailedHookWithFailedDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"mockHooksKubeClient/Emulate": "hook-failed",
+			"helm.sh/hook-delete-policy":  "hook-failed",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_FAILED},
+	)
+
+	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
+		t.Errorf("expected resource %s to be unexisting after hook failed", hook.Name)
+	}
+}
+
+func TestSuccessfulHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
+	)
+
+	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
+		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
+	}
+}
+
+func TestFailedHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"mockHooksKubeClient/Emulate": "hook-failed",
+			"helm.sh/hook-delete-policy":  "hook-succeeded,hook-failed",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
+	)
+
+	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
+		t.Errorf("expected resource %s to be unexisting after hook failed", hook.Name)
+	}
+}
+
+func TestHookAlreadyExists(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName, nil, nil)
+
+	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
+	}
+
+	err = execHookShouldFailWithError(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade, errResourceExists)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after already exists error", hook.Name)
+	}
+}
+
+func TestHookDeletingWithBeforeHookCreationDeletePolicy(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{"helm.sh/hook-delete-policy": "before-hook-creation"},
+		[]release.Hook_DeletePolicy{release.Hook_BEFORE_HOOK_CREATION},
+	)
+
+	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
+	}
+
+	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
+	}
+}
+
+func TestSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+	)
+
+	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
+		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
+	}
+
+	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
+		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
+	}
+}
+
+func TestFailedHookWithMixedDeletePolicies(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"mockHooksKubeClient/Emulate": "hook-failed",
+			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+	)
+
+	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
+	}
+
+	err = execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
+	}
+}
+
+func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
+	ctx := newDeletePolicyContext()
+
+	hook := deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"mockHooksKubeClient/Emulate": "hook-failed",
+			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+	)
+
+	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
+		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
+	}
+
+	hook = deletePolicyHookStub(ctx.HookName,
+		map[string]string{
+			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
+		},
+		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+	)
+
+	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
+		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
+	}
+}
