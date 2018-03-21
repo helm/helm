@@ -33,11 +33,12 @@ import (
 // output deterministic but means that for very large directories Walk can be
 // inefficient. Walk follows symbolic links.
 func Walk(root string, walkFn filepath.WalkFunc) error {
+	const nestedSymlinkLimit = 5
 	info, err := os.Lstat(root)
 	if err != nil {
 		err = walkFn(root, nil, err)
 	} else {
-		err = symwalk(root, info, walkFn)
+		err = symwalk(root, info, walkFn, nestedSymlinkLimit)
 	}
 	if err == filepath.SkipDir {
 		return nil
@@ -62,7 +63,10 @@ func readDirNames(dirname string) ([]string, error) {
 }
 
 // symwalk recursively descends path, calling walkFn.
-func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
+func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc, nestedSymlinkLimit int) error {
+	if nestedSymlinkLimit <= 0 {
+		return nil
+	}
 	// Recursively walk symlinked directories.
 	if IsSymlink(info) {
 		resolved, err := filepath.EvalSymlinks(path)
@@ -72,7 +76,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}
-		if err := symwalk(resolved, info, walkFn); err != nil && err != filepath.SkipDir {
+		if err := symwalk(resolved, info, walkFn, nestedSymlinkLimit-1); err != nil && err != filepath.SkipDir {
 			return err
 		}
 	}
@@ -98,7 +102,11 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 				return err
 			}
 		} else {
-			err = symwalk(filename, fileInfo, walkFn)
+			if IsSymlink(fileInfo) {
+				err = symwalk(filename, fileInfo, walkFn, nestedSymlinkLimit-1)
+			} else {
+				err = symwalk(filename, fileInfo, walkFn, nestedSymlinkLimit)
+			}
 			if err != nil {
 				if (!fileInfo.IsDir() && !IsSymlink(fileInfo)) || err != filepath.SkipDir {
 					return err
