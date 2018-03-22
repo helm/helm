@@ -53,7 +53,7 @@ An issue that we are not sure we will be doing will not be added to any mileston
 
 A milestone (and hence release) is considered done when all outstanding issues/PRs have been closed or moved to another milestone.
 
-## Semver
+## Semantic Versioning
 
 Helm maintains a strong commitment to backward compatibility. All of our changes to protocols and formats are backward compatible from Helm 2.0 until Helm 3.0. No features, flags, or commands are removed or substantially modified (other than bug fixes).
 
