@@ -69,6 +69,7 @@ Tools layered on top of Helm or Tiller.
 - [ChartMuseum](https://github.com/chartmuseum/chartmuseum) - Helm Chart Repository with support for Amazon S3 and Google Cloud Storage
 - [Helm.NET](https://github.com/qmfrederik/helm) - A .NET client for Tiller's API
 - [Codefresh](https://codefresh.io) - Kubernetes native CI/CD and management platform with UI dashboards for managing Helm charts and releases
+- [Jenkins X](http://jenkins-x.io/) - open source automated C/CD for Kubernetes which uses Helm for [promoting](http://jenkins-x.io/about/features/#promotion) applications through [environments via GitOps](http://jenkins-x.io/about/features/#environments)
 
 ## Helm Included
 
