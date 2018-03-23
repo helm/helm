@@ -22,11 +22,29 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"io/ioutil"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
+	"os"
 )
 
 func TestListCmd(t *testing.T) {
+	tmpChart, _ := ioutil.TempDir("testdata", "tmp")
+	defer os.RemoveAll(tmpChart)
+	cfile := &chart.Metadata{
+		Name:        "foo",
+		Description: "A Helm chart for Kubernetes",
+		Version:     "0.1.0-beta.1",
+		AppVersion:  "2.X.A",
+	}
+	chartPath, err := chartutil.Create(cfile, tmpChart)
+	if err != nil {
+		t.Errorf("Error creating chart for list: %v", err)
+	}
+	ch, _ := chartutil.Load(chartPath)
+
 	tests := []releaseCase{
 		{
 			name: "with a release",
@@ -40,7 +58,14 @@ func TestListCmd(t *testing.T) {
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
 			},
-			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \tNAMESPACE\natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\tdefault  \n",
+			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \tAPP VERSION\tNAMESPACE\natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\t           \tdefault  \n",
+		},
+		{
+			name: "list with appVersion",
+			rels: []*release.Release{
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas", Chart: ch}),
+			},
+			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \tAPP VERSION\tNAMESPACE\natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\t2.X.A      \tdefault  \n",
 		},
 		{
 			name:  "list, one deployed, one failed",
