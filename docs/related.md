@@ -78,6 +78,7 @@ Platforms, distributions, and services that include Helm support.
 - [Cabin](http://www.skippbox.com/cabin/) - Mobile App for Managing Kubernetes
 - [Qstack](https://qstack.com)
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes
+- [Jenkins X](http://jenkins-x.io/) - open source automated CI/CD for Kubernetes which uses Helm for [promoting](http://jenkins-x.io/about/features/#promotion) applications through [environments via GitOps](http://jenkins-x.io/about/features/#environments)
 
 ## Misc
 
