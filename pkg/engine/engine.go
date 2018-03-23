@@ -79,8 +79,8 @@ func FuncMap() template.FuncMap {
 		"toToml":   chartutil.ToToml,
 		"toYaml":   chartutil.ToYaml,
 		"fromYaml": chartutil.FromYaml,
-		"toJson":   chartutil.ToJson,
-		"fromJson": chartutil.FromJson,
+		"toJson":   chartutil.ToJSON,
+		"fromJson": chartutil.FromJSON,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the

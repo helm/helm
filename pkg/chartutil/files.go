@@ -207,11 +207,11 @@ func ToToml(v interface{}) string {
 	return b.String()
 }
 
-// ToJson takes an interface, marshals it to json, and returns a string. It will
+// ToJSON takes an interface, marshals it to json, and returns a string. It will
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func ToJson(v interface{}) string {
+func ToJSON(v interface{}) string {
 	data, err := json.Marshal(v)
 	if err != nil {
 		// Swallow errors inside of a template.
@@ -220,13 +220,13 @@ func ToJson(v interface{}) string {
 	return string(data)
 }
 
-// FromJson converts a JSON document into a map[string]interface{}.
+// FromJSON converts a JSON document into a map[string]interface{}.
 //
 // This is not a general-purpose JSON parser, and will not parse all valid
 // JSON documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
 // m["Error"] in the returned map.
-func FromJson(str string) map[string]interface{} {
+func FromJSON(str string) map[string]interface{} {
 	m := map[string]interface{}{}
 
 	if err := json.Unmarshal([]byte(str), &m); err != nil {

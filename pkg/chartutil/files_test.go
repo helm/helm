@@ -167,7 +167,7 @@ one:
 	}
 }
 
-func TestToJson(t *testing.T) {
+func TestToJSON(t *testing.T) {
 	expect := `{"foo":"bar"}`
 	v := struct {
 		Foo string `json:"foo"`
@@ -175,12 +175,12 @@ func TestToJson(t *testing.T) {
 		Foo: "bar",
 	}
 
-	if got := ToJson(v); got != expect {
+	if got := ToJSON(v); got != expect {
 		t.Errorf("Expected %q, got %q", expect, got)
 	}
 }
 
-func TestFromJson(t *testing.T) {
+func TestFromJSON(t *testing.T) {
 	doc := `{
   "hello": "world",
   "one": {
@@ -188,7 +188,7 @@ func TestFromJson(t *testing.T) {
   }
 }
 `
-	dict := FromJson(doc)
+	dict := FromJSON(doc)
 	if err, ok := dict["Error"]; ok {
 		t.Fatalf("Parse error: %s", err)
 	}
@@ -210,7 +210,7 @@ func TestFromJson(t *testing.T) {
  "three"
 ]
 `
-	dict = FromJson(doc2)
+	dict = FromJSON(doc2)
 	if _, ok := dict["Error"]; !ok {
 		t.Fatal("Expected parser error")
 	}
