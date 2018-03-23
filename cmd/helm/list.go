@@ -237,14 +237,15 @@ func formatList(rels []*release.Release, colWidth uint) string {
 	table := uitable.New()
 
 	table.MaxColWidth = colWidth
-	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
+	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "NAMESPACE")
 	for _, r := range rels {
 		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
 		t := timeconv.String(r.Info.LastDeployed)
 		s := r.Info.Status.Code.String()
 		v := r.Version
+		a := r.Chart.Metadata.AppVersion
 		n := r.Namespace
-		table.AddRow(r.Name, v, t, s, c, n)
+		table.AddRow(r.Name, v, t, s, c, a, n)
 	}
 	return table.String()
 }
