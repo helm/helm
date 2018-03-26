@@ -200,8 +200,14 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
+	// Setup warning since ch is out of scope after the if below
+	warning := ""
+
 	// Check chart requirements to make sure all dependencies are present in /charts
 	if ch, err := chartutil.Load(chartPath); err == nil {
+		if ch.Metadata.Deprecated {
+			warning = "WARNING: This chart has been deprecated.\n"
+		}
 		if req, err := chartutil.LoadRequirements(ch); err == nil {
 			if err := checkDependencies(ch, req); err != nil {
 				return err
@@ -241,6 +247,10 @@ func (u *upgradeCmd) run() error {
 		return prettyError(err)
 	}
 	PrintStatus(u.out, status)
+
+	if len(warning) != 0 {
+		fmt.Fprintf(u.out, warning)
+	}
 
 	return nil
 }

@@ -296,6 +296,11 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 	PrintStatus(i.out, status)
+
+	if chartRequested.Metadata.Deprecated {
+		fmt.Printf("WARNING: This chart has been deprecated.\n")
+	}
+
 	return nil
 }
 
