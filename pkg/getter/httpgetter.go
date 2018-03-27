@@ -27,13 +27,15 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-//httpGetter is the efault HTTP(/S) backend handler
-type HttpGetter struct {
+//HttpGetter is the efault HTTP(/S) backend handler
+// TODO: change the name to HTTPGetter in Helm 3
+type HttpGetter struct { //nolint
 	client   *http.Client
 	username string
 	password string
 }
 
+//SetCredentials sets the credentials for the getter
 func (g *HttpGetter) SetCredentials(username, password string) {
 	g.username = username
 	g.password = password

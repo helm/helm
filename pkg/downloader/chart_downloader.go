@@ -151,7 +151,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 	return u, nil, err
 }
 
-// Same as the ResolveChartVersion method, but returns the chart repositoryy.
+// ResolveChartVersionAndGetRepo is the same as the ResolveChartVersion method, but returns the chart repositoryy.
 func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*url.URL, *repo.ChartRepository, *getter.HttpGetter, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
