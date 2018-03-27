@@ -43,3 +43,9 @@ Helm works straightforward on OpenShift Online, OpenShift Dedicated, OpenShift C
 ## Platform9
 
 Helm Client and Helm Server (Tiller) are pre-installed with [Platform9 Managed Kubernetes](https://platform9.com/managed-kubernetes/?utm_source=helm_distro_notes). Platform9 provides access to all official Helm charts through the App Catalog UI and native Kubernetes CLI. Additional repositories can be manually added. Further details are available in this [Platform9 App Catalog article](https://platform9.com/support/deploying-kubernetes-apps-platform9-managed-kubernetes/?utm_source=helm_distro_notes).
+
+## DC/OS
++
++Helm (both client and server) has been tested and is working on Mesospheres DC/OS Kubernetes platform, and requires
++no additional configuration.
+
