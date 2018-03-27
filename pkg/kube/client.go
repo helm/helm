@@ -47,7 +47,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
-	conditions "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -77,9 +77,11 @@ func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:        cmdutil.NewFactory(config),
 		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
-		Log:            func(_ string, _ ...interface{}) {},
+		Log:            nopLogger,
 	}
 }
+
+var nopLogger = func(_ string, _ ...interface{}) {}
 
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
@@ -205,7 +207,10 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths.
 	buf := new(bytes.Buffer)
-	p, _ := c.Printer(nil, printers.PrintOptions{})
+	p, err := cmdutil.PrinterForOptions(&printers.PrintOptions{})
+	if err != nil {
+		return "", err
+	}
 	for t, ot := range objs {
 		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
 			return "", err
@@ -608,7 +613,8 @@ func (c *Client) AsVersionedObject(obj runtime.Object) (runtime.Object, error) {
 		return nil, err
 	}
 	versions := &runtime.VersionedObjects{}
-	err = runtime.DecodeInto(c.Decoder(true), json, versions)
+	decoder := unstructured.UnstructuredJSONScheme
+	err = runtime.DecodeInto(decoder, json, versions)
 	return versions.First(), err
 }
 

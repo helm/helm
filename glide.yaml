@@ -43,28 +43,20 @@ import:
 - package: github.com/evanphx/json-patch
 - package: github.com/BurntSushi/toml
   version: ~0.3.0
-- package: github.com/naoina/go-stringutil
-  version: ~0.1.0
-- package: github.com/chai2010/gettext-go
 - package: github.com/prometheus/client_golang
   version: 0.8.0
-- package: vbom.ml/util
-  repo: https://github.com/fvbommel/util.git
-  vcs: git
+- package: github.com/grpc-ecosystem/go-grpc-prometheus
 
 - package: k8s.io/kubernetes
-  version: 1.9.2
+  version: release-1.10
 - package: k8s.io/client-go
-  version: ~6.0.0
+  version: kubernetes-1.10.0
 - package: k8s.io/api
-  version: kubernetes-1.9.2
+  version: release-1.10
 - package: k8s.io/apimachinery
-  version: kubernetes-1.9.2
+  version: release-1.10
 - package: k8s.io/apiserver
-  version: kubernetes-1.9.2
-
-- package: cloud.google.com/go/compute
-  repo: https://github.com/GoogleCloudPlatform/google-cloud-go.git
+  version: release-1.10
 
 testImports:
 - package: github.com/stretchr/testify
