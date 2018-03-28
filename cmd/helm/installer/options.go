@@ -18,6 +18,7 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/helm/pkg/strvals"
@@ -101,6 +102,9 @@ func (opts *Options) selectImage() string {
 	case opts.UseCanary:
 		return defaultImage + ":canary"
 	case opts.ImageSpec == "":
+		if !(len(strings.Split(version.Version, ".")) > 2) {
+			return defaultImage + ":canary"
+		}
 		return fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	default:
 		return opts.ImageSpec
