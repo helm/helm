@@ -28,6 +28,7 @@ var (
 	archivedChartPathWithHyphens = "testdata/testcharts/compressedchart-with-hyphens-0.1.0.tgz"
 	invalidArchivedChartPath     = "testdata/testcharts/invalidcompressedchart0.1.0.tgz"
 	chartDirPath                 = "testdata/testcharts/decompressedchart/"
+	chartMissingManifest         = "testdata/testcharts/chart-missing-manifest"
 )
 
 func TestLintChart(t *testing.T) {
@@ -44,6 +45,10 @@ func TestLintChart(t *testing.T) {
 	}
 
 	if _, err := lintChart(invalidArchivedChartPath, values, namespace, strict); err == nil {
+		t.Errorf("Expected a chart parsing error")
+	}
+
+	if _, err := lintChart(chartMissingManifest, values, namespace, strict); err == nil {
 		t.Errorf("Expected a chart parsing error")
 	}
 }
