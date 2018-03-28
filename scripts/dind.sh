@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2016 The Kubernetes Authors All rights reserved.
+# Copyright 2017 The Kubernetes Authors All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,9 @@
 # limitations under the License.
 set -euo pipefail
 
-apt-get update -y && apt-get install -yq zip socat
+scripts/portforward.sh 8080 &
 
-echo "Install docker client"
-VER="17.09.0-ce"
-curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
-tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-mv /tmp/docker/* /usr/bin
-
-make bootstrap
+wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.9.sh
+chmod +x dind-cluster-v1.9.sh
+RUN_ON_BTRFS_ANYWAY=trololo bash -x ./dind-cluster-v1.9.sh up
+export PATH="$HOME/.kubeadm-dind-cluster:$PATH"

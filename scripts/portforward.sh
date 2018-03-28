@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Copyright 2016 The Kubernetes Authors All rights reserved.
+# Copyright 2017 The Kubernetes Authors All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +13,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-set -euo pipefail
 
-apt-get update -y && apt-get install -yq zip socat
+# Portforward hack for CircleCI remote docker
+set -euxo pipefail
 
-echo "Install docker client"
-VER="17.09.0-ce"
-curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
-tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-mv /tmp/docker/* /usr/bin
-
-make bootstrap
+if [[ ${1:-} == start ]]; then
+  docker run -d -it \
+    --name portforward --net=host \
+    --entrypoint /bin/sh \
+    bobrik/socat -c "while true; do sleep 1000; done"
+elif [[ ${1} ]]; then
+  socat "TCP-LISTEN:${1},reuseaddr,fork" \
+    EXEC:"'docker exec -i portforward socat STDIO TCP-CONNECT:localhost:${1}'"
+else
+  echo "Must specify either start or the port number" >&2
+  exit 1
+fi

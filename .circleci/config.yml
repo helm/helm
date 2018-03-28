@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     working_directory: /go/src/k8s.io/helm
-    parallelism: 3
+    parallelism: 4
     docker:
       - image: golang:1.10
     environment:
@@ -18,6 +18,9 @@ jobs:
       - run:
           name: install dependencies
           command: .circleci/bootstrap.sh
+      - run:
+          name: update PATH
+          command: echo 'export PATH=~/.kubeadm-dind-cluster:$PATH' >> $BASH_ENV
       - save_cache:
           key: glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
           paths:
