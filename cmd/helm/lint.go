@@ -97,10 +97,14 @@ func (l *lintCmd) run() error {
 
 	var total int
 	var failures int
+	rc := 0
 	for _, path := range l.paths {
 		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
+			if err == errLintNoChart {
+				rc = 1
+			}
 		} else {
 			fmt.Println("==> Linting", path)
 
@@ -126,6 +130,10 @@ func (l *lintCmd) run() error {
 	}
 
 	fmt.Fprintf(l.out, "%s, no failures\n", msg)
+
+	if rc != 0 {
+		os.Exit(rc)
+	}
 
 	return nil
 }
