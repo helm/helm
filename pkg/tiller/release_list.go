@@ -108,13 +108,18 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		l = int64(len(rels))
 	}
 
-	res := &services.ListReleasesResponse{
-		Next:     next,
-		Count:    l,
-		Total:    total,
-		Releases: rels,
+	for i := 0; i < min(len(rels), int(req.Limit)); i++ {
+		res := &services.ListReleasesResponse{
+			Next:     next,
+			Count:    l,
+			Total:    total,
+			Releases: []*release.Release{rels[i]},
+		}
+		if err := stream.Send(res); err != nil {
+			return err
+		}
 	}
-	return stream.Send(res)
+	return nil
 }
 
 func filterByNamespace(namespace string, rels []*release.Release) ([]*release.Release, error) {
