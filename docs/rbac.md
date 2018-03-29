@@ -4,7 +4,7 @@ In Kubernetes, granting a role to an application-specific service account is a b
 
 Bitnami also has a fantastic guide for [configuring RBAC in your cluster](https://docs.bitnami.com/kubernetes/how-to/configure-rbac-in-your-kubernetes-cluster/) that takes you through RBAC basics.
 
-This guide is for users who want to restrict tiller's capabilities to install resources to certain namespaces, or to grant a helm client running access to a tiller instance.
+This guide is for users who want to restrict Tiller's capabilities to install resources to certain namespaces, or to grant a helm client running access to a Tiller instance.
 
 ## Tiller and Role-based Access Control
 
@@ -51,7 +51,7 @@ clusterrolebinding "tiller" created
 $ helm init --service-account tiller
 ```
 
-### Example: Deploy tiller in a namespace, restricted to deploying resources only in that namespace
+### Example: Deploy Tiller in a namespace, restricted to deploying resources only in that namespace
 
 In the example above, we gave Tiller admin access to the entire cluster. You are not at all required to give Tiller cluster-admin access for it to work. Instead of specifying a ClusterRole or a ClusterRoleBinding, you can specify a Role and RoleBinding to limit Tiller's scope to a particular namespace.
 
@@ -62,7 +62,7 @@ $ kubectl create serviceaccount tiller --namespace tiller-world
 serviceaccount "tiller" created
 ```
 
-Define a Role that allows tiller to manage all resources in `tiller-world` like in `role-tiller.yaml`:
+Define a Role that allows Tiller to manage all resources in `tiller-world` like in `role-tiller.yaml`:
 
 ```yaml
 kind: Role
@@ -104,7 +104,7 @@ $ kubectl create -f rolebinding-tiller.yaml
 rolebinding "tiller-binding" created
 ```
 
-Afterwards you can run `helm init` to install tiller in the `tiller-world` namespace.
+Afterwards you can run `helm init` to install Tiller in the `tiller-world` namespace.
 
 ```console
 $ helm init --service-account tiller --tiller-namespace tiller-world
@@ -125,11 +125,11 @@ NAME                  READY  STATUS             RESTARTS  AGE
 wayfaring-yak-alpine  0/1    ContainerCreating  0         0s
 ```
 
-### Example: Deploy tiller in a namespace, restricted to deploying resources in another namespace
+### Example: Deploy Tiller in a namespace, restricted to deploying resources in another namespace
 
 In the example above, we gave Tiller admin access to the namespace it was deployed inside. Now, let's limit Tiller's scope to deploy resources in a different namespace!
 
-For example, let's install tiller in the namespace `myorg-system` and allow tiller to deploy resources in the namespace `myorg-users`.
+For example, let's install Tiller in the namespace `myorg-system` and allow Tiller to deploy resources in the namespace `myorg-users`.
 
 ```console
 $ kubectl create namespace myorg-system
@@ -138,7 +138,7 @@ $ kubectl create serviceaccount tiller --namespace myorg-system
 serviceaccount "tiller" created
 ```
 
-Define a Role that allows tiller to manage all resources in `myorg-users` like in `role-tiller.yaml`:
+Define a Role that allows Tiller to manage all resources in `myorg-users` like in `role-tiller.yaml`:
 
 ```yaml
 kind: Role
@@ -180,7 +180,7 @@ $ kubectl create -f rolebinding-tiller.yaml
 rolebinding "tiller-binding" created
 ```
 
-We'll also need to grant tiller access to read configmaps in myorg-system so it can store release information. In `role-tiller-myorg-system.yaml`:
+We'll also need to grant Tiller access to read configmaps in myorg-system so it can store release information. In `role-tiller-myorg-system.yaml`:
 
 ```yaml
 kind: Role
@@ -224,11 +224,11 @@ rolebinding "tiller-binding" created
 
 ## Helm and Role-based Access Control
 
-When running a helm client in a pod, in order for the helm client to talk to a tiller instance, it will need certain privileges to be granted. Specifically, the helm client will need to be able to create pods, forward ports and be able to list pods in the namespace where tiller is running (so it can find tiller).
+When running a helm client in a pod, in order for the helm client to talk to a Tiller instance, it will need certain privileges to be granted. Specifically, the helm client will need to be able to create pods, forward ports and be able to list pods in the namespace where Tiller is running (so it can find Tiller).
 
 ### Example: Deploy Helm in a namespace, talking to Tiller in another namespace
 
-In this example, we will assume tiller is running in a namespace called `tiller-world` and that the helm client is running in a namespace called `helm-world`. By default, tiller is running in the `kube-system` namespace.
+In this example, we will assume Tiller is running in a namespace called `tiller-world` and that the helm client is running in a namespace called `helm-world`. By default, Tiller is running in the `kube-system` namespace.
 
 In `helm-user.yaml`:
 
