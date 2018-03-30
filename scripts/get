@@ -184,7 +184,9 @@ help () {
 
 # cleanup temporary files to avoid https://github.com/kubernetes/helm/issues/2977
 cleanup() {
-  rm -rf "$HELM_TMP_ROOT"
+  if [[ -d "${HELM_TMP_ROOT:-}" ]]; then
+    rm -rf "$HELM_TMP_ROOT"
+  fi
 }
 
 # Execution
