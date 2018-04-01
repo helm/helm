@@ -43,7 +43,10 @@ func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 	var buf bytes.Buffer
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &helm.FakeClient{Rels: tt.rels}
+			c := &helm.FakeClient{
+				Rels:      tt.rels,
+				Responses: tt.responses,
+			}
 			cmd := rcmd(c, &buf)
 			cmd.ParseFlags(tt.flags)
 			err := cmd.RunE(cmd, tt.args)
@@ -69,7 +72,8 @@ type releaseCase struct {
 	err      bool
 	resp     *release.Release
 	// Rels are the available releases at the start of the test.
-	rels []*release.Release
+	rels      []*release.Release
+	responses map[string]release.TestRun_Status
 }
 
 // tempHelmHome sets up a Helm Home in a temp dir.
