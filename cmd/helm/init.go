@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -114,7 +115,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, url
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewFile()
-		sr, err := initRepo(url, home.CacheRelativeIndex(stableRepository), out, skipRefresh, home)
+		sr, err := initRepo(url, filepath.Rel(home.Cache(), home.CacheIndex(stableRepository)), out, skipRefresh, home)
 		if err != nil {
 			return err
 		}
