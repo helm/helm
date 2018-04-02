@@ -386,7 +386,11 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), filepath.Rel(home.Cache(), home.CacheIndex("local")), out, home)
+		lif, err := filepath.Rel(home.Cache(), home.CacheIndex("local"))
+		if err != nil {
+			return err
+		}
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), lif, out, home)
 		if err != nil {
 			return err
 		}
