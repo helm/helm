@@ -346,8 +346,22 @@ func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.L
 	if err != nil {
 		return nil, err
 	}
-
-	return s.Recv()
+	var resp *rls.ListReleasesResponse
+	for {
+		r, err := s.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if resp == nil {
+			resp = r
+			continue
+		}
+		resp.Releases = append(resp.Releases, r.GetReleases()[0])
+	}
+	return resp, nil
 }
 
 // Executes tiller.InstallRelease RPC.
