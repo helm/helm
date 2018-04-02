@@ -115,7 +115,11 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, url
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewFile()
-		sr, err := initRepo(url, filepath.Rel(home.Cache(), home.CacheIndex(stableRepository)), out, skipRefresh, home)
+		sif, err := filepath.Rel(home.Cache(), home.CacheIndex(stableRepository))
+		if err != nil {
+			return err
+		}
+		sr, err := initRepo(url, sif, out, skipRefresh, home)
 		if err != nil {
 			return err
 		}
