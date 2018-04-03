@@ -176,3 +176,24 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 		t.Errorf("Expected LastRun to be zero, got %d.", res.Release.Hooks[0].LastRun.Seconds)
 	}
 }
+
+func TestUninstallReleaseCustomDescription(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	customDescription := "foo"
+	req := &services.UninstallReleaseRequest{
+		Name:        "angry-panda",
+		Description: "foo",
+	}
+
+	res, err := rs.UninstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed uninstall: %s", err)
+	}
+
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+}

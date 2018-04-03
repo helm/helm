@@ -252,3 +252,35 @@ func TestRollbackReleaseFailure(t *testing.T) {
 		t.Errorf("Expected SUPERSEDED status on previous Release version. Got %v", oldStatus)
 	}
 }
+
+func TestRollbackReleaseWithCustomDescription(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+	upgradedRel := upgradeReleaseVersion(rel)
+	rs.env.Releases.Update(rel)
+	rs.env.Releases.Create(upgradedRel)
+
+	customDescription := "foo"
+	req := &services.RollbackReleaseRequest{
+		Name:        rel.Name,
+		Description: customDescription,
+	}
+	res, err := rs.RollbackRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed rollback: %s", err)
+	}
+
+	if res.Release.Name == "" {
+		t.Errorf("Expected release name.")
+	}
+
+	if res.Release.Name != rel.Name {
+		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
+	}
+
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected Description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+}
