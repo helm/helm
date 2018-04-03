@@ -151,6 +151,23 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Add release with description.",
+			fields: fields{
+				Rels: []*release.Release{},
+			},
+			args: args{
+				ns:   "default",
+				opts: []InstallOption{ReleaseName("new-release"), InstallDescription("foo-bar")},
+			},
+			want: &rls.InstallReleaseResponse{
+				Release: ReleaseMock(&MockReleaseOptions{Name: "new-release", Description: "foo-bar"}),
+			},
+			relsAfter: []*release.Release{
+				ReleaseMock(&MockReleaseOptions{Name: "new-release", Description: "foo-bar"}),
+			},
+			wantErr: false,
+		},
+		{
 			name: "Try to add a release where the name already exists.",
 			fields: fields{
 				Rels: []*release.Release{

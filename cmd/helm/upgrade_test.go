@@ -140,12 +140,28 @@ func TestUpgradeCmd(t *testing.T) {
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 1, Chart: ch})},
 		},
 		{
+			name:     "install a release with 'upgrade --install' and custom description",
+			args:     []string{"crazy-bunny", chartPath},
+			flags:    []string{"-i", "--description", "foo"},
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 1, Chart: ch, Description: "foo"}),
+			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 1, Chart: ch, Description: "foo"})},
+		},
+		{
 			name:     "upgrade a release with wait",
 			args:     []string{"crazy-bunny", chartPath},
 			flags:    []string{"--wait"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2}),
 			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2})},
+		},
+		{
+			name:     "upgrade a release with description",
+			args:     []string{"crazy-bunny", chartPath},
+			flags:    []string{"--description", "foo"},
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2}),
+			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2, Description: "foo"})},
 		},
 		{
 			name: "upgrade a release with missing dependencies",
