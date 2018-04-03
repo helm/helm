@@ -96,8 +96,23 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
+	// if some resources delete failed, set status to UNKNOWN and return.
+	if len(es) > 0 {
+		rel.Info.Status.Code = release.Status_UNKNOWN
+		rel.Info.Description = "Deletion some resources failed"
+		if err := s.env.Releases.Update(rel); err != nil {
+			s.Log("uninstall: Failed to store updated release: %s", err)
+		}
+		return res, fmt.Errorf("Deletion failed! Because of %d error(s): %s", len(es), strings.Join(es, "; "))
+	}
+
 	rel.Info.Status.Code = release.Status_DELETED
 	rel.Info.Description = "Deletion complete"
+
+	if err := s.env.Releases.Update(rel); err != nil {
+		s.Log("uninstall: Failed to store updated release: %s", err)
+		return res, err
+	}
 
 	if req.Purge {
 		s.Log("purge requested for %s", req.Name)
@@ -108,13 +123,6 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return res, err
 	}
 
-	if err := s.env.Releases.Update(rel); err != nil {
-		s.Log("uninstall: Failed to store updated release: %s", err)
-	}
-
-	if len(es) > 0 {
-		return res, fmt.Errorf("deletion completed with %d error(s): %s", len(es), strings.Join(es, "; "))
-	}
 	return res, nil
 }
 
