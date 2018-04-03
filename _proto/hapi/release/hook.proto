@@ -38,6 +38,7 @@ message Hook {
 	enum DeletePolicy {
 	    SUCCEEDED = 0;
 	    FAILED = 1;
+	    BEFORE_HOOK_CREATION = 2;
 	}
 	string name = 1;
 	// Kind is the Kubernetes kind.
