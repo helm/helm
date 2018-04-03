@@ -209,6 +209,8 @@ message UpdateReleaseRequest {
 	bool reuse_values = 10;
 	// Force resource update through delete/recreate if needed.
 	bool force = 11;
+	// Description, if set, will set the description for the updated release
+	string description = 12;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -234,6 +236,8 @@ message RollbackReleaseRequest {
 	bool wait = 7;
 	// Force resource update through delete/recreate if needed.
 	bool force = 8;
+	// Description, if set, will set the description for the rollback
+	string description = 9;
 }
 
 // RollbackReleaseResponse is the response to an update request.
@@ -273,6 +277,9 @@ message InstallReleaseRequest {
 	bool wait = 9;
 
 	bool disable_crd_hook = 10;
+
+	// Description, if set, will set the description for the installed release
+	string description = 11;
 }
 
 // InstallReleaseResponse is the response from a release installation.
@@ -290,6 +297,8 @@ message UninstallReleaseRequest {
 	bool purge = 3;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 4;
+	// Description, if set, will set the description for the uninnstalled release
+	string description = 5;
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.
