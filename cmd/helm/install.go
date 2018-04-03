@@ -129,6 +129,7 @@ type installCmd struct {
 	password       string
 	devel          bool
 	depUp          bool
+	description    string
 
 	certFile string
 	keyFile  string
@@ -209,6 +210,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&inst.depUp, "dep-up", false, "run helm dependency update before installing the chart")
+	f.StringVar(&inst.description, "description", "", "specify a description for the release")
 
 	return cmd
 }
@@ -277,7 +279,8 @@ func (i *installCmd) run() error {
 		helm.InstallDisableHooks(i.disableHooks),
 		helm.InstallDisableCRDHook(i.disableCRDHook),
 		helm.InstallTimeout(i.timeout),
-		helm.InstallWait(i.wait))
+		helm.InstallWait(i.wait),
+		helm.InstallDescription(i.description))
 	if err != nil {
 		return prettyError(err)
 	}
