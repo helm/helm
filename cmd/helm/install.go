@@ -313,11 +313,6 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 			dest[k] = v
 			continue
 		}
-		// If the key doesn't exist already, then just set the key to that value
-		if _, exists := dest[k]; !exists {
-			dest[k] = nextMap
-			continue
-		}
 		// Edge case: If the key exists in the destination, but isn't a map
 		destMap, isMap := dest[k].(map[string]interface{})
 		// If the source map has a map for this key, prefer it
