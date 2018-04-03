@@ -495,3 +495,23 @@ func TestInstallRelease_WrongKubeVersion(t *testing.T) {
 		t.Errorf("Expected %q to contain %q", err.Error(), expect)
 	}
 }
+
+func TestInstallRelease_Description(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	customDescription := "foo"
+	req := &services.InstallReleaseRequest{
+		Chart:       chartStub(),
+		Description: customDescription,
+	}
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+
+	if desc := res.Release.Info.Description; desc != customDescription {
+		t.Errorf("Expected description %q. Got %q", customDescription, desc)
+	}
+}

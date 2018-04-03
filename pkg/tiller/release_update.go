@@ -243,7 +243,11 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	}
 
 	newRelease.Info.Status.Code = release.Status_DEPLOYED
-	newRelease.Info.Description = "Upgrade complete"
+	if req.Description == "" {
+		newRelease.Info.Description = "Upgrade complete"
+	} else {
+		newRelease.Info.Description = req.Description
+	}
 	s.recordRelease(newRelease, true)
 
 	return res, nil
@@ -287,7 +291,11 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	s.recordRelease(originalRelease, true)
 
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
-	updatedRelease.Info.Description = "Upgrade complete"
+	if req.Description == "" {
+		updatedRelease.Info.Description = "Upgrade complete"
+	} else {
+		updatedRelease.Info.Description = req.Description
+	}
 
 	return res, nil
 }
