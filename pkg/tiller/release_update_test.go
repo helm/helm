@@ -432,6 +432,55 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 	}
 }
 
+func TestUpdateReleaseCustomDescription(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	customDescription := "foo"
+
+	req := &services.UpdateReleaseRequest{
+		Name:        rel.Name,
+		Chart:       rel.GetChart(),
+		Description: customDescription,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected release description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
+}
+
+func TestUpdateReleaseCustomDescription_Force(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	customDescription := "foo"
+
+	req := &services.UpdateReleaseRequest{
+		Name:        rel.Name,
+		Chart:       rel.GetChart(),
+		Force:       true,
+		Description: customDescription,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected release description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
+}
+
 func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res services.UpdateReleaseResponse) *release.Release {
 	storedRelease, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
 	if err != nil {

@@ -97,7 +97,11 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	rel.Info.Status.Code = release.Status_DELETED
-	rel.Info.Description = "Deletion complete"
+	if req.Description == "" {
+		rel.Info.Description = "Deletion complete"
+	} else {
+		rel.Info.Description = req.Description
+	}
 
 	if req.Purge {
 		s.Log("purge requested for %s", req.Name)
