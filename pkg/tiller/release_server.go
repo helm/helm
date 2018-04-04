@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/technosophos/moniker"
+	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
@@ -135,7 +136,22 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		if err != nil {
 			return err
 		}
+
+		// merge new values with current
+		req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
 		req.Chart.Values = &chart.Config{Raw: nv}
+
+		// yaml unmarshal and marshal to remove duplicate keys
+		y := map[string]interface{}{}
+		if err := yaml.Unmarshal([]byte(req.Values.Raw), &y); err != nil {
+			return err
+		}
+		data, err := yaml.Marshal(y)
+		if err != nil {
+			return err
+		}
+
+		req.Values.Raw = string(data)
 		return nil
 	}
 
