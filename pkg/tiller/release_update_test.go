@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -128,6 +129,107 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 	}
 }
 
+// This is a regression test for bug found in issue #3655
+func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	installReq := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values: &chart.Config{Raw: "foo: bar"},
+	}
+
+	fmt.Println("Running Install release with foo: bar override")
+	installResp, err := rs.InstallRelease(c, installReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rel := installResp.Release
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+	}
+
+	fmt.Println("Running Update release with no overrides and no reuse-values flag")
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+
+	expect := "foo: bar"
+	if res.Release.Config != nil && res.Release.Config.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Config.Raw)
+	}
+
+	rel = res.Release
+	req = &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values:      &chart.Config{Raw: "foo2: bar2"},
+		ReuseValues: true,
+	}
+
+	fmt.Println("Running Update release with foo2: bar2 override and reuse-values")
+	res, err = rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+
+	// This should have the newly-passed overrides.
+	expect = "foo: bar\nfoo2: bar2\n"
+	if res.Release.Config != nil && res.Release.Config.Raw != expect {
+		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
+	}
+
+	rel = res.Release
+	req = &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values:      &chart.Config{Raw: "foo: baz"},
+		ReuseValues: true,
+	}
+
+	fmt.Println("Running Update release with foo=baz override with reuse-values flag")
+	res, err = rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	expect = "foo: baz\nfoo2: bar2\n"
+	if res.Release.Config != nil && res.Release.Config.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Config.Raw)
+	}
+}
+
 func TestUpdateRelease_ReuseValues(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
@@ -157,8 +259,8 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 	if res.Release.Chart.Values != nil && res.Release.Chart.Values.Raw != expect {
 		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Chart.Values.Raw)
 	}
-	// This should have the newly-passed overrides.
-	expect = "name2: val2"
+	// This should have the newly-passed overrides and any other computed values. `name: value` comes from release Config via releaseStub()
+	expect = "name: value\nname2: val2"
 	if res.Release.Config != nil && res.Release.Config.Raw != expect {
 		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
 	}
