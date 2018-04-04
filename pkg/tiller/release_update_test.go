@@ -260,7 +260,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Chart.Values.Raw)
 	}
 	// This should have the newly-passed overrides and any other computed values. `name: value` comes from release Config via releaseStub()
-	expect = "name: value\nname2: val2"
+	expect = "name: value\nname2: val2\n"
 	if res.Release.Config != nil && res.Release.Config.Raw != expect {
 		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
 	}
