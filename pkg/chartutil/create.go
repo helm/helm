@@ -59,6 +59,9 @@ image:
   tag: stable
   pullPolicy: IfNotPresent
 
+nameOverride: ""
+fullnameOverride: ""
+
 service:
   type: ClusterIP
   port: 80
