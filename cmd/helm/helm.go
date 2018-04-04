@@ -216,7 +216,7 @@ func prettyError(err error) error {
 	}
 	// If it's grpc's error, make it more user-friendly.
 	if s, ok := status.FromError(err); ok {
-		return s.Err()
+		return fmt.Errorf(s.Message())
 	}
 	// Else return the original error.
 	return err
