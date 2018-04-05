@@ -36,6 +36,15 @@ brew install kubernetes-helm
 (Note: There is also a formula for emacs-helm, which is a different
 project.)
 
+### From Chocolatey (Windows)
+
+Members of the Kubernetes community have contributed a [Helm package](https://chocolatey.org/packages/kubernetes-helm) build to
+[Chocolatey](https://chocolatey.org/). This package is generally up to date.
+
+```
+choco install kubernetes-helm
+```
+
 ## From Script
 
 Helm now has an installer script that will automatically grab the latest version
