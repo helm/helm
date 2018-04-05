@@ -175,7 +175,7 @@ func ToYaml(v interface{}) string {
 		// Swallow errors inside of a template.
 		return ""
 	}
-	return string(data)
+	return strings.TrimSuffix(string(data), "\n")
 }
 
 // FromYaml converts a YAML document into a map[string]interface{}.
