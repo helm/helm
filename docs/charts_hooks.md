@@ -191,8 +191,8 @@ When helm release being updated it is possible, that hook resource already exist
 
 One might choose `"helm.sh/hook-delete-policy": "before-hook-creation"` over `"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"` because:
 
-* It is convinient to keep failed hook job resource in kubernetes for example for manual debug.
+* It is convenient to keep failed hook job resource in kubernetes for example for manual debug.
 * It may be necessary to keep succeeded hook resource in kubernetes for some reason.
-* At the same time it is not desireable to do manual resource deletion before helm release upgrade.
+* At the same time it is not desirable to do manual resource deletion before helm release upgrade.
 
-`"helm.sh/hook-delete-policy": "before-hook-creation"` annotation on hook causes tiller to remove the hook from previous release if there is one before the new hook is launched and can be used with another policies.
+`"helm.sh/hook-delete-policy": "before-hook-creation"` annotation on hook causes tiller to remove the hook from previous release if there is one before the new hook is launched and can be used with another policy.
