@@ -101,6 +101,9 @@ func (l *lintCmd) run() error {
 		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
+			if err == errLintNoChart {
+				failures = failures + 1
+			}
 		} else {
 			fmt.Println("==> Linting", path)
 
