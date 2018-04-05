@@ -72,10 +72,10 @@ func TestToConfig(t *testing.T) {
 
 	f := NewFiles(getTestFiles())
 	out := f.Glob("**/captain.txt").AsConfig()
-	as.Equal("captain.txt: The Captain\n", out)
+	as.Equal("captain.txt: The Captain", out)
 
 	out = f.Glob("ship/**").AsConfig()
-	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt\n", out)
+	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt", out)
 }
 
 func TestToSecret(t *testing.T) {
@@ -84,7 +84,7 @@ func TestToSecret(t *testing.T) {
 	f := NewFiles(getTestFiles())
 
 	out := f.Glob("ship/**").AsSecrets()
-	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0\n", out)
+	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0", out)
 }
 
 func TestLines(t *testing.T) {
@@ -99,7 +99,7 @@ func TestLines(t *testing.T) {
 }
 
 func TestToYaml(t *testing.T) {
-	expect := "foo: bar\n"
+	expect := "foo: bar"
 	v := struct {
 		Foo string `json:"foo"`
 	}{
