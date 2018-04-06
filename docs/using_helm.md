@@ -235,6 +235,8 @@ Overrides specified with `--set` are persisted in a configmap. Values that have 
 Values that have been `--set` can be cleared by running `helm upgrade` with `--reset-values`
 specified.
 
+FUN NOTE: The `upsert` command for installing a Helm chart is `helm upgrade --install`, which will install the chart if it is not already installed.
+
 #### The Format and Limitations of `--set`
 
 The `--set` option takes zero or more name/value pairs. At its simplest, it is
