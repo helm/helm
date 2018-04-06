@@ -55,6 +55,7 @@ type packageCmd struct {
 	path             string
 	valueFiles       valueFiles
 	values           []string
+	stringValues     []string
 	key              string
 	keyring          string
 	version          string
@@ -99,6 +100,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.VarP(&pkg.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
 	f.StringArrayVar(&pkg.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&pkg.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&pkg.save, "save", true, "save packaged chart to local chart repository")
 	f.BoolVar(&pkg.sign, "sign", false, "use a PGP private key to sign this package")
 	f.StringVar(&pkg.key, "key", "", "name of the key to use when signing. Used if --sign is true")
@@ -137,7 +139,7 @@ func (p *packageCmd) run() error {
 		return err
 	}
 
-	overrideVals, err := vals(p.valueFiles, p.values)
+	overrideVals, err := vals(p.valueFiles, p.values, p.stringValues)
 	if err != nil {
 		return err
 	}
