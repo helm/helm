@@ -56,7 +56,7 @@ import (
 )
 
 const (
-	// MissingGetHeader is added to Get's outout when a resource is not found.
+	// MissingGetHeader is added to get output when a resource is not found.
 	MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
 )
 
@@ -406,7 +406,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 
 	// While different objects need different merge types, the parent function
 	// that calls this does not try to create a patch when the data (first
-	// returned object) is nil. We can skip calculating the the merge type as
+	// returned object) is nil. We can skip calculating the merge type as
 	// the returned merge type is ignored.
 	if apiequality.Semantic.DeepEqual(oldData, newData) {
 		return nil, types.StrategicMergePatchType, nil
@@ -692,7 +692,7 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	return err
 }
 
-//get an kubernetes resources's relation pods
+//get a kubernetes resources' relation pods
 // kubernetes resource used select labels to relate pods
 func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {
 	if info == nil {
