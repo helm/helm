@@ -318,6 +318,10 @@ type podSucceededKubeClient struct {
 	tillerEnv.PrintingKubeClient
 }
 
+func (p *podSucceededKubeClient) GetPodLogs(namespace string, reader io.Reader, timeout time.Duration) error {
+	return nil
+}
+
 func newPodSucceededKubeClient() *podSucceededKubeClient {
 	return &podSucceededKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
@@ -336,6 +340,10 @@ func newPodFailedKubeClient() *podFailedKubeClient {
 	return &podFailedKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
 	}
+}
+
+func (p *podFailedKubeClient) GetPodLogs(namespace string, reader io.Reader, timeout time.Duration) error {
+	return nil
 }
 
 func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {

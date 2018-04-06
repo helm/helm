@@ -363,6 +363,10 @@ type mockHooksKubeClient struct {
 	Resources map[string]*mockHooksManifest
 }
 
+func (kc *mockHooksKubeClient) GetPodLogs(namespace string, r io.Reader, timeout time.Duration) error {
+	return nil
+}
+
 var errResourceExists = errors.New("resource already exists")
 
 func (kc *mockHooksKubeClient) makeManifest(r io.Reader) (*mockHooksManifest, error) {

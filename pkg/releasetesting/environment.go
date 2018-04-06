@@ -62,6 +62,12 @@ func (env *Environment) getTestPodStatus(test *test) (core.PodPhase, error) {
 	return status, err
 }
 
+func (env *Environment) getTestPodsLogs(test *test) error {
+	b := bytes.NewBufferString(test.manifest)
+	err := env.KubeClient.GetPodLogs(env.Namespace, b, time.Duration(env.Timeout)*time.Second)
+	return err
+}
+
 func (env *Environment) streamResult(r *release.TestRun) error {
 	switch r.Status {
 	case release.TestRun_SUCCESS:

@@ -47,12 +47,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
 	"k8s.io/kubernetes/pkg/printers"
+	"os"
 )
 
 const (
@@ -676,6 +678,38 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 	status := info.Object.(*core.Pod).Status.Phase
 
 	return status, nil
+}
+
+//GetPodLogs print the log of a pod to standard output
+func (c *Client) GetPodLogs(namespace string, reader io.Reader, timeout time.Duration) error {
+	infos, err := c.Build(namespace, reader)
+	if err != nil {
+		return err
+	}
+	info := infos[0]
+
+	kind := info.Mapping.GroupVersionKind.Kind
+	if kind != "Pod" {
+		return fmt.Errorf("%s is not a Pod", info.Name)
+	}
+
+	pod := info.Object.(*core.Pod)
+
+	cl, err := c.ClientSet()
+	if err != nil {
+		return err
+	}
+
+	log := cl.Core().Pods(namespace).GetLogs(pod.Name, &api.PodLogOptions{})
+
+	readCloser, err := log.Stream()
+	if err != nil {
+		return err
+	}
+	defer readCloser.Close()
+
+	_, err = io.Copy(os.Stdout, readCloser)
+	return err
 }
 
 func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {

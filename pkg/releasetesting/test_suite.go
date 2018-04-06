@@ -95,7 +95,12 @@ func (ts *TestSuite) Run(env *Environment) error {
 			status, err = env.getTestPodStatus(test)
 			if err != nil {
 				resourceCleanExit = false
-				if streamErr := env.streamError(test.result.Info); streamErr != nil {
+				streamErr := env.streamError(test.result.Info)
+				logErr := env.getTestPodsLogs(test)
+				if logErr != nil {
+					fmt.Println("Fail to get log for the failing test")
+				}
+				if streamErr != nil {
 					return streamErr
 				}
 			}

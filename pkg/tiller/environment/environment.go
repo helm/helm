@@ -143,12 +143,21 @@ type KubeClient interface {
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error)
+
+	// GetPodLogs gets the log of a pod and print it out to standard output
+	GetPodLogs(namespace string, reader io.Reader, timeout time.Duration) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
 // the given output.
 type PrintingKubeClient struct {
 	Out io.Writer
+}
+
+//GetPodLogs prints the values of what would be created with a real KubeClient.
+func (p *PrintingKubeClient) GetPodLogs(namespace string, r io.Reader, timeout time.Duration) error {
+	_, err := io.Copy(p.Out, r)
+	return err
 }
 
 // Create prints the values of what would be created with a real KubeClient.

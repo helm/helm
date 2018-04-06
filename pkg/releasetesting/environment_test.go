@@ -26,6 +26,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
+	"time"
 )
 
 func TestCreateTestPodSuccess(t *testing.T) {
@@ -143,6 +144,10 @@ type getFailingKubeClient struct {
 	tillerEnv.PrintingKubeClient
 }
 
+func (p *getFailingKubeClient) GetPodLogs(namespace string, reader io.Reader, timeout time.Duration) error {
+	return nil
+}
+
 func newGetFailingKubeClient() *getFailingKubeClient {
 	return &getFailingKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
@@ -157,6 +162,10 @@ type deleteFailingKubeClient struct {
 	tillerEnv.PrintingKubeClient
 }
 
+func (p *deleteFailingKubeClient) GetPodLogs(namespace string, reader io.Reader, timeout time.Duration) error {
+	return nil
+}
+
 func newDeleteFailingKubeClient() *deleteFailingKubeClient {
 	return &deleteFailingKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
@@ -169,6 +178,10 @@ func (p *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
 
 type createFailingKubeClient struct {
 	tillerEnv.PrintingKubeClient
+}
+
+func (p *createFailingKubeClient) GetPodLogs(namespace string, reader io.Reader, timeout time.Duration) error {
+	return nil
 }
 
 func newCreateFailingKubeClient() *createFailingKubeClient {
