@@ -135,7 +135,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		targetRelease.Info.Status.Code = release.Status_FAILED
 		targetRelease.Info.Description = msg
 		s.recordRelease(currentRelease, true)
-		s.recordRelease(targetRelease, false)
+		s.recordRelease(targetRelease, true)
 		return res, err
 	}
 
