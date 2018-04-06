@@ -18,6 +18,7 @@ package version // import "k8s.io/helm/pkg/version"
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/Masterminds/semver"
@@ -53,11 +54,44 @@ func IsCompatibleRange(constraint, ver string) bool {
 		return false
 	}
 
+	verSuffix := sv.Prerelease()
+	if verSuffix != "" {
+		if !IsConstraintPrerelease(constraint) {
+			constraint = constraint + "-r0"
+			trimmedVer := strings.TrimSuffix(sv.String(), "-"+verSuffix)
+			sv, err = semver.NewVersion(trimmedVer)
+			if err != nil {
+				return false
+			}
+		}
+	}
+
 	c, err := semver.NewConstraint(constraint)
 	if err != nil {
 		return false
 	}
 	return c.Check(sv)
+}
+
+func IsConstraintPrerelease(constraint string) bool {
+	base := constraint
+	for _, c := range constraint {
+		char := string(c)
+		r := regexp.MustCompile(`^[0-9]+`).MatchString(char)
+		if !r {
+			base = strings.TrimPrefix(base, char)
+		} else {
+			break
+		}
+	}
+	baseVer, err := semver.NewVersion(base)
+	if err != nil {
+		return false
+	}
+	if baseVer.Prerelease() == "" {
+		return false
+	}
+	return true
 }
 
 func isUnreleased(v string) bool {
