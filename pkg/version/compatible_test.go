@@ -56,6 +56,10 @@ func TestIsCompatibleRange(t *testing.T) {
 		{"v2", "v2.0.0", true},
 		{">2.0.0", "v2.1.1", true},
 		{"v2.1.*", "v2.1.1", true},
+		{">=1.8.0", "v1.9.4-gke.1", true},
+		{">=1.8.0", "v1.7.4-gke.1", false},
+		{"<=1.8.0", "v1.7.4-gke.1", true},
+		{"~v2.0.0", "v2.0.1-gke1", true},
 	}
 
 	for _, tt := range tests {
