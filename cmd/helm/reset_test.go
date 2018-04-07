@@ -31,40 +31,58 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
-func TestResetCmd(t *testing.T) {
-	home, err := ioutil.TempDir("", "helm_home")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(home)
+type resetCase struct {
+	name            string
+	err             bool
+	resp            []*release.Release
+	removeHelmHome  bool
+	force           bool
+	expectedActions int
+	expectedOutput  string
+}
 
-	var buf bytes.Buffer
-	c := &helm.FakeClient{}
-	fc := fake.NewSimpleClientset()
-	cmd := &resetCmd{
-		out:        &buf,
-		home:       helmpath.Home(home),
-		client:     c,
-		kubeClient: fc,
-		namespace:  core.NamespaceDefault,
-	}
-	if err := cmd.run(); err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	actions := fc.Actions()
-	if len(actions) != 3 {
-		t.Errorf("Expected 3 actions, got %d", len(actions))
-	}
-	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
-	if !strings.Contains(buf.String(), expected) {
-		t.Errorf("expected %q, got %q", expected, buf.String())
-	}
-	if _, err := os.Stat(home); err != nil {
-		t.Errorf("Helm home directory %s does not exists", home)
-	}
+func TestResetCmd(t *testing.T) {
+
+	verifyResetCmd(t, resetCase{
+		name:            "test reset command",
+		expectedActions: 3,
+		expectedOutput:  "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster.",
+	})
 }
 
 func TestResetCmd_removeHelmHome(t *testing.T) {
+	verifyResetCmd(t, resetCase{
+		name:            "test reset command - remove helm home",
+		removeHelmHome:  true,
+		expectedActions: 3,
+		expectedOutput:  "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster.",
+	})
+}
+
+func TestReset_deployedReleases(t *testing.T) {
+	verifyResetCmd(t, resetCase{
+		name: "test reset command - deployed releases",
+		resp: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+		},
+		err:            true,
+		expectedOutput: "there are still 1 deployed releases (Tip: use --force to remove Tiller. Releases will not be deleted.)",
+	})
+}
+
+func TestReset_forceFlag(t *testing.T) {
+	verifyResetCmd(t, resetCase{
+		name:  "test reset command - force flag",
+		force: true,
+		resp: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+		},
+		expectedActions: 3,
+		expectedOutput:  "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster.",
+	})
+}
+
+func verifyResetCmd(t *testing.T, tc resetCase) {
 	home, err := ioutil.TempDir("", "helm_home")
 	if err != nil {
 		t.Fatal(err)
@@ -72,99 +90,42 @@ func TestResetCmd_removeHelmHome(t *testing.T) {
 	defer os.Remove(home)
 
 	var buf bytes.Buffer
-	c := &helm.FakeClient{}
+	c := &helm.FakeClient{
+		Rels: tc.resp,
+	}
 	fc := fake.NewSimpleClientset()
 	cmd := &resetCmd{
-		removeHelmHome: true,
+		removeHelmHome: tc.removeHelmHome,
+		force:          tc.force,
 		out:            &buf,
 		home:           helmpath.Home(home),
 		client:         c,
 		kubeClient:     fc,
 		namespace:      core.NamespaceDefault,
 	}
-	if err := cmd.run(); err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-	actions := fc.Actions()
-	if len(actions) != 3 {
-		t.Errorf("Expected 3 actions, got %d", len(actions))
-	}
-	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
-	if !strings.Contains(buf.String(), expected) {
-		t.Errorf("expected %q, got %q", expected, buf.String())
-	}
-	if _, err := os.Stat(home); err == nil {
-		t.Errorf("Helm home directory %s already exists", home)
-	}
-}
 
-func TestReset_deployedReleases(t *testing.T) {
-	home, err := ioutil.TempDir("", "helm_home")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(home)
-
-	var buf bytes.Buffer
-	resp := []*release.Release{
-		helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
-	}
-	c := &helm.FakeClient{
-		Rels: resp,
-	}
-	fc := fake.NewSimpleClientset()
-	cmd := &resetCmd{
-		out:        &buf,
-		home:       helmpath.Home(home),
-		client:     c,
-		kubeClient: fc,
-		namespace:  core.NamespaceDefault,
-	}
 	err = cmd.run()
-	expected := "there are still 1 deployed releases (Tip: use --force to remove Tiller. Releases will not be deleted.)"
-	if !strings.Contains(err.Error(), expected) {
+	if !tc.err && err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	if _, err := os.Stat(home); err != nil {
-		t.Errorf("Helm home directory %s does not exists", home)
-	}
-}
 
-func TestReset_forceFlag(t *testing.T) {
-	home, err := ioutil.TempDir("", "helm_home")
-	if err != nil {
-		t.Fatal(err)
+	got := buf.String()
+	if tc.err {
+		got = err.Error()
 	}
-	defer os.Remove(home)
 
-	var buf bytes.Buffer
-	resp := []*release.Release{
-		helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
-	}
-	c := &helm.FakeClient{
-		Rels: resp,
-	}
-	fc := fake.NewSimpleClientset()
-	cmd := &resetCmd{
-		force:      true,
-		out:        &buf,
-		home:       helmpath.Home(home),
-		client:     c,
-		kubeClient: fc,
-		namespace:  core.NamespaceDefault,
-	}
-	if err := cmd.run(); err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
 	actions := fc.Actions()
-	if len(actions) != 3 {
-		t.Errorf("Expected 3 actions, got %d", len(actions))
+	if tc.expectedActions > 0 && len(actions) != tc.expectedActions {
+		t.Errorf("Expected %d actions, got %d", tc.expectedActions, len(actions))
 	}
-	expected := "Tiller (the Helm server-side component) has been uninstalled from your Kubernetes Cluster."
-	if !strings.Contains(buf.String(), expected) {
-		t.Errorf("expected %q, got %q", expected, buf.String())
+	if !strings.Contains(got, tc.expectedOutput) {
+		t.Errorf("expected %q, got %q", tc.expectedOutput, got)
 	}
-	if _, err := os.Stat(home); err != nil {
+	_, err = os.Stat(home)
+	if !tc.removeHelmHome && err != nil {
 		t.Errorf("Helm home directory %s does not exists", home)
+	}
+	if tc.removeHelmHome && err == nil {
+		t.Errorf("Helm home directory %s exists", home)
 	}
 }
