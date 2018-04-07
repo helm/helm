@@ -56,7 +56,7 @@ import (
 )
 
 const (
-	// MissingGetHeader is added to get output when a resource is not found.
+	// MissingGetHeader is added to Get's output when a resource is not found.
 	MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
 )
 
