@@ -83,6 +83,8 @@ go if you want to test the latest (pre-release) Helm version.
 You must have a working Go environment with
 [glide](https://github.com/Masterminds/glide) and Mercurial installed.
 
+You should also check that your glide binary directory is in the system PATH.
+
 ```console
 $ cd $GOPATH
 $ mkdir -p src/k8s.io
