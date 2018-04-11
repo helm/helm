@@ -132,7 +132,8 @@ func TestTemplateCmd(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		t.Run(tt.name, func(T *testing.T) {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
 			// capture stdout
 			old := os.Stdout
 			r, w, _ := os.Pipe()
