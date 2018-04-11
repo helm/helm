@@ -70,6 +70,13 @@ func TestTemplateCmd(t *testing.T) {
 			expectValue: "protocol: TCP\n    name: apache",
 		},
 		{
+			name:        "check_execute_subchart_template",
+			desc:        "verify --execute single template on a subchart template",
+			args:        []string{chartPath, "-x", "charts/subcharta/templates/service.yaml", "--set", "subcharta.service.name=foobar"},
+			expectKey:   "subchart1/charts/subcharta/templates/service.yaml",
+			expectValue: "protocol: TCP\n    name: foobar",
+		},
+		{
 			name:        "check_namespace",
 			desc:        "verify --namespace",
 			args:        []string{chartPath, "--namespace", "test"},
