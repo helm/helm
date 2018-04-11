@@ -43,6 +43,7 @@ func TestTemplateCmd(t *testing.T) {
 		args        []string
 		expectKey   string
 		expectValue string
+		expectError string
 	}{
 		{
 			name:        "check_name",
@@ -64,6 +65,12 @@ func TestTemplateCmd(t *testing.T) {
 			args:        []string{subchart1ChartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
+		},
+		{
+			name:        "check_execute_non_existent",
+			desc:        "verify --execute fails on a template that doesnt exist",
+			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesntexist.yaml"},
+			expectError: "could not find template",
 		},
 		{
 			name:        "check_execute_absolute",
@@ -143,8 +150,21 @@ func TestTemplateCmd(t *testing.T) {
 			cmd := newTemplateCmd(out)
 			cmd.SetArgs(tt.args)
 			err := cmd.Execute()
-			if err != nil {
-				t.Errorf("expected: %v, got %v", tt.expectValue, err)
+
+			if tt.expectError != "" {
+				if err == nil {
+					t.Errorf("expected err: %s, but no error occurred", tt.expectError)
+				}
+				// non nil error, check if it contains the expected error
+				if strings.Contains(err.Error(), tt.expectError) {
+					// had the error we were looking for, this test case is
+					// done
+					return
+				} else {
+					t.Fatalf("expected err: %q, got: %q", tt.expectError, err)
+				}
+			} else if err != nil {
+				t.Errorf("expected no error, got %v", err)
 			}
 			// restore stdout
 			w.Close()
