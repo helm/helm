@@ -51,6 +51,7 @@ type lintCmd struct {
 	strict     bool
 	paths      []string
 	out        io.Writer
+	dirPrefix  string
 }
 
 func newLintCmd(out io.Writer) *cobra.Command {
@@ -75,6 +76,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to install the release into (only used if --install is set)")
 	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
+	cmd.Flags().StringVar(&l.dirPrefix, "dir-prefix", "", "require the specified prefix on chart dir name")
 
 	return cmd
 }
@@ -98,7 +100,7 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
+		if linter, err := lintChart(path, rvals, l.namespace, l.strict, l.dirPrefix); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
 			if err == errLintNoChart {
@@ -133,7 +135,7 @@ func (l *lintCmd) run() error {
 	return nil
 }
 
-func lintChart(path string, vals []byte, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals []byte, namespace string, strict bool, dirPrefix string) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -169,7 +171,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 		return linter, errLintNoChart
 	}
 
-	return lint.All(chartPath, vals, namespace, strict), nil
+	return lint.All(chartPath, vals, namespace, strict, dirPrefix), nil
 }
 
 func (l *lintCmd) vals() ([]byte, error) {

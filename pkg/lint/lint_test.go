@@ -35,7 +35,7 @@ const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir, values, namespace, strict).Messages
+	m := All(badChartDir, values, namespace, strict, "").Messages
 	if len(m) != 5 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -70,8 +70,26 @@ func TestBadChart(t *testing.T) {
 	}
 }
 
+func TestBadChartDirnameDueToPrefix(t *testing.T) {
+	prefix := "foo"
+	expectedMsg := "directory name (badchartfile) must be the same as chart name () appended to required prefix (foo)"
+	m := All(badChartDir, values, namespace, strict, prefix).Messages
+	var e bool
+	for _, msg := range m {
+		if msg.Severity == support.ErrorSev {
+			if strings.Contains(msg.Err.Error(), expectedMsg) {
+				e = true
+			}
+		}
+	}
+
+	if !e {
+		t.Errorf("Did not find the expected error: %s, got %#v", expectedMsg, m)
+	}
+}
+
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir, values, namespace, strict).Messages
+	m := All(badYamlFileDir, values, namespace, strict, "").Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -81,7 +99,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir, values, namespace, strict).Messages
+	m := All(badValuesFileDir, values, namespace, strict, "").Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -91,7 +109,7 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir, values, namespace, strict).Messages
+	m := All(goodChartDir, values, namespace, strict, "").Messages
 	if len(m) != 0 {
 		t.Errorf("All failed but shouldn't have: %#v", m)
 	}
