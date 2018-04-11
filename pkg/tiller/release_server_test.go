@@ -105,23 +105,128 @@ func rsFixture() *ReleaseServer {
 	}
 }
 
-// chartStub creates a fully stubbed out chart.
-func chartStub() *chart.Chart {
-	return &chart.Chart{
-		// TODO: This should be more complete.
-		Metadata: &chart.Metadata{
-			Name: "hello",
+type chartOptions struct {
+	*chart.Chart
+}
+
+type chartOption func(*chartOptions)
+
+func buildChart(opts ...chartOption) *chart.Chart {
+	c := &chartOptions{
+		Chart: &chart.Chart{
+			// TODO: This should be more complete.
+			Metadata: &chart.Metadata{
+				Name: "hello",
+			},
+			// This adds a basic template and hooks.
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
 		},
-		// This adds basic templates, partials, and hooks.
-		Templates: []*chart.Template{
-			{Name: "templates/hello", Data: []byte("hello: world")},
+	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c.Chart
+}
+
+func withKube(version string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Metadata.KubeVersion = version
+	}
+}
+
+func withTiller(version string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Metadata.TillerVersion = version
+	}
+}
+
+func withDependency(dependencyOpts ...chartOption) chartOption {
+	return func(opts *chartOptions) {
+		opts.Dependencies = append(opts.Dependencies, buildChart(dependencyOpts...))
+	}
+}
+
+func withNotes(notes string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Templates = append(opts.Templates, &chart.Template{
+			Name: "templates/NOTES.txt",
+			Data: []byte(notes),
+		})
+	}
+}
+
+func withSampleTemplates() chartOption {
+	return func(opts *chartOptions) {
+		sampleTemplates := []*chart.Template{
+			// This adds basic templates and partials.
 			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
 			{Name: "templates/empty", Data: []byte("")},
 			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
 			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
-			{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+		}
+		opts.Templates = append(opts.Templates, sampleTemplates...)
+	}
+}
+
+type installOptions struct {
+	*services.InstallReleaseRequest
+}
+
+type installOption func(*installOptions)
+
+func withName(name string) installOption {
+	return func(opts *installOptions) {
+		opts.Name = name
+	}
+}
+
+func withDryRun() installOption {
+	return func(opts *installOptions) {
+		opts.DryRun = true
+	}
+}
+
+func withDisabledHooks() installOption {
+	return func(opts *installOptions) {
+		opts.DisableHooks = true
+	}
+}
+
+func withReuseName() installOption {
+	return func(opts *installOptions) {
+		opts.ReuseName = true
+	}
+}
+
+func withChart(chartOpts ...chartOption) installOption {
+	return func(opts *installOptions) {
+		opts.Chart = buildChart(chartOpts...)
+	}
+}
+
+func installRequest(opts ...installOption) *services.InstallReleaseRequest {
+	reqOpts := &installOptions{
+		&services.InstallReleaseRequest{
+			Namespace: "spaced",
+			Chart:     buildChart(),
 		},
 	}
+
+	for _, opt := range opts {
+		opt(reqOpts)
+	}
+
+	return reqOpts.InstallReleaseRequest
+}
+
+// chartStub creates a fully stubbed out chart.
+func chartStub() *chart.Chart {
+	return buildChart(withSampleTemplates())
 }
 
 // releaseStub creates a release stub, complete with the chartStub as its chart.
