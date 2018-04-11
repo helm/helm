@@ -10,7 +10,6 @@ Helm and Tiller.
 - A Kubernetes cluster w/ kubectl (optional)
 - The gRPC toolchain
 - Git
-- Mercurial
 
 ## Building Helm/Tiller
 
