@@ -27,7 +27,10 @@ import (
 	"testing"
 )
 
-var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+var (
+	chartPath         = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+	frobnitzChartPath = "./../../pkg/chartutil/testdata/frobnitz"
+)
 
 func TestTemplateCmd(t *testing.T) {
 	absChartPath, err := filepath.Abs(chartPath)
@@ -75,6 +78,13 @@ func TestTemplateCmd(t *testing.T) {
 			args:        []string{chartPath, "-x", "charts/subcharta/templates/service.yaml", "--set", "subcharta.service.name=foobar"},
 			expectKey:   "subchart1/charts/subcharta/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: foobar",
+		},
+		{
+			name:        "check_execute_subchart_template_for_tgz_subchart",
+			desc:        "verify --execute single template on a subchart template where the subchart is a .tgz in the chart directory",
+			args:        []string{frobnitzChartPath, "-x", "charts/mariner/templates/placeholder.tpl", "--set", "mariner.name=moon"},
+			expectKey:   "frobnitz/charts/mariner/templates/placeholder.tpl",
+			expectValue: "Goodbye moon",
 		},
 		{
 			name:        "check_namespace",
