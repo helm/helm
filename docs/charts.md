@@ -27,16 +27,14 @@ wordpress/
   README.md           # OPTIONAL: A human-readable README file
   requirements.yaml   # OPTIONAL: A YAML file listing dependencies for the chart
   values.yaml         # The default configuration values for this chart
-  charts/             # OPTIONAL: A directory containing any charts upon which this chart depends.
-  templates/          # OPTIONAL: A directory of templates that, when combined with values,
+  charts/             # A directory containing any charts upon which this chart depends.
+  templates/          # A directory of templates that, when combined with values,
                       # will generate valid Kubernetes manifest files.
   templates/NOTES.txt # OPTIONAL: A plain text file containing short usage notes
 ```
 
 Helm reserves use of the `charts/` and `templates/` directories, and of
 the listed file names. Other files will be left as they are.
-
-While the `charts` and `templates` directories are optional there must be at least one chart dependency or template file for the chart to be valid.
 
 ## The Chart.yaml File
 
