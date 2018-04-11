@@ -167,7 +167,6 @@ func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*u
 	if err != nil {
 		return u, nil, nil, err
 	}
-	g.SetCredentials(c.getRepoCredentials(nil))
 
 	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
 		// In this case, we have to find the parent repo that contains this chart
@@ -203,6 +202,7 @@ func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*u
 	repoName := p[0]
 	chartName := p[1]
 	rc, err := pickChartRepositoryConfigByName(repoName, rf.Repositories)
+
 	if err != nil {
 		return u, nil, nil, err
 	}
@@ -211,6 +211,7 @@ func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*u
 	if err != nil {
 		return u, nil, nil, err
 	}
+	g.SetCredentials(c.getRepoCredentials(r))
 
 	// Next, we need to load the index, and actually look up the chart.
 	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
