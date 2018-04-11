@@ -134,7 +134,7 @@ downloaders:
 
 If such plugin is installed, Helm can interact with the repository using the specified
 protocol scheme by invoking the `command`. The special repository shall be added
-similarily to the regular ones: `helm repo add favorite myprotocol://example.com/`
+similarly to the regular ones: `helm repo add favorite myprotocol://example.com/`
 The rules for the special repos are the same to the regular ones: Helm must be able
 to download the `index.yaml` file in order to discover and cache the list of
 available Charts.
