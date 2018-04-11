@@ -28,12 +28,12 @@ import (
 )
 
 var (
-	chartPath         = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
-	frobnitzChartPath = "./../../pkg/chartutil/testdata/frobnitz"
+	subchart1ChartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+	frobnitzChartPath  = "./../../pkg/chartutil/testdata/frobnitz"
 )
 
 func TestTemplateCmd(t *testing.T) {
-	absChartPath, err := filepath.Abs(chartPath)
+	subchart1AbsChartPath, err := filepath.Abs(subchart1ChartPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,35 +47,35 @@ func TestTemplateCmd(t *testing.T) {
 		{
 			name:        "check_name",
 			desc:        "check for a known name in chart",
-			args:        []string{chartPath},
+			args:        []string{subchart1ChartPath},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: nginx",
 		},
 		{
 			name:        "check_set_name",
 			desc:        "verify --set values exist",
-			args:        []string{chartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
+			args:        []string{subchart1ChartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
 		},
 		{
 			name:        "check_execute",
 			desc:        "verify --execute single template",
-			args:        []string{chartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
+			args:        []string{subchart1ChartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
 		},
 		{
 			name:        "check_execute_absolute",
 			desc:        "verify --execute single template",
-			args:        []string{chartPath, "-x", absChartPath + "/" + "templates/service.yaml", "--set", "service.name=apache"},
+			args:        []string{subchart1ChartPath, "-x", subchart1AbsChartPath + "/" + "templates/service.yaml", "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
 		},
 		{
 			name:        "check_execute_subchart_template",
 			desc:        "verify --execute single template on a subchart template",
-			args:        []string{chartPath, "-x", "charts/subcharta/templates/service.yaml", "--set", "subcharta.service.name=foobar"},
+			args:        []string{subchart1ChartPath, "-x", "charts/subcharta/templates/service.yaml", "--set", "subcharta.service.name=foobar"},
 			expectKey:   "subchart1/charts/subcharta/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: foobar",
 		},
@@ -89,42 +89,42 @@ func TestTemplateCmd(t *testing.T) {
 		{
 			name:        "check_namespace",
 			desc:        "verify --namespace",
-			args:        []string{chartPath, "--namespace", "test"},
+			args:        []string{subchart1ChartPath, "--namespace", "test"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "namespace: \"test\"",
 		},
 		{
 			name:        "check_release_name",
 			desc:        "verify --release exists",
-			args:        []string{chartPath, "--name", "test"},
+			args:        []string{subchart1ChartPath, "--name", "test"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "release-name: \"test\"",
 		},
 		{
 			name:        "check_notes",
 			desc:        "verify --notes shows notes",
-			args:        []string{chartPath, "--notes", "true"},
+			args:        []string{subchart1ChartPath, "--notes", "true"},
 			expectKey:   "subchart1/templates/NOTES.txt",
 			expectValue: "Sample notes for subchart1",
 		},
 		{
 			name:        "check_values_files",
 			desc:        "verify --values files values exist",
-			args:        []string{chartPath, "--values", chartPath + "/charts/subchartA/values.yaml"},
+			args:        []string{subchart1ChartPath, "--values", subchart1ChartPath + "/charts/subchartA/values.yaml"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "name: apache",
 		},
 		{
 			name:        "check_name_template",
 			desc:        "verify --name-template result exists",
-			args:        []string{chartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
+			args:        []string{subchart1ChartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "release-name: \"foobar-YWJj-baz\"",
 		},
 		{
 			name:        "check_kube_version",
 			desc:        "verify --kube-version overrides the kubernetes version",
-			args:        []string{chartPath, "--kube-version", "1.6"},
+			args:        []string{subchart1ChartPath, "--kube-version", "1.6"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "kube-version/major: \"1\"\n    kube-version/minor: \"6\"\n    kube-version/gitversion: \"v1.6.0\"",
 		},
