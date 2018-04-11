@@ -105,7 +105,7 @@ data:
   {{- end }}
 ```
 
-As mentioned above, **template names are global**. As a result of this, if two templates are declared with the same name the last occurance will be the one that is used. Since templates in subcharts are compiled together with top-level templates, it is best to name your templates with _chart specific names_. A popular naming convention is to prefix each defined template with the name of the chart: `{{ define "mychart.labels" }}`.
+As mentioned above, **template names are global**. As a result of this, if two templates are declared with the same name the last occurrence will be the one that is used. Since templates in subcharts are compiled together with top-level templates, it is best to name your templates with _chart specific names_. A popular naming convention is to prefix each defined template with the name of the chart: `{{ define "mychart.labels" }}`.
 
 ## Setting the scope of a template
 
