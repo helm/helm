@@ -32,7 +32,7 @@ import (
 )
 
 // Chartfile runs a set of linter rules related to Chart.yaml file
-func Chartfile(linter *support.Linter) {
+func Chartfile(linter *support.Linter, dirPrefix string) {
 	chartFileName := "Chart.yaml"
 	chartPath := filepath.Join(linter.ChartDir, chartFileName)
 
@@ -47,7 +47,7 @@ func Chartfile(linter *support.Linter) {
 	}
 
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile, dirPrefix))
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
@@ -81,9 +81,14 @@ func validateChartName(cf *chart.Metadata) error {
 	return nil
 }
 
-func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
-	if cf.Name != filepath.Base(chartDir) {
-		return fmt.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
+func validateChartNameDirMatch(chartDir string, cf *chart.Metadata, dirPrefix string) error {
+	base := filepath.Base(chartDir)
+	if dirPrefix != "" {
+		if !strings.HasPrefix(base, dirPrefix) || cf.Name != strings.Replace(base, dirPrefix, "", 1) {
+			return fmt.Errorf("directory name (%s) must be the same as chart name (%s) appended to required prefix (%s)", base, cf.Name, dirPrefix)
+		}
+	} else if cf.Name != base {
+		return fmt.Errorf("directory name (%s) and chart name (%s) must be the same", base, cf.Name)
 	}
 	return nil
 }

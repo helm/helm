@@ -73,18 +73,18 @@ func TestValidateChartName(t *testing.T) {
 }
 
 func TestValidateChartNameDirMatch(t *testing.T) {
-	err := validateChartNameDirMatch(goodChartDir, goodChart)
+	err := validateChartNameDirMatch(goodChartDir, goodChart, "")
 	if err != nil {
 		t.Errorf("validateChartNameDirMatch to return no error, gor a linter error")
 	}
 	// It has not name
-	err = validateChartNameDirMatch(badChartDir, badChart)
+	err = validateChartNameDirMatch(badChartDir, badChart, "")
 	if err == nil {
 		t.Errorf("validatechartnamedirmatch to return a linter error, got no error")
 	}
 
 	// Wrong path
-	err = validateChartNameDirMatch(badChartDir, goodChart)
+	err = validateChartNameDirMatch(badChartDir, goodChart, "")
 	if err == nil {
 		t.Errorf("validatechartnamedirmatch to return a linter error, got no error")
 	}
@@ -223,7 +223,7 @@ func TestValidateChartIconURL(t *testing.T) {
 
 func TestChartfile(t *testing.T) {
 	linter := support.Linter{ChartDir: badChartDir}
-	Chartfile(&linter)
+	Chartfile(&linter, "")
 	msgs := linter.Messages
 
 	if len(msgs) != 4 {
@@ -246,4 +246,15 @@ func TestChartfile(t *testing.T) {
 		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
 	}
 
+}
+
+func TestChartfileWithDirPrefix(t *testing.T) {
+	prefix := "foo"
+	linter := support.Linter{ChartDir: badChartDir}
+	Chartfile(&linter, prefix)
+	msgs := linter.Messages
+
+	if !strings.Contains(msgs[1].Err.Error(), "directory name (badchartfile) must be the same as chart name () appended to required prefix (foo)") {
+		t.Errorf("Unexpected message 1: %s", msgs[1].Err)
+	}
 }
