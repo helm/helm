@@ -62,10 +62,6 @@ test-style:
 	@scripts/validate-go.sh
 	@scripts/validate-license.sh
 
-.PHONY: protoc
-protoc:
-	$(MAKE) -C _proto/ all
-
 .PHONY: docs
 docs: build
 	@scripts/update-docs.sh
@@ -99,6 +95,5 @@ ifndef HAS_GIT
 	$(error You must install Git)
 endif
 	glide install --strip-vendor
-	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
 
 include versioning.mk
