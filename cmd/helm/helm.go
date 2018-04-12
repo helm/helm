@@ -28,28 +28,17 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/tlsutil"
 )
 
 var (
-	tlsCaCertFile string // path to TLS CA certificate file
-	tlsCertFile   string // path to TLS certificate file
-	tlsKeyFile    string // path to TLS key file
-	tlsVerify     bool   // enable TLS and verify remote certificates
-	tlsEnable     bool   // enable TLS
-
-	tlsCaCertDefault = "$HELM_HOME/ca.pem"
-	tlsCertDefault   = "$HELM_HOME/cert.pem"
-	tlsKeyDefault    = "$HELM_HOME/key.pem"
-
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
 )
@@ -84,11 +73,6 @@ func newRootCmd(args []string) *cobra.Command {
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		PersistentPreRun: func(*cobra.Command, []string) {
-			tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
-			tlsCertFile = os.ExpandEnv(tlsCertFile)
-			tlsKeyFile = os.ExpandEnv(tlsKeyFile)
-		},
 		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
@@ -113,18 +97,17 @@ func newRootCmd(args []string) *cobra.Command {
 		newVerifyCmd(out),
 
 		// release commands
-		addFlagsTLS(newDeleteCmd(nil, out)),
-		addFlagsTLS(newGetCmd(nil, out)),
-		addFlagsTLS(newHistoryCmd(nil, out)),
-		addFlagsTLS(newInstallCmd(nil, out)),
-		addFlagsTLS(newListCmd(nil, out)),
-		addFlagsTLS(newRollbackCmd(nil, out)),
-		addFlagsTLS(newStatusCmd(nil, out)),
-		addFlagsTLS(newUpgradeCmd(nil, out)),
+		newDeleteCmd(nil, out),
+		newGetCmd(nil, out),
+		newHistoryCmd(nil, out),
+		newInstallCmd(nil, out),
+		newListCmd(nil, out),
+		newRollbackCmd(nil, out),
+		newStatusCmd(nil, out),
+		newUpgradeCmd(nil, out),
 
-		addFlagsTLS(newReleaseTestCmd(nil, out)),
-		addFlagsTLS(newResetCmd(nil, out)),
-		addFlagsTLS(newVersionCmd(nil, out)),
+		newReleaseTestCmd(nil, out),
+		newVersionCmd(nil, out),
 
 		newCompletionCmd(out),
 		newHomeCmd(out),
@@ -244,21 +227,6 @@ func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
 	return config, client, nil
 }
 
-// getInternalKubeClient creates a Kubernetes config and an "internal" client for a given kubeconfig context.
-//
-// Prefer the similar getKubeClient if you don't need to use such an internal client.
-func getInternalKubeClient(context string) (internalclientset.Interface, error) {
-	config, err := configForContext(context)
-	if err != nil {
-		return nil, err
-	}
-	client, err := internalclientset.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("could not get Kubernetes client: %s", err)
-	}
-	return client, nil
-}
-
 // ensureHelmClient returns a new helm client impl. if h is not nil.
 func ensureHelmClient(h helm.Interface) helm.Interface {
 	if h != nil {
@@ -269,42 +237,5 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 
 func newClient() helm.Interface {
 	options := []helm.Option{helm.Host(settings.TillerHost), helm.ConnectTimeout(settings.TillerConnectionTimeout)}
-
-	if tlsVerify || tlsEnable {
-		if tlsCaCertFile == "" {
-			tlsCaCertFile = settings.Home.TLSCaCert()
-		}
-		if tlsCertFile == "" {
-			tlsCertFile = settings.Home.TLSCert()
-		}
-		if tlsKeyFile == "" {
-			tlsKeyFile = settings.Home.TLSKey()
-		}
-		debug("Key=%q, Cert=%q, CA=%q\n", tlsKeyFile, tlsCertFile, tlsCaCertFile)
-		tlsopts := tlsutil.Options{KeyFile: tlsKeyFile, CertFile: tlsCertFile, InsecureSkipVerify: true}
-		if tlsVerify {
-			tlsopts.CaCertFile = tlsCaCertFile
-			tlsopts.InsecureSkipVerify = false
-		}
-		tlscfg, err := tlsutil.ClientConfig(tlsopts)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(2)
-		}
-		options = append(options, helm.WithTLS(tlscfg))
-	}
 	return helm.NewClient(options...)
-}
-
-// addFlagsTLS adds the flags for supporting client side TLS to the
-// helm command (only those that invoke communicate to Tiller.)
-func addFlagsTLS(cmd *cobra.Command) *cobra.Command {
-
-	// add flags
-	cmd.Flags().StringVar(&tlsCaCertFile, "tls-ca-cert", tlsCaCertDefault, "path to TLS CA certificate file")
-	cmd.Flags().StringVar(&tlsCertFile, "tls-cert", tlsCertDefault, "path to TLS certificate file")
-	cmd.Flags().StringVar(&tlsKeyFile, "tls-key", tlsKeyDefault, "path to TLS key file")
-	cmd.Flags().BoolVar(&tlsVerify, "tls-verify", false, "enable TLS for request and verify remote")
-	cmd.Flags().BoolVar(&tlsEnable, "tls", false, "enable TLS for request")
-	return cmd
 }
