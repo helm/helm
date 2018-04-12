@@ -324,7 +324,8 @@ func (i *initCmd) run() error {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
 	}
 
-	if version.BuildMetadata == "unreleased" && !i.opts.UseCanary && len(i.opts.ImageSpec) == 0 {
+	needsDefaultImage := !i.clientOnly && !i.opts.UseCanary && len(i.opts.ImageSpec) == 0 && version.BuildMetadata == "unreleased"
+	if needsDefaultImage {
 		fmt.Fprintf(i.out, "\nWarning: You appear to be using an unreleased version of Helm. Please either use the\n"+
 			"--canary-image flag, or specify your desired tiller version with --tiller-image.\n\n"+
 			"Ex:\n"+
