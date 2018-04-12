@@ -17,7 +17,6 @@ limitations under the License.
 package helm
 
 import (
-	"crypto/tls"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -41,8 +40,6 @@ type options struct {
 	host string
 	// if set dry-run helm client calls
 	dryRun bool
-	// if set enable TLS on helm client calls
-	useTLS bool
 	// if set, re-use an existing name
 	reuseName bool
 	// if set, performs pod restart during upgrade/rollback
@@ -51,10 +48,6 @@ type options struct {
 	force bool
 	// if set, skip running hooks
 	disableHooks bool
-	// name of release
-	releaseName string
-	// tls.Config to use for rpc if tls enabled
-	tlsConfig *tls.Config
 	// release list options are applied directly to the list releases request
 	listReq rls.ListReleasesRequest
 	// release install options are applied directly to the install release request
@@ -87,14 +80,6 @@ type options struct {
 func Host(host string) Option {
 	return func(opts *options) {
 		opts.host = host
-	}
-}
-
-// WithTLS specifies the tls configuration if the helm client is enabled to use TLS.
-func WithTLS(cfg *tls.Config) Option {
-	return func(opts *options) {
-		opts.useTLS = true
-		opts.tlsConfig = cfg
 	}
 }
 

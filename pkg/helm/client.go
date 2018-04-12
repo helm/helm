@@ -17,16 +17,12 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
-	"fmt"
 	"io"
 	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
-
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -292,12 +288,7 @@ func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error)
 		}),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
 	}
-	switch {
-	case h.opts.useTLS:
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(h.opts.tlsConfig)))
-	default:
-		opts = append(opts, grpc.WithInsecure())
-	}
+	opts = append(opts, grpc.WithInsecure())
 	ctx, cancel := context.WithTimeout(ctx, h.opts.connectTimeout)
 	defer cancel()
 	if conn, err = grpc.DialContext(ctx, h.opts.host, opts...); err != nil {
@@ -397,30 +388,6 @@ func (h *Client) status(ctx context.Context, req *rls.GetReleaseStatusRequest) (
 	return rlc.GetReleaseStatus(ctx, req)
 }
 
-// Executes tiller.GetReleaseContent RPC.
-func (h *Client) content(ctx context.Context, req *rls.GetReleaseContentRequest) (*rls.GetReleaseContentResponse, error) {
-	c, err := h.connect(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.GetReleaseContent(ctx, req)
-}
-
-// Executes tiller.GetVersion RPC.
-func (h *Client) version(ctx context.Context, req *rls.GetVersionRequest) (*rls.GetVersionResponse, error) {
-	c, err := h.connect(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
-	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.GetVersion(ctx, req)
-}
-
 // Executes tiller.GetHistory RPC.
 func (h *Client) history(ctx context.Context, req *rls.GetHistoryRequest) (*rls.GetHistoryResponse, error) {
 	c, err := h.connect(ctx)
@@ -469,27 +436,4 @@ func (h *Client) test(ctx context.Context, req *rls.TestReleaseRequest) (<-chan 
 	}()
 
 	return ch, errc
-}
-
-// Executes tiller.Ping RPC.
-func (h *Client) ping(ctx context.Context) error {
-	c, err := h.connect(ctx)
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-
-	healthClient := healthpb.NewHealthClient(c)
-	resp, err := healthClient.Check(ctx, &healthpb.HealthCheckRequest{Service: "Tiller"})
-	if err != nil {
-		return err
-	}
-	switch resp.GetStatus() {
-	case healthpb.HealthCheckResponse_SERVING:
-		return nil
-	case healthpb.HealthCheckResponse_NOT_SERVING:
-		return fmt.Errorf("tiller is not serving requests at this time, Please try again later")
-	default:
-		return fmt.Errorf("tiller healthcheck returned an unknown status")
-	}
 }
