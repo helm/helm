@@ -117,31 +117,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	} else {
 		return err
 	}
-	// verify specified templates exist relative to chart
-	rf := []string{}
-	var af string
-	var err error
-	if len(t.renderFiles) > 0 {
-		for _, f := range t.renderFiles {
-			if !filepath.IsAbs(f) {
-				af, err = filepath.Abs(filepath.Join(t.chartPath, f))
-				if err != nil {
-					return fmt.Errorf("could not resolve template path: %s", err)
-				}
-			} else {
-				af = f
-			}
-			rf = append(rf, af)
-
-			if _, err := os.Stat(af); err != nil {
-				return fmt.Errorf("could not resolve template path: %s", err)
-			}
-		}
-	}
 
 	// verify that output-dir exists if provided
 	if t.outputDir != "" {
-		_, err = os.Stat(t.outputDir)
+		_, err := os.Stat(t.outputDir)
 		if os.IsNotExist(err) {
 			return fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
 		}
@@ -232,19 +211,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		m := tiller.Manifest{Name: k, Content: v, Head: &util.SimpleHead{Kind: h}}
 		listManifests = append(listManifests, m)
 	}
-	in := func(needle string, haystack []string) bool {
-		// make needle path absolute
-		d := strings.Split(needle, string(os.PathSeparator))
-		dd := d[1:]
-		an := filepath.Join(t.chartPath, strings.Join(dd, string(os.PathSeparator)))
 
-		for _, h := range haystack {
-			if h == an {
-				return true
-			}
-		}
-		return false
-	}
 	if settings.Debug {
 		rel := &release.Release{
 			Name:      t.releaseName,
@@ -257,10 +224,45 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		printRelease(os.Stdout, rel)
 	}
 
-	for _, m := range tiller.SortByKind(listManifests) {
-		if len(t.renderFiles) > 0 && !in(m.Name, rf) {
-			continue
+	var manifestsToRender []tiller.Manifest
+
+	// if we have a list of files to render, then check that each of the
+	// provided files exists in the chart.
+	if len(t.renderFiles) > 0 {
+		for _, f := range t.renderFiles {
+			missing := true
+			if !filepath.IsAbs(f) {
+				newF, err := filepath.Abs(filepath.Join(t.chartPath, f))
+				if err != nil {
+					return fmt.Errorf("could not turn template path %s into absolute path: %s", f, err)
+				}
+				f = newF
+			}
+
+			for _, manifest := range listManifests {
+				manifestPathSplit := strings.Split(manifest.Name, string(filepath.Separator))
+				// remove the chart name from the path
+				manifestPathSplit = manifestPathSplit[1:]
+				toJoin := append([]string{t.chartPath}, manifestPathSplit...)
+				manifestPath := filepath.Join(toJoin...)
+
+				// if the filepath provided matches a manifest path in the
+				// chart, render that manifest
+				if f == manifestPath {
+					manifestsToRender = append(manifestsToRender, manifest)
+					missing = false
+				}
+			}
+			if missing {
+				return fmt.Errorf("could not find template %s in chart", f)
+			}
 		}
+	} else {
+		// no renderFiles provided, render all manifests in the chart
+		manifestsToRender = listManifests
+	}
+
+	for _, m := range tiller.SortByKind(manifestsToRender) {
 		data := m.Content
 		b := filepath.Base(m.Name)
 		if !t.showNotes && b == "NOTES.txt" {
