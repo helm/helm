@@ -96,7 +96,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		}
 	}
 
-	// if some resources delete failed, set status to UNKNOWN and return.
+	// if some resources delete failed, set status to FAILED and return.
 	if len(es) > 0 {
 		rel.Info.Status.Code = release.Status_FAILED
 		rel.Info.Description = "Deletion of some resources failed"
