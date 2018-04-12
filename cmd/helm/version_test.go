@@ -29,33 +29,19 @@ import (
 
 func TestVersion(t *testing.T) {
 	lver := regexp.QuoteMeta(version.GetVersionProto().SemVer)
-	sver := regexp.QuoteMeta("1.2.3-fakeclient+testonly")
 	clientVersion := fmt.Sprintf("Client: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", lver)
-	serverVersion := fmt.Sprintf("Server: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", sver)
 
 	tests := []releaseCase{
 		{
 			name:     "default",
 			args:     []string{},
-			expected: clientVersion + serverVersion,
-		},
-		{
-			name:     "client",
-			args:     []string{},
-			flags:    []string{"-c"},
 			expected: clientVersion,
-		},
-		{
-			name:     "server",
-			args:     []string{},
-			flags:    []string{"-s"},
-			expected: serverVersion,
 		},
 		{
 			name:     "template",
 			args:     []string{},
-			flags:    []string{"--template", "{{ .Client.SemVer }} {{ .Server.SemVer }}"},
-			expected: lver + " " + sver,
+			flags:    []string{"--template", "{{ .Client.SemVer }}"},
+			expected: lver,
 		},
 	}
 	settings.TillerHost = "fake-localhost"

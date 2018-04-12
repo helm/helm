@@ -193,23 +193,6 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	return h.update(ctx, req)
 }
 
-// GetVersion returns the server version.
-func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
-	reqOpts := h.opts
-	for _, opt := range opts {
-		opt(&reqOpts)
-	}
-	req := &rls.GetVersionRequest{}
-	ctx := NewContext()
-
-	if reqOpts.before != nil {
-		if err := reqOpts.before(ctx, req); err != nil {
-			return nil, err
-		}
-	}
-	return h.version(ctx, req)
-}
-
 // RollbackRelease rolls back a release to the previous version.
 func (h *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
 	reqOpts := h.opts

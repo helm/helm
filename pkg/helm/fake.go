@@ -23,10 +23,10 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
-	"k8s.io/helm/pkg/proto/hapi/version"
 )
 
 // FakeClient implements Interface
@@ -96,15 +96,6 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.U
 	}
 
 	return nil, fmt.Errorf("No such release: %s", rlsName)
-}
-
-// GetVersion returns a fake version
-func (c *FakeClient) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, error) {
-	return &rls.GetVersionResponse{
-		Version: &version.Version{
-			SemVer: "1.2.3-fakeclient+testonly",
-		},
-	}, nil
 }
 
 // UpdateRelease returns an UpdateReleaseResponse containing the updated release, if it exists
