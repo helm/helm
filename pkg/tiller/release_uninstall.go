@@ -98,7 +98,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 
 	// if some resources delete failed, set status to UNKNOWN and return.
 	if len(es) > 0 {
-		rel.Info.Status.Code = release.Status_UNKNOWN
+		rel.Info.Status.Code = release.Status_FAILED
 		rel.Info.Description = "Deletion of some resources failed"
 		if err := s.env.Releases.Update(rel); err != nil {
 			s.Log("uninstall: Failed to store updated release: %s", err)
