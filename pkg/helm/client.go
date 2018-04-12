@@ -284,12 +284,6 @@ func (h *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-ch
 	return h.test(ctx, req)
 }
 
-// PingTiller pings the Tiller pod and ensure's that it is up and running
-func (h *Client) PingTiller() error {
-	ctx := NewContext()
-	return h.ping(ctx)
-}
-
 // connect returns a gRPC connection to Tiller or error. The gRPC dial options
 // are constructed here.
 func (h *Client) connect(ctx context.Context) (conn *grpc.ClientConn, err error) {

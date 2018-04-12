@@ -27,9 +27,9 @@ import (
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 
-	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
@@ -303,9 +303,6 @@ func (i *initCmd) run() error {
 				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
-				if err := i.ping(); err != nil {
-					return err
-				}
 				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
 			} else {
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
@@ -316,37 +313,11 @@ func (i *initCmd) run() error {
 				"Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
 				"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
 		}
-		if err := i.ping(); err != nil {
-			return err
-		}
 	} else {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
 	}
 
 	fmt.Fprintln(i.out, "Happy Helming!")
-	return nil
-}
-
-func (i *initCmd) ping() error {
-	if i.wait {
-		_, kubeClient, err := getKubeClient(settings.KubeContext)
-		if err != nil {
-			return err
-		}
-		if !watchTillerUntilReady(settings.TillerNamespace, kubeClient, settings.TillerConnectionTimeout) {
-			return fmt.Errorf("tiller was not found. polling deadline exceeded")
-		}
-
-		// establish a connection to Tiller now that we've effectively guaranteed it's available
-		if err := setupConnection(); err != nil {
-			return err
-		}
-		i.client = newClient()
-		if err := i.client.PingTiller(); err != nil {
-			return fmt.Errorf("could not ping Tiller: %s", err)
-		}
-	}
-
 	return nil
 }
 

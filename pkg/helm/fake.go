@@ -175,11 +175,6 @@ func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (
 	return results, errc
 }
 
-// PingTiller pings the Tiller pod and ensure's that it is up and running
-func (c *FakeClient) PingTiller() error {
-	return nil
-}
-
 // MockHookTemplate is the hook template used for all mock release objects.
 var MockHookTemplate = `apiVersion: v1
 kind: Job
