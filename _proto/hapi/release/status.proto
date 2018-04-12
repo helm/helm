@@ -33,7 +33,7 @@ message Status {
                 DELETED = 2;
                 // Status_SUPERSEDED indicates that this release object is outdated and a newer one exists.
                 SUPERSEDED = 3;
-                // Status_FAILED indicates that the release was not successfully deployed.
+                // Status_FAILED indicates that the release was not successfully deployed or deleted.
                 FAILED = 4;
                 // Status_DELETING indicates that a delete operation is underway.
                 DELETING = 5;
