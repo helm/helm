@@ -65,14 +65,14 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 // getValues implements 'helm get values'
 func (g *getValuesCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
+	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		return prettyError(err)
 	}
 
 	// If the user wants all values, compute the values and return.
 	if g.allValues {
-		cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config)
+		cfg, err := chartutil.CoalesceValues(res.Chart, res.Config)
 		if err != nil {
 			return err
 		}
@@ -84,6 +84,6 @@ func (g *getValuesCmd) run() error {
 		return nil
 	}
 
-	fmt.Fprintln(g.out, res.Release.Config.Raw)
+	fmt.Fprintln(g.out, res.Config.Raw)
 	return nil
 }

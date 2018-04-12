@@ -27,9 +27,13 @@ import (
 	"google.golang.org/grpc/keepalive"
 
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/storage/driver"
 )
 
 // maxMsgSize use 20MB as the default message size limit.
@@ -38,12 +42,14 @@ const maxMsgSize = 1024 * 1024 * 20
 
 // Client manages client side of the Helm-Tiller protocol.
 type Client struct {
-	opts options
+	opts  options
+	store *storage.Storage
 }
 
 // NewClient creates a new client.
 func NewClient(opts ...Option) *Client {
 	var c Client
+	c.store = storage.Init(driver.NewMemory())
 	// set some sane defaults
 	c.Option(ConnectTimeout(5))
 	return c.Option(opts...)
@@ -127,11 +133,11 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 
 	if reqOpts.dryRun {
 		// In the dry run case, just see if the release exists
-		r, err := h.ReleaseContent(rlsName)
+		r, err := h.ReleaseContent(rlsName, 0)
 		if err != nil {
 			return &rls.UninstallReleaseResponse{}, err
 		}
-		return &rls.UninstallReleaseResponse{Release: r.Release}, nil
+		return &rls.UninstallReleaseResponse{Release: r}, nil
 	}
 
 	req := &reqOpts.uninstallReq
@@ -234,21 +240,11 @@ func (h *Client) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetRe
 }
 
 // ReleaseContent returns the configuration for a given release.
-func (h *Client) ReleaseContent(rlsName string, opts ...ContentOption) (*rls.GetReleaseContentResponse, error) {
-	reqOpts := h.opts
-	for _, opt := range opts {
-		opt(&reqOpts)
+func (c *Client) ReleaseContent(name string, version int32) (*release.Release, error) {
+	if version <= 0 {
+		return c.store.Last(name)
 	}
-	req := &reqOpts.contentReq
-	req.Name = rlsName
-	ctx := NewContext()
-
-	if reqOpts.before != nil {
-		if err := reqOpts.before(ctx, req); err != nil {
-			return nil, err
-		}
-	}
-	return h.content(ctx, req)
+	return c.store.Get(name, version)
 }
 
 // ReleaseHistory returns a release's revision history.

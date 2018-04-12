@@ -317,6 +317,7 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 
 // Verify each ContentOption is applied to a GetReleaseContentRequest correctly.
 func TestReleaseContent_VerifyOptions(t *testing.T) {
+	t.Skip("refactoring out")
 	// Options testdata
 	var releaseName = "test"
 	var revision = int32(2)
@@ -340,7 +341,7 @@ func TestReleaseContent_VerifyOptions(t *testing.T) {
 	})
 
 	client := NewClient(b4c)
-	if _, err := client.ReleaseContent(releaseName, ContentReleaseVersion(revision)); err != errSkip {
+	if _, err := client.ReleaseContent(releaseName, revision); err != errSkip {
 		t.Fatalf("did not expect error but got (%v)\n``", err)
 	}
 

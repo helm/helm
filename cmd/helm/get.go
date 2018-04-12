@@ -81,9 +81,9 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 // getCmd is the command that implements 'helm get'
 func (g *getCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
+	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		return prettyError(err)
 	}
-	return printRelease(g.out, res.Release)
+	return printRelease(g.out, res)
 }

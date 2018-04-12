@@ -66,10 +66,10 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 // getManifest implements 'helm get manifest'
 func (g *getManifestCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
+	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		return prettyError(err)
 	}
-	fmt.Fprintln(g.out, res.Release.Manifest)
+	fmt.Fprintln(g.out, res.Manifest)
 	return nil
 }

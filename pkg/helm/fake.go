@@ -106,12 +106,12 @@ func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateO
 // UpdateReleaseFromChart returns an UpdateReleaseResponse containing the updated release, if it exists
 func (c *FakeClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	// Check to see if the release already exists.
-	rel, err := c.ReleaseContent(rlsName, nil)
+	rel, err := c.ReleaseContent(rlsName, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return &rls.UpdateReleaseResponse{Release: rel.Release}, nil
+	return &rls.UpdateReleaseResponse{Release: rel}, nil
 }
 
 // RollbackRelease returns nil, nil
@@ -134,15 +134,13 @@ func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.G
 }
 
 // ReleaseContent returns the configuration for the matching release name in the fake release client.
-func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp *rls.GetReleaseContentResponse, err error) {
+func (c *FakeClient) ReleaseContent(rlsName string, version int32) (*release.Release, error) {
 	for _, rel := range c.Rels {
 		if rel.Name == rlsName {
-			return &rls.GetReleaseContentResponse{
-				Release: rel,
-			}, nil
+			return rel, nil
 		}
 	}
-	return resp, fmt.Errorf("No such release: %s", rlsName)
+	return nil, fmt.Errorf("No such release: %s", rlsName)
 }
 
 // ReleaseHistory returns a release's revision history.

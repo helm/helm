@@ -18,6 +18,7 @@ package helm
 
 import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
@@ -31,7 +32,7 @@ type Interface interface {
 	UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)
 	UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)
 	RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error)
-	ReleaseContent(rlsName string, opts ...ContentOption) (*rls.GetReleaseContentResponse, error)
+	ReleaseContent(rlsName string, version int32) (*release.Release, error)
 	ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error)
 	RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error)
 }

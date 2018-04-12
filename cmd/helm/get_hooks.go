@@ -62,13 +62,13 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (g *getHooksCmd) run() error {
-	res, err := g.client.ReleaseContent(g.release, helm.ContentReleaseVersion(g.version))
+	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		fmt.Fprintln(g.out, g.release)
 		return prettyError(err)
 	}
 
-	for _, hook := range res.Release.Hooks {
+	for _, hook := range res.Hooks {
 		fmt.Fprintf(g.out, "---\n# %s\n%s", hook.Name, hook.Manifest)
 	}
 	return nil
