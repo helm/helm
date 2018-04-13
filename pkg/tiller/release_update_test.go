@@ -29,22 +29,70 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
+type updateOptions struct {
+	*services.UpdateReleaseRequest
+}
+
+type updateOption func(*updateOptions)
+
+func updateRequest(name string, opts ...updateOption) *services.UpdateReleaseRequest {
+	reqOpts := &updateOptions{
+		&services.UpdateReleaseRequest{
+			Name:  name,
+			Chart: buildChart(withHooks(manifestWithUpgradeHooks)),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(reqOpts)
+	}
+
+	return reqOpts.UpdateReleaseRequest
+}
+
+func withReuseValues() updateOption {
+	return func(opts *updateOptions) {
+		opts.ReuseValues = true
+	}
+}
+
+func withResetValues() updateOption {
+	return func(opts *updateOptions) {
+		opts.ResetValues = true
+	}
+}
+
+func withUpdateDisabledHooks() updateOption {
+	return func(opts *updateOptions) {
+		opts.DisableHooks = true
+	}
+}
+
+func withForce() updateOption {
+	return func(opts *updateOptions) {
+		opts.Force = true
+	}
+}
+
+func withUpdateValues(raw string) updateOption {
+	return func(opts *updateOptions) {
+		opts.Values = &chart.Config{Raw: raw}
+	}
+}
+
+func withUpdateChart(chartOpts ...chartOption) updateOption {
+	return func(opts *updateOptions) {
+		opts.Chart = buildChart(chartOpts...)
+	}
+}
+
 func TestUpdateRelease(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
-		Name: rel.Name,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-		},
-	}
+	req := updateRequest(rel.Name)
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
@@ -108,17 +156,7 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
-		Name: rel.Name,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-		},
-		ResetValues: true,
-	}
+	req := updateRequest(rel.Name, withResetValues())
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
@@ -134,18 +172,10 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 
-	installReq := &services.InstallReleaseRequest{
-		Namespace: "spaced",
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
-			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
-		},
-		Values: &chart.Config{Raw: "foo: bar"},
-	}
+	installReq := installRequest(
+		withChart(withChartValues("defaultFoo: defaultBar")),
+		withValues("foo: bar"),
+	)
 
 	fmt.Println("Running Install release with foo: bar override")
 	installResp, err := rs.InstallRelease(c, installReq)
@@ -154,17 +184,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	rel := installResp.Release
-	req := &services.UpdateReleaseRequest{
-		Name: rel.Name,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
-		},
-	}
+	req := updateRequest(rel.Name, withUpdateChart(withChartValues("defaultFoo: defaultBar")))
 
 	fmt.Println("Running Update release with no overrides and no reuse-values flag")
 	res, err := rs.UpdateRelease(c, req)
@@ -178,19 +198,11 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	rel = res.Release
-	req = &services.UpdateReleaseRequest{
-		Name: rel.Name,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
-		},
-		Values:      &chart.Config{Raw: "foo2: bar2"},
-		ReuseValues: true,
-	}
+	req = updateRequest(rel.Name,
+		withUpdateChart(withChartValues("defaultFoo: defaultBar")),
+		withUpdateValues("foo2: bar2"),
+		withReuseValues(),
+	)
 
 	fmt.Println("Running Update release with foo2: bar2 override and reuse-values")
 	res, err = rs.UpdateRelease(c, req)
@@ -205,19 +217,11 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	rel = res.Release
-	req = &services.UpdateReleaseRequest{
-		Name: rel.Name,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
-		},
-		Values:      &chart.Config{Raw: "foo: baz"},
-		ReuseValues: true,
-	}
+	req = updateRequest(rel.Name,
+		withUpdateChart(withChartValues("defaultFoo: defaultBar")),
+		withUpdateValues("foo: baz"),
+		withReuseValues(),
+	)
 
 	fmt.Println("Running Update release with foo=baz override with reuse-values flag")
 	res, err = rs.UpdateRelease(c, req)
@@ -236,20 +240,12 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
-		Name: rel.Name,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-			// Since reuseValues is set, this should get ignored.
-			Values: &chart.Config{Raw: "foo: bar\n"},
-		},
-		Values:      &chart.Config{Raw: "name2: val2"},
-		ReuseValues: true,
-	}
+	req := updateRequest(rel.Name,
+		// Since reuseValues is set, this should get ignored.
+		withUpdateChart(withChartValues("foo: bar\n")),
+		withUpdateValues("name2: val2"),
+		withReuseValues(),
+	)
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
@@ -274,18 +270,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
-		Name: rel.Name,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-		},
-		ResetValues: true,
-		ReuseValues: true,
-	}
+	req := updateRequest(rel.Name, withResetValues(), withReuseValues())
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
@@ -305,16 +290,10 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	rs.env.KubeClient = newUpdateFailingKubeClient()
 	rs.Log = t.Logf
 
-	req := &services.UpdateReleaseRequest{
-		Name:         rel.Name,
-		DisableHooks: true,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/something", Data: []byte("hello: world")},
-			},
-		},
-	}
+	req := updateRequest(rel.Name,
+		withUpdateDisabledHooks(),
+		withUpdateChart(withTemplate("templates/something", "hello: world")),
+	)
 
 	res, err := rs.UpdateRelease(c, req)
 	if err == nil {
@@ -348,17 +327,11 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 	rs.env.Releases.Create(rel)
 	rs.Log = t.Logf
 
-	req := &services.UpdateReleaseRequest{
-		Name:         rel.Name,
-		DisableHooks: true,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/something", Data: []byte("text: 'Did you ever hear the tragedy of Darth Plagueis the Wise? I thought not. It’s not a story the Jedi would tell you. It’s a Sith legend. Darth Plagueis was a Dark Lord of the Sith, so powerful and so wise he could use the Force to influence the Midichlorians to create life... He had such a knowledge of the Dark Side that he could even keep the ones he cared about from dying. The Dark Side of the Force is a pathway to many abilities some consider to be unnatural. He became so powerful... The only thing he was afraid of was losing his power, which eventually, of course, he did. Unfortunately, he taught his apprentice everything he knew, then his apprentice killed him in his sleep. Ironic. He could save others from death, but not himself.'")},
-			},
-		},
-		Force: true,
-	}
+	req := updateRequest(rel.Name,
+		withUpdateDisabledHooks(),
+		withUpdateChart(withTemplate("templates/something", "text: 'Did you ever hear the tragedy of Darth Plagueis the Wise? I thought not. It’s not a story the Jedi would tell you. It’s a Sith legend. Darth Plagueis was a Dark Lord of the Sith, so powerful and so wise he could use the Force to influence the Midichlorians to create life... He had such a knowledge of the Dark Side that he could even keep the ones he cared about from dying. The Dark Side of the Force is a pathway to many abilities some consider to be unnatural. He became so powerful... The only thing he was afraid of was losing his power, which eventually, of course, he did. Unfortunately, he taught his apprentice everything he knew, then his apprentice killed him in his sleep. Ironic. He could save others from death, but not himself.'")),
+		withForce(),
+	)
 
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
@@ -391,17 +364,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
-		Name:         rel.Name,
-		DisableHooks: true,
-		Chart: &chart.Chart{
-			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
-			},
-		},
-	}
+	req := updateRequest(rel.Name, withUpdateDisabledHooks())
 
 	res, err := rs.UpdateRelease(c, req)
 	if err != nil {
@@ -420,11 +383,8 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
-		Name:         rel.Name,
-		DisableHooks: true,
-		Chart:        rel.GetChart(),
-	}
+	req := updateRequest(rel.Name, withUpdateDisabledHooks())
+	req.Chart = rel.GetChart()
 
 	_, err := rs.UpdateRelease(c, req)
 	if err != nil {

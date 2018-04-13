@@ -160,6 +160,39 @@ func withNotes(notes string) chartOption {
 	}
 }
 
+func withChartValues(raw string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Values = &chart.Config{Raw: raw}
+	}
+}
+
+func withHooks(hooks string) chartOption {
+	return func(opts *chartOptions) {
+		found := false
+		for _, t := range opts.Templates {
+			if t.Name == "templates/hooks" {
+				t.Data = []byte(hooks)
+				found = true
+			}
+		}
+
+		if !found {
+			opts.Templates = append(opts.Templates, &chart.Template{
+				Name: "templates/hooks",
+				Data: []byte(hooks),
+			})
+		}
+	}
+}
+
+func withTemplate(name, data string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Templates = []*chart.Template{
+			{Name: name, Data: []byte(data)},
+		}
+	}
+}
+
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*chart.Template{
@@ -206,6 +239,12 @@ func withReuseName() installOption {
 func withChart(chartOpts ...chartOption) installOption {
 	return func(opts *installOptions) {
 		opts.Chart = buildChart(chartOpts...)
+	}
+}
+
+func withValues(raw string) installOption {
+	return func(opts *installOptions) {
+		opts.Values = &chart.Config{Raw: raw}
 	}
 }
 
