@@ -34,4 +34,5 @@ message TestRun {
     string info = 3;
     google.protobuf.Timestamp started_at = 4;
     google.protobuf.Timestamp completed_at = 5;
+    string log = 6;
 }

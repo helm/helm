@@ -62,14 +62,24 @@ func (env *Environment) getTestPodStatus(test *test) (core.PodPhase, error) {
 	return status, err
 }
 
+func (env *Environment) getTestPodsLogs(test *test) (string, error) {
+	b := bytes.NewBufferString(test.manifest)
+	log, err := env.KubeClient.GetPodLogs(env.Namespace, b)
+	if err != nil {
+		return "", err
+	}
+
+	return log, nil
+}
+
 func (env *Environment) streamResult(r *release.TestRun) error {
 	switch r.Status {
 	case release.TestRun_SUCCESS:
-		if err := env.streamSuccess(r.Name); err != nil {
+		if err := env.streamSuccess(r.Name, r.Log); err != nil {
 			return err
 		}
 	case release.TestRun_FAILURE:
-		if err := env.streamFailed(r.Name); err != nil {
+		if err := env.streamFailed(r.Name, r.Log); err != nil {
 			return err
 		}
 
@@ -91,13 +101,13 @@ func (env *Environment) streamError(info string) error {
 	return env.streamMessage(msg, release.TestRun_FAILURE)
 }
 
-func (env *Environment) streamFailed(name string) error {
-	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s --namespace %s` for more info", name, name, env.Namespace)
+func (env *Environment) streamFailed(name, podLog string) error {
+	msg := fmt.Sprintf("FAILED: %s\n%s", name, podLog)
 	return env.streamMessage(msg, release.TestRun_FAILURE)
 }
 
-func (env *Environment) streamSuccess(name string) error {
-	msg := fmt.Sprintf("PASSED: %s", name)
+func (env *Environment) streamSuccess(name, podLog string) error {
+	msg := fmt.Sprintf("PASSED: %s\n %s", name, podLog)
 	return env.streamMessage(msg, release.TestRun_SUCCESS)
 }
 

@@ -686,6 +686,37 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	return err
 }
 
+//GetPodLogs get the log of a pod and return the log in string format
+func (c *Client) GetPodLogs(namespace string, reader io.Reader) (string, error) {
+	infos, err := c.Build(namespace, reader)
+	if err != nil {
+		return "", err
+	}
+	info := infos[0]
+
+	kind := info.Mapping.GroupVersionKind.Kind
+	if kind != "Pod" {
+		return "", fmt.Errorf("%s is not a Pod", info.Name)
+	}
+
+	pod := info.Object.(*core.Pod)
+
+	cl, err := c.ClientSet()
+	if err != nil {
+		return "", err
+	}
+
+	log := cl.Core().Pods(namespace).GetLogs(pod.Name, &core.PodLogOptions{})
+
+	logData, err := log.DoRaw()
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(logData), nil
+}
+
 //get an kubernetes resources's relation pods
 // kubernetes resource used select labels to relate pods
 func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {

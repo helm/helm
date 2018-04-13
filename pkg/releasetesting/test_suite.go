@@ -102,9 +102,20 @@ func (ts *TestSuite) Run(env *Environment) error {
 		}
 
 		if resourceCreated && resourceCleanExit {
+
 			if err := test.assignTestResult(status); err != nil {
 				return err
 			}
+
+			log, err := env.getTestPodsLogs(test)
+			if err != nil {
+				if streamErr := env.streamError("Fail to get testing pod log"); streamErr != nil {
+					return streamErr
+				}
+				return err
+			}
+
+			test.assignTestLog(log)
 
 			if err := env.streamResult(test.result); err != nil {
 				return err
@@ -138,6 +149,10 @@ func (t *test) assignTestResult(podStatus core.PodPhase) error {
 	}
 
 	return nil
+}
+
+func (t *test) assignTestLog(log string) {
+	t.result.Log = log
 }
 
 func expectedSuccess(hookTypes []string) (bool, error) {

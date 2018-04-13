@@ -120,6 +120,10 @@ func TestRun(t *testing.T) {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
 	}
 
+	if result.Log != "pod with succeed kube client" {
+		t.Errorf("Expected test log to be pod with succeed kube client. Got: %v", result.Log)
+	}
+
 	result2 := ts.Results[1]
 	if result2.StartedAt == nil {
 		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result2.StartedAt)
@@ -137,6 +141,9 @@ func TestRun(t *testing.T) {
 		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
 	}
 
+	if result2.Log != "pod with succeed kube client" {
+		t.Errorf("Expected test log to be pod with succeed kube client. Got: %v", result.Log)
+	}
 }
 
 func TestRunEmptyTestSuite(t *testing.T) {
@@ -205,6 +212,10 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 
 	if result.Status != release.TestRun_SUCCESS {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
+	}
+
+	if result.Log != "pod with failed kube client" {
+		t.Errorf("Expected test log to be pod with succeed kube client. Got: %v", result.Log)
 	}
 }
 
@@ -324,6 +335,10 @@ func newPodSucceededKubeClient() *podSucceededKubeClient {
 	}
 }
 
+func (p *podSucceededKubeClient) GetPodLogs(namespace string, reader io.Reader) (string, error) {
+	return "pod with succeed kube client", nil
+}
+
 func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
 	return core.PodSucceeded, nil
 }
@@ -336,6 +351,10 @@ func newPodFailedKubeClient() *podFailedKubeClient {
 	return &podFailedKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
 	}
+}
+
+func (p *podFailedKubeClient) GetPodLogs(namespace string, reader io.Reader) (string, error) {
+	return "pod with failed kube client", nil
 }
 
 func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {

@@ -153,6 +153,10 @@ func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
 	return "", errors.New("in the end, they did not find Nemo")
 }
 
+func (p *getFailingKubeClient) GetPodLogs(namespace string, reader io.Reader) (string, error) {
+	return "", nil
+}
+
 type deleteFailingKubeClient struct {
 	tillerEnv.PrintingKubeClient
 }
@@ -167,6 +171,10 @@ func (p *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
 	return errors.New("delete failed")
 }
 
+func (p *deleteFailingKubeClient) GetPodLogs(namespace string, reader io.Reader) (string, error) {
+	return "", nil
+}
+
 type createFailingKubeClient struct {
 	tillerEnv.PrintingKubeClient
 }
@@ -175,6 +183,10 @@ func newCreateFailingKubeClient() *createFailingKubeClient {
 	return &createFailingKubeClient{
 		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
 	}
+}
+
+func (p *createFailingKubeClient) GetPodLogs(namespace string, reader io.Reader) (string, error) {
+	return "", nil
 }
 
 func (p *createFailingKubeClient) Create(ns string, r io.Reader, t int64, shouldWait bool) error {
