@@ -117,9 +117,6 @@ func newRootCmd(args []string) *cobra.Command {
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
-
-		// Deprecated
-		markDeprecated(newRepoUpdateCmd(out), "use 'helm repo update'\n"),
 	)
 
 	flags.Parse(args)
@@ -143,11 +140,6 @@ func main() {
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
-}
-
-func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
-	cmd.Deprecated = notice
-	return cmd
 }
 
 func setupConnection() error {
