@@ -95,9 +95,6 @@ data:
 func rsFixture() *ReleaseServer {
 	clientset := fake.NewSimpleClientset()
 	return &ReleaseServer{
-		ReleaseModule: &LocalReleaseModule{
-			clientset: clientset,
-		},
 		env:       MockEnvironment(),
 		clientset: clientset,
 		Log:       func(_ string, _ ...interface{}) {},
@@ -531,9 +528,6 @@ func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
 
 	clientset := fake.NewSimpleClientset()
 	return &ReleaseServer{
-		ReleaseModule: &LocalReleaseModule{
-			clientset: clientset,
-		},
 		env:       e,
 		clientset: clientset,
 		Log:       func(_ string, _ ...interface{}) {},

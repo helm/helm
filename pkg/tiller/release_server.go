@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"path"
 	"regexp"
 	"strings"
@@ -32,6 +33,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -81,28 +83,17 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
-	ReleaseModule
 	env       *environment.Environment
 	clientset internalclientset.Interface
 	Log       func(string, ...interface{})
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, useRemote bool) *ReleaseServer {
-	var releaseModule ReleaseModule
-	if useRemote {
-		releaseModule = &RemoteReleaseModule{}
-	} else {
-		releaseModule = &LocalReleaseModule{
-			clientset: clientset,
-		}
-	}
-
+func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface) *ReleaseServer {
 	return &ReleaseServer{
-		env:           env,
-		clientset:     clientset,
-		ReleaseModule: releaseModule,
-		Log:           func(_ string, _ ...interface{}) {},
+		env:       env,
+		clientset: clientset,
+		Log:       func(_ string, _ ...interface{}) {},
 	}
 }
 
@@ -441,4 +432,72 @@ func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 		}
 	}
 	return false
+}
+
+// Create creates a release via kubeclient from provided environment
+func (m *ReleaseServer) Create(r *release.Release, req *services.InstallReleaseRequest, env *environment.Environment) error {
+	b := bytes.NewBufferString(r.Manifest)
+	return env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait)
+}
+
+// Update performs an update from current to target release
+func (m *ReleaseServer) Update(current, target *release.Release, req *services.UpdateReleaseRequest, env *environment.Environment) error {
+	c := bytes.NewBufferString(current.Manifest)
+	t := bytes.NewBufferString(target.Manifest)
+	return env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait)
+}
+
+// Rollback performs a rollback from current to target release
+func (m *ReleaseServer) Rollback(current, target *release.Release, req *services.RollbackReleaseRequest, env *environment.Environment) error {
+	c := bytes.NewBufferString(current.Manifest)
+	t := bytes.NewBufferString(target.Manifest)
+	return env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait)
+}
+
+// Status returns kubectl-like formatted status of release objects
+func (m *ReleaseServer) Status(r *release.Release, req *services.GetReleaseStatusRequest, env *environment.Environment) (string, error) {
+	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
+}
+
+// Delete deletes the release and returns manifests that were kept in the deletion process
+func (m *ReleaseServer) Delete(rel *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (kept string, errs []error) {
+	vs, err := GetVersionSet(m.clientset.Discovery())
+	if err != nil {
+		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}
+	}
+	return DeleteRelease(rel, vs, env.KubeClient)
+}
+
+// DeleteRelease is a helper that allows Rudder to delete a release without exposing most of Tiller inner functions
+func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient environment.KubeClient) (kept string, errs []error) {
+	manifests := relutil.SplitManifests(rel.Manifest)
+	_, files, err := sortManifests(manifests, vs, UninstallOrder)
+	if err != nil {
+		// We could instead just delete everything in no particular order.
+		// FIXME: One way to delete at this point would be to try a label-based
+		// deletion. The problem with this is that we could get a false positive
+		// and delete something that was not legitimately part of this release.
+		return rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)}
+	}
+
+	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	if len(filesToKeep) > 0 {
+		kept = summarizeKeptManifests(filesToKeep, kubeClient, rel.Namespace)
+	}
+
+	for _, file := range filesToDelete {
+		b := bytes.NewBufferString(strings.TrimSpace(file.Content))
+		if b.Len() == 0 {
+			continue
+		}
+		if err := kubeClient.Delete(rel.Namespace, b); err != nil {
+			log.Printf("uninstall: Failed deletion of %q: %s", rel.Name, err)
+			if err == kube.ErrNoObjectsVisited {
+				// Rewrite the message from "no objects visited"
+				err = errors.New("object not found, skipping delete")
+			}
+			errs = append(errs, err)
+		}
+	}
+	return kept, errs
 }

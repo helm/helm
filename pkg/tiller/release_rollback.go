@@ -128,7 +128,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		s.Log("rollback hooks disabled for %s", req.Name)
 	}
 
-	if err := s.ReleaseModule.Rollback(currentRelease, targetRelease, req, s.env); err != nil {
+	if err := s.Rollback(currentRelease, targetRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		s.Log("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED

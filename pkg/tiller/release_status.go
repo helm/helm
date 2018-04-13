@@ -64,7 +64,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
-	resp, err := s.ReleaseModule.Status(rel, req, s.env)
+	resp, err := s.Status(rel, req, s.env)
 	if sc == release.Status_DELETED || sc == release.Status_FAILED {
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil

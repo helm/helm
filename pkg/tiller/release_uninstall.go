@@ -81,7 +81,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		s.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	kept, errs := s.ReleaseModule.Delete(rel, req, s.env)
+	kept, errs := s.Delete(rel, req, s.env)
 	res.Info = kept
 
 	es := make([]string, 0, len(errs))
