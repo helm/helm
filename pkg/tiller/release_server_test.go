@@ -429,22 +429,6 @@ func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout 
 	return errors.New("Failed watch")
 }
 
-type mockListServer struct {
-	val *services.ListReleasesResponse
-}
-
-func (l *mockListServer) Send(res *services.ListReleasesResponse) error {
-	l.val = res
-	return nil
-}
-
-func (l *mockListServer) Context() context.Context       { return context.TODO() }
-func (l *mockListServer) SendMsg(v interface{}) error    { return nil }
-func (l *mockListServer) RecvMsg(v interface{}) error    { return nil }
-func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
-func (l *mockListServer) SetTrailer(m metadata.MD)       {}
-func (l *mockListServer) SetHeader(m metadata.MD) error  { return nil }
-
 type mockRunReleaseTestServer struct{}
 
 func (rs mockRunReleaseTestServer) Send(m *services.TestReleaseResponse) error {

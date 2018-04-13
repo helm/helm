@@ -48,12 +48,8 @@ var _ Interface = &FakeClient{}
 var _ Interface = (*FakeClient)(nil)
 
 // ListReleases lists the current releases
-func (c *FakeClient) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
-	resp := &rls.ListReleasesResponse{
-		Count:    int64(len(c.Rels)),
-		Releases: c.Rels,
-	}
-	return resp, nil
+func (c *FakeClient) ListReleases(opts ...ReleaseListOption) ([]*release.Release, error) {
+	return c.Rels, nil
 }
 
 // InstallRelease creates a new release and returns a InstallReleaseResponse containing that release

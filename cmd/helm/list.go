@@ -148,15 +148,11 @@ func (l *listCmd) run() error {
 		return prettyError(err)
 	}
 
-	if len(res.GetReleases()) == 0 {
+	if len(res) == 0 {
 		return nil
 	}
 
-	if res.Next != "" && !l.short {
-		fmt.Fprintf(l.out, "\tnext: %s\n", res.Next)
-	}
-
-	rels := filterList(res.Releases)
+	rels := filterList(res)
 
 	if l.short {
 		for _, r := range rels {

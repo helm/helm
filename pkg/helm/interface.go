@@ -24,7 +24,7 @@ import (
 
 // Interface for helm client for mocking in tests
 type Interface interface {
-	ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error)
+	ListReleases(opts ...ReleaseListOption) ([]*release.Release, error)
 	InstallRelease(chStr, namespace string, opts ...InstallOption) (*rls.InstallReleaseResponse, error)
 	InstallReleaseFromChart(chart *chart.Chart, namespace string, opts ...InstallOption) (*rls.InstallReleaseResponse, error)
 	DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error)

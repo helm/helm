@@ -30,16 +30,20 @@ import (
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/helm/pkg/tiller"
 )
 
 // maxMsgSize use 20MB as the default message size limit.
 // grpc library default is 4MB
 const maxMsgSize = 1024 * 1024 * 20
 
+type Tiller = tiller.ReleaseServer
+
 // Client manages client side of the Helm-Tiller protocol.
 type Client struct {
-	opts  options
-	store *storage.Storage
+	opts   options
+	store  *storage.Storage
+	tiller *Tiller
 }
 
 // NewClient creates a new client.
@@ -60,7 +64,7 @@ func (h *Client) Option(opts ...Option) *Client {
 }
 
 // ListReleases lists the current releases.
-func (h *Client) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
+func (h *Client) ListReleases(opts ...ReleaseListOption) ([]*release.Release, error) {
 	reqOpts := h.opts
 	for _, opt := range opts {
 		opt(&reqOpts)
@@ -73,7 +77,7 @@ func (h *Client) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesRespo
 			return nil, err
 		}
 	}
-	return h.list(ctx, req)
+	return h.tiller.ListReleases(req)
 }
 
 // InstallRelease loads a chart from chstr, installs it, and returns the release response.
