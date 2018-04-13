@@ -21,14 +21,15 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/helm"
+	"golang.org/x/net/context"
+
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/version"
 )
 
 func TestInstallRelease(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest()
@@ -82,7 +83,7 @@ func TestInstallRelease(t *testing.T) {
 }
 
 func TestInstallRelease_WithNotes(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(
@@ -142,7 +143,7 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 }
 
 func TestInstallRelease_WithNotesRendered(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(
@@ -204,7 +205,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 
 func TestInstallRelease_TillerVersion(t *testing.T) {
 	version.Version = "2.2.0"
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(
@@ -218,7 +219,7 @@ func TestInstallRelease_TillerVersion(t *testing.T) {
 
 func TestInstallRelease_WrongTillerVersion(t *testing.T) {
 	version.Version = "2.2.0"
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(
@@ -236,7 +237,7 @@ func TestInstallRelease_WrongTillerVersion(t *testing.T) {
 }
 
 func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(withChart(
@@ -268,7 +269,7 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 }
 
 func TestInstallRelease_DryRun(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(withDryRun(),
@@ -320,7 +321,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 }
 
 func TestInstallRelease_NoHooks(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -336,7 +337,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 }
 
 func TestInstallRelease_FailedHooks(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 	rs.env.KubeClient = newHookFailingKubeClient()
@@ -353,7 +354,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 }
 
 func TestInstallRelease_ReuseName(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Info.Status.Code = release.Status_DELETED
@@ -383,7 +384,7 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 }
 
 func TestInstallRelease_KubeVersion(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(
@@ -396,7 +397,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 }
 
 func TestInstallRelease_WrongKubeVersion(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	req := installRequest(

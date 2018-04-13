@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/apis/core"
 
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -312,7 +311,7 @@ func (rs mockStream) SendHeader(m metadata.MD) error { return nil }
 func (rs mockStream) SetTrailer(m metadata.MD)       {}
 func (rs mockStream) SendMsg(v interface{}) error    { return nil }
 func (rs mockStream) RecvMsg(v interface{}) error    { return nil }
-func (rs mockStream) Context() context.Context       { return helm.NewContext() }
+func (rs mockStream) Context() context.Context       { return context.TODO() }
 
 type podSucceededKubeClient struct {
 	tillerEnv.PrintingKubeClient

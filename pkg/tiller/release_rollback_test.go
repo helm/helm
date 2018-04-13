@@ -20,13 +20,14 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/helm"
+	"golang.org/x/net/context"
+
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestRollbackRelease(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -137,7 +138,7 @@ func TestRollbackRelease(t *testing.T) {
 }
 
 func TestRollbackWithReleaseVersion(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rs.Log = t.Logf
 	rs.env.Releases.Log = t.Logf
@@ -185,7 +186,7 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 }
 
 func TestRollbackReleaseNoHooks(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Hooks = []*release.Hook{
@@ -221,7 +222,7 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 }
 
 func TestRollbackReleaseFailure(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)

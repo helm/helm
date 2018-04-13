@@ -22,15 +22,15 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"golang.org/x/net/context"
 
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestUpdateRelease(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -103,7 +103,7 @@ func TestUpdateRelease(t *testing.T) {
 	}
 }
 func TestUpdateRelease_ResetValues(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -131,7 +131,7 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 
 // This is a regression test for bug found in issue #3655
 func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 
 	installReq := &services.InstallReleaseRequest{
@@ -231,7 +231,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 }
 
 func TestUpdateRelease_ReuseValues(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -269,7 +269,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 
 func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	// This verifies that when both reset and reuse are set, reset wins.
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -298,7 +298,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 }
 
 func TestUpdateReleaseFailure(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -342,7 +342,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 }
 
 func TestUpdateReleaseFailure_Force(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := namedReleaseStub("forceful-luke", release.Status_FAILED)
 	rs.env.Releases.Create(rel)
@@ -386,7 +386,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 }
 
 func TestUpdateReleaseNoHooks(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -415,7 +415,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 }
 
 func TestUpdateReleaseNoChanges(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)

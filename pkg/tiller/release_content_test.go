@@ -17,14 +17,14 @@ limitations under the License.
 package tiller
 
 import (
+	"context"
 	"testing"
 
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestGetReleaseContent(t *testing.T) {
-	c := helm.NewContext()
+	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {
