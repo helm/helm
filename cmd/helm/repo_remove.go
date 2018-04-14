@@ -41,13 +41,18 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 		Aliases: []string{"rm"},
 		Short:   "remove a chart repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "name of chart repository"); err != nil {
-				return err
+			if len(args) == 0 {
+				return fmt.Errorf("need at least one argument, name of chart repository")
 			}
-			remove.name = args[0]
-			remove.home = settings.Home
 
-			return remove.run()
+			remove.home = settings.Home
+			for i := 0; i < len(args); i++ {
+				remove.name = args[i]
+				if err := remove.run(); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 
