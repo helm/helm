@@ -24,7 +24,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/apis/core"
 
@@ -72,15 +71,6 @@ metadata:
 data:
   name: value
 `
-
-func TestNewTestSuite(t *testing.T) {
-	rel := releaseStub()
-
-	_, err := NewTestSuite(rel)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-}
 
 func TestRun(t *testing.T) {
 
@@ -209,10 +199,7 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 
 func TestExtractTestManifestsFromHooks(t *testing.T) {
 	rel := releaseStub()
-	testManifests, err := extractTestManifestsFromHooks(rel.Hooks)
-	if err != nil {
-		t.Errorf("Expected no error, Got: %s", err)
-	}
+	testManifests := extractTestManifestsFromHooks(rel.Hooks)
 
 	if len(testManifests) != 1 {
 		t.Errorf("Expected 1 test manifest, Got: %v", len(testManifests))
@@ -297,7 +284,6 @@ func mockTillerEnvironment() *tillerEnv.Environment {
 }
 
 type mockStream struct {
-	stream   grpc.ServerStream
 	messages []*services.TestReleaseResponse
 }
 

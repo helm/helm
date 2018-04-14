@@ -38,6 +38,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
+	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
@@ -95,6 +96,10 @@ func NewReleaseServer(env *environment.Environment, clientset internalclientset.
 		clientset: clientset,
 		Log:       func(_ string, _ ...interface{}) {},
 	}
+}
+
+func (s *ReleaseServer) Storage() *storage.Storage {
+	return s.env.Releases
 }
 
 // reuseValues copies values from the current release to a new release if the

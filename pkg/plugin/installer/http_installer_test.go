@@ -20,9 +20,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"os"
 	"testing"
+
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 var _ Installer = new(HTTPInstaller)

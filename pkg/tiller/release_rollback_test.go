@@ -20,14 +20,11 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestRollbackRelease(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -52,30 +49,30 @@ func TestRollbackRelease(t *testing.T) {
 	req := &services.RollbackReleaseRequest{
 		Name: rel.Name,
 	}
-	res, err := rs.RollbackRelease(c, req)
+	res, err := rs.RollbackRelease(req)
 	if err != nil {
 		t.Fatalf("Failed rollback: %s", err)
 	}
 
-	if res.Release.Name == "" {
+	if res.Name == "" {
 		t.Errorf("Expected release name.")
 	}
 
-	if res.Release.Name != rel.Name {
-		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
+	if res.Name != rel.Name {
+		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Name)
 	}
 
-	if res.Release.Namespace != rel.Namespace {
-		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Release.Namespace)
+	if res.Namespace != rel.Namespace {
+		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Namespace)
 	}
 
-	if res.Release.Version != 3 {
-		t.Errorf("Expected release version to be %v, got %v", 3, res.Release.Version)
+	if res.Version != 3 {
+		t.Errorf("Expected release version to be %v, got %v", 3, res.Version)
 	}
 
-	updated, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	updated, err := rs.env.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
 	}
 
 	if len(updated.Hooks) != 2 {
@@ -90,14 +87,14 @@ func TestRollbackRelease(t *testing.T) {
 	rs.env.Releases.Update(upgradedRel)
 	rs.env.Releases.Create(anotherUpgradedRelease)
 
-	res, err = rs.RollbackRelease(c, req)
+	res, err = rs.RollbackRelease(req)
 	if err != nil {
 		t.Fatalf("Failed rollback: %s", err)
 	}
 
-	updated, err = rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	updated, err = rs.env.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
 	}
 
 	if len(updated.Hooks) != 1 {
@@ -108,8 +105,8 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Unexpected manifest: %v", updated.Hooks[0].Manifest)
 	}
 
-	if res.Release.Version != 4 {
-		t.Errorf("Expected release version to be %v, got %v", 3, res.Release.Version)
+	if res.Version != 4 {
+		t.Errorf("Expected release version to be %v, got %v", 3, res.Version)
 	}
 
 	if updated.Hooks[0].Events[0] != release.Hook_PRE_ROLLBACK {
@@ -120,8 +117,8 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Expected event 1 to be post rollback")
 	}
 
-	if len(res.Release.Manifest) == 0 {
-		t.Errorf("No manifest returned: %v", res.Release)
+	if len(res.Manifest) == 0 {
+		t.Errorf("No manifest returned: %v", res)
 	}
 
 	if len(updated.Manifest) == 0 {
@@ -132,13 +129,12 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
-	if res.Release.Info.Description != "Rollback to 2" {
-		t.Errorf("Expected rollback to 2, got %q", res.Release.Info.Description)
+	if res.Info.Description != "Rollback to 2" {
+		t.Errorf("Expected rollback to 2, got %q", res.Info.Description)
 	}
 }
 
 func TestRollbackWithReleaseVersion(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rs.Log = t.Logf
 	rs.env.Releases.Log = t.Logf
@@ -163,7 +159,7 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 		Version:      1,
 	}
 
-	_, err := rs.RollbackRelease(c, req)
+	_, err := rs.RollbackRelease(req)
 	if err != nil {
 		t.Fatalf("Failed rollback: %s", err)
 	}
@@ -186,7 +182,6 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 }
 
 func TestRollbackReleaseNoHooks(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Hooks = []*release.Hook{
@@ -211,18 +206,17 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 		DisableHooks: true,
 	}
 
-	res, err := rs.RollbackRelease(c, req)
+	res, err := rs.RollbackRelease(req)
 	if err != nil {
 		t.Fatalf("Failed rollback: %s", err)
 	}
 
-	if hl := res.Release.Hooks[0].LastRun; hl != nil {
+	if hl := res.Hooks[0].LastRun; hl != nil {
 		t.Errorf("Expected that no hooks were run. Got %d", hl)
 	}
 }
 
 func TestRollbackReleaseFailure(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -236,12 +230,12 @@ func TestRollbackReleaseFailure(t *testing.T) {
 	}
 
 	rs.env.KubeClient = newUpdateFailingKubeClient()
-	res, err := rs.RollbackRelease(c, req)
+	res, err := rs.RollbackRelease(req)
 	if err == nil {
 		t.Error("Expected failed rollback")
 	}
 
-	if targetStatus := res.Release.Info.Status.Code; targetStatus != release.Status_FAILED {
+	if targetStatus := res.Info.Status.Code; targetStatus != release.Status_FAILED {
 		t.Errorf("Expected FAILED release. Got %v", targetStatus)
 	}
 

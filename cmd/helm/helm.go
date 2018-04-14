@@ -18,14 +18,10 @@ package main // import "k8s.io/helm/cmd/helm"
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc/grpclog"
-	"google.golang.org/grpc/status"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -34,14 +30,11 @@ import (
 
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/storage/driver"
 )
 
-var (
-	tillerTunnel *kube.Tunnel
-	settings     helm_env.EnvSettings
-)
+var settings helm_env.EnvSettings
 
 var globalUsage = `The Kubernetes package manager
 
@@ -73,9 +66,6 @@ func newRootCmd(args []string) *cobra.Command {
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		PersistentPostRun: func(*cobra.Command, []string) {
-			teardown()
-		},
 	}
 	flags := cmd.PersistentFlags()
 
@@ -102,18 +92,17 @@ func newRootCmd(args []string) *cobra.Command {
 		newHistoryCmd(nil, out),
 		newInstallCmd(nil, out),
 		newListCmd(nil, out),
+		newReleaseTestCmd(nil, out),
 		newRollbackCmd(nil, out),
 		newStatusCmd(nil, out),
 		newUpgradeCmd(nil, out),
-
-		newReleaseTestCmd(nil, out),
-		newVersionCmd(out),
 
 		newCompletionCmd(out),
 		newHomeCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
 		newTemplateCmd(out),
+		newVersionCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
@@ -130,44 +119,10 @@ func newRootCmd(args []string) *cobra.Command {
 	return cmd
 }
 
-func init() {
-	// Tell gRPC not to log to console.
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-}
-
 func main() {
 	cmd := newRootCmd(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
-	}
-}
-
-func setupConnection() error {
-	if settings.TillerHost == "" {
-		config, client, err := getKubeClient(settings.KubeContext)
-		if err != nil {
-			return err
-		}
-
-		tunnel, err := portforwarder.New(settings.TillerNamespace, client, config)
-		if err != nil {
-			return err
-		}
-
-		settings.TillerHost = fmt.Sprintf("127.0.0.1:%d", tunnel.Local)
-		debug("Created tunnel using local port: '%d'\n", tunnel.Local)
-	}
-
-	// Set up the gRPC config.
-	debug("SERVER: %q\n", settings.TillerHost)
-
-	// Plugin support.
-	return nil
-}
-
-func teardown() {
-	if tillerTunnel != nil {
-		tillerTunnel.Close()
 	}
 }
 
@@ -181,20 +136,6 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 		return fmt.Errorf("This command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
 	}
 	return nil
-}
-
-// prettyError unwraps or rewrites certain errors to make them more user-friendly.
-func prettyError(err error) error {
-	// Add this check can prevent the object creation if err is nil.
-	if err == nil {
-		return nil
-	}
-	// If it's grpc's error, make it more user-friendly.
-	if s, ok := status.FromError(err); ok {
-		return fmt.Errorf(s.Message())
-	}
-	// Else return the original error.
-	return err
 }
 
 // configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
@@ -228,6 +169,15 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 }
 
 func newClient() helm.Interface {
-	options := []helm.Option{helm.Host(settings.TillerHost), helm.ConnectTimeout(settings.TillerConnectionTimeout)}
-	return helm.NewClient(options...)
+	clientset, err := kube.New(nil).ClientSet()
+	if err != nil {
+		// TODO return error
+		panic(err)
+	}
+	// TODO add other backends
+	cfgmaps := driver.NewConfigMaps(clientset.Core().ConfigMaps(settings.TillerNamespace))
+	return helm.NewClient(
+		helm.Driver(cfgmaps),
+		helm.ClientSet(clientset),
+	)
 }

@@ -92,10 +92,9 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "upgrade [RELEASE] [CHART]",
-		Short:   "upgrade a release",
-		Long:    upgradeDesc,
-		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
+		Use:   "upgrade [RELEASE] [CHART]",
+		Short: "upgrade a release",
+		Long:  upgradeDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "chart path"); err != nil {
 				return err
@@ -158,13 +157,13 @@ func (u *upgradeCmd) run() error {
 		// The returned error is a grpc.rpcError that wraps the message from the original error.
 		// So we're stuck doing string matching against the wrapped error, which is nested somewhere
 		// inside of the grpc.rpcError message.
-		releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
+		releaseHistory, err := u.client.ReleaseHistory(u.release, 1)
 
 		if err == nil {
 			if u.namespace == "" {
 				u.namespace = defaultNamespace()
 			}
-			previousReleaseNamespace := releaseHistory.Releases[0].Namespace
+			previousReleaseNamespace := releaseHistory[0].Namespace
 			if previousReleaseNamespace != u.namespace {
 				fmt.Fprintf(u.out,
 					"WARNING: Namespace %q doesn't match with previous. Release will be deployed to %s\n",
@@ -210,7 +209,7 @@ func (u *upgradeCmd) run() error {
 			return fmt.Errorf("cannot load requirements: %v", err)
 		}
 	} else {
-		return prettyError(err)
+		return err
 	}
 
 	resp, err := u.client.UpdateRelease(
@@ -226,19 +225,19 @@ func (u *upgradeCmd) run() error {
 		helm.ReuseValues(u.reuseValues),
 		helm.UpgradeWait(u.wait))
 	if err != nil {
-		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
+		return fmt.Errorf("UPGRADE FAILED: %v", err)
 	}
 
 	if settings.Debug {
-		printRelease(u.out, resp.Release)
+		printRelease(u.out, resp)
 	}
 
 	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
 
 	// Print the status like status command does
-	status, err := u.client.ReleaseStatus(u.release)
+	status, err := u.client.ReleaseStatus(u.release, 0)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 	PrintStatus(u.out, status)
 

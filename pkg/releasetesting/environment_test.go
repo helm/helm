@@ -129,11 +129,6 @@ func newMockTestingEnvironment() *MockTestingEnvironment {
 	}
 }
 
-func (mte MockTestingEnvironment) streamRunning(name string) error       { return nil }
-func (mte MockTestingEnvironment) streamError(info string) error         { return nil }
-func (mte MockTestingEnvironment) streamFailed(name string) error        { return nil }
-func (mte MockTestingEnvironment) streamSuccess(name string) error       { return nil }
-func (mte MockTestingEnvironment) streamUnknown(name, info string) error { return nil }
 func (mte MockTestingEnvironment) streamMessage(msg string, status release.TestRun_Status) error {
 	mte.Stream.Send(&services.TestReleaseResponse{Msg: msg, Status: status})
 	return nil

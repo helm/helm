@@ -158,10 +158,9 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "install [CHART]",
-		Short:   "install a chart archive",
-		Long:    installDesc,
-		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
+		Use:   "install [CHART]",
+		Short: "install a chart archive",
+		Long:  installDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
@@ -236,7 +235,7 @@ func (i *installCmd) run() error {
 	// Check chart requirements to make sure all dependencies are present in /charts
 	chartRequested, err := chartutil.Load(i.chartPath)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 
 	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
@@ -254,10 +253,10 @@ func (i *installCmd) run() error {
 					Getters:    getter.All(settings),
 				}
 				if err := man.Update(); err != nil {
-					return prettyError(err)
+					return err
 				}
 			} else {
-				return prettyError(err)
+				return err
 			}
 
 		}
@@ -265,7 +264,7 @@ func (i *installCmd) run() error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
-	res, err := i.client.InstallReleaseFromChart(
+	rel, err := i.client.InstallReleaseFromChart(
 		chartRequested,
 		i.namespace,
 		helm.ValueOverrides(rawVals),
@@ -276,10 +275,9 @@ func (i *installCmd) run() error {
 		helm.InstallTimeout(i.timeout),
 		helm.InstallWait(i.wait))
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 
-	rel := res.GetRelease()
 	if rel == nil {
 		return nil
 	}
@@ -291,9 +289,9 @@ func (i *installCmd) run() error {
 	}
 
 	// Print the status like status command does
-	status, err := i.client.ReleaseStatus(rel.Name)
+	status, err := i.client.ReleaseStatus(rel.Name, 0)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 	PrintStatus(i.out, status)
 	return nil

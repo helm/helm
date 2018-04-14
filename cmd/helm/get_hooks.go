@@ -44,10 +44,9 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		client: client,
 	}
 	cmd := &cobra.Command{
-		Use:     "hooks [flags] RELEASE_NAME",
-		Short:   "download all hooks for a named release",
-		Long:    getHooksHelp,
-		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
+		Use:   "hooks [flags] RELEASE_NAME",
+		Short: "download all hooks for a named release",
+		Long:  getHooksHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired
@@ -65,7 +64,7 @@ func (g *getHooksCmd) run() error {
 	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		fmt.Fprintln(g.out, g.release)
-		return prettyError(err)
+		return err
 	}
 
 	for _, hook := range res.Hooks {

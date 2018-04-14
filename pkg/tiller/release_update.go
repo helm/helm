@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	ctx "golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -30,7 +28,7 @@ import (
 )
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
-func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) UpdateRelease(req *services.UpdateReleaseRequest) (*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("updateRelease: Release name is invalid: %s", req.Name)
 		return nil, err
@@ -143,7 +141,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 }
 
 // performUpdateForce performs the same action as a `helm delete && helm install --replace`.
-func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (*release.Release, error) {
 	// find the last release with the given name
 	oldRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
@@ -161,7 +159,6 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		Timeout:      req.Timeout,
 		Wait:         req.Wait,
 	})
-	res := &services.UpdateReleaseResponse{Release: newRelease}
 	if err != nil {
 		s.Log("failed update prepare step: %s", err)
 		// On dry run, append the manifest contents to a failed release. This is
@@ -169,7 +166,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		if req.DryRun && strings.HasPrefix(err.Error(), "YAML parse error") {
 			err = fmt.Errorf("%s\n%s", err, newRelease.Manifest)
 		}
-		return res, err
+		return newRelease, err
 	}
 
 	// From here on out, the release is considered to be in Status_DELETING or Status_DELETED
@@ -182,7 +179,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	// pre-delete hooks
 	if !req.DisableHooks {
 		if err := s.execHook(oldRelease.Hooks, oldRelease.Name, oldRelease.Namespace, hooks.PreDelete, req.Timeout); err != nil {
-			return res, err
+			return newRelease, err
 		}
 	} else {
 		s.Log("hooks disabled for %s", req.Name)
@@ -201,20 +198,20 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 			s.Log("error: %v", e)
 			es = append(es, e.Error())
 		}
-		return res, fmt.Errorf("Upgrade --force successfully deleted the previous release, but encountered %d error(s) and cannot continue: %s", len(es), strings.Join(es, "; "))
+		return newRelease, fmt.Errorf("Upgrade --force successfully deleted the previous release, but encountered %d error(s) and cannot continue: %s", len(es), strings.Join(es, "; "))
 	}
 
 	// post-delete hooks
 	if !req.DisableHooks {
 		if err := s.execHook(oldRelease.Hooks, oldRelease.Name, oldRelease.Namespace, hooks.PostDelete, req.Timeout); err != nil {
-			return res, err
+			return newRelease, err
 		}
 	}
 
 	// pre-install hooks
 	if !req.DisableHooks {
 		if err := s.execHook(newRelease.Hooks, newRelease.Name, newRelease.Namespace, hooks.PreInstall, req.Timeout); err != nil {
-			return res, err
+			return newRelease, err
 		}
 	}
 
@@ -227,7 +224,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		newRelease.Info.Status.Code = release.Status_FAILED
 		newRelease.Info.Description = msg
 		s.recordRelease(newRelease, true)
-		return res, err
+		return newRelease, err
 	}
 
 	// post-install hooks
@@ -238,7 +235,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 			newRelease.Info.Status.Code = release.Status_FAILED
 			newRelease.Info.Description = msg
 			s.recordRelease(newRelease, true)
-			return res, err
+			return newRelease, err
 		}
 	}
 
@@ -246,22 +243,21 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	newRelease.Info.Description = "Upgrade complete"
 	s.recordRelease(newRelease, true)
 
-	return res, nil
+	return newRelease, nil
 }
 
-func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
-	res := &services.UpdateReleaseResponse{Release: updatedRelease}
+func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*release.Release, error) {
 
 	if req.DryRun {
 		s.Log("dry run for %s", updatedRelease.Name)
-		res.Release.Info.Description = "Dry run complete"
-		return res, nil
+		updatedRelease.Info.Description = "Dry run complete"
+		return updatedRelease, nil
 	}
 
 	// pre-upgrade hooks
 	if !req.DisableHooks {
 		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PreUpgrade, req.Timeout); err != nil {
-			return res, err
+			return updatedRelease, err
 		}
 	} else {
 		s.Log("update hooks disabled for %s", req.Name)
@@ -273,13 +269,13 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
 		s.recordRelease(updatedRelease, true)
-		return res, err
+		return updatedRelease, err
 	}
 
 	// post-upgrade hooks
 	if !req.DisableHooks {
 		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PostUpgrade, req.Timeout); err != nil {
-			return res, err
+			return updatedRelease, err
 		}
 	}
 
@@ -289,5 +285,5 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
 	updatedRelease.Info.Description = "Upgrade complete"
 
-	return res, nil
+	return updatedRelease, nil
 }

@@ -100,10 +100,8 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		if md.UseTunnel {
 			c.PreRunE = func(cmd *cobra.Command, args []string) error {
 				// Parse the parent flag, but not the local flags.
-				if _, err := processParent(cmd, args); err != nil {
-					return err
-				}
-				return setupConnection()
+				_, err := processParent(cmd, args)
+				return err
 			}
 		}
 

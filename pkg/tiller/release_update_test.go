@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -30,7 +29,6 @@ import (
 )
 
 func TestUpdateRelease(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -45,24 +43,24 @@ func TestUpdateRelease(t *testing.T) {
 			},
 		},
 	}
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 
-	if res.Release.Name == "" {
+	if res.Name == "" {
 		t.Errorf("Expected release name.")
 	}
 
-	if res.Release.Name != rel.Name {
-		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Release.Name)
+	if res.Name != rel.Name {
+		t.Errorf("Updated release name does not match previous release name. Expected %s, got %s", rel.Name, res.Name)
 	}
 
-	if res.Release.Namespace != rel.Namespace {
-		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Release.Namespace)
+	if res.Namespace != rel.Namespace {
+		t.Errorf("Expected release namespace '%s', got '%s'.", rel.Namespace, res.Namespace)
 	}
 
-	updated := compareStoredAndReturnedRelease(t, *rs, *res)
+	updated := compareStoredAndReturnedRelease(t, *rs, res)
 
 	if len(updated.Hooks) != 1 {
 		t.Fatalf("Expected 1 hook, got %d", len(updated.Hooks))
@@ -83,27 +81,26 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if res.Release.Config == nil {
-		t.Errorf("Got release without config: %#v", res.Release)
-	} else if res.Release.Config.Raw != rel.Config.Raw {
-		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Release.Config.Raw)
+	if res.Config == nil {
+		t.Errorf("Got release without config: %#v", res)
+	} else if res.Config.Raw != rel.Config.Raw {
+		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Config.Raw)
 	}
 
 	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
 		t.Errorf("unexpected output: %s", updated.Manifest)
 	}
 
-	if res.Release.Version != 2 {
-		t.Errorf("Expected release version to be %v, got %v", 2, res.Release.Version)
+	if res.Version != 2 {
+		t.Errorf("Expected release version to be %v, got %v", 2, res.Version)
 	}
 
 	edesc := "Upgrade complete"
-	if got := res.Release.Info.Description; got != edesc {
+	if got := res.Info.Description; got != edesc {
 		t.Errorf("Expected description %q, got %q", edesc, got)
 	}
 }
 func TestUpdateRelease_ResetValues(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -119,19 +116,18 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 		},
 		ResetValues: true,
 	}
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
-	if res.Release.Config != nil && res.Release.Config.Raw != "" {
-		t.Errorf("Expected chart config to be empty, got %q", res.Release.Config.Raw)
+	if res.Config != nil && res.Config.Raw != "" {
+		t.Errorf("Expected chart config to be empty, got %q", res.Config.Raw)
 	}
 }
 
 // This is a regression test for bug found in issue #3655
 func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 
 	installReq := &services.InstallReleaseRequest{
@@ -148,12 +144,12 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	fmt.Println("Running Install release with foo: bar override")
-	installResp, err := rs.InstallRelease(c, installReq)
+	installResp, err := rs.InstallRelease(installReq)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rel := installResp.Release
+	rel := installResp
 	req := &services.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
@@ -167,17 +163,17 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	fmt.Println("Running Update release with no overrides and no reuse-values flag")
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 
 	expect := "foo: bar"
-	if res.Release.Config != nil && res.Release.Config.Raw != expect {
-		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Config.Raw)
+	if res.Config != nil && res.Config.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Config.Raw)
 	}
 
-	rel = res.Release
+	rel = res
 	req = &services.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
@@ -193,18 +189,17 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	fmt.Println("Running Update release with foo2: bar2 override and reuse-values")
-	res, err = rs.UpdateRelease(c, req)
+	rel, err = rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 
 	// This should have the newly-passed overrides.
 	expect = "foo: bar\nfoo2: bar2\n"
-	if res.Release.Config != nil && res.Release.Config.Raw != expect {
-		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
+	if rel.Config != nil && rel.Config.Raw != expect {
+		t.Errorf("Expected request config to be %q, got %q", expect, rel.Config.Raw)
 	}
 
-	rel = res.Release
 	req = &services.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
@@ -220,18 +215,17 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	fmt.Println("Running Update release with foo=baz override with reuse-values flag")
-	res, err = rs.UpdateRelease(c, req)
+	res, err = rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	expect = "foo: baz\nfoo2: bar2\n"
-	if res.Release.Config != nil && res.Release.Config.Raw != expect {
-		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Config.Raw)
+	if res.Config != nil && res.Config.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Config.Raw)
 	}
 }
 
 func TestUpdateRelease_ReuseValues(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -250,26 +244,25 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 		Values:      &chart.Config{Raw: "name2: val2"},
 		ReuseValues: true,
 	}
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	// This should have been overwritten with the old value.
 	expect := "name: value\n"
-	if res.Release.Chart.Values != nil && res.Release.Chart.Values.Raw != expect {
-		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Chart.Values.Raw)
+	if res.Chart.Values != nil && res.Chart.Values.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Chart.Values.Raw)
 	}
 	// This should have the newly-passed overrides and any other computed values. `name: value` comes from release Config via releaseStub()
 	expect = "name: value\nname2: val2\n"
-	if res.Release.Config != nil && res.Release.Config.Raw != expect {
-		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
+	if res.Config != nil && res.Config.Raw != expect {
+		t.Errorf("Expected request config to be %q, got %q", expect, res.Config.Raw)
 	}
-	compareStoredAndReturnedRelease(t, *rs, *res)
+	compareStoredAndReturnedRelease(t, *rs, res)
 }
 
 func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	// This verifies that when both reset and reuse are set, reset wins.
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -286,19 +279,18 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 		ResetValues: true,
 		ReuseValues: true,
 	}
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
-	if res.Release.Config != nil && res.Release.Config.Raw != "" {
-		t.Errorf("Expected chart config to be empty, got %q", res.Release.Config.Raw)
+	if res.Config != nil && res.Config.Raw != "" {
+		t.Errorf("Expected chart config to be empty, got %q", res.Config.Raw)
 	}
-	compareStoredAndReturnedRelease(t, *rs, *res)
+	compareStoredAndReturnedRelease(t, *rs, res)
 }
 
 func TestUpdateReleaseFailure(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -316,19 +308,19 @@ func TestUpdateReleaseFailure(t *testing.T) {
 		},
 	}
 
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err == nil {
 		t.Error("Expected failed update")
 	}
 
-	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_FAILED {
+	if updatedStatus := res.Info.Status.Code; updatedStatus != release.Status_FAILED {
 		t.Errorf("Expected FAILED release. Got %d", updatedStatus)
 	}
 
-	compareStoredAndReturnedRelease(t, *rs, *res)
+	compareStoredAndReturnedRelease(t, *rs, res)
 
 	expectedDescription := "Upgrade \"angry-panda\" failed: Failed update in kube client"
-	if got := res.Release.Info.Description; got != expectedDescription {
+	if got := res.Info.Description; got != expectedDescription {
 		t.Errorf("Expected description %q, got %q", expectedDescription, got)
 	}
 
@@ -342,7 +334,6 @@ func TestUpdateReleaseFailure(t *testing.T) {
 }
 
 func TestUpdateReleaseFailure_Force(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := namedReleaseStub("forceful-luke", release.Status_FAILED)
 	rs.env.Releases.Create(rel)
@@ -360,19 +351,19 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 		Force: true,
 	}
 
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Errorf("Expected successful update, got %v", err)
 	}
 
-	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_DEPLOYED {
+	if updatedStatus := res.Info.Status.Code; updatedStatus != release.Status_DEPLOYED {
 		t.Errorf("Expected DEPLOYED release. Got %d", updatedStatus)
 	}
 
-	compareStoredAndReturnedRelease(t, *rs, *res)
+	compareStoredAndReturnedRelease(t, *rs, res)
 
 	expectedDescription := "Upgrade complete"
-	if got := res.Release.Info.Description; got != expectedDescription {
+	if got := res.Info.Description; got != expectedDescription {
 		t.Errorf("Expected description %q, got %q", expectedDescription, got)
 	}
 
@@ -386,7 +377,6 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 }
 
 func TestUpdateReleaseNoHooks(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -403,19 +393,18 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 		},
 	}
 
-	res, err := rs.UpdateRelease(c, req)
+	res, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 
-	if hl := res.Release.Hooks[0].LastRun; hl != nil {
+	if hl := res.Hooks[0].LastRun; hl != nil {
 		t.Errorf("Expected that no hooks were run. Got %d", hl)
 	}
 
 }
 
 func TestUpdateReleaseNoChanges(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -426,19 +415,19 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 		Chart:        rel.GetChart(),
 	}
 
-	_, err := rs.UpdateRelease(c, req)
+	_, err := rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 }
 
-func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res services.UpdateReleaseResponse) *release.Release {
-	storedRelease, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res *release.Release) *release.Release {
+	storedRelease, err := rs.env.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Fatalf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+		t.Fatalf("Expected release for %s (%v).", res.Name, rs.env.Releases)
 	}
 
-	if !proto.Equal(storedRelease, res.Release) {
+	if !proto.Equal(storedRelease, res) {
 		t.Errorf("Stored release doesn't match returned Release")
 	}
 

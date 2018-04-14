@@ -17,26 +17,24 @@ limitations under the License.
 package tiller
 
 import (
-	"context"
 	"testing"
 
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestGetReleaseContent(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 
-	res, err := rs.GetReleaseContent(c, &services.GetReleaseContentRequest{Name: rel.Name, Version: 1})
+	res, err := rs.GetReleaseContent(&services.GetReleaseContentRequest{Name: rel.Name, Version: 1})
 	if err != nil {
 		t.Errorf("Error getting release content: %s", err)
 	}
 
-	if res.Release.Chart.Metadata.Name != rel.Chart.Metadata.Name {
-		t.Errorf("Expected %q, got %q", rel.Chart.Metadata.Name, res.Release.Chart.Metadata.Name)
+	if res.Chart.Metadata.Name != rel.Chart.Metadata.Name {
+		t.Errorf("Expected %q, got %q", rel.Chart.Metadata.Name, res.Chart.Metadata.Name)
 	}
 }

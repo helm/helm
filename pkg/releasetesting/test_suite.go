@@ -46,18 +46,15 @@ type test struct {
 
 // NewTestSuite takes a release object and returns a TestSuite object with test definitions
 //  extracted from the release
-func NewTestSuite(rel *release.Release) (*TestSuite, error) {
-	testManifests, err := extractTestManifestsFromHooks(rel.Hooks)
-	if err != nil {
-		return nil, err
-	}
+func NewTestSuite(rel *release.Release) *TestSuite {
+	testManifests := extractTestManifestsFromHooks(rel.Hooks)
 
 	results := []*release.TestRun{}
 
 	return &TestSuite{
 		TestManifests: testManifests,
 		Results:       results,
-	}, nil
+	}
 }
 
 // Run executes tests in a test suite and stores a result within a given environment
@@ -152,7 +149,7 @@ func expectedSuccess(hookTypes []string) (bool, error) {
 	return false, fmt.Errorf("No %s or %s hook found", hooks.ReleaseTestSuccess, hooks.ReleaseTestFailure)
 }
 
-func extractTestManifestsFromHooks(h []*release.Hook) ([]string, error) {
+func extractTestManifestsFromHooks(h []*release.Hook) []string {
 	testHooks := hooks.FilterTestHooks(h)
 
 	tests := []string{}
@@ -162,7 +159,7 @@ func extractTestManifestsFromHooks(h []*release.Hook) ([]string, error) {
 			tests = append(tests, t)
 		}
 	}
-	return tests, nil
+	return tests
 }
 
 func newTest(testManifest string) (*test, error) {

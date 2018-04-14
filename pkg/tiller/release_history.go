@@ -17,14 +17,13 @@ limitations under the License.
 package tiller
 
 import (
-	"golang.org/x/net/context"
-
+	"k8s.io/helm/pkg/proto/hapi/release"
 	tpb "k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
 // GetHistory gets the history for a given release.
-func (s *ReleaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryRequest) (*tpb.GetHistoryResponse, error) {
+func (s *ReleaseServer) GetHistory(req *tpb.GetHistoryRequest) ([]*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("getHistory: Release name is invalid: %s", req.Name)
 		return nil, err
@@ -38,12 +37,12 @@ func (s *ReleaseServer) GetHistory(ctx context.Context, req *tpb.GetHistoryReque
 
 	relutil.Reverse(h, relutil.SortByRevision)
 
-	var resp tpb.GetHistoryResponse
+	var rels []*release.Release
 	for i := 0; i < min(len(h), int(req.Max)); i++ {
-		resp.Releases = append(resp.Releases, h[i])
+		rels = append(rels, h[i])
 	}
 
-	return &resp, nil
+	return rels, nil
 }
 
 func min(x, y int) int {

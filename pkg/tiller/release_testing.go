@@ -43,11 +43,7 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		Stream:     stream,
 	}
 	s.Log("running tests for release %s", rel.Name)
-	tSuite, err := reltesting.NewTestSuite(rel)
-	if err != nil {
-		s.Log("error creating test suite for %s: %s", rel.Name, err)
-		return err
-	}
+	tSuite := reltesting.NewTestSuite(rel)
 
 	if err := tSuite.Run(testEnv); err != nil {
 		s.Log("error running test suite for %s: %s", rel.Name, err)

@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	ctx "golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -30,7 +28,7 @@ import (
 )
 
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
-func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
+func (s *ReleaseServer) UninstallRelease(req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("uninstallRelease: Release name is invalid: %s", req.Name)
 		return nil, err

@@ -20,14 +20,12 @@ import (
 	"errors"
 	"fmt"
 
-	ctx "golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 // GetReleaseStatus gets the status information for a named release.
-func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
+func (s *ReleaseServer) GetReleaseStatus(req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("getStatus: Release name is invalid: %s", req.Name)
 		return nil, err

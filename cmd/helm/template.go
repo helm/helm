@@ -168,12 +168,12 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	// Check chart requirements to make sure all dependencies are present in /charts
 	c, err := chartutil.Load(t.chartPath)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 
 	if req, err := chartutil.LoadRequirements(c); err == nil {
 		if err := checkDependencies(c, req); err != nil {
-			return prettyError(err)
+			return err
 		}
 	} else if err != chartutil.ErrRequirementsNotFound {
 		return fmt.Errorf("cannot load requirements: %v", err)

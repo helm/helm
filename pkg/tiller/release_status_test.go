@@ -19,21 +19,18 @@ package tiller
 import (
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestGetReleaseStatus(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 
-	res, err := rs.GetReleaseStatus(c, &services.GetReleaseStatusRequest{Name: rel.Name, Version: 1})
+	res, err := rs.GetReleaseStatus(&services.GetReleaseStatusRequest{Name: rel.Name, Version: 1})
 	if err != nil {
 		t.Errorf("Error getting release content: %s", err)
 	}
@@ -47,7 +44,6 @@ func TestGetReleaseStatus(t *testing.T) {
 }
 
 func TestGetReleaseStatusDeleted(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Info.Status.Code = release.Status_DELETED
@@ -55,7 +51,7 @@ func TestGetReleaseStatusDeleted(t *testing.T) {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 
-	res, err := rs.GetReleaseStatus(c, &services.GetReleaseStatusRequest{Name: rel.Name, Version: 1})
+	res, err := rs.GetReleaseStatus(&services.GetReleaseStatusRequest{Name: rel.Name, Version: 1})
 	if err != nil {
 		t.Fatalf("Error getting release content: %s", err)
 	}

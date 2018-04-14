@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	ctx "golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -31,19 +29,18 @@ import (
 )
 
 // InstallRelease installs a release and stores the release record.
-func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+func (s *ReleaseServer) InstallRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
 	s.Log("preparing install for %s", req.Name)
 	rel, err := s.prepareRelease(req)
 	if err != nil {
 		s.Log("failed install prepare step: %s", err)
-		res := &services.InstallReleaseResponse{Release: rel}
 
 		// On dry run, append the manifest contents to a failed release. This is
 		// a stop-gap until we can revisit an error backchannel post-2.0.
 		if req.DryRun && strings.HasPrefix(err.Error(), "YAML parse error") {
 			err = fmt.Errorf("%s\n%s", err, rel.Manifest)
 		}
-		return res, err
+		return rel, err
 	}
 
 	s.Log("performing install for %s", req.Name)
@@ -132,19 +129,18 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 }
 
 // performRelease runs a release.
-func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
-	res := &services.InstallReleaseResponse{Release: r}
+func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*release.Release, error) {
 
 	if req.DryRun {
 		s.Log("dry run for %s", r.Name)
-		res.Release.Info.Description = "Dry run complete"
-		return res, nil
+		r.Info.Description = "Dry run complete"
+		return r, nil
 	}
 
 	// pre-install hooks
 	if !req.DisableHooks {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout); err != nil {
-			return res, err
+			return r, err
 		}
 	} else {
 		s.Log("install hooks disabled for %s", req.Name)
@@ -181,7 +177,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Description = msg
 			s.recordRelease(old, true)
 			s.recordRelease(r, true)
-			return res, err
+			return r, err
 		}
 
 	default:
@@ -194,7 +190,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, true)
-			return res, fmt.Errorf("release %s failed: %s", r.Name, err)
+			return r, fmt.Errorf("release %s failed: %s", r.Name, err)
 		}
 	}
 
@@ -206,7 +202,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, true)
-			return res, err
+			return r, err
 		}
 	}
 
@@ -221,5 +217,5 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	// this stored in the future.
 	s.recordRelease(r, true)
 
-	return res, nil
+	return r, nil
 }

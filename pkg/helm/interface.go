@@ -25,14 +25,14 @@ import (
 // Interface for helm client for mocking in tests
 type Interface interface {
 	ListReleases(opts ...ReleaseListOption) ([]*release.Release, error)
-	InstallRelease(chStr, namespace string, opts ...InstallOption) (*rls.InstallReleaseResponse, error)
-	InstallReleaseFromChart(chart *chart.Chart, namespace string, opts ...InstallOption) (*rls.InstallReleaseResponse, error)
+	InstallRelease(chStr, namespace string, opts ...InstallOption) (*release.Release, error)
+	InstallReleaseFromChart(chart *chart.Chart, namespace string, opts ...InstallOption) (*release.Release, error)
 	DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error)
-	ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error)
-	UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)
-	UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error)
-	RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error)
+	ReleaseStatus(rlsName string, version int32) (*rls.GetReleaseStatusResponse, error)
+	UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*release.Release, error)
+	UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*release.Release, error)
+	RollbackRelease(rlsName string, opts ...RollbackOption) (*release.Release, error)
 	ReleaseContent(rlsName string, version int32) (*release.Release, error)
-	ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error)
+	ReleaseHistory(rlsName string, max int32) ([]*release.Release, error)
 	RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error)
 }

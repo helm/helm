@@ -53,13 +53,13 @@ func (c *FakeClient) ListReleases(opts ...ReleaseListOption) ([]*release.Release
 }
 
 // InstallRelease creates a new release and returns a InstallReleaseResponse containing that release
-func (c *FakeClient) InstallRelease(chStr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+func (c *FakeClient) InstallRelease(chStr, ns string, opts ...InstallOption) (*release.Release, error) {
 	chart := &chart.Chart{}
 	return c.InstallReleaseFromChart(chart, ns, opts...)
 }
 
 // InstallReleaseFromChart adds a new MockRelease to the fake client and returns a InstallReleaseResponse containing that release
-func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*release.Release, error) {
 	for _, opt := range opts {
 		opt(&c.Opts)
 	}
@@ -67,17 +67,14 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	releaseName := c.Opts.instReq.Name
 
 	// Check to see if the release already exists.
-	rel, err := c.ReleaseStatus(releaseName, nil)
+	rel, err := c.ReleaseStatus(releaseName, 0)
 	if err == nil && rel != nil {
 		return nil, errors.New("cannot re-use a name that is still in use")
 	}
 
 	release := ReleaseMock(&MockReleaseOptions{Name: releaseName, Namespace: ns})
 	c.Rels = append(c.Rels, release)
-
-	return &rls.InstallReleaseResponse{
-		Release: release,
-	}, nil
+	return release, nil
 }
 
 // DeleteRelease deletes a release from the FakeClient
@@ -95,28 +92,23 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.U
 }
 
 // UpdateRelease returns an UpdateReleaseResponse containing the updated release, if it exists
-func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*release.Release, error) {
 	return c.UpdateReleaseFromChart(rlsName, &chart.Chart{}, opts...)
 }
 
 // UpdateReleaseFromChart returns an UpdateReleaseResponse containing the updated release, if it exists
-func (c *FakeClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+func (c *FakeClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*release.Release, error) {
 	// Check to see if the release already exists.
-	rel, err := c.ReleaseContent(rlsName, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	return &rls.UpdateReleaseResponse{Release: rel}, nil
+	return c.ReleaseContent(rlsName, 0)
 }
 
 // RollbackRelease returns nil, nil
-func (c *FakeClient) RollbackRelease(rlsName string, opts ...RollbackOption) (*rls.RollbackReleaseResponse, error) {
+func (c *FakeClient) RollbackRelease(rlsName string, opts ...RollbackOption) (*release.Release, error) {
 	return nil, nil
 }
 
 // ReleaseStatus returns a release status response with info from the matching release name.
-func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.GetReleaseStatusResponse, error) {
+func (c *FakeClient) ReleaseStatus(rlsName string, version int32) (*rls.GetReleaseStatusResponse, error) {
 	for _, rel := range c.Rels {
 		if rel.Name == rlsName {
 			return &rls.GetReleaseStatusResponse{
@@ -140,8 +132,8 @@ func (c *FakeClient) ReleaseContent(rlsName string, version int32) (*release.Rel
 }
 
 // ReleaseHistory returns a release's revision history.
-func (c *FakeClient) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error) {
-	return &rls.GetHistoryResponse{Releases: c.Rels}, nil
+func (c *FakeClient) ReleaseHistory(rlsName string, max int32) ([]*release.Release, error) {
+	return c.Rels, nil
 }
 
 // RunReleaseTest executes a pre-defined tests on a release

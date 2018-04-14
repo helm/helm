@@ -34,7 +34,6 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 	}
 	type args struct {
 		rlsName string
-		opts    []StatusOption
 	}
 	tests := []struct {
 		name    string
@@ -52,7 +51,6 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			},
 			args: args{
 				rlsName: releasePresent.Name,
-				opts:    nil,
 			},
 			want: &rls.GetReleaseStatusResponse{
 				Name:      releasePresent.Name,
@@ -71,7 +69,6 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			},
 			args: args{
 				rlsName: releaseNotPresent.Name,
-				opts:    nil,
 			},
 			want:    nil,
 			wantErr: true,
@@ -87,7 +84,6 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			},
 			args: args{
 				rlsName: releasePresent.Name,
-				opts:    nil,
 			},
 			want: &rls.GetReleaseStatusResponse{
 				Name:      releasePresent.Name,
@@ -104,7 +100,7 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			c := &FakeClient{
 				Rels: tt.fields.Rels,
 			}
-			got, err := c.ReleaseStatus(tt.args.rlsName, tt.args.opts...)
+			got, err := c.ReleaseStatus(tt.args.rlsName, 0)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FakeClient.ReleaseStatus() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -129,7 +125,7 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 		name      string
 		fields    fields
 		args      args
-		want      *rls.InstallReleaseResponse
+		want      *release.Release
 		relsAfter []*release.Release
 		wantErr   bool
 	}{
@@ -142,9 +138,7 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 				ns:   "default",
 				opts: []InstallOption{ReleaseName("new-release")},
 			},
-			want: &rls.InstallReleaseResponse{
-				Release: ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
-			},
+			want: ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
 			relsAfter: []*release.Release{
 				ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
 			},

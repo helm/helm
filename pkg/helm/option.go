@@ -17,16 +17,13 @@ limitations under the License.
 package helm
 
 import (
-	"time"
-
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc/metadata"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	cpb "k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
-	"k8s.io/helm/pkg/version"
+	"k8s.io/helm/pkg/storage/driver"
 )
 
 // Option allows specifying various settings configurable by
@@ -63,7 +60,7 @@ type options struct {
 	// release rollback options are applied directly to the rollback release request
 	rollbackReq rls.RollbackReleaseRequest
 	// before intercepts client calls before sending
-	before func(context.Context, proto.Message) error
+	before func(proto.Message) error
 	// release history options are applied directly to the get release history request
 	histReq rls.GetHistoryRequest
 	// resetValues instructs Tiller to reset values to their defaults.
@@ -72,21 +69,22 @@ type options struct {
 	reuseValues bool
 	// release test options are applied directly to the test release history request
 	testReq rls.TestReleaseRequest
-	// connectTimeout specifies the time duration Helm will wait to establish a connection to tiller
-	connectTimeout time.Duration
+
+	driver    driver.Driver
+	clientset internalclientset.Interface
 }
 
-// Host specifies the host address of the Tiller release server, (default = ":44134").
-func Host(host string) Option {
-	return func(opts *options) {
-		opts.host = host
+func (opts *options) runBefore(msg proto.Message) error {
+	if opts.before != nil {
+		return opts.before(msg)
 	}
+	return nil
 }
 
 // BeforeCall returns an option that allows intercepting a helm client rpc
 // before being sent OTA to tiller. The intercepting function should return
 // an error to indicate that the call should not proceed or nil otherwise.
-func BeforeCall(fn func(context.Context, proto.Message) error) Option {
+func BeforeCall(fn func(proto.Message) error) Option {
 	return func(opts *options) {
 		opts.before = fn
 	}
@@ -165,13 +163,6 @@ func ValueOverrides(raw []byte) InstallOption {
 func ReleaseName(name string) InstallOption {
 	return func(opts *options) {
 		opts.instReq.Name = name
-	}
-}
-
-// ConnectTimeout specifies the duration (in seconds) Helm will wait to establish a connection to tiller
-func ConnectTimeout(timeout int64) Option {
-	return func(opts *options) {
-		opts.connectTimeout = time.Duration(timeout) * time.Second
 	}
 }
 
@@ -365,36 +356,9 @@ func UpgradeForce(force bool) UpdateOption {
 	}
 }
 
-// ContentOption allows setting optional attributes when
-// performing a GetReleaseContent tiller rpc.
-type ContentOption func(*options)
-
-// ContentReleaseVersion will instruct Tiller to retrieve the content
-// of a particular version of a release.
-func ContentReleaseVersion(version int32) ContentOption {
-	return func(opts *options) {
-		opts.contentReq.Version = version
-	}
-}
-
-// StatusOption allows setting optional attributes when
-// performing a GetReleaseStatus tiller rpc.
-type StatusOption func(*options)
-
-// StatusReleaseVersion will instruct Tiller to retrieve the status
-// of a particular version of a release.
-func StatusReleaseVersion(version int32) StatusOption {
-	return func(opts *options) {
-		opts.statusReq.Version = version
-	}
-}
-
 // DeleteOption allows setting optional attributes when
 // performing a UninstallRelease tiller rpc.
 type DeleteOption func(*options)
-
-// VersionOption -- TODO
-type VersionOption func(*options)
 
 // UpdateOption allows specifying various settings
 // configurable by the helm client user for overriding
@@ -406,24 +370,18 @@ type UpdateOption func(*options)
 // running the `helm rollback` command.
 type RollbackOption func(*options)
 
-// HistoryOption allows configuring optional request data for
-// issuing a GetHistory rpc.
-type HistoryOption func(*options)
-
-// WithMaxHistory sets the max number of releases to return
-// in a release history query.
-func WithMaxHistory(max int32) HistoryOption {
-	return func(opts *options) {
-		opts.histReq.Max = max
-	}
-}
-
-// NewContext creates a versioned context.
-func NewContext() context.Context {
-	md := metadata.Pairs("x-helm-api-client", version.GetVersion())
-	return metadata.NewOutgoingContext(context.TODO(), md)
-}
-
 // ReleaseTestOption allows configuring optional request data for
 // issuing a TestRelease rpc.
 type ReleaseTestOption func(*options)
+
+func Driver(d driver.Driver) Option {
+	return func(opts *options) {
+		opts.driver = d
+	}
+}
+
+func ClientSet(cs internalclientset.Interface) Option {
+	return func(opts *options) {
+		opts.clientset = cs
+	}
+}

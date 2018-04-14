@@ -54,10 +54,9 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "rollback [flags] [RELEASE] [REVISION]",
-		Short:   "roll back a release to a previous revision",
-		Long:    rollbackDesc,
-		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
+		Use:   "rollback [flags] [RELEASE] [REVISION]",
+		Short: "roll back a release to a previous revision",
+		Long:  rollbackDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "revision number"); err != nil {
 				return err
@@ -98,7 +97,7 @@ func (r *rollbackCmd) run() error {
 		helm.RollbackTimeout(r.timeout),
 		helm.RollbackWait(r.wait))
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 
 	fmt.Fprintf(r.out, "Rollback was a success! Happy Helming!\n")

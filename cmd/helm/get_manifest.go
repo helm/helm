@@ -46,10 +46,9 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		client: client,
 	}
 	cmd := &cobra.Command{
-		Use:     "manifest [flags] RELEASE_NAME",
-		Short:   "download the manifest for a named release",
-		Long:    getManifestHelp,
-		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
+		Use:   "manifest [flags] RELEASE_NAME",
+		Short: "download the manifest for a named release",
+		Long:  getManifestHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired
@@ -68,7 +67,7 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 func (g *getManifestCmd) run() error {
 	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 	fmt.Fprintln(g.out, res.Manifest)
 	return nil

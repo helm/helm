@@ -20,8 +20,6 @@ import (
 	"reflect"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	rpb "k8s.io/helm/pkg/proto/hapi/release"
 	tpb "k8s.io/helm/pkg/proto/hapi/services"
 )
@@ -39,25 +37,25 @@ func TestGetHistory_WithRevisions(t *testing.T) {
 	tests := []struct {
 		desc string
 		req  *tpb.GetHistoryRequest
-		res  *tpb.GetHistoryResponse
+		res  []*rpb.Release
 	}{
 		{
 			desc: "get release with history and default limit (max=256)",
 			req:  &tpb.GetHistoryRequest{Name: "angry-bird", Max: 256},
-			res: &tpb.GetHistoryResponse{Releases: []*rpb.Release{
+			res: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 2, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 1, rpb.Status_SUPERSEDED),
-			}},
+			},
 		},
 		{
 			desc: "get release with history using result limit (max=2)",
 			req:  &tpb.GetHistoryRequest{Name: "angry-bird", Max: 2},
-			res: &tpb.GetHistoryResponse{Releases: []*rpb.Release{
+			res: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
-			}},
+			},
 		},
 	}
 
@@ -78,7 +76,7 @@ func TestGetHistory_WithRevisions(t *testing.T) {
 
 	// run tests
 	for _, tt := range tests {
-		res, err := srv.GetHistory(context.TODO(), tt.req)
+		res, err := srv.GetHistory(tt.req)
 		if err != nil {
 			t.Fatalf("%s:\nFailed to get History of %q: %s", tt.desc, tt.req.Name, err)
 		}
@@ -105,12 +103,12 @@ func TestGetHistory_WithNoRevisions(t *testing.T) {
 	srv.env.Releases.Create(rls)
 
 	for _, tt := range tests {
-		res, err := srv.GetHistory(context.TODO(), tt.req)
+		res, err := srv.GetHistory(tt.req)
 		if err != nil {
 			t.Fatalf("%s:\nFailed to get History of %q: %s", tt.desc, tt.req.Name, err)
 		}
-		if len(res.Releases) > 1 {
-			t.Fatalf("%s:\nExpected zero items, got %d", tt.desc, len(res.Releases))
+		if len(res) > 1 {
+			t.Fatalf("%s:\nExpected zero items, got %d", tt.desc, len(res))
 		}
 	}
 }

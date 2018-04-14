@@ -21,14 +21,15 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
-	"k8s.io/helm/pkg/plugin/cache"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.

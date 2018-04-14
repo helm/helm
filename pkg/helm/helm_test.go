@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/net/context"
 
 	"k8s.io/helm/pkg/chartutil"
 	cpb "k8s.io/helm/pkg/proto/hapi/chart"
@@ -76,7 +75,7 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client ListReleasesRequest
-	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
+	b4c := BeforeCall(func(msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.ListReleasesRequest:
 			t.Logf("ListReleasesRequest: %#+v\n", act)
@@ -130,7 +129,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client InstallReleaseRequest
-	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
+	b4c := BeforeCall(func(msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.InstallReleaseRequest:
 			t.Logf("InstallReleaseRequest: %#+v\n", act)
@@ -171,7 +170,7 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client DeleteReleaseRequest
-	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
+	b4c := BeforeCall(func(msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.UninstallReleaseRequest:
 			t.Logf("UninstallReleaseRequest: %#+v\n", act)
@@ -218,7 +217,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client UpdateReleaseRequest
-	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
+	b4c := BeforeCall(func(msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.UpdateReleaseRequest:
 			t.Logf("UpdateReleaseRequest: %#+v\n", act)
@@ -262,7 +261,7 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client RollbackReleaseRequest
-	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
+	b4c := BeforeCall(func(msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.RollbackReleaseRequest:
 			t.Logf("RollbackReleaseRequest: %#+v\n", act)
@@ -295,7 +294,7 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client GetReleaseStatusRequest
-	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
+	b4c := BeforeCall(func(msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.GetReleaseStatusRequest:
 			t.Logf("GetReleaseStatusRequest: %#+v\n", act)
@@ -307,7 +306,7 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 	})
 
 	client := NewClient(b4c)
-	if _, err := client.ReleaseStatus(releaseName, StatusReleaseVersion(revision)); err != errSkip {
+	if _, err := client.ReleaseStatus(releaseName, revision); err != errSkip {
 		t.Fatalf("did not expect error but got (%v)\n``", err)
 	}
 
@@ -329,7 +328,7 @@ func TestReleaseContent_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client GetReleaseContentRequest
-	b4c := BeforeCall(func(_ context.Context, msg proto.Message) error {
+	b4c := BeforeCall(func(msg proto.Message) error {
 		switch act := msg.(type) {
 		case *tpb.GetReleaseContentRequest:
 			t.Logf("GetReleaseContentRequest: %#+v\n", act)

@@ -60,10 +60,9 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "status [flags] RELEASE_NAME",
-		Short:   "displays the status of the named release",
-		Long:    statusHelp,
-		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
+		Use:   "status [flags] RELEASE_NAME",
+		Short: "displays the status of the named release",
+		Long:  statusHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errReleaseRequired
@@ -83,9 +82,9 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release, helm.StatusReleaseVersion(s.version))
+	res, err := s.client.ReleaseStatus(s.release, s.version)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
 
 	switch s.outfmt {

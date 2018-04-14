@@ -74,7 +74,6 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 		Long:    historyHelp,
 		Short:   "fetch release history",
 		Aliases: []string{"hist"},
-		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch {
 			case len(args) == 0:
@@ -96,15 +95,15 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 }
 
 func (cmd *historyCmd) run() error {
-	r, err := cmd.helmc.ReleaseHistory(cmd.rls, helm.WithMaxHistory(cmd.max))
+	rels, err := cmd.helmc.ReleaseHistory(cmd.rls, cmd.max)
 	if err != nil {
-		return prettyError(err)
+		return err
 	}
-	if len(r.Releases) == 0 {
+	if len(rels) == 0 {
 		return nil
 	}
 
-	releaseHistory := getReleaseHistory(r.Releases)
+	releaseHistory := getReleaseHistory(rels)
 
 	var history []byte
 	var formattingError error
@@ -121,7 +120,7 @@ func (cmd *historyCmd) run() error {
 	}
 
 	if formattingError != nil {
-		return prettyError(formattingError)
+		return formattingError
 	}
 
 	fmt.Fprintln(cmd.out, string(history))

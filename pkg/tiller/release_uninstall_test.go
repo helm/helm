@@ -20,14 +20,11 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestUninstallRelease(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -35,7 +32,7 @@ func TestUninstallRelease(t *testing.T) {
 		Name: "angry-panda",
 	}
 
-	res, err := rs.UninstallRelease(c, req)
+	res, err := rs.UninstallRelease(req)
 	if err != nil {
 		t.Fatalf("Failed uninstall: %s", err)
 	}
@@ -62,7 +59,6 @@ func TestUninstallRelease(t *testing.T) {
 }
 
 func TestUninstallPurgeRelease(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -75,7 +71,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 		Purge: true,
 	}
 
-	res, err := rs.UninstallRelease(c, req)
+	res, err := rs.UninstallRelease(req)
 	if err != nil {
 		t.Fatalf("Failed uninstall: %s", err)
 	}
@@ -91,17 +87,16 @@ func TestUninstallPurgeRelease(t *testing.T) {
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
 	}
-	rels, err := rs.GetHistory(context.TODO(), &services.GetHistoryRequest{Name: "angry-panda"})
+	rels, err := rs.GetHistory(&services.GetHistoryRequest{Name: "angry-panda"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rels.Releases) != 0 {
-		t.Errorf("Expected no releases in storage, got %d", len(rels.Releases))
+	if len(rels) != 0 {
+		t.Errorf("Expected no releases in storage, got %d", len(rels))
 	}
 }
 
 func TestUninstallPurgeDeleteRelease(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -109,7 +104,7 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 		Name: "angry-panda",
 	}
 
-	_, err := rs.UninstallRelease(c, req)
+	_, err := rs.UninstallRelease(req)
 	if err != nil {
 		t.Fatalf("Failed uninstall: %s", err)
 	}
@@ -119,14 +114,13 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 		Purge: true,
 	}
 
-	_, err2 := rs.UninstallRelease(c, req2)
+	_, err2 := rs.UninstallRelease(req2)
 	if err2 != nil && err2.Error() != "'angry-panda' has no deployed releases" {
 		t.Errorf("Failed uninstall: %s", err2)
 	}
 }
 
 func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	name := "angry-bunny"
 	rs.env.Releases.Create(releaseWithKeepStub(name))
@@ -135,7 +129,7 @@ func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 		Name: name,
 	}
 
-	res, err := rs.UninstallRelease(c, req)
+	res, err := rs.UninstallRelease(req)
 	if err != nil {
 		t.Fatalf("Failed uninstall: %s", err)
 	}
@@ -158,7 +152,6 @@ func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 }
 
 func TestUninstallReleaseNoHooks(t *testing.T) {
-	c := context.TODO()
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -167,7 +160,7 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 		DisableHooks: true,
 	}
 
-	res, err := rs.UninstallRelease(c, req)
+	res, err := rs.UninstallRelease(req)
 	if err != nil {
 		t.Errorf("Failed uninstall: %s", err)
 	}

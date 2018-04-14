@@ -428,15 +428,13 @@ func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout 
 
 type mockRunReleaseTestServer struct{}
 
-func (rs mockRunReleaseTestServer) Send(m *services.TestReleaseResponse) error {
-	return nil
-}
-func (rs mockRunReleaseTestServer) SetHeader(m metadata.MD) error  { return nil }
-func (rs mockRunReleaseTestServer) SendHeader(m metadata.MD) error { return nil }
-func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)       {}
-func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error    { return nil }
-func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error    { return nil }
-func (rs mockRunReleaseTestServer) Context() context.Context       { return context.TODO() }
+func (rs mockRunReleaseTestServer) Send(m *services.TestReleaseResponse) error { return nil }
+func (rs mockRunReleaseTestServer) SetHeader(m metadata.MD) error              { return nil }
+func (rs mockRunReleaseTestServer) SendHeader(m metadata.MD) error             { return nil }
+func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)                   {}
+func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error                { return nil }
+func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error                { return nil }
+func (rs mockRunReleaseTestServer) Context() context.Context                   { return context.TODO() }
 
 type mockHooksManifest struct {
 	Metadata struct {
