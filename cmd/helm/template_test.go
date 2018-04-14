@@ -160,9 +160,8 @@ func TestTemplateCmd(t *testing.T) {
 					// had the error we were looking for, this test case is
 					// done
 					return
-				} else {
-					t.Fatalf("expected err: %q, got: %q", tt.expectError, err)
 				}
+				t.Fatalf("expected err: %q, got: %q", tt.expectError, err)
 			} else if err != nil {
 				t.Errorf("expected no error, got %v", err)
 			}
