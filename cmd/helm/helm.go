@@ -107,7 +107,7 @@ func newRootCmd(args []string) *cobra.Command {
 		newUpgradeCmd(nil, out),
 
 		newReleaseTestCmd(nil, out),
-		newVersionCmd(nil, out),
+		newVersionCmd(out),
 
 		newCompletionCmd(out),
 		newHomeCmd(out),

@@ -22,27 +22,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/helm"
 	pb "k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/version"
 )
 
 const versionDesc = `
-Show the client and server versions for Helm and tiller.
+Show the version for Helm.
 
-This will print a representation of the client and server versions of Helm and
-Tiller. The output will look something like this:
+This will print a representation the version of Helm.
+The output will look something like this:
 
 Client: &version.Version{SemVer:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"clean"}
-Server: &version.Version{SemVer:"v2.0.0", GitCommit:"b0c113dfb9f612a9add796549da66c0d294508a3", GitTreeState:"clean"}
 
 - SemVer is the semantic version of the release.
 - GitCommit is the SHA for the commit that this version was built from.
 - GitTreeState is "clean" if there are no local code changes when this binary was
   built, and "dirty" if the binary was built from locally modified code.
-
-To print just the client version, use '--client'. To print just the server version,
-use '--server'.
 `
 
 type versionCmd struct {
@@ -51,7 +46,7 @@ type versionCmd struct {
 	template string
 }
 
-func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
+func newVersionCmd(out io.Writer) *cobra.Command {
 	version := &versionCmd{out: out}
 
 	cmd := &cobra.Command{
