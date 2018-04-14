@@ -1,5 +1,5 @@
-hash: 6837936360d447b64aa7a09d3c89c18ac5540b009a57fc4d3227af299bf40268
-updated: 2018-04-03T08:17:14.801847688-07:00
+hash: 4023a1644d60060fbf2fdbbe5b73cbb4b957eb686ce925640d102db2d1858676
+updated: 2018-04-14T11:27:34.604716498-04:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -31,6 +31,8 @@ imports:
   version: 71acacd42f85e5e82f70a55327789582a5200a90
   subpackages:
   - md2man
+- name: github.com/cyphar/filepath-securejoin
+  version: 06bda8370f45268db985f7af15732444d94ed51c
 - name: github.com/davecgh/go-spew
   version: 782f4967f2dc4564575ca782fe2d04090b5faca8
   subpackages:
@@ -210,6 +212,8 @@ imports:
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
@@ -641,7 +645,7 @@ imports:
   - pkg/util/proto
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: a22f9fd34871d9dc9e5db2c02c713821d18ab2cd
+  version: baab3992147260d47cb59b9c485a24fdeff2e457
   subpackages:
   - pkg/api/events
   - pkg/api/legacyscheme
