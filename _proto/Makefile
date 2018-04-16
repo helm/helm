@@ -6,7 +6,6 @@ import_path = k8s.io/helm/pkg/proto/hapi
 
 dst 	= ../pkg/proto
 target  = go
-plugins = grpc
 
 chart_ias    = $(subst $(space),$(comma),$(addsuffix =$(import_path)/$(chart_pkg),$(addprefix M,$(chart_pbs))))
 chart_pbs    = $(sort $(wildcard hapi/chart/*.proto))
@@ -31,27 +30,23 @@ version_pkg    = version
 google_deps	 = Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,Mgoogle/protobuf/any.proto=github.com/golang/protobuf/ptypes/any
 
 .PHONY: all
-all: chart release services rudder version
+all: chart release services version
 
 .PHONY: chart
 chart:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias):$(dst) $(chart_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(google_deps),$(chart_ias):$(dst) $(chart_pbs)
 
 .PHONY: release
 release:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(version_ias):$(dst) $(release_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(google_deps),$(chart_ias),$(version_ias):$(dst) $(release_pbs)
 
 .PHONY: services
 services:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(version_ias),$(release_ias):$(dst) $(services_pbs)
-
-.PHONY: rudder
-rudder:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps),$(chart_ias),$(version_ias),$(release_ias):$(dst) $(rudder_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(google_deps),$(chart_ias),$(version_ias),$(release_ias):$(dst) $(services_pbs)
 
 .PHONY: version
 version:
-	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(plugins),$(google_deps):$(dst) $(version_pbs)
+	PATH=../bin:$(PATH) protoc --$(target)_out=plugins=$(google_deps):$(dst) $(version_pbs)
 
 .PHONY: clean
 clean:

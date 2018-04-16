@@ -153,10 +153,6 @@ func (u *upgradeCmd) run() error {
 	if u.install {
 		// If a release does not exist, install it. If another error occurs during
 		// the check, ignore the error and continue with the upgrade.
-		//
-		// The returned error is a grpc.rpcError that wraps the message from the original error.
-		// So we're stuck doing string matching against the wrapped error, which is nested somewhere
-		// inside of the grpc.rpcError message.
 		releaseHistory, err := u.client.ReleaseHistory(u.release, 1)
 
 		if err == nil {

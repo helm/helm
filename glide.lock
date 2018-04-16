@@ -1,5 +1,5 @@
-hash: 6837936360d447b64aa7a09d3c89c18ac5540b009a57fc4d3227af299bf40268
-updated: 2018-04-03T08:17:14.801847688-07:00
+hash: b78f3d1f316474c2afd90074058cb5b1b4eda432b7bc270e4b76141199387d37
+updated: 2018-04-16T23:16:59.971946077Z
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -161,8 +161,6 @@ imports:
   version: 787624de3eb7bd915c329cba748687a3b22666a6
   subpackages:
   - diskcache
-- name: github.com/grpc-ecosystem/go-grpc-prometheus
-  version: 0c1b191dbfe51efdabe3c14b9f6f3b96429e0722
 - name: github.com/hashicorp/golang-lru
   version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
   subpackages:
@@ -211,7 +209,7 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/prometheus/client_golang
-  version: c5b7fccd204277076155f10851dad72b76a49317
+  version: e7e903064f5e9eb5da98208bae10b475d4db0f8c
   subpackages:
   - prometheus
   - prometheus/promhttp
@@ -271,9 +269,7 @@ imports:
   - http2
   - http2/hpack
   - idna
-  - internal/timeseries
   - lex/httplex
-  - trace
 - name: golang.org/x/oauth2
   version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
   subpackages:
@@ -321,31 +317,6 @@ imports:
   - internal/remote_api
   - internal/urlfetch
   - urlfetch
-- name: google.golang.org/genproto
-  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
-  subpackages:
-  - googleapis/rpc/status
-- name: google.golang.org/grpc
-  version: 5ffe3083946d5603a0578721101dc8165b1d5b5f
-  subpackages:
-  - balancer
-  - codes
-  - connectivity
-  - credentials
-  - grpclb/grpc_lb_v1/messages
-  - grpclog
-  - health
-  - health/grpc_health_v1
-  - internal
-  - keepalive
-  - metadata
-  - naming
-  - peer
-  - resolver
-  - stats
-  - status
-  - tap
-  - transport
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/square/go-jose.v2
@@ -620,7 +591,6 @@ imports:
   - tools/clientcmd/api/v1
   - tools/metrics
   - tools/pager
-  - tools/portforward
   - tools/record
   - tools/reference
   - tools/remotecommand
@@ -641,7 +611,7 @@ imports:
   - pkg/util/proto
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: a22f9fd34871d9dc9e5db2c02c713821d18ab2cd
+  version: a7685bbc127ba77463c89e363c5cec0d94a5f485
   subpackages:
   - pkg/api/events
   - pkg/api/legacyscheme
@@ -763,7 +733,6 @@ imports:
   - pkg/client/clientset_generated/internalclientset/typed/settings/internalversion/fake
   - pkg/client/clientset_generated/internalclientset/typed/storage/internalversion
   - pkg/client/clientset_generated/internalclientset/typed/storage/internalversion/fake
-  - pkg/client/conditions
   - pkg/cloudprovider
   - pkg/controller
   - pkg/controller/daemon

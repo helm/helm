@@ -1,8 +1,5 @@
 package: k8s.io/helm
 import:
-- package: golang.org/x/net
-  subpackages:
-  - context
 - package: github.com/spf13/cobra
   version: f62e98d28ab7ad31d707ba837a966378465c7b57
 - package: github.com/spf13/pflag
@@ -24,8 +21,6 @@ import:
   - proto
   - ptypes/any
   - ptypes/timestamp
-- package: google.golang.org/grpc
-  version: 1.7.2
 - package: github.com/gosuri/uitable
 - package: github.com/asaskevich/govalidator
   version: ^4.0.0
@@ -43,9 +38,6 @@ import:
 - package: github.com/evanphx/json-patch
 - package: github.com/BurntSushi/toml
   version: ~0.3.0
-- package: github.com/prometheus/client_golang
-  version: 0.8.0
-- package: github.com/grpc-ecosystem/go-grpc-prometheus
 
 - package: k8s.io/kubernetes
   version: release-1.10
