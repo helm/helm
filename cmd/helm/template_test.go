@@ -27,10 +27,13 @@ import (
 	"testing"
 )
 
-var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+var (
+	subchart1ChartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+	frobnitzChartPath  = "./../../pkg/chartutil/testdata/frobnitz"
+)
 
 func TestTemplateCmd(t *testing.T) {
-	absChartPath, err := filepath.Abs(chartPath)
+	subchart1AbsChartPath, err := filepath.Abs(subchart1ChartPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,74 +43,95 @@ func TestTemplateCmd(t *testing.T) {
 		args        []string
 		expectKey   string
 		expectValue string
+		expectError string
 	}{
 		{
 			name:        "check_name",
 			desc:        "check for a known name in chart",
-			args:        []string{chartPath},
+			args:        []string{subchart1ChartPath},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: nginx",
 		},
 		{
 			name:        "check_set_name",
 			desc:        "verify --set values exist",
-			args:        []string{chartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
+			args:        []string{subchart1ChartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
 		},
 		{
 			name:        "check_execute",
 			desc:        "verify --execute single template",
-			args:        []string{chartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
+			args:        []string{subchart1ChartPath, "-x", "templates/service.yaml", "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
+		},
+		{
+			name:        "check_execute_non_existent",
+			desc:        "verify --execute fails on a template that doesnt exist",
+			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesntexist.yaml"},
+			expectError: "could not find template",
 		},
 		{
 			name:        "check_execute_absolute",
 			desc:        "verify --execute single template",
-			args:        []string{chartPath, "-x", absChartPath + "/" + "templates/service.yaml", "--set", "service.name=apache"},
+			args:        []string{subchart1ChartPath, "-x", subchart1AbsChartPath + "/" + "templates/service.yaml", "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
 		},
 		{
+			name:        "check_execute_subchart_template",
+			desc:        "verify --execute single template on a subchart template",
+			args:        []string{subchart1ChartPath, "-x", "charts/subcharta/templates/service.yaml", "--set", "subcharta.service.name=foobar"},
+			expectKey:   "subchart1/charts/subcharta/templates/service.yaml",
+			expectValue: "protocol: TCP\n    name: foobar",
+		},
+		{
+			name:        "check_execute_subchart_template_for_tgz_subchart",
+			desc:        "verify --execute single template on a subchart template where the subchart is a .tgz in the chart directory",
+			args:        []string{frobnitzChartPath, "-x", "charts/mariner/templates/placeholder.tpl", "--set", "mariner.name=moon"},
+			expectKey:   "frobnitz/charts/mariner/templates/placeholder.tpl",
+			expectValue: "Goodbye moon",
+		},
+		{
 			name:        "check_namespace",
 			desc:        "verify --namespace",
-			args:        []string{chartPath, "--namespace", "test"},
+			args:        []string{subchart1ChartPath, "--namespace", "test"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "namespace: \"test\"",
 		},
 		{
 			name:        "check_release_name",
 			desc:        "verify --release exists",
-			args:        []string{chartPath, "--name", "test"},
+			args:        []string{subchart1ChartPath, "--name", "test"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "release-name: \"test\"",
 		},
 		{
 			name:        "check_notes",
 			desc:        "verify --notes shows notes",
-			args:        []string{chartPath, "--notes", "true"},
+			args:        []string{subchart1ChartPath, "--notes", "true"},
 			expectKey:   "subchart1/templates/NOTES.txt",
 			expectValue: "Sample notes for subchart1",
 		},
 		{
 			name:        "check_values_files",
 			desc:        "verify --values files values exist",
-			args:        []string{chartPath, "--values", chartPath + "/charts/subchartA/values.yaml"},
+			args:        []string{subchart1ChartPath, "--values", subchart1ChartPath + "/charts/subchartA/values.yaml"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "name: apache",
 		},
 		{
 			name:        "check_name_template",
 			desc:        "verify --name-template result exists",
-			args:        []string{chartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
+			args:        []string{subchart1ChartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "release-name: \"foobar-YWJj-baz\"",
 		},
 		{
 			name:        "check_kube_version",
 			desc:        "verify --kube-version overrides the kubernetes version",
-			args:        []string{chartPath, "--kube-version", "1.6"},
+			args:        []string{subchart1ChartPath, "--kube-version", "1.6"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "kube-version/major: \"1\"\n    kube-version/minor: \"6\"\n    kube-version/gitversion: \"v1.6.0\"",
 		},
@@ -115,7 +139,8 @@ func TestTemplateCmd(t *testing.T) {
 
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		t.Run(tt.name, func(T *testing.T) {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
 			// capture stdout
 			old := os.Stdout
 			r, w, _ := os.Pipe()
@@ -125,8 +150,20 @@ func TestTemplateCmd(t *testing.T) {
 			cmd := newTemplateCmd(out)
 			cmd.SetArgs(tt.args)
 			err := cmd.Execute()
-			if err != nil {
-				t.Errorf("expected: %v, got %v", tt.expectValue, err)
+
+			if tt.expectError != "" {
+				if err == nil {
+					t.Errorf("expected err: %s, but no error occurred", tt.expectError)
+				}
+				// non nil error, check if it contains the expected error
+				if strings.Contains(err.Error(), tt.expectError) {
+					// had the error we were looking for, this test case is
+					// done
+					return
+				}
+				t.Fatalf("expected err: %q, got: %q", tt.expectError, err)
+			} else if err != nil {
+				t.Errorf("expected no error, got %v", err)
 			}
 			// restore stdout
 			w.Close()

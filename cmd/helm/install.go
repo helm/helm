@@ -313,11 +313,6 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 			dest[k] = v
 			continue
 		}
-		// If the key doesn't exist already, then just set the key to that value
-		if _, exists := dest[k]; !exists {
-			dest[k] = nextMap
-			continue
-		}
 		// Edge case: If the key exists in the destination, but isn't a map
 		destMap, isMap := dest[k].(map[string]interface{})
 		// If the source map has a map for this key, prefer it
@@ -463,7 +458,7 @@ func locateChartPath(repoURL, username, password, name, version string, verify b
 		return filename, err
 	}
 
-	return filename, fmt.Errorf("failed to download %q", name)
+	return filename, fmt.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
 }
 
 func generateName(nameTemplate string) (string, error) {

@@ -30,6 +30,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
+	// Import to initialize client auth plugins.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/portforwarder"
@@ -214,7 +216,7 @@ func prettyError(err error) error {
 	}
 	// If it's grpc's error, make it more user-friendly.
 	if s, ok := status.FromError(err); ok {
-		return s.Err()
+		return fmt.Errorf(s.Message())
 	}
 	// Else return the original error.
 	return err

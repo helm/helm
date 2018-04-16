@@ -224,7 +224,7 @@ I am trying to remove stuff.
 **Q: When I delete the Tiller deployment, how come all the releases are still there?**
 
 Releases are stored in ConfigMaps inside of the `kube-system` namespace. You will
-have to manually delete them to get rid of the record.
+have to manually delete them to get rid of the record, or use ```helm delete --purge```.
 
 **Q: I want to delete my local Helm. Where are all its files?**
 

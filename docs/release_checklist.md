@@ -197,7 +197,7 @@ From here on just repeat this process, continuously testing until you're happy w
 
 ## 6. Finalize the Release
 
-When you're finally happy with the quality of a release candidate, you can move on and create the real thing. Double-check one last time to make sure eveything is in order, then finally push the release tag.
+When you're finally happy with the quality of a release candidate, you can move on and create the real thing. Double-check one last time to make sure everything is in order, then finally push the release tag.
 
 ```shell
 git checkout $RELEASE_BRANCH_NAME

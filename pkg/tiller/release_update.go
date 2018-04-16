@@ -80,7 +80,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
-	// If new values were not supplied in the upgrade, re-use the existing values.
+	// determine if values will be reused
 	if err := s.reuseValues(req, currentRelease); err != nil {
 		return nil, nil, err
 	}

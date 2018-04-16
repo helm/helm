@@ -36,7 +36,7 @@ func ToYAML(s string) (string, error) {
 		return "", err
 	}
 	d, err := yaml.Marshal(m)
-	return string(d), err
+	return strings.TrimSuffix(string(d), "\n"), err
 }
 
 // Parse parses a set line.
@@ -50,7 +50,7 @@ func Parse(s string) (map[string]interface{}, error) {
 	return vals, err
 }
 
-// Parse parses a set line and forces a string value.
+// ParseString parses a set line and forces a string value.
 //
 // A set line is of the form name1=value1,name2=value2
 func ParseString(s string) (map[string]interface{}, error) {

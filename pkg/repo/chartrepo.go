@@ -196,9 +196,9 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 	return FindChartInAuthRepoURL(repoURL, "", "", chartName, chartVersion, certFile, keyFile, caFile, getters)
 }
 
-// FindChartInRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories.
-// Unlike the FindChartInRepoURL function, this function also receives credentials for the chart repository.
+// FindChartInAuthRepoURL finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials for the chart repository.
 func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
 
 	// Download and write the index file to a temporary location

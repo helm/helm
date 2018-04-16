@@ -40,7 +40,11 @@ Binary downloads of the Helm client can be found at the following links:
 - [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.2-windows-amd64.tar.gz)
 
 Unpack the `helm` binary and add it to your PATH and you are good to go!
-macOS/[homebrew](https://brew.sh/) users can also use `brew install kubernetes-helm`.
+
+If you want to use a package manager:
+
+- macOS/[homebrew](https://brew.sh/) users can use `brew install kubernetes-helm`.
+- Windows/[chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 

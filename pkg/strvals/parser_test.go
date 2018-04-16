@@ -365,7 +365,7 @@ func TestToYAML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expect := "name: value\n"
+	expect := "name: value"
 	if o != expect {
 		t.Errorf("Expected %q, got %q", expect, o)
 	}

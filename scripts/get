@@ -80,7 +80,7 @@ checkDesiredVersion() {
   if type "curl" > /dev/null; then
     TAG=$(curl -SsL $release_url | awk '/\/tag\//' | grep -v no-underline | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
   elif type "wget" > /dev/null; then
-    TAG=$(wget -q -O - $release_url | awk '/\/tag\//' | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+    TAG=$(wget -q -O - $release_url | awk '/\/tag\//' | grep -v no-underline | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
   fi
   if [ "x$TAG" == "x" ]; then
     echo "Cannot determine ${DESIRED_VERSION} tag."
@@ -184,7 +184,9 @@ help () {
 
 # cleanup temporary files to avoid https://github.com/kubernetes/helm/issues/2977
 cleanup() {
-  rm -rf "$HELM_TMP_ROOT"
+  if [[ -d "${HELM_TMP_ROOT:-}" ]]; then
+    rm -rf "$HELM_TMP_ROOT"
+  fi
 }
 
 # Execution

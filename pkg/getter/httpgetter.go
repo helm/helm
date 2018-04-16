@@ -23,17 +23,18 @@ import (
 	"strings"
 
 	"k8s.io/helm/pkg/tlsutil"
-	"k8s.io/helm/pkg/urlutil"
 	"k8s.io/helm/pkg/version"
 )
 
-//httpGetter is the efault HTTP(/S) backend handler
-type HttpGetter struct {
+//HttpGetter is the efault HTTP(/S) backend handler
+// TODO: change the name to HTTPGetter in Helm 3
+type HttpGetter struct { //nolint
 	client   *http.Client
 	username string
 	password string
 }
 
+//SetCredentials sets the credentials for the getter
 func (g *HttpGetter) SetCredentials(username, password string) {
 	g.username = username
 	g.password = password
@@ -80,19 +81,11 @@ func newHTTPGetter(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
 // NewHTTPGetter constructs a valid http/https client as HttpGetter
 func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HttpGetter, error) {
 	var client HttpGetter
-	if CertFile != "" && KeyFile != "" {
-		tlsConf, err := tlsutil.NewClientTLS(CertFile, KeyFile, CAFile)
+	if (CertFile != "" && KeyFile != "") || CAFile != "" {
+		tlsConf, err := tlsutil.NewTLSConfig(URL, CertFile, KeyFile, CAFile)
 		if err != nil {
-			return &client, fmt.Errorf("can't create TLS config for client: %s", err.Error())
+			return &client, fmt.Errorf("can't create TLS config: %s", err.Error())
 		}
-		tlsConf.BuildNameToCertificate()
-
-		sni, err := urlutil.ExtractHostname(URL)
-		if err != nil {
-			return &client, err
-		}
-		tlsConf.ServerName = sni
-
 		client.client = &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,

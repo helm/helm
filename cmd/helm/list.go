@@ -148,7 +148,7 @@ func (l *listCmd) run() error {
 		return prettyError(err)
 	}
 
-	if len(res.Releases) == 0 {
+	if len(res.GetReleases()) == 0 {
 		return nil
 	}
 
@@ -239,13 +239,17 @@ func formatList(rels []*release.Release, colWidth uint) string {
 	table.MaxColWidth = colWidth
 	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "NAMESPACE")
 	for _, r := range rels {
-		c := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
-		t := timeconv.String(r.Info.LastDeployed)
-		s := r.Info.Status.Code.String()
-		v := r.Version
-		a := r.Chart.Metadata.AppVersion
-		n := r.Namespace
-		table.AddRow(r.Name, v, t, s, c, a, n)
+		md := r.GetChart().GetMetadata()
+		c := fmt.Sprintf("%s-%s", md.GetName(), md.GetVersion())
+		t := "-"
+		if tspb := r.GetInfo().GetLastDeployed(); tspb != nil {
+			t = timeconv.String(tspb)
+		}
+		s := r.GetInfo().GetStatus().GetCode().String()
+		v := r.GetVersion()
+    a := md.GetAppVersion()
+		n := r.GetNamespace()
+		table.AddRow(r.GetName(), v, t, s, c, a, n)
 	}
 	return table.String()
 }
