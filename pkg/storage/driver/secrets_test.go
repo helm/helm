@@ -19,7 +19,8 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/kubernetes/pkg/apis/core"
+
+	"k8s.io/api/core/v1"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -69,7 +70,7 @@ func TestUNcompressedSecretGet(t *testing.T) {
 	}
 	secret.Data["release"] = []byte(base64.StdEncoding.EncodeToString(b))
 	var mock MockSecretsInterface
-	mock.objects = map[string]*core.Secret{key: secret}
+	mock.objects = map[string]*v1.Secret{key: secret}
 	secrets := NewSecrets(&mock)
 
 	// get release with key

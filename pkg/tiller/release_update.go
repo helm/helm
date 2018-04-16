@@ -102,7 +102,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		Revision:  int(revision),
 	}
 
-	caps, err := capabilities(s.clientset.Discovery())
+	caps, err := capabilities(s.discovery)
 	if err != nil {
 		return nil, nil, err
 	}

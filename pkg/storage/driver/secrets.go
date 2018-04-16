@@ -22,12 +22,12 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -40,13 +40,13 @@ const SecretsDriverName = "Secret"
 // Secrets is a wrapper around an implementation of a kubernetes
 // SecretsInterface.
 type Secrets struct {
-	impl internalversion.SecretInterface
+	impl corev1.SecretInterface
 	Log  func(string, ...interface{})
 }
 
 // NewSecrets initializes a new Secrets wrapping an implmenetation of
 // the kubernetes SecretsInterface.
-func NewSecrets(impl internalversion.SecretInterface) *Secrets {
+func NewSecrets(impl corev1.SecretInterface) *Secrets {
 	return &Secrets{
 		impl: impl,
 		Log:  func(_ string, _ ...interface{}) {},
@@ -228,7 +228,7 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 //    "OWNER"          - owner of the secret, currently "TILLER".
 //    "NAME"           - name of the release.
 //
-func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*core.Secret, error) {
+func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, error) {
 	const owner = "TILLER"
 
 	// encode the release
@@ -248,7 +248,7 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*core.Secret, 
 	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
 
 	// create and return secret object
-	return &core.Secret{
+	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   key,
 			Labels: lbs.toMap(),

@@ -57,7 +57,7 @@ func (c *Client) init() *Client {
 	// TODO
 	env.KubeClient = kube.New(nil)
 
-	c.tiller = tiller.NewReleaseServer(env, c.opts.clientset)
+	c.tiller = tiller.NewReleaseServer(env, c.opts.discovery)
 	return c
 }
 

@@ -29,7 +29,6 @@ import (
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
@@ -85,15 +84,15 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 // ReleaseServer implements the server-side gRPC endpoint for the HAPI services.
 type ReleaseServer struct {
 	env       *environment.Environment
-	clientset internalclientset.Interface
+	discovery discovery.DiscoveryInterface
 	Log       func(string, ...interface{})
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, discovery discovery.DiscoveryInterface) *ReleaseServer {
 	return &ReleaseServer{
 		env:       env,
-		clientset: clientset,
+		discovery: discovery,
 		Log:       func(_ string, _ ...interface{}) {},
 	}
 }
@@ -466,7 +465,7 @@ func (m *ReleaseServer) Status(r *release.Release, req *services.GetReleaseStatu
 
 // Delete deletes the release and returns manifests that were kept in the deletion process
 func (m *ReleaseServer) Delete(rel *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (kept string, errs []error) {
-	vs, err := GetVersionSet(m.clientset.Discovery())
+	vs, err := GetVersionSet(m.discovery)
 	if err != nil {
 		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}
 	}

@@ -169,15 +169,16 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 }
 
 func newClient() helm.Interface {
-	clientset, err := kube.New(nil).ClientSet()
+	_, clientset, err := getKubeClient(settings.KubeContext)
 	if err != nil {
 		// TODO return error
 		panic(err)
 	}
 	// TODO add other backends
 	cfgmaps := driver.NewConfigMaps(clientset.Core().ConfigMaps(settings.TillerNamespace))
+
 	return helm.NewClient(
 		helm.Driver(cfgmaps),
-		helm.ClientSet(clientset),
+		helm.Discovery(clientset.Discovery()),
 	)
 }

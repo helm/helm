@@ -18,7 +18,7 @@ package helm
 
 import (
 	"github.com/golang/protobuf/proto"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/discovery"
 
 	cpb "k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
@@ -71,7 +71,7 @@ type options struct {
 	testReq rls.TestReleaseRequest
 
 	driver    driver.Driver
-	clientset internalclientset.Interface
+	discovery discovery.DiscoveryInterface
 }
 
 func (opts *options) runBefore(msg proto.Message) error {
@@ -380,8 +380,8 @@ func Driver(d driver.Driver) Option {
 	}
 }
 
-func ClientSet(cs internalclientset.Interface) Option {
+func Discovery(dc discovery.DiscoveryInterface) Option {
 	return func(opts *options) {
-		opts.clientset = cs
+		opts.discovery = dc
 	}
 }

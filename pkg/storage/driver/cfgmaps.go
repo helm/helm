@@ -22,12 +22,12 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -40,13 +40,13 @@ const ConfigMapsDriverName = "ConfigMap"
 // ConfigMaps is a wrapper around an implementation of a kubernetes
 // ConfigMapsInterface.
 type ConfigMaps struct {
-	impl internalversion.ConfigMapInterface
+	impl corev1.ConfigMapInterface
 	Log  func(string, ...interface{})
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
 // the kubernetes ConfigMapsInterface.
-func NewConfigMaps(impl internalversion.ConfigMapInterface) *ConfigMaps {
+func NewConfigMaps(impl corev1.ConfigMapInterface) *ConfigMaps {
 	return &ConfigMaps{
 		impl: impl,
 		Log:  func(_ string, _ ...interface{}) {},
@@ -228,7 +228,7 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //    "OWNER"          - owner of the configmap, currently "TILLER".
 //    "NAME"           - name of the release.
 //
-func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*core.ConfigMap, error) {
+func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigMap, error) {
 	const owner = "TILLER"
 
 	// encode the release
@@ -248,7 +248,7 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*core.Confi
 	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
 
 	// create and return configmap object
-	return &core.ConfigMap{
+	return &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   key,
 			Labels: lbs.toMap(),

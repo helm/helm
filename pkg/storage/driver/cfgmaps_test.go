@@ -19,7 +19,8 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/kubernetes/pkg/apis/core"
+
+	"k8s.io/api/core/v1"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -69,7 +70,7 @@ func TestUNcompressedConfigMapGet(t *testing.T) {
 	}
 	cfgmap.Data["release"] = base64.StdEncoding.EncodeToString(b)
 	var mock MockConfigMapsInterface
-	mock.objects = map[string]*core.ConfigMap{key: cfgmap}
+	mock.objects = map[string]*v1.ConfigMap{key: cfgmap}
 	cfgmaps := NewConfigMaps(&mock)
 
 	// get release with key

@@ -62,7 +62,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		return nil, err
 	}
 
-	caps, err := capabilities(s.clientset.Discovery())
+	caps, err := capabilities(s.discovery)
 	if err != nil {
 		return nil, err
 	}

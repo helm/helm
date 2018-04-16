@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 const inspectDesc = `
@@ -256,8 +255,10 @@ func (i *inspectCmd) run() error {
 
 func findReadme(files []*any.Any) (file *any.Any) {
 	for _, file := range files {
-		if slice.ContainsString(readmeFileNames, strings.ToLower(file.TypeUrl), nil) {
-			return file
+		for _, n := range readmeFileNames {
+			if strings.EqualFold(file.TypeUrl, n) {
+				return file
+			}
 		}
 	}
 	return nil

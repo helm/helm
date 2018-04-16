@@ -30,8 +30,8 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
 	"k8s.io/helm/pkg/hooks"
@@ -93,10 +93,10 @@ data:
 `
 
 func rsFixture() *ReleaseServer {
-	clientset := fake.NewSimpleClientset()
+	dc := fake.NewSimpleClientset().Discovery()
 	return &ReleaseServer{
 		env:       MockEnvironment(),
-		clientset: clientset,
+		discovery: dc,
 		Log:       func(_ string, _ ...interface{}) {},
 	}
 }
@@ -309,7 +309,7 @@ func TestValidName(t *testing.T) {
 
 func TestGetVersionSet(t *testing.T) {
 	rs := rsFixture()
-	vs, err := GetVersionSet(rs.clientset.Discovery())
+	vs, err := GetVersionSet(rs.discovery)
 	if err != nil {
 		t.Error(err)
 	}
@@ -524,10 +524,10 @@ func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
 	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = kubeClient
 
-	clientset := fake.NewSimpleClientset()
+	dc := fake.NewSimpleClientset().Discovery()
 	return &ReleaseServer{
 		env:       e,
-		clientset: clientset,
+		discovery: dc,
 		Log:       func(_ string, _ ...interface{}) {},
 	}
 }
