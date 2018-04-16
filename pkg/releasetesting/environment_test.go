@@ -64,11 +64,6 @@ func TestDeleteTestPods(t *testing.T) {
 
 	mockTestEnv.DeleteTestPods(mockTestSuite.TestManifests)
 
-	stream := mockTestEnv.Stream.(*mockStream)
-	if len(stream.messages) != 0 {
-		t.Errorf("Expected 0 errors, got at least one: %v", stream.messages)
-	}
-
 	for _, testManifest := range mockTestSuite.TestManifests {
 		if _, err := mockTestEnv.KubeClient.Get(mockTestEnv.Namespace, bytes.NewBufferString(testManifest)); err == nil {
 			t.Error("Expected error, got nil")
@@ -76,62 +71,41 @@ func TestDeleteTestPods(t *testing.T) {
 	}
 }
 
-func TestDeleteTestPodsFailingDelete(t *testing.T) {
-	mockTestSuite := testSuiteFixture([]string{manifestWithTestSuccessHook})
-	mockTestEnv := newMockTestingEnvironment()
-	mockTestEnv.KubeClient = newDeleteFailingKubeClient()
-
-	mockTestEnv.DeleteTestPods(mockTestSuite.TestManifests)
-
-	stream := mockTestEnv.Stream.(*mockStream)
-	if len(stream.messages) != 1 {
-		t.Errorf("Expected 1 error, got: %v", len(stream.messages))
-	}
-}
-
 func TestStreamMessage(t *testing.T) {
-	mockTestEnv := newMockTestingEnvironment()
+	tEnv := mockTillerEnvironment()
+
+	ch := make(chan *services.TestReleaseResponse, 1)
+	defer close(ch)
+
+	mockTestEnv := &Environment{
+		Namespace:  "default",
+		KubeClient: tEnv.KubeClient,
+		Timeout:    1,
+		Mesages:    ch,
+	}
 
 	expectedMessage := "testing streamMessage"
 	expectedStatus := release.TestRun_SUCCESS
 	err := mockTestEnv.streamMessage(expectedMessage, expectedStatus)
 	if err != nil {
-		t.Errorf("Expected no errors, got 1: %s", err)
+		t.Errorf("Expected no errors, got: %s", err)
 	}
 
-	stream := mockTestEnv.Stream.(*mockStream)
-	if len(stream.messages) != 1 {
-		t.Errorf("Expected 1 message, got: %v", len(stream.messages))
+	got := <-mockTestEnv.Mesages
+	if got.Msg != expectedMessage {
+		t.Errorf("Expected message: %s, got: %s", expectedMessage, got.Msg)
 	}
-
-	if stream.messages[0].Msg != expectedMessage {
-		t.Errorf("Expected message: %s, got: %s", expectedMessage, stream.messages[0])
-	}
-	if stream.messages[0].Status != expectedStatus {
-		t.Errorf("Expected status: %v, got: %v", expectedStatus, stream.messages[0].Status)
+	if got.Status != expectedStatus {
+		t.Errorf("Expected status: %v, got: %v", expectedStatus, got.Status)
 	}
 }
 
-type MockTestingEnvironment struct {
-	*Environment
-}
-
-func newMockTestingEnvironment() *MockTestingEnvironment {
-	tEnv := mockTillerEnvironment()
-
-	return &MockTestingEnvironment{
-		Environment: &Environment{
-			Namespace:  "default",
-			KubeClient: tEnv.KubeClient,
-			Timeout:    5,
-			Stream:     &mockStream{},
-		},
+func newMockTestingEnvironment() *Environment {
+	return &Environment{
+		Namespace:  "default",
+		KubeClient: mockTillerEnvironment().KubeClient,
+		Timeout:    1,
 	}
-}
-
-func (mte MockTestingEnvironment) streamMessage(msg string, status release.TestRun_Status) error {
-	mte.Stream.Send(&services.TestReleaseResponse{Msg: msg, Status: status})
-	return nil
 }
 
 type getFailingKubeClient struct {
@@ -146,20 +120,6 @@ func newGetFailingKubeClient() *getFailingKubeClient {
 
 func (p *getFailingKubeClient) Get(ns string, r io.Reader) (string, error) {
 	return "", errors.New("in the end, they did not find Nemo")
-}
-
-type deleteFailingKubeClient struct {
-	tillerEnv.PrintingKubeClient
-}
-
-func newDeleteFailingKubeClient() *deleteFailingKubeClient {
-	return &deleteFailingKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
-	}
-}
-
-func (p *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
-	return errors.New("delete failed")
 }
 
 type createFailingKubeClient struct {

@@ -41,13 +41,13 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -686,7 +686,18 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
-		return conditions.PodCompleted(e)
+		switch e.Type {
+		case watch.Deleted:
+			return false, errors.NewNotFound(schema.GroupResource{Resource: "pods"}, "")
+		}
+		switch t := e.Object.(type) {
+		case *core.Pod:
+			switch t.Status.Phase {
+			case core.PodFailed, core.PodSucceeded:
+				return true, nil
+			}
+		}
+		return false, nil
 	})
 
 	return err

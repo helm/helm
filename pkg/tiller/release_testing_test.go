@@ -16,21 +16,14 @@ limitations under the License.
 
 package tiller
 
-import (
-	"testing"
+// func TestRunReleaseTest(t *testing.T) {
+// 	rs := rsFixture()
+// 	rel := namedReleaseStub("nemo", release.Status_DEPLOYED)
+// 	rs.env.Releases.Create(rel)
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
-)
-
-func TestRunReleaseTest(t *testing.T) {
-	rs := rsFixture()
-	rel := namedReleaseStub("nemo", release.Status_DEPLOYED)
-	rs.env.Releases.Create(rel)
-
-	req := &services.TestReleaseRequest{Name: "nemo", Timeout: 2}
-	err := rs.RunReleaseTest(req, mockRunReleaseTestServer{})
-	if err != nil {
-		t.Fatalf("failed to run release tests on %s: %s", rel.Name, err)
-	}
-}
+// 	req := &services.TestReleaseRequest{Name: "nemo", Timeout: 2}
+// 	err := rs.RunReleaseTest(req, mockRunReleaseTestServer{})
+// 	if err != nil {
+// 		t.Fatalf("failed to run release tests on %s: %s", rel.Name, err)
+// 	}
+// }

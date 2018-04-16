@@ -17,13 +17,6 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
-	"io"
-	"time"
-
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -260,64 +253,5 @@ func (c *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-ch
 	req := &reqOpts.testReq
 	req.Name = rlsName
 
-	return c.test(req)
-}
-
-// connect returns a gRPC connection to Tiller or error. The gRPC dial options
-// are constructed here.
-func (c *Client) connect() (conn *grpc.ClientConn, err error) {
-	opts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			// Send keepalive every 30 seconds to prevent the connection from
-			// getting closed by upstreams
-			Time: time.Duration(30) * time.Second,
-		}),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)),
-	}
-	opts = append(opts, grpc.WithInsecure())
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	defer cancel()
-	if conn, err = grpc.DialContext(ctx, c.opts.host, opts...); err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
-
-// Executes tiller.TestRelease RPC.
-func (c *Client) test(req *rls.TestReleaseRequest) (<-chan *rls.TestReleaseResponse, <-chan error) {
-	errc := make(chan error, 1)
-	conn, err := c.connect()
-	if err != nil {
-		errc <- err
-		return nil, errc
-	}
-
-	ch := make(chan *rls.TestReleaseResponse, 1)
-	go func() {
-		defer close(errc)
-		defer close(ch)
-		defer conn.Close()
-
-		rlc := rls.NewReleaseServiceClient(conn)
-		s, err := rlc.RunReleaseTest(context.TODO(), req)
-		if err != nil {
-			errc <- err
-			return
-		}
-
-		for {
-			msg, err := s.Recv()
-			if err == io.EOF {
-				return
-			}
-			if err != nil {
-				errc <- err
-				return
-			}
-			ch <- msg
-		}
-	}()
-
-	return ch, errc
+	return c.tiller.RunReleaseTest(req)
 }

@@ -23,46 +23,54 @@ import (
 )
 
 // RunReleaseTest runs pre-defined tests stored as hooks on a given release
-func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
-
+func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest) (<-chan *services.TestReleaseResponse, <-chan error) {
+	errc := make(chan error, 1)
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("releaseTest: Release name is invalid: %s", req.Name)
-		return err
+		errc <- err
+		return nil, errc
 	}
 
 	// finds the non-deleted release with the given name
 	rel, err := s.env.Releases.Last(req.Name)
 	if err != nil {
-		return err
+		errc <- err
+		return nil, errc
 	}
 
+	ch := make(chan *services.TestReleaseResponse, 1)
 	testEnv := &reltesting.Environment{
 		Namespace:  rel.Namespace,
 		KubeClient: s.env.KubeClient,
 		Timeout:    req.Timeout,
-		Stream:     stream,
+		Mesages:    ch,
 	}
 	s.Log("running tests for release %s", rel.Name)
 	tSuite := reltesting.NewTestSuite(rel)
 
-	if err := tSuite.Run(testEnv); err != nil {
-		s.Log("error running test suite for %s: %s", rel.Name, err)
-		return err
-	}
+	go func() {
+		defer close(errc)
+		defer close(ch)
 
-	rel.Info.Status.LastTestSuiteRun = &release.TestSuite{
-		StartedAt:   tSuite.StartedAt,
-		CompletedAt: tSuite.CompletedAt,
-		Results:     tSuite.Results,
-	}
+		if err := tSuite.Run(testEnv); err != nil {
+			s.Log("error running test suite for %s: %s", rel.Name, err)
+			errc <- err
+			return
+		}
 
-	if req.Cleanup {
-		testEnv.DeleteTestPods(tSuite.TestManifests)
-	}
+		rel.Info.Status.LastTestSuiteRun = &release.TestSuite{
+			StartedAt:   tSuite.StartedAt,
+			CompletedAt: tSuite.CompletedAt,
+			Results:     tSuite.Results,
+		}
 
-	if err := s.env.Releases.Update(rel); err != nil {
-		s.Log("test: Failed to store updated release: %s", err)
-	}
+		if req.Cleanup {
+			testEnv.DeleteTestPods(tSuite.TestManifests)
+		}
 
-	return nil
+		if err := s.env.Releases.Update(rel); err != nil {
+			s.Log("test: Failed to store updated release: %s", err)
+		}
+	}()
+	return ch, errc
 }

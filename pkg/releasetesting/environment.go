@@ -33,14 +33,13 @@ import (
 type Environment struct {
 	Namespace  string
 	KubeClient environment.KubeClient
-	Stream     services.ReleaseService_RunReleaseTestServer
+	Mesages    chan *services.TestReleaseResponse
 	Timeout    int64
 }
 
 func (env *Environment) createTestPod(test *test) error {
 	b := bytes.NewBufferString(test.manifest)
 	if err := env.KubeClient.Create(env.Namespace, b, env.Timeout, false); err != nil {
-		log.Printf(err.Error())
 		test.result.Info = err.Error()
 		test.result.Status = release.TestRun_FAILURE
 		return err
@@ -108,7 +107,8 @@ func (env *Environment) streamUnknown(name, info string) error {
 
 func (env *Environment) streamMessage(msg string, status release.TestRun_Status) error {
 	resp := &services.TestReleaseResponse{Msg: msg, Status: status}
-	return env.Stream.Send(resp)
+	env.Mesages <- resp
+	return nil
 }
 
 // DeleteTestPods deletes resources given in testManifests

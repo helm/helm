@@ -28,8 +28,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc/metadata"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -425,16 +423,6 @@ type hookFailingKubeClient struct {
 func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	return errors.New("Failed watch")
 }
-
-type mockRunReleaseTestServer struct{}
-
-func (rs mockRunReleaseTestServer) Send(m *services.TestReleaseResponse) error { return nil }
-func (rs mockRunReleaseTestServer) SetHeader(m metadata.MD) error              { return nil }
-func (rs mockRunReleaseTestServer) SendHeader(m metadata.MD) error             { return nil }
-func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)                   {}
-func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error                { return nil }
-func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error                { return nil }
-func (rs mockRunReleaseTestServer) Context() context.Context                   { return context.TODO() }
 
 type mockHooksManifest struct {
 	Metadata struct {

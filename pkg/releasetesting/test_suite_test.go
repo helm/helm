@@ -23,8 +23,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -76,18 +74,27 @@ func TestRun(t *testing.T) {
 
 	testManifests := []string{manifestWithTestSuccessHook, manifestWithTestFailureHook}
 	ts := testSuiteFixture(testManifests)
-	if err := ts.Run(testEnvFixture()); err != nil {
-		t.Errorf("%s", err)
+	ch := make(chan *services.TestReleaseResponse, 1)
+
+	env := testEnvFixture()
+	env.Mesages = ch
+
+	go func() {
+		defer close(ch)
+		if err := ts.Run(env); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	for range ch { // drain
 	}
 
 	if ts.StartedAt == nil {
 		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
 	}
-
 	if ts.CompletedAt == nil {
 		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
 	}
-
 	if len(ts.Results) != 2 {
 		t.Errorf("Expected 2 test result. Got %v", len(ts.Results))
 	}
@@ -96,75 +103,75 @@ func TestRun(t *testing.T) {
 	if result.StartedAt == nil {
 		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result.StartedAt)
 	}
-
 	if result.CompletedAt == nil {
 		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result.CompletedAt)
 	}
-
 	if result.Name != "finding-nemo" {
 		t.Errorf("Expected test name to be finding-nemo. Got: %v", result.Name)
 	}
-
 	if result.Status != release.TestRun_SUCCESS {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
 	}
-
 	result2 := ts.Results[1]
 	if result2.StartedAt == nil {
 		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result2.StartedAt)
 	}
-
 	if result2.CompletedAt == nil {
 		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result2.CompletedAt)
 	}
-
 	if result2.Name != "gold-rush" {
 		t.Errorf("Expected test name to be gold-rush, Got: %v", result2.Name)
 	}
-
 	if result2.Status != release.TestRun_FAILURE {
 		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
 	}
-
 }
 
 func TestRunEmptyTestSuite(t *testing.T) {
 	ts := testSuiteFixture([]string{})
-	mockTestEnv := testEnvFixture()
-	if err := ts.Run(mockTestEnv); err != nil {
-		t.Errorf("%s", err)
-	}
+	ch := make(chan *services.TestReleaseResponse, 1)
 
+	env := testEnvFixture()
+	env.Mesages = ch
+
+	go func() {
+		defer close(ch)
+		if err := ts.Run(env); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	msg := <-ch
+	if msg.Msg != "No Tests Found" {
+		t.Errorf("Expected message 'No Tests Found', Got: %v", msg.Msg)
+	}
 	if ts.StartedAt == nil {
 		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
 	}
-
 	if ts.CompletedAt == nil {
 		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
 	}
-
 	if len(ts.Results) != 0 {
 		t.Errorf("Expected 0 test result. Got %v", len(ts.Results))
 	}
-
-	stream := mockTestEnv.Stream.(*mockStream)
-	if len(stream.messages) == 0 {
-		t.Errorf("Expected at least one message, Got: %v", len(stream.messages))
-	} else {
-		msg := stream.messages[0].Msg
-		if msg != "No Tests Found" {
-			t.Errorf("Expected message 'No Tests Found', Got: %v", msg)
-		}
-	}
-
 }
 
 func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	ts := testSuiteFixture([]string{manifestWithTestFailureHook})
+	ch := make(chan *services.TestReleaseResponse, 1)
+
 	env := testEnvFixture()
 	env.KubeClient = newPodFailedKubeClient()
-	if err := ts.Run(env); err != nil {
-		t.Errorf("%s", err)
+	env.Mesages = ch
+
+	go func() {
+		defer close(ch)
+		if err := ts.Run(env); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	for range ch { // drain
 	}
 
 	if ts.StartedAt == nil {
@@ -273,7 +280,11 @@ func testSuiteFixture(testManifests []string) *TestSuite {
 }
 
 func testEnvFixture() *Environment {
-	return newMockTestingEnvironment().Environment
+	return &Environment{
+		Namespace:  "default",
+		KubeClient: mockTillerEnvironment().KubeClient,
+		Timeout:    1,
+	}
 }
 
 func mockTillerEnvironment() *tillerEnv.Environment {
@@ -282,22 +293,6 @@ func mockTillerEnvironment() *tillerEnv.Environment {
 	e.KubeClient = newPodSucceededKubeClient()
 	return e
 }
-
-type mockStream struct {
-	messages []*services.TestReleaseResponse
-}
-
-func (rs *mockStream) Send(m *services.TestReleaseResponse) error {
-	rs.messages = append(rs.messages, m)
-	return nil
-}
-
-func (rs mockStream) SetHeader(m metadata.MD) error  { return nil }
-func (rs mockStream) SendHeader(m metadata.MD) error { return nil }
-func (rs mockStream) SetTrailer(m metadata.MD)       {}
-func (rs mockStream) SendMsg(v interface{}) error    { return nil }
-func (rs mockStream) RecvMsg(v interface{}) error    { return nil }
-func (rs mockStream) Context() context.Context       { return context.TODO() }
 
 type podSucceededKubeClient struct {
 	tillerEnv.PrintingKubeClient

@@ -47,13 +47,9 @@ type test struct {
 // NewTestSuite takes a release object and returns a TestSuite object with test definitions
 //  extracted from the release
 func NewTestSuite(rel *release.Release) *TestSuite {
-	testManifests := extractTestManifestsFromHooks(rel.Hooks)
-
-	results := []*release.TestRun{}
-
 	return &TestSuite{
-		TestManifests: testManifests,
-		Results:       results,
+		TestManifests: extractTestManifestsFromHooks(rel.Hooks),
+		Results:       []*release.TestRun{},
 	}
 }
 
