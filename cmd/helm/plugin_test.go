@@ -33,7 +33,6 @@ func TestManuallyProcessArgs(t *testing.T) {
 	input := []string{
 		"--debug",
 		"--foo", "bar",
-		"--host", "example.com",
 		"--kube-context", "test1",
 		"--home=/tmp",
 		"--tiller-namespace=hello",
@@ -41,7 +40,7 @@ func TestManuallyProcessArgs(t *testing.T) {
 	}
 
 	expectKnown := []string{
-		"--debug", "--host", "example.com", "--kube-context", "test1", "--home=/tmp", "--tiller-namespace=hello",
+		"--debug", "--kube-context", "test1", "--home=/tmp", "--tiller-namespace=hello",
 	}
 
 	expectUnknown := []string{
@@ -177,7 +176,6 @@ func TestSetupEnv(t *testing.T) {
 		{"HELM_PATH_CACHE", settings.Home.Cache()},
 		{"HELM_PATH_LOCAL_REPOSITORY", settings.Home.LocalRepository()},
 		{"HELM_PATH_STARTER", settings.Home.Starters()},
-		{"TILLER_HOST", settings.TillerHost},
 		{"TILLER_NAMESPACE", settings.TillerNamespace},
 	} {
 		if got := os.Getenv(tt.name); got != tt.expect {

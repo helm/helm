@@ -47,7 +47,7 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 
 // runHook will execute a plugin hook.
 func runHook(p *plugin.Plugin, event string) error {
-	hook := p.Metadata.Hooks.Get(event)
+	hook := p.Metadata.Hooks[event]
 	if hook == "" {
 		return nil
 	}

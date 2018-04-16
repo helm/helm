@@ -332,8 +332,8 @@ in JSON format.
 By default, `tiller` stores release information in `ConfigMaps` in the namespace
 where it is running. As of Helm 2.7.0, there is now a beta storage backend that
 uses `Secrets` for storing release information. This was added for additional
-security in protecting charts in conjunction with the release of `Secret` 
-encryption in Kubernetes. 
+security in protecting charts in conjunction with the release of `Secret`
+encryption in Kubernetes.
 
 To enable the secrets backend, you'll need to init Tiller with the following
 options:

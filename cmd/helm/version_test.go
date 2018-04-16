@@ -44,7 +44,6 @@ func TestVersion(t *testing.T) {
 			expected: lver,
 		},
 	}
-	settings.TillerHost = "fake-localhost"
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newVersionCmd(out)
 	})

@@ -33,8 +33,6 @@ type Option func(*options)
 
 // options specify optional settings used by the helm client.
 type options struct {
-	// value of helm home override
-	host string
 	// if set dry-run helm client calls
 	dryRun bool
 	// if set, re-use an existing name

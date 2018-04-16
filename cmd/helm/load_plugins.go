@@ -97,14 +97,6 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			DisableFlagParsing: true,
 		}
 
-		if md.UseTunnel {
-			c.PreRunE = func(cmd *cobra.Command, args []string) error {
-				// Parse the parent flag, but not the local flags.
-				_, err := processParent(cmd, args)
-				return err
-			}
-		}
-
 		// TODO: Make sure a command with this name does not already exist.
 		baseCmd.AddCommand(c)
 	}
@@ -116,7 +108,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--host", "--kube-context", "--home", "--tiller-namespace"}
+	kvargs := []string{"--kube-context", "--home", "--tiller-namespace"}
 	knownArg := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
@@ -129,7 +121,7 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		switch a := args[i]; a {
 		case "--debug":
 			known = append(known, a)
-		case "--host", "--kube-context", "--home":
+		case "--kube-context", "--home":
 			known = append(known, a, args[i+1])
 			i++
 		default:

@@ -30,24 +30,7 @@ import (
 )
 
 const initDesc = `
-This command installs Tiller (the Helm server-side component) onto your
-Kubernetes Cluster and sets up local configuration in $HELM_HOME (default ~/.helm/).
-
-As with the rest of the Helm commands, 'helm init' discovers Kubernetes clusters
-by reading $KUBECONFIG (default '~/.kube/config') and using the default context.
-
-To set up just a local environment, use '--client-only'. That will configure
-$HELM_HOME, but not attempt to connect to a Kubernetes cluster and install the Tiller
-deployment.
-
-When installing Tiller, 'helm init' will attempt to install the latest released
-version. You can specify an alternative image with '--tiller-image'. For those
-frequently working on the latest code, the flag '--canary-image' will install
-the latest pre-release version of Tiller (e.g. the HEAD commit in the GitHub
-repository on the master branch).
-
-To dump a manifest containing the Tiller deployment YAML, combine the
-'--dry-run' and '--debug' flags.
+This command sets up local configuration in $HELM_HOME (default ~/.helm/).
 `
 
 const (

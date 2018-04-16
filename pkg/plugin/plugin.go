@@ -71,11 +71,6 @@ type Metadata struct {
 	// the `--debug` flag will be discarded.
 	IgnoreFlags bool `json:"ignoreFlags"`
 
-	// UseTunnel indicates that this command needs a tunnel.
-	// Setting this will cause a number of side effects, such as the
-	// automatic setting of HELM_HOST.
-	UseTunnel bool `json:"useTunnel"`
-
 	// Hooks are commands that will run on events.
 	Hooks Hooks
 
@@ -188,7 +183,6 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 		"HELM_PATH_LOCAL_REPOSITORY": settings.Home.LocalRepository(),
 		"HELM_PATH_STARTER":          settings.Home.Starters(),
 
-		"TILLER_HOST":      settings.TillerHost,
 		"TILLER_NAMESPACE": settings.TillerNamespace,
 	} {
 		os.Setenv(key, val)

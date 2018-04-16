@@ -35,8 +35,8 @@ func TestEnvSettings(t *testing.T) {
 		envars map[string]string
 
 		// expected values
-		home, host, ns, kcontext, plugins string
-		debug                             bool
+		home, ns, kcontext, plugins string
+		debug                       bool
 	}{
 		{
 			name:    "defaults",
@@ -47,30 +47,27 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:    "with flags set",
-			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
+			args:    []string{"--home", "/foo", "--debug", "--tiller-namespace=myns"},
 			home:    "/foo",
 			plugins: helmpath.Home("/foo").Plugins(),
-			host:    "here",
 			ns:      "myns",
 			debug:   true,
 		},
 		{
 			name:    "with envvars set",
 			args:    []string{},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns"},
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns"},
 			home:    "/bar",
 			plugins: helmpath.Home("/bar").Plugins(),
-			host:    "there",
 			ns:      "yourns",
 			debug:   true,
 		},
 		{
 			name:    "with flags and envvars set",
-			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
+			args:    []string{"--home", "/foo", "--debug", "--tiller-namespace=myns"},
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
 			home:    "/foo",
 			plugins: "glade",
-			host:    "here",
 			ns:      "myns",
 			debug:   true,
 		},
@@ -98,9 +95,6 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.PluginDirs() != tt.plugins {
 				t.Errorf("expected plugins %q, got %q", tt.plugins, settings.PluginDirs())
-			}
-			if settings.TillerHost != tt.host {
-				t.Errorf("expected host %q, got %q", tt.host, settings.TillerHost)
 			}
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)

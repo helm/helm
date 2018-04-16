@@ -28,6 +28,7 @@ import (
 
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/util/homedir"
+
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
@@ -36,10 +37,6 @@ var DefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	// TillerHost is the host and port of Tiller.
-	TillerHost string
-	// TillerConnectionTimeout is the duration (in seconds) helm will wait to establish a connection to tiller.
-	TillerConnectionTimeout int64
 	// TillerNamespace is the namespace in which Tiller runs.
 	TillerNamespace string
 	// Home is the local path to the Helm home directory.
@@ -53,11 +50,9 @@ type EnvSettings struct {
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
-	fs.StringVar(&s.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
-	fs.Int64Var(&s.TillerConnectionTimeout, "tiller-connection-timeout", int64(300), "the duration (in seconds) Helm will wait to establish a connection to tiller")
 }
 
 // Init sets values from the environment.
@@ -79,7 +74,6 @@ func (s EnvSettings) PluginDirs() string {
 var envMap = map[string]string{
 	"debug":            "HELM_DEBUG",
 	"home":             "HELM_HOME",
-	"host":             "HELM_HOST",
 	"tiller-namespace": "TILLER_NAMESPACE",
 }
 
@@ -97,6 +91,5 @@ const (
 	HomeEnvVar          = "HELM_HOME"
 	PluginEnvVar        = "HELM_PLUGIN"
 	PluginDisableEnvVar = "HELM_NO_PLUGINS"
-	HostEnvVar          = "HELM_HOST"
 	DebugEnvVar         = "HELM_DEBUG"
 )

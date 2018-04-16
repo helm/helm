@@ -70,7 +70,6 @@ usage: "Integrate Keybase.io tools with Helm"
 description: |-
   This plugin provides Keybase services to Helm.
 ignoreFlags: false
-useTunnel: false
 command: "$HELM_PLUGIN_DIR/keybase.sh"
 ```
 
@@ -91,12 +90,6 @@ Restrictions on `name`:
 The `ignoreFlags` switch tells Helm to _not_ pass flags to the plugin. So if a
 plugin is called with `helm myplugin --foo` and `ignoreFlags: true`, then `--foo`
 is silently discarded.
-
-The `useTunnel` switch indicates that the plugin needs a tunnel to Tiller. This
-should be set to `true` _anytime a plugin talks to Tiller_. It will cause Helm
-to open a tunnel, and then set `$TILLER_HOST` to the right local address for that
-tunnel. But don't worry: if Helm detects that a tunnel is not necessary because
-Tiller is running locally, it will not create the tunnel.
 
 Finally, and most importantly, `command` is the command that this plugin will
 execute when it is called. Environment variables are interpolated before the plugin
@@ -162,29 +155,6 @@ The following variables are guaranteed to be set:
 - `HELM_HOME`: The path to the Helm home.
 - `HELM_PATH_*`: Paths to important Helm files and directories are stored in
   environment variables prefixed by `HELM_PATH`.
-- `TILLER_HOST`: The `domain:port` to Tiller. If a tunnel is created, this
-  will point to the local endpoint for the tunnel. Otherwise, it will point
-  to `$HELM_HOST`, `--host`, or the default host (according to Helm's rules of
-  precedence).
-
-While `HELM_HOST` _may_ be set, there is no guarantee that it will point to the
-correct Tiller instance. This is done to allow plugin developer to access
-`HELM_HOST` in its raw state when the plugin itself needs to manually configure
-a connection.
-
-## A Note on `useTunnel`
-
-If a plugin specifies `useTunnel: true`, Helm will do the following (in order):
-
-1. Parse global flags and the environment
-2. Create the tunnel
-3. Set `TILLER_HOST`
-4. Execute the plugin
-5. Close the tunnel
-
-The tunnel is removed as soon as the `command` returns. So, for example, a
-command cannot background a process and assume that that process will be able
-to use the tunnel.
 
 ## A Note on Flag Parsing
 
@@ -193,9 +163,7 @@ these flags are _not_ passed on to the plugin.
 
 - `--debug`: If this is specified, `$HELM_DEBUG` is set to `1`
 - `--home`: This is converted to `$HELM_HOME`
-- `--host`: This is converted to `$HELM_HOST`
-- `--kube-context`: This is simply dropped. If your plugin uses `useTunnel`, this
-  is used to set up the tunnel for you.
+- `--kube-context`: This is simply dropped.
 
 Plugins _should_ display help text and then exit for `-h` and `--help`. In all
 other cases, plugins may use flags as appropriate.
