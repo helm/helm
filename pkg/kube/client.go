@@ -47,7 +47,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -686,13 +685,28 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
-		return conditions.PodCompleted(e)
+		return isPodComplete(e)
 	})
 
 	return err
 }
 
-//get an kubernetes resources's relation pods
+func isPodComplete(event watch.Event) (bool, error) {
+	o, ok := event.Object.(*core.Pod)
+	if !ok {
+		return true, fmt.Errorf("expected a *core.Pod, got %T", event.Object)
+	}
+	if event.Type == watch.Deleted {
+		return false, fmt.Errorf("pod not found")
+	}
+	switch o.Status.Phase {
+	case core.PodFailed, core.PodSucceeded:
+		return true, nil
+	}
+	return false, nil
+}
+
+//get a kubernetes resources' relation pods
 // kubernetes resource used select labels to relate pods
 func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {
 	if info == nil {
