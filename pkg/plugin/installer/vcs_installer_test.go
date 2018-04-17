@@ -133,9 +133,9 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 
 	if err := Install(i); err == nil {
-		t.Error("expected error for version does not exists, got none")
+		t.Error("expected error for version does not exist, got none")
 	} else if err.Error() != fmt.Sprintf("requested version %q does not exist for plugin %q", version, source) {
-		t.Errorf("expected error for version does not exists, got (%v)", err)
+		t.Errorf("expected error for version does not exist, got (%v)", err)
 	}
 }
 func TestVCSInstallerUpdate(t *testing.T) {
