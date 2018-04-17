@@ -82,6 +82,10 @@ func ParseIntoString(s string, dest map[string]interface{}) error {
 
 // parser is a simple parser that takes a strvals line and parses it into a
 // map representation.
+//
+// where sc is the source of the original data being parsed
+// where data is the final parsed data from the parses with correct types
+// where st is a boolean to figure out if we're forcing it to parse values as string
 type parser struct {
 	sc   *bytes.Buffer
 	data map[string]interface{}
@@ -327,6 +331,10 @@ func typedVal(v []rune, st bool) interface{} {
 
 	if strings.EqualFold(val, "false") {
 		return false
+	}
+
+	if strings.EqualFold(val, "null") {
+		return nil
 	}
 
 	// If this value does not start with zero, and not returnString, try parsing it to an int
