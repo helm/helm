@@ -82,6 +82,11 @@ func TestParseSet(t *testing.T) {
 		err    bool
 	}{
 		{
+			"name1=null,f=false,t=true",
+			map[string]interface{}{"name1": nil, "f": false, "t": true},
+			false,
+		},
+		{
 			"name1=value1",
 			map[string]interface{}{"name1": "value1"},
 			false,
