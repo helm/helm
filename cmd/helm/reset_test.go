@@ -123,7 +123,7 @@ func verifyResetCmd(t *testing.T, tc resetCase) {
 	}
 	_, err = os.Stat(home)
 	if !tc.removeHelmHome && err != nil {
-		t.Errorf("Helm home directory %s does not exists", home)
+		t.Errorf("Helm home directory %s does not exist", home)
 	}
 	if tc.removeHelmHome && err == nil {
 		t.Errorf("Helm home directory %s exists", home)
