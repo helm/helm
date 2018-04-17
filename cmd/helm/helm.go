@@ -22,8 +22,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -136,28 +134,6 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 	return nil
 }
 
-// configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
-func configForContext(context string) (*rest.Config, error) {
-	config, err := kube.GetConfig(context).ClientConfig()
-	if err != nil {
-		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
-	}
-	return config, nil
-}
-
-// getKubeClient creates a Kubernetes config and client for a given kubeconfig context.
-func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
-	config, err := configForContext(context)
-	if err != nil {
-		return nil, nil, err
-	}
-	client, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
-	}
-	return config, client, nil
-}
-
 // ensureHelmClient returns a new helm client impl. if h is not nil.
 func ensureHelmClient(h helm.Interface) helm.Interface {
 	if h != nil {
@@ -167,15 +143,18 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 }
 
 func newClient() helm.Interface {
-	_, clientset, err := getKubeClient(settings.KubeContext)
+	cfg := kube.GetConfig(settings.KubeContext)
+	kc := kube.New(cfg)
+	clientset, err := kc.KubernetesClientSet()
 	if err != nil {
 		// TODO return error
 		panic(err)
 	}
 	// TODO add other backends
-	cfgmaps := driver.NewConfigMaps(clientset.Core().ConfigMaps(settings.TillerNamespace))
+	cfgmaps := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(settings.TillerNamespace))
 
 	return helm.NewClient(
+		helm.KubeClient(kc),
 		helm.Driver(cfgmaps),
 		helm.Discovery(clientset.Discovery()),
 	)

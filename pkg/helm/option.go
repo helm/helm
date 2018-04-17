@@ -24,6 +24,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // Option allows specifying various settings configurable by
@@ -68,8 +69,9 @@ type options struct {
 	// release test options are applied directly to the test release history request
 	testReq rls.TestReleaseRequest
 
-	driver    driver.Driver
-	discovery discovery.DiscoveryInterface
+	driver     driver.Driver
+	kubeClient environment.KubeClient
+	discovery  discovery.DiscoveryInterface
 }
 
 func (opts *options) runBefore(msg proto.Message) error {
@@ -375,6 +377,12 @@ type ReleaseTestOption func(*options)
 func Driver(d driver.Driver) Option {
 	return func(opts *options) {
 		opts.driver = d
+	}
+}
+
+func KubeClient(kc environment.KubeClient) Option {
+	return func(opts *options) {
+		opts.kubeClient = kc
 	}
 }
 

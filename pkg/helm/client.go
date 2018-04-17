@@ -18,7 +18,6 @@ package helm // import "k8s.io/helm/pkg/helm"
 
 import (
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
@@ -42,9 +41,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() *Client {
 	env := environment.New()
 	env.Releases = storage.Init(c.opts.driver)
-
-	// TODO
-	env.KubeClient = kube.New(nil)
+	env.KubeClient = c.opts.kubeClient
 
 	c.tiller = tiller.NewReleaseServer(env, c.opts.discovery)
 	return c
