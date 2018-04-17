@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -169,7 +170,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			Timeout:  req.Timeout,
 		}
 		s.recordRelease(r, false)
-		if err := s.Update(old, r, updateReq, s.env); err != nil {
+		if err := s.Update(old, r, updateReq); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
@@ -184,7 +185,8 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// nothing to replace, create as normal
 		// regular manifests
 		s.recordRelease(r, false)
-		if err := s.Create(r, req, s.env); err != nil {
+		b := bytes.NewBufferString(r.Manifest)
+		if err := s.env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED

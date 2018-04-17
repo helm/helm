@@ -186,19 +186,14 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	}
 
 	// delete manifests from the old release
-	_, errs := s.Delete(oldRelease, nil, s.env)
+	_, errs := s.Delete(oldRelease, nil)
 
 	oldRelease.Info.Status.Code = release.Status_DELETED
 	oldRelease.Info.Description = "Deletion complete"
 	s.recordRelease(oldRelease, true)
 
 	if len(errs) > 0 {
-		es := make([]string, 0, len(errs))
-		for _, e := range errs {
-			s.Log("error: %v", e)
-			es = append(es, e.Error())
-		}
-		return newRelease, fmt.Errorf("Upgrade --force successfully deleted the previous release, but encountered %d error(s) and cannot continue: %s", len(es), strings.Join(es, "; "))
+		return newRelease, fmt.Errorf("Upgrade --force successfully deleted the previous release, but encountered %d error(s) and cannot continue: %s", len(errs), joinErrors(errs))
 	}
 
 	// post-delete hooks
@@ -218,7 +213,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	// update new release with next revision number so as to append to the old release's history
 	newRelease.Version = oldRelease.Version + 1
 	s.recordRelease(newRelease, false)
-	if err := s.Update(oldRelease, newRelease, req, s.env); err != nil {
+	if err := s.Update(oldRelease, newRelease, req); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", newRelease.Name, err)
 		s.Log("warning: %s", msg)
 		newRelease.Info.Status.Code = release.Status_FAILED
@@ -262,7 +257,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	} else {
 		s.Log("update hooks disabled for %s", req.Name)
 	}
-	if err := s.Update(originalRelease, updatedRelease, req, s.env); err != nil {
+	if err := s.Update(originalRelease, updatedRelease, req); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		s.Log("warning: %s", msg)
 		updatedRelease.Info.Status.Code = release.Status_FAILED

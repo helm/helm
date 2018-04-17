@@ -300,7 +300,7 @@ func TestValidName(t *testing.T) {
 		"abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcdefghi-abcd": errInvalidName,
 	} {
 		if valid != validateReleaseName(name) {
-			t.Errorf("Expected %q to be %t", name, valid)
+			t.Errorf("Expected %q to be %s", name, valid)
 		}
 	}
 }

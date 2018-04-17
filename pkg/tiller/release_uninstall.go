@@ -79,18 +79,12 @@ func (s *ReleaseServer) UninstallRelease(req *services.UninstallReleaseRequest) 
 		s.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	kept, errs := s.Delete(rel, req, s.env)
+	kept, errs := s.Delete(rel, req)
 	res.Info = kept
-
-	es := make([]string, 0, len(errs))
-	for _, e := range errs {
-		s.Log("error: %v", e)
-		es = append(es, e.Error())
-	}
 
 	if !req.DisableHooks {
 		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, hooks.PostDelete, req.Timeout); err != nil {
-			es = append(es, err.Error())
+			errs = append(errs, err)
 		}
 	}
 
@@ -110,10 +104,18 @@ func (s *ReleaseServer) UninstallRelease(req *services.UninstallReleaseRequest) 
 		s.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	if len(es) > 0 {
-		return res, fmt.Errorf("deletion completed with %d error(s): %s", len(es), strings.Join(es, "; "))
+	if len(errs) > 0 {
+		return res, fmt.Errorf("deletion completed with %d error(s): %s", len(errs), joinErrors(errs))
 	}
 	return res, nil
+}
+
+func joinErrors(errs []error) string {
+	es := make([]string, 0, len(errs))
+	for _, e := range errs {
+		es = append(es, e.Error())
+	}
+	return strings.Join(es, "; ")
 }
 
 func (s *ReleaseServer) purgeReleases(rels ...*release.Release) error {

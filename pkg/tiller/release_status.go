@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -62,7 +63,7 @@ func (s *ReleaseServer) GetReleaseStatus(req *services.GetReleaseStatusRequest) 
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
-	resp, err := s.Status(rel, req, s.env)
+	resp, err := s.env.KubeClient.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
 	if sc == release.Status_DELETED || sc == release.Status_FAILED {
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil
