@@ -183,7 +183,7 @@ func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*u
 				r := &repo.ChartRepository{}
 				r.Client = g
 				g.SetCredentials(c.getRepoCredentials(r))
-				return u, r, g, err
+				return u, r, g, nil
 			}
 			return u, nil, nil, err
 		}
