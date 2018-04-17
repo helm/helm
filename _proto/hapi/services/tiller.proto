@@ -22,68 +22,8 @@ import "hapi/release/release.proto";
 import "hapi/release/info.proto";
 import "hapi/release/test_run.proto";
 import "hapi/release/status.proto";
-import "hapi/version/version.proto";
 
 option go_package = "services";
-
-// ReleaseService is the service that a helm application uses to mutate,
-// query, and manage releases.
-//
-//		Release: A named installation composed of a chart and
-// 				 config. At any given time a release has one
-//				 chart and one config.
-//
-//		Config:  A config is a YAML file that supplies values
-//				 to the parametrizable templates of a chart.
-//
-//		Chart:   A chart is a helm package that contains
-//				 metadata, a default config, zero or more
-//				 optionally parameterizable templates, and
-//				 zero or more charts (dependencies).
-service ReleaseService {
-	// ListReleases retrieves release history.
-	// TODO: Allow filtering the set of releases by
-	// release status. By default, ListAllReleases returns the releases who
-	// current status is "Active".
-	rpc ListReleases(ListReleasesRequest) returns (stream ListReleasesResponse) {
-	}
-
-	// GetReleasesStatus retrieves status information for the specified release.
-	rpc GetReleaseStatus(GetReleaseStatusRequest) returns (GetReleaseStatusResponse) {
-	}
-
-	// GetReleaseContent retrieves the release content (chart + value) for the specified release.
-	rpc GetReleaseContent(GetReleaseContentRequest) returns (GetReleaseContentResponse) {
-	}
-
-	// UpdateRelease updates release content.
-	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
-	}
-
-	// InstallRelease requests installation of a chart as a new release.
-	rpc InstallRelease(InstallReleaseRequest) returns (InstallReleaseResponse) {
-	}
-
-	// UninstallRelease requests deletion of a named release.
-	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
-	}
-
-    // GetVersion returns the current version of the server.
-    rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
-    }
-
-    // RollbackRelease rolls back a release to a previous version.
-    rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
-    }
-
-    // ReleaseHistory retrieves a releasse's history.
-    rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
-    }
-
-    // RunReleaseTest executes the tests defined of a named release
-    rpc RunReleaseTest(TestReleaseRequest) returns (stream TestReleaseResponse) {
-    }
-}
 
 // ListReleasesRequest requests a list of releases.
 //
@@ -177,12 +117,6 @@ message GetReleaseContentRequest {
 	int32 version = 2;
 }
 
-// GetReleaseContentResponse is a response containing the contents of a release.
-message GetReleaseContentResponse {
-	// The release content
-	hapi.release.Release release = 1;
-}
-
 // UpdateReleaseRequest updates a release.
 message UpdateReleaseRequest {
 	// The name of the release
@@ -211,11 +145,6 @@ message UpdateReleaseRequest {
 	bool force = 11;
 }
 
-// UpdateReleaseResponse is the response to an update request.
-message UpdateReleaseResponse {
-	hapi.release.Release release = 1;
-}
-
 message RollbackReleaseRequest {
 	// The name of the release
 	string name = 1;
@@ -234,11 +163,6 @@ message RollbackReleaseRequest {
 	bool wait = 7;
 	// Force resource update through delete/recreate if needed.
 	bool force = 8;
-}
-
-// RollbackReleaseResponse is the response to an update request.
-message RollbackReleaseResponse {
-	hapi.release.Release release = 1;
 }
 
 // InstallReleaseRequest is the request for an installation of a chart.
@@ -273,11 +197,6 @@ message InstallReleaseRequest {
 	bool wait = 9;
 }
 
-// InstallReleaseResponse is the response from a release installation.
-message InstallReleaseResponse {
-	hapi.release.Release release = 1;
-}
-
 // UninstallReleaseRequest represents a request to uninstall a named release.
 message UninstallReleaseRequest {
 	// Name is the name of the release to delete.
@@ -298,25 +217,12 @@ message UninstallReleaseResponse {
 	string info = 2;
 }
 
-// GetVersionRequest requests for version information.
-message GetVersionRequest {
-}
-
-message GetVersionResponse {
-  hapi.version.Version Version = 1;
-}
-
 // GetHistoryRequest requests a release's history.
 message GetHistoryRequest {
 	// The name of the release.
 	string name = 1;
 	// The maximum number of releases to include.
 	int32 max = 2;
-}
-
-// GetHistoryResponse is received in response to a GetHistory rpc.
-message GetHistoryResponse {
-	repeated hapi.release.Release releases = 1;
 }
 
 // TestReleaseRequest is a request to get the status of a release.

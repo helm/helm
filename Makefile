@@ -26,7 +26,7 @@ BINARY_VERSION ?= ${GIT_TAG}
 
 # Only set Version if building a tag or VERSION is set
 ifneq ($(BINARY_VERSION),)
-	LDFLAGS += -X k8s.io/helm/pkg/version.Version=${BINARY_VERSION}
+	LDFLAGS += -X k8s.io/helm/pkg/version.version=${BINARY_VERSION}
 endif
 
 # Clear the "unreleased" string in BuildMetadata

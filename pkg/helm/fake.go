@@ -52,13 +52,14 @@ func (c *FakeClient) ListReleases(opts ...ReleaseListOption) ([]*release.Release
 	return c.Rels, nil
 }
 
-// InstallRelease creates a new release and returns a InstallReleaseResponse containing that release
+// InstallRelease creates a new release and returns the release
 func (c *FakeClient) InstallRelease(chStr, ns string, opts ...InstallOption) (*release.Release, error) {
 	chart := &chart.Chart{}
 	return c.InstallReleaseFromChart(chart, ns, opts...)
 }
 
-// InstallReleaseFromChart adds a new MockRelease to the fake client and returns a InstallReleaseResponse containing that release
+// InstallReleaseFromChart adds a new MockRelease to the fake client and
+// returns the release
 func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*release.Release, error) {
 	for _, opt := range opts {
 		opt(&c.Opts)
@@ -91,12 +92,12 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.U
 	return nil, fmt.Errorf("No such release: %s", rlsName)
 }
 
-// UpdateRelease returns an UpdateReleaseResponse containing the updated release, if it exists
+// UpdateRelease returns the updated release, if it exists
 func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*release.Release, error) {
 	return c.UpdateReleaseFromChart(rlsName, &chart.Chart{}, opts...)
 }
 
-// UpdateReleaseFromChart returns an UpdateReleaseResponse containing the updated release, if it exists
+// UpdateReleaseFromChart returns the updated release, if it exists
 func (c *FakeClient) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*release.Release, error) {
 	// Check to see if the release already exists.
 	return c.ReleaseContent(rlsName, 0)

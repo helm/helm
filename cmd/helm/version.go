@@ -22,7 +22,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	pb "k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -77,7 +76,7 @@ func (v *versionCmd) run() error {
 	return nil
 }
 
-func formatVersion(v *pb.Version, short bool) string {
+func formatVersion(v *version.Version, short bool) string {
 	if short {
 		return fmt.Sprintf("%s+g%s", v.SemVer, v.GitCommit[:7])
 	}

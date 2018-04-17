@@ -23,7 +23,6 @@ import (
 
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
-	"k8s.io/helm/pkg/version"
 )
 
 func TestInstallRelease(t *testing.T) {
@@ -195,37 +194,6 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 
 	if rel.Info.Description != "Install complete" {
 		t.Errorf("unexpected description: %s", rel.Info.Description)
-	}
-}
-
-func TestInstallRelease_TillerVersion(t *testing.T) {
-	version.Version = "2.2.0"
-	rs := rsFixture()
-
-	req := installRequest(
-		withChart(withTiller(">=2.2.0")),
-	)
-	_, err := rs.InstallRelease(req)
-	if err != nil {
-		t.Fatalf("Expected valid range. Got %q", err)
-	}
-}
-
-func TestInstallRelease_WrongTillerVersion(t *testing.T) {
-	version.Version = "2.2.0"
-	rs := rsFixture()
-
-	req := installRequest(
-		withChart(withTiller("<2.0.0")),
-	)
-	_, err := rs.InstallRelease(req)
-	if err == nil {
-		t.Fatalf("Expected to fail because of wrong version")
-	}
-
-	expect := "Chart incompatible with Tiller"
-	if !strings.Contains(err.Error(), expect) {
-		t.Errorf("Expected %q to contain %q", err.Error(), expect)
 	}
 }
 

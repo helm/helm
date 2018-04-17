@@ -18,7 +18,6 @@ limitations under the License.
 package version // import "k8s.io/helm/pkg/version"
 
 import "testing"
-import "k8s.io/helm/pkg/proto/hapi/version"
 
 func TestGetVersionProto(t *testing.T) {
 	tests := []struct {
@@ -26,16 +25,16 @@ func TestGetVersionProto(t *testing.T) {
 		buildMetadata string
 		gitCommit     string
 		gitTreeState  string
-		expected      version.Version
+		expected      Version
 	}{
-		{"", "", "", "", version.Version{SemVer: "", GitCommit: "", GitTreeState: ""}},
-		{"v1.0.0", "", "", "", version.Version{SemVer: "v1.0.0", GitCommit: "", GitTreeState: ""}},
-		{"v1.0.0", "79d5c5f7", "", "", version.Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "", GitTreeState: ""}},
-		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "", version.Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: ""}},
-		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "clean", version.Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: "clean"}},
+		{"", "", "", "", Version{SemVer: "", GitCommit: "", GitTreeState: ""}},
+		{"v1.0.0", "", "", "", Version{SemVer: "v1.0.0", GitCommit: "", GitTreeState: ""}},
+		{"v1.0.0", "79d5c5f7", "", "", Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "", GitTreeState: ""}},
+		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "", Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: ""}},
+		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "clean", Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: "clean"}},
 	}
 	for _, tt := range tests {
-		Version = tt.version
+		version = tt.version
 		BuildMetadata = tt.buildMetadata
 		GitCommit = tt.gitCommit
 		GitTreeState = tt.gitTreeState

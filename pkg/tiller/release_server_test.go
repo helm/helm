@@ -133,12 +133,6 @@ func withKube(version string) chartOption {
 	}
 }
 
-func withTiller(version string) chartOption {
-	return func(opts *chartOptions) {
-		opts.Metadata.TillerVersion = version
-	}
-}
-
 func withDependency(dependencyOpts ...chartOption) chartOption {
 	return func(opts *chartOptions) {
 		opts.Dependencies = append(opts.Dependencies, buildChart(dependencyOpts...))

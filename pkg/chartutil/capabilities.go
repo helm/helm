@@ -20,7 +20,8 @@ import (
 	"runtime"
 
 	"k8s.io/apimachinery/pkg/version"
-	tversion "k8s.io/helm/pkg/proto/hapi/version"
+
+	tversion "k8s.io/helm/pkg/version"
 )
 
 var (
