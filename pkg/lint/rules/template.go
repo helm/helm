@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ghodss/yaml"
 
@@ -28,7 +29,6 @@ import (
 	"k8s.io/helm/pkg/engine"
 	cpb "k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/lint/support"
-	"k8s.io/helm/pkg/timeconv"
 	tversion "k8s.io/helm/pkg/version"
 )
 
@@ -53,7 +53,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		return
 	}
 
-	options := chartutil.ReleaseOptions{Name: "testRelease", Time: timeconv.Now(), Namespace: namespace}
+	options := chartutil.ReleaseOptions{Name: "testRelease", Time: time.Now(), Namespace: namespace}
 	caps := &chartutil.Capabilities{
 		APIVersions:   chartutil.DefaultVersionSet,
 		KubeVersion:   chartutil.DefaultKubeVersion,

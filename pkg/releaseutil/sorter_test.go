@@ -21,7 +21,6 @@ import (
 	"time"
 
 	rspb "k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 // note: this test data is shared with filter_test.go.
@@ -34,7 +33,7 @@ var releases = []*rspb.Release{
 }
 
 func tsRelease(name string, vers int32, dur time.Duration, code rspb.Status_Code) *rspb.Release {
-	tmsp := timeconv.Timestamp(time.Now().Add(time.Duration(dur)))
+	tmsp := time.Now().Add(time.Duration(dur))
 	info := &rspb.Info{Status: &rspb.Status{Code: code}, LastDeployed: tmsp}
 	return &rspb.Release{
 		Name:    name,
@@ -65,8 +64,8 @@ func TestSortByDate(t *testing.T) {
 	SortByDate(releases)
 
 	check(t, "ByDate", func(i, j int) bool {
-		ti := releases[i].Info.LastDeployed.Seconds
-		tj := releases[j].Info.LastDeployed.Seconds
+		ti := releases[i].Info.LastDeployed.Second()
+		tj := releases[j].Info.LastDeployed.Second()
 		return ti < tj
 	})
 }

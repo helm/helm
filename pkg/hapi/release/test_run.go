@@ -1,6 +1,6 @@
 package release
 
-import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+import "time"
 
 type TestRun_Status int32
 
@@ -29,9 +29,9 @@ func (x TestRun_Status) String() string {
 }
 
 type TestRun struct {
-	Name        string                     `json:"name,omitempty"`
-	Status      TestRun_Status             `json:"status,omitempty"`
-	Info        string                     `json:"info,omitempty"`
-	StartedAt   *google_protobuf.Timestamp `json:"started_at,omitempty"`
-	CompletedAt *google_protobuf.Timestamp `json:"completed_at,omitempty"`
+	Name        string         `json:"name,omitempty"`
+	Status      TestRun_Status `json:"status,omitempty"`
+	Info        string         `json:"info,omitempty"`
+	StartedAt   time.Time      `json:"started_at,omitempty"`
+	CompletedAt time.Time      `json:"completed_at,omitempty"`
 }

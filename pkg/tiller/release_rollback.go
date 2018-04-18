@@ -19,11 +19,11 @@ package tiller
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 // RollbackRelease rolls back to a previous version of the given release.
@@ -93,7 +93,7 @@ func (s *ReleaseServer) prepareRollback(req *hapi.RollbackReleaseRequest) (*rele
 		Config:    previousRelease.Config,
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  timeconv.Now(),
+			LastDeployed:  time.Now(),
 			Status: &release.Status{
 				Code:  release.Status_PENDING_ROLLBACK,
 				Notes: previousRelease.Info.Status.Notes,

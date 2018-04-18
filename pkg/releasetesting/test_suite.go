@@ -19,21 +19,20 @@ package releasetesting
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	util "k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 // TestSuite what tests are run, results, and metadata
 type TestSuite struct {
-	StartedAt     *timestamp.Timestamp
-	CompletedAt   *timestamp.Timestamp
+	StartedAt     time.Time
+	CompletedAt   time.Time
 	TestManifests []string
 	Results       []*release.TestRun
 }
@@ -55,7 +54,7 @@ func NewTestSuite(rel *release.Release) *TestSuite {
 
 // Run executes tests in a test suite and stores a result within a given environment
 func (ts *TestSuite) Run(env *Environment) error {
-	ts.StartedAt = timeconv.Now()
+	ts.StartedAt = time.Now()
 
 	if len(ts.TestManifests) == 0 {
 		// TODO: make this better, adding test run status on test suite is weird
@@ -68,7 +67,7 @@ func (ts *TestSuite) Run(env *Environment) error {
 			return err
 		}
 
-		test.result.StartedAt = timeconv.Now()
+		test.result.StartedAt = time.Now()
 		if err := env.streamRunning(test.result.Name); err != nil {
 			return err
 		}
@@ -104,11 +103,11 @@ func (ts *TestSuite) Run(env *Environment) error {
 			}
 		}
 
-		test.result.CompletedAt = timeconv.Now()
+		test.result.CompletedAt = time.Now()
 		ts.Results = append(ts.Results, test.result)
 	}
 
-	ts.CompletedAt = timeconv.Now()
+	ts.CompletedAt = time.Now()
 	return nil
 }
 

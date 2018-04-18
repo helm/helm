@@ -397,8 +397,8 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 		t.Fatalf("Failed updated: %s", err)
 	}
 
-	if hl := res.Hooks[0].LastRun; hl != nil {
-		t.Errorf("Expected that no hooks were run. Got %d", hl)
+	if hl := res.Hooks[0].LastRun; !hl.IsZero() {
+		t.Errorf("Expected that no hooks were run. Got %s", hl)
 	}
 
 }

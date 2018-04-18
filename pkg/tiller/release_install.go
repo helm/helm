@@ -20,13 +20,13 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	relutil "k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 // InstallRelease installs a release and stores the release record.
@@ -69,7 +69,7 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 	}
 
 	revision := 1
-	ts := timeconv.Now()
+	ts := time.Now()
 	options := chartutil.ReleaseOptions{
 		Name:      name,
 		Time:      ts,

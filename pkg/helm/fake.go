@@ -21,8 +21,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
-
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"time"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/chart"
@@ -188,7 +187,7 @@ type MockReleaseOptions struct {
 
 // ReleaseMock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
 func ReleaseMock(opts *MockReleaseOptions) *release.Release {
-	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
+	date := time.Unix(242085845, 0)
 
 	name := opts.Name
 	if name == "" {
@@ -226,8 +225,8 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 	return &release.Release{
 		Name: name,
 		Info: &release.Info{
-			FirstDeployed: &date,
-			LastDeployed:  &date,
+			FirstDeployed: date,
+			LastDeployed:  date,
 			Status:        &release.Status{Code: scode},
 			Description:   "Release mock",
 		},
@@ -241,7 +240,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 				Kind:     "Job",
 				Path:     "pre-install-hook.yaml",
 				Manifest: MockHookTemplate,
-				LastRun:  &date,
+				LastRun:  date,
 				Events:   []release.Hook_Event{release.Hook_PRE_INSTALL},
 			},
 		},

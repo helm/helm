@@ -45,7 +45,7 @@ func TestHistoryCmd(t *testing.T) {
 				mk("angry-bird", 2, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 1, rpb.Status_SUPERSEDED),
 			},
-			expected: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n1       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n2       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
+			expected: `REVISION\s+UPDATED\s+STATUS\s+CHART\s+DESCRIPTION \n1\s+(.*)\s+SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n2(.*)SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n3(.*)SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n4(.*)DEPLOYED\s+foo-0.1.0-beta.1\s+Release mock\n`,
 		},
 		{
 			name:  "get history with max limit set",
@@ -55,7 +55,7 @@ func TestHistoryCmd(t *testing.T) {
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			expected: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tDESCRIPTION \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\tRelease mock\n",
+			expected: `REVISION\s+UPDATED\s+STATUS\s+CHART\s+DESCRIPTION \n3\s+(.*)\s+SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n4\s+(.*)\s+DEPLOYED\s+foo-0.1.0-beta.1\s+Release mock\n`,
 		},
 		{
 			name:  "get history with yaml output format",

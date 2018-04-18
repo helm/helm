@@ -270,7 +270,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 		t.Fatalf("Expected 1 hook, got %d", l)
 	}
 
-	if res.Hooks[0].LastRun != nil {
+	if !res.Hooks[0].LastRun.IsZero() {
 		t.Error("Expected hook to not be marked as run.")
 	}
 
@@ -289,8 +289,8 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 		t.Errorf("Failed install: %s", err)
 	}
 
-	if hl := res.Hooks[0].LastRun; hl != nil {
-		t.Errorf("Expected that no hooks were run. Got %d", hl)
+	if !res.Hooks[0].LastRun.IsZero() {
+		t.Errorf("Expected that no hooks were run. Got %s", res.Hooks[0].LastRun)
 	}
 }
 

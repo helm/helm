@@ -24,6 +24,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/technosophos/moniker"
 	"gopkg.in/yaml.v2"
@@ -38,7 +39,6 @@ import (
 	"k8s.io/helm/pkg/kube"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller/environment"
-	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -383,7 +383,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		if err := s.deleteHookIfShouldBeDeletedByDeletePolicy(h, hooks.HookSucceeded, name, namespace, hook, s.env.KubeClient); err != nil {
 			return err
 		}
-		h.LastRun = timeconv.Now()
+		h.LastRun = time.Now()
 	}
 
 	return nil

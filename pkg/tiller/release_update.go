@@ -19,12 +19,12 @@ package tiller
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
@@ -93,7 +93,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	// the release object.
 	revision := lastRelease.Version + 1
 
-	ts := timeconv.Now()
+	ts := time.Now()
 	options := chartutil.ReleaseOptions{
 		Name:      req.Name,
 		Time:      ts,
@@ -172,7 +172,7 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 	// From here on out, the release is considered to be in Status_DELETING or Status_DELETED
 	// state. There is no turning back.
 	oldRelease.Info.Status.Code = release.Status_DELETING
-	oldRelease.Info.Deleted = timeconv.Now()
+	oldRelease.Info.Deleted = time.Now()
 	oldRelease.Info.Description = "Deletion in progress (or silently failed)"
 	s.recordRelease(oldRelease, true)
 

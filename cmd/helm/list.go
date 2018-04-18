@@ -27,7 +27,6 @@ import (
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 var listHelp = `
@@ -237,8 +236,8 @@ func formatList(rels []*release.Release, colWidth uint) string {
 		md := r.Chart.Metadata
 		c := fmt.Sprintf("%s-%s", md.Name, md.Version)
 		t := "-"
-		if tspb := r.Info.LastDeployed; tspb != nil {
-			t = timeconv.String(tspb)
+		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
+			t = tspb.String()
 		}
 		s := r.Info.Status.Code.String()
 		v := r.Version

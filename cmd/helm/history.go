@@ -28,7 +28,6 @@ import (
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 type releaseInfo struct {
@@ -131,17 +130,19 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	for i := len(rls) - 1; i >= 0; i-- {
 		r := rls[i]
 		c := formatChartname(r.Chart)
-		t := timeconv.String(r.Info.LastDeployed)
 		s := r.Info.Status.Code.String()
 		v := r.Version
 		d := r.Info.Description
 
 		rInfo := releaseInfo{
 			Revision:    v,
-			Updated:     t,
 			Status:      s,
 			Chart:       c,
 			Description: d,
+		}
+		if !r.Info.LastDeployed.IsZero() {
+			rInfo.Updated = r.Info.LastDeployed.String()
+
 		}
 		history = append(history, rInfo)
 	}

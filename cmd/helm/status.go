@@ -31,7 +31,6 @@ import (
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 var statusHelp = `
@@ -113,8 +112,8 @@ func (s *statusCmd) run() error {
 // PrintStatus prints out the status of a release. Shared because also used by
 // install / upgrade
 func PrintStatus(out io.Writer, res *hapi.GetReleaseStatusResponse) {
-	if res.Info.LastDeployed != nil {
-		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
+	if !res.Info.LastDeployed.IsZero() {
+		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", res.Info.LastDeployed)
 	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
@@ -129,8 +128,8 @@ func PrintStatus(out io.Writer, res *hapi.GetReleaseStatusResponse) {
 	if res.Info.Status.LastTestSuiteRun != nil {
 		lastRun := res.Info.Status.LastTestSuiteRun
 		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
-			fmt.Sprintf("Last Started: %s", timeconv.String(lastRun.StartedAt)),
-			fmt.Sprintf("Last Completed: %s", timeconv.String(lastRun.CompletedAt)),
+			fmt.Sprintf("Last Started: %s", lastRun.StartedAt),
+			fmt.Sprintf("Last Completed: %s", lastRun.CompletedAt),
 			formatTestResults(lastRun.Results))
 	}
 
@@ -148,8 +147,8 @@ func formatTestResults(results []*release.TestRun) string {
 		n := r.Name
 		s := strutil.PadRight(r.Status.String(), 10, ' ')
 		i := r.Info
-		ts := timeconv.String(r.StartedAt)
-		tc := timeconv.String(r.CompletedAt)
+		ts := r.StartedAt
+		tc := r.CompletedAt
 		tbl.AddRow(n, s, i, ts, tc)
 	}
 	return tbl.String()

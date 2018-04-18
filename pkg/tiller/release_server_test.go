@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -223,12 +222,12 @@ func releaseStub() *release.Release {
 }
 
 func namedReleaseStub(name string, status release.Status_Code) *release.Release {
-	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
+	date := time.Unix(242085845, 0)
 	return &release.Release{
 		Name: name,
 		Info: &release.Info{
-			FirstDeployed: &date,
-			LastDeployed:  &date,
+			FirstDeployed: date,
+			LastDeployed:  date,
 			Status:        &release.Status{Code: status},
 			Description:   "Named Release Stub",
 		},
@@ -260,14 +259,14 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 }
 
 func upgradeReleaseVersion(rel *release.Release) *release.Release {
-	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
+	date := time.Unix(242085845, 0)
 
 	rel.Info.Status.Code = release.Status_SUPERSEDED
 	return &release.Release{
 		Name: rel.Name,
 		Info: &release.Info{
 			FirstDeployed: rel.Info.FirstDeployed,
-			LastDeployed:  &date,
+			LastDeployed:  date,
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
 		Chart:   rel.Chart,
@@ -367,12 +366,12 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 		},
 	}
 
-	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
+	date := time.Unix(242085845, 0)
 	return &release.Release{
 		Name: rlsName,
 		Info: &release.Info{
-			FirstDeployed: &date,
-			LastDeployed:  &date,
+			FirstDeployed: date,
+			LastDeployed:  date,
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
 		Chart:    ch,

@@ -19,12 +19,12 @@ package tiller
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	relutil "k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
@@ -61,7 +61,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 
 	s.Log("uninstall: Deleting %s", req.Name)
 	rel.Info.Status.Code = release.Status_DELETING
-	rel.Info.Deleted = timeconv.Now()
+	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &hapi.UninstallReleaseResponse{Release: rel}
 

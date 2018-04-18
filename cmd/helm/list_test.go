@@ -40,7 +40,7 @@ func TestListCmd(t *testing.T) {
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
 			},
-			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \tNAMESPACE\natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\tdefault  \n",
+			expected: `NAME\s+REVISION\s+UPDATED\s+STATUS\s+CHART\s+NAMESPACE\natlas\s+1\s+(.*)\s+DEPLOYED\s+foo-0.1.0-beta.1\s+default`,
 		},
 		{
 			name:  "list, one deployed, one failed",

@@ -36,7 +36,6 @@ import (
 	"k8s.io/helm/pkg/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller"
-	"k8s.io/helm/pkg/timeconv"
 	tversion "k8s.io/helm/pkg/version"
 )
 
@@ -180,7 +179,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	}
 	options := chartutil.ReleaseOptions{
 		Name:      t.releaseName,
-		Time:      timeconv.Now(),
+		Time:      time.Now(),
 		Namespace: t.namespace,
 	}
 
@@ -252,7 +251,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			Config:    config,
 			Version:   1,
 			Namespace: t.namespace,
-			Info:      &release.Info{LastDeployed: timeconv.Timestamp(time.Now())},
+			Info:      &release.Info{LastDeployed: time.Now()},
 		}
 		printRelease(os.Stdout, rel)
 	}

@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/helm/pkg/hapi"
@@ -89,10 +88,10 @@ func TestRun(t *testing.T) {
 	for range ch { // drain
 	}
 
-	if ts.StartedAt == nil {
+	if ts.StartedAt.IsZero() {
 		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
 	}
-	if ts.CompletedAt == nil {
+	if ts.CompletedAt.IsZero() {
 		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
 	}
 	if len(ts.Results) != 2 {
@@ -100,10 +99,10 @@ func TestRun(t *testing.T) {
 	}
 
 	result := ts.Results[0]
-	if result.StartedAt == nil {
+	if result.StartedAt.IsZero() {
 		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result.StartedAt)
 	}
-	if result.CompletedAt == nil {
+	if result.CompletedAt.IsZero() {
 		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result.CompletedAt)
 	}
 	if result.Name != "finding-nemo" {
@@ -113,10 +112,10 @@ func TestRun(t *testing.T) {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
 	}
 	result2 := ts.Results[1]
-	if result2.StartedAt == nil {
+	if result2.StartedAt.IsZero() {
 		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result2.StartedAt)
 	}
-	if result2.CompletedAt == nil {
+	if result2.CompletedAt.IsZero() {
 		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result2.CompletedAt)
 	}
 	if result2.Name != "gold-rush" {
@@ -145,10 +144,10 @@ func TestRunEmptyTestSuite(t *testing.T) {
 	if msg.Msg != "No Tests Found" {
 		t.Errorf("Expected message 'No Tests Found', Got: %v", msg.Msg)
 	}
-	if ts.StartedAt == nil {
+	if ts.StartedAt.IsZero() {
 		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
 	}
-	if ts.CompletedAt == nil {
+	if ts.CompletedAt.IsZero() {
 		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
 	}
 	if len(ts.Results) != 0 {
@@ -174,11 +173,11 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	for range ch { // drain
 	}
 
-	if ts.StartedAt == nil {
+	if ts.StartedAt.IsZero() {
 		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
 	}
 
-	if ts.CompletedAt == nil {
+	if ts.CompletedAt.IsZero() {
 		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
 	}
 
@@ -187,11 +186,11 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	}
 
 	result := ts.Results[0]
-	if result.StartedAt == nil {
+	if result.StartedAt.IsZero() {
 		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result.StartedAt)
 	}
 
-	if result.CompletedAt == nil {
+	if result.CompletedAt.IsZero() {
 		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result.CompletedAt)
 	}
 
@@ -226,12 +225,12 @@ func chartStub() *chart.Chart {
 }
 
 func releaseStub() *release.Release {
-	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
+	date := time.Unix(242085845, 0)
 	return &release.Release{
 		Name: "lost-fish",
 		Info: &release.Info{
-			FirstDeployed: &date,
-			LastDeployed:  &date,
+			FirstDeployed: date,
+			LastDeployed:  date,
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 			Description:   "a release stub",
 		},

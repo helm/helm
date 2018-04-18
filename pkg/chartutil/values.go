@@ -23,9 +23,9 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"k8s.io/helm/pkg/hapi/chart"
 )
@@ -336,7 +336,7 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 // for the composition of the final values struct
 type ReleaseOptions struct {
 	Name      string
-	Time      *timestamp.Timestamp
+	Time      time.Time
 	Namespace string
 	IsUpgrade bool
 	IsInstall bool

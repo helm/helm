@@ -24,7 +24,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/timeconv"
 )
 
 var printReleaseTemplate = `REVISION: {{.Release.Version}}
@@ -61,7 +60,7 @@ func printRelease(out io.Writer, rel *release.Release) error {
 	data := map[string]interface{}{
 		"Release":        rel,
 		"ComputedValues": cfgStr,
-		"ReleaseDate":    timeconv.Format(rel.Info.LastDeployed, time.ANSIC),
+		"ReleaseDate":    rel.Info.LastDeployed.Format(time.ANSIC),
 	}
 	return tpl(printReleaseTemplate, data, out)
 }

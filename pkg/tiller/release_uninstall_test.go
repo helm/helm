@@ -45,12 +45,12 @@ func TestUninstallRelease(t *testing.T) {
 		t.Errorf("Expected status code to be DELETED, got %d", res.Release.Info.Status.Code)
 	}
 
-	if res.Release.Hooks[0].LastRun.Seconds == 0 {
+	if res.Release.Hooks[0].LastRun.IsZero() {
 		t.Error("Expected LastRun to be greater than zero.")
 	}
 
-	if res.Release.Info.Deleted.Seconds <= 0 {
-		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
+	if res.Release.Info.Deleted.Second() <= 0 {
+		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Second())
 	}
 
 	if res.Release.Info.Description != "Deletion complete" {
@@ -84,8 +84,8 @@ func TestUninstallPurgeRelease(t *testing.T) {
 		t.Errorf("Expected status code to be DELETED, got %d", res.Release.Info.Status.Code)
 	}
 
-	if res.Release.Info.Deleted.Seconds <= 0 {
-		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
+	if res.Release.Info.Deleted.Second() <= 0 {
+		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Second())
 	}
 	rels, err := rs.GetHistory(&hapi.GetHistoryRequest{Name: "angry-panda"})
 	if err != nil {
@@ -166,7 +166,7 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 	}
 
 	// The default value for a protobuf timestamp is nil.
-	if res.Release.Hooks[0].LastRun != nil {
-		t.Errorf("Expected LastRun to be zero, got %d.", res.Release.Hooks[0].LastRun.Seconds)
+	if !res.Release.Hooks[0].LastRun.IsZero() {
+		t.Errorf("Expected LastRun to be zero, got %s.", res.Release.Hooks[0].LastRun)
 	}
 }

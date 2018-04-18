@@ -57,8 +57,8 @@ func SortByDate(list []*rspb.Release) {
 	s := &sorter{list: list}
 
 	s.less = func(i, j int) bool {
-		ti := s.list[i].Info.LastDeployed.Seconds
-		tj := s.list[j].Info.LastDeployed.Seconds
+		ti := s.list[i].Info.LastDeployed.Second()
+		tj := s.list[j].Info.LastDeployed.Second()
 		return ti < tj
 	}
 	sort.Sort(s)

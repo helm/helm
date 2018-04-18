@@ -1,6 +1,6 @@
 package release
 
-import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+import "time"
 
 type Hook_Event int32
 
@@ -80,7 +80,7 @@ type Hook struct {
 	// Events are the events that this hook fires on.
 	Events []Hook_Event `json:"events,omitempty"`
 	// LastRun indicates the date/time this was last run.
-	LastRun *google_protobuf.Timestamp `json:"last_run,omitempty"`
+	LastRun time.Time `json:"last_run,omitempty"`
 	// Weight indicates the sort order for execution among similar Hook type
 	Weight int32 `json:"weight,omitempty"`
 	// DeletePolicies are the policies that indicate when to delete the hook

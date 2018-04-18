@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/golang/protobuf/ptypes/any"
 
 	kversion "k8s.io/apimachinery/pkg/version"
 
 	"k8s.io/helm/pkg/hapi/chart"
-	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -106,7 +106,7 @@ where:
 
 	o := ReleaseOptions{
 		Name:      "Seven Voyages",
-		Time:      timeconv.Now(),
+		Time:      time.Now(),
 		Namespace: "al Basrah",
 		IsInstall: true,
 		Revision:  5,
