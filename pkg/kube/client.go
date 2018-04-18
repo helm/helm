@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl"
@@ -612,7 +613,7 @@ func (c *Client) AsVersionedObject(obj runtime.Object) (runtime.Object, error) {
 		return nil, err
 	}
 	versions := &runtime.VersionedObjects{}
-	decoder := unstructured.UnstructuredJSONScheme
+	decoder := legacyscheme.Codecs.UniversalDecoder()
 	err = runtime.DecodeInto(decoder, json, versions)
 	return versions.First(), err
 }
