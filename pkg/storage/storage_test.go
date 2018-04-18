@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
@@ -43,7 +43,7 @@ func TestStorageCreate(t *testing.T) {
 
 	// verify the fetched and created release are the same
 	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
+		t.Fatalf("Expected %v, got %v", rls, res)
 	}
 }
 
@@ -70,7 +70,7 @@ func TestStorageUpdate(t *testing.T) {
 
 	// verify updated and fetched releases are the same.
 	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
+		t.Fatalf("Expected %v, got %v", rls, res)
 	}
 }
 
@@ -97,7 +97,7 @@ func TestStorageDelete(t *testing.T) {
 
 	// verify updated and fetched releases are the same.
 	if !reflect.DeepEqual(rls, res) {
-		t.Fatalf("Expected %q, got %q", rls, res)
+		t.Fatalf("Expected %v, got %v", rls, res)
 	}
 
 	hist, err := storage.History(rls.Name)

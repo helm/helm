@@ -21,12 +21,12 @@ import (
 	"errors"
 	"fmt"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 // GetReleaseStatus gets the status information for a named release.
-func (s *ReleaseServer) GetReleaseStatus(req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
+func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*hapi.GetReleaseStatusResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("getStatus: Release name is invalid: %s", req.Name)
 		return nil, err
@@ -55,7 +55,7 @@ func (s *ReleaseServer) GetReleaseStatus(req *services.GetReleaseStatusRequest) 
 	}
 
 	sc := rel.Info.Status.Code
-	statusResp := &services.GetReleaseStatusResponse{
+	statusResp := &hapi.GetReleaseStatusResponse{
 		Name:      rel.Name,
 		Namespace: rel.Namespace,
 		Info:      rel.Info,

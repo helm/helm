@@ -25,9 +25,9 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/kubernetes/pkg/apis/core"
 
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
@@ -74,7 +74,7 @@ func TestRun(t *testing.T) {
 
 	testManifests := []string{manifestWithTestSuccessHook, manifestWithTestFailureHook}
 	ts := testSuiteFixture(testManifests)
-	ch := make(chan *services.TestReleaseResponse, 1)
+	ch := make(chan *hapi.TestReleaseResponse, 1)
 
 	env := testEnvFixture()
 	env.Mesages = ch
@@ -129,7 +129,7 @@ func TestRun(t *testing.T) {
 
 func TestRunEmptyTestSuite(t *testing.T) {
 	ts := testSuiteFixture([]string{})
-	ch := make(chan *services.TestReleaseResponse, 1)
+	ch := make(chan *hapi.TestReleaseResponse, 1)
 
 	env := testEnvFixture()
 	env.Mesages = ch
@@ -158,7 +158,7 @@ func TestRunEmptyTestSuite(t *testing.T) {
 
 func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	ts := testSuiteFixture([]string{manifestWithTestFailureHook})
-	ch := make(chan *services.TestReleaseResponse, 1)
+	ch := make(chan *hapi.TestReleaseResponse, 1)
 
 	env := testEnvFixture()
 	env.KubeClient = newPodFailedKubeClient()

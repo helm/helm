@@ -26,7 +26,8 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"k8s.io/helm/pkg/proto/hapi/chart"
+
+	"k8s.io/helm/pkg/hapi/chart"
 )
 
 // ErrNoTable indicates that a chart does not have a matching table.

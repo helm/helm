@@ -20,8 +20,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 func TestRollbackRelease(t *testing.T) {
@@ -46,7 +46,7 @@ func TestRollbackRelease(t *testing.T) {
 	rs.env.Releases.Update(rel)
 	rs.env.Releases.Create(upgradedRel)
 
-	req := &services.RollbackReleaseRequest{
+	req := &hapi.RollbackReleaseRequest{
 		Name: rel.Name,
 	}
 	res, err := rs.RollbackRelease(req)
@@ -153,7 +153,7 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	rs.env.Releases.Update(v2)
 	rs.env.Releases.Create(v3)
 
-	req := &services.RollbackReleaseRequest{
+	req := &hapi.RollbackReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 		Version:      1,
@@ -201,7 +201,7 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 	rs.env.Releases.Update(rel)
 	rs.env.Releases.Create(upgradedRel)
 
-	req := &services.RollbackReleaseRequest{
+	req := &hapi.RollbackReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 	}
@@ -224,7 +224,7 @@ func TestRollbackReleaseFailure(t *testing.T) {
 	rs.env.Releases.Update(rel)
 	rs.env.Releases.Create(upgradedRel)
 
-	req := &services.RollbackReleaseRequest{
+	req := &hapi.RollbackReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 	}

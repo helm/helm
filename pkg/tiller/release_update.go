@@ -21,14 +21,14 @@ import (
 	"strings"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
-func (s *ReleaseServer) UpdateRelease(req *services.UpdateReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) UpdateRelease(req *hapi.UpdateReleaseRequest) (*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("updateRelease: Release name is invalid: %s", req.Name)
 		return nil, err
@@ -67,7 +67,7 @@ func (s *ReleaseServer) UpdateRelease(req *services.UpdateReleaseRequest) (*rele
 }
 
 // prepareUpdate builds an updated release for an update operation.
-func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
+func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.Release, *release.Release, error) {
 	if req.Chart == nil {
 		return nil, nil, errMissingChart
 	}
@@ -141,14 +141,14 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 }
 
 // performUpdateForce performs the same action as a `helm delete && helm install --replace`.
-func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*release.Release, error) {
 	// find the last release with the given name
 	oldRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	newRelease, err := s.prepareRelease(&services.InstallReleaseRequest{
+	newRelease, err := s.prepareRelease(&hapi.InstallReleaseRequest{
 		Chart:        req.Chart,
 		Values:       req.Values,
 		DryRun:       req.DryRun,
@@ -241,7 +241,7 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	return newRelease, nil
 }
 
-func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *hapi.UpdateReleaseRequest) (*release.Release, error) {
 
 	if req.DryRun {
 		s.Log("dry run for %s", updatedRelease.Name)

@@ -23,7 +23,8 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/any"
-	"k8s.io/helm/pkg/proto/hapi/chart"
+
+	"k8s.io/helm/pkg/hapi/chart"
 )
 
 func TestSave(t *testing.T) {

@@ -34,7 +34,7 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 
 	"k8s.io/helm/pkg/chartutil"
-	hapi "k8s.io/helm/pkg/proto/hapi/chart"
+	hapi "k8s.io/helm/pkg/hapi/chart"
 )
 
 var defaultPGPConfig = packet.Config{

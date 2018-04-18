@@ -17,9 +17,9 @@ limitations under the License.
 package helm
 
 import (
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 // Interface for helm client for mocking in tests
@@ -27,12 +27,12 @@ type Interface interface {
 	ListReleases(opts ...ReleaseListOption) ([]*release.Release, error)
 	InstallRelease(chStr, namespace string, opts ...InstallOption) (*release.Release, error)
 	InstallReleaseFromChart(chart *chart.Chart, namespace string, opts ...InstallOption) (*release.Release, error)
-	DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error)
-	ReleaseStatus(rlsName string, version int32) (*rls.GetReleaseStatusResponse, error)
+	DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error)
+	ReleaseStatus(rlsName string, version int32) (*hapi.GetReleaseStatusResponse, error)
 	UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*release.Release, error)
 	UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*release.Release, error)
 	RollbackRelease(rlsName string, opts ...RollbackOption) (*release.Release, error)
 	ReleaseContent(rlsName string, version int32) (*release.Release, error)
 	ReleaseHistory(rlsName string, max int32) ([]*release.Release, error)
-	RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error)
+	RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *hapi.TestReleaseResponse, <-chan error)
 }

@@ -22,7 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/hapi/chart"
 )
 
 const (

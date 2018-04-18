@@ -24,8 +24,8 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/kubernetes/pkg/apis/core"
 
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/timeconv"
 )

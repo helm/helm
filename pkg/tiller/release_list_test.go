@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 func TestListReleases(t *testing.T) {
@@ -35,7 +35,7 @@ func TestListReleases(t *testing.T) {
 		}
 	}
 
-	rels, err := rs.ListReleases(&services.ListReleasesRequest{})
+	rels, err := rs.ListReleases(&hapi.ListReleasesRequest{})
 	if err != nil {
 		t.Fatalf("Failed listing: %s", err)
 	}
@@ -87,7 +87,7 @@ func TestListReleasesByStatus(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		rels, err := rs.ListReleases(&services.ListReleasesRequest{StatusCodes: tt.statusCodes, Offset: "", Limit: 64})
+		rels, err := rs.ListReleases(&hapi.ListReleasesRequest{StatusCodes: tt.statusCodes, Offset: "", Limit: 64})
 		if err != nil {
 			t.Fatalf("Failed listing %d: %s", i, err)
 		}
@@ -125,10 +125,10 @@ func TestListReleasesSort(t *testing.T) {
 	}
 
 	limit := 6
-	req := &services.ListReleasesRequest{
+	req := &hapi.ListReleasesRequest{
 		Offset: "",
 		Limit:  int64(limit),
-		SortBy: services.ListSort_NAME,
+		SortBy: hapi.ListSort_NAME,
 	}
 	rels, err := rs.ListReleases(req)
 	if err != nil {
@@ -167,11 +167,11 @@ func TestListReleasesFilter(t *testing.T) {
 		}
 	}
 
-	req := &services.ListReleasesRequest{
+	req := &hapi.ListReleasesRequest{
 		Offset: "",
 		Limit:  64,
 		Filter: "neuro[a-z]+",
-		SortBy: services.ListSort_NAME,
+		SortBy: hapi.ListSort_NAME,
 	}
 	rels, err := rs.ListReleases(req)
 	if err != nil {
@@ -216,7 +216,7 @@ func TestReleasesNamespace(t *testing.T) {
 		}
 	}
 
-	req := &services.ListReleasesRequest{
+	req := &hapi.ListReleasesRequest{
 		Offset:    "",
 		Limit:     64,
 		Namespace: "test123",

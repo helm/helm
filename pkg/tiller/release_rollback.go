@@ -20,14 +20,14 @@ import (
 	"bytes"
 	"fmt"
 
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
 
 // RollbackRelease rolls back to a previous version of the given release.
-func (s *ReleaseServer) RollbackRelease(req *services.RollbackReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) RollbackRelease(req *hapi.RollbackReleaseRequest) (*release.Release, error) {
 	s.Log("preparing rollback of %s", req.Name)
 	currentRelease, targetRelease, err := s.prepareRollback(req)
 	if err != nil {
@@ -58,7 +58,7 @@ func (s *ReleaseServer) RollbackRelease(req *services.RollbackReleaseRequest) (*
 
 // prepareRollback finds the previous release and prepares a new release object with
 // the previous release's configuration
-func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
+func (s *ReleaseServer) prepareRollback(req *hapi.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("prepareRollback: Release name is invalid: %s", req.Name)
 		return nil, nil, err
@@ -110,7 +110,7 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 	return currentRelease, targetRelease, nil
 }
 
-func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.Release, req *services.RollbackReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.Release, req *hapi.RollbackReleaseRequest) (*release.Release, error) {
 
 	if req.DryRun {
 		s.Log("dry run for %s", targetRelease.Name)

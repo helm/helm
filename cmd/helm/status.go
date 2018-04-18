@@ -28,9 +28,9 @@ import (
 	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
 
@@ -112,7 +112,7 @@ func (s *statusCmd) run() error {
 
 // PrintStatus prints out the status of a release. Shared because also used by
 // install / upgrade
-func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
+func PrintStatus(out io.Writer, res *hapi.GetReleaseStatusResponse) {
 	if res.Info.LastDeployed != nil {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
 	}

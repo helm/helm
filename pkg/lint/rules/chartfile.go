@@ -26,9 +26,10 @@ import (
 	"github.com/Masterminds/semver"
 
 	"github.com/asaskevich/govalidator"
+
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/lint/support"
-	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 // Chartfile runs a set of linter rules related to Chart.yaml file

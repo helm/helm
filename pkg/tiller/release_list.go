@@ -19,13 +19,13 @@ package tiller
 import (
 	"regexp"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
 // ListReleases lists the releases found by the server.
-func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest) ([]*release.Release, error) {
+func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.Release, error) {
 	if len(req.StatusCodes) == 0 {
 		req.StatusCodes = []release.Status_Code{release.Status_DEPLOYED}
 	}
@@ -54,13 +54,13 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest) ([]*rele
 	}
 
 	switch req.SortBy {
-	case services.ListSort_NAME:
+	case hapi.ListSort_NAME:
 		relutil.SortByName(rels)
-	case services.ListSort_LAST_RELEASED:
+	case hapi.ListSort_LAST_RELEASED:
 		relutil.SortByDate(rels)
 	}
 
-	if req.SortOrder == services.ListSort_DESC {
+	if req.SortOrder == hapi.ListSort_DESC {
 		ll := len(rels)
 		rr := make([]*release.Release, ll)
 		for i, item := range rels {

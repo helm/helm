@@ -20,15 +20,15 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/timeconv"
 )
 
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
-func (s *ReleaseServer) UninstallRelease(req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
+func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*hapi.UninstallReleaseResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("uninstallRelease: Release name is invalid: %s", req.Name)
 		return nil, err
@@ -54,7 +54,7 @@ func (s *ReleaseServer) UninstallRelease(req *services.UninstallReleaseRequest) 
 				s.Log("uninstall: Failed to purge the release: %s", err)
 				return nil, err
 			}
-			return &services.UninstallReleaseResponse{Release: rel}, nil
+			return &hapi.UninstallReleaseResponse{Release: rel}, nil
 		}
 		return nil, fmt.Errorf("the release named %q is already deleted", req.Name)
 	}
@@ -63,7 +63,7 @@ func (s *ReleaseServer) UninstallRelease(req *services.UninstallReleaseRequest) 
 	rel.Info.Status.Code = release.Status_DELETING
 	rel.Info.Deleted = timeconv.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
-	res := &services.UninstallReleaseResponse{Release: rel}
+	res := &hapi.UninstallReleaseResponse{Release: rel}
 
 	if !req.DisableHooks {
 		if err := s.execHook(rel.Hooks, rel.Name, rel.Namespace, hooks.PreDelete, req.Timeout); err != nil {

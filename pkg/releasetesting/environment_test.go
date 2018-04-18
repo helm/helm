@@ -23,8 +23,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
 )
 
@@ -74,7 +74,7 @@ func TestDeleteTestPods(t *testing.T) {
 func TestStreamMessage(t *testing.T) {
 	tEnv := mockTillerEnvironment()
 
-	ch := make(chan *services.TestReleaseResponse, 1)
+	ch := make(chan *hapi.TestReleaseResponse, 1)
 	defer close(ch)
 
 	mockTestEnv := &Environment{

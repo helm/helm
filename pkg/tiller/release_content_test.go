@@ -19,7 +19,7 @@ package tiller
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
 )
 
 func TestGetReleaseContent(t *testing.T) {
@@ -29,7 +29,7 @@ func TestGetReleaseContent(t *testing.T) {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 
-	res, err := rs.GetReleaseContent(&services.GetReleaseContentRequest{Name: rel.Name, Version: 1})
+	res, err := rs.GetReleaseContent(&hapi.GetReleaseContentRequest{Name: rel.Name, Version: 1})
 	if err != nil {
 		t.Errorf("Error getting release content: %s", err)
 	}

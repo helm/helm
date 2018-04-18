@@ -18,14 +18,13 @@ package tiller
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 func TestUpdateRelease(t *testing.T) {
@@ -33,7 +32,7 @@ func TestUpdateRelease(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -105,7 +104,7 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -130,7 +129,7 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	rs := rsFixture()
 
-	installReq := &services.InstallReleaseRequest{
+	installReq := &hapi.InstallReleaseRequest{
 		Namespace: "spaced",
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -150,7 +149,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	rel := installResp
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -174,7 +173,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	rel = res
-	req = &services.UpdateReleaseRequest{
+	req = &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -200,7 +199,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 		t.Errorf("Expected request config to be %q, got %q", expect, rel.Config.Raw)
 	}
 
-	req = &services.UpdateReleaseRequest{
+	req = &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -230,7 +229,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -267,7 +266,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -297,7 +296,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	rs.env.KubeClient = newUpdateFailingKubeClient()
 	rs.Log = t.Logf
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 		Chart: &chart.Chart{
@@ -339,7 +338,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 	rs.env.Releases.Create(rel)
 	rs.Log = t.Logf
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 		Chart: &chart.Chart{
@@ -381,7 +380,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 		Chart: &chart.Chart{
@@ -409,10 +408,10 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
 
-	req := &services.UpdateReleaseRequest{
+	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
-		Chart:        rel.GetChart(),
+		Chart:        rel.Chart,
 	}
 
 	_, err := rs.UpdateRelease(req)
@@ -427,7 +426,7 @@ func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res *releas
 		t.Fatalf("Expected release for %s (%v).", res.Name, rs.env.Releases)
 	}
 
-	if !proto.Equal(storedRelease, res) {
+	if !reflect.DeepEqual(storedRelease, res) {
 		t.Errorf("Stored release doesn't match returned Release")
 	}
 

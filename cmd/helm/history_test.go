@@ -22,8 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	rpb "k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
-	rpb "k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestHistoryCmd(t *testing.T) {

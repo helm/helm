@@ -20,15 +20,15 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 func TestUninstallRelease(t *testing.T) {
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
-	req := &services.UninstallReleaseRequest{
+	req := &hapi.UninstallReleaseRequest{
 		Name: "angry-panda",
 	}
 
@@ -66,7 +66,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 	rs.env.Releases.Update(rel)
 	rs.env.Releases.Create(upgradedRel)
 
-	req := &services.UninstallReleaseRequest{
+	req := &hapi.UninstallReleaseRequest{
 		Name:  "angry-panda",
 		Purge: true,
 	}
@@ -87,7 +87,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
 	}
-	rels, err := rs.GetHistory(&services.GetHistoryRequest{Name: "angry-panda"})
+	rels, err := rs.GetHistory(&hapi.GetHistoryRequest{Name: "angry-panda"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
-	req := &services.UninstallReleaseRequest{
+	req := &hapi.UninstallReleaseRequest{
 		Name: "angry-panda",
 	}
 
@@ -109,7 +109,7 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 		t.Fatalf("Failed uninstall: %s", err)
 	}
 
-	req2 := &services.UninstallReleaseRequest{
+	req2 := &hapi.UninstallReleaseRequest{
 		Name:  "angry-panda",
 		Purge: true,
 	}
@@ -125,7 +125,7 @@ func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 	name := "angry-bunny"
 	rs.env.Releases.Create(releaseWithKeepStub(name))
 
-	req := &services.UninstallReleaseRequest{
+	req := &hapi.UninstallReleaseRequest{
 		Name: name,
 	}
 
@@ -155,7 +155,7 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
-	req := &services.UninstallReleaseRequest{
+	req := &hapi.UninstallReleaseRequest{
 		Name:         "angry-panda",
 		DisableHooks: true,
 	}

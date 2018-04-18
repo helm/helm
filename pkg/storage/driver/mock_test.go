@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 )
 
 func releaseStub(name string, vers int32, namespace string, code rspb.Status_Code) *rspb.Release {

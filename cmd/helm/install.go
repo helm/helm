@@ -35,10 +35,10 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
 )

@@ -20,8 +20,8 @@ import (
 	"reflect"
 	"testing"
 
-	rpb "k8s.io/helm/pkg/proto/hapi/release"
-	tpb "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	rpb "k8s.io/helm/pkg/hapi/release"
 )
 
 func TestGetHistory_WithRevisions(t *testing.T) {
@@ -36,12 +36,12 @@ func TestGetHistory_WithRevisions(t *testing.T) {
 	// GetReleaseHistoryTests
 	tests := []struct {
 		desc string
-		req  *tpb.GetHistoryRequest
+		req  *hapi.GetHistoryRequest
 		res  []*rpb.Release
 	}{
 		{
 			desc: "get release with history and default limit (max=256)",
-			req:  &tpb.GetHistoryRequest{Name: "angry-bird", Max: 256},
+			req:  &hapi.GetHistoryRequest{Name: "angry-bird", Max: 256},
 			res: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
@@ -51,7 +51,7 @@ func TestGetHistory_WithRevisions(t *testing.T) {
 		},
 		{
 			desc: "get release with history using result limit (max=2)",
-			req:  &tpb.GetHistoryRequest{Name: "angry-bird", Max: 2},
+			req:  &hapi.GetHistoryRequest{Name: "angry-bird", Max: 2},
 			res: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
@@ -89,11 +89,11 @@ func TestGetHistory_WithRevisions(t *testing.T) {
 func TestGetHistory_WithNoRevisions(t *testing.T) {
 	tests := []struct {
 		desc string
-		req  *tpb.GetHistoryRequest
+		req  *hapi.GetHistoryRequest
 	}{
 		{
 			desc: "get release with no history",
-			req:  &tpb.GetHistoryRequest{Name: "sad-panda", Max: 256},
+			req:  &hapi.GetHistoryRequest{Name: "sad-panda", Max: 256},
 		},
 	}
 

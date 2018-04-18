@@ -15,14 +15,13 @@ package driver
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"reflect"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
-
 	"k8s.io/api/core/v1"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 )
 
 func TestSecretName(t *testing.T) {
@@ -48,7 +47,7 @@ func TestSecretGet(t *testing.T) {
 	}
 	// compare fetched release with original
 	if !reflect.DeepEqual(rel, got) {
-		t.Errorf("Expected {%q}, got {%q}", rel, got)
+		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
 }
 
@@ -64,7 +63,7 @@ func TestUNcompressedSecretGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secret: %s", err)
 	}
-	b, err := proto.Marshal(rel)
+	b, err := json.Marshal(rel)
 	if err != nil {
 		t.Fatalf("Failed to marshal release: %s", err)
 	}
@@ -80,7 +79,7 @@ func TestUNcompressedSecretGet(t *testing.T) {
 	}
 	// compare fetched release with original
 	if !reflect.DeepEqual(rel, got) {
-		t.Errorf("Expected {%q}, got {%q}", rel, got)
+		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
 }
 
@@ -153,7 +152,7 @@ func TestSecretCreate(t *testing.T) {
 
 	// compare created release with original
 	if !reflect.DeepEqual(rel, got) {
-		t.Errorf("Expected {%q}, got {%q}", rel, got)
+		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
 }
 

@@ -32,11 +32,11 @@ import (
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
@@ -162,7 +162,7 @@ func withSampleTemplates() chartOption {
 }
 
 type installOptions struct {
-	*services.InstallReleaseRequest
+	*hapi.InstallReleaseRequest
 }
 
 type installOption func(*installOptions)
@@ -197,9 +197,9 @@ func withChart(chartOpts ...chartOption) installOption {
 	}
 }
 
-func installRequest(opts ...installOption) *services.InstallReleaseRequest {
+func installRequest(opts ...installOption) *hapi.InstallReleaseRequest {
 	reqOpts := &installOptions{
-		&services.InstallReleaseRequest{
+		&hapi.InstallReleaseRequest{
 			Namespace: "spaced",
 			Chart:     buildChart(),
 		},

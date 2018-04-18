@@ -23,7 +23,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 )
 

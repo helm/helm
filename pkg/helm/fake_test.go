@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 func TestFakeClient_ReleaseStatus(t *testing.T) {
@@ -39,7 +39,7 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *rls.GetReleaseStatusResponse
+		want    *hapi.GetReleaseStatusResponse
 		wantErr bool
 	}{
 		{
@@ -52,7 +52,7 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			args: args{
 				rlsName: releasePresent.Name,
 			},
-			want: &rls.GetReleaseStatusResponse{
+			want: &hapi.GetReleaseStatusResponse{
 				Name:      releasePresent.Name,
 				Info:      releasePresent.Info,
 				Namespace: releasePresent.Namespace,
@@ -85,7 +85,7 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 			args: args{
 				rlsName: releasePresent.Name,
 			},
-			want: &rls.GetReleaseStatusResponse{
+			want: &hapi.GetReleaseStatusResponse{
 				Name:      releasePresent.Name,
 				Info:      releasePresent.Info,
 				Namespace: releasePresent.Namespace,
@@ -194,7 +194,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 		name      string
 		fields    fields
 		args      args
-		want      *rls.UninstallReleaseResponse
+		want      *hapi.UninstallReleaseResponse
 		relsAfter []*release.Release
 		wantErr   bool
 	}{
@@ -213,7 +213,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			relsAfter: []*release.Release{
 				ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
 			},
-			want: &rls.UninstallReleaseResponse{
+			want: &hapi.UninstallReleaseResponse{
 				Release: ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 			},
 			wantErr: false,
@@ -249,7 +249,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 				opts:    []DeleteOption{},
 			},
 			relsAfter: []*release.Release{},
-			want: &rls.UninstallReleaseResponse{
+			want: &hapi.UninstallReleaseResponse{
 				Release: ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
 			},
 			wantErr: false,

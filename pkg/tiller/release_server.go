@@ -31,11 +31,11 @@ import (
 	"k8s.io/client-go/discovery"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
@@ -104,7 +104,7 @@ func NewReleaseServer(env *environment.Environment, discovery discovery.Discover
 //
 // This is skipped if the req.ResetValues flag is set, in which case the
 // request values are not altered.
-func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) error {
+func (s *ReleaseServer) reuseValues(req *hapi.UpdateReleaseRequest, current *release.Release) error {
 	if req.ResetValues {
 		// If ResetValues is set, we comletely ignore current.Config.
 		s.Log("resetting values to the chart's original version")
@@ -433,14 +433,14 @@ func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 }
 
 // Update performs an update from current to target release
-func (s *ReleaseServer) Update(current, target *release.Release, req *services.UpdateReleaseRequest) error {
+func (s *ReleaseServer) Update(current, target *release.Release, req *hapi.UpdateReleaseRequest) error {
 	c := bytes.NewBufferString(current.Manifest)
 	t := bytes.NewBufferString(target.Manifest)
 	return s.env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait)
 }
 
 // Delete deletes the release and returns manifests that were kept in the deletion process
-func (s *ReleaseServer) Delete(rel *release.Release, req *services.UninstallReleaseRequest) (kept string, errs []error) {
+func (s *ReleaseServer) Delete(rel *release.Release, req *hapi.UninstallReleaseRequest) (kept string, errs []error) {
 	vs, err := GetVersionSet(s.discovery)
 	if err != nil {
 		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}

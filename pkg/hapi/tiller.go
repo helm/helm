@@ -1,243 +1,236 @@
-// Copyright 2016 The Kubernetes Authors All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+package hapi
 
-syntax = "proto3";
+import (
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
+)
 
-package hapi.services.tiller;
+// SortBy defines sort operations.
+type ListSort_SortBy int32
 
-import "hapi/chart/chart.proto";
-import "hapi/chart/config.proto";
-import "hapi/release/release.proto";
-import "hapi/release/info.proto";
-import "hapi/release/test_run.proto";
-import "hapi/release/status.proto";
+const (
+	ListSort_UNKNOWN       ListSort_SortBy = 0
+	ListSort_NAME          ListSort_SortBy = 1
+	ListSort_LAST_RELEASED ListSort_SortBy = 2
+)
 
-option go_package = "services";
+var ListSort_SortBy_name = map[int32]string{
+	0: "UNKNOWN",
+	1: "NAME",
+	2: "LAST_RELEASED",
+}
+var ListSort_SortBy_value = map[string]int32{
+	"UNKNOWN":       0,
+	"NAME":          1,
+	"LAST_RELEASED": 2,
+}
+
+func (x ListSort_SortBy) String() string {
+	return ListSort_SortBy_name[int32(x)]
+}
+
+// SortOrder defines sort orders to augment sorting operations.
+type ListSort_SortOrder int32
+
+const (
+	ListSort_ASC  ListSort_SortOrder = 0
+	ListSort_DESC ListSort_SortOrder = 1
+)
+
+var ListSort_SortOrder_name = map[int32]string{
+	0: "ASC",
+	1: "DESC",
+}
+var ListSort_SortOrder_value = map[string]int32{
+	"ASC":  0,
+	"DESC": 1,
+}
+
+func (x ListSort_SortOrder) String() string {
+	return ListSort_SortOrder_name[int32(x)]
+}
 
 // ListReleasesRequest requests a list of releases.
 //
 // Releases can be retrieved in chunks by setting limit and offset.
 //
 // Releases can be sorted according to a few pre-determined sort stategies.
-message ListReleasesRequest {
+type ListReleasesRequest struct {
 	// Limit is the maximum number of releases to be returned.
-	int64 limit  = 1;
-
+	Limit int64 `json:"limit,omityempty"`
 	// Offset is the last release name that was seen. The next listing
 	// operation will start with the name after this one.
 	// Example: If list one returns albert, bernie, carl, and sets 'next: dennis'.
 	// dennis is the offset. Supplying 'dennis' for the next request should
 	// cause the next batch to return a set of results starting with 'dennis'.
-	string offset = 2;
-
+	Offset string `json:"offset,omityempty"`
 	// SortBy is the sort field that the ListReleases server should sort data before returning.
-	ListSort.SortBy sort_by = 3;
-
+	SortBy ListSort_SortBy `json:"sort_by,omityempty"`
 	// Filter is a regular expression used to filter which releases should be listed.
 	//
 	// Anything that matches the regexp will be included in the results.
-	string filter = 4;
-
+	Filter string `json:"filter,omityempty"`
 	// SortOrder is the ordering directive used for sorting.
-	ListSort.SortOrder sort_order = 5;
-
-	repeated hapi.release.Status.Code status_codes = 6;
+	SortOrder   ListSort_SortOrder    `json:"sort_order,omityempty"`
+	StatusCodes []release.Status_Code `json:"status_codes,omityempty"`
 	// Namespace is the filter to select releases only from a specific namespace.
-	string namespace = 7;
-}
-
-// ListSort defines sorting fields on a release list.
-message ListSort{
-	// SortBy defines sort operations.
-	enum SortBy {
-		UNKNOWN = 0;
-		NAME = 1;
-		LAST_RELEASED = 2;
-	}
-
-	// SortOrder defines sort orders to augment sorting operations.
-	enum SortOrder {
-		ASC = 0;
-		DESC = 1;
-	}
+	Namespace string `json:"namespace,omityempty"`
 }
 
 // ListReleasesResponse is a list of releases.
-message ListReleasesResponse {
- 	// Count is the expected total number of releases to be returned.
-	int64 count  = 1;
-
+type ListReleasesResponse struct {
+	// Count is the expected total number of releases to be returned.
+	Count int64 `json:"count,omityempty"`
 	// Next is the name of the next release. If this is other than an empty
 	// string, it means there are more results.
-	string next = 2;
-
+	Next string `json:"next,omityempty"`
 	// Total is the total number of queryable releases.
-	int64 total  = 3;
-
+	Total int64 `json:"total,omityempty"`
 	// Releases is the list of found release objects.
-	repeated hapi.release.Release releases = 4;
+	Releases []*release.Release `json:"releases,omityempty"`
 }
 
 // GetReleaseStatusRequest is a request to get the status of a release.
-message GetReleaseStatusRequest {
+type GetReleaseStatusRequest struct {
 	// Name is the name of the release
-	string name = 1;
+	Name string `json:"name,omitempty"`
 	// Version is the version of the release
-	int32 version = 2;
+	Version int32 `json:"version,omitempty"`
 }
 
 // GetReleaseStatusResponse is the response indicating the status of the named release.
-message GetReleaseStatusResponse {
+type GetReleaseStatusResponse struct {
 	// Name is the name of the release.
-	string name = 1;
-
+	Name string `json:"name,omitempty"`
 	// Info contains information about the release.
-	hapi.release.Info info = 2;
-
-  // Namespace the release was released into
-  string namespace = 3;
+	Info *release.Info `json:"info,omitempty"`
+	// Namespace the release was released into
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // GetReleaseContentRequest is a request to get the contents of a release.
-message GetReleaseContentRequest {
+type GetReleaseContentRequest struct {
 	// The name of the release
-	string name = 1;
+	Name string `json:"name,omityempty"`
 	// Version is the version of the release
-	int32 version = 2;
+	Version int32 `json:"version,omityempty"`
 }
 
 // UpdateReleaseRequest updates a release.
-message UpdateReleaseRequest {
+type UpdateReleaseRequest struct {
 	// The name of the release
-	string name = 1;
+	Name string `json:"name,omityempty"`
 	// Chart is the protobuf representation of a chart.
-	hapi.chart.Chart chart = 2;
+	Chart *chart.Chart `json:"chart,omityempty"`
 	// Values is a string containing (unparsed) YAML values.
-	hapi.chart.Config values = 3;
+	Values *chart.Config `json:"values,omityempty"`
 	// dry_run, if true, will run through the release logic, but neither create
-	bool dry_run = 4;
+	DryRun bool `json:"dry_run,omityempty"`
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
-	bool disable_hooks = 5;
+	DisableHooks bool `json:"disable_hooks,omityempty"`
 	// Performs pods restart for resources if applicable
-	bool recreate = 6;
+	Recreate bool `json:"recreate,omityempty"`
 	// timeout specifies the max amount of time any kubernetes client command can run.
-	int64 timeout = 7;
+	Timeout int64 `json:"timeout,omityempty"`
 	// ResetValues will cause Tiller to ignore stored values, resetting to default values.
-	bool reset_values = 8;
+	ResetValues bool `json:"reset_values,omityempty"`
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
-	bool wait = 9;
+	Wait bool `json:"wait,omityempty"`
 	// ReuseValues will cause Tiller to reuse the values from the last release.
 	// This is ignored if reset_values is set.
-	bool reuse_values = 10;
+	ReuseValues bool `json:"reuse_values,omityempty"`
 	// Force resource update through delete/recreate if needed.
-	bool force = 11;
+	Force bool `json:"force,omityempty"`
 }
 
-message RollbackReleaseRequest {
+type RollbackReleaseRequest struct {
 	// The name of the release
-	string name = 1;
+	Name string `json:"name,omityempty"`
 	// dry_run, if true, will run through the release logic but no create
-	bool dry_run = 2;
+	DryRun bool `json:"dry_run,omityempty"`
 	// DisableHooks causes the server to skip running any hooks for the rollback
-	bool disable_hooks = 3;
+	DisableHooks bool `json:"disable_hooks,omityempty"`
 	// Version is the version of the release to deploy.
-	int32 version = 4;
+	Version int32 `json:"version,omityempty"`
 	// Performs pods restart for resources if applicable
-	bool recreate = 5;
+	Recreate bool `json:"recreate,omityempty"`
 	// timeout specifies the max amount of time any kubernetes client command can run.
-	int64 timeout = 6;
+	Timeout int64 `json:"timeout,omityempty"`
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
-	bool wait = 7;
+	Wait bool `json:"wait,omityempty"`
 	// Force resource update through delete/recreate if needed.
-	bool force = 8;
+	Force bool `json:"force,omityempty"`
 }
 
 // InstallReleaseRequest is the request for an installation of a chart.
-message InstallReleaseRequest {
+type InstallReleaseRequest struct {
 	// Chart is the protobuf representation of a chart.
-	hapi.chart.Chart chart = 1;
+	Chart *chart.Chart `json:"chart,omityempty"`
 	// Values is a string containing (unparsed) YAML values.
-	hapi.chart.Config values = 2;
+	Values *chart.Config `json:"values,omityempty"`
 	// DryRun, if true, will run through the release logic, but neither create
 	// a release object nor deploy to Kubernetes. The release object returned
 	// in the response will be fake.
-	bool dry_run = 3;
-
+	DryRun bool `json:"dry_run,omityempty"`
 	// Name is the candidate release name. This must be unique to the
 	// namespace, otherwise the server will return an error. If it is not
 	// supplied, the server will autogenerate one.
-	string name = 4;
-
+	Name string `json:"name,omityempty"`
 	// DisableHooks causes the server to skip running any hooks for the install.
-	bool disable_hooks = 5;
-
+	DisableHooks bool `json:"disable_hooks,omityempty"`
 	// Namepace is the kubernetes namespace of the release.
-	string namespace = 6;
-
+	Namespace string `json:"namespace,omityempty"`
 	// ReuseName requests that Tiller re-uses a name, instead of erroring out.
-	bool reuse_name = 7;
-
+	ReuseName bool `json:"reuse_name,omityempty"`
 	// timeout specifies the max amount of time any kubernetes client command can run.
-	int64 timeout = 8;
+	Timeout int64 `json:"timeout,omityempty"`
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
-	bool wait = 9;
+	Wait bool `json:"wait,omityempty"`
 }
 
 // UninstallReleaseRequest represents a request to uninstall a named release.
-message UninstallReleaseRequest {
+type UninstallReleaseRequest struct {
 	// Name is the name of the release to delete.
-	string name = 1;
+	Name string `json:"name,omityempty"`
 	// DisableHooks causes the server to skip running any hooks for the uninstall.
-	bool disable_hooks = 2;
+	DisableHooks bool `json:"disable_hooks,omityempty"`
 	// Purge removes the release from the store and make its name free for later use.
-	bool purge = 3;
+	Purge bool `json:"purge,omityempty"`
 	// timeout specifies the max amount of time any kubernetes client command can run.
-	int64 timeout = 4;
+	Timeout int64 `json:"timeout,omityempty"`
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.
-message UninstallReleaseResponse {
+type UninstallReleaseResponse struct {
 	// Release is the release that was marked deleted.
-	hapi.release.Release release = 1;
+	Release *release.Release `json:"release,omityempty"`
 	// Info is an uninstall message
-	string info = 2;
+	Info string `json:"info,omityempty"`
 }
 
 // GetHistoryRequest requests a release's history.
-message GetHistoryRequest {
+type GetHistoryRequest struct {
 	// The name of the release.
-	string name = 1;
+	Name string `json:"name,omityempty"`
 	// The maximum number of releases to include.
-	int32 max = 2;
+	Max int32 `json:"max,omityempty"`
 }
 
 // TestReleaseRequest is a request to get the status of a release.
-message TestReleaseRequest {
+type TestReleaseRequest struct {
 	// Name is the name of the release
-	string name = 1;
+	Name string `json:"name,omityempty"`
 	// timeout specifies the max amount of time any kubernetes client command can run.
-	int64 timeout = 2;
+	Timeout int64 `json:"timeout,omityempty"`
 	// cleanup specifies whether or not to attempt pod deletion after test completes
-	bool cleanup = 3;
+	Cleanup bool `json:"cleanup,omityempty"`
 }
 
 // TestReleaseResponse represents a message from executing a test
-message TestReleaseResponse {
-	string msg = 1;
-	hapi.release.TestRun.Status status = 2;
-
+type TestReleaseResponse struct {
+	Msg    string                 `json:"msg,omityempty"`
+	Status release.TestRun_Status `json:"status,omityempty"`
 }

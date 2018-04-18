@@ -20,10 +20,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"encoding/json"
 	"io/ioutil"
 
-	"github.com/golang/protobuf/proto"
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 )
 
 var b64 = base64.StdEncoding
@@ -33,7 +33,7 @@ var magicGzip = []byte{0x1f, 0x8b, 0x08}
 // encodeRelease encodes a release returning a base64 encoded
 // gzipped binary protobuf encoding representation, or error.
 func encodeRelease(rls *rspb.Release) (string, error) {
-	b, err := proto.Marshal(rls)
+	b, err := json.Marshal(rls)
 	if err != nil {
 		return "", err
 	}
@@ -78,7 +78,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 
 	var rls rspb.Release
 	// unmarshal protobuf bytes
-	if err := proto.Unmarshal(b, &rls); err != nil {
+	if err := json.Unmarshal(b, &rls); err != nil {
 		return nil, err
 	}
 	return &rls, nil

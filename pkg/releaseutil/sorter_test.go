@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
 )
 

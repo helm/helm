@@ -22,12 +22,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-
 	"k8s.io/helm/pkg/chartutil"
-	cpb "k8s.io/helm/pkg/proto/hapi/chart"
-	rls "k8s.io/helm/pkg/proto/hapi/release"
-	tpb "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	cpb "k8s.io/helm/pkg/hapi/chart"
+	rls "k8s.io/helm/pkg/hapi/release"
 )
 
 // Path to example charts relative to pkg/helm.
@@ -53,12 +51,12 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	var namespace = "namespace"
 
 	// Expected ListReleasesRequest message
-	exp := &tpb.ListReleasesRequest{
+	exp := &hapi.ListReleasesRequest{
 		Limit:       int64(limit),
 		Offset:      offset,
 		Filter:      filter,
-		SortBy:      tpb.ListSort_SortBy(sortBy),
-		SortOrder:   tpb.ListSort_SortOrder(sortOrd),
+		SortBy:      hapi.ListSort_SortBy(sortBy),
+		SortOrder:   hapi.ListSort_SortOrder(sortOrd),
 		StatusCodes: codes,
 		Namespace:   namespace,
 	}
@@ -75,9 +73,9 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client ListReleasesRequest
-	b4c := BeforeCall(func(msg proto.Message) error {
+	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
-		case *tpb.ListReleasesRequest:
+		case *hapi.ListReleasesRequest:
 			t.Logf("ListReleasesRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:
@@ -109,7 +107,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	var overrides = []byte("key1=value1,key2=value2")
 
 	// Expected InstallReleaseRequest message
-	exp := &tpb.InstallReleaseRequest{
+	exp := &hapi.InstallReleaseRequest{
 		Chart:        loadChart(t, chartName),
 		Values:       &cpb.Config{Raw: string(overrides)},
 		DryRun:       dryRun,
@@ -129,9 +127,9 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client InstallReleaseRequest
-	b4c := BeforeCall(func(msg proto.Message) error {
+	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
-		case *tpb.InstallReleaseRequest:
+		case *hapi.InstallReleaseRequest:
 			t.Logf("InstallReleaseRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:
@@ -157,7 +155,7 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 	var purgeFlag = true
 
 	// Expected DeleteReleaseRequest message
-	exp := &tpb.UninstallReleaseRequest{
+	exp := &hapi.UninstallReleaseRequest{
 		Name:         releaseName,
 		Purge:        purgeFlag,
 		DisableHooks: disableHooks,
@@ -170,9 +168,9 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client DeleteReleaseRequest
-	b4c := BeforeCall(func(msg proto.Message) error {
+	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
-		case *tpb.UninstallReleaseRequest:
+		case *hapi.UninstallReleaseRequest:
 			t.Logf("UninstallReleaseRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:
@@ -201,7 +199,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	var dryRun = false
 
 	// Expected UpdateReleaseRequest message
-	exp := &tpb.UpdateReleaseRequest{
+	exp := &hapi.UpdateReleaseRequest{
 		Name:         releaseName,
 		Chart:        loadChart(t, chartName),
 		Values:       &cpb.Config{Raw: string(overrides)},
@@ -217,9 +215,9 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client UpdateReleaseRequest
-	b4c := BeforeCall(func(msg proto.Message) error {
+	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
-		case *tpb.UpdateReleaseRequest:
+		case *hapi.UpdateReleaseRequest:
 			t.Logf("UpdateReleaseRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:
@@ -246,7 +244,7 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 	var dryRun = true
 
 	// Expected RollbackReleaseRequest message
-	exp := &tpb.RollbackReleaseRequest{
+	exp := &hapi.RollbackReleaseRequest{
 		Name:         releaseName,
 		DryRun:       dryRun,
 		Version:      revision,
@@ -261,9 +259,9 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 	}
 
 	// BeforeCall option to intercept Helm client RollbackReleaseRequest
-	b4c := BeforeCall(func(msg proto.Message) error {
+	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
-		case *tpb.RollbackReleaseRequest:
+		case *hapi.RollbackReleaseRequest:
 			t.Logf("RollbackReleaseRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:
@@ -288,15 +286,15 @@ func TestReleaseStatus_VerifyOptions(t *testing.T) {
 	var revision = int32(2)
 
 	// Expected GetReleaseStatusRequest message
-	exp := &tpb.GetReleaseStatusRequest{
+	exp := &hapi.GetReleaseStatusRequest{
 		Name:    releaseName,
 		Version: revision,
 	}
 
 	// BeforeCall option to intercept Helm client GetReleaseStatusRequest
-	b4c := BeforeCall(func(msg proto.Message) error {
+	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
-		case *tpb.GetReleaseStatusRequest:
+		case *hapi.GetReleaseStatusRequest:
 			t.Logf("GetReleaseStatusRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:
@@ -322,15 +320,15 @@ func TestReleaseContent_VerifyOptions(t *testing.T) {
 	var revision = int32(2)
 
 	// Expected GetReleaseContentRequest message
-	exp := &tpb.GetReleaseContentRequest{
+	exp := &hapi.GetReleaseContentRequest{
 		Name:    releaseName,
 		Version: revision,
 	}
 
 	// BeforeCall option to intercept Helm client GetReleaseContentRequest
-	b4c := BeforeCall(func(msg proto.Message) error {
+	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
-		case *tpb.GetReleaseContentRequest:
+		case *hapi.GetReleaseContentRequest:
 			t.Logf("GetReleaseContentRequest: %#+v\n", act)
 			assert(t, exp, act)
 		default:

@@ -24,9 +24,9 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 // FakeClient implements Interface
@@ -79,11 +79,11 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 }
 
 // DeleteRelease deletes a release from the FakeClient
-func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error) {
 	for i, rel := range c.Rels {
 		if rel.Name == rlsName {
 			c.Rels = append(c.Rels[:i], c.Rels[i+1:]...)
-			return &rls.UninstallReleaseResponse{
+			return &hapi.UninstallReleaseResponse{
 				Release: rel,
 			}, nil
 		}
@@ -109,10 +109,10 @@ func (c *FakeClient) RollbackRelease(rlsName string, opts ...RollbackOption) (*r
 }
 
 // ReleaseStatus returns a release status response with info from the matching release name.
-func (c *FakeClient) ReleaseStatus(rlsName string, version int32) (*rls.GetReleaseStatusResponse, error) {
+func (c *FakeClient) ReleaseStatus(rlsName string, version int32) (*hapi.GetReleaseStatusResponse, error) {
 	for _, rel := range c.Rels {
 		if rel.Name == rlsName {
-			return &rls.GetReleaseStatusResponse{
+			return &hapi.GetReleaseStatusResponse{
 				Name:      rel.Name,
 				Info:      rel.Info,
 				Namespace: rel.Namespace,
@@ -138,9 +138,9 @@ func (c *FakeClient) ReleaseHistory(rlsName string, max int32) ([]*release.Relea
 }
 
 // RunReleaseTest executes a pre-defined tests on a release
-func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
+func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *hapi.TestReleaseResponse, <-chan error) {
 
-	results := make(chan *rls.TestReleaseResponse)
+	results := make(chan *hapi.TestReleaseResponse)
 	errc := make(chan error, 1)
 
 	go func() {
@@ -150,7 +150,7 @@ func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (
 
 			go func(msg string, status release.TestRun_Status) {
 				defer wg.Done()
-				results <- &rls.TestReleaseResponse{Msg: msg, Status: status}
+				results <- &hapi.TestReleaseResponse{Msg: msg, Status: status}
 			}(m, s)
 		}
 

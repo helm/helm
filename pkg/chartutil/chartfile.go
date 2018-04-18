@@ -25,7 +25,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/hapi/chart"
 )
 
 // ApiVersionV1 is the API version number for version 1.

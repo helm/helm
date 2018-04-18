@@ -19,7 +19,7 @@ package releaseutil // import "k8s.io/helm/pkg/releaseutil"
 import (
 	"sort"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 )
 
 type sorter struct {

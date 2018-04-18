@@ -22,15 +22,15 @@ import (
 	"strings"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/timeconv"
 )
 
 // InstallRelease installs a release and stores the release record.
-func (s *ReleaseServer) InstallRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) InstallRelease(req *hapi.InstallReleaseRequest) (*release.Release, error) {
 	s.Log("preparing install for %s", req.Name)
 	rel, err := s.prepareRelease(req)
 	if err != nil {
@@ -53,7 +53,7 @@ func (s *ReleaseServer) InstallRelease(req *services.InstallReleaseRequest) (*re
 }
 
 // prepareRelease builds a release for an install operation.
-func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*release.Release, error) {
 	if req.Chart == nil {
 		return nil, errMissingChart
 	}
@@ -130,7 +130,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 }
 
 // performRelease runs a release.
-func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallReleaseRequest) (*release.Release, error) {
 
 	if req.DryRun {
 		s.Log("dry run for %s", r.Name)
@@ -164,7 +164,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		// update new release with next revision number
 		// so as to append to the old release's history
 		r.Version = old.Version + 1
-		updateReq := &services.UpdateReleaseRequest{
+		updateReq := &hapi.UpdateReleaseRequest{
 			Wait:     req.Wait,
 			Recreate: false,
 			Timeout:  req.Timeout,

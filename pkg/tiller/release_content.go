@@ -17,12 +17,12 @@ limitations under the License.
 package tiller
 
 import (
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 // GetReleaseContent gets all of the stored information for the given release.
-func (s *ReleaseServer) GetReleaseContent(req *services.GetReleaseContentRequest) (*release.Release, error) {
+func (s *ReleaseServer) GetReleaseContent(req *hapi.GetReleaseContentRequest) (*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("releaseContent: Release name is invalid: %s", req.Name)
 		return nil, err

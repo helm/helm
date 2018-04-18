@@ -17,13 +17,13 @@ limitations under the License.
 package tiller
 
 import (
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	reltesting "k8s.io/helm/pkg/releasetesting"
 )
 
 // RunReleaseTest runs pre-defined tests stored as hooks on a given release
-func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest) (<-chan *services.TestReleaseResponse, <-chan error) {
+func (s *ReleaseServer) RunReleaseTest(req *hapi.TestReleaseRequest) (<-chan *hapi.TestReleaseResponse, <-chan error) {
 	errc := make(chan error, 1)
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("releaseTest: Release name is invalid: %s", req.Name)
@@ -38,7 +38,7 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest) (<-chan
 		return nil, errc
 	}
 
-	ch := make(chan *services.TestReleaseResponse, 1)
+	ch := make(chan *hapi.TestReleaseResponse, 1)
 	testEnv := &reltesting.Environment{
 		Namespace:  rel.Namespace,
 		KubeClient: s.env.KubeClient,

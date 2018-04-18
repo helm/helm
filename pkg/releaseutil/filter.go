@@ -16,7 +16,7 @@ limitations under the License.
 
 package releaseutil // import "k8s.io/helm/pkg/releaseutil"
 
-import rspb "k8s.io/helm/pkg/proto/hapi/release"
+import rspb "k8s.io/helm/pkg/hapi/release"
 
 // FilterFunc returns true if the release object satisfies
 // the predicate of the underlying filter func.
@@ -73,6 +73,6 @@ func StatusFilter(status rspb.Status_Code) FilterFunc {
 		if rls == nil {
 			return true
 		}
-		return rls.GetInfo().GetStatus().Code == status
+		return rls.Info.Status.Code == status
 	})
 }

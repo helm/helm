@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
 )

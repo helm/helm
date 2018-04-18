@@ -24,8 +24,8 @@ import (
 
 	"k8s.io/kubernetes/pkg/apis/core"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/tiller/environment"
 )
 
@@ -33,7 +33,7 @@ import (
 type Environment struct {
 	Namespace  string
 	KubeClient environment.KubeClient
-	Mesages    chan *services.TestReleaseResponse
+	Mesages    chan *hapi.TestReleaseResponse
 	Timeout    int64
 }
 
@@ -106,7 +106,7 @@ func (env *Environment) streamUnknown(name, info string) error {
 }
 
 func (env *Environment) streamMessage(msg string, status release.TestRun_Status) error {
-	resp := &services.TestReleaseResponse{Msg: msg, Status: status}
+	resp := &hapi.TestReleaseResponse{Msg: msg, Status: status}
 	env.Mesages <- resp
 	return nil
 }

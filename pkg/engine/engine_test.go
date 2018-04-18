@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/hapi/chart"
 
 	"github.com/golang/protobuf/ptypes/any"
 )

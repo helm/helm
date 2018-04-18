@@ -18,9 +18,9 @@ package helm // import "k8s.io/helm/pkg/helm"
 
 import (
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/tiller/environment"
@@ -109,7 +109,7 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 }
 
 // DeleteRelease uninstalls a named release and returns the response.
-func (c *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.UninstallReleaseResponse, error) {
+func (c *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error) {
 	// apply the uninstall options
 	reqOpts := c.opts
 	for _, opt := range opts {
@@ -120,9 +120,9 @@ func (c *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 		// In the dry run case, just see if the release exists
 		r, err := c.ReleaseContent(rlsName, 0)
 		if err != nil {
-			return &rls.UninstallReleaseResponse{}, err
+			return &hapi.UninstallReleaseResponse{}, err
 		}
-		return &rls.UninstallReleaseResponse{Release: r}, nil
+		return &hapi.UninstallReleaseResponse{Release: r}, nil
 	}
 
 	req := &reqOpts.uninstallReq
@@ -198,7 +198,7 @@ func (c *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*relea
 }
 
 // ReleaseStatus returns the given release's status.
-func (c *Client) ReleaseStatus(rlsName string, version int32) (*rls.GetReleaseStatusResponse, error) {
+func (c *Client) ReleaseStatus(rlsName string, version int32) (*hapi.GetReleaseStatusResponse, error) {
 	reqOpts := c.opts
 	req := &reqOpts.statusReq
 	req.Name = rlsName
@@ -237,7 +237,7 @@ func (c *Client) ReleaseHistory(rlsName string, max int32) ([]*release.Release, 
 }
 
 // RunReleaseTest executes a pre-defined test on a release.
-func (c *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *rls.TestReleaseResponse, <-chan error) {
+func (c *Client) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (<-chan *hapi.TestReleaseResponse, <-chan error) {
 	reqOpts := c.opts
 	for _, opt := range opts {
 		opt(&reqOpts)

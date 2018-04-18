@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 const (

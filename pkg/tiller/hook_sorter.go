@@ -19,7 +19,7 @@ package tiller
 import (
 	"sort"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 // sortByHookWeight does an in-place sort of hooks by their supplied weight.

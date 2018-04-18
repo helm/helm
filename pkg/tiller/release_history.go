@@ -17,13 +17,13 @@ limitations under the License.
 package tiller
 
 import (
-	"k8s.io/helm/pkg/proto/hapi/release"
-	tpb "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
 // GetHistory gets the history for a given release.
-func (s *ReleaseServer) GetHistory(req *tpb.GetHistoryRequest) ([]*release.Release, error) {
+func (s *ReleaseServer) GetHistory(req *hapi.GetHistoryRequest) ([]*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("getHistory: Release name is invalid: %s", req.Name)
 		return nil, err

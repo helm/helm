@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	rspb "k8s.io/helm/pkg/hapi/release"
 )
 
 func TestMemoryName(t *testing.T) {
@@ -143,7 +143,7 @@ func TestMemoryUpdate(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(r, tt.rls) {
-			t.Fatalf("Expected %s, actual %s\n", tt.rls, r)
+			t.Fatalf("Expected %v, actual %v\n", tt.rls, r)
 		}
 	}
 }

@@ -20,7 +20,7 @@ import (
 	"path"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/hapi/chart"
 )
 
 func TestLoadDir(t *testing.T) {

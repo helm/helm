@@ -17,12 +17,11 @@ limitations under the License.
 package helm
 
 import (
-	"github.com/golang/protobuf/proto"
 	"k8s.io/client-go/discovery"
 
-	cpb "k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	rls "k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	cpb "k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
 )
@@ -45,36 +44,36 @@ type options struct {
 	// if set, skip running hooks
 	disableHooks bool
 	// release list options are applied directly to the list releases request
-	listReq rls.ListReleasesRequest
+	listReq hapi.ListReleasesRequest
 	// release install options are applied directly to the install release request
-	instReq rls.InstallReleaseRequest
+	instReq hapi.InstallReleaseRequest
 	// release update options are applied directly to the update release request
-	updateReq rls.UpdateReleaseRequest
+	updateReq hapi.UpdateReleaseRequest
 	// release uninstall options are applied directly to the uninstall release request
-	uninstallReq rls.UninstallReleaseRequest
+	uninstallReq hapi.UninstallReleaseRequest
 	// release get status options are applied directly to the get release status request
-	statusReq rls.GetReleaseStatusRequest
+	statusReq hapi.GetReleaseStatusRequest
 	// release get content options are applied directly to the get release content request
-	contentReq rls.GetReleaseContentRequest
+	contentReq hapi.GetReleaseContentRequest
 	// release rollback options are applied directly to the rollback release request
-	rollbackReq rls.RollbackReleaseRequest
+	rollbackReq hapi.RollbackReleaseRequest
 	// before intercepts client calls before sending
-	before func(proto.Message) error
+	before func(interface{}) error
 	// release history options are applied directly to the get release history request
-	histReq rls.GetHistoryRequest
+	histReq hapi.GetHistoryRequest
 	// resetValues instructs Tiller to reset values to their defaults.
 	resetValues bool
 	// reuseValues instructs Tiller to reuse the values from the last release.
 	reuseValues bool
 	// release test options are applied directly to the test release history request
-	testReq rls.TestReleaseRequest
+	testReq hapi.TestReleaseRequest
 
 	driver     driver.Driver
 	kubeClient environment.KubeClient
 	discovery  discovery.DiscoveryInterface
 }
 
-func (opts *options) runBefore(msg proto.Message) error {
+func (opts *options) runBefore(msg interface{}) error {
 	if opts.before != nil {
 		return opts.before(msg)
 	}
@@ -84,7 +83,7 @@ func (opts *options) runBefore(msg proto.Message) error {
 // BeforeCall returns an option that allows intercepting a helm client rpc
 // before being sent OTA to tiller. The intercepting function should return
 // an error to indicate that the call should not proceed or nil otherwise.
-func BeforeCall(fn func(proto.Message) error) Option {
+func BeforeCall(fn func(interface{}) error) Option {
 	return func(opts *options) {
 		opts.before = fn
 	}
@@ -119,14 +118,14 @@ func ReleaseListLimit(limit int) ReleaseListOption {
 // ReleaseListOrder specifies how to order a list of releases.
 func ReleaseListOrder(order int32) ReleaseListOption {
 	return func(opts *options) {
-		opts.listReq.SortOrder = rls.ListSort_SortOrder(order)
+		opts.listReq.SortOrder = hapi.ListSort_SortOrder(order)
 	}
 }
 
 // ReleaseListSort specifies how to sort a release list.
 func ReleaseListSort(sort int32) ReleaseListOption {
 	return func(opts *options) {
-		opts.listReq.SortBy = rls.ListSort_SortBy(sort)
+		opts.listReq.SortBy = hapi.ListSort_SortBy(sort)
 	}
 }
 

@@ -19,7 +19,7 @@ package tiller
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 func TestHookSorter(t *testing.T) {

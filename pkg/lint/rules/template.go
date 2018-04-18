@@ -23,10 +23,11 @@ import (
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
+	cpb "k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/lint/support"
-	cpb "k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/timeconv"
 	tversion "k8s.io/helm/pkg/version"
 )

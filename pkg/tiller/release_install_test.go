@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 )
 
 func TestInstallRelease(t *testing.T) {
@@ -329,7 +329,7 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 		t.Errorf("expected %q, got %q", rel.Name, res.Name)
 	}
 
-	getreq := &services.GetReleaseStatusRequest{Name: rel.Name, Version: 0}
+	getreq := &hapi.GetReleaseStatusRequest{Name: rel.Name, Version: 0}
 	getres, err := rs.GetReleaseStatus(getreq)
 	if err != nil {
 		t.Errorf("Failed to retrieve release: %s", err)

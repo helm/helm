@@ -30,8 +30,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes/any"
 
+	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/ignore"
-	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/sympath"
 )
 

@@ -24,9 +24,9 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/proto/hapi/release"
-	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
 
@@ -121,14 +121,14 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (l *listCmd) run() error {
-	sortBy := services.ListSort_NAME
+	sortBy := hapi.ListSort_NAME
 	if l.byDate {
-		sortBy = services.ListSort_LAST_RELEASED
+		sortBy = hapi.ListSort_LAST_RELEASED
 	}
 
-	sortOrder := services.ListSort_ASC
+	sortOrder := hapi.ListSort_ASC
 	if l.sortDesc {
-		sortOrder = services.ListSort_DESC
+		sortOrder = hapi.ListSort_DESC
 	}
 
 	stats := l.statusCodes()
@@ -168,7 +168,7 @@ func filterList(rels []*release.Release) []*release.Release {
 	idx := map[string]int32{}
 
 	for _, r := range rels {
-		name, version := r.GetName(), r.GetVersion()
+		name, version := r.Name, r.Version
 		if max, ok := idx[name]; ok {
 			// check if we have a greater version already
 			if max > version {
@@ -180,7 +180,7 @@ func filterList(rels []*release.Release) []*release.Release {
 
 	uniq := make([]*release.Release, 0, len(idx))
 	for _, r := range rels {
-		if idx[r.GetName()] == r.GetVersion() {
+		if idx[r.Name] == r.Version {
 			uniq = append(uniq, r)
 		}
 	}
@@ -234,16 +234,16 @@ func formatList(rels []*release.Release, colWidth uint) string {
 	table.MaxColWidth = colWidth
 	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
 	for _, r := range rels {
-		md := r.GetChart().GetMetadata()
-		c := fmt.Sprintf("%s-%s", md.GetName(), md.GetVersion())
+		md := r.Chart.Metadata
+		c := fmt.Sprintf("%s-%s", md.Name, md.Version)
 		t := "-"
-		if tspb := r.GetInfo().GetLastDeployed(); tspb != nil {
+		if tspb := r.Info.LastDeployed; tspb != nil {
 			t = timeconv.String(tspb)
 		}
-		s := r.GetInfo().GetStatus().GetCode().String()
-		v := r.GetVersion()
-		n := r.GetNamespace()
-		table.AddRow(r.GetName(), v, t, s, c, n)
+		s := r.Info.Status.Code.String()
+		v := r.Version
+		n := r.Namespace
+		table.AddRow(r.Name, v, t, s, c, n)
 	}
 	return table.String()
 }
