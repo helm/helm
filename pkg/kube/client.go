@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -186,7 +185,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
 		if err != nil {
-			c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+			c.Log("Warning: get the relation pod is failed, err:%s", err)
 		}
 
 		return nil
@@ -485,7 +484,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	versioned, err := c.AsVersionedObject(target.Object)
+	versioned, err := target.Versioned()
 	if runtime.IsNotRegisteredError(err) {
 		return nil
 	}
@@ -606,18 +605,6 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 	return err
 }
 
-// AsVersionedObject converts a runtime.object to a versioned object.
-func (c *Client) AsVersionedObject(obj runtime.Object) (runtime.Object, error) {
-	json, err := runtime.Encode(unstructured.UnstructuredJSONScheme, obj)
-	if err != nil {
-		return nil, err
-	}
-	versions := &runtime.VersionedObjects{}
-	decoder := unstructured.UnstructuredJSONScheme
-	err = runtime.DecodeInto(decoder, json, versions)
-	return versions.First(), err
-}
-
 // waitForJob is a helper that waits for a job to complete.
 //
 // This operates on an event returned from a watcher.
@@ -712,7 +699,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 
 	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
 
-	versioned, err := c.AsVersionedObject(info.Object)
+	versioned, err := info.Versioned()
 	if runtime.IsNotRegisteredError(err) {
 		return objPods, nil
 	}
