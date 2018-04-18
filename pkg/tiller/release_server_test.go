@@ -112,7 +112,7 @@ func buildChart(opts ...chartOption) *chart.Chart {
 				Name: "hello",
 			},
 			// This adds a basic template and hooks.
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 			},
@@ -140,7 +140,7 @@ func withDependency(dependencyOpts ...chartOption) chartOption {
 
 func withNotes(notes string) chartOption {
 	return func(opts *chartOptions) {
-		opts.Templates = append(opts.Templates, &chart.Template{
+		opts.Templates = append(opts.Templates, &chart.File{
 			Name: "templates/NOTES.txt",
 			Data: []byte(notes),
 		})
@@ -149,7 +149,7 @@ func withNotes(notes string) chartOption {
 
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.Template{
+		sampleTemplates := []*chart.File{
 			// This adds basic templates and partials.
 			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
 			{Name: "templates/empty", Data: []byte("")},
@@ -361,7 +361,7 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 		Metadata: &chart.Metadata{
 			Name: "bunnychart",
 		},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/configmap", Data: []byte(manifestWithKeep)},
 		},
 	}

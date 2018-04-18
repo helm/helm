@@ -23,8 +23,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"
-
-	"github.com/golang/protobuf/ptypes/any"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -94,7 +92,7 @@ func TestRender(t *testing.T) {
 			Name:    "moby",
 			Version: "1.2.3",
 		},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/test1", Data: []byte("{{.outer | title }} {{.inner | title}}")},
 			{Name: "templates/test2", Data: []byte("{{.global.callme | lower }}")},
 			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
@@ -203,20 +201,20 @@ func TestParallelRenderInternals(t *testing.T) {
 func TestAllTemplates(t *testing.T) {
 	ch1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "ch1"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/foo", Data: []byte("foo")},
 			{Name: "templates/bar", Data: []byte("bar")},
 		},
 		Dependencies: []*chart.Chart{
 			{
 				Metadata: &chart.Metadata{Name: "laboratory mice"},
-				Templates: []*chart.Template{
+				Templates: []*chart.File{
 					{Name: "templates/pinky", Data: []byte("pinky")},
 					{Name: "templates/brain", Data: []byte("brain")},
 				},
 				Dependencies: []*chart.Chart{{
 					Metadata: &chart.Metadata{Name: "same thing we do every night"},
-					Templates: []*chart.Template{
+					Templates: []*chart.File{
 						{Name: "templates/innermost", Data: []byte("innermost")},
 					}},
 				},
@@ -237,13 +235,13 @@ func TestRenderDependency(t *testing.T) {
 	toptpl := `Hello {{template "myblock"}}`
 	ch := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "outerchart"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/outer", Data: []byte(toptpl)},
 		},
 		Dependencies: []*chart.Chart{
 			{
 				Metadata: &chart.Metadata{Name: "innerchart"},
-				Templates: []*chart.Template{
+				Templates: []*chart.File{
 					{Name: "templates/inner", Data: []byte(deptpl)},
 				},
 			},
@@ -278,7 +276,7 @@ func TestRenderNestedValues(t *testing.T) {
 
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 			{Name: checkrelease, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
@@ -287,7 +285,7 @@ func TestRenderNestedValues(t *testing.T) {
 
 	inner := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "herrick"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: innerpath, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
 		Values:       &chart.Config{Raw: `who: "Robert"`},
@@ -296,7 +294,7 @@ func TestRenderNestedValues(t *testing.T) {
 
 	outer := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "top"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: outerpath, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
 		},
 		Values: &chart.Config{
@@ -363,21 +361,21 @@ global:
 func TestRenderBuiltinValues(t *testing.T) {
 	inner := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "Latium"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
 			{Name: "templates/From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.Get "book/title.txt"}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
 		Dependencies: []*chart.Chart{},
-		Files: []*any.Any{
-			{TypeUrl: "author", Value: []byte("Virgil")},
-			{TypeUrl: "book/title.txt", Value: []byte("Aeneid")},
+		Files: []*chart.File{
+			{Name: "author", Data: []byte("Virgil")},
+			{Name: "book/title.txt", Data: []byte("Aeneid")},
 		},
 	}
 
 	outer := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "Troy"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
@@ -415,7 +413,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 func TestAlterFuncMap(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "conrad"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/quote", Data: []byte(`{{include "conrad/templates/_partial" . | indent 2}} dead.`)},
 			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}} - he`)},
 		},
@@ -443,7 +441,7 @@ func TestAlterFuncMap(t *testing.T) {
 
 	reqChart := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "conan"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/quote", Data: []byte(`All your base are belong to {{ required "A valid 'who' is required" .Values.who }}`)},
 			{Name: "templates/bases", Data: []byte(`All {{ required "A valid 'bases' is required" .Values.bases }} of them!`)},
 		},
@@ -478,7 +476,7 @@ func TestAlterFuncMap(t *testing.T) {
 
 	tplChart := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplFunction"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value}}" .}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
@@ -507,7 +505,7 @@ func TestAlterFuncMap(t *testing.T) {
 
 	tplChartWithFunction := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplFunction"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | quote}}" .}}`)},
 		},
 		Values:       &chart.Config{Raw: ``},
@@ -536,7 +534,7 @@ func TestAlterFuncMap(t *testing.T) {
 
 	tplChartWithInclude := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplFunction"},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/base", Data: []byte(`{{ tpl "{{include ` + "`" + `TplFunction/templates/_partial` + "`" + ` .  | quote }}" .}}`)},
 			{Name: "templates/_partial", Data: []byte(`{{.Template.Name}}`)},
 		},

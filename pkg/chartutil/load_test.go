@@ -97,26 +97,12 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
-	c, err = LoadFiles([]*BufferedFile{})
+	_, err = LoadFiles([]*BufferedFile{})
 	if err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
 	if err.Error() != "chart metadata (Chart.yaml) missing" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
-	}
-
-	// legacy check
-	c, err = LoadFiles([]*BufferedFile{
-		{
-			Name: "values.toml",
-			Data: []byte{},
-		},
-	})
-	if err == nil {
-		t.Fatal("Expected err to be non-nil")
-	}
-	if err.Error() != "values.toml is illegal as of 2.0.0-alpha.2" {
-		t.Errorf("Expected values.toml to be illegal, got '%s'", err.Error())
 	}
 }
 
@@ -145,7 +131,7 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 	if len(c.Files) != numfiles {
 		t.Errorf("Expected %d extra files, got %d", numfiles, len(c.Files))
 		for _, n := range c.Files {
-			t.Logf("\t%s", n.TypeUrl)
+			t.Logf("\t%s", n.Name)
 		}
 	}
 

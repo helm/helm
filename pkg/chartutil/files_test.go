@@ -18,7 +18,6 @@ package chartutil
 import (
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/any"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,16 +31,16 @@ var cases = []struct {
 	{"multiline/test.txt", "bar\nfoo"},
 }
 
-func getTestFiles() []*any.Any {
-	a := []*any.Any{}
+func getTestFiles() Files {
+	a := make(Files, len(cases))
 	for _, c := range cases {
-		a = append(a, &any.Any{TypeUrl: c.path, Value: []byte(c.data)})
+		a[c.path] = []byte(c.data)
 	}
 	return a
 }
 
 func TestNewFiles(t *testing.T) {
-	files := NewFiles(getTestFiles())
+	files := getTestFiles()
 	if len(files) != len(cases) {
 		t.Errorf("Expected len() = %d, got %d", len(cases), len(files))
 	}
@@ -59,7 +58,7 @@ func TestNewFiles(t *testing.T) {
 func TestFileGlob(t *testing.T) {
 	as := assert.New(t)
 
-	f := NewFiles(getTestFiles())
+	f := getTestFiles()
 
 	matched := f.Glob("story/**")
 
@@ -70,7 +69,7 @@ func TestFileGlob(t *testing.T) {
 func TestToConfig(t *testing.T) {
 	as := assert.New(t)
 
-	f := NewFiles(getTestFiles())
+	f := getTestFiles()
 	out := f.Glob("**/captain.txt").AsConfig()
 	as.Equal("captain.txt: The Captain", out)
 
@@ -81,7 +80,7 @@ func TestToConfig(t *testing.T) {
 func TestToSecret(t *testing.T) {
 	as := assert.New(t)
 
-	f := NewFiles(getTestFiles())
+	f := getTestFiles()
 
 	out := f.Glob("ship/**").AsSecrets()
 	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0", out)
@@ -90,7 +89,7 @@ func TestToSecret(t *testing.T) {
 func TestLines(t *testing.T) {
 	as := assert.New(t)
 
-	f := NewFiles(getTestFiles())
+	f := getTestFiles()
 
 	out := f.Lines("multiline/test.txt")
 	as.Len(out, 2)

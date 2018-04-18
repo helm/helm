@@ -36,7 +36,7 @@ func TestUpdateRelease(t *testing.T) {
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
@@ -108,7 +108,7 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
@@ -133,7 +133,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 		Namespace: "spaced",
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 			},
@@ -153,7 +153,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
@@ -177,7 +177,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
@@ -203,7 +203,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
@@ -233,7 +233,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
@@ -270,7 +270,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 		Name: rel.Name,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
@@ -301,7 +301,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 		DisableHooks: true,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/something", Data: []byte("hello: world")},
 			},
 		},
@@ -343,7 +343,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 		DisableHooks: true,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/something", Data: []byte("text: 'Did you ever hear the tragedy of Darth Plagueis the Wise? I thought not. It’s not a story the Jedi would tell you. It’s a Sith legend. Darth Plagueis was a Dark Lord of the Sith, so powerful and so wise he could use the Force to influence the Midichlorians to create life... He had such a knowledge of the Dark Side that he could even keep the ones he cared about from dying. The Dark Side of the Force is a pathway to many abilities some consider to be unnatural. He became so powerful... The only thing he was afraid of was losing his power, which eventually, of course, he did. Unfortunately, he taught his apprentice everything he knew, then his apprentice killed him in his sleep. Ironic. He could save others from death, but not himself.'")},
 			},
 		},
@@ -385,7 +385,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 		DisableHooks: true,
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},

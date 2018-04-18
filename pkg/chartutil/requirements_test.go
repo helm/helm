@@ -287,7 +287,7 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Confi
 	if err != nil {
 		t.Errorf("Error processing import values requirements %v", err)
 	}
-	cv := c.GetValues()
+	cv := c.Values
 	cc, err := ReadValues([]byte(cv.Raw))
 	if err != nil {
 		t.Errorf("Error reading import values %v", err)

@@ -482,7 +482,7 @@ func defaultNamespace() string {
 func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 	missing := []string{}
 
-	deps := ch.GetDependencies()
+	deps := ch.Dependencies
 	for _, r := range reqs.Dependencies {
 		found := false
 		for _, d := range deps {

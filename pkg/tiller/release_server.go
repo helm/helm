@@ -267,7 +267,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	s.Log("rendering %s chart using values", ch.GetMetadata().Name)
+	s.Log("rendering %s chart using values", ch.Metadata.Name)
 	renderer := s.engine(ch)
 	files, err := renderer.Render(ch, values)
 	if err != nil {

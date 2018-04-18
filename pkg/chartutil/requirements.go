@@ -98,8 +98,8 @@ type RequirementsLock struct {
 func LoadRequirements(c *chart.Chart) (*Requirements, error) {
 	var data []byte
 	for _, f := range c.Files {
-		if f.TypeUrl == requirementsName {
-			data = f.Value
+		if f.Name == requirementsName {
+			data = f.Data
 		}
 	}
 	if len(data) == 0 {
@@ -113,8 +113,8 @@ func LoadRequirements(c *chart.Chart) (*Requirements, error) {
 func LoadRequirementsLock(c *chart.Chart) (*RequirementsLock, error) {
 	var data []byte
 	for _, f := range c.Files {
-		if f.TypeUrl == lockfileName {
-			data = f.Value
+		if f.Name == lockfileName {
+			data = f.Data
 		}
 	}
 	if len(data) == 0 {
@@ -392,7 +392,7 @@ func processImportValues(c *chart.Chart) error {
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{}, 0)
+	b := make(map[string]interface{})
 	// import values from each dependency if specified in import-values
 	for _, r := range reqs.Dependencies {
 		if len(r.ImportValues) > 0 {

@@ -417,8 +417,7 @@ func (v Values) PathValue(ypath string) (interface{}, error) {
 	table := yps[:ypsLen-1]
 	st := strings.Join(table, ".")
 	// get the last element as a string key
-	key := yps[ypsLen-1:]
-	sk := string(key[0])
+	sk := yps[ypsLen-1:][0]
 	// get our table for table path
 	t, err := v.Table(st)
 	if err != nil {

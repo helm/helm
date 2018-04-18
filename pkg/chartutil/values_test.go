@@ -24,8 +24,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/any"
-
 	kversion "k8s.io/apimachinery/pkg/version"
 
 	"k8s.io/helm/pkg/hapi/chart"
@@ -90,7 +88,7 @@ where:
 
 	c := &chart.Chart{
 		Metadata:  &chart.Metadata{Name: "test"},
-		Templates: []*chart.Template{},
+		Templates: []*chart.File{},
 		Values:    &chart.Config{Raw: chartValues},
 		Dependencies: []*chart.Chart{
 			{
@@ -98,8 +96,8 @@ where:
 				Values:   &chart.Config{Raw: ""},
 			},
 		},
-		Files: []*any.Any{
-			{TypeUrl: "scheherazade/shahryar.txt", Value: []byte("1,001 Nights")},
+		Files: []*chart.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 	}
 	v := &chart.Config{Raw: overideValues}
@@ -153,9 +151,7 @@ where:
 		t.Error("Expected Capabilities to have a Kube version")
 	}
 
-	var vals Values
-	vals = res["Values"].(Values)
-
+	vals := res["Values"].(Values)
 	if vals["name"] != "Haroun" {
 		t.Errorf("Expected 'Haroun', got %q (%v)", vals["name"], vals)
 	}

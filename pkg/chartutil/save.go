@@ -69,14 +69,14 @@ func SaveDir(c *chart.Chart, dest string) error {
 
 	// Save files
 	for _, f := range c.Files {
-		n := filepath.Join(outdir, f.TypeUrl)
+		n := filepath.Join(outdir, f.Name)
 
 		d := filepath.Dir(n)
 		if err := os.MkdirAll(d, 0755); err != nil {
 			return err
 		}
 
-		if err := ioutil.WriteFile(n, f.Value, 0755); err != nil {
+		if err := ioutil.WriteFile(n, f.Data, 0755); err != nil {
 			return err
 		}
 	}
@@ -186,8 +186,8 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 
 	// Save files
 	for _, f := range c.Files {
-		n := filepath.Join(base, f.TypeUrl)
-		if err := writeToTar(out, n, f.Value); err != nil {
+		n := filepath.Join(base, f.Name)
+		if err := writeToTar(out, n, f.Data); err != nil {
 			return err
 		}
 	}

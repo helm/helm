@@ -299,11 +299,11 @@ func CreateFrom(chartfile *chart.Metadata, dest string, src string) error {
 
 	schart.Metadata = chartfile
 
-	var updatedTemplates []*chart.Template
+	var updatedTemplates []*chart.File
 
 	for _, template := range schart.Templates {
 		newData := Transform(string(template.Data), "<CHARTNAME>", schart.Metadata.Name)
-		updatedTemplates = append(updatedTemplates, &chart.Template{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates

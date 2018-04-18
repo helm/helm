@@ -211,7 +211,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 				Name:    "foo",
 				Version: "0.1.0-beta.1",
 			},
-			Templates: []*chart.Template{
+			Templates: []*chart.File{
 				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},
 			},
 		}

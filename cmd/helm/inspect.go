@@ -22,10 +22,10 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/golang/protobuf/ptypes/any"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/hapi/chart"
 )
 
 const inspectDesc = `
@@ -248,15 +248,15 @@ func (i *inspectCmd) run() error {
 		if readme == nil {
 			return nil
 		}
-		fmt.Fprintln(i.out, string(readme.Value))
+		fmt.Fprintln(i.out, string(readme.Data))
 	}
 	return nil
 }
 
-func findReadme(files []*any.Any) (file *any.Any) {
+func findReadme(files []*chart.File) (file *chart.File) {
 	for _, file := range files {
 		for _, n := range readmeFileNames {
-			if strings.EqualFold(file.TypeUrl, n) {
+			if strings.EqualFold(file.Name, n) {
 				return file
 			}
 		}

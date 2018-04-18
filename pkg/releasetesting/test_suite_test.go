@@ -217,7 +217,7 @@ func chartStub() *chart.Chart {
 		Metadata: &chart.Metadata{
 			Name: "nemo",
 		},
-		Templates: []*chart.Template{
+		Templates: []*chart.File{
 			{Name: "templates/hello", Data: []byte("hello: world")},
 			{Name: "templates/hooks", Data: []byte(manifestWithTestSuccessHook)},
 		},

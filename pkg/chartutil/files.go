@@ -22,11 +22,11 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ghodss/yaml"
-
 	"github.com/BurntSushi/toml"
+	"github.com/ghodss/yaml"
 	"github.com/gobwas/glob"
-	"github.com/golang/protobuf/ptypes/any"
+
+	"k8s.io/helm/pkg/hapi/chart"
 )
 
 // Files is a map of files in a chart that can be accessed from a template.
@@ -34,12 +34,10 @@ type Files map[string][]byte
 
 // NewFiles creates a new Files from chart files.
 // Given an []*any.Any (the format for files in a chart.Chart), extract a map of files.
-func NewFiles(from []*any.Any) Files {
+func NewFiles(from []*chart.File) Files {
 	files := map[string][]byte{}
-	if from != nil {
-		for _, f := range from {
-			files[f.TypeUrl] = f.Value
-		}
+	for _, f := range from {
+		files[f.Name] = f.Data
 	}
 	return files
 }

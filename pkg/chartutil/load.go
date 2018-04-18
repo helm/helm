@@ -28,8 +28,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes/any"
-
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/ignore"
 	"k8s.io/helm/pkg/sympath"
@@ -136,10 +134,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		} else if f.Name == "values.yaml" {
 			c.Values = &chart.Config{Raw: string(f.Data)}
 		} else if strings.HasPrefix(f.Name, "templates/") {
-			c.Templates = append(c.Templates, &chart.Template{Name: f.Name, Data: f.Data})
+			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data})
 		} else if strings.HasPrefix(f.Name, "charts/") {
 			if filepath.Ext(f.Name) == ".prov" {
-				c.Files = append(c.Files, &any.Any{TypeUrl: f.Name, Value: f.Data})
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 				continue
 			}
 			cname := strings.TrimPrefix(f.Name, "charts/")
@@ -151,7 +149,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			scname := parts[0]
 			subcharts[scname] = append(subcharts[scname], &BufferedFile{Name: cname, Data: f.Data})
 		} else {
-			c.Files = append(c.Files, &any.Any{TypeUrl: f.Name, Value: f.Data})
+			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 		}
 	}
 
