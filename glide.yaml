@@ -57,6 +57,8 @@ import:
   version: release-1.10
 - package: k8s.io/apiserver
   version: release-1.10
+- package: github.com/cyphar/filepath-securejoin
+  version: ^0.2.1
 
 testImports:
 - package: github.com/stretchr/testify
