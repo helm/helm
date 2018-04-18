@@ -35,9 +35,7 @@ import (
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -393,12 +391,12 @@ func deleteResource(c *Client, info *resource.Info) error {
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
-func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
 	}
-	newData, err := json.Marshal(target)
+	newData, err := json.Marshal(target.Object)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
@@ -412,7 +410,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 	}
 
 	// Get a versioned object
-	versionedObject, err := mapping.ConvertToVersion(target, mapping.GroupVersionKind.GroupVersion())
+	versionedObject, err := target.Versioned()
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
@@ -434,7 +432,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
-	patch, patchType, err := createPatch(target.Mapping, target.Object, currentObj)
+	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
@@ -484,16 +482,9 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	versioned, err := c.AsVersionedObject(target.Object)
-	if runtime.IsNotRegisteredError(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	selector, err := getSelectorFromObject(versioned)
-	if err != nil {
+	versioned := target.AsVersioned()
+	selector, ok := getSelectorFromObject(versioned)
+	if !ok {
 		return nil
 	}
 
@@ -522,45 +513,45 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	return nil
 }
 
-func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
+func getSelectorFromObject(obj runtime.Object) (map[string]string, bool) {
 	switch typed := obj.(type) {
 
 	case *v1.ReplicationController:
-		return typed.Spec.Selector, nil
+		return typed.Spec.Selector, true
 
 	case *extv1beta1.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *extv1beta1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta2.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *extv1beta1.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta2.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *batch.Job:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *appsv1beta1.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta2.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	default:
-		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
+		return nil, false
 	}
 }
 
@@ -603,18 +594,6 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 		}
 	})
 	return err
-}
-
-// AsVersionedObject converts a runtime.object to a versioned object.
-func (c *Client) AsVersionedObject(obj runtime.Object) (runtime.Object, error) {
-	json, err := runtime.Encode(unstructured.UnstructuredJSONScheme, obj)
-	if err != nil {
-		return nil, err
-	}
-	versions := &runtime.VersionedObjects{}
-	decoder := unstructured.UnstructuredJSONScheme
-	err = runtime.DecodeInto(decoder, json, versions)
-	return versions.First(), err
 }
 
 // waitForJob is a helper that waits for a job to complete.
@@ -715,22 +694,16 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 
 	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
 
-	versioned, err := c.AsVersionedObject(info.Object)
-	if runtime.IsNotRegisteredError(err) {
+	versioned, err := info.Versioned()
+	switch {
+	case runtime.IsNotRegisteredError(err):
 		return objPods, nil
-	}
-	if err != nil {
+	case err != nil:
 		return objPods, err
 	}
 
-	// We can ignore this error because it will only error if it isn't a type that doesn't
-	// have pods. In that case, we don't care
-	selector, _ := getSelectorFromObject(versioned)
-
-	selectorString := labels.Set(selector).AsSelector().String()
-
-	// If we have an empty selector, this likely is a service or config map, so bail out now
-	if selectorString == "" {
+	selector, ok := getSelectorFromObject(versioned)
+	if !ok {
 		return objPods, nil
 	}
 
