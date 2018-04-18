@@ -56,7 +56,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		pvc := []v1.PersistentVolumeClaim{}
 		deployments := []deployment{}
 		for _, v := range created {
-			obj, err := c.AsVersionedObject(v.Object)
+			obj, err := v.Versioned()
 			if err != nil && !runtime.IsNotRegisteredError(err) {
 				return false, err
 			}
