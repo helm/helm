@@ -36,6 +36,12 @@ is required, and will print an error message when that entry is missing:
 value: {{required "A valid .Values.who entry required!" .Values.who }}
 ```
 
+When using the `include` function, you can pass it a custom object tree built from the current context by using the `dict` function:
+
+```yaml
+{{- include "mytpl" (dict "key1" .Values.originalKey1 "key2" .Values.originalKey2) }}
+```
+
 ## Quote Strings, Don't Quote Integers
 
 When you are working with string data, you are always safer quoting the
