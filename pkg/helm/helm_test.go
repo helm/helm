@@ -40,9 +40,9 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	var limit = 2
 	var offset = "offset"
 	var filter = "filter"
-	var sortBy = int32(2)
-	var sortOrd = int32(1)
-	var codes = []rls.Status_Code{
+	var sortBy = 2
+	var sortOrd = 1
+	var codes = []rls.StatusCode{
 		rls.Status_FAILED,
 		rls.Status_DELETED,
 		rls.Status_DEPLOYED,
@@ -55,8 +55,8 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		Limit:       int64(limit),
 		Offset:      offset,
 		Filter:      filter,
-		SortBy:      hapi.ListSort_SortBy(sortBy),
-		SortOrder:   hapi.ListSort_SortOrder(sortOrd),
+		SortBy:      hapi.ListSortBy(sortBy),
+		SortOrder:   hapi.ListSortOrder(sortOrd),
 		StatusCodes: codes,
 		Namespace:   namespace,
 	}
@@ -240,7 +240,7 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var disableHooks = true
 	var releaseName = "test"
-	var revision = int32(2)
+	var revision = 2
 	var dryRun = true
 
 	// Expected RollbackReleaseRequest message
@@ -283,7 +283,7 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 func TestReleaseStatus_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var releaseName = "test"
-	var revision = int32(2)
+	var revision = 2
 
 	// Expected GetReleaseStatusRequest message
 	exp := &hapi.GetReleaseStatusRequest{
@@ -317,7 +317,7 @@ func TestReleaseContent_VerifyOptions(t *testing.T) {
 	t.Skip("refactoring out")
 	// Options testdata
 	var releaseName = "test"
-	var revision = int32(2)
+	var revision = 2
 
 	// Expected GetReleaseContentRequest message
 	exp := &hapi.GetReleaseContentRequest{

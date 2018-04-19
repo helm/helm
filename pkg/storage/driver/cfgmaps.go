@@ -244,8 +244,8 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 	// apply labels
 	lbs.set("NAME", rls.Name)
 	lbs.set("OWNER", owner)
-	lbs.set("STATUS", rspb.Status_Code_name[int32(rls.Info.Status.Code)])
-	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
+	lbs.set("STATUS", rls.Info.Status.Code.String())
+	lbs.set("VERSION", strconv.Itoa(rls.Version))
 
 	// create and return configmap object
 	return &v1.ConfigMap{

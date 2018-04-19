@@ -36,7 +36,7 @@ second is a revision (version) number. To see revision numbers, run
 
 type rollbackCmd struct {
 	name         string
-	revision     int32
+	revision     int
 	dryRun       bool
 	recreate     bool
 	force        bool
@@ -69,7 +69,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				return fmt.Errorf("invalid revision number '%q': %s", args[1], err)
 			}
 
-			rollback.revision = int32(v64)
+			rollback.revision = int(v64)
 			rollback.client = ensureHelmClient(rollback.client)
 			return rollback.run()
 		},

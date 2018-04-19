@@ -73,7 +73,7 @@ type releaseCase struct {
 	resp     *release.Release
 	// Rels are the available releases at the start of the test.
 	rels      []*release.Release
-	responses map[string]release.TestRun_Status
+	responses map[string]release.TestRunStatus
 }
 
 // tempHelmHome sets up a Helm Home in a temp dir.

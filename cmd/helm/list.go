@@ -136,8 +136,8 @@ func (l *listCmd) run() error {
 		helm.ReleaseListLimit(l.limit),
 		helm.ReleaseListOffset(l.offset),
 		helm.ReleaseListFilter(l.filter),
-		helm.ReleaseListSort(int32(sortBy)),
-		helm.ReleaseListOrder(int32(sortOrder)),
+		helm.ReleaseListSort(int(sortBy)),
+		helm.ReleaseListOrder(int(sortOrder)),
 		helm.ReleaseListStatuses(stats),
 		helm.ReleaseListNamespace(l.namespace),
 	)
@@ -164,7 +164,7 @@ func (l *listCmd) run() error {
 
 // filterList returns a list scrubbed of old releases.
 func filterList(rels []*release.Release) []*release.Release {
-	idx := map[string]int32{}
+	idx := map[string]int{}
 
 	for _, r := range rels {
 		name, version := r.Name, r.Version
@@ -187,9 +187,9 @@ func filterList(rels []*release.Release) []*release.Release {
 }
 
 // statusCodes gets the list of status codes that are to be included in the results.
-func (l *listCmd) statusCodes() []release.Status_Code {
+func (l *listCmd) statusCodes() []release.StatusCode {
 	if l.all {
-		return []release.Status_Code{
+		return []release.StatusCode{
 			release.Status_UNKNOWN,
 			release.Status_DEPLOYED,
 			release.Status_DELETED,
@@ -200,7 +200,7 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 			release.Status_PENDING_ROLLBACK,
 		}
 	}
-	status := []release.Status_Code{}
+	status := []release.StatusCode{}
 	if l.deployed {
 		status = append(status, release.Status_DEPLOYED)
 	}

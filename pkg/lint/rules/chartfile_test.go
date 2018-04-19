@@ -120,24 +120,6 @@ func TestValidateChartVersion(t *testing.T) {
 	}
 }
 
-func TestValidateChartEngine(t *testing.T) {
-	var successTest = []string{"", "gotpl"}
-
-	for _, engine := range successTest {
-		badChart.Engine = engine
-		err := validateChartEngine(badChart)
-		if err != nil {
-			t.Errorf("validateChartEngine(%s) to return no error, got a linter error %s", engine, err.Error())
-		}
-	}
-
-	badChart.Engine = "foobar"
-	err := validateChartEngine(badChart)
-	if err == nil || !strings.Contains(err.Error(), "not valid. Valid options are [gotpl") {
-		t.Errorf("validateChartEngine(%s) to return an error, got no error", badChart.Engine)
-	}
-}
-
 func TestValidateChartMaintainer(t *testing.T) {
 	var failTest = []struct {
 		Name     string

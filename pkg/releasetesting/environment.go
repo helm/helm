@@ -105,7 +105,7 @@ func (env *Environment) streamUnknown(name, info string) error {
 	return env.streamMessage(msg, release.TestRun_UNKNOWN)
 }
 
-func (env *Environment) streamMessage(msg string, status release.TestRun_Status) error {
+func (env *Environment) streamMessage(msg string, status release.TestRunStatus) error {
 	resp := &hapi.TestReleaseResponse{Msg: msg, Status: status}
 	env.Mesages <- resp
 	return nil

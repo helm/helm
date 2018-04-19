@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Masterminds/semver"
 
@@ -52,7 +51,6 @@ func Chartfile(linter *support.Linter) {
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartEngine(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
 	linter.RunLinterRule(support.InfoSev, chartFileName, validateChartIconPresence(chartFile))
@@ -111,29 +109,6 @@ func validateChartVersion(cf *chart.Metadata) error {
 	}
 
 	return nil
-}
-
-func validateChartEngine(cf *chart.Metadata) error {
-	if cf.Engine == "" {
-		return nil
-	}
-
-	keys := make([]string, 0, len(chart.Metadata_Engine_value))
-	for engine := range chart.Metadata_Engine_value {
-		str := strings.ToLower(engine)
-
-		if str == "unknown" {
-			continue
-		}
-
-		if str == cf.Engine {
-			return nil
-		}
-
-		keys = append(keys, str)
-	}
-
-	return fmt.Errorf("engine '%v' not valid. Valid options are %v", cf.Engine, keys)
 }
 
 func validateChartMaintainer(cf *chart.Metadata) error {

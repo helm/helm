@@ -67,8 +67,8 @@ func TestCreateCmd(t *testing.T) {
 	if c.Metadata.Name != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Metadata.Name)
 	}
-	if c.Metadata.ApiVersion != chartutil.ApiVersionV1 {
-		t.Errorf("Wrong API version: %q", c.Metadata.ApiVersion)
+	if c.Metadata.APIVersion != chartutil.APIVersionv1 {
+		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 }
 
@@ -139,8 +139,8 @@ func TestCreateStarterCmd(t *testing.T) {
 	if c.Metadata.Name != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Metadata.Name)
 	}
-	if c.Metadata.ApiVersion != chartutil.ApiVersionV1 {
-		t.Errorf("Wrong API version: %q", c.Metadata.ApiVersion)
+	if c.Metadata.APIVersion != chartutil.APIVersionv1 {
+		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 
 	if l := len(c.Templates); l != 6 {

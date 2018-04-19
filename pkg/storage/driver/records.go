@@ -93,7 +93,7 @@ func (rs *records) Replace(key string, rec *record) *record {
 	return nil
 }
 
-func (rs records) FindByVersion(vers int32) (int, bool) {
+func (rs records) FindByVersion(vers int) (int, bool) {
 	i := sort.Search(len(rs), func(i int) bool {
 		return rs[i].rls.Version == vers
 	})
@@ -126,8 +126,8 @@ func newRecord(key string, rls *rspb.Release) *record {
 	lbs.init()
 	lbs.set("NAME", rls.Name)
 	lbs.set("OWNER", "TILLER")
-	lbs.set("STATUS", rspb.Status_Code_name[int32(rls.Info.Status.Code)])
-	lbs.set("VERSION", strconv.Itoa(int(rls.Version)))
+	lbs.set("STATUS", rls.Info.Status.Code.String())
+	lbs.set("VERSION", strconv.Itoa(rls.Version))
 
 	// return &record{key: key, lbs: lbs, rls: proto.Clone(rls).(*rspb.Release)}
 	return &record{key: key, lbs: lbs, rls: rls}

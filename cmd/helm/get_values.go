@@ -35,7 +35,7 @@ type getValuesCmd struct {
 	allValues bool
 	out       io.Writer
 	client    helm.Interface
-	version   int32
+	version   int
 }
 
 func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -57,7 +57,7 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int32Var(&get.version, "revision", 0, "get the named release with revision")
+	cmd.Flags().IntVar(&get.version, "revision", 0, "get the named release with revision")
 	cmd.Flags().BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
 	return cmd
 }

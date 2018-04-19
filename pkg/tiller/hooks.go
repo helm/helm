@@ -31,7 +31,7 @@ import (
 	util "k8s.io/helm/pkg/releaseutil"
 )
 
-var events = map[string]release.Hook_Event{
+var events = map[string]release.HookEvent{
 	hooks.PreInstall:         release.Hook_PRE_INSTALL,
 	hooks.PostInstall:        release.Hook_POST_INSTALL,
 	hooks.PreDelete:          release.Hook_PRE_DELETE,
@@ -45,7 +45,7 @@ var events = map[string]release.Hook_Event{
 }
 
 // deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
-var deletePolices = map[string]release.Hook_DeletePolicy{
+var deletePolices = map[string]release.HookDeletePolicy{
 	hooks.HookSucceeded:      release.Hook_SUCCEEDED,
 	hooks.HookFailed:         release.Hook_FAILED,
 	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
@@ -167,9 +167,9 @@ func (file *manifestFile) sort(result *result) error {
 			Kind:           entry.Kind,
 			Path:           file.path,
 			Manifest:       m,
-			Events:         []release.Hook_Event{},
+			Events:         []release.HookEvent{},
 			Weight:         hw,
-			DeletePolicies: []release.Hook_DeletePolicy{},
+			DeletePolicies: []release.HookDeletePolicy{},
 		}
 
 		isUnknownHook := false
@@ -213,14 +213,13 @@ func hasAnyAnnotation(entry util.SimpleHead) bool {
 	return true
 }
 
-func calculateHookWeight(entry util.SimpleHead) int32 {
+func calculateHookWeight(entry util.SimpleHead) int {
 	hws := entry.Metadata.Annotations[hooks.HookWeightAnno]
 	hw, err := strconv.Atoi(hws)
 	if err != nil {
 		hw = 0
 	}
-
-	return int32(hw)
+	return hw
 }
 
 func operateAnnotationValues(entry util.SimpleHead, annotation string, operate func(p string)) {

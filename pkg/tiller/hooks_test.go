@@ -33,14 +33,14 @@ func TestSortManifests(t *testing.T) {
 		name     []string
 		path     string
 		kind     []string
-		hooks    map[string][]release.Hook_Event
+		hooks    map[string][]release.HookEvent
 		manifest string
 	}{
 		{
 			name:  []string{"first"},
 			path:  "one",
 			kind:  []string{"Job"},
-			hooks: map[string][]release.Hook_Event{"first": {release.Hook_PRE_INSTALL}},
+			hooks: map[string][]release.HookEvent{"first": {release.Hook_PRE_INSTALL}},
 			manifest: `apiVersion: v1
 kind: Job
 metadata:
@@ -55,7 +55,7 @@ metadata:
 			name:  []string{"second"},
 			path:  "two",
 			kind:  []string{"ReplicaSet"},
-			hooks: map[string][]release.Hook_Event{"second": {release.Hook_POST_INSTALL}},
+			hooks: map[string][]release.HookEvent{"second": {release.Hook_POST_INSTALL}},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -67,7 +67,7 @@ metadata:
 			name:  []string{"third"},
 			path:  "three",
 			kind:  []string{"ReplicaSet"},
-			hooks: map[string][]release.Hook_Event{"third": nil},
+			hooks: map[string][]release.HookEvent{"third": nil},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -79,7 +79,7 @@ metadata:
 			name:  []string{"fourth"},
 			path:  "four",
 			kind:  []string{"Pod"},
-			hooks: map[string][]release.Hook_Event{"fourth": nil},
+			hooks: map[string][]release.HookEvent{"fourth": nil},
 			manifest: `kind: Pod
 apiVersion: v1
 metadata:
@@ -90,7 +90,7 @@ metadata:
 			name:  []string{"fifth"},
 			path:  "five",
 			kind:  []string{"ReplicaSet"},
-			hooks: map[string][]release.Hook_Event{"fifth": {release.Hook_POST_DELETE, release.Hook_POST_INSTALL}},
+			hooks: map[string][]release.HookEvent{"fifth": {release.Hook_POST_DELETE, release.Hook_POST_INSTALL}},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -103,21 +103,21 @@ metadata:
 			name:     []string{"sixth"},
 			path:     "six/_six",
 			kind:     []string{"ReplicaSet"},
-			hooks:    map[string][]release.Hook_Event{"sixth": nil},
+			hooks:    map[string][]release.HookEvent{"sixth": nil},
 			manifest: `invalid manifest`, // This will fail if partial is not skipped.
 		}, {
 			// Regression test: files with no content should be skipped.
 			name:     []string{"seventh"},
 			path:     "seven",
 			kind:     []string{"ReplicaSet"},
-			hooks:    map[string][]release.Hook_Event{"seventh": nil},
+			hooks:    map[string][]release.HookEvent{"seventh": nil},
 			manifest: "",
 		},
 		{
 			name:  []string{"eighth", "example-test"},
 			path:  "eight",
 			kind:  []string{"ConfigMap", "Pod"},
-			hooks: map[string][]release.Hook_Event{"eighth": nil, "example-test": {release.Hook_RELEASE_TEST_SUCCESS}},
+			hooks: map[string][]release.HookEvent{"eighth": nil, "example-test": {release.Hook_RELEASE_TEST_SUCCESS}},
 			manifest: `kind: ConfigMap
 apiVersion: v1
 metadata:

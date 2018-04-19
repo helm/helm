@@ -60,24 +60,24 @@ func TestListReleasesByStatus(t *testing.T) {
 	}
 
 	tests := []struct {
-		statusCodes []release.Status_Code
+		statusCodes []release.StatusCode
 		names       []string
 	}{
 		{
 			names:       []string{"kamal"},
-			statusCodes: []release.Status_Code{release.Status_DEPLOYED},
+			statusCodes: []release.StatusCode{release.Status_DEPLOYED},
 		},
 		{
 			names:       []string{"astrolabe"},
-			statusCodes: []release.Status_Code{release.Status_DELETED},
+			statusCodes: []release.StatusCode{release.Status_DELETED},
 		},
 		{
 			names:       []string{"kamal", "octant"},
-			statusCodes: []release.Status_Code{release.Status_DEPLOYED, release.Status_FAILED},
+			statusCodes: []release.StatusCode{release.Status_DEPLOYED, release.Status_FAILED},
 		},
 		{
 			names: []string{"kamal", "astrolabe", "octant", "sextant"},
-			statusCodes: []release.Status_Code{
+			statusCodes: []release.StatusCode{
 				release.Status_DEPLOYED,
 				release.Status_DELETED,
 				release.Status_FAILED,

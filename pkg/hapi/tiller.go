@@ -6,49 +6,36 @@ import (
 )
 
 // SortBy defines sort operations.
-type ListSort_SortBy int32
+type ListSortBy int
 
 const (
-	ListSort_UNKNOWN       ListSort_SortBy = 0
-	ListSort_NAME          ListSort_SortBy = 1
-	ListSort_LAST_RELEASED ListSort_SortBy = 2
+	ListSort_UNKNOWN ListSortBy = iota
+	ListSort_NAME
+	ListSort_LAST_RELEASED
 )
 
-var ListSort_SortBy_name = map[int32]string{
-	0: "UNKNOWN",
-	1: "NAME",
-	2: "LAST_RELEASED",
-}
-var ListSort_SortBy_value = map[string]int32{
-	"UNKNOWN":       0,
-	"NAME":          1,
-	"LAST_RELEASED": 2,
+var sortByNames = [...]string{
+	"UNKNOWN",
+	"NAME",
+	"LAST_RELEASED",
 }
 
-func (x ListSort_SortBy) String() string {
-	return ListSort_SortBy_name[int32(x)]
-}
+func (x ListSortBy) String() string { return sortByNames[x] }
 
 // SortOrder defines sort orders to augment sorting operations.
-type ListSort_SortOrder int32
+type ListSortOrder int
 
 const (
-	ListSort_ASC  ListSort_SortOrder = 0
-	ListSort_DESC ListSort_SortOrder = 1
+	ListSort_ASC ListSortOrder = iota
+	ListSort_DESC
 )
 
-var ListSort_SortOrder_name = map[int32]string{
-	0: "ASC",
-	1: "DESC",
-}
-var ListSort_SortOrder_value = map[string]int32{
-	"ASC":  0,
-	"DESC": 1,
+var sortOrderNames = [...]string{
+	"ASC",
+	"DESC",
 }
 
-func (x ListSort_SortOrder) String() string {
-	return ListSort_SortOrder_name[int32(x)]
-}
+func (x ListSortOrder) String() string { return sortOrderNames[x] }
 
 // ListReleasesRequest requests a list of releases.
 //
@@ -65,14 +52,14 @@ type ListReleasesRequest struct {
 	// cause the next batch to return a set of results starting with 'dennis'.
 	Offset string `json:"offset,omityempty"`
 	// SortBy is the sort field that the ListReleases server should sort data before returning.
-	SortBy ListSort_SortBy `json:"sort_by,omityempty"`
+	SortBy ListSortBy `json:"sort_by,omityempty"`
 	// Filter is a regular expression used to filter which releases should be listed.
 	//
 	// Anything that matches the regexp will be included in the results.
 	Filter string `json:"filter,omityempty"`
 	// SortOrder is the ordering directive used for sorting.
-	SortOrder   ListSort_SortOrder    `json:"sort_order,omityempty"`
-	StatusCodes []release.Status_Code `json:"status_codes,omityempty"`
+	SortOrder   ListSortOrder        `json:"sort_order,omityempty"`
+	StatusCodes []release.StatusCode `json:"status_codes,omityempty"`
 	// Namespace is the filter to select releases only from a specific namespace.
 	Namespace string `json:"namespace,omityempty"`
 }
@@ -95,7 +82,7 @@ type GetReleaseStatusRequest struct {
 	// Name is the name of the release
 	Name string `json:"name,omitempty"`
 	// Version is the version of the release
-	Version int32 `json:"version,omitempty"`
+	Version int `json:"version,omitempty"`
 }
 
 // GetReleaseStatusResponse is the response indicating the status of the named release.
@@ -113,7 +100,7 @@ type GetReleaseContentRequest struct {
 	// The name of the release
 	Name string `json:"name,omityempty"`
 	// Version is the version of the release
-	Version int32 `json:"version,omityempty"`
+	Version int `json:"version,omityempty"`
 }
 
 // UpdateReleaseRequest updates a release.
@@ -152,7 +139,7 @@ type RollbackReleaseRequest struct {
 	// DisableHooks causes the server to skip running any hooks for the rollback
 	DisableHooks bool `json:"disable_hooks,omityempty"`
 	// Version is the version of the release to deploy.
-	Version int32 `json:"version,omityempty"`
+	Version int `json:"version,omityempty"`
 	// Performs pods restart for resources if applicable
 	Recreate bool `json:"recreate,omityempty"`
 	// timeout specifies the max amount of time any kubernetes client command can run.
@@ -216,7 +203,7 @@ type GetHistoryRequest struct {
 	// The name of the release.
 	Name string `json:"name,omityempty"`
 	// The maximum number of releases to include.
-	Max int32 `json:"max,omityempty"`
+	Max int `json:"max,omityempty"`
 }
 
 // TestReleaseRequest is a request to get the status of a release.
@@ -231,6 +218,6 @@ type TestReleaseRequest struct {
 
 // TestReleaseResponse represents a message from executing a test
 type TestReleaseResponse struct {
-	Msg    string                 `json:"msg,omityempty"`
-	Status release.TestRun_Status `json:"status,omityempty"`
+	Msg    string                `json:"msg,omityempty"`
+	Status release.TestRunStatus `json:"status,omityempty"`
 }

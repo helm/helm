@@ -32,7 +32,7 @@ func TestConfigMapName(t *testing.T) {
 }
 
 func TestConfigMapGet(t *testing.T) {
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -52,7 +52,7 @@ func TestConfigMapGet(t *testing.T) {
 }
 
 func TestUNcompressedConfigMapGet(t *testing.T) {
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -133,7 +133,7 @@ func TestConfigMapList(t *testing.T) {
 func TestConfigMapCreate(t *testing.T) {
 	cfgmaps := newTestFixtureCfgMaps(t)
 
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -157,7 +157,7 @@ func TestConfigMapCreate(t *testing.T) {
 }
 
 func TestConfigMapUpdate(t *testing.T) {
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -181,6 +181,6 @@ func TestConfigMapUpdate(t *testing.T) {
 
 	// check release has actually been updated by comparing modified fields
 	if rel.Info.Status.Code != got.Info.Status.Code {
-		t.Errorf("Expected status %s, got status %s", rel.Info.Status.Code, got.Info.Status.Code)
+		t.Errorf("Expected status %s, got status %s", rel.Info.Status.Code.String(), got.Info.Status.Code.String())
 	}
 }

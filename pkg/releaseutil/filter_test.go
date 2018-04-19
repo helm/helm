@@ -31,9 +31,9 @@ func TestFilterAny(t *testing.T) {
 	r0, r1 := ls[0], ls[1]
 	switch {
 	case r0.Info.Status.Code != rspb.Status_DELETED:
-		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.Code)
+		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.Code.String())
 	case r1.Info.Status.Code != rspb.Status_DELETED:
-		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.Code)
+		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.Code.String())
 	}
 }
 

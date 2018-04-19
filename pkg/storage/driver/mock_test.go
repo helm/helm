@@ -28,7 +28,7 @@ import (
 	rspb "k8s.io/helm/pkg/hapi/release"
 )
 
-func releaseStub(name string, vers int32, namespace string, code rspb.Status_Code) *rspb.Release {
+func releaseStub(name string, vers int, namespace string, code rspb.StatusCode) *rspb.Release {
 	return &rspb.Release{
 		Name:      name,
 		Version:   vers,
@@ -37,7 +37,7 @@ func releaseStub(name string, vers int32, namespace string, code rspb.Status_Cod
 	}
 }
 
-func testKey(name string, vers int32) string {
+func testKey(name string, vers int) string {
 	return fmt.Sprintf("%s.v%d", name, vers)
 }
 

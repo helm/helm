@@ -35,7 +35,7 @@ func TestRollbackRelease(t *testing.T) {
 			Kind:     "ConfigMap",
 			Path:     "test-cm",
 			Manifest: manifestWithRollbackHooks,
-			Events: []release.Hook_Event{
+			Events: []release.HookEvent{
 				release.Hook_PRE_ROLLBACK,
 				release.Hook_POST_ROLLBACK,
 			},
@@ -190,7 +190,7 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 			Kind:     "ConfigMap",
 			Path:     "test-cm",
 			Manifest: manifestWithRollbackHooks,
-			Events: []release.Hook_Event{
+			Events: []release.HookEvent{
 				release.Hook_PRE_ROLLBACK,
 				release.Hook_POST_ROLLBACK,
 			},

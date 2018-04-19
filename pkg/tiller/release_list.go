@@ -27,7 +27,7 @@ import (
 // ListReleases lists the releases found by the server.
 func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.Release, error) {
 	if len(req.StatusCodes) == 0 {
-		req.StatusCodes = []release.Status_Code{release.Status_DEPLOYED}
+		req.StatusCodes = []release.StatusCode{release.Status_DEPLOYED}
 	}
 
 	rels, err := s.env.Releases.ListFilterAll(func(r *release.Release) bool {

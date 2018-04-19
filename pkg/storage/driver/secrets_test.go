@@ -32,7 +32,7 @@ func TestSecretName(t *testing.T) {
 }
 
 func TestSecretGet(t *testing.T) {
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -52,7 +52,7 @@ func TestSecretGet(t *testing.T) {
 }
 
 func TestUNcompressedSecretGet(t *testing.T) {
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -133,7 +133,7 @@ func TestSecretList(t *testing.T) {
 func TestSecretCreate(t *testing.T) {
 	secrets := newTestFixtureSecrets(t)
 
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -157,7 +157,7 @@ func TestSecretCreate(t *testing.T) {
 }
 
 func TestSecretUpdate(t *testing.T) {
-	vers := int32(1)
+	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
@@ -181,6 +181,6 @@ func TestSecretUpdate(t *testing.T) {
 
 	// check release has actually been updated by comparing modified fields
 	if rel.Info.Status.Code != got.Info.Status.Code {
-		t.Errorf("Expected status %s, got status %s", rel.Info.Status.Code, got.Info.Status.Code)
+		t.Errorf("Expected status %s, got status %s", rel.Info.Status.Code.String(), got.Info.Status.Code.String())
 	}
 }

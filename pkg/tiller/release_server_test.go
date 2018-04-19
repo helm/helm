@@ -221,7 +221,7 @@ func releaseStub() *release.Release {
 	return namedReleaseStub("angry-panda", release.Status_DEPLOYED)
 }
 
-func namedReleaseStub(name string, status release.Status_Code) *release.Release {
+func namedReleaseStub(name string, status release.StatusCode) *release.Release {
 	date := time.Unix(242085845, 0)
 	return &release.Release{
 		Name: name,
@@ -240,7 +240,7 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 				Kind:     "ConfigMap",
 				Path:     "test-cm",
 				Manifest: manifestWithHook,
-				Events: []release.Hook_Event{
+				Events: []release.HookEvent{
 					release.Hook_POST_INSTALL,
 					release.Hook_PRE_DELETE,
 				},
@@ -250,7 +250,7 @@ func namedReleaseStub(name string, status release.Status_Code) *release.Release 
 				Kind:     "Pod",
 				Path:     "finding-nemo",
 				Manifest: manifestWithTestHook,
-				Events: []release.Hook_Event{
+				Events: []release.HookEvent{
 					release.Hook_RELEASE_TEST_SUCCESS,
 				},
 			},
@@ -513,7 +513,7 @@ func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
 	}
 }
 
-func deletePolicyHookStub(hookName string, extraAnnotations map[string]string, DeletePolicies []release.Hook_DeletePolicy) *release.Hook {
+func deletePolicyHookStub(hookName string, extraAnnotations map[string]string, DeletePolicies []release.HookDeletePolicy) *release.Hook {
 	extraAnnotationsStr := ""
 	for k, v := range extraAnnotations {
 		extraAnnotationsStr += fmt.Sprintf("    \"%s\": \"%s\"\n", k, v)
@@ -530,7 +530,7 @@ metadata:
     "helm.sh/hook": pre-install,pre-upgrade
 %sdata:
 name: value`, hookName, extraAnnotationsStr),
-		Events: []release.Hook_Event{
+		Events: []release.HookEvent{
 			release.Hook_PRE_INSTALL,
 			release.Hook_PRE_UPGRADE,
 		},
@@ -617,7 +617,7 @@ func TestSuccessfulHookWithSucceededDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{"helm.sh/hook-delete-policy": "hook-succeeded"},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED},
 	)
 
 	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -633,7 +633,7 @@ func TestSuccessfulHookWithFailedDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{"helm.sh/hook-delete-policy": "hook-failed"},
-		[]release.Hook_DeletePolicy{release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.Hook_FAILED},
 	)
 
 	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -653,7 +653,7 @@ func TestFailedHookWithSucceededDeletePolicy(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED},
 	)
 
 	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -673,7 +673,7 @@ func TestFailedHookWithFailedDeletePolicy(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-failed",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.Hook_FAILED},
 	)
 
 	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -692,7 +692,7 @@ func TestSuccessfulHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 		map[string]string{
 			"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
 	)
 
 	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -712,7 +712,7 @@ func TestFailedHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded,hook-failed",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
 	)
 
 	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -753,7 +753,7 @@ func TestHookDeletingWithBeforeHookCreationDeletePolicy(t *testing.T) {
 
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{"helm.sh/hook-delete-policy": "before-hook-creation"},
-		[]release.Hook_DeletePolicy{release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.Hook_BEFORE_HOOK_CREATION},
 	)
 
 	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -782,7 +782,7 @@ func TestSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		map[string]string{
 			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
 	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -812,7 +812,7 @@ func TestFailedHookWithMixedDeletePolicies(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
 	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -842,7 +842,7 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
 	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
@@ -858,7 +858,7 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		map[string]string{
 			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
 		},
-		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
 	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)

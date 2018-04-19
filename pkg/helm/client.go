@@ -198,7 +198,7 @@ func (c *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*relea
 }
 
 // ReleaseStatus returns the given release's status.
-func (c *Client) ReleaseStatus(rlsName string, version int32) (*hapi.GetReleaseStatusResponse, error) {
+func (c *Client) ReleaseStatus(rlsName string, version int) (*hapi.GetReleaseStatusResponse, error) {
 	reqOpts := c.opts
 	req := &reqOpts.statusReq
 	req.Name = rlsName
@@ -211,7 +211,7 @@ func (c *Client) ReleaseStatus(rlsName string, version int32) (*hapi.GetReleaseS
 }
 
 // ReleaseContent returns the configuration for a given release.
-func (c *Client) ReleaseContent(name string, version int32) (*release.Release, error) {
+func (c *Client) ReleaseContent(name string, version int) (*release.Release, error) {
 	reqOpts := c.opts
 	req := &reqOpts.contentReq
 	req.Name = name
@@ -224,7 +224,7 @@ func (c *Client) ReleaseContent(name string, version int32) (*release.Release, e
 }
 
 // ReleaseHistory returns a release's revision history.
-func (c *Client) ReleaseHistory(rlsName string, max int32) ([]*release.Release, error) {
+func (c *Client) ReleaseHistory(rlsName string, max int) ([]*release.Release, error) {
 	reqOpts := c.opts
 	req := &reqOpts.histReq
 	req.Name = rlsName

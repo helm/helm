@@ -31,7 +31,7 @@ import (
 )
 
 type releaseInfo struct {
-	Revision    int32  `json:"revision"`
+	Revision    int    `json:"revision"`
 	Updated     string `json:"updated"`
 	Status      string `json:"status"`
 	Chart       string `json:"chart"`
@@ -57,7 +57,7 @@ The historical release set is printed as a formatted table, e.g:
 `
 
 type historyCmd struct {
-	max          int32
+	max          int
 	rls          string
 	out          io.Writer
 	helmc        helm.Interface
@@ -86,7 +86,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.Int32Var(&his.max, "max", 256, "maximum number of revision to include in history")
+	f.IntVar(&his.max, "max", 256, "maximum number of revision to include in history")
 	f.UintVar(&his.colWidth, "col-width", 60, "specifies the max column width of output")
 	f.StringVarP(&his.outputFormat, "output", "o", "table", "prints the output in the specified format (json|table|yaml)")
 

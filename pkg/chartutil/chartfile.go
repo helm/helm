@@ -28,10 +28,8 @@ import (
 	"k8s.io/helm/pkg/hapi/chart"
 )
 
-// ApiVersionV1 is the API version number for version 1.
-//
-// This is ApiVersionV1 instead of APIVersionV1 to match the protobuf-generated name.
-const ApiVersionV1 = "v1" // nolint
+// APIVersionv1 is the API version number for version 1.
+const APIVersionv1 = "v1" // nolint
 
 // UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.
 func UnmarshalChartfile(data []byte) (*chart.Metadata, error) {

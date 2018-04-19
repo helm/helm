@@ -31,7 +31,7 @@ import (
 // FakeClient implements Interface
 type FakeClient struct {
 	Rels      []*release.Release
-	Responses map[string]release.TestRun_Status
+	Responses map[string]release.TestRunStatus
 	Opts      options
 }
 
@@ -108,7 +108,7 @@ func (c *FakeClient) RollbackRelease(rlsName string, opts ...RollbackOption) (*r
 }
 
 // ReleaseStatus returns a release status response with info from the matching release name.
-func (c *FakeClient) ReleaseStatus(rlsName string, version int32) (*hapi.GetReleaseStatusResponse, error) {
+func (c *FakeClient) ReleaseStatus(rlsName string, version int) (*hapi.GetReleaseStatusResponse, error) {
 	for _, rel := range c.Rels {
 		if rel.Name == rlsName {
 			return &hapi.GetReleaseStatusResponse{
@@ -122,7 +122,7 @@ func (c *FakeClient) ReleaseStatus(rlsName string, version int32) (*hapi.GetRele
 }
 
 // ReleaseContent returns the configuration for the matching release name in the fake release client.
-func (c *FakeClient) ReleaseContent(rlsName string, version int32) (*release.Release, error) {
+func (c *FakeClient) ReleaseContent(rlsName string, version int) (*release.Release, error) {
 	for _, rel := range c.Rels {
 		if rel.Name == rlsName {
 			return rel, nil
@@ -132,7 +132,7 @@ func (c *FakeClient) ReleaseContent(rlsName string, version int32) (*release.Rel
 }
 
 // ReleaseHistory returns a release's revision history.
-func (c *FakeClient) ReleaseHistory(rlsName string, max int32) ([]*release.Release, error) {
+func (c *FakeClient) ReleaseHistory(rlsName string, max int) ([]*release.Release, error) {
 	return c.Rels, nil
 }
 
@@ -147,7 +147,7 @@ func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (
 		for m, s := range c.Responses {
 			wg.Add(1)
 
-			go func(msg string, status release.TestRun_Status) {
+			go func(msg string, status release.TestRunStatus) {
 				defer wg.Done()
 				results <- &hapi.TestReleaseResponse{Msg: msg, Status: status}
 			}(m, s)
@@ -179,9 +179,9 @@ metadata:
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
 	Name       string
-	Version    int32
+	Version    int
 	Chart      *chart.Chart
-	StatusCode release.Status_Code
+	StatusCode release.StatusCode
 	Namespace  string
 }
 
@@ -194,7 +194,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 		name = "testrelease-" + string(rand.Intn(100))
 	}
 
-	var version int32 = 1
+	var version int = 1
 	if opts.Version != 0 {
 		version = opts.Version
 	}
@@ -241,7 +241,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 				Path:     "pre-install-hook.yaml",
 				Manifest: MockHookTemplate,
 				LastRun:  date,
-				Events:   []release.Hook_Event{release.Hook_PRE_INSTALL},
+				Events:   []release.HookEvent{release.Hook_PRE_INSTALL},
 			},
 		},
 		Manifest: MockManifest,

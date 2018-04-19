@@ -48,7 +48,7 @@ type statusCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
-	version int32
+	version int
 	outfmt  string
 }
 
@@ -74,7 +74,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
+	cmd.PersistentFlags().IntVar(&status.version, "revision", 0, "if set, display the status of the named release with revision")
 	cmd.PersistentFlags().StringVarP(&status.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
 
 	return cmd
@@ -116,7 +116,7 @@ func PrintStatus(out io.Writer, res *hapi.GetReleaseStatusResponse) {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", res.Info.LastDeployed)
 	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
-	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
+	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code.String())
 	fmt.Fprintf(out, "\n")
 	if len(res.Info.Status.Resources) > 0 {
 		re := regexp.MustCompile("  +")

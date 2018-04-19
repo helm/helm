@@ -119,7 +119,7 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 		},
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
-		Version:  int32(revision),
+		Version:  revision,
 	}
 	if len(notesTxt) > 0 {
 		rel.Info.Status.Notes = notesTxt

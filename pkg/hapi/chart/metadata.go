@@ -1,25 +1,5 @@
 package chart
 
-type Metadata_Engine int32
-
-const (
-	Metadata_UNKNOWN Metadata_Engine = 0
-	Metadata_GOTPL   Metadata_Engine = 1
-)
-
-var Metadata_Engine_name = map[int32]string{
-	0: "UNKNOWN",
-	1: "GOTPL",
-}
-var Metadata_Engine_value = map[string]int32{
-	"UNKNOWN": 0,
-	"GOTPL":   1,
-}
-
-func (x Metadata_Engine) String() string {
-	return Metadata_Engine_name[int32(x)]
-}
-
 // Maintainer describes a Chart maintainer.
 type Maintainer struct {
 	// Name is a user name or organization name
@@ -53,7 +33,7 @@ type Metadata struct {
 	// The URL to an icon file.
 	Icon string `json:"icon,omitempty"`
 	// The API Version of this chart.
-	ApiVersion string `json:"apiVersion,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
 	// The condition to check to enable chart
 	Condition string `json:"condition,omitempty"`
 	// The tags to check to enable chart

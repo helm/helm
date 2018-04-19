@@ -243,7 +243,7 @@ func releaseStub() *release.Release {
 				Kind:     "Pod",
 				Path:     "finding-nemo",
 				Manifest: manifestWithTestSuccessHook,
-				Events: []release.Hook_Event{
+				Events: []release.HookEvent{
 					release.Hook_RELEASE_TEST_SUCCESS,
 				},
 			},
@@ -252,7 +252,7 @@ func releaseStub() *release.Release {
 				Kind:     "ConfigMap",
 				Path:     "test-cm",
 				Manifest: manifestWithInstallHooks,
-				Events: []release.Hook_Event{
+				Events: []release.HookEvent{
 					release.Hook_POST_INSTALL,
 					release.Hook_PRE_DELETE,
 				},

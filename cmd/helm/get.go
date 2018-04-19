@@ -44,7 +44,7 @@ type getCmd struct {
 	release string
 	out     io.Writer
 	client  helm.Interface
-	version int32
+	version int
 }
 
 func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -69,7 +69,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int32Var(&get.version, "revision", 0, "get the named release with revision")
+	cmd.Flags().IntVar(&get.version, "revision", 0, "get the named release with revision")
 
 	cmd.AddCommand(newGetValuesCmd(nil, out))
 	cmd.AddCommand(newGetManifestCmd(nil, out))

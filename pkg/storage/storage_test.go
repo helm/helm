@@ -169,7 +169,7 @@ func TestStorageDeployed(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	const name = "angry-bird"
-	const vers = int32(4)
+	const vers = 4
 
 	// setup storage with test releases
 	setup := func() {
@@ -201,7 +201,7 @@ func TestStorageDeployed(t *testing.T) {
 	case rls.Version != vers:
 		t.Fatalf("Expected release version %d, actual %d\n", vers, rls.Version)
 	case rls.Info.Status.Code != rspb.Status_DEPLOYED:
-		t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rls.Info.Status.Code)
+		t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rls.Info.Status.Code.String())
 	}
 }
 
@@ -286,7 +286,7 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 
 	// We expect the existing records to be 3, 4, and 5.
 	for i, item := range hist {
-		v := int(item.Version)
+		v := item.Version
 		if expect := i + 3; v != expect {
 			t.Errorf("Expected release %d, got %d", expect, v)
 		}
@@ -327,10 +327,10 @@ func TestStorageLast(t *testing.T) {
 
 type ReleaseTestData struct {
 	Name      string
-	Version   int32
+	Version   int
 	Manifest  string
 	Namespace string
-	Status    rspb.Status_Code
+	Status    rspb.StatusCode
 }
 
 func (test ReleaseTestData) ToRelease() *rspb.Release {

@@ -91,7 +91,7 @@ func (c *createCmd) run() error {
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
 		AppVersion:  "1.0",
-		ApiVersion:  chartutil.ApiVersionV1,
+		APIVersion:  chartutil.APIVersionv1,
 	}
 
 	if c.starter != "" {

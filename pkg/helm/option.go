@@ -116,24 +116,24 @@ func ReleaseListLimit(limit int) ReleaseListOption {
 }
 
 // ReleaseListOrder specifies how to order a list of releases.
-func ReleaseListOrder(order int32) ReleaseListOption {
+func ReleaseListOrder(order int) ReleaseListOption {
 	return func(opts *options) {
-		opts.listReq.SortOrder = hapi.ListSort_SortOrder(order)
+		opts.listReq.SortOrder = hapi.ListSortOrder(order)
 	}
 }
 
 // ReleaseListSort specifies how to sort a release list.
-func ReleaseListSort(sort int32) ReleaseListOption {
+func ReleaseListSort(sort int) ReleaseListOption {
 	return func(opts *options) {
-		opts.listReq.SortBy = hapi.ListSort_SortBy(sort)
+		opts.listReq.SortBy = hapi.ListSortBy(sort)
 	}
 }
 
 // ReleaseListStatuses specifies which status codes should be returned.
-func ReleaseListStatuses(statuses []release.Status_Code) ReleaseListOption {
+func ReleaseListStatuses(statuses []release.StatusCode) ReleaseListOption {
 	return func(opts *options) {
 		if len(statuses) == 0 {
-			statuses = []release.Status_Code{release.Status_DEPLOYED}
+			statuses = []release.StatusCode{release.Status_DEPLOYED}
 		}
 		opts.listReq.StatusCodes = statuses
 	}
@@ -306,7 +306,7 @@ func RollbackForce(force bool) RollbackOption {
 }
 
 // RollbackVersion sets the version of the release to deploy.
-func RollbackVersion(ver int32) RollbackOption {
+func RollbackVersion(ver int) RollbackOption {
 	return func(opts *options) {
 		opts.rollbackReq.Version = ver
 	}

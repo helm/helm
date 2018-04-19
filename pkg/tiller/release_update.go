@@ -99,7 +99,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 		Time:      ts,
 		Namespace: currentRelease.Namespace,
 		IsUpgrade: true,
-		Revision:  int(revision),
+		Revision:  revision,
 	}
 
 	caps, err := capabilities(s.discovery)

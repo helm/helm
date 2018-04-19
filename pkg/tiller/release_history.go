@@ -38,7 +38,7 @@ func (s *ReleaseServer) GetHistory(req *hapi.GetHistoryRequest) ([]*release.Rele
 	relutil.Reverse(h, relutil.SortByRevision)
 
 	var rels []*release.Release
-	for i := 0; i < min(len(h), int(req.Max)); i++ {
+	for i := 0; i < min(len(h), req.Max); i++ {
 		rels = append(rels, h[i])
 	}
 

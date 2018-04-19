@@ -40,7 +40,7 @@ type Storage struct {
 // Get retrieves the release from storage. An error is returned
 // if the storage driver failed to fetch the release, or the
 // release identified by the key, version pair does not exist.
-func (s *Storage) Get(name string, version int32) (*rspb.Release, error) {
+func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
 	s.Log("getting release %q", makeKey(name, version))
 	return s.Driver.Get(makeKey(name, version))
 }
@@ -68,7 +68,7 @@ func (s *Storage) Update(rls *rspb.Release) error {
 // Delete deletes the release from storage. An error is returned if
 // the storage backend fails to delete the release or if the release
 // does not exist.
-func (s *Storage) Delete(name string, version int32) (*rspb.Release, error) {
+func (s *Storage) Delete(name string, version int) (*rspb.Release, error) {
 	s.Log("deleting release %q", makeKey(name, version))
 	return s.Driver.Delete(makeKey(name, version))
 }
@@ -226,7 +226,7 @@ func (s *Storage) Last(name string) (*rspb.Release, error) {
 // makeKey concatenates a release name and version into
 // a string with format ```<release_name>#v<version>```.
 // This key is used to uniquely identify storage objects.
-func makeKey(rlsname string, version int32) string {
+func makeKey(rlsname string, version int) string {
 	return fmt.Sprintf("%s.v%d", rlsname, version)
 }
 
