@@ -36,8 +36,6 @@ import (
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
 )
 
@@ -379,7 +377,6 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 
 func MockEnvironment() *environment.Environment {
 	e := environment.New()
-	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = &environment.PrintingKubeClient{Out: ioutil.Discard}
 	return e
 }
@@ -432,8 +429,7 @@ func (kc *mockHooksKubeClient) makeManifest(r io.Reader) (*mockHooksManifest, er
 	}
 
 	manifest := &mockHooksManifest{}
-	err = yaml.Unmarshal(b, manifest)
-	if err != nil {
+	if err = yaml.Unmarshal(b, manifest); err != nil {
 		return nil, err
 	}
 
@@ -498,7 +494,6 @@ func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, rea
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
 	e := environment.New()
-	e.Releases = storage.Init(driver.NewMemory())
 	e.KubeClient = kubeClient
 
 	dc := fake.NewSimpleClientset().Discovery()
@@ -535,24 +530,21 @@ name: value`, hookName, extraAnnotationsStr),
 }
 
 func execHookShouldSucceed(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
-	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
-	if err != nil {
+	if err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600); err != nil {
 		return fmt.Errorf("expected hook %s to be successful: %s", hook.Name, err)
 	}
 	return nil
 }
 
 func execHookShouldFail(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
-	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
-	if err == nil {
+	if err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600); err == nil {
 		return fmt.Errorf("expected hook %s to be failed", hook.Name)
 	}
 	return nil
 }
 
 func execHookShouldFailWithError(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string, expectedError error) error {
-	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
-	if err != expectedError {
+	if err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600); err != expectedError {
 		return fmt.Errorf("expected hook %s to fail with error %v, got %v", hook.Name, expectedError, err)
 	}
 	return nil
@@ -584,8 +576,7 @@ func TestSuccessfulHookWithoutDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName, nil, nil)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
@@ -600,8 +591,7 @@ func TestFailedHookWithoutDeletePolicy(t *testing.T) {
 		nil,
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
@@ -616,8 +606,7 @@ func TestSuccessfulHookWithSucceededDeletePolicy(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
@@ -632,8 +621,7 @@ func TestSuccessfulHookWithFailedDeletePolicy(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_FAILED},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
@@ -652,8 +640,7 @@ func TestFailedHookWithSucceededDeletePolicy(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
@@ -672,8 +659,7 @@ func TestFailedHookWithFailedDeletePolicy(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_FAILED},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
@@ -691,8 +677,7 @@ func TestSuccessfulHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
@@ -711,8 +696,7 @@ func TestFailedHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
@@ -725,20 +709,15 @@ func TestHookAlreadyExists(t *testing.T) {
 
 	hook := deletePolicyHookStub(ctx.HookName, nil, nil)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
 		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
 	}
-
-	err = execHookShouldFailWithError(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade, errResourceExists)
-	if err != nil {
+	if err := execHookShouldFailWithError(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade, errResourceExists); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
 		t.Errorf("expected resource %s to be existing after already exists error", hook.Name)
 	}
@@ -752,20 +731,15 @@ func TestHookDeletingWithBeforeHookCreationDeletePolicy(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
 		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
 	}
-
-	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
 		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
 	}
@@ -781,20 +755,15 @@ func TestSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
 		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
 	}
-
-	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
 		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
 	}
@@ -811,20 +780,15 @@ func TestFailedHookWithMixedDeletePolicies(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
 		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
 	}
-
-	err = execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
-	if err != nil {
+	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
 		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
 	}
@@ -841,11 +805,9 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
-	if err != nil {
+	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; !hasResource {
 		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
 	}
@@ -857,11 +819,9 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
-	if err != nil {
+	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade); err != nil {
 		t.Error(err)
 	}
-
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
 		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
 	}

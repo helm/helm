@@ -18,18 +18,14 @@ package releasetesting
 
 import (
 	"io"
-	"io/ioutil"
 	"testing"
 	"time"
 
 	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
-	tillerEnv "k8s.io/helm/pkg/tiller/environment"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 const manifestWithTestSuccessHook = `
@@ -70,22 +66,22 @@ data:
 `
 
 func TestRun(t *testing.T) {
-
 	testManifests := []string{manifestWithTestSuccessHook, manifestWithTestFailureHook}
 	ts := testSuiteFixture(testManifests)
-	ch := make(chan *hapi.TestReleaseResponse, 1)
-
 	env := testEnvFixture()
-	env.Mesages = ch
 
 	go func() {
-		defer close(ch)
+		defer close(env.Mesages)
 		if err := ts.Run(env); err != nil {
 			t.Error(err)
 		}
 	}()
 
-	for range ch { // drain
+	for i := 0; i <= 4; i++ {
+		<-env.Mesages
+	}
+	if _, ok := <-env.Mesages; ok {
+		t.Errorf("Expected 4 messages streamed")
 	}
 
 	if ts.StartedAt.IsZero() {
@@ -128,19 +124,16 @@ func TestRun(t *testing.T) {
 
 func TestRunEmptyTestSuite(t *testing.T) {
 	ts := testSuiteFixture([]string{})
-	ch := make(chan *hapi.TestReleaseResponse, 1)
-
 	env := testEnvFixture()
-	env.Mesages = ch
 
 	go func() {
-		defer close(ch)
+		defer close(env.Mesages)
 		if err := ts.Run(env); err != nil {
 			t.Error(err)
 		}
 	}()
 
-	msg := <-ch
+	msg := <-env.Mesages
 	if msg.Msg != "No Tests Found" {
 		t.Errorf("Expected message 'No Tests Found', Got: %v", msg.Msg)
 	}
@@ -157,30 +150,29 @@ func TestRunEmptyTestSuite(t *testing.T) {
 
 func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	ts := testSuiteFixture([]string{manifestWithTestFailureHook})
-	ch := make(chan *hapi.TestReleaseResponse, 1)
-
 	env := testEnvFixture()
-	env.KubeClient = newPodFailedKubeClient()
-	env.Mesages = ch
+	env.KubeClient = &mockKubeClient{podFail: true}
 
 	go func() {
-		defer close(ch)
+		defer close(env.Mesages)
 		if err := ts.Run(env); err != nil {
 			t.Error(err)
 		}
 	}()
 
-	for range ch { // drain
+	for i := 0; i <= 4; i++ {
+		<-env.Mesages
+	}
+	if _, ok := <-env.Mesages; ok {
+		t.Errorf("Expected 4 messages streamed")
 	}
 
 	if ts.StartedAt.IsZero() {
 		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
 	}
-
 	if ts.CompletedAt.IsZero() {
 		t.Errorf("Expected CompletedAt to not be nil. Got: %v", ts.CompletedAt)
 	}
-
 	if len(ts.Results) != 1 {
 		t.Errorf("Expected 1 test result. Got %v", len(ts.Results))
 	}
@@ -189,75 +181,38 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	if result.StartedAt.IsZero() {
 		t.Errorf("Expected test StartedAt to not be nil. Got: %v", result.StartedAt)
 	}
-
 	if result.CompletedAt.IsZero() {
 		t.Errorf("Expected test CompletedAt to not be nil. Got: %v", result.CompletedAt)
 	}
-
 	if result.Name != "gold-rush" {
 		t.Errorf("Expected test name to be gold-rush, Got: %v", result.Name)
 	}
-
 	if result.Status != release.TestRun_SUCCESS {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
 	}
 }
 
 func TestExtractTestManifestsFromHooks(t *testing.T) {
-	rel := releaseStub()
-	testManifests := extractTestManifestsFromHooks(rel.Hooks)
+	testManifests := extractTestManifestsFromHooks(hooksStub)
 
 	if len(testManifests) != 1 {
 		t.Errorf("Expected 1 test manifest, Got: %v", len(testManifests))
 	}
 }
 
-func chartStub() *chart.Chart {
-	return &chart.Chart{
-		Metadata: &chart.Metadata{
-			Name: "nemo",
+var hooksStub = []*release.Hook{
+	{
+		Manifest: manifestWithTestSuccessHook,
+		Events: []release.HookEvent{
+			release.Hook_RELEASE_TEST_SUCCESS,
 		},
-		Templates: []*chart.File{
-			{Name: "templates/hello", Data: []byte("hello: world")},
-			{Name: "templates/hooks", Data: []byte(manifestWithTestSuccessHook)},
+	},
+	{
+		Manifest: manifestWithInstallHooks,
+		Events: []release.HookEvent{
+			release.Hook_POST_INSTALL,
 		},
-	}
-}
-
-func releaseStub() *release.Release {
-	return &release.Release{
-		Name: "lost-fish",
-		Info: &release.Info{
-			FirstDeployed: time.Now(),
-			LastDeployed:  time.Now(),
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
-			Description:   "a release stub",
-		},
-		Chart:   chartStub(),
-		Config:  &chart.Config{Raw: `name: value`},
-		Version: 1,
-		Hooks: []*release.Hook{
-			{
-				Name:     "finding-nemo",
-				Kind:     "Pod",
-				Path:     "finding-nemo",
-				Manifest: manifestWithTestSuccessHook,
-				Events: []release.HookEvent{
-					release.Hook_RELEASE_TEST_SUCCESS,
-				},
-			},
-			{
-				Name:     "test-cm",
-				Kind:     "ConfigMap",
-				Path:     "test-cm",
-				Manifest: manifestWithInstallHooks,
-				Events: []release.HookEvent{
-					release.Hook_POST_INSTALL,
-					release.Hook_PRE_DELETE,
-				},
-			},
-		},
-	}
+	},
 }
 
 func testFixture() *test {
@@ -273,49 +228,36 @@ func testSuiteFixture(testManifests []string) *TestSuite {
 		TestManifests: testManifests,
 		Results:       testResults,
 	}
-
 	return ts
 }
 
 func testEnvFixture() *Environment {
 	return &Environment{
 		Namespace:  "default",
-		KubeClient: mockTillerEnvironment().KubeClient,
+		KubeClient: &mockKubeClient{},
 		Timeout:    1,
+		Mesages:    make(chan *hapi.TestReleaseResponse, 1),
 	}
 }
 
-func mockTillerEnvironment() *tillerEnv.Environment {
-	e := tillerEnv.New()
-	e.Releases = storage.Init(driver.NewMemory())
-	e.KubeClient = newPodSucceededKubeClient()
-	return e
+type mockKubeClient struct {
+	environment.KubeClient
+	podFail bool
+	err     error
 }
 
-type podSucceededKubeClient struct {
-	tillerEnv.PrintingKubeClient
-}
-
-func newPodSucceededKubeClient() *podSucceededKubeClient {
-	return &podSucceededKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
+func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader, _ time.Duration) (core.PodPhase, error) {
+	if c.podFail {
+		return core.PodFailed, nil
 	}
-}
-
-func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
 	return core.PodSucceeded, nil
 }
-
-type podFailedKubeClient struct {
-	tillerEnv.PrintingKubeClient
+func (c *mockKubeClient) Get(_ string, _ io.Reader) (string, error) {
+	return "", nil
 }
-
-func newPodFailedKubeClient() *podFailedKubeClient {
-	return &podFailedKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
-	}
+func (c *mockKubeClient) Create(_ string, _ io.Reader, _ int64, _ bool) error {
+	return c.err
 }
-
-func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
-	return core.PodFailed, nil
+func (c *mockKubeClient) Delete(_ string, _ io.Reader) error {
+	return nil
 }
