@@ -95,10 +95,10 @@ If these steps are followed, an example `helm init` command might look something
 $ helm init \
 --tiller-tls \
 --tiller-tls-verify \
---tiller-tls-ca-cert=ca.pem \
 --tiller-tls-cert=cert.pem \
 --tiller-tls-key=key.pem \
---service-account=accountname  
+--tls-ca-cert=ca.pem \
+--service-account=accountname
 ```
 
 This command will start Tiller with both strong authentication over gRPC, and a service account to which RBAC policies have been applied. 
