@@ -222,12 +222,11 @@ func releaseStub() *release.Release {
 }
 
 func namedReleaseStub(name string, status release.StatusCode) *release.Release {
-	date := time.Unix(242085845, 0)
 	return &release.Release{
 		Name: name,
 		Info: &release.Info{
-			FirstDeployed: date,
-			LastDeployed:  date,
+			FirstDeployed: time.Now(),
+			LastDeployed:  time.Now(),
 			Status:        &release.Status{Code: status},
 			Description:   "Named Release Stub",
 		},
@@ -259,14 +258,12 @@ func namedReleaseStub(name string, status release.StatusCode) *release.Release {
 }
 
 func upgradeReleaseVersion(rel *release.Release) *release.Release {
-	date := time.Unix(242085845, 0)
-
 	rel.Info.Status.Code = release.Status_SUPERSEDED
 	return &release.Release{
 		Name: rel.Name,
 		Info: &release.Info{
 			FirstDeployed: rel.Info.FirstDeployed,
-			LastDeployed:  date,
+			LastDeployed:  time.Now(),
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
 		Chart:   rel.Chart,
@@ -366,12 +363,11 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 		},
 	}
 
-	date := time.Unix(242085845, 0)
 	return &release.Release{
 		Name: rlsName,
 		Info: &release.Info{
-			FirstDeployed: date,
-			LastDeployed:  date,
+			FirstDeployed: time.Now(),
+			LastDeployed:  time.Now(),
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
 		Chart:    ch,

@@ -28,8 +28,6 @@ import (
 	"k8s.io/helm/pkg/helm"
 )
 
-var date = time.Unix(242085845, 0)
-
 func TestStatusCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
@@ -100,21 +98,21 @@ func TestStatusCmd(t *testing.T) {
 				releaseMockWithStatus(&release.Status{
 					Code: release.Status_DEPLOYED,
 					LastTestSuiteRun: &release.TestSuite{
-						StartedAt:   date,
-						CompletedAt: date,
+						StartedAt:   time.Now(),
+						CompletedAt: time.Now(),
 						Results: []*release.TestRun{
 							{
 								Name:        "test run 1",
 								Status:      release.TestRun_SUCCESS,
 								Info:        "extra info",
-								StartedAt:   date,
-								CompletedAt: date,
+								StartedAt:   time.Now(),
+								CompletedAt: time.Now(),
 							},
 							{
 								Name:        "test run 2",
 								Status:      release.TestRun_FAILURE,
-								StartedAt:   date,
-								CompletedAt: date,
+								StartedAt:   time.Now(),
+								CompletedAt: time.Now(),
 							},
 						},
 					},
@@ -137,8 +135,8 @@ func releaseMockWithStatus(status *release.Status) *release.Release {
 	return &release.Release{
 		Name: "flummoxed-chickadee",
 		Info: &release.Info{
-			FirstDeployed: date,
-			LastDeployed:  date,
+			FirstDeployed: time.Now(),
+			LastDeployed:  time.Now(),
 			Status:        status,
 		},
 	}

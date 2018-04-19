@@ -225,12 +225,11 @@ func chartStub() *chart.Chart {
 }
 
 func releaseStub() *release.Release {
-	date := time.Unix(242085845, 0)
 	return &release.Release{
 		Name: "lost-fish",
 		Info: &release.Info{
-			FirstDeployed: date,
-			LastDeployed:  date,
+			FirstDeployed: time.Now(),
+			LastDeployed:  time.Now(),
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 			Description:   "a release stub",
 		},
