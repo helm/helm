@@ -137,6 +137,10 @@ func TestRunEmptyTestSuite(t *testing.T) {
 	if msg.Msg != "No Tests Found" {
 		t.Errorf("Expected message 'No Tests Found', Got: %v", msg.Msg)
 	}
+
+	for range env.Mesages {
+	}
+
 	if ts.StartedAt.IsZero() {
 		t.Errorf("Expected StartedAt to not be nil. Got: %v", ts.StartedAt)
 	}
