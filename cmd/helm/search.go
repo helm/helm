@@ -35,6 +35,21 @@ Search reads through all of the repositories configured on the system, and
 looks for matches.
 
 Repositories are managed with 'helm repo' commands.
+
+To look for charts with a particular name (such as stable/mysql), try
+searching using vertical tabs (\v). Vertical tabs are used as the delimiter
+between search fields. For example:
+
+    helm search --regexp '\vstable/mysql\v'
+
+To search for charts using common keywords (such as "database" or
+"key-value store"), use
+
+    helm search database
+
+or
+
+    helm search key-value store
 `
 
 // searchMaxScore suggests that any score higher than this is not considered a match.
