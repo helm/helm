@@ -45,7 +45,6 @@ gometalinter.v1 \
   --disable-all \
   --enable golint \
   --vendor \
-  --skip proto \
   --deadline 60s \
   ./... || :
 

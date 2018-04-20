@@ -20,7 +20,6 @@ find_files() {
   find . -not \( \
     \( \
       -wholename './vendor' \
-      -o -wholename './pkg/proto' \
       -o -wholename '*testdata*' \
     \) -prune \
   \) \
