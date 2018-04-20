@@ -13,7 +13,7 @@ type Release struct {
 	Chart *chart.Chart `json:"chart,omitempty"`
 	// Config is the set of extra Values added to the chart.
 	// These values override the default values inside of the chart.
-	Config *chart.Config `json:"config,omitempty"`
+	Config []byte `json:"config,omitempty"`
 	// Manifest is the string representation of the rendered template.
 	Manifest string `json:"manifest,omitempty"`
 	// Hooks are all of the hooks declared for this release.

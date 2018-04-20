@@ -378,7 +378,7 @@ func getChartValues(chartPath string) (chartutil.Values, error) {
 		return nil, err
 	}
 
-	return chartutil.ReadValues([]byte(chart.Values.Raw))
+	return chartutil.ReadValues(chart.Values)
 }
 
 func verifyValues(t *testing.T, actual, expected chartutil.Values) {

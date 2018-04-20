@@ -122,18 +122,19 @@ func (s *ReleaseServer) reuseValues(req *hapi.UpdateReleaseRequest, current *rel
 			s.Log("%s", err)
 			return err
 		}
-		nv, err := oldVals.YAML()
+		nv, err := yaml.Marshal(oldVals)
 		if err != nil {
 			return err
 		}
 
 		// merge new values with current
-		req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
-		req.Chart.Values = &chart.Config{Raw: nv}
+		b := append(current.Config, '\n')
+		req.Values = append(b, req.Values...)
+		req.Chart.Values = nv
 
 		// yaml unmarshal and marshal to remove duplicate keys
 		y := map[string]interface{}{}
-		if err := yaml.Unmarshal([]byte(req.Values.Raw), &y); err != nil {
+		if err := yaml.Unmarshal(req.Values, &y); err != nil {
 			return err
 		}
 		data, err := yaml.Marshal(y)
@@ -141,16 +142,15 @@ func (s *ReleaseServer) reuseValues(req *hapi.UpdateReleaseRequest, current *rel
 			return err
 		}
 
-		req.Values.Raw = string(data)
+		req.Values = data
 		return nil
 	}
 
 	// If req.Values is empty, but current.Config is not, copy current into the
 	// request.
-	if (req.Values == nil || req.Values.Raw == "" || req.Values.Raw == "{}\n") &&
-		current.Config != nil &&
-		current.Config.Raw != "" &&
-		current.Config.Raw != "{}\n" {
+	if (len(req.Values) == 0 || bytes.Equal(req.Values, []byte("{}\n"))) &&
+		len(current.Config) > 0 &&
+		!bytes.Equal(current.Config, []byte("{}\n")) {
 		s.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}

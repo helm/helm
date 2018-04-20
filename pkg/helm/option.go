@@ -20,7 +20,6 @@ import (
 	"k8s.io/client-go/discovery"
 
 	"k8s.io/helm/pkg/hapi"
-	cpb "k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
@@ -154,7 +153,7 @@ type InstallOption func(*options)
 // ValueOverrides specifies a list of values to include when installing.
 func ValueOverrides(raw []byte) InstallOption {
 	return func(opts *options) {
-		opts.instReq.Values = &cpb.Config{Raw: string(raw)}
+		opts.instReq.Values = raw
 	}
 }
 
@@ -231,7 +230,7 @@ func RollbackWait(wait bool) RollbackOption {
 // UpdateValueOverrides specifies a list of values to include when upgrading
 func UpdateValueOverrides(raw []byte) UpdateOption {
 	return func(opts *options) {
-		opts.updateReq.Values = &cpb.Config{Raw: string(raw)}
+		opts.updateReq.Values = raw
 	}
 }
 

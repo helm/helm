@@ -110,7 +110,7 @@ type UpdateReleaseRequest struct {
 	// Chart is the protobuf representation of a chart.
 	Chart *chart.Chart `json:"chart,omityempty"`
 	// Values is a string containing (unparsed) YAML values.
-	Values *chart.Config `json:"values,omityempty"`
+	Values []byte `json:"values,omityempty"`
 	// dry_run, if true, will run through the release logic, but neither create
 	DryRun bool `json:"dry_run,omityempty"`
 	// DisableHooks causes the server to skip running any hooks for the upgrade.
@@ -156,7 +156,7 @@ type InstallReleaseRequest struct {
 	// Chart is the protobuf representation of a chart.
 	Chart *chart.Chart `json:"chart,omityempty"`
 	// Values is a string containing (unparsed) YAML values.
-	Values *chart.Config `json:"values,omityempty"`
+	Values []byte `json:"values,omityempty"`
 	// DryRun, if true, will run through the release logic, but neither create
 	// a release object nor deploy to Kubernetes. The release object returned
 	// in the response will be fake.

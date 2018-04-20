@@ -29,7 +29,7 @@ import (
 )
 
 // APIVersionv1 is the API version number for version 1.
-const APIVersionv1 = "v1" // nolint
+const APIVersionv1 = "v1"
 
 // UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.
 func UnmarshalChartfile(data []byte) (*chart.Metadata, error) {

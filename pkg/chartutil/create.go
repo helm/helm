@@ -307,7 +307,7 @@ func CreateFrom(chartfile *chart.Metadata, dest string, src string) error {
 	}
 
 	schart.Templates = updatedTemplates
-	schart.Values = &chart.Config{Raw: string(Transform(schart.Values.Raw, "<CHARTNAME>", schart.Metadata.Name))}
+	schart.Values = Transform(string(schart.Values), "<CHARTNAME>", schart.Metadata.Name)
 
 	return SaveDir(schart, dest)
 }

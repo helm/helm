@@ -30,7 +30,7 @@ var printReleaseTemplate = `REVISION: {{.Release.Version}}
 RELEASED: {{.ReleaseDate}}
 CHART: {{.Release.Chart.Metadata.Name}}-{{.Release.Chart.Metadata.Version}}
 USER-SUPPLIED VALUES:
-{{.Release.Config.Raw}}
+{{.Config}}
 COMPUTED VALUES:
 {{.ComputedValues}}
 HOOKS:
@@ -59,6 +59,7 @@ func printRelease(out io.Writer, rel *release.Release) error {
 
 	data := map[string]interface{}{
 		"Release":        rel,
+		"Config":         string(rel.Config),
 		"ComputedValues": cfgStr,
 		"ReleaseDate":    rel.Info.LastDeployed.Format(time.ANSIC),
 	}

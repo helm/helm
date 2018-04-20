@@ -237,7 +237,7 @@ func (i *inspectCmd) run() error {
 		if i.output == all {
 			fmt.Fprintln(i.out, "---")
 		}
-		fmt.Fprintln(i.out, chrt.Values.Raw)
+		fmt.Fprintln(i.out, string(chrt.Values))
 	}
 
 	if i.output == readmeOnly || i.output == all {

@@ -32,7 +32,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller"
@@ -150,11 +149,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		t.namespace = defaultNamespace()
 	}
 	// get combined values and create config
-	rawVals, err := vals(t.valueFiles, t.values, t.stringValues)
+	config, err := vals(t.valueFiles, t.values, t.stringValues)
 	if err != nil {
 		return err
 	}
-	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
 	// If template is specified, try to run the template.
 	if t.nameTemplate != "" {

@@ -97,18 +97,15 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test2", Data: []byte("{{.global.callme | lower }}")},
 			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
 		},
-		Values: &chart.Config{
-			Raw: "outer: DEFAULT\ninner: DEFAULT",
-		},
+		Values: []byte("outer: DEFAULT\ninner: DEFAULT"),
 	}
 
-	vals := &chart.Config{
-		Raw: `
+	vals := []byte(`
 outer: spouter
 inner: inn
 global:
   callme: Ishmael
-`}
+`)
 
 	e := New()
 	v, err := chartutil.CoalesceValues(c, vals)
@@ -280,7 +277,7 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 			{Name: checkrelease, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
-		Values: &chart.Config{Raw: `what: "milkshake"`},
+		Values: []byte(`what: "milkshake"`),
 	}
 
 	inner := &chart.Chart{
@@ -288,7 +285,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: innerpath, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
-		Values:       &chart.Config{Raw: `who: "Robert"`},
+		Values:       []byte(`who: "Robert"`),
 		Dependencies: []*chart.Chart{deepest},
 	}
 
@@ -297,27 +294,23 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: outerpath, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
 		},
-		Values: &chart.Config{
-			Raw: `
+		Values: []byte(`
 what: stinkweed
 who: me
 herrick:
-    who: time`,
-		},
+    who: time`),
 		Dependencies: []*chart.Chart{inner},
 	}
 
-	injValues := chart.Config{
-		Raw: `
+	injValues := []byte(`
 what: rosebuds
 herrick:
   deepest:
     what: flower
 global:
-  when: to-day`,
-	}
+  when: to-day`)
 
-	tmp, err := chartutil.CoalesceValues(outer, &injValues)
+	tmp, err := chartutil.CoalesceValues(outer, injValues)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
@@ -365,7 +358,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 			{Name: "templates/Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
 			{Name: "templates/From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.Get "book/title.txt"}}`)},
 		},
-		Values:       &chart.Config{Raw: ``},
+		Values:       []byte{},
 		Dependencies: []*chart.Chart{},
 		Files: []*chart.File{
 			{Name: "author", Data: []byte("Virgil")},
@@ -378,12 +371,12 @@ func TestRenderBuiltinValues(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: "templates/Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
 		},
-		Values:       &chart.Config{Raw: ``},
+		Values:       []byte{},
 		Dependencies: []*chart.Chart{inner},
 	}
 
 	inject := chartutil.Values{
-		"Values": &chart.Config{Raw: ""},
+		"Values": "",
 		"Chart":  outer.Metadata,
 		"Release": chartutil.Values{
 			"Name": "Aeneid",
@@ -417,12 +410,12 @@ func TestAlterFuncMap(t *testing.T) {
 			{Name: "templates/quote", Data: []byte(`{{include "conrad/templates/_partial" . | indent 2}} dead.`)},
 			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}} - he`)},
 		},
-		Values:       &chart.Config{Raw: ``},
+		Values:       []byte{},
 		Dependencies: []*chart.Chart{},
 	}
 
 	v := chartutil.Values{
-		"Values": &chart.Config{Raw: ""},
+		"Values": "",
 		"Chart":  c.Metadata,
 		"Release": chartutil.Values{
 			"Name": "Mistah Kurtz",
@@ -445,7 +438,7 @@ func TestAlterFuncMap(t *testing.T) {
 			{Name: "templates/quote", Data: []byte(`All your base are belong to {{ required "A valid 'who' is required" .Values.who }}`)},
 			{Name: "templates/bases", Data: []byte(`All {{ required "A valid 'bases' is required" .Values.bases }} of them!`)},
 		},
-		Values:       &chart.Config{Raw: ``},
+		Values:       []byte{},
 		Dependencies: []*chart.Chart{},
 	}
 
@@ -479,7 +472,7 @@ func TestAlterFuncMap(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value}}" .}}`)},
 		},
-		Values:       &chart.Config{Raw: ``},
+		Values:       []byte{},
 		Dependencies: []*chart.Chart{},
 	}
 
@@ -508,7 +501,7 @@ func TestAlterFuncMap(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | quote}}" .}}`)},
 		},
-		Values:       &chart.Config{Raw: ``},
+		Values:       []byte{},
 		Dependencies: []*chart.Chart{},
 	}
 
@@ -538,7 +531,7 @@ func TestAlterFuncMap(t *testing.T) {
 			{Name: "templates/base", Data: []byte(`{{ tpl "{{include ` + "`" + `TplFunction/templates/_partial` + "`" + ` .  | quote }}" .}}`)},
 			{Name: "templates/_partial", Data: []byte(`{{.Template.Name}}`)},
 		},
-		Values:       &chart.Config{Raw: ``},
+		Values:       []byte{},
 		Dependencies: []*chart.Chart{},
 	}
 	tplValueWithInclude := chartutil.Values{

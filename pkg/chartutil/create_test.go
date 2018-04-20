@@ -128,7 +128,7 @@ func TestCreateFrom(t *testing.T) {
 	}
 
 	// Ensure we replace `<CHARTNAME>`
-	if strings.Contains(mychart.Values.Raw, "<CHARTNAME>") {
-		t.Errorf("Did not expect %s to be present in %s", "<CHARTNAME>", mychart.Values.Raw)
+	if strings.Contains(string(mychart.Values), "<CHARTNAME>") {
+		t.Errorf("Did not expect %s to be present in %s", "<CHARTNAME>", string(mychart.Values))
 	}
 }

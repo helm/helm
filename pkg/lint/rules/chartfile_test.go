@@ -39,7 +39,7 @@ var (
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
 
-var badChart, chatLoadRrr = chartutil.LoadChartfile(badChartFilePath)
+var badChart, _ = chartutil.LoadChartfile(badChartFilePath)
 var goodChart, _ = chartutil.LoadChartfile(goodChartFilePath)
 
 // Validation functions Test

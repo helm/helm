@@ -27,7 +27,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
-	cpb "k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/lint/support"
 	tversion "k8s.io/helm/pkg/version"
 )
@@ -59,17 +58,16 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		KubeVersion:   chartutil.DefaultKubeVersion,
 		TillerVersion: tversion.GetVersionProto(),
 	}
-	cvals, err := chartutil.CoalesceValues(chart, &cpb.Config{Raw: string(values)})
+	cvals, err := chartutil.CoalesceValues(chart, values)
 	if err != nil {
 		return
 	}
 	// convert our values back into config
-	yvals, err := cvals.YAML()
+	yvals, err := yaml.Marshal(cvals)
 	if err != nil {
 		return
 	}
-	cc := &cpb.Config{Raw: yvals}
-	valuesToRender, err := chartutil.ToRenderValuesCaps(chart, cc, options, caps)
+	valuesToRender, err := chartutil.ToRenderValuesCaps(chart, yvals, options, caps)
 	if err != nil {
 		// FIXME: This seems to generate a duplicate, but I can't find where the first
 		// error is coming from.

@@ -83,6 +83,6 @@ func (g *getValuesCmd) run() error {
 		return nil
 	}
 
-	fmt.Fprintln(g.out, res.Config.Raw)
+	fmt.Fprintln(g.out, string(res.Config))
 	return nil
 }

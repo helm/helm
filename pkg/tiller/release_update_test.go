@@ -17,7 +17,7 @@ limitations under the License.
 package tiller
 
 import (
-	"fmt"
+	"bytes"
 	"reflect"
 	"strings"
 	"testing"
@@ -82,8 +82,8 @@ func TestUpdateRelease(t *testing.T) {
 
 	if res.Config == nil {
 		t.Errorf("Got release without config: %#v", res)
-	} else if res.Config.Raw != rel.Config.Raw {
-		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Config.Raw)
+	} else if !bytes.Equal(res.Config, rel.Config) {
+		t.Errorf("Expected release values %q, got %q", rel.Config, res.Config)
 	}
 
 	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
@@ -120,8 +120,8 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
-	if res.Config != nil && res.Config.Raw != "" {
-		t.Errorf("Expected chart config to be empty, got %q", res.Config.Raw)
+	if len(res.Config) > 0 {
+		t.Errorf("Expected chart config to be empty, got %q", res.Config)
 	}
 }
 
@@ -137,18 +137,17 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+			Values: []byte("defaultFoo: defaultBar"),
 		},
-		Values: &chart.Config{Raw: "foo: bar"},
+		Values: []byte("foo: bar"),
 	}
 
-	fmt.Println("Running Install release with foo: bar override")
-	installResp, err := rs.InstallRelease(installReq)
+	t.Log("Running Install release with foo: bar override")
+	rel, err := rs.InstallRelease(installReq)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rel := installResp
 	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
@@ -157,22 +156,21 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+			Values: []byte("defaultFoo: defaultBar"),
 		},
 	}
 
-	fmt.Println("Running Update release with no overrides and no reuse-values flag")
-	res, err := rs.UpdateRelease(req)
+	t.Log("Running Update release with no overrides and no reuse-values flag")
+	rel, err = rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 
 	expect := "foo: bar"
-	if res.Config != nil && res.Config.Raw != expect {
-		t.Errorf("Expected chart values to be %q, got %q", expect, res.Config.Raw)
+	if rel.Config != nil && !bytes.Equal(rel.Config, []byte(expect)) {
+		t.Errorf("Expected chart values to be %q, got %q", expect, string(rel.Config))
 	}
 
-	rel = res
 	req = &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
 		Chart: &chart.Chart{
@@ -181,13 +179,13 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+			Values: []byte("defaultFoo: defaultBar"),
 		},
-		Values:      &chart.Config{Raw: "foo2: bar2"},
+		Values:      []byte("foo2: bar2"),
 		ReuseValues: true,
 	}
 
-	fmt.Println("Running Update release with foo2: bar2 override and reuse-values")
+	t.Log("Running Update release with foo2: bar2 override and reuse-values")
 	rel, err = rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
@@ -195,8 +193,8 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 
 	// This should have the newly-passed overrides.
 	expect = "foo: bar\nfoo2: bar2\n"
-	if rel.Config != nil && rel.Config.Raw != expect {
-		t.Errorf("Expected request config to be %q, got %q", expect, rel.Config.Raw)
+	if rel.Config != nil && !bytes.Equal(rel.Config, []byte(expect)) {
+		t.Errorf("Expected request config to be %q, got %q", expect, string(rel.Config))
 	}
 
 	req = &hapi.UpdateReleaseRequest{
@@ -207,20 +205,20 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
-			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+			Values: []byte("defaultFoo: defaultBar"),
 		},
-		Values:      &chart.Config{Raw: "foo: baz"},
+		Values:      []byte("foo: baz"),
 		ReuseValues: true,
 	}
 
-	fmt.Println("Running Update release with foo=baz override with reuse-values flag")
-	res, err = rs.UpdateRelease(req)
+	t.Log("Running Update release with foo=baz override with reuse-values flag")
+	rel, err = rs.UpdateRelease(req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	expect = "foo: baz\nfoo2: bar2\n"
-	if res.Config != nil && res.Config.Raw != expect {
-		t.Errorf("Expected chart values to be %q, got %q", expect, res.Config.Raw)
+	if rel.Config != nil && !bytes.Equal(rel.Config, []byte(expect)) {
+		t.Errorf("Expected chart values to be %q, got %q", expect, rel.Config)
 	}
 }
 
@@ -238,9 +236,9 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
 			// Since reuseValues is set, this should get ignored.
-			Values: &chart.Config{Raw: "foo: bar\n"},
+			Values: []byte("foo: bar\n"),
 		},
-		Values:      &chart.Config{Raw: "name2: val2"},
+		Values:      []byte("name2: val2"),
 		ReuseValues: true,
 	}
 	res, err := rs.UpdateRelease(req)
@@ -249,13 +247,13 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 	}
 	// This should have been overwritten with the old value.
 	expect := "name: value\n"
-	if res.Chart.Values != nil && res.Chart.Values.Raw != expect {
-		t.Errorf("Expected chart values to be %q, got %q", expect, res.Chart.Values.Raw)
+	if res.Chart.Values != nil && !bytes.Equal(res.Chart.Values, []byte(expect)) {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Chart.Values)
 	}
 	// This should have the newly-passed overrides and any other computed values. `name: value` comes from release Config via releaseStub()
 	expect = "name: value\nname2: val2\n"
-	if res.Config != nil && res.Config.Raw != expect {
-		t.Errorf("Expected request config to be %q, got %q", expect, res.Config.Raw)
+	if res.Config != nil && !bytes.Equal(res.Config, []byte(expect)) {
+		t.Errorf("Expected request config to be %q, got %q", expect, res.Config)
 	}
 	compareStoredAndReturnedRelease(t, *rs, res)
 }
@@ -283,8 +281,8 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
-	if res.Config != nil && res.Config.Raw != "" {
-		t.Errorf("Expected chart config to be empty, got %q", res.Config.Raw)
+	if len(res.Config) > 0 {
+		t.Errorf("Expected chart config to be empty, got %q", res.Config)
 	}
 	compareStoredAndReturnedRelease(t, *rs, res)
 }

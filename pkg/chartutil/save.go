@@ -46,9 +46,9 @@ func SaveDir(c *chart.Chart, dest string) error {
 	}
 
 	// Save values.yaml
-	if c.Values != nil && len(c.Values.Raw) > 0 {
+	if len(c.Values) > 0 {
 		vf := filepath.Join(outdir, ValuesfileName)
-		if err := ioutil.WriteFile(vf, []byte(c.Values.Raw), 0755); err != nil {
+		if err := ioutil.WriteFile(vf, c.Values, 0755); err != nil {
 			return err
 		}
 	}
@@ -170,8 +170,8 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 
 	// Save values.yaml
-	if c.Values != nil && len(c.Values.Raw) > 0 {
-		if err := writeToTar(out, base+"/values.yaml", []byte(c.Values.Raw)); err != nil {
+	if len(c.Values) > 0 {
+		if err := writeToTar(out, base+"/values.yaml", c.Values); err != nil {
 			return err
 		}
 	}

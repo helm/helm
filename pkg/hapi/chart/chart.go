@@ -10,7 +10,7 @@ type Chart struct {
 	// Charts that this chart depends on.
 	Dependencies []*Chart `json:"dependencies,omitempty"`
 	// Default config for this template.
-	Values *Config `json:"values,omitempty"`
+	Values []byte `json:"values,omitempty"`
 	// Miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File `json:"files,omitempty"`

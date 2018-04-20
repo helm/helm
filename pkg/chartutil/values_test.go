@@ -89,18 +89,18 @@ where:
 	c := &chart.Chart{
 		Metadata:  &chart.Metadata{Name: "test"},
 		Templates: []*chart.File{},
-		Values:    &chart.Config{Raw: chartValues},
+		Values:    []byte(chartValues),
 		Dependencies: []*chart.Chart{
 			{
 				Metadata: &chart.Metadata{Name: "where"},
-				Values:   &chart.Config{Raw: ""},
+				Values:   []byte{},
 			},
 		},
 		Files: []*chart.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 	}
-	v := &chart.Config{Raw: overideValues}
+	v := []byte(overideValues)
 
 	o := ReleaseOptions{
 		Name:      "Seven Voyages",
@@ -305,9 +305,7 @@ func TestCoalesceValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tvals := &chart.Config{Raw: testCoalesceValuesYaml}
-
-	v, err := CoalesceValues(c, tvals)
+	v, err := CoalesceValues(c, []byte(testCoalesceValuesYaml))
 	if err != nil {
 		t.Fatal(err)
 	}

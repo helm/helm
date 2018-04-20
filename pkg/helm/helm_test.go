@@ -109,7 +109,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	// Expected InstallReleaseRequest message
 	exp := &hapi.InstallReleaseRequest{
 		Chart:        loadChart(t, chartName),
-		Values:       &cpb.Config{Raw: string(overrides)},
+		Values:       overrides,
 		DryRun:       dryRun,
 		Name:         releaseName,
 		DisableHooks: disableHooks,
@@ -202,7 +202,7 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	exp := &hapi.UpdateReleaseRequest{
 		Name:         releaseName,
 		Chart:        loadChart(t, chartName),
-		Values:       &cpb.Config{Raw: string(overrides)},
+		Values:       overrides,
 		DryRun:       dryRun,
 		DisableHooks: disableHooks,
 	}

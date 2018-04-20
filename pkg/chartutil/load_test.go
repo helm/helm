@@ -89,7 +89,7 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected chart name to be 'frobnitz', got %s", c.Metadata.Name)
 	}
 
-	if c.Values.Raw != defaultValues {
+	if string(c.Values) != defaultValues {
 		t.Error("Expected chart values to be populated with default values")
 	}
 

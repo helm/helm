@@ -26,6 +26,7 @@ import (
 	"syscall"
 
 	"github.com/Masterminds/semver"
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
@@ -143,15 +144,15 @@ func (p *packageCmd) run() error {
 	if err != nil {
 		return err
 	}
-	combinedVals, err := chartutil.CoalesceValues(ch, &chart.Config{Raw: string(overrideVals)})
+	combinedVals, err := chartutil.CoalesceValues(ch, overrideVals)
 	if err != nil {
 		return err
 	}
-	newVals, err := combinedVals.YAML()
+	newVals, err := yaml.Marshal(combinedVals)
 	if err != nil {
 		return err
 	}
-	ch.Values = &chart.Config{Raw: newVals}
+	ch.Values = newVals
 
 	// If version is set, modify the version.
 	if len(p.version) != 0 {
