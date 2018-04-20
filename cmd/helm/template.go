@@ -194,9 +194,9 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	renderer := engine.New()
 
 	caps := &chartutil.Capabilities{
-		APIVersions:   chartutil.DefaultVersionSet,
-		KubeVersion:   chartutil.DefaultKubeVersion,
-		TillerVersion: tversion.GetVersionProto(),
+		APIVersions: chartutil.DefaultVersionSet,
+		KubeVersion: chartutil.DefaultKubeVersion,
+		HelmVersion: tversion.GetVersionProto(),
 	}
 
 	// kubernetes version

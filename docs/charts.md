@@ -58,7 +58,7 @@ engine: gotpl # The name of the template engine (optional, defaults to gotpl)
 icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
 deprecated: Whether this chart is deprecated (optional, boolean)
-tillerVersion: The version of Tiller that this chart requires. This should be expressed as a SemVer range: ">2.0.0" (optional)
+helmVersion: The version of Tiller that this chart requires. This should be expressed as a SemVer range: ">2.0.0" (optional)
 ```
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
@@ -595,7 +595,7 @@ sensitive_.
   as `[]byte` using `{{.Files.GetBytes}}`
 - `Capabilities`: A map-like object that contains information about the versions
   of Kubernetes (`{{.Capabilities.KubeVersion}}`, Tiller
-  (`{{.Capabilities.TillerVersion}}`, and the supported Kubernetes API versions
+  (`{{.Capabilities.HelmVersion}}`, and the supported Kubernetes API versions
   (`{{.Capabilities.APIVersions.Has "batch/v1"`)
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not

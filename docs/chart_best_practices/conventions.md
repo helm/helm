@@ -42,12 +42,12 @@ When in doubt, use _Helm_ (with an uppercase 'H').
 
 ## Restricting Tiller by Version
 
-A `Chart.yaml` file can specify a `tillerVersion` SemVer constraint:
+A `Chart.yaml` file can specify a `helmVersion` SemVer constraint:
 
 ```yaml
 name: mychart
 version: 0.2.0
-tillerVersion: ">=2.4.0"
+helmVersion: ">=2.4.0"
 ```
 
 This constraint should be set when templates use a new feature that was not

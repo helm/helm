@@ -45,10 +45,10 @@ type Capabilities struct {
 	APIVersions VersionSet
 	// KubeVerison is the Kubernetes version
 	KubeVersion *version.Info
-	// TillerVersion is the Tiller version
+	// HelmVersion is the Helm version
 	//
 	// This always comes from pkg/version.GetVersionProto().
-	TillerVersion *tversion.Version
+	HelmVersion *tversion.Version
 }
 
 // VersionSet is a set of Kubernetes API versions.

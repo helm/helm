@@ -111,9 +111,9 @@ where:
 	}
 
 	caps := &Capabilities{
-		APIVersions:   DefaultVersionSet,
-		TillerVersion: version.GetVersionProto(),
-		KubeVersion:   &kversion.Info{Major: "1"},
+		APIVersions: DefaultVersionSet,
+		HelmVersion: version.GetVersionProto(),
+		KubeVersion: &kversion.Info{Major: "1"},
 	}
 
 	res, err := ToRenderValuesCaps(c, v, o, caps)
@@ -144,7 +144,7 @@ where:
 	if !res["Capabilities"].(*Capabilities).APIVersions.Has("v1") {
 		t.Error("Expected Capabilities to have v1 as an API")
 	}
-	if res["Capabilities"].(*Capabilities).TillerVersion.SemVer == "" {
+	if res["Capabilities"].(*Capabilities).HelmVersion.SemVer == "" {
 		t.Error("Expected Capabilities to have a Tiller version")
 	}
 	if res["Capabilities"].(*Capabilities).KubeVersion.Major != "1" {

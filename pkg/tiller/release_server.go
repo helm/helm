@@ -225,9 +225,9 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
 	return &chartutil.Capabilities{
-		APIVersions:   vs,
-		KubeVersion:   sv,
-		TillerVersion: version.GetVersionProto(),
+		APIVersions: vs,
+		KubeVersion: sv,
+		HelmVersion: version.GetVersionProto(),
 	}, nil
 }
 
@@ -253,8 +253,8 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
 	// Guard to make sure Tiller is at the right version to handle this chart.
 	sver := version.GetVersion()
-	if ch.Metadata.TillerVersion != "" &&
-		!version.IsCompatibleRange(ch.Metadata.TillerVersion, sver) {
+	if ch.Metadata.HelmVersion != "" &&
+		!version.IsCompatibleRange(ch.Metadata.HelmVersion, sver) {
 		return nil, nil, "", fmt.Errorf("Chart incompatible with Tiller %s", sver)
 	}
 
