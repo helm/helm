@@ -90,10 +90,10 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&t.showNotes, "notes", false, "show the computed NOTES.txt file as well")
-	f.StringVarP(&t.releaseName, "name", "n", "RELEASE-NAME", "release name")
+	f.StringVarP(&t.releaseName, "name", "", "RELEASE-NAME", "release name")
 	f.StringArrayVarP(&t.renderFiles, "execute", "x", []string{}, "only execute the given templates")
 	f.VarP(&t.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	f.StringVar(&t.namespace, "namespace", "", "namespace to install the release into")
+	f.StringVar(&t.namespace, "namespace", "n", "namespace to install the release into")
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
