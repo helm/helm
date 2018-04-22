@@ -35,8 +35,8 @@ func TestEnvSettings(t *testing.T) {
 		envars map[string]string
 
 		// expected values
-		home, ns, kcontext, plugins string
-		debug                       bool
+		home, ns, plugins string
+		debug             bool
 	}{
 		{
 			name:    "defaults",
@@ -47,7 +47,7 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:    "with flags set",
-			args:    []string{"--home", "/foo", "--debug", "--tiller-namespace=myns"},
+			args:    []string{"--home", "/foo", "--debug"},
 			home:    "/foo",
 			plugins: helmpath.Home("/foo").Plugins(),
 			ns:      "myns",
@@ -56,7 +56,7 @@ func TestEnvSettings(t *testing.T) {
 		{
 			name:    "with envvars set",
 			args:    []string{},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns"},
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1"},
 			home:    "/bar",
 			plugins: helmpath.Home("/bar").Plugins(),
 			ns:      "yourns",
@@ -64,8 +64,8 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:    "with flags and envvars set",
-			args:    []string{"--home", "/foo", "--debug", "--tiller-namespace=myns"},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
+			args:    []string{"--home", "/foo", "--debug"},
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "HELM_PLUGIN": "glade"},
 			home:    "/foo",
 			plugins: "glade",
 			ns:      "myns",
@@ -98,12 +98,6 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
-			}
-			if settings.TillerNamespace != tt.ns {
-				t.Errorf("expected tiller-namespace %q, got %q", tt.ns, settings.TillerNamespace)
-			}
-			if settings.KubeContext != tt.kcontext {
-				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
 			}
 
 			cleanup()

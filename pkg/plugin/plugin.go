@@ -182,8 +182,6 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 		"HELM_PATH_CACHE":            settings.Home.Cache(),
 		"HELM_PATH_LOCAL_REPOSITORY": settings.Home.LocalRepository(),
 		"HELM_PATH_STARTER":          settings.Home.Starters(),
-
-		"TILLER_NAMESPACE": settings.TillerNamespace,
 	} {
 		os.Setenv(key, val)
 	}

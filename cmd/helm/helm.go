@@ -18,13 +18,14 @@ package main // import "k8s.io/helm/cmd/helm"
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
-
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
@@ -32,7 +33,10 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-var settings helm_env.EnvSettings
+var (
+	settings helm_env.EnvSettings
+	config   clientcmd.ClientConfig
+)
 
 var globalUsage = `The Kubernetes package manager
 
@@ -52,7 +56,6 @@ Common actions from this point include:
 Environment:
   $HELM_HOME          set an alternative location for Helm files. By default, these are stored in ~/.helm
   $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
-  $TILLER_NAMESPACE   set an alternative Tiller namespace (default "kube-system")
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
@@ -66,6 +69,8 @@ func newRootCmd(args []string) *cobra.Command {
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
+
+	config = kube.GetConfig(flags)
 
 	out := cmd.OutOrStdout()
 
@@ -115,6 +120,17 @@ func newRootCmd(args []string) *cobra.Command {
 	return cmd
 }
 
+func init() {
+	log.SetFlags(log.Lshortfile)
+}
+
+func logf(format string, v ...interface{}) {
+	if settings.Debug {
+		format = fmt.Sprintf("[debug] %s\n", format)
+		log.Output(2, fmt.Sprintf(format, v...))
+	}
+}
+
 func main() {
 	cmd := newRootCmd(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
@@ -143,19 +159,28 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 }
 
 func newClient() helm.Interface {
-	cfg := kube.GetConfig(settings.KubeContext)
-	kc := kube.New(cfg)
+	kc := kube.New(config)
+	kc.Log = logf
+
 	clientset, err := kc.KubernetesClientSet()
 	if err != nil {
 		// TODO return error
-		panic(err)
+		log.Fatal(err)
 	}
 	// TODO add other backends
-	cfgmaps := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(settings.TillerNamespace))
+	cfgmaps := driver.NewSecrets(clientset.CoreV1().Secrets(getNamespace()))
+	cfgmaps.Log = logf
 
 	return helm.NewClient(
 		helm.KubeClient(kc),
 		helm.Driver(cfgmaps),
 		helm.Discovery(clientset.Discovery()),
 	)
+}
+
+func getNamespace() string {
+	if ns, _, err := config.Namespace(); err == nil {
+		return ns
+	}
+	return "default"
 }

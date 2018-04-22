@@ -38,7 +38,6 @@ import (
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
 )
@@ -107,7 +106,6 @@ charts in a repository, use 'helm search'.
 
 type installCmd struct {
 	name         string
-	namespace    string
 	valueFiles   valueFiles
 	chartPath    string
 	dryRun       bool
@@ -186,7 +184,6 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
 	f.StringVarP(&inst.name, "name", "", "", "release name. If unspecified, it will autogenerate one for you")
-	f.StringVar(&inst.namespace, "namespace", "n", "namespace to install the release into. Defaults to the current kube config namespace.")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
@@ -212,10 +209,6 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 func (i *installCmd) run() error {
 	debug("CHART PATH: %s\n", i.chartPath)
-
-	if i.namespace == "" {
-		i.namespace = defaultNamespace()
-	}
 
 	rawVals, err := vals(i.valueFiles, i.values, i.stringValues)
 	if err != nil {
@@ -266,7 +259,7 @@ func (i *installCmd) run() error {
 
 	rel, err := i.client.InstallReleaseFromChart(
 		chartRequested,
-		i.namespace,
+		getNamespace(),
 		helm.ValueOverrides(rawVals),
 		helm.ReleaseName(i.name),
 		helm.InstallDryRun(i.dryRun),
@@ -470,13 +463,6 @@ func generateName(nameTemplate string) (string, error) {
 		return "", err
 	}
 	return b.String(), nil
-}
-
-func defaultNamespace() string {
-	if ns, _, err := kube.GetConfig(settings.KubeContext).Namespace(); err == nil {
-		return ns
-	}
-	return "default"
 }
 
 func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {

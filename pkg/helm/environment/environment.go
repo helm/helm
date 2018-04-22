@@ -37,22 +37,16 @@ var DefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	// TillerNamespace is the namespace in which Tiller runs.
-	TillerNamespace string
 	// Home is the local path to the Helm home directory.
 	Home helmpath.Home
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
-	// KubeContext is the name of the kubeconfig context.
-	KubeContext string
 }
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
-	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
-	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
 }
 
 // Init sets values from the environment.
@@ -72,9 +66,8 @@ func (s EnvSettings) PluginDirs() string {
 
 // envMap maps flag names to envvars
 var envMap = map[string]string{
-	"debug":            "HELM_DEBUG",
-	"home":             "HELM_HOME",
-	"tiller-namespace": "TILLER_NAMESPACE",
+	"debug": "HELM_DEBUG",
+	"home":  "HELM_HOME",
 }
 
 func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
@@ -85,11 +78,3 @@ func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
 		fs.Set(name, v)
 	}
 }
-
-// Deprecated
-const (
-	HomeEnvVar          = "HELM_HOME"
-	PluginEnvVar        = "HELM_PLUGIN"
-	PluginDisableEnvVar = "HELM_NO_PLUGINS"
-	DebugEnvVar         = "HELM_DEBUG"
-)

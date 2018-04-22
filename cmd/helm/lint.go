@@ -47,7 +47,6 @@ type lintCmd struct {
 	valueFiles valueFiles
 	values     []string
 	sValues    []string
-	namespace  string
 	strict     bool
 	paths      []string
 	out        io.Writer
@@ -73,7 +72,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().VarP(&l.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to install the release into (only used if --install is set)")
 	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
 
 	return cmd
@@ -98,7 +96,7 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
+		if linter, err := lintChart(path, rvals, getNamespace(), l.strict); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
 			if err == errLintNoChart {

@@ -123,14 +123,10 @@ type testClient struct {
 
 func newTestClient() *testClient {
 	tf := cmdtesting.NewTestFactory()
-	c := &Client{
-		Factory: tf,
-		Log:     nopLogger,
-	}
-	return &testClient{
-		Client:      c,
-		TestFactory: tf,
-	}
+	tf.Namespace = core.NamespaceDefault
+
+	c := &Client{Factory: tf, Log: nopLogger}
+	return &testClient{Client: c, TestFactory: tf}
 }
 
 func TestUpdate(t *testing.T) {
@@ -181,6 +177,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	c := newTestClient()
+	tf.Namespace = core.NamespaceDefault
 	reaper := &fakeReaper{}
 	rf := &fakeReaperFactory{Factory: tf, reaper: reaper}
 	c.Client.Factory = rf
@@ -309,20 +306,17 @@ func TestGet(t *testing.T) {
 func TestPerform(t *testing.T) {
 	tests := []struct {
 		name       string
-		namespace  string
 		reader     io.Reader
 		count      int
 		err        bool
 		errMessage string
 	}{
 		{
-			name:      "Valid input",
-			namespace: "test",
-			reader:    strings.NewReader(guestbookManifest),
-			count:     6,
+			name:   "Valid input",
+			reader: strings.NewReader(guestbookManifest),
+			count:  6,
 		}, {
 			name:       "Empty manifests",
-			namespace:  "test",
 			reader:     strings.NewReader(""),
 			err:        true,
 			errMessage: "no objects visited",
@@ -335,16 +329,12 @@ func TestPerform(t *testing.T) {
 
 			fn := func(info *resource.Info) error {
 				results = append(results, info)
-
-				if info.Namespace != tt.namespace {
-					t.Errorf("expected namespace to be '%s', got %s", tt.namespace, info.Namespace)
-				}
 				return nil
 			}
 
 			c := newTestClient()
 			defer c.Cleanup()
-			infos, err := c.Build(tt.namespace, tt.reader)
+			infos, err := c.Build("default", tt.reader)
 			if err != nil && err.Error() != tt.errMessage {
 				t.Errorf("Error while building manifests: %v", err)
 			}

@@ -68,7 +68,6 @@ type upgradeCmd struct {
 	verify       bool
 	keyring      string
 	install      bool
-	namespace    string
 	version      string
 	timeout      int64
 	resetValues  bool
@@ -125,7 +124,6 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
 	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "path to the keyring that contains public signing keys")
 	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
-	f.StringVar(&upgrade.namespace, "namespace", "n", "namespace to install the release into (only used if --install is set). Defaults to the current kube config namespace")
 	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
 	f.Int64Var(&upgrade.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
@@ -153,20 +151,7 @@ func (u *upgradeCmd) run() error {
 	if u.install {
 		// If a release does not exist, install it. If another error occurs during
 		// the check, ignore the error and continue with the upgrade.
-		releaseHistory, err := u.client.ReleaseHistory(u.release, 1)
-
-		if err == nil {
-			if u.namespace == "" {
-				u.namespace = defaultNamespace()
-			}
-			previousReleaseNamespace := releaseHistory[0].Namespace
-			if previousReleaseNamespace != u.namespace {
-				fmt.Fprintf(u.out,
-					"WARNING: Namespace %q doesn't match with previous. Release will be deployed to %s\n",
-					u.namespace, previousReleaseNamespace,
-				)
-			}
-		}
+		_, err := u.client.ReleaseHistory(u.release, 1)
 
 		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(u.release).Error()) {
 			fmt.Fprintf(u.out, "Release %q does not exist. Installing it now.\n", u.release)
@@ -182,7 +167,6 @@ func (u *upgradeCmd) run() error {
 				keyring:      u.keyring,
 				values:       u.values,
 				stringValues: u.stringValues,
-				namespace:    u.namespace,
 				timeout:      u.timeout,
 				wait:         u.wait,
 			}

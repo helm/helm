@@ -69,7 +69,6 @@ type listCmd struct {
 	deleting   bool
 	deployed   bool
 	failed     bool
-	namespace  string
 	superseded bool
 	pending    bool
 	client     helm.Interface
@@ -110,7 +109,6 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
 	f.BoolVar(&list.pending, "pending", false, "show pending releases")
-	f.StringVar(&list.namespace, "namespace", "n", "show releases within a specific namespace")
 	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
 
 	// TODO: Do we want this as a feature of 'helm list'?
@@ -139,7 +137,6 @@ func (l *listCmd) run() error {
 		helm.ReleaseListSort(int(sortBy)),
 		helm.ReleaseListOrder(int(sortOrder)),
 		helm.ReleaseListStatuses(stats),
-		helm.ReleaseListNamespace(l.namespace),
 	)
 
 	if err != nil {

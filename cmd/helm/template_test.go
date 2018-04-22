@@ -70,13 +70,6 @@ func TestTemplateCmd(t *testing.T) {
 			expectValue: "protocol: TCP\n    name: apache",
 		},
 		{
-			name:        "check_namespace",
-			desc:        "verify --namespace",
-			args:        []string{chartPath, "--namespace", "test"},
-			expectKey:   "subchart1/templates/service.yaml",
-			expectValue: "namespace: \"test\"",
-		},
-		{
 			name:        "check_release_name",
 			desc:        "verify --release exists",
 			args:        []string{chartPath, "--name", "test"},

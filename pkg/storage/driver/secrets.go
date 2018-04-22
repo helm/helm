@@ -253,6 +253,7 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 			Name:   key,
 			Labels: lbs.toMap(),
 		},
+		Type: "helm.sh/release",
 		Data: map[string][]byte{"release": []byte(s)},
 	}, nil
 }

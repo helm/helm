@@ -48,7 +48,6 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		rls.Status_DEPLOYED,
 		rls.Status_SUPERSEDED,
 	}
-	var namespace = "namespace"
 
 	// Expected ListReleasesRequest message
 	exp := &hapi.ListReleasesRequest{
@@ -58,7 +57,6 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		SortBy:      hapi.ListSortBy(sortBy),
 		SortOrder:   hapi.ListSortOrder(sortOrd),
 		StatusCodes: codes,
-		Namespace:   namespace,
 	}
 
 	// Options used in ListReleases
@@ -69,7 +67,6 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		ReleaseListOffset(offset),
 		ReleaseListFilter(filter),
 		ReleaseListStatuses(codes),
-		ReleaseListNamespace(namespace),
 	}
 
 	// BeforeCall option to intercept Helm client ListReleasesRequest
@@ -99,7 +96,6 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var disableHooks = true
 	var releaseName = "test"
-	var namespace = "default"
 	var reuseName = true
 	var dryRun = true
 	var chartName = "alpine"
@@ -113,7 +109,6 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 		DryRun:       dryRun,
 		Name:         releaseName,
 		DisableHooks: disableHooks,
-		Namespace:    namespace,
 		ReuseName:    reuseName,
 	}
 
@@ -139,7 +134,7 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	})
 
 	client := NewClient(b4c)
-	if _, err := client.InstallRelease(chartPath, namespace, ops...); err != errSkip {
+	if _, err := client.InstallRelease(chartPath, "", ops...); err != errSkip {
 		t.Fatalf("did not expect error but got (%v)\n``", err)
 	}
 

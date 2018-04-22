@@ -75,8 +75,6 @@ type ListReleasesRequest struct {
 	// SortOrder is the ordering directive used for sorting.
 	SortOrder   ListSortOrder        `json:"sort_order,omityempty"`
 	StatusCodes []release.StatusCode `json:"status_codes,omityempty"`
-	// Namespace is the filter to select releases only from a specific namespace.
-	Namespace string `json:"namespace,omityempty"`
 }
 
 // ListReleasesResponse is a list of releases.

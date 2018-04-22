@@ -35,7 +35,6 @@ import (
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -65,18 +64,14 @@ var ErrNoObjectsVisited = goerrors.New("no objects visited")
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
 	cmdutil.Factory
-	// SchemaCacheDir is the path for loading cached schema.
-	SchemaCacheDir string
-
 	Log func(string, ...interface{})
 }
 
 // New creates a new Client.
 func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
-		Factory:        cmdutil.NewFactory(config),
-		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
-		Log:            nopLogger,
+		Factory: cmdutil.NewFactory(config),
+		Log:     nopLogger,
 	}
 }
 
@@ -89,17 +84,10 @@ type ResourceActorFunc func(*resource.Info) error
 //
 // Namespace will set the namespace.
 func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	client, err := c.ClientSet()
+	c.Log("building resources from manifest")
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return err
-	}
-	if err := ensureNamespace(client, namespace); err != nil {
-		return err
-	}
-	c.Log("building resources from manifest")
-	infos, buildErr := c.BuildUnstructured(namespace, reader)
-	if buildErr != nil {
-		return buildErr
 	}
 	c.Log("creating %d resource(s)", len(infos))
 	if err := perform(infos, createResource); err != nil {
@@ -111,13 +99,21 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 	return nil
 }
 
+func (c *Client) namespace() string {
+	if ns, _, err := c.DefaultNamespace(); err == nil {
+		return ns
+	}
+	return v1.NamespaceDefault
+}
+
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
 	return c.NewBuilder().
 		Internal().
 		ContinueOnError().
 		Schema(c.validator()).
-		NamespaceParam(namespace).
+		NamespaceParam(c.namespace()).
 		DefaultNamespace().
+		RequireNamespace().
 		Stream(reader, "").
 		Flatten().
 		Do()
@@ -138,8 +134,9 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 	result, err := c.NewBuilder().
 		Unstructured().
 		ContinueOnError().
-		NamespaceParam(namespace).
+		NamespaceParam(c.namespace()).
 		DefaultNamespace().
+		RequireNamespace().
 		Stream(reader, "").
 		Flatten().
 		Do().Infos()
@@ -393,12 +390,12 @@ func deleteResource(c *Client, info *resource.Info) error {
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
-func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
 	}
-	newData, err := json.Marshal(target)
+	newData, err := json.Marshal(target.Object)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
@@ -412,7 +409,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 	}
 
 	// Get a versioned object
-	versionedObject, err := mapping.ConvertToVersion(target, mapping.GroupVersionKind.GroupVersion())
+	versionedObject, err := target.Versioned()
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
@@ -434,7 +431,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
-	patch, patchType, err := createPatch(target.Mapping, target.Object, currentObj)
+	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)
 	}

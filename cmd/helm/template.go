@@ -61,7 +61,6 @@ To render just one template in a chart, use '-x':
 `
 
 type templateCmd struct {
-	namespace    string
 	valueFiles   valueFiles
 	chartPath    string
 	out          io.Writer
@@ -93,7 +92,6 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringVarP(&t.releaseName, "name", "", "RELEASE-NAME", "release name")
 	f.StringArrayVarP(&t.renderFiles, "execute", "x", []string{}, "only execute the given templates")
 	f.VarP(&t.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	f.StringVar(&t.namespace, "namespace", "n", "namespace to install the release into")
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
@@ -145,9 +143,6 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if t.namespace == "" {
-		t.namespace = defaultNamespace()
-	}
 	// get combined values and create config
 	config, err := vals(t.valueFiles, t.values, t.stringValues)
 	if err != nil {
@@ -178,7 +173,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	options := chartutil.ReleaseOptions{
 		Name:      t.releaseName,
 		Time:      time.Now(),
-		Namespace: t.namespace,
+		Namespace: getNamespace(),
 	}
 
 	err = chartutil.ProcessRequirementsEnabled(c, config)
@@ -244,12 +239,11 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	}
 	if settings.Debug {
 		rel := &release.Release{
-			Name:      t.releaseName,
-			Chart:     c,
-			Config:    config,
-			Version:   1,
-			Namespace: t.namespace,
-			Info:      &release.Info{LastDeployed: time.Now()},
+			Name:    t.releaseName,
+			Chart:   c,
+			Config:  config,
+			Version: 1,
+			Info:    &release.Info{LastDeployed: time.Now()},
 		}
 		printRelease(os.Stdout, rel)
 	}

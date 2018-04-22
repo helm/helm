@@ -42,10 +42,6 @@ func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.
 		return nil, err
 	}
 
-	if req.Namespace != "" {
-		rels = filterByNamespace(req.Namespace, rels)
-	}
-
 	if len(req.Filter) != 0 {
 		rels, err = filterReleases(req.Filter, rels)
 		if err != nil {
@@ -70,16 +66,6 @@ func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.
 	}
 
 	return rels, nil
-}
-
-func filterByNamespace(namespace string, rels []*release.Release) []*release.Release {
-	matches := []*release.Release{}
-	for _, r := range rels {
-		if namespace == r.Namespace {
-			matches = append(matches, r)
-		}
-	}
-	return matches
 }
 
 func filterReleases(filter string, rels []*release.Release) ([]*release.Release, error) {
