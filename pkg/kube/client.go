@@ -178,7 +178,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], info.Object)
+		objs[vk] = append(objs[vk], info.AsInternal())
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
