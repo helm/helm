@@ -151,14 +151,14 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 }
 
 // ensureHelmClient returns a new helm client impl. if h is not nil.
-func ensureHelmClient(h helm.Interface) helm.Interface {
+func ensureHelmClient(h helm.Interface, allNamespaces bool) helm.Interface {
 	if h != nil {
 		return h
 	}
-	return newClient()
+	return newClient(allNamespaces)
 }
 
-func newClient() helm.Interface {
+func newClient(allNamespaces bool) helm.Interface {
 	kc := kube.New(kubeConfig())
 	kc.Log = logf
 
@@ -167,13 +167,17 @@ func newClient() helm.Interface {
 		// TODO return error
 		log.Fatal(err)
 	}
+	var namespace string
+	if !allNamespaces {
+		namespace = getNamespace()
+	}
 	// TODO add other backends
-	cfgmaps := driver.NewSecrets(clientset.CoreV1().Secrets(getNamespace()))
-	cfgmaps.Log = logf
+	d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
+	d.Log = logf
 
 	return helm.NewClient(
 		helm.KubeClient(kc),
-		helm.Driver(cfgmaps),
+		helm.Driver(d),
 		helm.Discovery(clientset.Discovery()),
 	)
 }

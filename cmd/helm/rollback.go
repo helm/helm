@@ -70,7 +70,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			}
 
 			rollback.revision = int(v64)
-			rollback.client = ensureHelmClient(rollback.client)
+			rollback.client = ensureHelmClient(rollback.client, false)
 			return rollback.run()
 		},
 	}

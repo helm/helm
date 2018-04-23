@@ -106,7 +106,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 			upgrade.release = args[0]
 			upgrade.chart = args[1]
-			upgrade.client = ensureHelmClient(upgrade.client)
+			upgrade.client = ensureHelmClient(upgrade.client, false)
 
 			return upgrade.run()
 		},

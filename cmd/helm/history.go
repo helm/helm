@@ -77,7 +77,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			his.helmc = ensureHelmClient(his.helmc)
+			his.helmc = ensureHelmClient(his.helmc, false)
 			his.rls = args[0]
 			return his.run()
 		},

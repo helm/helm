@@ -52,7 +52,7 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				return errReleaseRequired
 			}
 			get.release = args[0]
-			get.client = ensureHelmClient(get.client)
+			get.client = ensureHelmClient(get.client, false)
 			return get.run()
 		},
 	}

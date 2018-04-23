@@ -52,7 +52,7 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				return errReleaseRequired
 			}
 			ghc.release = args[0]
-			ghc.client = ensureHelmClient(ghc.client)
+			ghc.client = ensureHelmClient(ghc.client, false)
 			return ghc.run()
 		},
 	}
