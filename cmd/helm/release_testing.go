@@ -57,7 +57,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			}
 
 			rlsTest.name = args[0]
-			rlsTest.client = ensureHelmClient(rlsTest.client)
+			rlsTest.client = ensureHelmClient(rlsTest.client, false)
 			return rlsTest.run()
 		},
 	}

@@ -57,22 +57,23 @@ flag with the '--offset' flag allows you to page through results.
 `
 
 type listCmd struct {
-	filter     string
-	short      bool
-	limit      int
-	offset     string
-	byDate     bool
-	sortDesc   bool
-	out        io.Writer
-	all        bool
-	deleted    bool
-	deleting   bool
-	deployed   bool
-	failed     bool
-	superseded bool
-	pending    bool
-	client     helm.Interface
-	colWidth   uint
+	filter        string
+	short         bool
+	limit         int
+	offset        string
+	byDate        bool
+	sortDesc      bool
+	out           io.Writer
+	all           bool
+	deleted       bool
+	deleting      bool
+	deployed      bool
+	failed        bool
+	superseded    bool
+	pending       bool
+	client        helm.Interface
+	colWidth      uint
+	allNamespaces bool
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -90,7 +91,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				list.filter = strings.Join(args, " ")
 			}
-			list.client = ensureHelmClient(list.client)
+			list.client = ensureHelmClient(list.client, list.allNamespaces)
 			return list.run()
 		},
 	}
@@ -108,9 +109,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.failed, "failed", false, "show failed releases")
 	f.BoolVar(&list.pending, "pending", false, "show pending releases")
 	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
-
-	// TODO: Do we want this as a feature of 'helm list'?
-	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
+	f.BoolVar(&list.allNamespaces, "all-namespaces", false, "list releases across all namespaces")
 
 	return cmd
 }

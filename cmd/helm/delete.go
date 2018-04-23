@@ -61,7 +61,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errors.New("command 'delete' requires a release name")
 			}
-			del.client = ensureHelmClient(del.client)
+			del.client = ensureHelmClient(del.client, false)
 
 			for i := 0; i < len(args); i++ {
 				del.name = args[i]

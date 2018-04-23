@@ -176,7 +176,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				return err
 			}
 			inst.chartPath = cp
-			inst.client = ensureHelmClient(inst.client)
+			inst.client = ensureHelmClient(inst.client, false)
 			return inst.run()
 		},
 	}

@@ -67,7 +67,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				return errReleaseRequired
 			}
 			status.release = args[0]
-			status.client = ensureHelmClient(status.client)
+			status.client = ensureHelmClient(status.client, false)
 			return status.run()
 		},
 	}
