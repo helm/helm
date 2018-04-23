@@ -183,7 +183,7 @@ If a plugin specifies `useTunnel: true`, Helm will do the following (in order):
 5. Close the tunnel
 
 The tunnel is removed as soon as the `command` returns. So, for example, a
-command cannot background a process and assume that that process will be able
+command cannot background a process and assume that process will be able
 to use the tunnel.
 
 ## A Note on Flag Parsing
