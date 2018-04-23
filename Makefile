@@ -97,7 +97,7 @@ clean:
 coverage:
 	@scripts/coverage.sh
 
-HAS_GLIDE := $(shell command -v glide;)
+HAS_DEP := $(shell command -v dep;)
 HAS_GOX := $(shell command -v gox;)
 HAS_GIT := $(shell command -v git;)
 
@@ -106,13 +106,13 @@ bootstrap:
 ifndef HAS_GIT
 	$(error You must install Git)
 endif
-ifndef HAS_GLIDE
-	go get -u github.com/Masterminds/glide
+ifndef HAS_DEP
+	go get -u github.com/golang/dep/cmd/dep
 endif
 ifndef HAS_GOX
 	go get -u github.com/mitchellh/gox
 endif
-	glide install --strip-vendor
+	dep ensure -vendor-only
 
 .PHONY: info
 info:

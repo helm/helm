@@ -4,27 +4,35 @@ jobs:
     working_directory: /go/src/k8s.io/helm
     parallelism: 3
     docker:
-      - image: golang:1.10
+      - image: circleci/golang:1.10.0
     environment:
-      PROJECT_NAME: "kubernetes-helm"
+      - PROJECT_NAME: "kubernetes-helm"
+      - GOCACHE: "/tmp/go/cache"
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 17.09.0-ce
       - restore_cache:
-          keys:
-            - glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
-            - glide- # used as a fall through if the checksum fails to find exact entry
+          key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
+          paths:
+              - /go/src/k8s.io/helm/vendor
       - run:
           name: install dependencies
           command: .circleci/bootstrap.sh
       - save_cache:
-          key: glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+          key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
           paths:
-            - /root/.glide  # Where the glide cache is stored
+              - /go/src/k8s.io/helm/vendor
+      - restore_cache:
+          keys:
+              - build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}
+          paths:
+              - /tmp/go/cache
       - run:
           name: test
           command: .circleci/test.sh
+      - save_cache:
+          key: build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          paths:
+              - /tmp/go/cache
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
