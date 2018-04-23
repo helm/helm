@@ -23,7 +23,7 @@ find_files() {
       -o -wholename '*testdata*' \
     \) -prune \
   \) \
-  \( -name '*.go' -o -name '*.sh' -o -name 'Dockerfile' \)
+  \( -name '*.go' -o -name '*.sh' \)
 }
 
 failed=($(find_files | xargs grep -L 'Licensed under the Apache License, Version 2.0 (the "License");'))

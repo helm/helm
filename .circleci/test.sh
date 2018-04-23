@@ -22,6 +22,8 @@ IFS=$'\n\t'
 HELM_ROOT="${BASH_SOURCE[0]%/*}/.."
 cd "$HELM_ROOT"
 
+mkdir -p "${GOCACHE:-/tmp/go/cache}"
+
 run_unit_test() {
   if [[ "${CIRCLE_BRANCH-}" == "master" ]]; then
     echo "Running unit tests with coverage'"

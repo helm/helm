@@ -81,7 +81,7 @@ Building Helm from source is slightly more work, but is the best way to
 go if you want to test the latest (pre-release) Helm version.
 
 You must have a working Go environment with
-[glide](https://github.com/Masterminds/glide) installed.
+[dep](https://github.com/golang/dep) installed.
 
 ```console
 $ cd $GOPATH

@@ -6,7 +6,7 @@ Helm and Tiller.
 ## Prerequisites
 
 - The latest version of Go
-- The latest version of Glide
+- The latest version of Dep
 - A Kubernetes cluster w/ kubectl (optional)
 - The gRPC toolchain
 - Git
@@ -149,7 +149,7 @@ The code for the Helm project is organized as follows:
 - The `docs/` folder is used for documentation and examples.
 
 Go dependencies are managed with
-[Glide](https://github.com/Masterminds/glide) and stored in the
+[Dep](https://github.com/golang/dep) and stored in the
 `vendor/` directory.
 
 ### Git Conventions
