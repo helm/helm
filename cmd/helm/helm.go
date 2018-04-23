@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 	// Import to initialize client auth plugins.
@@ -34,8 +35,9 @@ import (
 )
 
 var (
-	settings helm_env.EnvSettings
-	config   clientcmd.ClientConfig
+	settings   helm_env.EnvSettings
+	config     clientcmd.ClientConfig
+	configOnce sync.Once
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -69,8 +71,6 @@ func newRootCmd(args []string) *cobra.Command {
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
-
-	config = kube.GetConfig(flags)
 
 	out := cmd.OutOrStdout()
 
@@ -159,7 +159,7 @@ func ensureHelmClient(h helm.Interface) helm.Interface {
 }
 
 func newClient() helm.Interface {
-	kc := kube.New(config)
+	kc := kube.New(kubeConfig())
 	kc.Log = logf
 
 	clientset, err := kc.KubernetesClientSet()
@@ -178,8 +178,15 @@ func newClient() helm.Interface {
 	)
 }
 
+func kubeConfig() clientcmd.ClientConfig {
+	configOnce.Do(func() {
+		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)
+	})
+	return config
+}
+
 func getNamespace() string {
-	if ns, _, err := config.Namespace(); err == nil {
+	if ns, _, err := kubeConfig().Namespace(); err == nil {
 		return ns
 	}
 	return "default"

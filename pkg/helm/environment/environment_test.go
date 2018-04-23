@@ -31,23 +31,22 @@ func TestEnvSettings(t *testing.T) {
 		name string
 
 		// input
-		args   []string
+		args   string
 		envars map[string]string
 
 		// expected values
-		home, ns, plugins string
-		debug             bool
+		home, ns, kcontext, plugins string
+		debug                       bool
 	}{
 		{
 			name:    "defaults",
-			args:    []string{},
-			home:    DefaultHelmHome,
-			plugins: helmpath.Home(DefaultHelmHome).Plugins(),
-			ns:      "kube-system",
+			home:    defaultHelmHome,
+			plugins: helmpath.Home(defaultHelmHome).Plugins(),
+			ns:      "",
 		},
 		{
 			name:    "with flags set",
-			args:    []string{"--home", "/foo", "--debug"},
+			args:    "--home /foo --debug --namespace=myns",
 			home:    "/foo",
 			plugins: helmpath.Home("/foo").Plugins(),
 			ns:      "myns",
@@ -55,8 +54,7 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:    "with envvars set",
-			args:    []string{},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1"},
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
 			home:    "/bar",
 			plugins: helmpath.Home("/bar").Plugins(),
 			ns:      "yourns",
@@ -64,8 +62,8 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:    "with flags and envvars set",
-			args:    []string{"--home", "/foo", "--debug"},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "HELM_PLUGIN": "glade"},
+			args:    "--home /foo --debug --namespace=myns",
+			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
 			home:    "/foo",
 			plugins: "glade",
 			ns:      "myns",
@@ -86,7 +84,7 @@ func TestEnvSettings(t *testing.T) {
 
 			settings := &EnvSettings{}
 			settings.AddFlags(flags)
-			flags.Parse(tt.args)
+			flags.Parse(strings.Split(tt.args, " "))
 
 			settings.Init(flags)
 
@@ -98,6 +96,12 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
+			}
+			if settings.Namespace != tt.ns {
+				t.Errorf("expected namespace %q, got %q", tt.ns, settings.Namespace)
+			}
+			if settings.KubeContext != tt.kcontext {
+				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
 			}
 
 			cleanup()

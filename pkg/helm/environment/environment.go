@@ -32,20 +32,29 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
-// DefaultHelmHome is the default HELM_HOME.
-var DefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
+// defaultHelmHome is the default HELM_HOME.
+var defaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
 	// Home is the local path to the Helm home directory.
 	Home helmpath.Home
+	// Namespace is the namespace scope.
+	Namespace string
+	// KubeConfig is the path to the kubeconfig file.
+	KubeConfig string
+	// KubeContext is the name of the kubeconfig context.
+	KubeContext string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
 }
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
+	fs.StringVar((*string)(&s.Home), "home", defaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
+	fs.StringVarP(&s.Namespace, "namespace", "n", "", "namespace scope for this request")
+	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
+	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 }
 
@@ -66,8 +75,9 @@ func (s EnvSettings) PluginDirs() string {
 
 // envMap maps flag names to envvars
 var envMap = map[string]string{
-	"debug": "HELM_DEBUG",
-	"home":  "HELM_HOME",
+	"debug":     "HELM_DEBUG",
+	"home":      "HELM_HOME",
+	"namespace": "HELM_NAMESPACE",
 }
 
 func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {

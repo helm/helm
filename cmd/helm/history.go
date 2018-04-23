@@ -74,12 +74,10 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 		Short:   "fetch release history",
 		Aliases: []string{"hist"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			switch {
-			case len(args) == 0:
+			if len(args) == 0 {
 				return errReleaseRequired
-			case his.helmc == nil:
-				his.helmc = newClient()
 			}
+			his.helmc = ensureHelmClient(his.helmc)
 			his.rls = args[0]
 			return his.run()
 		},
