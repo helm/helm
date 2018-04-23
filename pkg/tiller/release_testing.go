@@ -32,7 +32,7 @@ func (s *ReleaseServer) RunReleaseTest(req *hapi.TestReleaseRequest) (<-chan *ha
 	}
 
 	// finds the non-deleted release with the given name
-	rel, err := s.env.Releases.Last(req.Name)
+	rel, err := s.Releases.Last(req.Name)
 	if err != nil {
 		errc <- err
 		return nil, errc
@@ -41,7 +41,7 @@ func (s *ReleaseServer) RunReleaseTest(req *hapi.TestReleaseRequest) (<-chan *ha
 	ch := make(chan *hapi.TestReleaseResponse, 1)
 	testEnv := &reltesting.Environment{
 		Namespace:  rel.Namespace,
-		KubeClient: s.env.KubeClient,
+		KubeClient: s.KubeClient,
 		Timeout:    req.Timeout,
 		Mesages:    ch,
 	}
@@ -68,7 +68,7 @@ func (s *ReleaseServer) RunReleaseTest(req *hapi.TestReleaseRequest) (<-chan *ha
 			testEnv.DeleteTestPods(tSuite.TestManifests)
 		}
 
-		if err := s.env.Releases.Update(rel); err != nil {
+		if err := s.Releases.Update(rel); err != nil {
 			s.Log("test: Failed to store updated release: %s", err)
 		}
 	}()

@@ -30,7 +30,7 @@ func (s *ReleaseServer) GetHistory(req *hapi.GetHistoryRequest) ([]*release.Rele
 	}
 
 	s.Log("getting history for release %s", req.Name)
-	h, err := s.env.Releases.History(req.Name)
+	h, err := s.Releases.History(req.Name)
 	if err != nil {
 		return nil, err
 	}

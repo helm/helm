@@ -17,6 +17,8 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -24,6 +26,7 @@ import (
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/kube"
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
@@ -34,7 +37,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 		return nil, err
 	}
 
-	rels, err := s.env.Releases.History(req.Name)
+	rels, err := s.Releases.History(req.Name)
 	if err != nil {
 		s.Log("uninstall: Release not loaded: %s", req.Name)
 		return nil, err
@@ -75,11 +78,11 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 
 	// From here on out, the release is currently considered to be in Status_DELETING
 	// state.
-	if err := s.env.Releases.Update(rel); err != nil {
+	if err := s.Releases.Update(rel); err != nil {
 		s.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	kept, errs := s.Delete(rel, req)
+	kept, errs := s.deleteRelease(rel)
 	res.Info = kept
 
 	if !req.DisableHooks {
@@ -100,7 +103,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 		return res, err
 	}
 
-	if err := s.env.Releases.Update(rel); err != nil {
+	if err := s.Releases.Update(rel); err != nil {
 		s.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
@@ -120,9 +123,48 @@ func joinErrors(errs []error) string {
 
 func (s *ReleaseServer) purgeReleases(rels ...*release.Release) error {
 	for _, rel := range rels {
-		if _, err := s.env.Releases.Delete(rel.Name, rel.Version); err != nil {
+		if _, err := s.Releases.Delete(rel.Name, rel.Version); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// deleteRelease deletes the release and returns manifests that were kept in the deletion process
+func (s *ReleaseServer) deleteRelease(rel *release.Release) (kept string, errs []error) {
+	vs, err := GetVersionSet(s.discovery)
+	if err != nil {
+		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}
+	}
+
+	manifests := relutil.SplitManifests(rel.Manifest)
+	_, files, err := sortManifests(manifests, vs, UninstallOrder)
+	if err != nil {
+		// We could instead just delete everything in no particular order.
+		// FIXME: One way to delete at this point would be to try a label-based
+		// deletion. The problem with this is that we could get a false positive
+		// and delete something that was not legitimately part of this release.
+		return rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)}
+	}
+
+	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	if len(filesToKeep) > 0 {
+		kept = summarizeKeptManifests(filesToKeep, s.KubeClient, rel.Namespace)
+	}
+
+	for _, file := range filesToDelete {
+		b := bytes.NewBufferString(strings.TrimSpace(file.Content))
+		if b.Len() == 0 {
+			continue
+		}
+		if err := s.KubeClient.Delete(rel.Namespace, b); err != nil {
+			s.Log("uninstall: Failed deletion of %q: %s", rel.Name, err)
+			if err == kube.ErrNoObjectsVisited {
+				// Rewrite the message from "no objects visited"
+				err = errors.New("object not found, skipping delete")
+			}
+			errs = append(errs, err)
+		}
+	}
+	return kept, errs
 }

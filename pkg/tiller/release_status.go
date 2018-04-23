@@ -36,13 +36,13 @@ func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*ha
 
 	if req.Version <= 0 {
 		var err error
-		rel, err = s.env.Releases.Last(req.Name)
+		rel, err = s.Releases.Last(req.Name)
 		if err != nil {
 			return nil, fmt.Errorf("getting deployed release %q: %s", req.Name, err)
 		}
 	} else {
 		var err error
-		if rel, err = s.env.Releases.Get(req.Name, req.Version); err != nil {
+		if rel, err = s.Releases.Get(req.Name, req.Version); err != nil {
 			return nil, fmt.Errorf("getting release '%s' (v%d): %s", req.Name, req.Version, err)
 		}
 	}
@@ -63,7 +63,7 @@ func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*ha
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
-	resp, err := s.env.KubeClient.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
+	resp, err := s.KubeClient.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
 	if sc == release.Status_DELETED || sc == release.Status_FAILED {
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil

@@ -26,7 +26,7 @@ import (
 
 func TestUninstallRelease(t *testing.T) {
 	rs := rsFixture()
-	rs.env.Releases.Create(releaseStub())
+	rs.Releases.Create(releaseStub())
 
 	req := &hapi.UninstallReleaseRequest{
 		Name: "angry-panda",
@@ -61,10 +61,10 @@ func TestUninstallRelease(t *testing.T) {
 func TestUninstallPurgeRelease(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
-	rs.env.Releases.Create(upgradedRel)
+	rs.Releases.Update(rel)
+	rs.Releases.Create(upgradedRel)
 
 	req := &hapi.UninstallReleaseRequest{
 		Name:  "angry-panda",
@@ -98,7 +98,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 
 func TestUninstallPurgeDeleteRelease(t *testing.T) {
 	rs := rsFixture()
-	rs.env.Releases.Create(releaseStub())
+	rs.Releases.Create(releaseStub())
 
 	req := &hapi.UninstallReleaseRequest{
 		Name: "angry-panda",
@@ -123,7 +123,7 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 	rs := rsFixture()
 	name := "angry-bunny"
-	rs.env.Releases.Create(releaseWithKeepStub(name))
+	rs.Releases.Create(releaseWithKeepStub(name))
 
 	req := &hapi.UninstallReleaseRequest{
 		Name: name,
@@ -153,7 +153,7 @@ func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 
 func TestUninstallReleaseNoHooks(t *testing.T) {
 	rs := rsFixture()
-	rs.env.Releases.Create(releaseStub())
+	rs.Releases.Create(releaseStub())
 
 	req := &hapi.UninstallReleaseRequest{
 		Name:         "angry-panda",

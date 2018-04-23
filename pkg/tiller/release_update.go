@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"time"
@@ -45,7 +46,7 @@ func (s *ReleaseServer) UpdateRelease(req *hapi.UpdateReleaseRequest) (*release.
 
 	if !req.DryRun {
 		s.Log("creating updated release for %s", req.Name)
-		if err := s.env.Releases.Create(updatedRelease); err != nil {
+		if err := s.Releases.Create(updatedRelease); err != nil {
 			return nil, err
 		}
 	}
@@ -58,7 +59,7 @@ func (s *ReleaseServer) UpdateRelease(req *hapi.UpdateReleaseRequest) (*release.
 
 	if !req.DryRun {
 		s.Log("updating status for updated release for %s", req.Name)
-		if err := s.env.Releases.Update(updatedRelease); err != nil {
+		if err := s.Releases.Update(updatedRelease); err != nil {
 			return res, err
 		}
 	}
@@ -73,7 +74,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	}
 
 	// finds the deployed release with the given name
-	currentRelease, err := s.env.Releases.Deployed(req.Name)
+	currentRelease, err := s.Releases.Deployed(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -84,7 +85,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	}
 
 	// finds the non-deleted release with the given name
-	lastRelease, err := s.env.Releases.Last(req.Name)
+	lastRelease, err := s.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -136,14 +137,14 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	if len(notesTxt) > 0 {
 		updatedRelease.Info.Status.Notes = notesTxt
 	}
-	err = validateManifest(s.env.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
+	err = validateManifest(s.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
 	return currentRelease, updatedRelease, err
 }
 
 // performUpdateForce performs the same action as a `helm delete && helm install --replace`.
 func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*release.Release, error) {
 	// find the last release with the given name
-	oldRelease, err := s.env.Releases.Last(req.Name)
+	oldRelease, err := s.Releases.Last(req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +187,7 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 	}
 
 	// delete manifests from the old release
-	_, errs := s.Delete(oldRelease, nil)
+	_, errs := s.deleteRelease(oldRelease)
 
 	oldRelease.Info.Status.Code = release.Status_DELETED
 	oldRelease.Info.Description = "Deletion complete"
@@ -213,7 +214,7 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 	// update new release with next revision number so as to append to the old release's history
 	newRelease.Version = oldRelease.Version + 1
 	s.recordRelease(newRelease, false)
-	if err := s.Update(oldRelease, newRelease, req); err != nil {
+	if err := s.updateRelease(oldRelease, newRelease, req); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", newRelease.Name, err)
 		s.Log("warning: %s", msg)
 		newRelease.Info.Status.Code = release.Status_FAILED
@@ -257,7 +258,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	} else {
 		s.Log("update hooks disabled for %s", req.Name)
 	}
-	if err := s.Update(originalRelease, updatedRelease, req); err != nil {
+	if err := s.updateRelease(originalRelease, updatedRelease, req); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		s.Log("warning: %s", msg)
 		updatedRelease.Info.Status.Code = release.Status_FAILED
@@ -281,4 +282,11 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	updatedRelease.Info.Description = "Upgrade complete"
 
 	return updatedRelease, nil
+}
+
+// updateRelease performs an update from current to target release
+func (s *ReleaseServer) updateRelease(current, target *release.Release, req *hapi.UpdateReleaseRequest) error {
+	c := bytes.NewBufferString(current.Manifest)
+	t := bytes.NewBufferString(target.Manifest)
+	return s.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait)
 }

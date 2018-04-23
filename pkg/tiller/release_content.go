@@ -29,8 +29,8 @@ func (s *ReleaseServer) GetReleaseContent(req *hapi.GetReleaseContentRequest) (*
 	}
 
 	if req.Version <= 0 {
-		return s.env.Releases.Last(req.Name)
+		return s.Releases.Last(req.Name)
 	}
 
-	return s.env.Releases.Get(req.Name, req.Version)
+	return s.Releases.Get(req.Name, req.Version)
 }

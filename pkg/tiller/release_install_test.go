@@ -40,9 +40,9 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Namespace)
 	}
 
-	rel, err := rs.env.Releases.Get(res.Name, res.Version)
+	rel, err := rs.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.Releases)
 	}
 
 	t.Logf("rel: %v", rel)
@@ -95,9 +95,9 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Namespace)
 	}
 
-	rel, err := rs.env.Releases.Get(res.Name, res.Version)
+	rel, err := rs.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.Releases)
 	}
 
 	t.Logf("rel: %v", rel)
@@ -154,9 +154,9 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 		t.Errorf("Expected release namespace 'spaced', got '%s'.", res.Namespace)
 	}
 
-	rel, err := rs.env.Releases.Get(res.Name, res.Version)
+	rel, err := rs.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.Releases)
 	}
 
 	t.Logf("rel: %v", rel)
@@ -212,9 +212,9 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 		t.Errorf("Expected release name.")
 	}
 
-	rel, err := rs.env.Releases.Get(res.Name, res.Version)
+	rel, err := rs.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.Releases)
 	}
 
 	t.Logf("rel: %v", rel)
@@ -262,7 +262,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 		t.Errorf("Should not contain template data for an empty file. %s", res.Manifest)
 	}
 
-	if _, err := rs.env.Releases.Get(res.Name, res.Version); err == nil {
+	if _, err := rs.Releases.Get(res.Name, res.Version); err == nil {
 		t.Errorf("Expected no stored release.")
 	}
 
@@ -281,7 +281,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 
 func TestInstallRelease_NoHooks(t *testing.T) {
 	rs := rsFixture()
-	rs.env.Releases.Create(releaseStub())
+	rs.Releases.Create(releaseStub())
 
 	req := installRequest(withDisabledHooks())
 	res, err := rs.InstallRelease(req)
@@ -296,8 +296,8 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 
 func TestInstallRelease_FailedHooks(t *testing.T) {
 	rs := rsFixture()
-	rs.env.Releases.Create(releaseStub())
-	rs.env.KubeClient = newHookFailingKubeClient()
+	rs.Releases.Create(releaseStub())
+	rs.KubeClient = newHookFailingKubeClient()
 
 	req := installRequest()
 	res, err := rs.InstallRelease(req)
@@ -314,7 +314,7 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Info.Status.Code = release.Status_DELETED
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 
 	req := installRequest(
 		withReuseName(),

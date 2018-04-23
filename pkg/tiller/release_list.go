@@ -30,7 +30,7 @@ func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.
 		req.StatusCodes = []release.StatusCode{release.Status_DEPLOYED}
 	}
 
-	rels, err := s.env.Releases.ListFilterAll(func(r *release.Release) bool {
+	rels, err := s.Releases.ListFilterAll(func(r *release.Release) bool {
 		for _, sc := range req.StatusCodes {
 			if sc == r.Info.Status.Code {
 				return true

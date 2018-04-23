@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"path"
 	"regexp"
 	"strings"
@@ -36,8 +35,9 @@ import (
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/kube"
 	relutil "k8s.io/helm/pkg/releaseutil"
+	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/version"
 )
@@ -84,15 +84,23 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 type ReleaseServer struct {
 	env       *environment.Environment
 	discovery discovery.DiscoveryInterface
-	Log       func(string, ...interface{})
+
+	// Releases stores records of releases.
+	Releases *storage.Storage
+	// KubeClient is a Kubernetes API client.
+	KubeClient environment.KubeClient
+
+	Log func(string, ...interface{})
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, discovery discovery.DiscoveryInterface) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, discovery discovery.DiscoveryInterface, kubeClient environment.KubeClient) *ReleaseServer {
 	return &ReleaseServer{
-		env:       env,
-		discovery: discovery,
-		Log:       func(_ string, _ ...interface{}) {},
+		env:        env,
+		discovery:  discovery,
+		Releases:   storage.Init(driver.NewMemory()),
+		KubeClient: kubeClient,
+		Log:        func(_ string, _ ...interface{}) {},
 	}
 }
 
@@ -168,7 +176,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
 		}
 
-		h, err := s.env.Releases.History(start)
+		h, err := s.Releases.History(start)
 		if err != nil || len(h) < 1 {
 			return start, nil
 		}
@@ -193,7 +201,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		if len(name) > releaseNameMaxLen {
 			name = name[:releaseNameMaxLen]
 		}
-		if _, err := s.env.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
+		if _, err := s.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
 			return name, nil
 		}
 		s.Log("info: generated name %s is taken. Searching again.", name)
@@ -325,10 +333,10 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 // recordRelease with an update operation in case reuse has been set.
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
-		if err := s.env.Releases.Update(r); err != nil {
+		if err := s.Releases.Update(r); err != nil {
 			s.Log("warning: Failed to update release %s: %s", r.Name, err)
 		}
-	} else if err := s.env.Releases.Create(r); err != nil {
+	} else if err := s.Releases.Create(r); err != nil {
 		s.Log("warning: Failed to record release %s: %s", r.Name, err)
 	}
 }
@@ -352,12 +360,12 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	executingHooks = sortByHookWeight(executingHooks)
 
 	for _, h := range executingHooks {
-		if err := s.deleteHookIfShouldBeDeletedByDeletePolicy(h, hooks.BeforeHookCreation, name, namespace, hook, s.env.KubeClient); err != nil {
+		if err := s.deleteHookIfShouldBeDeletedByDeletePolicy(h, hooks.BeforeHookCreation, name, namespace, hook, s.KubeClient); err != nil {
 			return err
 		}
 
 		b := bytes.NewBufferString(h.Manifest)
-		if err := s.env.KubeClient.Create(namespace, b, timeout, false); err != nil {
+		if err := s.KubeClient.Create(namespace, b, timeout, false); err != nil {
 			s.Log("warning: Release %s %s %s failed: %s", name, hook, h.Path, err)
 			return err
 		}
@@ -365,11 +373,11 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		if err := s.env.KubeClient.WatchUntilReady(namespace, b, timeout, false); err != nil {
+		if err := s.KubeClient.WatchUntilReady(namespace, b, timeout, false); err != nil {
 			s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := s.deleteHookIfShouldBeDeletedByDeletePolicy(h, hooks.HookFailed, name, namespace, hook, s.env.KubeClient); err != nil {
+			if err := s.deleteHookIfShouldBeDeletedByDeletePolicy(h, hooks.HookFailed, name, namespace, hook, s.KubeClient); err != nil {
 				return err
 			}
 			return err
@@ -380,7 +388,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := s.deleteHookIfShouldBeDeletedByDeletePolicy(h, hooks.HookSucceeded, name, namespace, hook, s.env.KubeClient); err != nil {
+		if err := s.deleteHookIfShouldBeDeletedByDeletePolicy(h, hooks.HookSucceeded, name, namespace, hook, s.KubeClient); err != nil {
 			return err
 		}
 		h.LastRun = time.Now()
@@ -430,50 +438,4 @@ func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 		}
 	}
 	return false
-}
-
-// Update performs an update from current to target release
-func (s *ReleaseServer) Update(current, target *release.Release, req *hapi.UpdateReleaseRequest) error {
-	c := bytes.NewBufferString(current.Manifest)
-	t := bytes.NewBufferString(target.Manifest)
-	return s.env.KubeClient.Update(target.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait)
-}
-
-// Delete deletes the release and returns manifests that were kept in the deletion process
-func (s *ReleaseServer) Delete(rel *release.Release, req *hapi.UninstallReleaseRequest) (kept string, errs []error) {
-	vs, err := GetVersionSet(s.discovery)
-	if err != nil {
-		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}
-	}
-
-	manifests := relutil.SplitManifests(rel.Manifest)
-	_, files, err := sortManifests(manifests, vs, UninstallOrder)
-	if err != nil {
-		// We could instead just delete everything in no particular order.
-		// FIXME: One way to delete at this point would be to try a label-based
-		// deletion. The problem with this is that we could get a false positive
-		// and delete something that was not legitimately part of this release.
-		return rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)}
-	}
-
-	filesToKeep, filesToDelete := filterManifestsToKeep(files)
-	if len(filesToKeep) > 0 {
-		kept = summarizeKeptManifests(filesToKeep, s.env.KubeClient, rel.Namespace)
-	}
-
-	for _, file := range filesToDelete {
-		b := bytes.NewBufferString(strings.TrimSpace(file.Content))
-		if b.Len() == 0 {
-			continue
-		}
-		if err := s.env.KubeClient.Delete(rel.Namespace, b); err != nil {
-			log.Printf("uninstall: Failed deletion of %q: %s", rel.Name, err)
-			if err == kube.ErrNoObjectsVisited {
-				// Rewrite the message from "no objects visited"
-				err = errors.New("object not found, skipping delete")
-			}
-			errs = append(errs, err)
-		}
-	}
-	return kept, errs
 }

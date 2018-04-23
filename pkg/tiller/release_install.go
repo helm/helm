@@ -125,7 +125,7 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 		rel.Info.Status.Notes = notesTxt
 	}
 
-	err = validateManifest(s.env.KubeClient, req.Namespace, manifestDoc.Bytes())
+	err = validateManifest(s.KubeClient, req.Namespace, manifestDoc.Bytes())
 	return rel, err
 }
 
@@ -147,7 +147,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 		s.Log("install hooks disabled for %s", req.Name)
 	}
 
-	switch h, err := s.env.Releases.History(req.Name); {
+	switch h, err := s.Releases.History(req.Name); {
 	// if this is a replace operation, append to the release history
 	case req.ReuseName && err == nil && len(h) >= 1:
 		s.Log("name reuse for %s requested, replacing release", req.Name)
@@ -170,7 +170,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 			Timeout:  req.Timeout,
 		}
 		s.recordRelease(r, false)
-		if err := s.Update(old, r, updateReq); err != nil {
+		if err := s.updateRelease(old, r, updateReq); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
 			old.Info.Status.Code = release.Status_SUPERSEDED
@@ -186,7 +186,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 		// regular manifests
 		s.recordRelease(r, false)
 		b := bytes.NewBufferString(r.Manifest)
-		if err := s.env.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
+		if err := s.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
 			r.Info.Status.Code = release.Status_FAILED

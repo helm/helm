@@ -26,7 +26,7 @@ import (
 func TestGetReleaseStatus(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	if err := rs.env.Releases.Create(rel); err != nil {
+	if err := rs.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 
@@ -47,7 +47,7 @@ func TestGetReleaseStatusDeleted(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
 	rel.Info.Status.Code = release.Status_DELETED
-	if err := rs.env.Releases.Create(rel); err != nil {
+	if err := rs.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 

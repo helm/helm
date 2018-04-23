@@ -36,7 +36,7 @@ func (s *ReleaseServer) RollbackRelease(req *hapi.RollbackReleaseRequest) (*rele
 
 	if !req.DryRun {
 		s.Log("creating rolled back release for %s", req.Name)
-		if err := s.env.Releases.Create(targetRelease); err != nil {
+		if err := s.Releases.Create(targetRelease); err != nil {
 			return nil, err
 		}
 	}
@@ -48,7 +48,7 @@ func (s *ReleaseServer) RollbackRelease(req *hapi.RollbackReleaseRequest) (*rele
 
 	if !req.DryRun {
 		s.Log("updating status for rolled back release for %s", req.Name)
-		if err := s.env.Releases.Update(targetRelease); err != nil {
+		if err := s.Releases.Update(targetRelease); err != nil {
 			return res, err
 		}
 	}
@@ -68,7 +68,7 @@ func (s *ReleaseServer) prepareRollback(req *hapi.RollbackReleaseRequest) (*rele
 		return nil, nil, errInvalidRevision
 	}
 
-	currentRelease, err := s.env.Releases.Last(req.Name)
+	currentRelease, err := s.Releases.Last(req.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -80,7 +80,7 @@ func (s *ReleaseServer) prepareRollback(req *hapi.RollbackReleaseRequest) (*rele
 
 	s.Log("rolling back %s (current: v%d, target: v%d)", req.Name, currentRelease.Version, previousVersion)
 
-	previousRelease, err := s.env.Releases.Get(req.Name, previousVersion)
+	previousRelease, err := s.Releases.Get(req.Name, previousVersion)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,7 +128,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 
 	c := bytes.NewBufferString(currentRelease.Manifest)
 	t := bytes.NewBufferString(targetRelease.Manifest)
-	if err := s.env.KubeClient.Update(targetRelease.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait); err != nil {
+	if err := s.KubeClient.Update(targetRelease.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		s.Log("warning: %s", msg)
 		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
@@ -146,7 +146,7 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
-	deployed, err := s.env.Releases.DeployedAll(currentRelease.Name)
+	deployed, err := s.Releases.DeployedAll(currentRelease.Name)
 	if err != nil {
 		return nil, err
 	}

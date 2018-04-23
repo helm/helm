@@ -33,8 +33,6 @@ import (
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
 )
 
 // GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
@@ -202,10 +200,6 @@ func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reade
 type Environment struct {
 	// EngineYard provides access to the known template engines.
 	EngineYard EngineYard
-	// Releases stores records of releases.
-	Releases *storage.Storage
-	// KubeClient is a Kubernetes API client.
-	KubeClient KubeClient
 }
 
 // New returns an environment initialized with the defaults.
@@ -219,6 +213,5 @@ func New() *Environment {
 
 	return &Environment{
 		EngineYard: ey,
-		Releases:   storage.Init(driver.NewMemory()),
 	}
 }

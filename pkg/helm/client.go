@@ -40,10 +40,8 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() *Client {
 	env := environment.New()
-	env.Releases = storage.Init(c.opts.driver)
-	env.KubeClient = c.opts.kubeClient
-
-	c.tiller = tiller.NewReleaseServer(env, c.opts.discovery)
+	c.tiller = tiller.NewReleaseServer(env, c.opts.discovery, c.opts.kubeClient)
+	c.tiller.Releases = storage.Init(c.opts.driver)
 	return c
 }
 

@@ -30,7 +30,7 @@ func TestListReleases(t *testing.T) {
 	for i := 0; i < num; i++ {
 		rel := releaseStub()
 		rel.Name = fmt.Sprintf("rel-%d", i)
-		if err := rs.env.Releases.Create(rel); err != nil {
+		if err := rs.Releases.Create(rel); err != nil {
 			t.Fatalf("Could not store mock release: %s", err)
 		}
 	}
@@ -54,7 +54,7 @@ func TestListReleasesByStatus(t *testing.T) {
 		namedReleaseStub("sextant", release.Status_UNKNOWN),
 	}
 	for _, stub := range stubs {
-		if err := rs.env.Releases.Create(stub); err != nil {
+		if err := rs.Releases.Create(stub); err != nil {
 			t.Fatalf("Could not create stub: %s", err)
 		}
 	}
@@ -119,7 +119,7 @@ func TestListReleasesSort(t *testing.T) {
 	for i := num; i > 0; i-- {
 		rel := releaseStub()
 		rel.Name = fmt.Sprintf("rel-%d", i)
-		if err := rs.env.Releases.Create(rel); err != nil {
+		if err := rs.Releases.Create(rel); err != nil {
 			t.Fatalf("Could not store mock release: %s", err)
 		}
 	}
@@ -162,7 +162,7 @@ func TestListReleasesFilter(t *testing.T) {
 	for i := 0; i < num; i++ {
 		rel := releaseStub()
 		rel.Name = names[i]
-		if err := rs.env.Releases.Create(rel); err != nil {
+		if err := rs.Releases.Create(rel); err != nil {
 			t.Fatalf("Could not store mock release: %s", err)
 		}
 	}

@@ -30,7 +30,7 @@ import (
 func TestUpdateRelease(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
@@ -102,7 +102,7 @@ func TestUpdateRelease(t *testing.T) {
 func TestUpdateRelease_ResetValues(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
@@ -225,7 +225,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 func TestUpdateRelease_ReuseValues(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
@@ -262,7 +262,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	// This verifies that when both reset and reuse are set, reset wins.
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
 		Name: rel.Name,
@@ -290,9 +290,8 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 func TestUpdateReleaseFailure(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
-	rs.env.KubeClient = newUpdateFailingKubeClient()
-	rs.Log = t.Logf
+	rs.Releases.Create(rel)
+	rs.KubeClient = newUpdateFailingKubeClient()
 
 	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
@@ -321,7 +320,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 		t.Errorf("Expected description %q, got %q", expectedDescription, got)
 	}
 
-	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
+	oldRelease, err := rs.Releases.Get(rel.Name, rel.Version)
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
@@ -333,8 +332,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 func TestUpdateReleaseFailure_Force(t *testing.T) {
 	rs := rsFixture()
 	rel := namedReleaseStub("forceful-luke", release.Status_FAILED)
-	rs.env.Releases.Create(rel)
-	rs.Log = t.Logf
+	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
@@ -364,7 +362,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 		t.Errorf("Expected description %q, got %q", expectedDescription, got)
 	}
 
-	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
+	oldRelease, err := rs.Releases.Get(rel.Name, rel.Version)
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
@@ -376,7 +374,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 func TestUpdateReleaseNoHooks(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
@@ -404,7 +402,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 func TestUpdateReleaseNoChanges(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
 		Name:         rel.Name,
@@ -419,9 +417,9 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 }
 
 func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res *release.Release) *release.Release {
-	storedRelease, err := rs.env.Releases.Get(res.Name, res.Version)
+	storedRelease, err := rs.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Fatalf("Expected release for %s (%v).", res.Name, rs.env.Releases)
+		t.Fatalf("Expected release for %s (%v).", res.Name, rs.Releases)
 	}
 
 	if !reflect.DeepEqual(storedRelease, res) {

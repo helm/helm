@@ -25,7 +25,7 @@ import (
 func TestGetReleaseContent(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	if err := rs.env.Releases.Create(rel); err != nil {
+	if err := rs.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
 

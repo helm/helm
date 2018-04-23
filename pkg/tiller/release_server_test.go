@@ -88,12 +88,10 @@ data:
 `
 
 func rsFixture() *ReleaseServer {
+	env := environment.New()
 	dc := fake.NewSimpleClientset().Discovery()
-	return &ReleaseServer{
-		env:       MockEnvironment(),
-		discovery: dc,
-		Log:       func(_ string, _ ...interface{}) {},
-	}
+	kc := &environment.PrintingKubeClient{Out: ioutil.Discard}
+	return NewReleaseServer(env, dc, kc)
 }
 
 type chartOptions struct {
@@ -315,8 +313,8 @@ func TestUniqName(t *testing.T) {
 	rel2.Name = "happy-panda"
 	rel2.Info.Status.Code = release.Status_DELETED
 
-	rs.env.Releases.Create(rel1)
-	rs.env.Releases.Create(rel2)
+	rs.Releases.Create(rel1)
+	rs.Releases.Create(rel2)
 
 	tests := []struct {
 		name   string
@@ -373,12 +371,6 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 		Version:  1,
 		Manifest: manifestWithKeep,
 	}
-}
-
-func MockEnvironment() *environment.Environment {
-	e := environment.New()
-	e.KubeClient = &environment.PrintingKubeClient{Out: ioutil.Discard}
-	return e
 }
 
 func newUpdateFailingKubeClient() *updateFailingKubeClient {
@@ -494,13 +486,13 @@ func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, rea
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
 	e := environment.New()
-	e.KubeClient = kubeClient
 
 	dc := fake.NewSimpleClientset().Discovery()
 	return &ReleaseServer{
-		env:       e,
-		discovery: dc,
-		Log:       func(_ string, _ ...interface{}) {},
+		env:        e,
+		discovery:  dc,
+		KubeClient: kubeClient,
+		Log:        func(_ string, _ ...interface{}) {},
 	}
 }
 

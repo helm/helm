@@ -27,7 +27,7 @@ import (
 func TestRollbackRelease(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
 	upgradedRel.Hooks = []*release.Hook{
 		{
@@ -43,8 +43,8 @@ func TestRollbackRelease(t *testing.T) {
 	}
 
 	upgradedRel.Manifest = "hello world"
-	rs.env.Releases.Update(rel)
-	rs.env.Releases.Create(upgradedRel)
+	rs.Releases.Update(rel)
+	rs.Releases.Create(upgradedRel)
 
 	req := &hapi.RollbackReleaseRequest{
 		Name: rel.Name,
@@ -70,9 +70,9 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Expected release version to be %v, got %v", 3, res.Version)
 	}
 
-	updated, err := rs.env.Releases.Get(res.Name, res.Version)
+	updated, err := rs.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.Releases)
 	}
 
 	if len(updated.Hooks) != 2 {
@@ -84,17 +84,17 @@ func TestRollbackRelease(t *testing.T) {
 	}
 
 	anotherUpgradedRelease := upgradeReleaseVersion(upgradedRel)
-	rs.env.Releases.Update(upgradedRel)
-	rs.env.Releases.Create(anotherUpgradedRelease)
+	rs.Releases.Update(upgradedRel)
+	rs.Releases.Create(anotherUpgradedRelease)
 
 	res, err = rs.RollbackRelease(req)
 	if err != nil {
 		t.Fatalf("Failed rollback: %s", err)
 	}
 
-	updated, err = rs.env.Releases.Get(res.Name, res.Version)
+	updated, err = rs.Releases.Get(res.Name, res.Version)
 	if err != nil {
-		t.Errorf("Expected release for %s (%v).", res.Name, rs.env.Releases)
+		t.Errorf("Expected release for %s (%v).", res.Name, rs.Releases)
 	}
 
 	if len(updated.Hooks) != 1 {
@@ -136,22 +136,20 @@ func TestRollbackRelease(t *testing.T) {
 
 func TestRollbackWithReleaseVersion(t *testing.T) {
 	rs := rsFixture()
-	rs.Log = t.Logf
-	rs.env.Releases.Log = t.Logf
 	rel2 := releaseStub()
 	rel2.Name = "other"
-	rs.env.Releases.Create(rel2)
+	rs.Releases.Create(rel2)
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 	v2 := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
-	rs.env.Releases.Create(v2)
+	rs.Releases.Update(rel)
+	rs.Releases.Create(v2)
 	v3 := upgradeReleaseVersion(v2)
 	// retain the original release as DEPLOYED while the update should fail
 	v2.Info.Status.Code = release.Status_DEPLOYED
 	v3.Info.Status.Code = release.Status_FAILED
-	rs.env.Releases.Update(v2)
-	rs.env.Releases.Create(v3)
+	rs.Releases.Update(v2)
+	rs.Releases.Create(v3)
 
 	req := &hapi.RollbackReleaseRequest{
 		Name:         rel.Name,
@@ -164,7 +162,7 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 		t.Fatalf("Failed rollback: %s", err)
 	}
 	// check that v2 is now in a SUPERSEDED state
-	oldRel, err := rs.env.Releases.Get(rel.Name, 2)
+	oldRel, err := rs.Releases.Get(rel.Name, 2)
 	if err != nil {
 		t.Fatalf("Failed to retrieve v1: %s", err)
 	}
@@ -172,7 +170,7 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 		t.Errorf("Expected v2 to be in a SUPERSEDED state, got %q", oldRel.Info.Status.Code)
 	}
 	// make sure we didn't update some other deployments.
-	otherRel, err := rs.env.Releases.Get(rel2.Name, 1)
+	otherRel, err := rs.Releases.Get(rel2.Name, 1)
 	if err != nil {
 		t.Fatalf("Failed to retrieve other v1: %s", err)
 	}
@@ -196,10 +194,10 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 			},
 		},
 	}
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
-	rs.env.Releases.Create(upgradedRel)
+	rs.Releases.Update(rel)
+	rs.Releases.Create(upgradedRel)
 
 	req := &hapi.RollbackReleaseRequest{
 		Name:         rel.Name,
@@ -219,17 +217,17 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 func TestRollbackReleaseFailure(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rs.env.Releases.Create(rel)
+	rs.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
-	rs.env.Releases.Update(rel)
-	rs.env.Releases.Create(upgradedRel)
+	rs.Releases.Update(rel)
+	rs.Releases.Create(upgradedRel)
 
 	req := &hapi.RollbackReleaseRequest{
 		Name:         rel.Name,
 		DisableHooks: true,
 	}
 
-	rs.env.KubeClient = newUpdateFailingKubeClient()
+	rs.KubeClient = newUpdateFailingKubeClient()
 	res, err := rs.RollbackRelease(req)
 	if err == nil {
 		t.Error("Expected failed rollback")
@@ -239,7 +237,7 @@ func TestRollbackReleaseFailure(t *testing.T) {
 		t.Errorf("Expected FAILED release. Got %v", targetStatus)
 	}
 
-	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
+	oldRelease, err := rs.Releases.Get(rel.Name, rel.Version)
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
