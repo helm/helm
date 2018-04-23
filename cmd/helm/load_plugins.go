@@ -131,7 +131,7 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		switch a := args[i]; a {
 		case "--debug":
 			known = append(known, a)
-		case "--host", "--kube-context", "--home":
+		case "--host", "--kube-context", "--home", "--tiller-namespace":
 			known = append(known, a, args[i+1])
 			i++
 		default:
