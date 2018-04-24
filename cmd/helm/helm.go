@@ -84,7 +84,6 @@ func newRootCmd(args []string) *cobra.Command {
 		newPackageCmd(out),
 		newRepoCmd(out),
 		newSearchCmd(out),
-		newServeCmd(out),
 		newVerifyCmd(out),
 
 		// release commands
