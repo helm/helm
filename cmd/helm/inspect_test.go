@@ -78,3 +78,20 @@ func TestInspect(t *testing.T) {
 		t.Errorf("expected empty values buffer, got %q", b.String())
 	}
 }
+
+func TestInspectWithSubCharts(t *testing.T) {
+	expected, _ := ioutil.ReadFile("testdata/testcharts/chart-globals-inspect-values-with-subcharts/expected.yml")
+	b := bytes.NewBuffer(nil)
+
+	insp := &inspectCmd{
+		chartpath:     "testdata/testcharts/chart-globals-inspect-values-with-subcharts",
+		output:        all,
+		out:           b,
+		withSubcharts: true,
+	}
+	insp.run()
+
+	if b.String() != string(expected) {
+		t.Fatalf("Expected:\n%s \nbut got:\n%s", expected, b.String())
+	}
+}

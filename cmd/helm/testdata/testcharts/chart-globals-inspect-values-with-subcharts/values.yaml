@@ -1,0 +1,6 @@
+global:
+    key1: from mainchart
+    key2:
+      key21: from mainchart
+
+mainchartKey: 'foo'

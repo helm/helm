@@ -1,0 +1,25 @@
+description: A Helm chart for Kubernetes
+name: chart-globals-inspect-values-with-subcharts
+version: 0.1.0
+
+---
+chart-globals-inspect-values-with-subcharts-subchart1:
+  chart-globals-inspect-values-with-subcharts-subchart1-subsubchart:
+    subsubchartKey: subsubchart
+  mainchartKey: from subchart 1
+  subchart1Key: subchart1
+chart-globals-inspect-values-with-subcharts-subchart2:
+  subchart2Key: subchart2
+global:
+  key1: from mainchart
+  key2:
+    key21: from mainchart
+  key3: from subchart 1
+  key4:
+    key41: from subchart 1
+  key5: from subsubchart
+  key6:
+    key61: from subchart 2
+mainchartKey: foo
+
+---

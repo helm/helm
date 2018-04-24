@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/kubernetes/pkg/util/slice"
 )
 
@@ -52,15 +53,16 @@ of the README file
 `
 
 type inspectCmd struct {
-	chartpath string
-	output    string
-	verify    bool
-	keyring   string
-	out       io.Writer
-	version   string
-	repoURL   string
-	username  string
-	password  string
+	chartpath     string
+	output        string
+	verify        bool
+	withSubcharts bool
+	keyring       string
+	out           io.Writer
+	version       string
+	repoURL       string
+	username      string
+	password      string
 
 	certFile string
 	keyFile  string
@@ -164,6 +166,10 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		subCmd.Flags().BoolVar(&insp.verify, vflag, false, vdesc)
 	}
 
+	withSubcharts := "with-subcharts"
+	withSubchartsDescr := "recursively merges values.yaml files of this chart and all of its subcharts"
+	valuesSubCmd.Flags().BoolVar(&insp.withSubcharts, withSubcharts, false, withSubchartsDescr)
+
 	kflag := "keyring"
 	kdesc := "path to the keyring containing public verification keys"
 	kdefault := defaultKeyring()
@@ -238,7 +244,17 @@ func (i *inspectCmd) run() error {
 		if i.output == all {
 			fmt.Fprintln(i.out, "---")
 		}
-		fmt.Fprintln(i.out, chrt.Values.Raw)
+		if i.withSubcharts {
+			mergedOutput, err := coalesceValues(chrt)
+
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(i.out, mergedOutput)
+		} else {
+			fmt.Fprintln(i.out, chrt.Values.Raw)
+		}
 	}
 
 	if i.output == readmeOnly || i.output == all {
@@ -252,6 +268,58 @@ func (i *inspectCmd) run() error {
 		fmt.Fprintln(i.out, string(readme.Value))
 	}
 	return nil
+}
+
+func coalesceValues(chrt *chart.Chart) (string, error) {
+	mainVal, err := chartutil.CoalesceValues(chrt, chrt.Values)
+	if err != nil {
+		return "", err
+	}
+
+	mainValMap := mainVal.AsMap()
+	coalescedGlobals := map[string]interface{}{}
+	coalesceGlobals(&mainVal, &coalescedGlobals)
+
+	if len(coalescedGlobals) > 0 {
+		mainValMap[chartutil.GlobalKey] = &coalescedGlobals
+	}
+
+	s, err := chartutil.Values(mainValMap).YAML()
+	return s, err
+}
+
+func coalesceGlobals(src *chartutil.Values, destGlob *map[string]interface{}) {
+	for key, val := range *src {
+		if key == chartutil.GlobalKey || val == nil {
+			continue
+		}
+
+		if subVal, ok := val.(map[string]interface{}); ok {
+			coalesceGlobalsRecursive(&subVal, destGlob)
+		}
+	}
+}
+
+func coalesceGlobalsRecursive(src *map[string]interface{}, destGlob *map[string]interface{}) {
+	for key, val := range *src {
+		if key == chartutil.GlobalKey && val != nil {
+			valMap := val.(map[string]interface{})
+			for globKey, globVal := range valMap {
+				if _, exists := (*destGlob)[globKey]; !exists {
+					(*destGlob)[globKey] = globVal
+				}
+			}
+
+			delete(*src, chartutil.GlobalKey)
+			continue
+		}
+
+		if valMap, ok := val.(map[string]interface{}); ok {
+			if _, globExists := valMap[chartutil.GlobalKey]; globExists {
+				coalesceGlobalsRecursive(&valMap, destGlob)
+			}
+		}
+	}
 }
 
 func findReadme(files []*any.Any) (file *any.Any) {

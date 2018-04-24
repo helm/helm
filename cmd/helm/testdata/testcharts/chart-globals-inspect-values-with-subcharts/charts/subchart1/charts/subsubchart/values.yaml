@@ -1,0 +1,5 @@
+global:
+    key1: from subsubchart
+    key5: from subsubchart
+        
+subsubchartKey: 'subsubchart'

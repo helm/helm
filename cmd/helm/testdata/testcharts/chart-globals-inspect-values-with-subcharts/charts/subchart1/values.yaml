@@ -1,0 +1,7 @@
+global:
+    key3: from subchart 1
+    key4:
+      key41: from subchart 1
+        
+subchart1Key: 'subchart1'
+mainchartKey: from subchart 1
