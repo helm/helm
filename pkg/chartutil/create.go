@@ -143,14 +143,14 @@ spec:
   {{- range .Values.ingress.tls }}
     - hosts:
       {{- range .hosts }}
-        - {{ . }}
+        - {{ . | quote }}
       {{- end }}
       secretName: {{ .secretName }}
   {{- end }}
 {{- end }}
   rules:
   {{- range .Values.ingress.hosts }}
-    - host: {{ . }}
+    - host: {{ . | quote }}
       http:
         paths:
           - path: {{ $ingressPath }}
