@@ -42,7 +42,6 @@ func newHomeCmd(out io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Cache: %s\n", h.Cache())
 				fmt.Fprintf(out, "Stable CacheIndex: %s\n", h.CacheIndex("stable"))
 				fmt.Fprintf(out, "Starters: %s\n", h.Starters())
-				fmt.Fprintf(out, "LocalRepository: %s\n", h.LocalRepository())
 				fmt.Fprintf(out, "Plugins: %s\n", h.Plugins())
 			}
 		},

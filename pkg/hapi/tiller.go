@@ -77,19 +77,6 @@ type ListReleasesRequest struct {
 	StatusCodes []release.StatusCode `json:"status_codes,omitempty"`
 }
 
-// ListReleasesResponse is a list of releases.
-type ListReleasesResponse struct {
-	// Count is the expected total number of releases to be returned.
-	Count int64 `json:"count,omitempty"`
-	// Next is the name of the next release. If this is other than an empty
-	// string, it means there are more results.
-	Next string `json:"next,omitempty"`
-	// Total is the total number of queryable releases.
-	Total int64 `json:"total,omitempty"`
-	// Releases is the list of found release objects.
-	Releases []*release.Release `json:"releases,omitempty"`
-}
-
 // GetReleaseStatusRequest is a request to get the status of a release.
 type GetReleaseStatusRequest struct {
 	// Name is the name of the release

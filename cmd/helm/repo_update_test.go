@@ -60,8 +60,8 @@ func TestUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := out.String(); !strings.Contains(got, "charts") || !strings.Contains(got, "local") {
-		t.Errorf("Expected 'charts' and 'local' (in any order) got %q", got)
+	if got := out.String(); !strings.Contains(got, "charts") {
+		t.Errorf("Expected 'charts' got %q", got)
 	}
 }
 

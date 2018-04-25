@@ -66,9 +66,6 @@ var (
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
 )
 
-// ListDefaultLimit is the default limit for number of items returned in a list.
-var ListDefaultLimit int64 = 512
-
 // ValidName is a regular expression for names.
 //
 // According to the Kubernetes help text, the regular expression it uses is:

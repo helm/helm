@@ -33,7 +33,6 @@ func TestHelmHome(t *testing.T) {
 	isEq(t, hh.String(), "/r")
 	isEq(t, hh.Repository(), "/r/repository")
 	isEq(t, hh.RepositoryFile(), "/r/repository/repositories.yaml")
-	isEq(t, hh.LocalRepository(), "/r/repository/local")
 	isEq(t, hh.Cache(), "/r/repository/cache")
 	isEq(t, hh.CacheIndex("t"), "/r/repository/cache/t-index.yaml")
 	isEq(t, hh.Starters(), "/r/starters")
