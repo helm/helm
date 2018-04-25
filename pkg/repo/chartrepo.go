@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -152,9 +151,8 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 
 // If HttpGetter is used, this method sets the configured repository credentials on the HttpGetter.
 func (r *ChartRepository) setCredentials() {
-	var t *getter.HttpGetter
-	if reflect.TypeOf(r.Client) == reflect.TypeOf(t) {
-		r.Client.(*getter.HttpGetter).SetCredentials(r.Config.Username, r.Config.Password)
+	if t, ok := r.Client.(*getter.HttpGetter); ok {
+		t.SetCredentials(r.Config.Username, r.Config.Password)
 	}
 }
 
