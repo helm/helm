@@ -23,7 +23,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"k8s.io/helm/pkg/getter"
@@ -243,9 +242,8 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 
 // If HttpGetter is used, this method sets the configured repository credentials on the HttpGetter.
 func (c *ChartDownloader) setCredentials(r *repo.ChartRepository) {
-	var t *getter.HttpGetter
-	if reflect.TypeOf(r.Client) == reflect.TypeOf(t) {
-		r.Client.(*getter.HttpGetter).SetCredentials(c.getRepoCredentials(r))
+	if t, ok := r.Client.(*getter.HttpGetter); ok {
+		t.SetCredentials(c.getRepoCredentials(r))
 	}
 }
 
