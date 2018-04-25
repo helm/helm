@@ -99,7 +99,7 @@ func tempHelmHome(t *testing.T) (helmpath.Home, error) {
 //
 // t is used only for logging.
 func ensureTestHome(home helmpath.Home, t *testing.T) error {
-	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.LocalRepository(), home.Plugins(), home.Starters()}
+	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.Plugins(), home.Starters()}
 	for _, p := range configDirectories {
 		if fi, err := os.Stat(p); err != nil {
 			if err := os.MkdirAll(p, 0755); err != nil {
@@ -117,10 +117,6 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 			Name:  "charts",
 			URL:   "http://example.com/foo",
 			Cache: "charts-index.yaml",
-		}, &repo.Entry{
-			Name:  "local",
-			URL:   "http://localhost.com:7743/foo",
-			Cache: "local-index.yaml",
 		})
 		if err := rf.WriteFile(repoFile, 0644); err != nil {
 			return err
@@ -133,19 +129,6 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		if err := r.WriteFile(repoFile, 0644); err != nil {
 			return err
 		}
-	}
-
-	localRepoIndexFile := home.LocalRepository(localRepositoryIndexFile)
-	if fi, err := os.Stat(localRepoIndexFile); err != nil {
-		i := repo.NewIndexFile()
-		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
-			return err
-		}
-
-		//TODO: take this out and replace with helm update functionality
-		os.Symlink(localRepoIndexFile, home.CacheIndex("local"))
-	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", localRepoIndexFile)
 	}
 
 	t.Logf("$HELM_HOME has been configured at %s.\n", settings.Home.String())

@@ -171,7 +171,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 
 	os.MkdirAll(targetDir, 0755)
 
-	for true {
+	for {
 		header, err := tarReader.Next()
 
 		if err == io.EOF {

@@ -92,12 +92,7 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if re.Config.Name == localRepository {
-				fmt.Fprintf(out, "...Skip %s chart repository\n", re.Config.Name)
-				return
-			}
-			err := re.DownloadIndexFile(home.Cache())
-			if err != nil {
+			if err := re.DownloadIndexFile(home.Cache()); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)

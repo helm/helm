@@ -66,17 +66,6 @@ func (h Home) Starters() string {
 	return h.Path("starters")
 }
 
-// LocalRepository returns the location to the local repo.
-//
-// The local repo is the one used by 'helm serve'
-//
-// If additional path elements are passed, they are appended to the returned path.
-func (h Home) LocalRepository(elem ...string) string {
-	p := []string{"repository", "local"}
-	p = append(p, elem...)
-	return h.Path(p...)
-}
-
 // Plugins returns the path to the plugins directory.
 func (h Home) Plugins() string {
 	return h.Path("plugins")

@@ -48,7 +48,7 @@ func TestEnsureHome(t *testing.T) {
 		t.Error(err)
 	}
 
-	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache(), hh.LocalRepository()}
+	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache()}
 	for _, dir := range expectedDirs {
 		if fi, err := os.Stat(dir); err != nil {
 			t.Errorf("%s", err)
@@ -59,12 +59,6 @@ func TestEnsureHome(t *testing.T) {
 
 	if fi, err := os.Stat(hh.RepositoryFile()); err != nil {
 		t.Error(err)
-	} else if fi.IsDir() {
-		t.Errorf("%s should not be a directory", fi)
-	}
-
-	if fi, err := os.Stat(hh.LocalRepository(localRepositoryIndexFile)); err != nil {
-		t.Errorf("%s", err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
 	}

@@ -82,7 +82,6 @@ func TestLoadPlugins(t *testing.T) {
 		hh.Repository(),
 		hh.RepositoryFile(),
 		hh.Cache(),
-		hh.LocalRepository(),
 		os.Args[0],
 	}, "\n")
 
@@ -173,7 +172,6 @@ func TestSetupEnv(t *testing.T) {
 		{"HELM_PATH_REPOSITORY", settings.Home.Repository()},
 		{"HELM_PATH_REPOSITORY_FILE", settings.Home.RepositoryFile()},
 		{"HELM_PATH_CACHE", settings.Home.Cache()},
-		{"HELM_PATH_LOCAL_REPOSITORY", settings.Home.LocalRepository()},
 		{"HELM_PATH_STARTER", settings.Home.Starters()},
 	} {
 		if got := os.Getenv(tt.name); got != tt.expect {

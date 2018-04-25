@@ -33,18 +33,9 @@ const initDesc = `
 This command sets up local configuration in $HELM_HOME (default ~/.helm/).
 `
 
-const (
-	stableRepository         = "stable"
-	localRepository          = "local"
-	localRepositoryIndexFile = "index.yaml"
-)
+const stableRepository = "stable"
 
-var (
-	stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
-	// This is the IPv4 loopback, not localhost, because we have to force IPv4
-	// for Dockerized Helm: https://github.com/kubernetes/helm/issues/1410
-	localRepositoryURL = "http://127.0.0.1:8879/charts"
-)
+var stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
 
 type initCmd struct {
 	skipRefresh bool
@@ -71,7 +62,6 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
-	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
 	return cmd
 }
@@ -100,7 +90,6 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 		home.String(),
 		home.Repository(),
 		home.Cache(),
-		home.LocalRepository(),
 		home.Plugins(),
 		home.Starters(),
 		home.Archive(),
@@ -128,12 +117,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out, home)
-		if err != nil {
-			return err
-		}
 		f.Add(sr)
-		f.Add(lr)
 		if err := f.WriteFile(repoFile, 0644); err != nil {
 			return err
 		}
@@ -166,29 +150,6 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helm
 	}
 
 	return &c, nil
-}
-
-func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Home) (*repo.Entry, error) {
-	if fi, err := os.Stat(indexFile); err != nil {
-		fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
-		i := repo.NewIndexFile()
-		if err := i.WriteFile(indexFile, 0644); err != nil {
-			return nil, err
-		}
-
-		//TODO: take this out and replace with helm update functionality
-		if err := createLink(indexFile, cacheFile, home); err != nil {
-			return nil, err
-		}
-	} else if fi.IsDir() {
-		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
-	}
-
-	return &repo.Entry{
-		Name:  localRepository,
-		URL:   localRepositoryURL,
-		Cache: cacheFile,
-	}, nil
 }
 
 func ensureRepoFileFormat(file string, out io.Writer) error {

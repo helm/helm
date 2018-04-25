@@ -177,11 +177,10 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 		"HELM_HOME":   settings.Home.String(),
 
 		// Set vars that convey common information.
-		"HELM_PATH_REPOSITORY":       settings.Home.Repository(),
-		"HELM_PATH_REPOSITORY_FILE":  settings.Home.RepositoryFile(),
-		"HELM_PATH_CACHE":            settings.Home.Cache(),
-		"HELM_PATH_LOCAL_REPOSITORY": settings.Home.LocalRepository(),
-		"HELM_PATH_STARTER":          settings.Home.Starters(),
+		"HELM_PATH_REPOSITORY":      settings.Home.Repository(),
+		"HELM_PATH_REPOSITORY_FILE": settings.Home.RepositoryFile(),
+		"HELM_PATH_CACHE":           settings.Home.Cache(),
+		"HELM_PATH_STARTER":         settings.Home.Starters(),
 	} {
 		os.Setenv(key, val)
 	}
