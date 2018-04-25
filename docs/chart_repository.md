@@ -153,6 +153,10 @@ Charts repository hosts its charts, so you may want to take a
 You can also set up chart repositories using JFrog Artifactory.
 Read more about chart repositories with JFrog Artifactory [here](https://www.jfrog.com/confluence/display/RTF/Helm+Chart+Repositories)
 
+### Nexus Repository
+
+You can also use Nexus Repository to proxy Helm repositories. You can read more about setting this up [here](https://github.com/sonatype-nexus-community/nexus-repository-helm/blob/master/docs/HELM_USER_DOCUMENTATION.md#helm-repositories)
+
 ### Github Pages example
 
 In a similar way you can create charts repository using GitHub Pages.
