@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -119,12 +120,9 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
 
 	indexURL = parsedURL.String()
-	g, err := getter.NewHTTPGetter(indexURL, r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile)
-	if err != nil {
-		return err
-	}
-	g.SetCredentials(r.Config.Username, r.Config.Password)
-	resp, err := g.Get(indexURL)
+
+	r.setCredentials()
+	resp, err := r.Client.Get(indexURL)
 	if err != nil {
 		return err
 	}
@@ -150,6 +148,14 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	}
 
 	return ioutil.WriteFile(cp, index, 0644)
+}
+
+// If HttpGetter is used, this method sets the configured repository credentials on the HttpGetter.
+func (r *ChartRepository) setCredentials() {
+	var t *getter.HttpGetter
+	if reflect.TypeOf(r.Client) == reflect.TypeOf(t) {
+		r.Client.(*getter.HttpGetter).SetCredentials(r.Config.Username, r.Config.Password)
+	}
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
