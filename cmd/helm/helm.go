@@ -18,6 +18,7 @@ package main // import "k8s.io/helm/cmd/helm"
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -61,7 +62,7 @@ Environment:
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
-func newRootCmd(args []string) *cobra.Command {
+func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -71,8 +72,6 @@ func newRootCmd(args []string) *cobra.Command {
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
-
-	out := cmd.OutOrStdout()
 
 	cmd.AddCommand(
 		// chart commands
@@ -87,15 +86,15 @@ func newRootCmd(args []string) *cobra.Command {
 		newVerifyCmd(out),
 
 		// release commands
-		newDeleteCmd(nil, out),
-		newGetCmd(nil, out),
-		newHistoryCmd(nil, out),
-		newInstallCmd(nil, out),
-		newListCmd(nil, out),
-		newReleaseTestCmd(nil, out),
-		newRollbackCmd(nil, out),
-		newStatusCmd(nil, out),
-		newUpgradeCmd(nil, out),
+		newDeleteCmd(c, out),
+		newGetCmd(c, out),
+		newHistoryCmd(c, out),
+		newInstallCmd(c, out),
+		newListCmd(c, out),
+		newReleaseTestCmd(c, out),
+		newRollbackCmd(c, out),
+		newStatusCmd(c, out),
+		newUpgradeCmd(c, out),
 
 		newCompletionCmd(out),
 		newHomeCmd(out),
@@ -131,7 +130,7 @@ func logf(format string, v ...interface{}) {
 }
 
 func main() {
-	cmd := newRootCmd(os.Args[1:])
+	cmd := newRootCmd(nil, os.Stdout, os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}

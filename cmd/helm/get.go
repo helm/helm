@@ -42,9 +42,10 @@ var errReleaseRequired = errors.New("release name is required")
 
 type getCmd struct {
 	release string
-	out     io.Writer
-	client  helm.Interface
 	version int
+
+	out    io.Writer
+	client helm.Interface
 }
 
 func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -69,9 +70,9 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd.Flags().IntVar(&get.version, "revision", 0, "get the named release with revision")
 
-	cmd.AddCommand(newGetValuesCmd(nil, out))
-	cmd.AddCommand(newGetManifestCmd(nil, out))
-	cmd.AddCommand(newGetHooksCmd(nil, out))
+	cmd.AddCommand(newGetValuesCmd(client, out))
+	cmd.AddCommand(newGetManifestCmd(client, out))
+	cmd.AddCommand(newGetHooksCmd(client, out))
 
 	return cmd
 }

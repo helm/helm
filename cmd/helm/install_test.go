@@ -17,13 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"io"
 	"reflect"
 	"regexp"
-	"strings"
 	"testing"
-
-	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
 )
@@ -32,125 +28,110 @@ func TestInstall(t *testing.T) {
 	tests := []releaseCase{
 		// Install, base case
 		{
-			name:     "basic install",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name aeneas", " "),
-			expected: "aeneas",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			name:    "basic install",
+			cmd:     "install testdata/testcharts/alpine --name aeneas",
+			matches: "aeneas",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, no hooks
 		{
-			name:     "install without hooks",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name aeneas --no-hooks", " "),
-			expected: "aeneas",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			name:    "install without hooks",
+			cmd:     "install testdata/testcharts/alpine --name aeneas --no-hooks",
+			matches: "aeneas",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, values from cli
 		{
-			name:     "install with values",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name virgil --set foo=bar", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			name:    "install with values",
+			cmd:     "install testdata/testcharts/alpine --name virgil --set foo=bar",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			matches: "virgil",
 		},
 		// Install, values from cli via multiple --set
 		{
-			name:     "install with multiple values",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name virgil --set foo=bar --set bar=foo", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			name:    "install with multiple values",
+			cmd:     "install testdata/testcharts/alpine --name virgil --set foo=bar --set bar=foo",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			matches: "virgil",
 		},
 		// Install, values from yaml
 		{
-			name:     "install with values",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name virgil -f testdata/testcharts/alpine/extra_values.yaml", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			name:    "install with values",
+			cmd:     "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			matches: "virgil",
 		},
 		// Install, values from multiple yaml
 		{
-			name:     "install with values",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name virgil -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml", " "),
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			expected: "virgil",
+			name:    "install with values",
+			cmd:     "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			matches: "virgil",
 		},
 		// Install, no charts
 		{
-			name: "install with no chart specified",
-			args: []string{},
-			err:  true,
+			name:      "install with no chart specified",
+			cmd:       "install",
+			wantError: true,
 		},
 		// Install, re-use name
 		{
-			name:     "install and replace release",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name aeneas --replace", " "),
-			expected: "aeneas",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			name:    "install and replace release",
+			cmd:     "install testdata/testcharts/alpine --name aeneas --replace",
+			matches: "aeneas",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 		},
 		// Install, with timeout
 		{
-			name:     "install with a timeout",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name foobar --timeout 120", " "),
-			expected: "foobar",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "foobar"}),
+			name:    "install with a timeout",
+			cmd:     "install testdata/testcharts/alpine --name foobar --timeout 120",
+			matches: "foobar",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "foobar"}),
 		},
 		// Install, with wait
 		{
-			name:     "install with a wait",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    strings.Split("--name apollo --wait", " "),
-			expected: "apollo",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
+			name:    "install with a wait",
+			cmd:     "install testdata/testcharts/alpine --name apollo --wait",
+			matches: "apollo",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
 		},
 		// Install, using the name-template
 		{
-			name:     "install with name-template",
-			args:     []string{"testdata/testcharts/alpine"},
-			flags:    []string{"--name-template", "{{upper \"foobar\"}}"},
-			expected: "FOOBAR",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "FOOBAR"}),
+			name:    "install with name-template",
+			cmd:     "install testdata/testcharts/alpine --name-template '{{upper \"foobar\"}}'",
+			matches: "FOOBAR",
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "FOOBAR"}),
 		},
 		// Install, perform chart verification along the way.
 		{
-			name:  "install with verification, missing provenance",
-			args:  []string{"testdata/testcharts/compressedchart-0.1.0.tgz"},
-			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
-			err:   true,
+			name:      "install with verification, missing provenance",
+			cmd:       "install testdata/testcharts/compressedchart-0.1.0.tgz --verify --keyring testdata/helm-test-key.pub",
+			wantError: true,
 		},
 		{
-			name:  "install with verification, directory instead of file",
-			args:  []string{"testdata/testcharts/signtest"},
-			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
-			err:   true,
+			name:      "install with verification, directory instead of file",
+			cmd:       "install testdata/testcharts/signtest --verify --keyring testdata/helm-test-key.pub",
+			wantError: true,
 		},
 		{
-			name:  "install with verification, valid",
-			args:  []string{"testdata/testcharts/signtest-0.1.0.tgz"},
-			flags: strings.Split("--verify --keyring testdata/helm-test-key.pub", " "),
+			name: "install with verification, valid",
+			cmd:  "install testdata/testcharts/signtest-0.1.0.tgz --verify --keyring testdata/helm-test-key.pub",
 		},
 		// Install, chart with missing dependencies in /charts
 		{
-			name: "install chart with missing dependencies",
-			args: []string{"testdata/testcharts/chart-missing-deps"},
-			err:  true,
+			name:      "install chart with missing dependencies",
+			cmd:       "install testdata/testcharts/chart-missing-deps",
+			wantError: true,
 		},
 		// Install, chart with bad requirements.yaml in /charts
 		{
-			name: "install chart with bad requirements.yaml",
-			args: []string{"testdata/testcharts/chart-bad-requirements"},
-			err:  true,
+			name:      "install chart with bad requirements.yaml",
+			cmd:       "install testdata/testcharts/chart-bad-requirements",
+			wantError: true,
 		},
 	}
 
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newInstallCmd(c, out)
-	})
+	testReleaseCmd(t, tests)
 }
 
 type nameTemplateTestCase struct {

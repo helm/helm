@@ -17,13 +17,9 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"regexp"
 	"testing"
 
-	"github.com/spf13/cobra"
-
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -33,18 +29,15 @@ func TestVersion(t *testing.T) {
 
 	tests := []releaseCase{
 		{
-			name:     "default",
-			args:     []string{},
-			expected: clientVersion,
+			name:    "default",
+			cmd:     "version",
+			matches: clientVersion,
 		},
 		{
-			name:     "template",
-			args:     []string{},
-			flags:    []string{"--template", "{{ .Client.SemVer }}"},
-			expected: lver,
+			name:    "template",
+			cmd:     "version --template='{{.Client.SemVer}}'",
+			matches: lver,
 		},
 	}
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newVersionCmd(out)
-	})
+	testReleaseCmd(t, tests)
 }

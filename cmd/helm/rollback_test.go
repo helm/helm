@@ -17,45 +17,32 @@ limitations under the License.
 package main
 
 import (
-	"io"
 	"testing"
-
-	"github.com/spf13/cobra"
-
-	"k8s.io/helm/pkg/helm"
 )
 
 func TestRollbackCmd(t *testing.T) {
 
 	tests := []releaseCase{
 		{
-			name:     "rollback a release",
-			args:     []string{"funny-honey", "1"},
-			expected: "Rollback was a success! Happy Helming!",
+			name:    "rollback a release",
+			cmd:     "rollback funny-honey 1",
+			matches: "Rollback was a success! Happy Helming!",
 		},
 		{
-			name:     "rollback a release with timeout",
-			args:     []string{"funny-honey", "1"},
-			flags:    []string{"--timeout", "120"},
-			expected: "Rollback was a success! Happy Helming!",
+			name:    "rollback a release with timeout",
+			cmd:     "rollback funny-honey 1 --timeout 120",
+			matches: "Rollback was a success! Happy Helming!",
 		},
 		{
-			name:     "rollback a release with wait",
-			args:     []string{"funny-honey", "1"},
-			flags:    []string{"--wait"},
-			expected: "Rollback was a success! Happy Helming!",
+			name:    "rollback a release with wait",
+			cmd:     "rollback funny-honey 1 --wait",
+			matches: "Rollback was a success! Happy Helming!",
 		},
 		{
-			name: "rollback a release without revision",
-			args: []string{"funny-honey"},
-			err:  true,
+			name:      "rollback a release without revision",
+			cmd:       "rollback funny-honey",
+			wantError: true,
 		},
 	}
-
-	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newRollbackCmd(c, out)
-	}
-
-	runReleaseCases(t, tests, cmd)
-
+	testReleaseCmd(t, tests)
 }

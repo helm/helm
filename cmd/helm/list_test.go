@@ -17,10 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"io"
 	"testing"
-
-	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
@@ -30,99 +27,100 @@ func TestListCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
 			name: "with a release",
+			cmd:  "list",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
 			},
-			expected: "thomas-guide",
+			matches: "thomas-guide",
 		},
 		{
 			name: "list",
+			cmd:  "list",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
 			},
-			expected: `NAME\s+REVISION\s+UPDATED\s+STATUS\s+CHART\s+NAMESPACE\natlas\s+1\s+(.*)\s+DEPLOYED\s+foo-0.1.0-beta.1\s+default`,
+			matches: `NAME\s+REVISION\s+UPDATED\s+STATUS\s+CHART\s+NAMESPACE\natlas\s+1\s+(.*)\s+DEPLOYED\s+foo-0.1.0-beta.1\s+default`,
 		},
 		{
-			name:  "list, one deployed, one failed",
-			flags: []string{"-q"},
+			name: "list, one deployed, one failed",
+			cmd:  "list -q",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_FAILED}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 			},
-			expected: "thomas-guide\natlas-guide",
+			matches: "thomas-guide\natlas-guide",
 		},
 		{
-			name:  "with a release, multiple flags",
-			flags: []string{"--deleted", "--deployed", "--failed", "-q"},
+			name: "with a release, multiple flags",
+			cmd:  "list --deleted --deployed --failed -q",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_DELETED}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 			},
 			// Note: We're really only testing that the flags parsed correctly. Which results are returned
 			// depends on the backend. And until pkg/helm is done, we can't mock this.
-			expected: "thomas-guide\natlas-guide",
+			matches: "thomas-guide\natlas-guide",
 		},
 		{
-			name:  "with a release, multiple flags",
-			flags: []string{"--all", "-q"},
+			name: "with a release, multiple flags",
+			cmd:  "list --all -q",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_DELETED}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 			},
 			// See note on previous test.
-			expected: "thomas-guide\natlas-guide",
+			matches: "thomas-guide\natlas-guide",
 		},
 		{
-			name:  "with a release, multiple flags, deleting",
-			flags: []string{"--all", "-q"},
+			name: "with a release, multiple flags, deleting",
+			cmd:  "list --all -q",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_DELETING}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 			},
 			// See note on previous test.
-			expected: "thomas-guide\natlas-guide",
+			matches: "thomas-guide\natlas-guide",
 		},
 		{
-			name:  "namespace defined, multiple flags",
-			flags: []string{"--all", "-q", "--namespace test123"},
+			name: "namespace defined, multiple flags",
+			cmd:  "list --all -q --namespace test123",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Namespace: "test123"}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Namespace: "test321"}),
 			},
 			// See note on previous test.
-			expected: "thomas-guide",
+			matches: "thomas-guide",
 		},
 		{
-			name:  "with a pending release, multiple flags",
-			flags: []string{"--all", "-q"},
+			name: "with a pending release, multiple flags",
+			cmd:  "list --all -q",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_PENDING_INSTALL}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 			},
-			expected: "thomas-guide\natlas-guide",
+			matches: "thomas-guide\natlas-guide",
 		},
 		{
-			name:  "with a pending release, pending flag",
-			flags: []string{"--pending", "-q"},
+			name: "with a pending release, pending flag",
+			cmd:  "list --pending -q",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_PENDING_INSTALL}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "wild-idea", StatusCode: release.Status_PENDING_UPGRADE}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-maps", StatusCode: release.Status_PENDING_ROLLBACK}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
 			},
-			expected: "thomas-guide\nwild-idea\ncrazy-maps",
+			matches: "thomas-guide\nwild-idea\ncrazy-maps",
 		},
 		{
 			name: "with old releases",
+			cmd:  "list",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_FAILED}),
 			},
-			expected: "thomas-guide",
+			matches: "thomas-guide",
 		},
 	}
 
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newListCmd(c, out)
-	})
+	testReleaseCmd(t, tests)
 }

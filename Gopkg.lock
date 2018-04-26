@@ -338,6 +338,12 @@
   version = "v0.0.1"
 
 [[projects]]
+  name = "github.com/mattn/go-shellwords"
+  packages = ["."]
+  revision = "02e3cf038dcea8290e44424da473dd12be796a8a"
+  version = "v1.0.3"
+
+[[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
   revision = "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
@@ -431,12 +437,14 @@
     ".",
     "doc"
   ]
-  revision = "f62e98d28ab7ad31d707ba837a966378465c7b57"
+  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
+  version = "v0.0.2"
 
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "9ff6c6923cfffbcd502984b8e0c80539a94968b7"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -1063,6 +1071,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d27aa9378f7846f9dc4de8168f8a2dd6d9584fefddd26e2a9e172b9d8fc075c9"
+  inputs-digest = "82526354be9627a0e3796098ee9bed433a3e7958495f65e371ecc27d8c71c111"
   solver-name = "gps-cdcl"
   solver-version = 1

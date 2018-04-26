@@ -17,10 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"io"
 	"testing"
-
-	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
@@ -28,46 +25,43 @@ import (
 
 func TestDelete(t *testing.T) {
 
+	resp := helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})
+	rels := []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})}
+
 	tests := []releaseCase{
 		{
-			name:     "basic delete",
-			args:     []string{"aeneas"},
-			flags:    []string{},
-			expected: "", // Output of a delete is an empty string and exit 0.
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
-			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+			name:    "basic delete",
+			cmd:     "delete aeneas",
+			matches: `release "aeneas" deleted`,
+			resp:    resp,
+			rels:    rels,
 		},
 		{
-			name:     "delete with timeout",
-			args:     []string{"aeneas"},
-			flags:    []string{"--timeout", "120"},
-			expected: "",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
-			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+			name:    "delete with timeout",
+			cmd:     "delete aeneas --timeout 120",
+			matches: `release "aeneas" deleted`,
+			resp:    resp,
+			rels:    rels,
 		},
 		{
-			name:     "delete without hooks",
-			args:     []string{"aeneas"},
-			flags:    []string{"--no-hooks"},
-			expected: "",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
-			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+			name:    "delete without hooks",
+			cmd:     "delete aeneas --no-hooks",
+			matches: `release "aeneas" deleted`,
+			resp:    resp,
+			rels:    rels,
 		},
 		{
-			name:     "purge",
-			args:     []string{"aeneas"},
-			flags:    []string{"--purge"},
-			expected: "",
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
-			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+			name:    "purge",
+			cmd:     "delete aeneas --purge",
+			matches: `release "aeneas" deleted`,
+			resp:    resp,
+			rels:    rels,
 		},
 		{
-			name: "delete without release",
-			args: []string{},
-			err:  true,
+			name:      "delete without release",
+			cmd:       "delete",
+			wantError: true,
 		},
 	}
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newDeleteCmd(c, out)
-	})
+	testReleaseCmd(t, tests)
 }

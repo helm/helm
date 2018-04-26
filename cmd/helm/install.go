@@ -105,31 +105,31 @@ charts in a repository, use 'helm search'.
 `
 
 type installCmd struct {
-	name         string
-	valueFiles   valueFiles
-	chartPath    string
-	dryRun       bool
-	disableHooks bool
-	replace      bool
-	verify       bool
-	keyring      string
-	out          io.Writer
-	client       helm.Interface
-	values       []string
-	stringValues []string
-	nameTemplate string
-	version      string
-	timeout      int64
-	wait         bool
-	repoURL      string
-	username     string
-	password     string
-	devel        bool
-	depUp        bool
+	name         string     // --name
+	valueFiles   valueFiles // --values
+	dryRun       bool       // --dry-run
+	disableHooks bool       // --disable-hooks
+	replace      bool       // --replace
+	verify       bool       // --verify
+	keyring      string     // --keyring
+	values       []string   // --set
+	stringValues []string   // --set-string
+	nameTemplate string     // --name-template
+	version      string     // --version
+	timeout      int64      // --timeout
+	wait         bool       // --wait
+	repoURL      string     // --repo
+	username     string     // --username
+	password     string     // --password
+	devel        bool       // --devel
+	depUp        bool       // --dep-up
+	certFile     string     // --cert-file
+	keyFile      string     // --key-file
+	caFile       string     // --ca-file
+	chartPath    string     // arg
 
-	certFile string
-	keyFile  string
-	caFile   string
+	out    io.Writer
+	client helm.Interface
 }
 
 type valueFiles []string
@@ -291,7 +291,7 @@ func (i *installCmd) run() error {
 }
 
 // Merges source and destination map, preferring values from the source map
-func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[string]interface{} {
+func mergeValues(dest, src map[string]interface{}) map[string]interface{} {
 	for k, v := range src {
 		// If the key doesn't exist already, then just set the key to that value
 		if _, exists := dest[k]; !exists {
