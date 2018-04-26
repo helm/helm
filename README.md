@@ -32,14 +32,15 @@ Think of it like apt/yum/homebrew for Kubernetes.
 
 ## Install
 
-Binary downloads of the Helm client can be found on [the latest Releases page](https://github.com/helm/helm/releases/latest).
+Binary downloads of the Helm client can be found on [the Releases page](https://github.com/helm/helm/releases/latest).
 
 Unpack the `helm` binary and add it to your PATH and you are good to go!
 
 If you want to use a package manager:
 
-- macOS/[homebrew](https://brew.sh/) users can use `brew install kubernetes-helm`.
-- Windows/[chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
+- [Homebrew](https://brew.sh/) users can use `brew install kubernetes-helm`.
+- [Chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
+- [GoFish](https://gofi.sh/) users can use `gofish install helm`.
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 
