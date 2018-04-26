@@ -18,22 +18,18 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
 )
 
 func TestStatusCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
-			name:     "get status of a deployed release",
-			args:     []string{"flummoxed-chickadee"},
-			expected: outputWithStatus("DEPLOYED"),
+			name:    "get status of a deployed release",
+			cmd:     "status flummoxed-chickadee",
+			matches: outputWithStatus("DEPLOYED"),
 			rels: []*release.Release{
 				releaseMockWithStatus(&release.Status{
 					Code: release.Status_DEPLOYED,
@@ -41,9 +37,9 @@ func TestStatusCmd(t *testing.T) {
 			},
 		},
 		{
-			name:     "get status of a deployed release with notes",
-			args:     []string{"flummoxed-chickadee"},
-			expected: outputWithStatus("DEPLOYED\n\nNOTES:\nrelease notes\n"),
+			name:    "get status of a deployed release with notes",
+			cmd:     "status flummoxed-chickadee",
+			matches: outputWithStatus("DEPLOYED\n\nNOTES:\nrelease notes\n"),
 			rels: []*release.Release{
 				releaseMockWithStatus(&release.Status{
 					Code:  release.Status_DEPLOYED,
@@ -52,10 +48,9 @@ func TestStatusCmd(t *testing.T) {
 			},
 		},
 		{
-			name:     "get status of a deployed release with notes in json",
-			args:     []string{"flummoxed-chickadee"},
-			flags:    []string{"-o", "json"},
-			expected: `{"name":"flummoxed-chickadee","info":{"status":{"code":1,"notes":"release notes"},"first_deployed":(.*),"last_deployed":(.*)}}`,
+			name:    "get status of a deployed release with notes in json",
+			cmd:     "status flummoxed-chickadee -o json",
+			matches: `{"name":"flummoxed-chickadee","info":{"status":{"code":1,"notes":"release notes"},"first_deployed":(.*),"last_deployed":(.*)}}`,
 			rels: []*release.Release{
 				releaseMockWithStatus(&release.Status{
 					Code:  release.Status_DEPLOYED,
@@ -64,9 +59,9 @@ func TestStatusCmd(t *testing.T) {
 			},
 		},
 		{
-			name:     "get status of a deployed release with resources",
-			args:     []string{"flummoxed-chickadee"},
-			expected: outputWithStatus("DEPLOYED\n\nRESOURCES:\nresource A\nresource B\n\n"),
+			name:    "get status of a deployed release with resources",
+			cmd:     "status flummoxed-chickadee",
+			matches: outputWithStatus("DEPLOYED\n\nRESOURCES:\nresource A\nresource B\n\n"),
 			rels: []*release.Release{
 				releaseMockWithStatus(&release.Status{
 					Code:      release.Status_DEPLOYED,
@@ -75,10 +70,9 @@ func TestStatusCmd(t *testing.T) {
 			},
 		},
 		{
-			name:     "get status of a deployed release with resources in YAML",
-			args:     []string{"flummoxed-chickadee"},
-			flags:    []string{"-o", "yaml"},
-			expected: "info:\n (.*)first_deployed:\n (.*)seconds: 242085845\n (.*)last_deployed:\n (.*)seconds: 242085845\n (.*)status:\n code: 1\n (.*)resources: |\n (.*)resource A\n (.*)resource B\nname: flummoxed-chickadee\n",
+			name:    "get status of a deployed release with resources in YAML",
+			cmd:     "status flummoxed-chickadee -o yaml",
+			matches: "info:\n (.*)first_deployed:\n (.*)seconds: 242085845\n (.*)last_deployed:\n (.*)seconds: 242085845\n (.*)status:\n code: 1\n (.*)resources: |\n (.*)resource A\n (.*)resource B\nname: flummoxed-chickadee\n",
 			rels: []*release.Release{
 				releaseMockWithStatus(&release.Status{
 					Code:      release.Status_DEPLOYED,
@@ -88,8 +82,8 @@ func TestStatusCmd(t *testing.T) {
 		},
 		{
 			name: "get status of a deployed release with test suite",
-			args: []string{"flummoxed-chickadee"},
-			expected: outputWithStatus(
+			cmd:  "status flummoxed-chickadee",
+			matches: outputWithStatus(
 				"DEPLOYED\n\nTEST SUITE:\nLast Started: (.*)\nLast Completed: (.*)\n\n" +
 					"TEST      \tSTATUS (.*)\tINFO (.*)\tSTARTED (.*)\tCOMPLETED (.*)\n" +
 					"test run 1\tSUCCESS (.*)\textra info\t(.*)\t(.*)\n" +
@@ -120,11 +114,7 @@ func TestStatusCmd(t *testing.T) {
 			},
 		},
 	}
-
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newStatusCmd(c, out)
-	})
-
+	testReleaseCmd(t, tests)
 }
 
 func outputWithStatus(status string) string {

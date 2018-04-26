@@ -236,36 +236,38 @@ func TestSearchByName(t *testing.T) {
 	i := loadTestIndex(t, false)
 
 	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 
-		charts, err := i.Search(tt.query, 100, tt.regexp)
-		if err != nil {
-			if tt.fail {
-				if !strings.Contains(err.Error(), tt.failMsg) {
-					t.Fatalf("%s: Unexpected error message: %s", tt.name, err)
+			charts, err := i.Search(tt.query, 100, tt.regexp)
+			if err != nil {
+				if tt.fail {
+					if !strings.Contains(err.Error(), tt.failMsg) {
+						t.Fatalf("Unexpected error message: %s", err)
+					}
+					return
 				}
-				continue
+				t.Fatalf("%s: %s", tt.name, err)
 			}
-			t.Fatalf("%s: %s", tt.name, err)
-		}
-		// Give us predictably ordered results.
-		SortScore(charts)
+			// Give us predictably ordered results.
+			SortScore(charts)
 
-		l := len(charts)
-		if l != len(tt.expect) {
-			t.Fatalf("%s: Expected %d result, got %d", tt.name, len(tt.expect), l)
-		}
-		// For empty result sets, just keep going.
-		if l == 0 {
-			continue
-		}
-
-		for i, got := range charts {
-			ex := tt.expect[i]
-			if got.Name != ex.Name {
-				t.Errorf("%s[%d]: Expected name %q, got %q", tt.name, i, ex.Name, got.Name)
+			l := len(charts)
+			if l != len(tt.expect) {
+				t.Fatalf("Expected %d result, got %d", len(tt.expect), l)
 			}
-		}
+			// For empty result sets, just keep going.
+			if l == 0 {
+				return
+			}
 
+			for i, got := range charts {
+				ex := tt.expect[i]
+				if got.Name != ex.Name {
+					t.Errorf("[%d]: Expected name %q, got %q", i, ex.Name, got.Name)
+				}
+			}
+
+		})
 	}
 }
 

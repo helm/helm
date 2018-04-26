@@ -19,7 +19,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/hapi/release"
@@ -35,42 +35,53 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-// releaseCmd is a command that works with a FakeClient
-type releaseCmd func(c *helm.FakeClient, out io.Writer) *cobra.Command
+func executeCommand(c helm.Interface, cmd string) (string, error) {
+	_, output, err := executeCommandC(c, cmd)
+	return output, err
+}
 
-// runReleaseCases runs a set of release cases through the given releaseCmd.
-func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
-	var buf bytes.Buffer
+func executeCommandC(client helm.Interface, cmd string) (*cobra.Command, string, error) {
+	args, err := shellwords.Parse(cmd)
+	if err != nil {
+		return nil, "", err
+	}
+	buf := new(bytes.Buffer)
+	root := newRootCmd(client, buf, args)
+	root.SetOutput(buf)
+	root.SetArgs(args)
+
+	c, err := root.ExecuteC()
+
+	return c, buf.String(), err
+}
+
+func testReleaseCmd(t *testing.T, tests []releaseCase) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &helm.FakeClient{
 				Rels:      tt.rels,
 				Responses: tt.responses,
 			}
-			cmd := rcmd(c, &buf)
-			cmd.ParseFlags(tt.flags)
-			err := cmd.RunE(cmd, tt.args)
-			if (err != nil) != tt.err {
+			out, err := executeCommand(c, tt.cmd)
+			if (err != nil) != tt.wantError {
 				t.Errorf("expected error, got '%v'", err)
 			}
-			re := regexp.MustCompile(tt.expected)
-			if !re.Match(buf.Bytes()) {
-				t.Errorf("expected\n%q\ngot\n%q", tt.expected, buf.String())
+			re := regexp.MustCompile(tt.matches)
+			if !re.MatchString(out) {
+				t.Errorf("expected\n%q\ngot\n%q", tt.matches, out)
 			}
-			buf.Reset()
 		})
 	}
 }
 
 // releaseCase describes a test case that works with releases.
 type releaseCase struct {
-	name  string
-	args  []string
-	flags []string
-	// expected is the string to be matched. This supports regular expressions.
-	expected string
-	err      bool
-	resp     *release.Release
+	name string
+	cmd  string
+	// matches is the string to be matched. This supports regular expressions.
+	matches   string
+	wantError bool
+	resp      *release.Release
 	// Rels are the available releases at the start of the test.
 	rels      []*release.Release
 	responses map[string]release.TestRunStatus
@@ -131,7 +142,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		}
 	}
 
-	t.Logf("$HELM_HOME has been configured at %s.\n", settings.Home.String())
+	t.Logf("$HELM_HOME has been configured at %s.\n", home)
 	return nil
 
 }
@@ -141,41 +152,39 @@ func TestRootCmd(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name   string
-		args   []string
-		envars map[string]string
-		home   string
+		name, args, home string
+		envars           map[string]string
 	}{
 		{
 			name: "defaults",
-			args: []string{"home"},
+			args: "home",
 			home: filepath.Join(os.Getenv("HOME"), "/.helm"),
 		},
 		{
 			name: "with --home set",
-			args: []string{"--home", "/foo"},
+			args: "--home /foo",
 			home: "/foo",
 		},
 		{
 			name: "subcommands with --home set",
-			args: []string{"home", "--home", "/foo"},
+			args: "home --home /foo",
 			home: "/foo",
 		},
 		{
 			name:   "with $HELM_HOME set",
-			args:   []string{"home"},
+			args:   "home",
 			envars: map[string]string{"HELM_HOME": "/bar"},
 			home:   "/bar",
 		},
 		{
 			name:   "subcommands with $HELM_HOME set",
-			args:   []string{"home"},
+			args:   "home",
 			envars: map[string]string{"HELM_HOME": "/bar"},
 			home:   "/bar",
 		},
 		{
 			name:   "with $HELM_HOME and --home set",
-			args:   []string{"home", "--home", "/foo"},
+			args:   "home --home /foo",
 			envars: map[string]string{"HELM_HOME": "/bar"},
 			home:   "/foo",
 		},
@@ -192,12 +201,9 @@ func TestRootCmd(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			cmd := newRootCmd(tt.args)
-			cmd.SetOutput(ioutil.Discard)
-			cmd.SetArgs(tt.args)
-			cmd.Run = func(*cobra.Command, []string) {}
-			if err := cmd.Execute(); err != nil {
-				t.Errorf("unexpected error: %s", err)
+			cmd, _, err := executeCommandC(nil, tt.args)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
 			}
 
 			if settings.Home.String() != tt.home {

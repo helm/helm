@@ -17,13 +17,10 @@ limitations under the License.
 package main
 
 import (
-	"io"
+	"fmt"
 	"os"
 	"testing"
 
-	"github.com/spf13/cobra"
-
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
 )
@@ -48,17 +45,13 @@ func TestRepoAddCmd(t *testing.T) {
 
 	settings.Home = thome
 
-	tests := []releaseCase{
-		{
-			name:     "add a repository",
-			args:     []string{testName, srv.URL()},
-			expected: "\"" + testName + "\" has been added to your repositories",
-		},
-	}
+	tests := []releaseCase{{
+		name:    "add a repository",
+		cmd:     fmt.Sprintf("repo add %s %s --home %s", testName, srv.URL(), thome),
+		matches: "\"" + testName + "\" has been added to your repositories",
+	}}
 
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newRepoAddCmd(out)
-	})
+	testReleaseCmd(t, tests)
 }
 
 func TestRepoAdd(t *testing.T) {

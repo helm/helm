@@ -17,56 +17,46 @@ limitations under the License.
 package main
 
 import (
-	"io"
 	"testing"
 
-	"github.com/spf13/cobra"
-
 	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
 )
 
 func TestReleaseTesting(t *testing.T) {
 	tests := []releaseCase{
 		{
 			name:      "basic test",
-			args:      []string{"example-release"},
-			flags:     []string{},
+			cmd:       "test example-release",
 			responses: map[string]release.TestRunStatus{"PASSED: green lights everywhere": release.TestRun_SUCCESS},
-			err:       false,
+			wantError: false,
 		},
 		{
 			name:      "test failure",
-			args:      []string{"example-fail"},
-			flags:     []string{},
+			cmd:       "test example-fail",
 			responses: map[string]release.TestRunStatus{"FAILURE: red lights everywhere": release.TestRun_FAILURE},
-			err:       true,
+			wantError: true,
 		},
 		{
 			name:      "test unknown",
-			args:      []string{"example-unknown"},
-			flags:     []string{},
+			cmd:       "test example-unknown",
 			responses: map[string]release.TestRunStatus{"UNKNOWN: yellow lights everywhere": release.TestRun_UNKNOWN},
-			err:       false,
+			wantError: false,
 		},
 		{
 			name:      "test error",
-			args:      []string{"example-error"},
-			flags:     []string{},
+			cmd:       "test example-error",
 			responses: map[string]release.TestRunStatus{"ERROR: yellow lights everywhere": release.TestRun_FAILURE},
-			err:       true,
+			wantError: true,
 		},
 		{
 			name:      "test running",
-			args:      []string{"example-running"},
-			flags:     []string{},
+			cmd:       "test example-running",
 			responses: map[string]release.TestRunStatus{"RUNNING: things are happpeningggg": release.TestRun_RUNNING},
-			err:       false,
+			wantError: false,
 		},
 		{
-			name:  "multiple tests example",
-			args:  []string{"example-suite"},
-			flags: []string{},
+			name: "multiple tests example",
+			cmd:  "test example-suite",
 			responses: map[string]release.TestRunStatus{
 				"RUNNING: things are happpeningggg":           release.TestRun_RUNNING,
 				"PASSED: party time":                          release.TestRun_SUCCESS,
@@ -74,11 +64,8 @@ func TestReleaseTesting(t *testing.T) {
 				"FAILURE: good thing u checked :)":            release.TestRun_FAILURE,
 				"RUNNING: things are happpeningggg yet again": release.TestRun_RUNNING,
 				"PASSED: feel free to party again":            release.TestRun_SUCCESS},
-			err: true,
+			wantError: true,
 		},
 	}
-
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newReleaseTestCmd(c, out)
-	})
+	testReleaseCmd(t, tests)
 }

@@ -17,10 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"io"
 	"testing"
-
-	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
@@ -29,19 +26,17 @@ import (
 func TestGetManifest(t *testing.T) {
 	tests := []releaseCase{
 		{
-			name:     "get manifest with release",
-			args:     []string{"juno"},
-			expected: helm.MockManifest,
-			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"}),
-			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"})},
+			name:    "get manifest with release",
+			cmd:     "get manifest juno",
+			matches: helm.MockManifest,
+			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"}),
+			rels:    []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"})},
 		},
 		{
-			name: "get manifest without args",
-			args: []string{},
-			err:  true,
+			name:      "get manifest without args",
+			cmd:       "get manifest",
+			wantError: true,
 		},
 	}
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newGetManifestCmd(c, out)
-	})
+	testReleaseCmd(t, tests)
 }

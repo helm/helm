@@ -17,10 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"io"
 	"testing"
-
-	"github.com/spf13/cobra"
 
 	rpb "k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
@@ -38,48 +35,42 @@ func TestHistoryCmd(t *testing.T) {
 	tests := []releaseCase{
 		{
 			name: "get history for release",
-			args: []string{"angry-bird"},
+			cmd:  "history angry-bird",
 			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 2, rpb.Status_SUPERSEDED),
 				mk("angry-bird", 1, rpb.Status_SUPERSEDED),
 			},
-			expected: `REVISION\s+UPDATED\s+STATUS\s+CHART\s+DESCRIPTION \n1\s+(.*)\s+SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n2(.*)SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n3(.*)SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n4(.*)DEPLOYED\s+foo-0.1.0-beta.1\s+Release mock\n`,
+			matches: `REVISION\s+UPDATED\s+STATUS\s+CHART\s+DESCRIPTION \n1\s+(.*)\s+SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n2(.*)SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n3(.*)SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n4(.*)DEPLOYED\s+foo-0.1.0-beta.1\s+Release mock\n`,
 		},
 		{
-			name:  "get history with max limit set",
-			args:  []string{"angry-bird"},
-			flags: []string{"--max", "2"},
+			name: "get history with max limit set",
+			cmd:  "history angry-bird --max 2",
 			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			expected: `REVISION\s+UPDATED\s+STATUS\s+CHART\s+DESCRIPTION \n3\s+(.*)\s+SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n4\s+(.*)\s+DEPLOYED\s+foo-0.1.0-beta.1\s+Release mock\n`,
+			matches: `REVISION\s+UPDATED\s+STATUS\s+CHART\s+DESCRIPTION \n3\s+(.*)\s+SUPERSEDED\s+foo-0.1.0-beta.1\s+Release mock\n4\s+(.*)\s+DEPLOYED\s+foo-0.1.0-beta.1\s+Release mock\n`,
 		},
 		{
-			name:  "get history with yaml output format",
-			args:  []string{"angry-bird"},
-			flags: []string{"--output", "yaml"},
+			name: "get history with yaml output format",
+			cmd:  "history angry-bird --output yaml",
 			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			expected: "- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 3\n  status: SUPERSEDED\n  updated: (.*)\n- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 4\n  status: DEPLOYED\n  updated: (.*)\n\n",
+			matches: "- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 3\n  status: SUPERSEDED\n  updated: (.*)\n- chart: foo-0.1.0-beta.1\n  description: Release mock\n  revision: 4\n  status: DEPLOYED\n  updated: (.*)\n\n",
 		},
 		{
-			name:  "get history with json output format",
-			args:  []string{"angry-bird"},
-			flags: []string{"--output", "json"},
+			name: "get history with json output format",
+			cmd:  "history angry-bird --output json",
 			rels: []*rpb.Release{
 				mk("angry-bird", 4, rpb.Status_DEPLOYED),
 				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
 			},
-			expected: `[{"revision":3,"updated":".*","status":"SUPERSEDED","chart":"foo\-0.1.0-beta.1","description":"Release mock"},{"revision":4,"updated":".*","status":"DEPLOYED","chart":"foo\-0.1.0-beta.1","description":"Release mock"}]\n`,
+			matches: `[{"revision":3,"updated":".*","status":"SUPERSEDED","chart":"foo\-0.1.0-beta.1","description":"Release mock"},{"revision":4,"updated":".*","status":"DEPLOYED","chart":"foo\-0.1.0-beta.1","description":"Release mock"}]\n`,
 		},
 	}
-
-	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newHistoryCmd(c, out)
-	})
+	testReleaseCmd(t, tests)
 }
