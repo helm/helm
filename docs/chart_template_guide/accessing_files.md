@@ -119,9 +119,10 @@ You have multiple options with Globs:
 
 
 ```yaml
-{{ range $path := .Files.Glob "**.yaml" }}
-{{ $path }}: |
-{{ .Files.Get $path }}
+{{ $root := . }}
+{{ range $path, $bytes := .Files.Glob "**.yaml" }}
+{{ $path }}: |-
+{{ $root.Files.Get $path }}
 {{ end }}
 ```
 
@@ -129,7 +130,7 @@ Or
 
 ```yaml
 {{ range $path, $bytes := .Files.Glob "foo/*" }}
-{{ $path }}: '{{ b64enc $bytes }}'
+{{ $path.base }}: '{{ $root.Files.Get $path | b64enc }}'
 {{ end }}
 ```
 
