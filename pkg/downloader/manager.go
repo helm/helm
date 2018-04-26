@@ -34,6 +34,7 @@ import (
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/resolver"
 	"k8s.io/helm/pkg/urlutil"
@@ -86,12 +87,7 @@ func (m *Manager) Build() error {
 		return fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
 	}
 
-	repoNames, err := m.getRepoNames(req.Dependencies)
-	if err != nil {
-		return err
-	}
-
-	lock, err = m.resolve(req, repoNames, lock.Digest)
+	repoNames, err := m.getRepoNames(lock.Dependencies)
 	if err != nil {
 		return err
 	}
@@ -104,8 +100,14 @@ func (m *Manager) Build() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies, repoNames); err != nil {
+	files, err := m.downloadAll(lock.Dependencies, repoNames)
+	if err != nil {
 		return err
+	}
+
+	// Verify that stored digests match calculated digests of the downloaded files
+	if err := m.verifyDigests(lock.Dependencies, files); err != nil {
+		return fmt.Errorf("dependency verification failed: %s", err)
 	}
 
 	return nil
@@ -161,18 +163,23 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies, repoNames); err != nil {
+	files, err := m.downloadAll(lock.Dependencies, repoNames)
+	if err != nil {
 		return err
 	}
 
-	// If the lock file hasn't changed, don't write a new one.
-	oldLock, err := chartutil.LoadRequirementsLock(c)
-	if err == nil && oldLock.Digest == lock.Digest {
-		return nil
+	// Update digest of locked dependencies
+	if err := m.updateDigests(lock.Dependencies, files); err != nil {
+		return fmt.Errorf("failed to update digests of locked dependencies: %s", err)
 	}
 
 	// Finally, we need to write the lockfile.
-	return writeLock(m.ChartPath, lock)
+	fmt.Fprintf(m.Out, "Updating requirements.lock\n")
+	if err := writeLock(m.ChartPath, lock); err != nil {
+		return fmt.Errorf("failed to write requirements.lock: %s", err)
+	}
+
+	return nil
 }
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
@@ -196,10 +203,12 @@ func (m *Manager) resolve(req *chartutil.Requirements, repoNames map[string]stri
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
-func (m *Manager) downloadAll(deps []*chartutil.Dependency, repoNames map[string]string) error {
+//
+// This returns the paths to the downloaded files
+func (m *Manager) downloadAll(deps []*chartutil.Dependency, repoNames map[string]string) ([]string, error) {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
@@ -208,22 +217,23 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency, repoNames map[string
 	// Create 'charts' directory if it doesn't already exist.
 	if fi, err := os.Stat(destPath); err != nil {
 		if err := os.MkdirAll(destPath, 0755); err != nil {
-			return err
+			return nil, err
 		}
 	} else if !fi.IsDir() {
-		return fmt.Errorf("%q is not a directory", destPath)
+		return nil, fmt.Errorf("%q is not a directory", destPath)
 	}
 
 	if err := os.Rename(destPath, tmpPath); err != nil {
-		return fmt.Errorf("unable to move current charts to tmp dir: %v", err)
+		return nil, fmt.Errorf("unable to move current charts to tmp dir: %v", err)
 	}
 
 	if err := os.MkdirAll(destPath, 0755); err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
+	var files []string
 	for _, dep := range deps {
 		repoURL := repos[repoNames[dep.Name]].Config.URL
 
@@ -240,13 +250,13 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency, repoNames map[string
 			continue
 		}
 
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, repoURL)
+		fmt.Fprintf(m.Out, "Downloading %s %s from repo %s\n", dep.Name, dep.Version, repoURL)
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/kubernetes/helm/issues/1439
 		churl, username, password, err := findChartURL(dep.Name, dep.Version, repoURL, repos)
 		if err != nil {
-			saveError = fmt.Errorf("could not resolve chart URL for %s@%s in %s: %s", dep.Name, dep.Version, repoURL, err)
+			saveError = fmt.Errorf("could not find chart %s %s in repo %s: %s", dep.Name, dep.Version, repoURL, err)
 			break
 		}
 
@@ -260,42 +270,46 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency, repoNames map[string
 			Password: password,
 		}
 
-		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
+		file, _, err := dl.DownloadTo(churl, "", destPath)
+		if err != nil {
 			saveError = fmt.Errorf("could not download %s: %s", churl, err)
 			break
 		}
+
+		files = append(files, file)
 	}
 
 	if saveError == nil {
 		fmt.Fprintln(m.Out, "Deleting outdated charts")
 		for _, dep := range deps {
 			if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		if err := move(tmpPath, destPath); err != nil {
-			return err
+			return nil, err
 		}
 		if err := os.RemoveAll(tmpPath); err != nil {
-			return fmt.Errorf("Failed to remove %v: %v", tmpPath, err)
+			return nil, fmt.Errorf("Failed to remove %v: %v", tmpPath, err)
 		}
 	} else {
 		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
 		fmt.Fprintln(m.Out, "Deleting newly downloaded charts, restoring pre-update state")
 		for _, dep := range deps {
 			if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		if err := os.RemoveAll(destPath); err != nil {
-			return fmt.Errorf("failed to remove %v: %v", destPath, err)
+			return nil, fmt.Errorf("failed to remove %v: %v", destPath, err)
 		}
 		if err := os.Rename(tmpPath, destPath); err != nil {
-			return fmt.Errorf("unable to move current charts to tmp dir: %v", err)
+			return nil, fmt.Errorf("unable to move current charts to tmp dir: %v", err)
 		}
-		return saveError
+		return nil, saveError
 	}
-	return nil
+
+	return files, nil
 }
 
 // safeDeleteDep deletes any versions of the given dependency in the given directory.
@@ -621,5 +635,51 @@ func move(tmpPath, destPath string) error {
 			return fmt.Errorf("Unable to move local charts to charts dir: %v", err)
 		}
 	}
+	return nil
+}
+
+// check for each dependency that has a digest, if it matches the digest of the corresponding file
+func (m *Manager) verifyDigests(deps []*chartutil.Dependency, files []string) error {
+	for i, dep := range deps {
+		if dep.Digest == "" {
+			continue
+		}
+
+		split := strings.SplitN(dep.Digest, ":", 2)
+		if len(split) != 2 {
+			return fmt.Errorf("found invalid digest string in requirements.lock "+
+				"for dependency %s: %s", dep.Name, dep.Digest)
+		}
+
+		algorithm := split[0]
+		expectedSum := split[1]
+
+		if algorithm == "sha256" {
+			file := files[i]
+			sum, err := provenance.DigestFile(file)
+			if err != nil {
+				return err
+			}
+			if sum != expectedSum {
+				return fmt.Errorf("checksums do not match for dependency %s", dep.Name)
+			}
+		} else {
+			return fmt.Errorf("unsupported hash algorithm for dependency %s: %s", dep.Name, algorithm)
+		}
+	}
+
+	return nil
+}
+
+// update the digest of all given dependencies with the sha256 checksum of the corresponding file
+func (m *Manager) updateDigests(deps []*chartutil.Dependency, files []string) error {
+	for i, dep := range deps {
+		sum, err := provenance.DigestFile(files[i])
+		if err != nil {
+			return err
+		}
+		dep.Digest = "sha256:" + sum
+	}
+
 	return nil
 }
