@@ -39,14 +39,14 @@ func TestListCmd(t *testing.T) {
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
 			},
-			matches: `NAME\s+REVISION\s+UPDATED\s+STATUS\s+CHART\s+NAMESPACE\natlas\s+1\s+(.*)\s+DEPLOYED\s+foo-0.1.0-beta.1\s+default`,
+			matches: `NAME\s+REVISION\s+UPDATED\s+STATUS\s+CHART\s+NAMESPACE\natlas\s+1\s+(.*)\s+deployed\s+foo-0.1.0-beta.1\s+default`,
 		},
 		{
 			name: "list, one deployed, one failed",
 			cmd:  "list -q",
 			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_FAILED}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusFailed}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 			},
 			matches: "thomas-guide\natlas-guide",
 		},
@@ -54,8 +54,8 @@ func TestListCmd(t *testing.T) {
 			name: "with a release, multiple flags",
 			cmd:  "list --deleted --deployed --failed -q",
 			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_DELETED}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 			},
 			// Note: We're really only testing that the flags parsed correctly. Which results are returned
 			// depends on the backend. And until pkg/helm is done, we can't mock this.
@@ -65,8 +65,8 @@ func TestListCmd(t *testing.T) {
 			name: "with a release, multiple flags",
 			cmd:  "list --all -q",
 			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_DELETED}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 			},
 			// See note on previous test.
 			matches: "thomas-guide\natlas-guide",
@@ -75,8 +75,8 @@ func TestListCmd(t *testing.T) {
 			name: "with a release, multiple flags, deleting",
 			cmd:  "list --all -q",
 			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_DELETING}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleting}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 			},
 			// See note on previous test.
 			matches: "thomas-guide\natlas-guide",
@@ -95,8 +95,8 @@ func TestListCmd(t *testing.T) {
 			name: "with a pending release, multiple flags",
 			cmd:  "list --all -q",
 			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_PENDING_INSTALL}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusPendingInstall}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 			},
 			matches: "thomas-guide\natlas-guide",
 		},
@@ -104,10 +104,10 @@ func TestListCmd(t *testing.T) {
 			name: "with a pending release, pending flag",
 			cmd:  "list --pending -q",
 			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_PENDING_INSTALL}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "wild-idea", StatusCode: release.Status_PENDING_UPGRADE}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-maps", StatusCode: release.Status_PENDING_ROLLBACK}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", StatusCode: release.Status_DEPLOYED}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusPendingInstall}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "wild-idea", Status: release.StatusPendingUpgrade}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-maps", Status: release.StatusPendingRollback}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 			},
 			matches: "thomas-guide\nwild-idea\ncrazy-maps",
 		},
@@ -116,7 +116,7 @@ func TestListCmd(t *testing.T) {
 			cmd:  "list",
 			rels: []*release.Release{
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", StatusCode: release.Status_FAILED}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusFailed}),
 			},
 			matches: "thomas-guide",
 		},

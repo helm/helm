@@ -23,24 +23,24 @@ import (
 )
 
 func TestFilterAny(t *testing.T) {
-	ls := Any(StatusFilter(rspb.Status_DELETED)).Filter(releases)
+	ls := Any(StatusFilter(rspb.StatusDeleted)).Filter(releases)
 	if len(ls) != 2 {
 		t.Fatalf("expected 2 results, got '%d'", len(ls))
 	}
 
 	r0, r1 := ls[0], ls[1]
 	switch {
-	case r0.Info.Status.Code != rspb.Status_DELETED:
-		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.Code.String())
-	case r1.Info.Status.Code != rspb.Status_DELETED:
-		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.Code.String())
+	case r0.Info.Status != rspb.StatusDeleted:
+		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.String())
+	case r1.Info.Status != rspb.StatusDeleted:
+		t.Fatalf("expected DELETED result, got '%s'", r1.Info.Status.String())
 	}
 }
 
 func TestFilterAll(t *testing.T) {
 	fn := FilterFunc(func(rls *rspb.Release) bool {
 		// true if not deleted and version < 4
-		v0 := !StatusFilter(rspb.Status_DELETED).Check(rls)
+		v0 := !StatusFilter(rspb.StatusDeleted).Check(rls)
 		v1 := rls.Version < 4
 		return v0 && v1
 	})
@@ -53,7 +53,7 @@ func TestFilterAll(t *testing.T) {
 	switch r0 := ls[0]; {
 	case r0.Version == 4:
 		t.Fatal("got release with status revision 4")
-	case r0.Info.Status.Code == rspb.Status_DELETED:
+	case r0.Info.Status == rspb.StatusDeleted:
 		t.Fatal("got release with status DELTED")
 	}
 }

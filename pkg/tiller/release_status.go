@@ -54,7 +54,7 @@ func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*ha
 		return nil, errors.New("release chart is missing")
 	}
 
-	sc := rel.Info.Status.Code
+	sc := rel.Info.Status
 	statusResp := &hapi.GetReleaseStatusResponse{
 		Name:      rel.Name,
 		Namespace: rel.Namespace,
@@ -64,13 +64,13 @@ func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*ha
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
 	resp, err := s.KubeClient.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
-	if sc == release.Status_DELETED || sc == release.Status_FAILED {
+	if sc == release.StatusDeleted || sc == release.StatusFailed {
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil
 	} else if err != nil {
 		s.Log("warning: Get for %s failed: %v", rel.Name, err)
 		return nil, err
 	}
-	rel.Info.Status.Resources = resp
+	rel.Info.Resources = resp
 	return statusResp, nil
 }

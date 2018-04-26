@@ -68,11 +68,11 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Unexpected manifest: %v", updated.Hooks[0].Manifest)
 	}
 
-	if updated.Hooks[0].Events[0] != release.Hook_POST_UPGRADE {
+	if updated.Hooks[0].Events[0] != release.HookPostUpgrade {
 		t.Errorf("Expected event 0 to be post upgrade")
 	}
 
-	if updated.Hooks[0].Events[1] != release.Hook_PRE_UPGRADE {
+	if updated.Hooks[0].Events[1] != release.HookPreUpgrade {
 		t.Errorf("Expected event 0 to be pre upgrade")
 	}
 
@@ -309,8 +309,8 @@ func TestUpdateReleaseFailure(t *testing.T) {
 		t.Error("Expected failed update")
 	}
 
-	if updatedStatus := res.Info.Status.Code; updatedStatus != release.Status_FAILED {
-		t.Errorf("Expected FAILED release. Got %d", updatedStatus)
+	if updatedStatus := res.Info.Status; updatedStatus != release.StatusFailed {
+		t.Errorf("Expected FAILED release. Got %s", updatedStatus)
 	}
 
 	compareStoredAndReturnedRelease(t, *rs, res)
@@ -324,14 +324,14 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
-	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_DEPLOYED {
+	if oldStatus := oldRelease.Info.Status; oldStatus != release.StatusDeployed {
 		t.Errorf("Expected Deployed status on previous Release version. Got %v", oldStatus)
 	}
 }
 
 func TestUpdateReleaseFailure_Force(t *testing.T) {
 	rs := rsFixture()
-	rel := namedReleaseStub("forceful-luke", release.Status_FAILED)
+	rel := namedReleaseStub("forceful-luke", release.StatusFailed)
 	rs.Releases.Create(rel)
 
 	req := &hapi.UpdateReleaseRequest{
@@ -351,8 +351,8 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 		t.Errorf("Expected successful update, got %v", err)
 	}
 
-	if updatedStatus := res.Info.Status.Code; updatedStatus != release.Status_DEPLOYED {
-		t.Errorf("Expected DEPLOYED release. Got %d", updatedStatus)
+	if updatedStatus := res.Info.Status; updatedStatus != release.StatusDeployed {
+		t.Errorf("Expected DEPLOYED release. Got %s", updatedStatus)
 	}
 
 	compareStoredAndReturnedRelease(t, *rs, res)
@@ -366,7 +366,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
-	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_DELETED {
+	if oldStatus := oldRelease.Info.Status; oldStatus != release.StatusDeleted {
 		t.Errorf("Expected Deleted status on previous Release version. Got %v", oldStatus)
 	}
 }

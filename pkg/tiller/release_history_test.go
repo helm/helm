@@ -25,11 +25,11 @@ import (
 )
 
 func TestGetHistory_WithRevisions(t *testing.T) {
-	mk := func(name string, vers int, code rpb.StatusCode) *rpb.Release {
+	mk := func(name string, vers int, status rpb.ReleaseStatus) *rpb.Release {
 		return &rpb.Release{
 			Name:    name,
 			Version: vers,
-			Info:    &rpb.Info{Status: &rpb.Status{Code: code}},
+			Info:    &rpb.Info{Status: status},
 		}
 	}
 
@@ -43,28 +43,28 @@ func TestGetHistory_WithRevisions(t *testing.T) {
 			desc: "get release with history and default limit (max=256)",
 			req:  &hapi.GetHistoryRequest{Name: "angry-bird", Max: 256},
 			res: []*rpb.Release{
-				mk("angry-bird", 4, rpb.Status_DEPLOYED),
-				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
-				mk("angry-bird", 2, rpb.Status_SUPERSEDED),
-				mk("angry-bird", 1, rpb.Status_SUPERSEDED),
+				mk("angry-bird", 4, rpb.StatusDeployed),
+				mk("angry-bird", 3, rpb.StatusSuperseded),
+				mk("angry-bird", 2, rpb.StatusSuperseded),
+				mk("angry-bird", 1, rpb.StatusSuperseded),
 			},
 		},
 		{
 			desc: "get release with history using result limit (max=2)",
 			req:  &hapi.GetHistoryRequest{Name: "angry-bird", Max: 2},
 			res: []*rpb.Release{
-				mk("angry-bird", 4, rpb.Status_DEPLOYED),
-				mk("angry-bird", 3, rpb.Status_SUPERSEDED),
+				mk("angry-bird", 4, rpb.StatusDeployed),
+				mk("angry-bird", 3, rpb.StatusSuperseded),
 			},
 		},
 	}
 
 	// test release history for release 'angry-bird'
 	hist := []*rpb.Release{
-		mk("angry-bird", 4, rpb.Status_DEPLOYED),
-		mk("angry-bird", 3, rpb.Status_SUPERSEDED),
-		mk("angry-bird", 2, rpb.Status_SUPERSEDED),
-		mk("angry-bird", 1, rpb.Status_SUPERSEDED),
+		mk("angry-bird", 4, rpb.StatusDeployed),
+		mk("angry-bird", 3, rpb.StatusSuperseded),
+		mk("angry-bird", 2, rpb.StatusSuperseded),
+		mk("angry-bird", 1, rpb.StatusSuperseded),
 	}
 
 	srv := rsFixture()
@@ -98,7 +98,7 @@ func TestGetHistory_WithNoRevisions(t *testing.T) {
 	}
 
 	// create release 'sad-panda' with no revision history
-	rls := namedReleaseStub("sad-panda", rpb.Status_DEPLOYED)
+	rls := namedReleaseStub("sad-panda", rpb.StatusDeployed)
 	srv := rsFixture()
 	srv.Releases.Create(rls)
 

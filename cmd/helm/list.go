@@ -102,7 +102,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.StringVarP(&list.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
-	f.BoolVarP(&list.all, "all", "a", false, "show all releases, not just the ones marked DEPLOYED")
+	f.BoolVarP(&list.all, "all", "a", false, "show all releases, not just the ones marked deployed")
 	f.BoolVar(&list.deleted, "deleted", false, "show deleted releases")
 	f.BoolVar(&list.deleting, "deleting", false, "show releases that are currently being deleted")
 	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
@@ -115,14 +115,14 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (l *listCmd) run() error {
-	sortBy := hapi.ListSort_NAME
+	sortBy := hapi.ListSortName
 	if l.byDate {
-		sortBy = hapi.ListSort_LAST_RELEASED
+		sortBy = hapi.ListSortLastReleased
 	}
 
-	sortOrder := hapi.ListSort_ASC
+	sortOrder := hapi.ListSortAsc
 	if l.sortDesc {
-		sortOrder = hapi.ListSort_DESC
+		sortOrder = hapi.ListSortDesc
 	}
 
 	stats := l.statusCodes()
@@ -131,8 +131,8 @@ func (l *listCmd) run() error {
 		helm.ReleaseListLimit(l.limit),
 		helm.ReleaseListOffset(l.offset),
 		helm.ReleaseListFilter(l.filter),
-		helm.ReleaseListSort(int(sortBy)),
-		helm.ReleaseListOrder(int(sortOrder)),
+		helm.ReleaseListSort(sortBy),
+		helm.ReleaseListOrder(sortOrder),
 		helm.ReleaseListStatuses(stats),
 	)
 
@@ -181,42 +181,42 @@ func filterList(rels []*release.Release) []*release.Release {
 }
 
 // statusCodes gets the list of status codes that are to be included in the results.
-func (l *listCmd) statusCodes() []release.StatusCode {
+func (l *listCmd) statusCodes() []release.ReleaseStatus {
 	if l.all {
-		return []release.StatusCode{
-			release.Status_UNKNOWN,
-			release.Status_DEPLOYED,
-			release.Status_DELETED,
-			release.Status_DELETING,
-			release.Status_FAILED,
-			release.Status_PENDING_INSTALL,
-			release.Status_PENDING_UPGRADE,
-			release.Status_PENDING_ROLLBACK,
+		return []release.ReleaseStatus{
+			release.StatusUnknown,
+			release.StatusDeployed,
+			release.StatusDeleted,
+			release.StatusDeleting,
+			release.StatusFailed,
+			release.StatusPendingInstall,
+			release.StatusPendingUpgrade,
+			release.StatusPendingRollback,
 		}
 	}
-	status := []release.StatusCode{}
+	status := []release.ReleaseStatus{}
 	if l.deployed {
-		status = append(status, release.Status_DEPLOYED)
+		status = append(status, release.StatusDeployed)
 	}
 	if l.deleted {
-		status = append(status, release.Status_DELETED)
+		status = append(status, release.StatusDeleted)
 	}
 	if l.deleting {
-		status = append(status, release.Status_DELETING)
+		status = append(status, release.StatusDeleting)
 	}
 	if l.failed {
-		status = append(status, release.Status_FAILED)
+		status = append(status, release.StatusFailed)
 	}
 	if l.superseded {
-		status = append(status, release.Status_SUPERSEDED)
+		status = append(status, release.StatusSuperseded)
 	}
 	if l.pending {
-		status = append(status, release.Status_PENDING_INSTALL, release.Status_PENDING_UPGRADE, release.Status_PENDING_ROLLBACK)
+		status = append(status, release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback)
 	}
 
 	// Default case.
 	if len(status) == 0 {
-		status = append(status, release.Status_DEPLOYED, release.Status_FAILED)
+		status = append(status, release.StatusDeployed, release.StatusFailed)
 	}
 	return status
 }
@@ -233,7 +233,7 @@ func formatList(rels []*release.Release, colWidth uint) string {
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
 			t = tspb.String()
 		}
-		s := r.Info.Status.Code.String()
+		s := r.Info.Status.String()
 		v := r.Version
 		n := r.Namespace
 		table.AddRow(r.Name, v, t, s, c, n)

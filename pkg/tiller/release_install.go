@@ -94,7 +94,7 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 			Info: &release.Info{
 				FirstDeployed: ts,
 				LastDeployed:  ts,
-				Status:        &release.Status{Code: release.Status_UNKNOWN},
+				Status:        release.StatusUnknown,
 				Description:   fmt.Sprintf("Install failed: %s", err),
 			},
 			Version: 0,
@@ -114,7 +114,7 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 		Info: &release.Info{
 			FirstDeployed: ts,
 			LastDeployed:  ts,
-			Status:        &release.Status{Code: release.Status_PENDING_INSTALL},
+			Status:        release.StatusPendingInstall,
 			Description:   "Initial install underway", // Will be overwritten.
 		},
 		Manifest: manifestDoc.String(),
@@ -122,7 +122,7 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 		Version:  revision,
 	}
 	if len(notesTxt) > 0 {
-		rel.Info.Status.Notes = notesTxt
+		rel.Info.Notes = notesTxt
 	}
 
 	err = validateManifest(s.KubeClient, req.Namespace, manifestDoc.Bytes())
@@ -158,7 +158,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 		old := h[0]
 
 		// update old release status
-		old.Info.Status.Code = release.Status_SUPERSEDED
+		old.Info.Status = release.StatusSuperseded
 		s.recordRelease(old, true)
 
 		// update new release with next revision number
@@ -173,8 +173,8 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 		if err := s.updateRelease(old, r, updateReq); err != nil {
 			msg := fmt.Sprintf("Release replace %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
-			old.Info.Status.Code = release.Status_SUPERSEDED
-			r.Info.Status.Code = release.Status_FAILED
+			old.Info.Status = release.StatusSuperseded
+			r.Info.Status = release.StatusFailed
 			r.Info.Description = msg
 			s.recordRelease(old, true)
 			s.recordRelease(r, true)
@@ -189,7 +189,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 		if err := s.KubeClient.Create(r.Namespace, b, req.Timeout, req.Wait); err != nil {
 			msg := fmt.Sprintf("Release %q failed: %s", r.Name, err)
 			s.Log("warning: %s", msg)
-			r.Info.Status.Code = release.Status_FAILED
+			r.Info.Status = release.StatusFailed
 			r.Info.Description = msg
 			s.recordRelease(r, true)
 			return r, fmt.Errorf("release %s failed: %s", r.Name, err)
@@ -201,14 +201,14 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PostInstall, req.Timeout); err != nil {
 			msg := fmt.Sprintf("Release %q failed post-install: %s", r.Name, err)
 			s.Log("warning: %s", msg)
-			r.Info.Status.Code = release.Status_FAILED
+			r.Info.Status = release.StatusFailed
 			r.Info.Description = msg
 			s.recordRelease(r, true)
 			return r, err
 		}
 	}
 
-	r.Info.Status.Code = release.Status_DEPLOYED
+	r.Info.Status = release.StatusDeployed
 	r.Info.Description = "Install complete"
 	// This is a tricky case. The release has been created, but the result
 	// cannot be recorded. The truest thing to tell the user is that the

@@ -40,7 +40,7 @@ func TestSortManifests(t *testing.T) {
 			name:  []string{"first"},
 			path:  "one",
 			kind:  []string{"Job"},
-			hooks: map[string][]release.HookEvent{"first": {release.Hook_PRE_INSTALL}},
+			hooks: map[string][]release.HookEvent{"first": {release.HookPreInstall}},
 			manifest: `apiVersion: v1
 kind: Job
 metadata:
@@ -55,7 +55,7 @@ metadata:
 			name:  []string{"second"},
 			path:  "two",
 			kind:  []string{"ReplicaSet"},
-			hooks: map[string][]release.HookEvent{"second": {release.Hook_POST_INSTALL}},
+			hooks: map[string][]release.HookEvent{"second": {release.HookPostInstall}},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -90,7 +90,7 @@ metadata:
 			name:  []string{"fifth"},
 			path:  "five",
 			kind:  []string{"ReplicaSet"},
-			hooks: map[string][]release.HookEvent{"fifth": {release.Hook_POST_DELETE, release.Hook_POST_INSTALL}},
+			hooks: map[string][]release.HookEvent{"fifth": {release.HookPostDelete, release.HookPostInstall}},
 			manifest: `kind: ReplicaSet
 apiVersion: v1beta1
 metadata:
@@ -117,7 +117,7 @@ metadata:
 			name:  []string{"eighth", "example-test"},
 			path:  "eight",
 			kind:  []string{"ConfigMap", "Pod"},
-			hooks: map[string][]release.HookEvent{"eighth": nil, "example-test": {release.Hook_RELEASE_TEST_SUCCESS}},
+			hooks: map[string][]release.HookEvent{"eighth": nil, "example-test": {release.HookReleaseTestSuccess}},
 			manifest: `kind: ConfigMap
 apiVersion: v1
 metadata:

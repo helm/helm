@@ -29,42 +29,42 @@ func TestStatusCmd(t *testing.T) {
 		{
 			name:    "get status of a deployed release",
 			cmd:     "status flummoxed-chickadee",
-			matches: outputWithStatus("DEPLOYED"),
+			matches: outputWithStatus("deployed"),
 			rels: []*release.Release{
-				releaseMockWithStatus(&release.Status{
-					Code: release.Status_DEPLOYED,
+				releaseMockWithStatus(&release.Info{
+					Status: release.StatusDeployed,
 				}),
 			},
 		},
 		{
 			name:    "get status of a deployed release with notes",
 			cmd:     "status flummoxed-chickadee",
-			matches: outputWithStatus("DEPLOYED\n\nNOTES:\nrelease notes\n"),
+			matches: outputWithStatus("deployed\n\nNOTES:\nrelease notes\n"),
 			rels: []*release.Release{
-				releaseMockWithStatus(&release.Status{
-					Code:  release.Status_DEPLOYED,
-					Notes: "release notes",
+				releaseMockWithStatus(&release.Info{
+					Status: release.StatusDeployed,
+					Notes:  "release notes",
 				}),
 			},
 		},
 		{
 			name:    "get status of a deployed release with notes in json",
 			cmd:     "status flummoxed-chickadee -o json",
-			matches: `{"name":"flummoxed-chickadee","info":{"status":{"code":1,"notes":"release notes"},"first_deployed":(.*),"last_deployed":(.*)}}`,
+			matches: `{"name":"flummoxed-chickadee","info":{"first_deployed":(.*),"last_deployed":(.*),"deleted":(.*),"status":"deployed","notes":"release notes"}}`,
 			rels: []*release.Release{
-				releaseMockWithStatus(&release.Status{
-					Code:  release.Status_DEPLOYED,
-					Notes: "release notes",
+				releaseMockWithStatus(&release.Info{
+					Status: release.StatusDeployed,
+					Notes:  "release notes",
 				}),
 			},
 		},
 		{
 			name:    "get status of a deployed release with resources",
 			cmd:     "status flummoxed-chickadee",
-			matches: outputWithStatus("DEPLOYED\n\nRESOURCES:\nresource A\nresource B\n\n"),
+			matches: outputWithStatus("deployed\n\nRESOURCES:\nresource A\nresource B\n\n"),
 			rels: []*release.Release{
-				releaseMockWithStatus(&release.Status{
-					Code:      release.Status_DEPLOYED,
+				releaseMockWithStatus(&release.Info{
+					Status:    release.StatusDeployed,
 					Resources: "resource A\nresource B\n",
 				}),
 			},
@@ -72,10 +72,10 @@ func TestStatusCmd(t *testing.T) {
 		{
 			name:    "get status of a deployed release with resources in YAML",
 			cmd:     "status flummoxed-chickadee -o yaml",
-			matches: "info:\n (.*)first_deployed:\n (.*)seconds: 242085845\n (.*)last_deployed:\n (.*)seconds: 242085845\n (.*)status:\n code: 1\n (.*)resources: |\n (.*)resource A\n (.*)resource B\nname: flummoxed-chickadee\n",
+			matches: `info:\n  deleted: .*\n  first_deployed: .*\n  last_deployed: .*\n  resources: |\n    resource A\n    resource B\n  status: deployed\nname: flummoxed-chickadee\n`,
 			rels: []*release.Release{
-				releaseMockWithStatus(&release.Status{
-					Code:      release.Status_DEPLOYED,
+				releaseMockWithStatus(&release.Info{
+					Status:    release.StatusDeployed,
 					Resources: "resource A\nresource B\n",
 				}),
 			},
@@ -84,27 +84,27 @@ func TestStatusCmd(t *testing.T) {
 			name: "get status of a deployed release with test suite",
 			cmd:  "status flummoxed-chickadee",
 			matches: outputWithStatus(
-				"DEPLOYED\n\nTEST SUITE:\nLast Started: (.*)\nLast Completed: (.*)\n\n" +
+				"deployed\n\nTEST SUITE:\nLast Started: (.*)\nLast Completed: (.*)\n\n" +
 					"TEST      \tSTATUS (.*)\tINFO (.*)\tSTARTED (.*)\tCOMPLETED (.*)\n" +
-					"test run 1\tSUCCESS (.*)\textra info\t(.*)\t(.*)\n" +
-					"test run 2\tFAILURE (.*)\t (.*)\t(.*)\t(.*)\n"),
+					"test run 1\tsuccess (.*)\textra info\t(.*)\t(.*)\n" +
+					"test run 2\tfailure (.*)\t (.*)\t(.*)\t(.*)\n"),
 			rels: []*release.Release{
-				releaseMockWithStatus(&release.Status{
-					Code: release.Status_DEPLOYED,
+				releaseMockWithStatus(&release.Info{
+					Status: release.StatusDeployed,
 					LastTestSuiteRun: &release.TestSuite{
 						StartedAt:   time.Now(),
 						CompletedAt: time.Now(),
 						Results: []*release.TestRun{
 							{
 								Name:        "test run 1",
-								Status:      release.TestRun_SUCCESS,
+								Status:      release.TestRunSuccess,
 								Info:        "extra info",
 								StartedAt:   time.Now(),
 								CompletedAt: time.Now(),
 							},
 							{
 								Name:        "test run 2",
-								Status:      release.TestRun_FAILURE,
+								Status:      release.TestRunFailure,
 								StartedAt:   time.Now(),
 								CompletedAt: time.Now(),
 							},
@@ -121,13 +121,11 @@ func outputWithStatus(status string) string {
 	return fmt.Sprintf(`LAST DEPLOYED:(.*)\nNAMESPACE: \nSTATUS: %s`, status)
 }
 
-func releaseMockWithStatus(status *release.Status) *release.Release {
+func releaseMockWithStatus(info *release.Info) *release.Release {
+	info.FirstDeployed = time.Now()
+	info.LastDeployed = time.Now()
 	return &release.Release{
 		Name: "flummoxed-chickadee",
-		Info: &release.Info{
-			FirstDeployed: time.Now(),
-			LastDeployed:  time.Now(),
-			Status:        status,
-		},
+		Info: info,
 	}
 }

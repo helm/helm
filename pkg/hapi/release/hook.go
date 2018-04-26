@@ -17,53 +17,32 @@ package release
 
 import "time"
 
-type HookEvent int
+type HookEvent string
 
 const (
-	Hook_UNKNOWN HookEvent = iota
-	Hook_PRE_INSTALL
-	Hook_POST_INSTALL
-	Hook_PRE_DELETE
-	Hook_POST_DELETE
-	Hook_PRE_UPGRADE
-	Hook_POST_UPGRADE
-	Hook_PRE_ROLLBACK
-	Hook_POST_ROLLBACK
-	Hook_RELEASE_TEST_SUCCESS
-	Hook_RELEASE_TEST_FAILURE
+	HookPreInstall         HookEvent = "pre-install"
+	HookPostInstall        HookEvent = "post-install"
+	HookPreDelete          HookEvent = "pre-delete"
+	HookPostDelete         HookEvent = "post-delete"
+	HookPreUpgrade         HookEvent = "pre-upgrade"
+	HookPostUpgrade        HookEvent = "post-upgrade"
+	HookPreRollback        HookEvent = "pre-rollback"
+	HookPostRollback       HookEvent = "post-rollback"
+	HookReleaseTestSuccess HookEvent = "release-test-success"
+	HookReleaseTestFailure HookEvent = "release-test-failure"
 )
 
-var eventNames = [...]string{
-	"UNKNOWN",
-	"PRE_INSTALL",
-	"POST_INSTALL",
-	"PRE_DELETE",
-	"POST_DELETE",
-	"PRE_UPGRADE",
-	"POST_UPGRADE",
-	"PRE_ROLLBACK",
-	"POST_ROLLBACK",
-	"RELEASE_TEST_SUCCESS",
-	"RELEASE_TEST_FAILURE",
-}
+func (x HookEvent) String() string { return string(x) }
 
-func (x HookEvent) String() string { return eventNames[x] }
-
-type HookDeletePolicy int
+type HookDeletePolicy string
 
 const (
-	Hook_SUCCEEDED HookDeletePolicy = iota
-	Hook_FAILED
-	Hook_BEFORE_HOOK_CREATION
+	HookSucceeded          HookDeletePolicy = "succeeded"
+	HookFailed             HookDeletePolicy = "failed"
+	HookBeforeHookCreation HookDeletePolicy = "before-hook-creation"
 )
 
-var deletePolicyNames = [...]string{
-	"SUCCEEDED",
-	"FAILED",
-	"BEFORE_HOOK_CREATION",
-}
-
-func (x HookDeletePolicy) String() string { return deletePolicyNames[x] }
+func (x HookDeletePolicy) String() string { return string(x) }
 
 // Hook defines a hook object.
 type Hook struct {

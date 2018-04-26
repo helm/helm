@@ -27,12 +27,12 @@ import (
 // ListReleases lists the releases found by the server.
 func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.Release, error) {
 	if len(req.StatusCodes) == 0 {
-		req.StatusCodes = []release.StatusCode{release.Status_DEPLOYED}
+		req.StatusCodes = []release.ReleaseStatus{release.StatusDeployed}
 	}
 
 	rels, err := s.Releases.ListFilterAll(func(r *release.Release) bool {
 		for _, sc := range req.StatusCodes {
-			if sc == r.Info.Status.Code {
+			if sc == r.Info.Status {
 				return true
 			}
 		}
@@ -50,13 +50,13 @@ func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.
 	}
 
 	switch req.SortBy {
-	case hapi.ListSort_NAME:
+	case hapi.ListSortName:
 		relutil.SortByName(rels)
-	case hapi.ListSort_LAST_RELEASED:
+	case hapi.ListSortLastReleased:
 		relutil.SortByDate(rels)
 	}
 
-	if req.SortOrder == hapi.ListSort_DESC {
+	if req.SortOrder == hapi.ListSortDesc {
 		ll := len(rels)
 		rr := make([]*release.Release, ll)
 		for i, item := range rels {

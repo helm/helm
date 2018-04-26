@@ -48,10 +48,10 @@ func TestListReleases(t *testing.T) {
 func TestListReleasesByStatus(t *testing.T) {
 	rs := rsFixture()
 	stubs := []*release.Release{
-		namedReleaseStub("kamal", release.Status_DEPLOYED),
-		namedReleaseStub("astrolabe", release.Status_DELETED),
-		namedReleaseStub("octant", release.Status_FAILED),
-		namedReleaseStub("sextant", release.Status_UNKNOWN),
+		namedReleaseStub("kamal", release.StatusDeployed),
+		namedReleaseStub("astrolabe", release.StatusDeleted),
+		namedReleaseStub("octant", release.StatusFailed),
+		namedReleaseStub("sextant", release.StatusUnknown),
 	}
 	for _, stub := range stubs {
 		if err := rs.Releases.Create(stub); err != nil {
@@ -60,28 +60,28 @@ func TestListReleasesByStatus(t *testing.T) {
 	}
 
 	tests := []struct {
-		statusCodes []release.StatusCode
+		statusCodes []release.ReleaseStatus
 		names       []string
 	}{
 		{
 			names:       []string{"kamal"},
-			statusCodes: []release.StatusCode{release.Status_DEPLOYED},
+			statusCodes: []release.ReleaseStatus{release.StatusDeployed},
 		},
 		{
 			names:       []string{"astrolabe"},
-			statusCodes: []release.StatusCode{release.Status_DELETED},
+			statusCodes: []release.ReleaseStatus{release.StatusDeleted},
 		},
 		{
 			names:       []string{"kamal", "octant"},
-			statusCodes: []release.StatusCode{release.Status_DEPLOYED, release.Status_FAILED},
+			statusCodes: []release.ReleaseStatus{release.StatusDeployed, release.StatusFailed},
 		},
 		{
 			names: []string{"kamal", "astrolabe", "octant", "sextant"},
-			statusCodes: []release.StatusCode{
-				release.Status_DEPLOYED,
-				release.Status_DELETED,
-				release.Status_FAILED,
-				release.Status_UNKNOWN,
+			statusCodes: []release.ReleaseStatus{
+				release.StatusDeployed,
+				release.StatusDeleted,
+				release.StatusFailed,
+				release.StatusUnknown,
 			},
 		},
 	}
@@ -128,7 +128,7 @@ func TestListReleasesSort(t *testing.T) {
 	req := &hapi.ListReleasesRequest{
 		Offset: "",
 		Limit:  int64(limit),
-		SortBy: hapi.ListSort_NAME,
+		SortBy: hapi.ListSortName,
 	}
 	rels, err := rs.ListReleases(req)
 	if err != nil {
@@ -171,7 +171,7 @@ func TestListReleasesFilter(t *testing.T) {
 		Offset: "",
 		Limit:  64,
 		Filter: "neuro[a-z]+",
-		SortBy: hapi.ListSort_NAME,
+		SortBy: hapi.ListSortName,
 	}
 	rels, err := rs.ListReleases(req)
 	if err != nil {

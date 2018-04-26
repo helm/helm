@@ -26,15 +26,15 @@ import (
 // note: this test data is shared with filter_test.go.
 
 var releases = []*rspb.Release{
-	tsRelease("quiet-bear", 2, 2000, rspb.Status_SUPERSEDED),
-	tsRelease("angry-bird", 4, 3000, rspb.Status_DEPLOYED),
-	tsRelease("happy-cats", 1, 4000, rspb.Status_DELETED),
-	tsRelease("vocal-dogs", 3, 6000, rspb.Status_DELETED),
+	tsRelease("quiet-bear", 2, 2000, rspb.StatusSuperseded),
+	tsRelease("angry-bird", 4, 3000, rspb.StatusDeployed),
+	tsRelease("happy-cats", 1, 4000, rspb.StatusDeleted),
+	tsRelease("vocal-dogs", 3, 6000, rspb.StatusDeleted),
 }
 
-func tsRelease(name string, vers int, dur time.Duration, code rspb.StatusCode) *rspb.Release {
+func tsRelease(name string, vers int, dur time.Duration, status rspb.ReleaseStatus) *rspb.Release {
 	tmsp := time.Now().Add(time.Duration(dur))
-	info := &rspb.Info{Status: &rspb.Status{Code: code}, LastDeployed: tmsp}
+	info := &rspb.Info{Status: status, LastDeployed: tmsp}
 	return &rspb.Release{
 		Name:    name,
 		Version: vers,

@@ -51,7 +51,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
-	if rel.Info.Status.Code == release.Status_DELETED {
+	if rel.Info.Status == release.StatusDeleted {
 		if req.Purge {
 			if err := s.purgeReleases(rels...); err != nil {
 				s.Log("uninstall: Failed to purge the release: %s", err)
@@ -63,7 +63,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 	}
 
 	s.Log("uninstall: Deleting %s", req.Name)
-	rel.Info.Status.Code = release.Status_DELETING
+	rel.Info.Status = release.StatusDeleting
 	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &hapi.UninstallReleaseResponse{Release: rel}
@@ -76,7 +76,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 		s.Log("delete hooks disabled for %s", req.Name)
 	}
 
-	// From here on out, the release is currently considered to be in Status_DELETING
+	// From here on out, the release is currently considered to be in StatusDeleting
 	// state.
 	if err := s.Releases.Update(rel); err != nil {
 		s.Log("uninstall: Failed to store updated release: %s", err)
@@ -91,7 +91,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 		}
 	}
 
-	rel.Info.Status.Code = release.Status_DELETED
+	rel.Info.Status = release.StatusDeleted
 	rel.Info.Description = "Deletion complete"
 
 	if req.Purge {

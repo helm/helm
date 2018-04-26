@@ -94,10 +94,8 @@ func (s *ReleaseServer) prepareRollback(req *hapi.RollbackReleaseRequest) (*rele
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  time.Now(),
-			Status: &release.Status{
-				Code:  release.Status_PENDING_ROLLBACK,
-				Notes: previousRelease.Info.Status.Notes,
-			},
+			Status:        release.StatusPendingRollback,
+			Notes:         previousRelease.Info.Notes,
 			// Because we lose the reference to previous version elsewhere, we set the
 			// message here, and only override it later if we experience failure.
 			Description: fmt.Sprintf("Rollback to %d", previousVersion),
@@ -131,8 +129,8 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	if err := s.KubeClient.Update(targetRelease.Namespace, c, t, req.Force, req.Recreate, req.Timeout, req.Wait); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		s.Log("warning: %s", msg)
-		currentRelease.Info.Status.Code = release.Status_SUPERSEDED
-		targetRelease.Info.Status.Code = release.Status_FAILED
+		currentRelease.Info.Status = release.StatusSuperseded
+		targetRelease.Info.Status = release.StatusFailed
 		targetRelease.Info.Description = msg
 		s.recordRelease(currentRelease, true)
 		s.recordRelease(targetRelease, true)
@@ -153,11 +151,11 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 	// Supersede all previous deployments, see issue #2941.
 	for _, r := range deployed {
 		s.Log("superseding previous deployment %d", r.Version)
-		r.Info.Status.Code = release.Status_SUPERSEDED
+		r.Info.Status = release.StatusSuperseded
 		s.recordRelease(r, true)
 	}
 
-	targetRelease.Info.Status.Code = release.Status_DEPLOYED
+	targetRelease.Info.Status = release.StatusDeployed
 
 	return targetRelease, nil
 }

@@ -24,8 +24,8 @@ import (
 
 func TestRecordsAdd(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.Status_SUPERSEDED)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.Status_DEPLOYED)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
 	})
 
 	var tests = []struct {
@@ -38,13 +38,13 @@ func TestRecordsAdd(t *testing.T) {
 			"add valid key",
 			"rls-a.v3",
 			false,
-			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", rspb.Status_SUPERSEDED)),
+			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", rspb.StatusSuperseded)),
 		},
 		{
 			"add already existing key",
 			"rls-a.v1",
 			true,
-			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.Status_DEPLOYED)),
+			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusDeployed)),
 		},
 	}
 
@@ -69,8 +69,8 @@ func TestRecordsRemove(t *testing.T) {
 	}
 
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.Status_SUPERSEDED)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.Status_DEPLOYED)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
 	})
 
 	startLen := rs.Len()
@@ -97,8 +97,8 @@ func TestRecordsRemove(t *testing.T) {
 
 func TestRecordsRemoveAt(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.Status_SUPERSEDED)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.Status_DEPLOYED)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
 	})
 
 	if len(rs) != 2 {

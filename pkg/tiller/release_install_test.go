@@ -54,10 +54,10 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
 	}
 
-	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {
+	if rel.Hooks[0].Events[0] != release.HookPostInstall {
 		t.Errorf("Expected event 0 is post install")
 	}
-	if rel.Hooks[0].Events[1] != release.Hook_PRE_DELETE {
+	if rel.Hooks[0].Events[1] != release.HookPreDelete {
 		t.Errorf("Expected event 0 is pre-delete")
 	}
 
@@ -109,14 +109,14 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 		t.Errorf("Unexpected manifest: %v", rel.Hooks[0].Manifest)
 	}
 
-	if rel.Info.Status.Notes != notesText {
-		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
+	if rel.Info.Notes != notesText {
+		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Notes)
 	}
 
-	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {
+	if rel.Hooks[0].Events[0] != release.HookPostInstall {
 		t.Errorf("Expected event 0 is post install")
 	}
-	if rel.Hooks[0].Events[1] != release.Hook_PRE_DELETE {
+	if rel.Hooks[0].Events[1] != release.HookPreDelete {
 		t.Errorf("Expected event 0 is pre-delete")
 	}
 
@@ -169,14 +169,14 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	}
 
 	expectedNotes := fmt.Sprintf("%s %s", notesText, res.Name)
-	if rel.Info.Status.Notes != expectedNotes {
-		t.Fatalf("Expected '%s', got '%s'", expectedNotes, rel.Info.Status.Notes)
+	if rel.Info.Notes != expectedNotes {
+		t.Fatalf("Expected '%s', got '%s'", expectedNotes, rel.Info.Notes)
 	}
 
-	if rel.Hooks[0].Events[0] != release.Hook_POST_INSTALL {
+	if rel.Hooks[0].Events[0] != release.HookPostInstall {
 		t.Errorf("Expected event 0 is post install")
 	}
-	if rel.Hooks[0].Events[1] != release.Hook_PRE_DELETE {
+	if rel.Hooks[0].Events[1] != release.HookPreDelete {
 		t.Errorf("Expected event 0 is pre-delete")
 	}
 
@@ -219,8 +219,8 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 
 	t.Logf("rel: %v", rel)
 
-	if rel.Info.Status.Notes != notesText {
-		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
+	if rel.Info.Notes != notesText {
+		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Notes)
 	}
 
 	if rel.Info.Description != "Install complete" {
@@ -305,15 +305,16 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 		t.Error("Expected failed install")
 	}
 
-	if hl := res.Info.Status.Code; hl != release.Status_FAILED {
-		t.Errorf("Expected FAILED release. Got %d", hl)
+	if hl := res.Info.Status; hl != release.StatusFailed {
+		t.Errorf("Expected FAILED release. Got %s", hl)
 	}
 }
 
 func TestInstallRelease_ReuseName(t *testing.T) {
 	rs := rsFixture()
+	rs.Log = t.Logf
 	rel := releaseStub()
-	rel.Info.Status.Code = release.Status_DELETED
+	rel.Info.Status = release.StatusDeleted
 	rs.Releases.Create(rel)
 
 	req := installRequest(
@@ -334,8 +335,8 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to retrieve release: %s", err)
 	}
-	if getres.Info.Status.Code != release.Status_DEPLOYED {
-		t.Errorf("Release status is %q", getres.Info.Status.Code)
+	if getres.Info.Status != release.StatusDeployed {
+		t.Errorf("Release status is %q", getres.Info.Status)
 	}
 }
 

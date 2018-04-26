@@ -58,7 +58,7 @@ func (ts *TestSuite) Run(env *Environment) error {
 
 	if len(ts.TestManifests) == 0 {
 		// TODO: make this better, adding test run status on test suite is weird
-		env.streamMessage("No Tests Found", release.TestRun_UNKNOWN)
+		env.streamMessage("No Tests Found", release.TestRunUnknown)
 	}
 
 	for _, testManifest := range ts.TestManifests {
@@ -71,7 +71,7 @@ func (ts *TestSuite) Run(env *Environment) error {
 		if err := env.streamRunning(test.result.Name); err != nil {
 			return err
 		}
-		test.result.Status = release.TestRun_RUNNING
+		test.result.Status = release.TestRunRunning
 
 		resourceCreated := true
 		if err := env.createTestPod(test); err != nil {
@@ -115,18 +115,18 @@ func (t *test) assignTestResult(podStatus core.PodPhase) error {
 	switch podStatus {
 	case core.PodSucceeded:
 		if t.expectedSuccess {
-			t.result.Status = release.TestRun_SUCCESS
+			t.result.Status = release.TestRunSuccess
 		} else {
-			t.result.Status = release.TestRun_FAILURE
+			t.result.Status = release.TestRunFailure
 		}
 	case core.PodFailed:
 		if !t.expectedSuccess {
-			t.result.Status = release.TestRun_SUCCESS
+			t.result.Status = release.TestRunSuccess
 		} else {
-			t.result.Status = release.TestRun_FAILURE
+			t.result.Status = release.TestRunFailure
 		}
 	default:
-		t.result.Status = release.TestRun_UNKNOWN
+		t.result.Status = release.TestRunUnknown
 	}
 
 	return nil

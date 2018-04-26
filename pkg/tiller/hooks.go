@@ -32,23 +32,23 @@ import (
 )
 
 var events = map[string]release.HookEvent{
-	hooks.PreInstall:         release.Hook_PRE_INSTALL,
-	hooks.PostInstall:        release.Hook_POST_INSTALL,
-	hooks.PreDelete:          release.Hook_PRE_DELETE,
-	hooks.PostDelete:         release.Hook_POST_DELETE,
-	hooks.PreUpgrade:         release.Hook_PRE_UPGRADE,
-	hooks.PostUpgrade:        release.Hook_POST_UPGRADE,
-	hooks.PreRollback:        release.Hook_PRE_ROLLBACK,
-	hooks.PostRollback:       release.Hook_POST_ROLLBACK,
-	hooks.ReleaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
-	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
+	hooks.PreInstall:         release.HookPreInstall,
+	hooks.PostInstall:        release.HookPostInstall,
+	hooks.PreDelete:          release.HookPreDelete,
+	hooks.PostDelete:         release.HookPostDelete,
+	hooks.PreUpgrade:         release.HookPreUpgrade,
+	hooks.PostUpgrade:        release.HookPostUpgrade,
+	hooks.PreRollback:        release.HookPreRollback,
+	hooks.PostRollback:       release.HookPostRollback,
+	hooks.ReleaseTestSuccess: release.HookReleaseTestSuccess,
+	hooks.ReleaseTestFailure: release.HookReleaseTestFailure,
 }
 
 // deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
 var deletePolices = map[string]release.HookDeletePolicy{
-	hooks.HookSucceeded:      release.Hook_SUCCEEDED,
-	hooks.HookFailed:         release.Hook_FAILED,
-	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
+	hooks.HookSucceeded:      release.HookSucceeded,
+	hooks.HookFailed:         release.HookFailed,
+	hooks.BeforeHookCreation: release.HookBeforeHookCreation,
 }
 
 // Manifest represents a manifest file, which has a name and some content.

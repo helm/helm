@@ -58,7 +58,7 @@ func (s *ReleaseServer) RunReleaseTest(req *hapi.TestReleaseRequest) (<-chan *ha
 			return
 		}
 
-		rel.Info.Status.LastTestSuiteRun = &release.TestSuite{
+		rel.Info.LastTestSuiteRun = &release.TestSuite{
 			StartedAt:   tSuite.StartedAt,
 			CompletedAt: tSuite.CompletedAt,
 			Results:     tSuite.Results,

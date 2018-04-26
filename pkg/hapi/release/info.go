@@ -19,11 +19,18 @@ import "time"
 
 // Info describes release information.
 type Info struct {
-	Status        *Status   `json:"status,omitempty"`
 	FirstDeployed time.Time `json:"first_deployed,omitempty"`
 	LastDeployed  time.Time `json:"last_deployed,omitempty"`
 	// Deleted tracks when this object was deleted.
 	Deleted time.Time `json:"deleted,omitempty"`
 	// Description is human-friendly "log entry" about this release.
 	Description string `json:"Description,omitempty"`
+	// Status is the current state of the release
+	Status ReleaseStatus `json:"status,omitempty"`
+	// Cluster resources as kubectl would print them.
+	Resources string `json:"resources,omitempty"`
+	// Contains the rendered templates/NOTES.txt if available
+	Notes string `json:"notes,omitempty"`
+	// LastTestSuiteRun provides results on the last test run on a release
+	LastTestSuiteRun *TestSuite `json:"last_test_suite_run,omitempty"`
 }

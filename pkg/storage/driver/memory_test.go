@@ -38,12 +38,12 @@ func TestMemoryCreate(t *testing.T) {
 	}{
 		{
 			"create should success",
-			releaseStub("rls-c", 1, "default", rspb.Status_DEPLOYED),
+			releaseStub("rls-c", 1, "default", rspb.StatusDeployed),
 			false,
 		},
 		{
 			"create should fail (release already exists)",
-			releaseStub("rls-a", 1, "default", rspb.Status_DEPLOYED),
+			releaseStub("rls-a", 1, "default", rspb.StatusDeployed),
 			true,
 		},
 	}
@@ -90,7 +90,7 @@ func TestMemoryQuery(t *testing.T) {
 		{
 			"should be 2 query results",
 			2,
-			map[string]string{"STATUS": "DEPLOYED"},
+			map[string]string{"status": "deployed"},
 		},
 	}
 
@@ -117,13 +117,13 @@ func TestMemoryUpdate(t *testing.T) {
 		{
 			"update release status",
 			"rls-a.v4",
-			releaseStub("rls-a", 4, "default", rspb.Status_SUPERSEDED),
+			releaseStub("rls-a", 4, "default", rspb.StatusSuperseded),
 			false,
 		},
 		{
 			"update release does not exist",
 			"rls-z.v1",
-			releaseStub("rls-z", 1, "default", rspb.Status_DELETED),
+			releaseStub("rls-z", 1, "default", rspb.StatusDeleted),
 			true,
 		},
 	}
@@ -159,7 +159,7 @@ func TestMemoryDelete(t *testing.T) {
 	}
 
 	ts := tsFixtureMemory(t)
-	start, err := ts.Query(map[string]string{"NAME": "rls-a"})
+	start, err := ts.Query(map[string]string{"name": "rls-a"})
 	if err != nil {
 		t.Errorf("Query failed: %s", err)
 	}
@@ -180,7 +180,7 @@ func TestMemoryDelete(t *testing.T) {
 	}
 
 	// Make sure that the deleted records are gone.
-	end, err := ts.Query(map[string]string{"NAME": "rls-a"})
+	end, err := ts.Query(map[string]string{"name": "rls-a"})
 	if err != nil {
 		t.Errorf("Query failed: %s", err)
 	}
