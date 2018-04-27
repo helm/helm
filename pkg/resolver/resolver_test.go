@@ -169,3 +169,58 @@ func TestHashReq(t *testing.T) {
 		t.Errorf("Expected %q !=  %q", expect, h)
 	}
 }
+
+func TestIsSubChart(t *testing.T) {
+	tests := []struct {
+		name      string
+		repo      string
+		chartPath string
+		res       bool
+	}{
+		{
+			name:      "direct subchart",
+			chartPath: "/foo",
+			repo:      "file://charts/bar",
+			res:       true,
+		},
+		{
+			name:      "direct subchart with a dot",
+			chartPath: "/foo",
+			repo:      "file://./charts/bar",
+			res:       true,
+		},
+		{
+			name:      "absolute subchart ",
+			chartPath: "/foo",
+			repo:      "file:///foo/charts/bar",
+			res:       true,
+		},
+		{
+			name:      "absolute not subchart ",
+			chartPath: "/foo",
+			repo:      "file:///bar/charts/bar",
+			res:       false,
+		},
+		{
+			name:      "relative not subchart ",
+			chartPath: "/foo",
+			repo:      "file:///./bar",
+			res:       false,
+		},
+		{
+			name:      "not file:// ",
+			chartPath: "/foo",
+			repo:      "XXX",
+			res:       false,
+		},
+	}
+	for _, tt := range tests {
+		result, err := IsLocalSubChart(tt.repo, tt.chartPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result != tt.res {
+			t.Errorf("Expected %v !=  %v", tt.res, result)
+		}
+	}
+}

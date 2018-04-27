@@ -17,6 +17,9 @@ package downloader
 
 import (
 	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -95,6 +98,7 @@ func TestFindChartURL(t *testing.T) {
 
 func TestGetRepoNames(t *testing.T) {
 	b := bytes.NewBuffer(nil)
+
 	m := &Manager{
 		Out:      b,
 		HelmHome: helmpath.Home("testdata/helmhome"),
@@ -178,6 +182,63 @@ func TestGetRepoNames(t *testing.T) {
 		eq := reflect.DeepEqual(l, tt.expect)
 		if !eq {
 			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
+		}
+	}
+}
+
+func TestDownloadAllSubChartsOnly(t *testing.T) {
+	b := bytes.NewBuffer(nil)
+
+	//create a chart dir
+	tmp, err := ioutil.TempDir("", "helm-chart")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	m := &Manager{
+		Out:       b,
+		HelmHome:  helmpath.Home("testdata/helmhome"),
+		ChartPath: tmp,
+	}
+	//create the /charts subdir
+	chartsFolder := filepath.Join(tmp, "charts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Mkdir(chartsFolder, 0755)
+
+	tests := []struct {
+		name   string
+		req    []*chartutil.Dependency
+		expect map[string]string
+		err    bool
+	}{
+		{
+			name: "sub char relative no dot",
+			req: []*chartutil.Dependency{
+				{Name: "foo", Repository: "file://charts/foo"},
+			},
+		},
+		{
+			name: "sub chart relative with dot",
+			req: []*chartutil.Dependency{
+				{Name: "foo", Repository: "file://./charts/foo"},
+			},
+		},
+		{
+			name: "sub chart absolute",
+			req: []*chartutil.Dependency{
+				{Name: "foo", Repository: "file://" + filepath.Join(chartsFolder, "foo")},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		//we only check the downloadAll does not return any error.
+		err := m.downloadAll(tt.req)
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 }

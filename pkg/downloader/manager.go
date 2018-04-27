@@ -216,42 +216,58 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	for _, dep := range deps {
+		var isSubChart bool
 		if strings.HasPrefix(dep.Repository, "file://") {
-			if m.Debug {
-				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
-			}
-			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
+			//check if file repo path does belong to the current chart "/charts" folder
+			isSubChart, err = resolver.IsLocalSubChart(dep.Repository, m.ChartPath)
 			if err != nil {
 				saveError = err
+			} //else everythig is fine.
+		}
+
+		//Only download or package dependencies that are not sub chart in the "/charts" folder
+		if !isSubChart {
+			if strings.HasPrefix(dep.Repository, "file://") {
+				if m.Debug {
+					fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
+				}
+				ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
+				if err != nil {
+					saveError = err
+					break
+				}
+				dep.Version = ver
+				continue
+			}
+
+			fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
+
+			// Any failure to resolve/download a chart should fail:
+			// https://github.com/kubernetes/helm/issues/1439
+			churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+			if err != nil {
+				saveError = fmt.Errorf("could not find %s: %s", churl, err)
 				break
 			}
-			dep.Version = ver
-			continue
-		}
 
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
+			dl := ChartDownloader{
+				Out:      m.Out,
+				Verify:   m.Verify,
+				Keyring:  m.Keyring,
+				HelmHome: m.HelmHome,
+				Getters:  m.Getters,
+				Username: username,
+				Password: password,
+			}
 
-		// Any failure to resolve/download a chart should fail:
-		// https://github.com/kubernetes/helm/issues/1439
-		churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
-		if err != nil {
-			saveError = fmt.Errorf("could not find %s: %s", churl, err)
-			break
-		}
-
-		dl := ChartDownloader{
-			Out:      m.Out,
-			Verify:   m.Verify,
-			Keyring:  m.Keyring,
-			HelmHome: m.HelmHome,
-			Getters:  m.Getters,
-			Username: username,
-			Password: password,
-		}
-
-		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
-			saveError = fmt.Errorf("could not download %s: %s", churl, err)
-			break
+			if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
+				saveError = fmt.Errorf("could not download %s: %s", churl, err)
+				break
+			}
+		} else {
+			if m.Debug {
+				fmt.Fprintf(m.Out, "did not package local chart %s: %s\n", dep.Name, dep.Repository)
+			}
 		}
 	}
 

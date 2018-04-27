@@ -128,8 +128,24 @@ func HashReq(req *chartutil.Requirements) (string, error) {
 }
 
 // GetLocalPath generates absolute local path when use
-// "file://" in repository of requirements
+// "file://" in repository of requirements and check if it exists
 func GetLocalPath(repo string, chartpath string) (string, error) {
+	localPath, err := GenerateLocalPath(repo, chartpath)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(localPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("directory %s not found", localPath)
+	} else if err != nil {
+		return "", err
+	}
+
+	return localPath, nil
+}
+
+// GenerateLocalPath generates absolute local path when use
+// "file://" in repository of requirements
+func GenerateLocalPath(repo string, chartpath string) (string, error) {
 	var depPath string
 	var err error
 	p := strings.TrimPrefix(repo, "file://")
@@ -143,11 +159,25 @@ func GetLocalPath(repo string, chartpath string) (string, error) {
 		depPath = filepath.Join(chartpath, p)
 	}
 
-	if _, err = os.Stat(depPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("directory %s not found", depPath)
-	} else if err != nil {
-		return "", err
-	}
-
 	return depPath, nil
+}
+
+//IsLocalSubChart checks if file repo path does belong to the chartpath "/charts" folder
+func IsLocalSubChart(repo string, chartpath string) (bool, error) {
+	if !strings.HasPrefix(repo, "file://") {
+		return false, nil
+	}
+	var isSubChart bool
+
+	destPath := filepath.Join(chartpath, "charts")
+	origPath, err := GenerateLocalPath(repo, chartpath)
+	if err != nil {
+		return false, err
+	}
+	relPath, err := filepath.Rel(destPath, origPath)
+	if err != nil {
+		return false, err
+	}
+	isSubChart = !strings.HasPrefix(relPath, ".")
+	return isSubChart, nil
 }
