@@ -104,7 +104,7 @@ func TestRun(t *testing.T) {
 	if result.Name != "finding-nemo" {
 		t.Errorf("Expected test name to be finding-nemo. Got: %v", result.Name)
 	}
-	if result.Status != release.TestRun_SUCCESS {
+	if result.Status != release.TestRunSuccess {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
 	}
 	result2 := ts.Results[1]
@@ -117,7 +117,7 @@ func TestRun(t *testing.T) {
 	if result2.Name != "gold-rush" {
 		t.Errorf("Expected test name to be gold-rush, Got: %v", result2.Name)
 	}
-	if result2.Status != release.TestRun_FAILURE {
+	if result2.Status != release.TestRunFailure {
 		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
 	}
 }
@@ -191,7 +191,7 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	if result.Name != "gold-rush" {
 		t.Errorf("Expected test name to be gold-rush, Got: %v", result.Name)
 	}
-	if result.Status != release.TestRun_SUCCESS {
+	if result.Status != release.TestRunSuccess {
 		t.Errorf("Expected test result to be successful, got: %v", result.Status)
 	}
 }
@@ -208,13 +208,13 @@ var hooksStub = []*release.Hook{
 	{
 		Manifest: manifestWithTestSuccessHook,
 		Events: []release.HookEvent{
-			release.Hook_RELEASE_TEST_SUCCESS,
+			release.HookReleaseTestSuccess,
 		},
 	},
 	{
 		Manifest: manifestWithInstallHooks,
 		Events: []release.HookEvent{
-			release.Hook_POST_INSTALL,
+			release.HookPostInstall,
 		},
 	},
 }

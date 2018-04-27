@@ -85,7 +85,7 @@ func (s *Storage) ListReleases() ([]*rspb.Release, error) {
 func (s *Storage) ListDeleted() ([]*rspb.Release, error) {
 	s.Log("listing deleted releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
-		return relutil.StatusFilter(rspb.Status_DELETED).Check(rls)
+		return relutil.StatusFilter(rspb.StatusDeleted).Check(rls)
 	})
 }
 
@@ -94,7 +94,7 @@ func (s *Storage) ListDeleted() ([]*rspb.Release, error) {
 func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 	s.Log("listing all deployed releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
-		return relutil.StatusFilter(rspb.Status_DEPLOYED).Check(rls)
+		return relutil.StatusFilter(rspb.StatusDeployed).Check(rls)
 	})
 }
 
@@ -142,9 +142,9 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 	s.Log("getting deployed releases from %q history", name)
 
 	ls, err := s.Driver.Query(map[string]string{
-		"NAME":   name,
-		"OWNER":  "TILLER",
-		"STATUS": "DEPLOYED",
+		"name":   name,
+		"owner":  "tiller",
+		"status": "deployed",
 	})
 	if err == nil {
 		return ls, nil
@@ -160,7 +160,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	s.Log("getting release history for %q", name)
 
-	return s.Driver.Query(map[string]string{"NAME": name, "OWNER": "TILLER"})
+	return s.Driver.Query(map[string]string{"name": name, "owner": "tiller"})
 }
 
 // removeLeastRecent removes items from history until the lengh number of releases

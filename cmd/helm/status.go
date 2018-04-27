@@ -38,7 +38,7 @@ This command shows the status of a named release.
 The status consists of:
 - last deployment time
 - k8s namespace in which the release lives
-- state of the release (can be: UNKNOWN, DEPLOYED, DELETED, SUPERSEDED, FAILED or DELETING)
+- state of the release (can be: unknown, deployed, deleted, superseded, failed or deleting)
 - list of resources that this release consists of, sorted by kind
 - details on last test suite run, if applicable
 - additional notes provided by the chart
@@ -114,25 +114,25 @@ func PrintStatus(out io.Writer, res *hapi.GetReleaseStatusResponse) {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", res.Info.LastDeployed)
 	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
-	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code.String())
+	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.String())
 	fmt.Fprintf(out, "\n")
-	if len(res.Info.Status.Resources) > 0 {
+	if len(res.Info.Resources) > 0 {
 		re := regexp.MustCompile("  +")
 
 		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
-		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Status.Resources, "\t"))
+		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Resources, "\t"))
 		w.Flush()
 	}
-	if res.Info.Status.LastTestSuiteRun != nil {
-		lastRun := res.Info.Status.LastTestSuiteRun
+	if res.Info.LastTestSuiteRun != nil {
+		lastRun := res.Info.LastTestSuiteRun
 		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
 			fmt.Sprintf("Last Started: %s", lastRun.StartedAt),
 			fmt.Sprintf("Last Completed: %s", lastRun.CompletedAt),
 			formatTestResults(lastRun.Results))
 	}
 
-	if len(res.Info.Status.Notes) > 0 {
-		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
+	if len(res.Info.Notes) > 0 {
+		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Notes)
 	}
 }
 

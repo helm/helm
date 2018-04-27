@@ -124,10 +124,10 @@ func newRecord(key string, rls *rspb.Release) *record {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("NAME", rls.Name)
-	lbs.set("OWNER", "TILLER")
-	lbs.set("STATUS", rls.Info.Status.Code.String())
-	lbs.set("VERSION", strconv.Itoa(rls.Version))
+	lbs.set("name", rls.Name)
+	lbs.set("owner", "tiller")
+	lbs.set("status", rls.Info.Status.String())
+	lbs.set("version", strconv.Itoa(rls.Version))
 
 	// return &record{key: key, lbs: lbs, rls: proto.Clone(rls).(*rspb.Release)}
 	return &record{key: key, lbs: lbs, rls: rls}

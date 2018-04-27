@@ -126,7 +126,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  ts,
-			Status:        &release.Status{Code: release.Status_PENDING_UPGRADE},
+			Status:        release.StatusPendingUpgrade,
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
 		Version:  revision,
@@ -135,7 +135,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	}
 
 	if len(notesTxt) > 0 {
-		updatedRelease.Info.Status.Notes = notesTxt
+		updatedRelease.Info.Notes = notesTxt
 	}
 	err = validateManifest(s.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
 	return currentRelease, updatedRelease, err
@@ -170,9 +170,9 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 		return newRelease, err
 	}
 
-	// From here on out, the release is considered to be in Status_DELETING or Status_DELETED
+	// From here on out, the release is considered to be in StatusDeleting or StatusDeleted
 	// state. There is no turning back.
-	oldRelease.Info.Status.Code = release.Status_DELETING
+	oldRelease.Info.Status = release.StatusDeleting
 	oldRelease.Info.Deleted = time.Now()
 	oldRelease.Info.Description = "Deletion in progress (or silently failed)"
 	s.recordRelease(oldRelease, true)
@@ -189,7 +189,7 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 	// delete manifests from the old release
 	_, errs := s.deleteRelease(oldRelease)
 
-	oldRelease.Info.Status.Code = release.Status_DELETED
+	oldRelease.Info.Status = release.StatusDeleted
 	oldRelease.Info.Description = "Deletion complete"
 	s.recordRelease(oldRelease, true)
 
@@ -217,7 +217,7 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 	if err := s.updateRelease(oldRelease, newRelease, req); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", newRelease.Name, err)
 		s.Log("warning: %s", msg)
-		newRelease.Info.Status.Code = release.Status_FAILED
+		newRelease.Info.Status = release.StatusFailed
 		newRelease.Info.Description = msg
 		s.recordRelease(newRelease, true)
 		return newRelease, err
@@ -228,14 +228,14 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 		if err := s.execHook(newRelease.Hooks, newRelease.Name, newRelease.Namespace, hooks.PostInstall, req.Timeout); err != nil {
 			msg := fmt.Sprintf("Release %q failed post-install: %s", newRelease.Name, err)
 			s.Log("warning: %s", msg)
-			newRelease.Info.Status.Code = release.Status_FAILED
+			newRelease.Info.Status = release.StatusFailed
 			newRelease.Info.Description = msg
 			s.recordRelease(newRelease, true)
 			return newRelease, err
 		}
 	}
 
-	newRelease.Info.Status.Code = release.Status_DEPLOYED
+	newRelease.Info.Status = release.StatusDeployed
 	newRelease.Info.Description = "Upgrade complete"
 	s.recordRelease(newRelease, true)
 
@@ -261,7 +261,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	if err := s.updateRelease(originalRelease, updatedRelease, req); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", updatedRelease.Name, err)
 		s.Log("warning: %s", msg)
-		updatedRelease.Info.Status.Code = release.Status_FAILED
+		updatedRelease.Info.Status = release.StatusFailed
 		updatedRelease.Info.Description = msg
 		s.recordRelease(originalRelease, true)
 		s.recordRelease(updatedRelease, true)
@@ -275,10 +275,10 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 		}
 	}
 
-	originalRelease.Info.Status.Code = release.Status_SUPERSEDED
+	originalRelease.Info.Status = release.StatusSuperseded
 	s.recordRelease(originalRelease, true)
 
-	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
+	updatedRelease.Info.Status = release.StatusDeployed
 	updatedRelease.Info.Description = "Upgrade complete"
 
 	return updatedRelease, nil

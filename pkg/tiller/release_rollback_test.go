@@ -36,8 +36,8 @@ func TestRollbackRelease(t *testing.T) {
 			Path:     "test-cm",
 			Manifest: manifestWithRollbackHooks,
 			Events: []release.HookEvent{
-				release.Hook_PRE_ROLLBACK,
-				release.Hook_POST_ROLLBACK,
+				release.HookPreRollback,
+				release.HookPostRollback,
 			},
 		},
 	}
@@ -109,11 +109,11 @@ func TestRollbackRelease(t *testing.T) {
 		t.Errorf("Expected release version to be %v, got %v", 3, res.Version)
 	}
 
-	if updated.Hooks[0].Events[0] != release.Hook_PRE_ROLLBACK {
+	if updated.Hooks[0].Events[0] != release.HookPreRollback {
 		t.Errorf("Expected event 0 to be pre rollback")
 	}
 
-	if updated.Hooks[0].Events[1] != release.Hook_POST_ROLLBACK {
+	if updated.Hooks[0].Events[1] != release.HookPostRollback {
 		t.Errorf("Expected event 1 to be post rollback")
 	}
 
@@ -146,8 +146,8 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	rs.Releases.Create(v2)
 	v3 := upgradeReleaseVersion(v2)
 	// retain the original release as DEPLOYED while the update should fail
-	v2.Info.Status.Code = release.Status_DEPLOYED
-	v3.Info.Status.Code = release.Status_FAILED
+	v2.Info.Status = release.StatusDeployed
+	v3.Info.Status = release.StatusFailed
 	rs.Releases.Update(v2)
 	rs.Releases.Create(v3)
 
@@ -166,16 +166,16 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to retrieve v1: %s", err)
 	}
-	if oldRel.Info.Status.Code != release.Status_SUPERSEDED {
-		t.Errorf("Expected v2 to be in a SUPERSEDED state, got %q", oldRel.Info.Status.Code)
+	if oldRel.Info.Status != release.StatusSuperseded {
+		t.Errorf("Expected v2 to be in a SUPERSEDED state, got %q", oldRel.Info.Status)
 	}
 	// make sure we didn't update some other deployments.
 	otherRel, err := rs.Releases.Get(rel2.Name, 1)
 	if err != nil {
 		t.Fatalf("Failed to retrieve other v1: %s", err)
 	}
-	if otherRel.Info.Status.Code != release.Status_DEPLOYED {
-		t.Errorf("Expected other deployed release to stay untouched, got %q", otherRel.Info.Status.Code)
+	if otherRel.Info.Status != release.StatusDeployed {
+		t.Errorf("Expected other deployed release to stay untouched, got %q", otherRel.Info.Status)
 	}
 }
 
@@ -189,8 +189,8 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 			Path:     "test-cm",
 			Manifest: manifestWithRollbackHooks,
 			Events: []release.HookEvent{
-				release.Hook_PRE_ROLLBACK,
-				release.Hook_POST_ROLLBACK,
+				release.HookPreRollback,
+				release.HookPostRollback,
 			},
 		},
 	}
@@ -233,7 +233,7 @@ func TestRollbackReleaseFailure(t *testing.T) {
 		t.Error("Expected failed rollback")
 	}
 
-	if targetStatus := res.Info.Status.Code; targetStatus != release.Status_FAILED {
+	if targetStatus := res.Info.Status; targetStatus != release.StatusFailed {
 		t.Errorf("Expected FAILED release. Got %v", targetStatus)
 	}
 
@@ -241,7 +241,7 @@ func TestRollbackReleaseFailure(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
-	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_SUPERSEDED {
+	if oldStatus := oldRelease.Info.Status; oldStatus != release.StatusSuperseded {
 		t.Errorf("Expected SUPERSEDED status on previous Release version. Got %v", oldStatus)
 	}
 }

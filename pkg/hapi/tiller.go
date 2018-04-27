@@ -21,36 +21,20 @@ import (
 )
 
 // SortBy defines sort operations.
-type ListSortBy int
+type ListSortBy string
 
 const (
-	ListSort_UNKNOWN ListSortBy = iota
-	ListSort_NAME
-	ListSort_LAST_RELEASED
+	ListSortName         ListSortBy = "name"
+	ListSortLastReleased ListSortBy = "last-released"
 )
-
-var sortByNames = [...]string{
-	"UNKNOWN",
-	"NAME",
-	"LAST_RELEASED",
-}
-
-func (x ListSortBy) String() string { return sortByNames[x] }
 
 // SortOrder defines sort orders to augment sorting operations.
-type ListSortOrder int
+type ListSortOrder string
 
 const (
-	ListSort_ASC ListSortOrder = iota
-	ListSort_DESC
+	ListSortAsc  ListSortOrder = "ascending"
+	ListSortDesc ListSortOrder = "descending"
 )
-
-var sortOrderNames = [...]string{
-	"ASC",
-	"DESC",
-}
-
-func (x ListSortOrder) String() string { return sortOrderNames[x] }
 
 // ListReleasesRequest requests a list of releases.
 //
@@ -73,8 +57,8 @@ type ListReleasesRequest struct {
 	// Anything that matches the regexp will be included in the results.
 	Filter string `json:"filter,omitempty"`
 	// SortOrder is the ordering directive used for sorting.
-	SortOrder   ListSortOrder        `json:"sort_order,omitempty"`
-	StatusCodes []release.StatusCode `json:"status_codes,omitempty"`
+	SortOrder   ListSortOrder           `json:"sort_order,omitempty"`
+	StatusCodes []release.ReleaseStatus `json:"status_codes,omitempty"`
 }
 
 // GetReleaseStatusRequest is a request to get the status of a release.

@@ -38,15 +38,15 @@ func TestGetReleaseStatus(t *testing.T) {
 	if res.Name != rel.Name {
 		t.Errorf("Expected name %q, got %q", rel.Name, res.Name)
 	}
-	if res.Info.Status.Code != release.Status_DEPLOYED {
-		t.Errorf("Expected %d, got %d", release.Status_DEPLOYED, res.Info.Status.Code)
+	if res.Info.Status != release.StatusDeployed {
+		t.Errorf("Expected %s, got %s", release.StatusDeployed, res.Info.Status)
 	}
 }
 
 func TestGetReleaseStatusDeleted(t *testing.T) {
 	rs := rsFixture()
 	rel := releaseStub()
-	rel.Info.Status.Code = release.Status_DELETED
+	rel.Info.Status = release.StatusDeleted
 	if err := rs.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
@@ -56,7 +56,7 @@ func TestGetReleaseStatusDeleted(t *testing.T) {
 		t.Fatalf("Error getting release content: %s", err)
 	}
 
-	if res.Info.Status.Code != release.Status_DELETED {
-		t.Errorf("Expected %d, got %d", release.Status_DELETED, res.Info.Status.Code)
+	if res.Info.Status != release.StatusDeleted {
+		t.Errorf("Expected %s, got %s", release.StatusDeleted, res.Info.Status)
 	}
 }

@@ -56,7 +56,7 @@ func FilterTestHooks(hooks []*release.Hook) []*release.Hook {
 
 	for _, h := range hooks {
 		for _, e := range h.Events {
-			if e == release.Hook_RELEASE_TEST_SUCCESS || e == release.Hook_RELEASE_TEST_FAILURE {
+			if e == release.HookReleaseTestSuccess || e == release.HookReleaseTestFailure {
 				testHooks = append(testHooks, h)
 				continue
 			}

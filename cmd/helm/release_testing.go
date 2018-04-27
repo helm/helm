@@ -89,7 +89,7 @@ func (t *releaseTestCmd) run() (err error) {
 				break
 			}
 
-			if res.Status == release.TestRun_FAILURE {
+			if res.Status == release.TestRunFailure {
 				testErr.failed++
 			}
 

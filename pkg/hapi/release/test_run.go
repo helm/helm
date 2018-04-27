@@ -17,23 +17,16 @@ package release
 
 import "time"
 
-type TestRunStatus int
+type TestRunStatus string
 
 const (
-	TestRun_UNKNOWN TestRunStatus = iota
-	TestRun_SUCCESS
-	TestRun_FAILURE
-	TestRun_RUNNING
+	TestRunUnknown TestRunStatus = "unknown"
+	TestRunSuccess TestRunStatus = "success"
+	TestRunFailure TestRunStatus = "failure"
+	TestRunRunning TestRunStatus = "running"
 )
 
-var testRunStatusNames = [...]string{
-	"UNKNOWN",
-	"SUCCESS",
-	"FAILURE",
-	"RUNNING",
-}
-
-func (x TestRunStatus) String() string { return testRunStatusNames[x] }
+func (x TestRunStatus) String() string { return string(x) }
 
 type TestRun struct {
 	Name        string        `json:"name,omitempty"`

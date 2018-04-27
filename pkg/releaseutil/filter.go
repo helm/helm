@@ -68,11 +68,11 @@ func All(filters ...FilterFunc) FilterFunc {
 }
 
 // StatusFilter filters a set of releases by status code.
-func StatusFilter(status rspb.StatusCode) FilterFunc {
+func StatusFilter(status rspb.ReleaseStatus) FilterFunc {
 	return FilterFunc(func(rls *rspb.Release) bool {
 		if rls == nil {
 			return true
 		}
-		return rls.Info.Status.Code == status
+		return rls.Info.Status == status
 	})
 }

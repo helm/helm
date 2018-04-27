@@ -85,7 +85,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
 func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	lsel := kblabels.Set{"OWNER": "TILLER"}.AsSelector()
+	lsel := kblabels.Set{"owner": "tiller"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
 	list, err := cfgmaps.impl.List(opts)
@@ -131,7 +131,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	}
 
 	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound(labels["NAME"])
+		return nil, ErrReleaseNotFound(labels["name"])
 	}
 
 	var results []*rspb.Release
@@ -153,7 +153,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("CREATED_AT", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
@@ -180,7 +180,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("MODIFIED_AT", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
@@ -221,15 +221,15 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //
 // The following labels are used within each configmap:
 //
-//    "MODIFIED_AT"    - timestamp indicating when this configmap was last modified. (set in Update)
-//    "CREATED_AT"     - timestamp indicating when this configmap was created. (set in Create)
-//    "VERSION"        - version of the release.
-//    "STATUS"         - status of the release (see proto/hapi/release.status.pb.go for variants)
-//    "OWNER"          - owner of the configmap, currently "TILLER".
-//    "NAME"           - name of the release.
+//    "modifiedAt"     - timestamp indicating when this configmap was last modified. (set in Update)
+//    "createdAt"      - timestamp indicating when this configmap was created. (set in Create)
+//    "version"        - version of the release.
+//    "status"         - status of the release (see proto/hapi/release.status.pb.go for variants)
+//    "owner"          - owner of the configmap, currently "tiller".
+//    "name"           - name of the release.
 //
 func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigMap, error) {
-	const owner = "TILLER"
+	const owner = "tiller"
 
 	// encode the release
 	s, err := encodeRelease(rls)
@@ -242,10 +242,10 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 	}
 
 	// apply labels
-	lbs.set("NAME", rls.Name)
-	lbs.set("OWNER", owner)
-	lbs.set("STATUS", rls.Info.Status.Code.String())
-	lbs.set("VERSION", strconv.Itoa(rls.Version))
+	lbs.set("name", rls.Name)
+	lbs.set("owner", owner)
+	lbs.set("status", rls.Info.Status.String())
+	lbs.set("version", strconv.Itoa(rls.Version))
 
 	// create and return configmap object
 	return &v1.ConfigMap{

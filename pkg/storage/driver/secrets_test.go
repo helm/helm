@@ -36,7 +36,7 @@ func TestSecretGet(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
 
@@ -56,7 +56,7 @@ func TestUNcompressedSecretGet(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	// Create a test fixture which contains an uncompressed release
 	secret, err := newSecretsObject(key, rel, nil)
@@ -85,17 +85,17 @@ func TestUNcompressedSecretGet(t *testing.T) {
 
 func TestSecretList(t *testing.T) {
 	secrets := newTestFixtureSecrets(t, []*rspb.Release{
-		releaseStub("key-1", 1, "default", rspb.Status_DELETED),
-		releaseStub("key-2", 1, "default", rspb.Status_DELETED),
-		releaseStub("key-3", 1, "default", rspb.Status_DEPLOYED),
-		releaseStub("key-4", 1, "default", rspb.Status_DEPLOYED),
-		releaseStub("key-5", 1, "default", rspb.Status_SUPERSEDED),
-		releaseStub("key-6", 1, "default", rspb.Status_SUPERSEDED),
+		releaseStub("key-1", 1, "default", rspb.StatusDeleted),
+		releaseStub("key-2", 1, "default", rspb.StatusDeleted),
+		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
+		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
+		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
+		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
 	}...)
 
 	// list all deleted releases
 	del, err := secrets.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status.Code == rspb.Status_DELETED
+		return rel.Info.Status == rspb.StatusDeleted
 	})
 	// check
 	if err != nil {
@@ -107,7 +107,7 @@ func TestSecretList(t *testing.T) {
 
 	// list all deployed releases
 	dpl, err := secrets.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status.Code == rspb.Status_DEPLOYED
+		return rel.Info.Status == rspb.StatusDeployed
 	})
 	// check
 	if err != nil {
@@ -119,7 +119,7 @@ func TestSecretList(t *testing.T) {
 
 	// list all superseded releases
 	ssd, err := secrets.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status.Code == rspb.Status_SUPERSEDED
+		return rel.Info.Status == rspb.StatusSuperseded
 	})
 	// check
 	if err != nil {
@@ -137,7 +137,7 @@ func TestSecretCreate(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	// store the release in a secret
 	if err := secrets.Create(key, rel); err != nil {
@@ -161,12 +161,12 @@ func TestSecretUpdate(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
 
 	// modify release status code
-	rel.Info.Status.Code = rspb.Status_SUPERSEDED
+	rel.Info.Status = rspb.StatusSuperseded
 
 	// perform the update
 	if err := secrets.Update(key, rel); err != nil {
@@ -180,7 +180,7 @@ func TestSecretUpdate(t *testing.T) {
 	}
 
 	// check release has actually been updated by comparing modified fields
-	if rel.Info.Status.Code != got.Info.Status.Code {
-		t.Errorf("Expected status %s, got status %s", rel.Info.Status.Code.String(), got.Info.Status.Code.String())
+	if rel.Info.Status != got.Info.Status {
+		t.Errorf("Expected status %s, got status %s", rel.Info.Status.String(), got.Info.Status.String())
 	}
 }

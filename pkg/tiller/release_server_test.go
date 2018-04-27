@@ -214,16 +214,16 @@ func chartStub() *chart.Chart {
 
 // releaseStub creates a release stub, complete with the chartStub as its chart.
 func releaseStub() *release.Release {
-	return namedReleaseStub("angry-panda", release.Status_DEPLOYED)
+	return namedReleaseStub("angry-panda", release.StatusDeployed)
 }
 
-func namedReleaseStub(name string, status release.StatusCode) *release.Release {
+func namedReleaseStub(name string, status release.ReleaseStatus) *release.Release {
 	return &release.Release{
 		Name: name,
 		Info: &release.Info{
 			FirstDeployed: time.Now(),
 			LastDeployed:  time.Now(),
-			Status:        &release.Status{Code: status},
+			Status:        status,
 			Description:   "Named Release Stub",
 		},
 		Chart:   chartStub(),
@@ -236,8 +236,8 @@ func namedReleaseStub(name string, status release.StatusCode) *release.Release {
 				Path:     "test-cm",
 				Manifest: manifestWithHook,
 				Events: []release.HookEvent{
-					release.Hook_POST_INSTALL,
-					release.Hook_PRE_DELETE,
+					release.HookPostInstall,
+					release.HookPreDelete,
 				},
 			},
 			{
@@ -246,7 +246,7 @@ func namedReleaseStub(name string, status release.StatusCode) *release.Release {
 				Path:     "finding-nemo",
 				Manifest: manifestWithTestHook,
 				Events: []release.HookEvent{
-					release.Hook_RELEASE_TEST_SUCCESS,
+					release.HookReleaseTestSuccess,
 				},
 			},
 		},
@@ -254,13 +254,13 @@ func namedReleaseStub(name string, status release.StatusCode) *release.Release {
 }
 
 func upgradeReleaseVersion(rel *release.Release) *release.Release {
-	rel.Info.Status.Code = release.Status_SUPERSEDED
+	rel.Info.Status = release.StatusSuperseded
 	return &release.Release{
 		Name: rel.Name,
 		Info: &release.Info{
 			FirstDeployed: rel.Info.FirstDeployed,
 			LastDeployed:  time.Now(),
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
+			Status:        release.StatusDeployed,
 		},
 		Chart:   rel.Chart,
 		Config:  rel.Config,
@@ -311,7 +311,7 @@ func TestUniqName(t *testing.T) {
 	rel1 := releaseStub()
 	rel2 := releaseStub()
 	rel2.Name = "happy-panda"
-	rel2.Info.Status.Code = release.Status_DELETED
+	rel2.Info.Status = release.StatusDeleted
 
 	rs.Releases.Create(rel1)
 	rs.Releases.Create(rel2)
@@ -364,7 +364,7 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 		Info: &release.Info{
 			FirstDeployed: time.Now(),
 			LastDeployed:  time.Now(),
-			Status:        &release.Status{Code: release.Status_DEPLOYED},
+			Status:        release.StatusDeployed,
 		},
 		Chart:    ch,
 		Config:   []byte(`name: value`),
@@ -514,8 +514,8 @@ metadata:
 %sdata:
 name: value`, hookName, extraAnnotationsStr),
 		Events: []release.HookEvent{
-			release.Hook_PRE_INSTALL,
-			release.Hook_PRE_UPGRADE,
+			release.HookPreInstall,
+			release.HookPreUpgrade,
 		},
 		DeletePolicies: DeletePolicies,
 	}
@@ -595,7 +595,7 @@ func TestSuccessfulHookWithSucceededDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{"helm.sh/hook-delete-policy": "hook-succeeded"},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED},
+		[]release.HookDeletePolicy{release.HookSucceeded},
 	)
 
 	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -610,7 +610,7 @@ func TestSuccessfulHookWithFailedDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{"helm.sh/hook-delete-policy": "hook-failed"},
-		[]release.HookDeletePolicy{release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.HookFailed},
 	)
 
 	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -629,7 +629,7 @@ func TestFailedHookWithSucceededDeletePolicy(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded",
 		},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED},
+		[]release.HookDeletePolicy{release.HookSucceeded},
 	)
 
 	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -648,7 +648,7 @@ func TestFailedHookWithFailedDeletePolicy(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-failed",
 		},
-		[]release.HookDeletePolicy{release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.HookFailed},
 	)
 
 	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -666,7 +666,7 @@ func TestSuccessfulHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 		map[string]string{
 			"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed",
 		},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.HookSucceeded, release.HookFailed},
 	)
 
 	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -685,7 +685,7 @@ func TestFailedHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded,hook-failed",
 		},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
+		[]release.HookDeletePolicy{release.HookSucceeded, release.HookFailed},
 	)
 
 	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -720,7 +720,7 @@ func TestHookDeletingWithBeforeHookCreationDeletePolicy(t *testing.T) {
 
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{"helm.sh/hook-delete-policy": "before-hook-creation"},
-		[]release.HookDeletePolicy{release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.HookBeforeHookCreation},
 	)
 
 	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -744,7 +744,7 @@ func TestSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		map[string]string{
 			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
 		},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.HookSucceeded, release.HookBeforeHookCreation},
 	)
 
 	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -769,7 +769,7 @@ func TestFailedHookWithMixedDeletePolicies(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
 		},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.HookSucceeded, release.HookBeforeHookCreation},
 	)
 
 	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -794,7 +794,7 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 			"mockHooksKubeClient/Emulate": "hook-failed",
 			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
 		},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.HookSucceeded, release.HookBeforeHookCreation},
 	)
 
 	if err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall); err != nil {
@@ -808,7 +808,7 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		map[string]string{
 			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
 		},
-		[]release.HookDeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
+		[]release.HookDeletePolicy{release.HookSucceeded, release.HookBeforeHookCreation},
 	)
 
 	if err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade); err != nil {

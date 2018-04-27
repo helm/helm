@@ -115,24 +115,24 @@ func ReleaseListLimit(limit int) ReleaseListOption {
 }
 
 // ReleaseListOrder specifies how to order a list of releases.
-func ReleaseListOrder(order int) ReleaseListOption {
+func ReleaseListOrder(order hapi.ListSortOrder) ReleaseListOption {
 	return func(opts *options) {
-		opts.listReq.SortOrder = hapi.ListSortOrder(order)
+		opts.listReq.SortOrder = order
 	}
 }
 
 // ReleaseListSort specifies how to sort a release list.
-func ReleaseListSort(sort int) ReleaseListOption {
+func ReleaseListSort(sort hapi.ListSortBy) ReleaseListOption {
 	return func(opts *options) {
-		opts.listReq.SortBy = hapi.ListSortBy(sort)
+		opts.listReq.SortBy = sort
 	}
 }
 
 // ReleaseListStatuses specifies which status codes should be returned.
-func ReleaseListStatuses(statuses []release.StatusCode) ReleaseListOption {
+func ReleaseListStatuses(statuses []release.ReleaseStatus) ReleaseListOption {
 	return func(opts *options) {
 		if len(statuses) == 0 {
-			statuses = []release.StatusCode{release.Status_DEPLOYED}
+			statuses = []release.ReleaseStatus{release.StatusDeployed}
 		}
 		opts.listReq.StatusCodes = statuses
 	}

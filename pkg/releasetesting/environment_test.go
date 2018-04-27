@@ -45,7 +45,7 @@ func TestCreateTestPodFailure(t *testing.T) {
 	if test.result.Info == "" {
 		t.Errorf("Expected error to be saved in test result info but found empty string")
 	}
-	if test.result.Status != release.TestRun_FAILURE {
+	if test.result.Status != release.TestRunFailure {
 		t.Errorf("Expected test result status to be failure but got: %v", test.result.Status)
 	}
 }
@@ -55,7 +55,7 @@ func TestStreamMessage(t *testing.T) {
 	defer close(env.Mesages)
 
 	expectedMessage := "testing streamMessage"
-	expectedStatus := release.TestRun_SUCCESS
+	expectedStatus := release.TestRunSuccess
 	if err := env.streamMessage(expectedMessage, expectedStatus); err != nil {
 		t.Errorf("Expected no errors, got: %s", err)
 	}

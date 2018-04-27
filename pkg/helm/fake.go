@@ -178,11 +178,11 @@ metadata:
 
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
-	Name       string
-	Version    int
-	Chart      *chart.Chart
-	StatusCode release.StatusCode
-	Namespace  string
+	Name      string
+	Version   int
+	Chart     *chart.Chart
+	Status    release.ReleaseStatus
+	Namespace string
 }
 
 // ReleaseMock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -217,9 +217,9 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 		}
 	}
 
-	scode := release.Status_DEPLOYED
-	if opts.StatusCode > 0 {
-		scode = opts.StatusCode
+	scode := release.StatusDeployed
+	if len(opts.Status) > 0 {
+		scode = opts.Status
 	}
 
 	return &release.Release{
@@ -227,7 +227,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 		Info: &release.Info{
 			FirstDeployed: date,
 			LastDeployed:  date,
-			Status:        &release.Status{Code: scode},
+			Status:        scode,
 			Description:   "Release mock",
 		},
 		Chart:     ch,
@@ -241,7 +241,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 				Path:     "pre-install-hook.yaml",
 				Manifest: MockHookTemplate,
 				LastRun:  date,
-				Events:   []release.HookEvent{release.Hook_PRE_INSTALL},
+				Events:   []release.HookEvent{release.HookPreInstall},
 			},
 		},
 		Manifest: MockManifest,

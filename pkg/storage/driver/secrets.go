@@ -85,7 +85,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 // that filter(release) == true. An error is returned if the
 // secret fails to retrieve the releases.
 func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	lsel := kblabels.Set{"OWNER": "TILLER"}.AsSelector()
+	lsel := kblabels.Set{"owner": "tiller"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
 	list, err := secrets.impl.List(opts)
@@ -131,7 +131,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	}
 
 	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound(labels["NAME"])
+		return nil, ErrReleaseNotFound(labels["name"])
 	}
 
 	var results []*rspb.Release
@@ -153,7 +153,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("CREATED_AT", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new secret to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -180,7 +180,7 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("MODIFIED_AT", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -221,15 +221,15 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 //
 // The following labels are used within each secret:
 //
-//    "MODIFIED_AT"    - timestamp indicating when this secret was last modified. (set in Update)
-//    "CREATED_AT"     - timestamp indicating when this secret was created. (set in Create)
-//    "VERSION"        - version of the release.
-//    "STATUS"         - status of the release (see proto/hapi/release.status.pb.go for variants)
-//    "OWNER"          - owner of the secret, currently "TILLER".
-//    "NAME"           - name of the release.
+//    "modifiedAt"    - timestamp indicating when this secret was last modified. (set in Update)
+//    "createdAt"     - timestamp indicating when this secret was created. (set in Create)
+//    "version"        - version of the release.
+//    "status"         - status of the release (see proto/hapi/release.status.pb.go for variants)
+//    "owner"          - owner of the secret, currently "tiller".
+//    "name"           - name of the release.
 //
 func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, error) {
-	const owner = "TILLER"
+	const owner = "tiller"
 
 	// encode the release
 	s, err := encodeRelease(rls)
@@ -242,10 +242,10 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 	}
 
 	// apply labels
-	lbs.set("NAME", rls.Name)
-	lbs.set("OWNER", owner)
-	lbs.set("STATUS", rls.Info.Status.Code.String())
-	lbs.set("VERSION", strconv.Itoa(rls.Version))
+	lbs.set("name", rls.Name)
+	lbs.set("owner", owner)
+	lbs.set("status", rls.Info.Status.String())
+	lbs.set("version", strconv.Itoa(rls.Version))
 
 	// create and return secret object
 	return &v1.Secret{

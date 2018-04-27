@@ -40,13 +40,13 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	var limit = 2
 	var offset = "offset"
 	var filter = "filter"
-	var sortBy = 2
-	var sortOrd = 1
-	var codes = []rls.StatusCode{
-		rls.Status_FAILED,
-		rls.Status_DELETED,
-		rls.Status_DEPLOYED,
-		rls.Status_SUPERSEDED,
+	var sortBy = hapi.ListSortLastReleased
+	var sortOrd = hapi.ListSortAsc
+	var codes = []rls.ReleaseStatus{
+		rls.StatusFailed,
+		rls.StatusDeleted,
+		rls.StatusDeployed,
+		rls.StatusSuperseded,
 	}
 
 	// Expected ListReleasesRequest message
@@ -54,8 +54,8 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 		Limit:       int64(limit),
 		Offset:      offset,
 		Filter:      filter,
-		SortBy:      hapi.ListSortBy(sortBy),
-		SortOrder:   hapi.ListSortOrder(sortOrd),
+		SortBy:      sortBy,
+		SortOrder:   sortOrd,
 		StatusCodes: codes,
 	}
 
