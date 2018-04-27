@@ -25,7 +25,7 @@ import (
 )
 
 func TestListReleases(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	num := 7
 	for i := 0; i < num; i++ {
 		rel := releaseStub()
@@ -46,7 +46,7 @@ func TestListReleases(t *testing.T) {
 }
 
 func TestListReleasesByStatus(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	stubs := []*release.Release{
 		namedReleaseStub("kamal", release.StatusDeployed),
 		namedReleaseStub("astrolabe", release.StatusDeleted),
@@ -111,7 +111,7 @@ func TestListReleasesByStatus(t *testing.T) {
 }
 
 func TestListReleasesSort(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	// Put them in by reverse order so that the mock doesn't "accidentally"
 	// sort.
@@ -148,7 +148,7 @@ func TestListReleasesSort(t *testing.T) {
 }
 
 func TestListReleasesFilter(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	names := []string{
 		"axon",
 		"dendrite",

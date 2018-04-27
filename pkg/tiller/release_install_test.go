@@ -26,7 +26,7 @@ import (
 )
 
 func TestInstallRelease(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	req := installRequest()
 	res, err := rs.InstallRelease(req)
@@ -79,7 +79,7 @@ func TestInstallRelease(t *testing.T) {
 }
 
 func TestInstallRelease_WithNotes(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	req := installRequest(
 		withChart(withNotes(notesText)),
@@ -138,7 +138,7 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 }
 
 func TestInstallRelease_WithNotesRendered(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	req := installRequest(
 		withChart(withNotes(notesText + " {{.Release.Name}}")),
@@ -198,7 +198,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 }
 
 func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	req := installRequest(withChart(
 		withNotes(notesText),
@@ -229,7 +229,7 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 }
 
 func TestInstallRelease_DryRun(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	req := installRequest(withDryRun(),
 		withChart(withSampleTemplates()),
@@ -280,7 +280,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 }
 
 func TestInstallRelease_NoHooks(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rs.Releases.Create(releaseStub())
 
 	req := installRequest(withDisabledHooks())
@@ -295,7 +295,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 }
 
 func TestInstallRelease_FailedHooks(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rs.Releases.Create(releaseStub())
 	rs.KubeClient = newHookFailingKubeClient()
 
@@ -311,7 +311,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 }
 
 func TestInstallRelease_ReuseName(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rs.Log = t.Logf
 	rel := releaseStub()
 	rel.Info.Status = release.StatusDeleted
@@ -341,7 +341,7 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 }
 
 func TestInstallRelease_KubeVersion(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	req := installRequest(
 		withChart(withKube(">=0.0.0")),
@@ -353,7 +353,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 }
 
 func TestInstallRelease_WrongKubeVersion(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	req := installRequest(
 		withChart(withKube(">=5.0.0")),
