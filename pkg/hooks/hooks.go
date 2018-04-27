@@ -41,6 +41,7 @@ const (
 	PostRollback       = "post-rollback"
 	ReleaseTestSuccess = "test-success"
 	ReleaseTestFailure = "test-failure"
+	CRDInstall         = "crd-install"
 )
 
 // Type of policy for deleting the hook

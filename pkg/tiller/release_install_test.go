@@ -22,10 +22,43 @@ import (
 	"testing"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/version"
 )
+
+func TestHasCRDHook(t *testing.T) {
+	tests := []struct {
+		hooks  []*release.Hook
+		expect bool
+	}{
+		{
+			hooks: []*release.Hook{
+				{Events: []release.Hook_Event{release.Hook_PRE_DELETE}},
+			},
+			expect: false,
+		},
+		{
+			hooks: []*release.Hook{
+				{Events: []release.Hook_Event{release.Hook_CRD_INSTALL}},
+			},
+			expect: true,
+		},
+		{
+			hooks: []*release.Hook{
+				{Events: []release.Hook_Event{release.Hook_PRE_UPGRADE, release.Hook_CRD_INSTALL}},
+			},
+			expect: true,
+		},
+	}
+
+	for i, tt := range tests {
+		if tt.expect != hasCRDHook(tt.hooks) {
+			t.Errorf("test %d: expected %t, got %t", i, tt.expect, !tt.expect)
+		}
+	}
+}
 
 func TestInstallRelease(t *testing.T) {
 	c := helm.NewContext()
@@ -332,6 +365,55 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 
 	if hl := res.Release.Hooks[0].LastRun; hl != nil {
 		t.Errorf("Expected that no hooks were run. Got %d", hl)
+	}
+}
+
+func TestInstallRelease_CRDInstallHook(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	req := installRequest()
+	req.Chart.Templates = append(req.Chart.Templates, &chart.Template{
+		Name: "templates/crdhook",
+		Data: []byte(manifestWithCRDHook),
+	})
+
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+
+	// The new hook should have been pulled from the manifest.
+	if l := len(res.Release.Hooks); l != 2 {
+		t.Fatalf("expected 2 hooks, got %d", l)
+	}
+
+	expect := "Install complete"
+	if got := res.Release.Info.Description; got != expect {
+		t.Errorf("Expected Description to be %q, got %q", expect, got)
+	}
+}
+
+func TestInstallRelease_DryRunCRDInstallHook(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	req := installRequest(withDryRun())
+	req.Chart.Templates = append(req.Chart.Templates, &chart.Template{
+		Name: "templates/crdhook",
+		Data: []byte(manifestWithCRDHook),
+	})
+
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+
+	expect := "Validation skipped because CRDs are not installed"
+	if res.Release.Info.Description != expect {
+		t.Errorf("Expected Description %q, got %q", expect, res.Release.Info.Description)
 	}
 }
 
