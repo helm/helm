@@ -176,7 +176,6 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 			return nil, err
 		}
 	}
-	automountServiceAccountToken := opts.ServiceAccount != ""
 	d := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: opts.Namespace,
@@ -190,8 +189,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{
-					ServiceAccountName:           opts.ServiceAccount,
-					AutomountServiceAccountToken: &automountServiceAccountToken,
+					ServiceAccountName: opts.ServiceAccount,
 					Containers: []v1.Container{
 						{
 							Name:            "tiller",
@@ -232,6 +230,10 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 				},
 			},
 		},
+	}
+
+	if opts.ServiceAccount != "" {
+		d.Spec.Template.Spec.AutomountServiceAccountToken = func(b bool) *bool { return &b }(true)
 	}
 
 	if opts.tls() {
