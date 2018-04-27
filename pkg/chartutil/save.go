@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ghodss/yaml"
 
@@ -204,6 +205,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 // writeToTar writes a single file to a tar archive.
 func writeToTar(out *tar.Writer, name string, body []byte) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
+	name = strings.Replace(name, "\\", "/", -1)
 	h := &tar.Header{
 		Name: name,
 		Mode: 0755,
