@@ -20,52 +20,60 @@ import (
 	"fmt"
 	"strings"
 
-	ctx "golang.org/x/net/context"
-
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/timeconv"
 )
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
-func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) UpdateRelease(req *services.UpdateReleaseRequest, stream services.ReleaseService_UpdateReleaseServer) error {
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("updateRelease: Release name is invalid: %s", req.Name)
-		return nil, err
+		return err
 	}
 	s.Log("preparing update for %s", req.Name)
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
-		if req.Force {
-			// Use the --force, Luke.
-			return s.performUpdateForce(req)
+		if !req.Force {
+			return err
 		}
-		return nil, err
+		// Use the --force, Luke.
+		res, err := s.performUpdateForce(req, stream)
+		if err != nil {
+			s.Log("failed force update perform step: %s", err)
+		}
+		if sendErr := stream.Send(res); sendErr != nil {
+			return sendErr
+		}
 	}
 
 	if !req.DryRun {
 		s.Log("creating updated release for %s", req.Name)
 		if err := s.env.Releases.Create(updatedRelease); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	s.Log("performing update for %s", req.Name)
-	res, err := s.performUpdate(currentRelease, updatedRelease, req)
+	res, err := s.performUpdate(currentRelease, updatedRelease, req, stream)
 	if err != nil {
-		return res, err
+		s.Log("failed update perform step: %s", err)
+	}
+	if sendErr := stream.Send(res); sendErr != nil {
+		return sendErr
 	}
 
 	if !req.DryRun {
 		s.Log("updating status for updated release for %s", req.Name)
 		if err := s.env.Releases.Update(updatedRelease); err != nil {
-			return res, err
+			return err
 		}
 	}
 
-	return res, nil
+	return err
 }
 
 // prepareUpdate builds an updated release for an update operation.
@@ -143,7 +151,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 }
 
 // performUpdateForce performs the same action as a `helm delete && helm install --replace`.
-func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest, stream services.ReleaseService_UpdateReleaseServer) (*services.UpdateReleaseResponse, error) {
 	// find the last release with the given name
 	oldRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
@@ -262,8 +270,46 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	return res, nil
 }
 
-func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.Release, req *services.UpdateReleaseRequest, stream services.ReleaseService_UpdateReleaseServer) (*services.UpdateReleaseResponse, error) {
 	res := &services.UpdateReleaseResponse{Release: updatedRelease}
+
+	watchFeed := &kube.WatchFeedProto{
+		WriteJobLogChunkFunc: func(chunk kube.JobLogChunk) error {
+			chunkResp := &services.UpdateReleaseResponse{
+				WatchFeed: &release.WatchFeed{
+					JobLogChunk: &release.JobLogChunk{
+						JobName:       chunk.JobName,
+						PodName:       chunk.PodName,
+						ContainerName: chunk.ContainerName,
+						LogLines:      make([]*release.LogLine, 0),
+					},
+				},
+			}
+
+			for _, line := range chunk.LogLines {
+				ll := &release.LogLine{
+					Timestamp: line.Timestamp,
+					Data:      line.Data,
+				}
+				chunkResp.WatchFeed.JobLogChunk.LogLines = append(chunkResp.WatchFeed.JobLogChunk.LogLines, ll)
+			}
+
+			return stream.Send(chunkResp)
+		},
+		WriteJobPodErrorFunc: func(obj kube.JobPodError) error {
+			chunkResp := &services.UpdateReleaseResponse{
+				WatchFeed: &release.WatchFeed{
+					JobPodError: &release.JobPodError{
+						JobName:       obj.JobName,
+						PodName:       obj.PodName,
+						ContainerName: obj.ContainerName,
+						Message:       obj.Message,
+					},
+				},
+			}
+			return stream.Send(chunkResp)
+		},
+	}
 
 	if req.DryRun {
 		s.Log("dry run for %s", updatedRelease.Name)
@@ -273,7 +319,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 
 	// pre-upgrade hooks
 	if !req.DisableHooks {
-		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PreUpgrade, req.Timeout); err != nil {
+		if err := s.execHookWithWatchFeed(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PreUpgrade, req.Timeout, watchFeed); err != nil {
 			return res, err
 		}
 	} else {
@@ -291,7 +337,7 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 
 	// post-upgrade hooks
 	if !req.DisableHooks {
-		if err := s.execHook(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PostUpgrade, req.Timeout); err != nil {
+		if err := s.execHookWithWatchFeed(updatedRelease.Hooks, updatedRelease.Name, updatedRelease.Namespace, hooks.PostUpgrade, req.Timeout, watchFeed); err != nil {
 			return res, err
 		}
 	}

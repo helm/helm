@@ -58,7 +58,7 @@ service ReleaseService {
 	}
 
 	// UpdateRelease updates release content.
-	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
+	rpc UpdateRelease(UpdateReleaseRequest) returns (stream UpdateReleaseResponse) { // TODO: backward compatibility
 	}
 
 	// InstallRelease requests installation of a chart as a new release.
@@ -218,6 +218,7 @@ message UpdateReleaseRequest {
 // UpdateReleaseResponse is the response to an update request.
 message UpdateReleaseResponse {
 	hapi.release.Release release = 1;
+	hapi.release.WatchFeed watch_feed = 2; // TODO: think about compatibility
 }
 
 message RollbackReleaseRequest {

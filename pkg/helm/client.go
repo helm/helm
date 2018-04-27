@@ -444,7 +444,52 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.UpdateRelease(ctx, req)
+
+	var finalResp *rls.UpdateReleaseResponse
+
+	currentLogHeader := ""
+	setLogHeader := func(logHeader string) {
+		if currentLogHeader != logHeader {
+			if currentLogHeader != "" {
+				fmt.Println()
+			}
+			fmt.Printf("%s\n", logHeader)
+			currentLogHeader = logHeader
+		}
+	}
+	formatJobHeader := func(jobName string, podName string, containerName string) string {
+		// tail -f on multiple files prints similar headers
+		return fmt.Sprintf("==> Job \"%s\", Pod \"%s\", Container \"%s\" <==", jobName, podName, containerName)
+	}
+
+	stream, err := rlc.UpdateRelease(ctx, req)
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return finalResp, nil
+		}
+		if err != nil {
+			return resp, err
+		}
+
+		if resp.WatchFeed.GetJobLogChunk() != nil {
+			chunk := resp.WatchFeed.GetJobLogChunk()
+
+			setLogHeader(formatJobHeader(chunk.JobName, chunk.PodName, chunk.ContainerName))
+
+			for _, line := range chunk.LogLines {
+				fmt.Println(line.Data)
+			}
+		} else if resp.WatchFeed.GetJobPodError() != nil {
+			jobPodError := resp.WatchFeed.GetJobPodError()
+
+			setLogHeader(formatJobHeader(jobPodError.JobName, jobPodError.PodName, jobPodError.ContainerName))
+
+			fmt.Fprintf(os.Stderr, "Error: %s\n", jobPodError.Message)
+		} else {
+			finalResp = resp // TODO verify/debug this code
+		}
+	}
 }
 
 // Executes tiller.RollbackRelease RPC.
