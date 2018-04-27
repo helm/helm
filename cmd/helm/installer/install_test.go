@@ -96,9 +96,6 @@ func TestDeploymentManifestForServiceAccount(t *testing.T) {
 		if got := d.Spec.Template.Spec.ServiceAccountName; got != tt.serviceAccount {
 			t.Errorf("%s: expected service account value %q, got %q", tt.name, tt.serviceAccount, got)
 		}
-		if got := *d.Spec.Template.Spec.AutomountServiceAccountToken; got != (tt.serviceAccount != "") {
-			t.Errorf("%s: unexpected automountServiceAccountToken = %t for serviceAccount %q", tt.name, got, tt.serviceAccount)
-		}
 	}
 }
 
