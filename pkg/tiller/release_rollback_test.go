@@ -25,7 +25,7 @@ import (
 )
 
 func TestRollbackRelease(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)
@@ -135,7 +135,7 @@ func TestRollbackRelease(t *testing.T) {
 }
 
 func TestRollbackWithReleaseVersion(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel2 := releaseStub()
 	rel2.Name = "other"
 	rs.Releases.Create(rel2)
@@ -180,7 +180,7 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 }
 
 func TestRollbackReleaseNoHooks(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rel.Hooks = []*release.Hook{
 		{
@@ -215,7 +215,7 @@ func TestRollbackReleaseNoHooks(t *testing.T) {
 }
 
 func TestRollbackReleaseFailure(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 	upgradedRel := upgradeReleaseVersion(rel)

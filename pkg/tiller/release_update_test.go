@@ -28,7 +28,7 @@ import (
 )
 
 func TestUpdateRelease(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 
@@ -100,7 +100,7 @@ func TestUpdateRelease(t *testing.T) {
 	}
 }
 func TestUpdateRelease_ResetValues(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 
@@ -127,7 +127,7 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 
 // This is a regression test for bug found in issue #3655
 func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	installReq := &hapi.InstallReleaseRequest{
 		Namespace: "spaced",
@@ -223,7 +223,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 }
 
 func TestUpdateRelease_ReuseValues(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 
@@ -260,7 +260,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 
 func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	// This verifies that when both reset and reuse are set, reset wins.
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 
@@ -288,7 +288,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 }
 
 func TestUpdateReleaseFailure(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 	rs.KubeClient = newUpdateFailingKubeClient()
@@ -330,7 +330,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 }
 
 func TestUpdateReleaseFailure_Force(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := namedReleaseStub("forceful-luke", release.StatusFailed)
 	rs.Releases.Create(rel)
 
@@ -372,7 +372,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 }
 
 func TestUpdateReleaseNoHooks(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 
@@ -400,7 +400,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 }
 
 func TestUpdateReleaseNoChanges(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	rel := releaseStub()
 	rs.Releases.Create(rel)
 

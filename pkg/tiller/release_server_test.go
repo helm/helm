@@ -18,6 +18,7 @@ package tiller
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -38,6 +39,8 @@ import (
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/tiller/environment"
 )
+
+var verbose = flag.Bool("test.log", false, "enable tiller logging")
 
 const notesText = "my notes here"
 
@@ -87,11 +90,20 @@ data:
   name: value
 `
 
-func rsFixture() *ReleaseServer {
+func rsFixture(t *testing.T) *ReleaseServer {
+	t.Helper()
+
 	env := environment.New()
 	dc := fake.NewSimpleClientset().Discovery()
 	kc := &environment.PrintingKubeClient{Out: ioutil.Discard}
-	return NewReleaseServer(env, dc, kc)
+	rs := NewReleaseServer(env, dc, kc)
+	rs.Log = func(format string, v ...interface{}) {
+		t.Helper()
+		if *verbose {
+			t.Logf(format, v...)
+		}
+	}
+	return rs
 }
 
 type chartOptions struct {
@@ -292,7 +304,7 @@ func TestValidName(t *testing.T) {
 }
 
 func TestGetVersionSet(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 	vs, err := GetVersionSet(rs.discovery)
 	if err != nil {
 		t.Error(err)
@@ -306,7 +318,7 @@ func TestGetVersionSet(t *testing.T) {
 }
 
 func TestUniqName(t *testing.T) {
-	rs := rsFixture()
+	rs := rsFixture(t)
 
 	rel1 := releaseStub()
 	rel2 := releaseStub()
