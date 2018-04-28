@@ -225,6 +225,9 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 								InitialDelaySeconds: 1,
 								TimeoutSeconds:      1,
 							},
+							SecurityContext: &v1.SecurityContext{
+								RunAsNonRoot: &[]bool{false}[0],
+							},
 						},
 					},
 					HostNetwork:  opts.EnableHostNetwork,
