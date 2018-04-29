@@ -77,7 +77,7 @@ func (r *Rules) Len() int {
 	return len(r.patterns)
 }
 
-// Ignore evalutes the file at the given path, and returns true if it should be ignored.
+// Ignore evaluates the file at the given path, and returns true if it should be ignored.
 //
 // Ignore evaluates path against the rules in order. Evaluation stops when a match
 // is found. Matching a negative rule will stop evaluation.
