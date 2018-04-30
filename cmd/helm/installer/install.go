@@ -232,6 +232,10 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 		},
 	}
 
+	if opts.ServiceAccount != "" {
+		d.Spec.Template.Spec.AutomountServiceAccountToken = func(b bool) *bool { return &b }(true)
+	}
+
 	if opts.tls() {
 		const certsDir = "/etc/certs"
 
