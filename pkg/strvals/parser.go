@@ -36,7 +36,7 @@ func ToYAML(s string) (string, error) {
 		return "", err
 	}
 	d, err := yaml.Marshal(m)
-	return strings.TrimSuffix(string(d), "\n"), err
+	return string(d), err
 }
 
 // Parse parses a set line.
