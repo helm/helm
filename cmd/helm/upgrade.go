@@ -195,7 +195,7 @@ func (u *upgradeCmd) run() error {
 		}
 	}
 
-	rawVals, err := vals(u.valueFiles, u.values, u.stringValues)
+	rawVals, err := vals(u.valueFiles, u.values, u.stringValues, "", "", "")
 	if err != nil {
 		return err
 	}
