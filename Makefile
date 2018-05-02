@@ -31,10 +31,10 @@ endif
 
 # Clear the "unreleased" string in BuildMetadata
 ifneq ($(GIT_TAG),)
-	LDFLAGS += -X k8s.io/helm/pkg/version.BuildMetadata=
+	LDFLAGS += -X k8s.io/helm/pkg/version.metadata=
 endif
-LDFLAGS += -X k8s.io/helm/pkg/version.GitCommit=${GIT_COMMIT}
-LDFLAGS += -X k8s.io/helm/pkg/version.GitTreeState=${GIT_DIRTY}
+LDFLAGS += -X k8s.io/helm/pkg/version.gitCommit=${GIT_COMMIT}
+LDFLAGS += -X k8s.io/helm/pkg/version.gitTreeState=${GIT_DIRTY}
 
 .PHONY: all
 all: build

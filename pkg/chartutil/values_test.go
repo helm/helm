@@ -112,7 +112,7 @@ where:
 
 	caps := &Capabilities{
 		APIVersions: DefaultVersionSet,
-		HelmVersion: version.GetVersionProto(),
+		HelmVersion: version.GetBuildInfo(),
 		KubeVersion: &kversion.Info{Major: "1"},
 	}
 
@@ -144,7 +144,7 @@ where:
 	if !res["Capabilities"].(*Capabilities).APIVersions.Has("v1") {
 		t.Error("Expected Capabilities to have v1 as an API")
 	}
-	if res["Capabilities"].(*Capabilities).HelmVersion.SemVer == "" {
+	if res["Capabilities"].(*Capabilities).HelmVersion.Version == "" {
 		t.Error("Expected Capabilities to have a Tiller version")
 	}
 	if res["Capabilities"].(*Capabilities).KubeVersion.Major != "1" {

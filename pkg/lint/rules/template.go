@@ -56,7 +56,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 	caps := &chartutil.Capabilities{
 		APIVersions: chartutil.DefaultVersionSet,
 		KubeVersion: chartutil.DefaultKubeVersion,
-		HelmVersion: tversion.GetVersionProto(),
+		HelmVersion: tversion.GetBuildInfo(),
 	}
 	cvals, err := chartutil.CoalesceValues(chart, values)
 	if err != nil {

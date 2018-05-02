@@ -232,7 +232,7 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 	return &chartutil.Capabilities{
 		APIVersions: vs,
 		KubeVersion: sv,
-		HelmVersion: version.GetVersionProto(),
+		HelmVersion: version.GetBuildInfo(),
 	}, nil
 }
 
