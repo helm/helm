@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
@@ -240,7 +241,24 @@ func (u *upgradeCmd) run() error {
 	if err != nil {
 		return prettyError(err)
 	}
+
+	// if dry-run is set, update NOTES from the release response returned by tiller,
+	// as a dry-run upgrade will not change NOTES on tiller side
+	status = u.statusFromUpgradeResponse(status, resp)
+
 	PrintStatus(u.out, status)
 
 	return nil
+}
+
+func (u *upgradeCmd) statusFromUpgradeResponse(status *services.GetReleaseStatusResponse, resp *services.UpdateReleaseResponse) *services.GetReleaseStatusResponse {
+	if !u.dryRun {
+		return status
+	}
+
+	if rel := resp.Release; rel != nil {
+		status.Info.Status.Notes = rel.Info.Status.Notes
+	}
+
+	return status
 }
