@@ -41,7 +41,6 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchCmd struct {
-	out      io.Writer
 	helmhome helmpath.Home
 
 	versions bool
@@ -50,7 +49,7 @@ type searchCmd struct {
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
-	sc := &searchCmd{out: out}
+	sc := &searchCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",
@@ -58,7 +57,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 		Long:  searchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sc.helmhome = settings.Home
-			return sc.run(args)
+			return sc.run(out, args)
 		},
 	}
 
@@ -70,8 +69,8 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (s *searchCmd) run(args []string) error {
-	index, err := s.buildIndex()
+func (s *searchCmd) run(out io.Writer, args []string) error {
+	index, err := s.buildIndex(out)
 	if err != nil {
 		return err
 	}
@@ -93,7 +92,7 @@ func (s *searchCmd) run(args []string) error {
 		return err
 	}
 
-	fmt.Fprintln(s.out, s.formatSearchResults(data))
+	fmt.Fprintln(out, s.formatSearchResults(data))
 
 	return nil
 }
@@ -139,7 +138,7 @@ func (s *searchCmd) formatSearchResults(res []*search.Result) string {
 	return table.String()
 }
 
-func (s *searchCmd) buildIndex() (*search.Index, error) {
+func (s *searchCmd) buildIndex(out io.Writer) (*search.Index, error) {
 	// Load the repositories.yaml
 	rf, err := repo.LoadRepositoriesFile(s.helmhome.RepositoryFile())
 	if err != nil {
@@ -152,7 +151,8 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 		f := s.helmhome.CacheIndex(n)
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			// TODO should print to stderr
+			fmt.Fprintf(out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			continue
 		}
 

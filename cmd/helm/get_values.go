@@ -33,16 +33,13 @@ This command downloads a values file for a given release.
 type getValuesCmd struct {
 	release   string
 	allValues bool
-	out       io.Writer
 	client    helm.Interface
 	version   int
 }
 
 func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	get := &getValuesCmd{
-		out:    out,
-		client: client,
-	}
+	get := &getValuesCmd{client: client}
+
 	cmd := &cobra.Command{
 		Use:   "values [flags] RELEASE_NAME",
 		Short: "download the values file for a named release",
@@ -53,7 +50,7 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 			get.release = args[0]
 			get.client = ensureHelmClient(get.client, false)
-			return get.run()
+			return get.run(out)
 		},
 	}
 
@@ -63,7 +60,7 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 // getValues implements 'helm get values'
-func (g *getValuesCmd) run() error {
+func (g *getValuesCmd) run(out io.Writer) error {
 	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		return err
@@ -79,10 +76,10 @@ func (g *getValuesCmd) run() error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(g.out, cfgStr)
+		fmt.Fprintln(out, cfgStr)
 		return nil
 	}
 
-	fmt.Fprintln(g.out, string(res.Config))
+	fmt.Fprintln(out, string(res.Config))
 	return nil
 }

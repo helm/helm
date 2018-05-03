@@ -54,9 +54,8 @@ func TestUpdateCmd(t *testing.T) {
 	uc := &repoUpdateCmd{
 		update: updater,
 		home:   helmpath.Home(thome),
-		out:    out,
 	}
-	if err := uc.run(); err != nil {
+	if err := uc.run(out); err != nil {
 		t.Fatal(err)
 	}
 

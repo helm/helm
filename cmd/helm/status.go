@@ -46,17 +46,13 @@ The status consists of:
 
 type statusCmd struct {
 	release string
-	out     io.Writer
 	client  helm.Interface
 	version int
 	outfmt  string
 }
 
 func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	status := &statusCmd{
-		out:    out,
-		client: client,
-	}
+	status := &statusCmd{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "status [flags] RELEASE_NAME",
@@ -68,7 +64,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 			status.release = args[0]
 			status.client = ensureHelmClient(status.client, false)
-			return status.run()
+			return status.run(out)
 		},
 	}
 
@@ -78,7 +74,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (s *statusCmd) run() error {
+func (s *statusCmd) run(out io.Writer) error {
 	res, err := s.client.ReleaseStatus(s.release, s.version)
 	if err != nil {
 		return err
@@ -86,21 +82,21 @@ func (s *statusCmd) run() error {
 
 	switch s.outfmt {
 	case "":
-		PrintStatus(s.out, res)
+		PrintStatus(out, res)
 		return nil
 	case "json":
 		data, err := json.Marshal(res)
 		if err != nil {
 			return fmt.Errorf("Failed to Marshal JSON output: %s", err)
 		}
-		s.out.Write(data)
+		out.Write(data)
 		return nil
 	case "yaml":
 		data, err := yaml.Marshal(res)
 		if err != nil {
 			return fmt.Errorf("Failed to Marshal YAML output: %s", err)
 		}
-		s.out.Write(data)
+		out.Write(data)
 		return nil
 	}
 

@@ -38,12 +38,10 @@ type repoAddCmd struct {
 	certFile string
 	keyFile  string
 	caFile   string
-
-	out io.Writer
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
-	add := &repoAddCmd{out: out}
+	add := &repoAddCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "add [flags] [NAME] [URL]",
@@ -57,7 +55,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 			add.url = args[1]
 			add.home = settings.Home
 
-			return add.run()
+			return add.run(out)
 		},
 	}
 
@@ -72,11 +70,11 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (a *repoAddCmd) run() error {
+func (a *repoAddCmd) run(out io.Writer) error {
 	if err := addRepository(a.name, a.url, a.username, a.password, a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
 		return err
 	}
-	fmt.Fprintf(a.out, "%q has been added to your repositories\n", a.name)
+	fmt.Fprintf(out, "%q has been added to your repositories\n", a.name)
 	return nil
 }
 

@@ -41,20 +41,19 @@ version.BuildInfo{Version:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f643
 `
 
 type versionCmd struct {
-	out      io.Writer
 	short    bool
 	template string
 }
 
 func newVersionCmd(out io.Writer) *cobra.Command {
-	version := &versionCmd{out: out}
+	version := &versionCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "print the client version information",
 		Long:  versionDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return version.run()
+			return version.run(out)
 		},
 	}
 	f := cmd.Flags()
@@ -64,15 +63,15 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (v *versionCmd) run() error {
+func (v *versionCmd) run(out io.Writer) error {
 	if v.template != "" {
 		tt, err := template.New("_").Parse(v.template)
 		if err != nil {
 			return err
 		}
-		return tt.Execute(v.out, version.GetBuildInfo())
+		return tt.Execute(out, version.GetBuildInfo())
 	}
-	fmt.Fprintln(v.out, formatVersion(v.short))
+	fmt.Fprintln(out, formatVersion(v.short))
 	return nil
 }
 

@@ -38,12 +38,10 @@ the 'helm package --sign' command.
 type verifyCmd struct {
 	keyring   string
 	chartfile string
-
-	out io.Writer
 }
 
 func newVerifyCmd(out io.Writer) *cobra.Command {
-	vc := &verifyCmd{out: out}
+	vc := &verifyCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "verify [flags] PATH",
@@ -54,7 +52,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 				return errors.New("a path to a package file is required")
 			}
 			vc.chartfile = args[0]
-			return vc.run()
+			return vc.run(out)
 		},
 	}
 
@@ -64,7 +62,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (v *verifyCmd) run() error {
+func (v *verifyCmd) run(out io.Writer) error {
 	_, err := downloader.VerifyChart(v.chartfile, v.keyring)
 	return err
 }

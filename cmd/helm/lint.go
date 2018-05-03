@@ -49,14 +49,11 @@ type lintCmd struct {
 	sValues    []string
 	strict     bool
 	paths      []string
-	out        io.Writer
 }
 
 func newLintCmd(out io.Writer) *cobra.Command {
-	l := &lintCmd{
-		paths: []string{"."},
-		out:   out,
-	}
+	l := &lintCmd{paths: []string{"."}}
+
 	cmd := &cobra.Command{
 		Use:   "lint [flags] PATH",
 		Short: "examines a chart for possible issues",
@@ -65,7 +62,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				l.paths = args
 			}
-			return l.run()
+			return l.run(out)
 		},
 	}
 
@@ -79,7 +76,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 var errLintNoChart = errors.New("No chart found for linting (missing Chart.yaml)")
 
-func (l *lintCmd) run() error {
+func (l *lintCmd) run(out io.Writer) error {
 	var lowestTolerance int
 	if l.strict {
 		lowestTolerance = support.WarningSev
@@ -126,7 +123,7 @@ func (l *lintCmd) run() error {
 		return fmt.Errorf("%s, %d chart(s) failed", msg, failures)
 	}
 
-	fmt.Fprintf(l.out, "%s, no failures\n", msg)
+	fmt.Fprintf(out, "%s, no failures\n", msg)
 
 	return nil
 }

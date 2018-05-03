@@ -33,16 +33,13 @@ Hooks are formatted in YAML and separated by the YAML '---\n' separator.
 
 type getHooksCmd struct {
 	release string
-	out     io.Writer
 	client  helm.Interface
 	version int
 }
 
 func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	ghc := &getHooksCmd{
-		out:    out,
-		client: client,
-	}
+	ghc := &getHooksCmd{client: client}
+
 	cmd := &cobra.Command{
 		Use:   "hooks [flags] RELEASE_NAME",
 		Short: "download all hooks for a named release",
@@ -53,22 +50,22 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 			ghc.release = args[0]
 			ghc.client = ensureHelmClient(ghc.client, false)
-			return ghc.run()
+			return ghc.run(out)
 		},
 	}
 	cmd.Flags().IntVar(&ghc.version, "revision", 0, "get the named release with revision")
 	return cmd
 }
 
-func (g *getHooksCmd) run() error {
+func (g *getHooksCmd) run(out io.Writer) error {
 	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
-		fmt.Fprintln(g.out, g.release)
+		fmt.Fprintln(out, g.release)
 		return err
 	}
 
 	for _, hook := range res.Hooks {
-		fmt.Fprintf(g.out, "---\n# %s\n%s", hook.Name, hook.Manifest)
+		fmt.Fprintf(out, "---\n# %s\n%s", hook.Name, hook.Manifest)
 	}
 	return nil
 }

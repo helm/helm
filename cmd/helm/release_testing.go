@@ -35,17 +35,13 @@ The tests to be run are defined in the chart that was installed.
 
 type releaseTestCmd struct {
 	name    string
-	out     io.Writer
 	client  helm.Interface
 	timeout int64
 	cleanup bool
 }
 
 func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	rlsTest := &releaseTestCmd{
-		out:    out,
-		client: c,
-	}
+	rlsTest := &releaseTestCmd{client: c}
 
 	cmd := &cobra.Command{
 		Use:   "test [RELEASE]",
@@ -58,7 +54,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 			rlsTest.name = args[0]
 			rlsTest.client = ensureHelmClient(rlsTest.client, false)
-			return rlsTest.run()
+			return rlsTest.run(out)
 		},
 	}
 
@@ -69,7 +65,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (t *releaseTestCmd) run() (err error) {
+func (t *releaseTestCmd) run(out io.Writer) (err error) {
 	c, errc := t.client.RunReleaseTest(
 		t.name,
 		helm.ReleaseTestTimeout(t.timeout),
@@ -92,12 +88,9 @@ func (t *releaseTestCmd) run() (err error) {
 			if res.Status == release.TestRunFailure {
 				testErr.failed++
 			}
-
-			fmt.Fprintf(t.out, res.Msg+"\n")
-
+			fmt.Fprintf(out, res.Msg+"\n")
 		}
 	}
-
 }
 
 type testErr struct {

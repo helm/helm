@@ -41,15 +41,11 @@ type deleteCmd struct {
 	purge        bool
 	timeout      int64
 
-	out    io.Writer
 	client helm.Interface
 }
 
 func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	del := &deleteCmd{
-		out:    out,
-		client: c,
-	}
+	del := &deleteCmd{client: c}
 
 	cmd := &cobra.Command{
 		Use:        "delete [flags] RELEASE_NAME [...]",
@@ -65,7 +61,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 			for i := 0; i < len(args); i++ {
 				del.name = args[i]
-				if err := del.run(); err != nil {
+				if err := del.run(out); err != nil {
 					return err
 				}
 
@@ -84,7 +80,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (d *deleteCmd) run() error {
+func (d *deleteCmd) run(out io.Writer) error {
 	opts := []helm.DeleteOption{
 		helm.DeleteDryRun(d.dryRun),
 		helm.DeleteDisableHooks(d.disableHooks),
@@ -93,7 +89,7 @@ func (d *deleteCmd) run() error {
 	}
 	res, err := d.client.DeleteRelease(d.name, opts...)
 	if res != nil && res.Info != "" {
-		fmt.Fprintln(d.out, res.Info)
+		fmt.Fprintln(out, res.Info)
 	}
 
 	return err

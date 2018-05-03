@@ -41,17 +41,13 @@ type rollbackCmd struct {
 	recreate     bool
 	force        bool
 	disableHooks bool
-	out          io.Writer
 	client       helm.Interface
 	timeout      int64
 	wait         bool
 }
 
 func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	rollback := &rollbackCmd{
-		out:    out,
-		client: c,
-	}
+	rollback := &rollbackCmd{client: c}
 
 	cmd := &cobra.Command{
 		Use:   "rollback [flags] [RELEASE] [REVISION]",
@@ -71,7 +67,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 			rollback.revision = int(v64)
 			rollback.client = ensureHelmClient(rollback.client, false)
-			return rollback.run()
+			return rollback.run(out)
 		},
 	}
 
@@ -86,7 +82,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (r *rollbackCmd) run() error {
+func (r *rollbackCmd) run(out io.Writer) error {
 	_, err := r.client.RollbackRelease(
 		r.name,
 		helm.RollbackDryRun(r.dryRun),
@@ -100,7 +96,7 @@ func (r *rollbackCmd) run() error {
 		return err
 	}
 
-	fmt.Fprintf(r.out, "Rollback was a success! Happy Helming!\n")
+	fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")
 
 	return nil
 }

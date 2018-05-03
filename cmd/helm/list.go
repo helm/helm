@@ -63,7 +63,6 @@ type listCmd struct {
 	offset        string
 	byDate        bool
 	sortDesc      bool
-	out           io.Writer
 	all           bool
 	deleted       bool
 	deleting      bool
@@ -77,10 +76,7 @@ type listCmd struct {
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	list := &listCmd{
-		out:    out,
-		client: client,
-	}
+	list := &listCmd{client: client}
 
 	cmd := &cobra.Command{
 		Use:     "list [flags] [FILTER]",
@@ -92,7 +88,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				list.filter = strings.Join(args, " ")
 			}
 			list.client = ensureHelmClient(list.client, list.allNamespaces)
-			return list.run()
+			return list.run(out)
 		},
 	}
 
@@ -114,7 +110,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (l *listCmd) run() error {
+func (l *listCmd) run(out io.Writer) error {
 	sortBy := hapi.SortByName
 	if l.byDate {
 		sortBy = hapi.SortByLastReleased
@@ -148,11 +144,11 @@ func (l *listCmd) run() error {
 
 	if l.short {
 		for _, r := range rels {
-			fmt.Fprintln(l.out, r.Name)
+			fmt.Fprintln(out, r.Name)
 		}
 		return nil
 	}
-	fmt.Fprintln(l.out, formatList(rels, l.colWidth))
+	fmt.Fprintln(out, formatList(rels, l.colWidth))
 	return nil
 }
 

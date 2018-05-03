@@ -103,12 +103,11 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 }
 
 type dependencyListCmd struct {
-	out       io.Writer
 	chartpath string
 }
 
 func newDependencyListCmd(out io.Writer) *cobra.Command {
-	dlc := &dependencyListCmd{out: out}
+	dlc := &dependencyListCmd{}
 
 	cmd := &cobra.Command{
 		Use:     "list [flags] CHART",
@@ -128,7 +127,7 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (l *dependencyListCmd) run() error {
+func (l *dependencyListCmd) run(out io.Writer) error {
 	c, err := chartutil.Load(l.chartpath)
 	if err != nil {
 		return err
@@ -137,15 +136,15 @@ func (l *dependencyListCmd) run() error {
 	r, err := chartutil.LoadRequirements(c)
 	if err != nil {
 		if err == chartutil.ErrRequirementsNotFound {
-			fmt.Fprintf(l.out, "WARNING: no requirements at %s/charts\n", l.chartpath)
+			fmt.Fprintf(out, "WARNING: no requirements at %s/charts\n", l.chartpath)
 			return nil
 		}
 		return err
 	}
 
-	l.printRequirements(r, l.out)
-	fmt.Fprintln(l.out)
-	l.printMissing(r)
+	l.printRequirements(out, r)
+	fmt.Fprintln(out)
+	l.printMissing(out, r)
 	return nil
 }
 
@@ -224,7 +223,7 @@ func (l *dependencyListCmd) dependencyStatus(dep *chartutil.Dependency) string {
 }
 
 // printRequirements prints all of the requirements in the yaml file.
-func (l *dependencyListCmd) printRequirements(reqs *chartutil.Requirements, out io.Writer) {
+func (l *dependencyListCmd) printRequirements(out io.Writer, reqs *chartutil.Requirements) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
@@ -235,18 +234,18 @@ func (l *dependencyListCmd) printRequirements(reqs *chartutil.Requirements, out 
 }
 
 // printMissing prints warnings about charts that are present on disk, but are not in the requirements.
-func (l *dependencyListCmd) printMissing(reqs *chartutil.Requirements) {
+func (l *dependencyListCmd) printMissing(out io.Writer, reqs *chartutil.Requirements) {
 	folder := filepath.Join(l.chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {
-		fmt.Fprintln(l.out, err)
+		fmt.Fprintln(out, err)
 		return
 	}
 
 	for _, f := range files {
 		fi, err := os.Stat(f)
 		if err != nil {
-			fmt.Fprintf(l.out, "Warning: %s\n", err)
+			fmt.Fprintf(out, "Warning: %s\n", err)
 		}
 		// Skip anything that is not a directory and not a tgz file.
 		if !fi.IsDir() && filepath.Ext(f) != ".tgz" {
@@ -254,7 +253,7 @@ func (l *dependencyListCmd) printMissing(reqs *chartutil.Requirements) {
 		}
 		c, err := chartutil.Load(f)
 		if err != nil {
-			fmt.Fprintf(l.out, "WARNING: %q is not a chart.\n", f)
+			fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
 			continue
 		}
 		found := false
@@ -265,7 +264,7 @@ func (l *dependencyListCmd) printMissing(reqs *chartutil.Requirements) {
 			}
 		}
 		if !found {
-			fmt.Fprintf(l.out, "WARNING: %q is not in requirements.yaml.\n", f)
+			fmt.Fprintf(out, "WARNING: %q is not in requirements.yaml.\n", f)
 		}
 	}
 

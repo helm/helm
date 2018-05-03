@@ -57,12 +57,11 @@ will be overwritten, but other files will be left alone.
 type createCmd struct {
 	home    helmpath.Home
 	name    string
-	out     io.Writer
 	starter string
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
-	cc := &createCmd{out: out}
+	cc := &createCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "create NAME",
@@ -74,7 +73,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 				return errors.New("the name of the new chart is required")
 			}
 			cc.name = args[0]
-			return cc.run()
+			return cc.run(out)
 		},
 	}
 
@@ -82,8 +81,8 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (c *createCmd) run() error {
-	fmt.Fprintf(c.out, "Creating %s\n", c.name)
+func (c *createCmd) run(out io.Writer) error {
+	fmt.Fprintf(out, "Creating %s\n", c.name)
 
 	chartname := filepath.Base(c.name)
 	cfile := &chart.Metadata{

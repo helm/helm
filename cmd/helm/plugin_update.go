@@ -32,11 +32,10 @@ import (
 type pluginUpdateCmd struct {
 	names []string
 	home  helmpath.Home
-	out   io.Writer
 }
 
 func newPluginUpdateCmd(out io.Writer) *cobra.Command {
-	pcmd := &pluginUpdateCmd{out: out}
+	pcmd := &pluginUpdateCmd{}
 	cmd := &cobra.Command{
 		Use:   "update <plugin>...",
 		Short: "update one or more Helm plugins",
@@ -44,7 +43,7 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 			return pcmd.complete(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pcmd.run()
+			return pcmd.run(out)
 		},
 	}
 	return cmd
@@ -59,7 +58,7 @@ func (pcmd *pluginUpdateCmd) complete(args []string) error {
 	return nil
 }
 
-func (pcmd *pluginUpdateCmd) run() error {
+func (pcmd *pluginUpdateCmd) run(out io.Writer) error {
 	installer.Debug = settings.Debug
 	debug("loading installed plugins from %s", settings.PluginDirs())
 	plugins, err := findPlugins(settings.PluginDirs())
@@ -73,7 +72,7 @@ func (pcmd *pluginUpdateCmd) run() error {
 			if err := updatePlugin(found, pcmd.home); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to update plugin %s, got error (%v)", name, err))
 			} else {
-				fmt.Fprintf(pcmd.out, "Updated plugin: %s\n", name)
+				fmt.Fprintf(out, "Updated plugin: %s\n", name)
 			}
 		} else {
 			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))

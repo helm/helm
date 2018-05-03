@@ -63,7 +63,6 @@ To render just one template in a chart, use '-x':
 type templateCmd struct {
 	valueFiles   valueFiles
 	chartPath    string
-	out          io.Writer
 	values       []string
 	stringValues []string
 	nameTemplate string
@@ -75,16 +74,26 @@ type templateCmd struct {
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
-
-	t := &templateCmd{
-		out: out,
-	}
+	t := &templateCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "template [flags] CHART",
 		Short: fmt.Sprintf("locally render templates"),
 		Long:  templateDesc,
-		RunE:  t.run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return errors.New("chart is required")
+			}
+			// verify chart path exists
+			if _, err := os.Stat(args[0]); err == nil {
+				if t.chartPath, err = filepath.Abs(args[0]); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+			return t.run(out)
+		},
 	}
 
 	f := cmd.Flags()
@@ -101,18 +110,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return errors.New("chart is required")
-	}
-	// verify chart path exists
-	if _, err := os.Stat(args[0]); err == nil {
-		if t.chartPath, err = filepath.Abs(args[0]); err != nil {
-			return err
-		}
-	} else {
-		return err
-	}
+func (t *templateCmd) run(out io.Writer) error {
 	// verify specified templates exist relative to chart
 	rf := []string{}
 	var af string
@@ -208,14 +206,14 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	out, err := renderer.Render(c, vals)
+	rendered, err := renderer.Render(c, vals)
 	listManifests := []tiller.Manifest{}
 	if err != nil {
 		return err
 	}
 	// extract kind and name
 	re := regexp.MustCompile("kind:(.*)\n")
-	for k, v := range out {
+	for k, v := range rendered {
 		match := re.FindStringSubmatch(v)
 		h := "Unknown"
 		if len(match) == 2 {
@@ -245,7 +243,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			Version: 1,
 			Info:    &release.Info{LastDeployed: time.Now()},
 		}
-		printRelease(os.Stdout, rel)
+		printRelease(out, rel)
 	}
 
 	for _, m := range tiller.SortByKind(listManifests) {

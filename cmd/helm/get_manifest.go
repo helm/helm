@@ -35,16 +35,13 @@ charts, those resources will also be included in the manifest.
 
 type getManifestCmd struct {
 	release string
-	out     io.Writer
 	client  helm.Interface
 	version int
 }
 
 func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	get := &getManifestCmd{
-		out:    out,
-		client: client,
-	}
+	get := &getManifestCmd{client: client}
+
 	cmd := &cobra.Command{
 		Use:   "manifest [flags] RELEASE_NAME",
 		Short: "download the manifest for a named release",
@@ -55,7 +52,7 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 			get.release = args[0]
 			get.client = ensureHelmClient(get.client, false)
-			return get.run()
+			return get.run(out)
 		},
 	}
 
@@ -64,11 +61,11 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 // getManifest implements 'helm get manifest'
-func (g *getManifestCmd) run() error {
+func (g *getManifestCmd) run(out io.Writer) error {
 	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(g.out, res.Manifest)
+	fmt.Fprintln(out, res.Manifest)
 	return nil
 }

@@ -62,12 +62,11 @@ type packageCmd struct {
 	destination      string
 	dependencyUpdate bool
 
-	out  io.Writer
 	home helmpath.Home
 }
 
 func newPackageCmd(out io.Writer) *cobra.Command {
-	pkg := &packageCmd{out: out}
+	pkg := &packageCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "package [flags] [CHART_PATH] [...]",
@@ -88,7 +87,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 			}
 			for i := 0; i < len(args); i++ {
 				pkg.path = args[i]
-				if err := pkg.run(); err != nil {
+				if err := pkg.run(out); err != nil {
 					return err
 				}
 			}
@@ -111,7 +110,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (p *packageCmd) run() error {
+func (p *packageCmd) run(out io.Writer) error {
 	path, err := filepath.Abs(p.path)
 	if err != nil {
 		return err
@@ -119,7 +118,7 @@ func (p *packageCmd) run() error {
 
 	if p.dependencyUpdate {
 		downloadManager := &downloader.Manager{
-			Out:       p.out,
+			Out:       out,
 			ChartPath: path,
 			HelmHome:  settings.Home,
 			Keyring:   p.keyring,
@@ -192,7 +191,7 @@ func (p *packageCmd) run() error {
 
 	name, err := chartutil.Save(ch, dest)
 	if err == nil {
-		fmt.Fprintf(p.out, "Successfully packaged chart and saved it to: %s\n", name)
+		fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", name)
 	} else {
 		return fmt.Errorf("Failed to save: %s", err)
 	}

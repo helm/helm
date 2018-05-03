@@ -28,13 +28,12 @@ import (
 )
 
 type repoRemoveCmd struct {
-	out  io.Writer
 	name string
 	home helmpath.Home
 }
 
 func newRepoRemoveCmd(out io.Writer) *cobra.Command {
-	remove := &repoRemoveCmd{out: out}
+	remove := &repoRemoveCmd{}
 
 	cmd := &cobra.Command{
 		Use:     "remove [flags] [NAME]",
@@ -47,15 +46,15 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 			remove.name = args[0]
 			remove.home = settings.Home
 
-			return remove.run()
+			return remove.run(out)
 		},
 	}
 
 	return cmd
 }
 
-func (r *repoRemoveCmd) run() error {
-	return removeRepoLine(r.out, r.name, r.home)
+func (r *repoRemoveCmd) run(out io.Writer) error {
+	return removeRepoLine(out, r.name, r.home)
 }
 
 func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {

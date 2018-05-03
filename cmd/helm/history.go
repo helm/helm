@@ -59,14 +59,13 @@ The historical release set is printed as a formatted table, e.g:
 type historyCmd struct {
 	max          int
 	rls          string
-	out          io.Writer
 	helmc        helm.Interface
 	colWidth     uint
 	outputFormat string
 }
 
-func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
-	his := &historyCmd{out: w, helmc: c}
+func newHistoryCmd(c helm.Interface, out io.Writer) *cobra.Command {
+	his := &historyCmd{helmc: c}
 
 	cmd := &cobra.Command{
 		Use:     "history [flags] RELEASE_NAME",
@@ -79,7 +78,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 			}
 			his.helmc = ensureHelmClient(his.helmc, false)
 			his.rls = args[0]
-			return his.run()
+			return his.run(out)
 		},
 	}
 
@@ -91,7 +90,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (cmd *historyCmd) run() error {
+func (cmd *historyCmd) run(out io.Writer) error {
 	rels, err := cmd.helmc.ReleaseHistory(cmd.rls, cmd.max)
 	if err != nil {
 		return err
@@ -120,7 +119,7 @@ func (cmd *historyCmd) run() error {
 		return formattingError
 	}
 
-	fmt.Fprintln(cmd.out, string(history))
+	fmt.Fprintln(out, string(history))
 	return nil
 }
 

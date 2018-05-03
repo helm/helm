@@ -44,15 +44,11 @@ type getCmd struct {
 	release string
 	version int
 
-	out    io.Writer
 	client helm.Interface
 }
 
 func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	get := &getCmd{
-		out:    out,
-		client: client,
-	}
+	get := &getCmd{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "get [flags] RELEASE_NAME",
@@ -64,7 +60,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			}
 			get.release = args[0]
 			get.client = ensureHelmClient(get.client, false)
-			return get.run()
+			return get.run(out)
 		},
 	}
 
@@ -78,10 +74,10 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 // getCmd is the command that implements 'helm get'
-func (g *getCmd) run() error {
+func (g *getCmd) run(out io.Writer) error {
 	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		return err
 	}
-	return printRelease(g.out, res)
+	return printRelease(out, res)
 }

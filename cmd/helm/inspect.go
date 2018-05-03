@@ -55,7 +55,6 @@ type inspectCmd struct {
 	output    string
 	verify    bool
 	keyring   string
-	out       io.Writer
 	version   string
 	repoURL   string
 	username  string
@@ -76,10 +75,7 @@ const (
 var readmeFileNames = []string{"readme.md", "readme.txt", "readme"}
 
 func newInspectCmd(out io.Writer) *cobra.Command {
-	insp := &inspectCmd{
-		out:    out,
-		output: all,
-	}
+	insp := &inspectCmd{output: all}
 
 	inspectCommand := &cobra.Command{
 		Use:   "inspect [CHART]",
@@ -95,7 +91,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 			insp.chartpath = cp
-			return insp.run()
+			return insp.run(out)
 		},
 	}
 
@@ -114,7 +110,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 			insp.chartpath = cp
-			return insp.run()
+			return insp.run(out)
 		},
 	}
 
@@ -133,7 +129,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 			insp.chartpath = cp
-			return insp.run()
+			return insp.run(out)
 		},
 	}
 
@@ -152,7 +148,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 			insp.chartpath = cp
-			return insp.run()
+			return insp.run(out)
 		},
 	}
 
@@ -219,7 +215,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	return inspectCommand
 }
 
-func (i *inspectCmd) run() error {
+func (i *inspectCmd) run(out io.Writer) error {
 	chrt, err := chartutil.Load(i.chartpath)
 	if err != nil {
 		return err
@@ -230,25 +226,25 @@ func (i *inspectCmd) run() error {
 	}
 
 	if i.output == chartOnly || i.output == all {
-		fmt.Fprintln(i.out, string(cf))
+		fmt.Fprintln(out, string(cf))
 	}
 
 	if (i.output == valuesOnly || i.output == all) && chrt.Values != nil {
 		if i.output == all {
-			fmt.Fprintln(i.out, "---")
+			fmt.Fprintln(out, "---")
 		}
-		fmt.Fprintln(i.out, string(chrt.Values))
+		fmt.Fprintln(out, string(chrt.Values))
 	}
 
 	if i.output == readmeOnly || i.output == all {
 		if i.output == all {
-			fmt.Fprintln(i.out, "---")
+			fmt.Fprintln(out, "---")
 		}
 		readme := findReadme(chrt.Files)
 		if readme == nil {
 			return nil
 		}
-		fmt.Fprintln(i.out, string(readme.Data))
+		fmt.Fprintln(out, string(readme.Data))
 	}
 	return nil
 }

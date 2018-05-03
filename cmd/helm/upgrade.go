@@ -56,7 +56,6 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 type upgradeCmd struct {
 	release      string
 	chart        string
-	out          io.Writer
 	client       helm.Interface
 	dryRun       bool
 	recreate     bool
@@ -84,11 +83,7 @@ type upgradeCmd struct {
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
-
-	upgrade := &upgradeCmd{
-		out:    out,
-		client: client,
-	}
+	upgrade := &upgradeCmd{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -108,7 +103,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			upgrade.chart = args[1]
 			upgrade.client = ensureHelmClient(upgrade.client, false)
 
-			return upgrade.run()
+			return upgrade.run(out)
 		},
 	}
 
@@ -142,7 +137,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (u *upgradeCmd) run() error {
+func (u *upgradeCmd) run(out io.Writer) error {
 	chartPath, err := locateChartPath(u.repoURL, u.username, u.password, u.chart, u.version, u.verify, u.keyring, u.certFile, u.keyFile, u.caFile)
 	if err != nil {
 		return err
@@ -154,11 +149,10 @@ func (u *upgradeCmd) run() error {
 		_, err := u.client.ReleaseHistory(u.release, 1)
 
 		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(u.release).Error()) {
-			fmt.Fprintf(u.out, "Release %q does not exist. Installing it now.\n", u.release)
+			fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", u.release)
 			ic := &installCmd{
 				chartPath:    chartPath,
 				client:       u.client,
-				out:          u.out,
 				name:         u.release,
 				valueFiles:   u.valueFiles,
 				dryRun:       u.dryRun,
@@ -170,7 +164,7 @@ func (u *upgradeCmd) run() error {
 				timeout:      u.timeout,
 				wait:         u.wait,
 			}
-			return ic.run()
+			return ic.run(out)
 		}
 	}
 
@@ -209,17 +203,17 @@ func (u *upgradeCmd) run() error {
 	}
 
 	if settings.Debug {
-		printRelease(u.out, resp)
+		printRelease(out, resp)
 	}
 
-	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
+	fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", u.release)
 
 	// Print the status like status command does
 	status, err := u.client.ReleaseStatus(u.release, 0)
 	if err != nil {
 		return err
 	}
-	PrintStatus(u.out, status)
+	PrintStatus(out, status)
 
 	return nil
 }

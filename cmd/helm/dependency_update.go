@@ -43,7 +43,6 @@ in the requirements.yaml file, but (b) at the wrong version.
 
 // dependencyUpdateCmd describes a 'helm dependency update'
 type dependencyUpdateCmd struct {
-	out         io.Writer
 	chartpath   string
 	helmhome    helmpath.Home
 	verify      bool
@@ -53,7 +52,7 @@ type dependencyUpdateCmd struct {
 
 // newDependencyUpdateCmd creates a new dependency update command.
 func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
-	duc := &dependencyUpdateCmd{out: out}
+	duc := &dependencyUpdateCmd{}
 
 	cmd := &cobra.Command{
 		Use:     "update [flags] CHART",
@@ -74,7 +73,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 
 			duc.helmhome = settings.Home
 
-			return duc.run()
+			return duc.run(out)
 		},
 	}
 
@@ -87,9 +86,9 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 }
 
 // run runs the full dependency update process.
-func (d *dependencyUpdateCmd) run() error {
+func (d *dependencyUpdateCmd) run(out io.Writer) error {
 	man := &downloader.Manager{
-		Out:        d.out,
+		Out:        out,
 		ChartPath:  d.chartpath,
 		HelmHome:   d.helmhome,
 		Keyring:    d.keyring,

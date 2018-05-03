@@ -39,12 +39,11 @@ var stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
 
 type initCmd struct {
 	skipRefresh bool
-	out         io.Writer
 	home        helmpath.Home
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
-	i := &initCmd{out: out}
+	i := &initCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -55,7 +54,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 				return errors.New("This command does not accept arguments")
 			}
 			i.home = settings.Home
-			return i.run()
+			return i.run(out)
 		},
 	}
 
@@ -67,18 +66,18 @@ func newInitCmd(out io.Writer) *cobra.Command {
 }
 
 // run initializes local config and installs Tiller to Kubernetes cluster.
-func (i *initCmd) run() error {
-	if err := ensureDirectories(i.home, i.out); err != nil {
+func (i *initCmd) run(out io.Writer) error {
+	if err := ensureDirectories(i.home, out); err != nil {
 		return err
 	}
-	if err := ensureDefaultRepos(i.home, i.out, i.skipRefresh); err != nil {
+	if err := ensureDefaultRepos(i.home, out, i.skipRefresh); err != nil {
 		return err
 	}
-	if err := ensureRepoFileFormat(i.home.RepositoryFile(), i.out); err != nil {
+	if err := ensureRepoFileFormat(i.home.RepositoryFile(), out); err != nil {
 		return err
 	}
-	fmt.Fprintf(i.out, "$HELM_HOME has been configured at %s.\n", settings.Home)
-	fmt.Fprintln(i.out, "Happy Helming!")
+	fmt.Fprintf(out, "$HELM_HOME has been configured at %s.\n", settings.Home)
+	fmt.Fprintln(out, "Happy Helming!")
 	return nil
 }
 

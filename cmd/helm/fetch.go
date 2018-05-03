@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
@@ -64,12 +65,10 @@ type fetchCmd struct {
 	caFile   string
 
 	devel bool
-
-	out io.Writer
 }
 
 func newFetchCmd(out io.Writer) *cobra.Command {
-	fch := &fetchCmd{out: out}
+	fch := &fetchCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "fetch [flags] [chart URL | repo/chartname] [...]",
@@ -87,7 +86,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 
 			for i := 0; i < len(args); i++ {
 				fch.chartRef = args[i]
-				if err := fch.run(); err != nil {
+				if err := fch.run(out); err != nil {
 					return err
 				}
 			}
@@ -114,10 +113,10 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (f *fetchCmd) run() error {
+func (f *fetchCmd) run(out io.Writer) error {
 	c := downloader.ChartDownloader{
 		HelmHome: settings.Home,
-		Out:      f.out,
+		Out:      out,
 		Keyring:  f.keyring,
 		Verify:   downloader.VerifyNever,
 		Getters:  getter.All(settings),
@@ -157,7 +156,7 @@ func (f *fetchCmd) run() error {
 	}
 
 	if f.verify {
-		fmt.Fprintf(f.out, "Verification: %v\n", v)
+		fmt.Fprintf(out, "Verification: %v\n", v)
 	}
 
 	// After verification, untar the chart into the requested directory.

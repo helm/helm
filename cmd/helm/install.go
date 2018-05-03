@@ -128,7 +128,6 @@ type installCmd struct {
 	caFile       string     // --ca-file
 	chartPath    string     // arg
 
-	out    io.Writer
 	client helm.Interface
 }
 
@@ -150,10 +149,7 @@ func (v *valueFiles) Set(value string) error {
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	inst := &installCmd{
-		out:    out,
-		client: c,
-	}
+	inst := &installCmd{client: c}
 
 	cmd := &cobra.Command{
 		Use:   "install [CHART]",
@@ -177,7 +173,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			}
 			inst.chartPath = cp
 			inst.client = ensureHelmClient(inst.client, false)
-			return inst.run()
+			return inst.run(out)
 		},
 	}
 
@@ -207,7 +203,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (i *installCmd) run() error {
+func (i *installCmd) run(out io.Writer) error {
 	debug("CHART PATH: %s\n", i.chartPath)
 
 	rawVals, err := vals(i.valueFiles, i.values, i.stringValues)
@@ -238,7 +234,7 @@ func (i *installCmd) run() error {
 		if err := checkDependencies(chartRequested, req); err != nil {
 			if i.depUp {
 				man := &downloader.Manager{
-					Out:        i.out,
+					Out:        out,
 					ChartPath:  i.chartPath,
 					HelmHome:   settings.Home,
 					Keyring:    defaultKeyring(),
@@ -274,7 +270,7 @@ func (i *installCmd) run() error {
 	if rel == nil {
 		return nil
 	}
-	i.printRelease(rel)
+	i.printRelease(out, rel)
 
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
@@ -286,7 +282,7 @@ func (i *installCmd) run() error {
 	if err != nil {
 		return err
 	}
-	PrintStatus(i.out, status)
+	PrintStatus(out, status)
 	return nil
 }
 
@@ -363,14 +359,14 @@ func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte
 }
 
 // printRelease prints info about a release if the Debug is true.
-func (i *installCmd) printRelease(rel *release.Release) {
+func (i *installCmd) printRelease(out io.Writer, rel *release.Release) {
 	if rel == nil {
 		return
 	}
 	// TODO: Switch to text/template like everything else.
-	fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
+	fmt.Fprintf(out, "NAME:   %s\n", rel.Name)
 	if settings.Debug {
-		printRelease(i.out, rel)
+		printRelease(out, rel)
 	}
 }
 

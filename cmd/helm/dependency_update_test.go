@@ -190,11 +190,11 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	duc := &dependencyUpdateCmd{out: out}
+	duc := &dependencyUpdateCmd{}
 	duc.helmhome = helmpath.Home(hh)
 	duc.chartpath = hh.Path(chartname)
 
-	if err := duc.run(); err != nil {
+	if err := duc.run(out); err != nil {
 		output := out.String()
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
@@ -203,7 +203,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	// Chart repo is down
 	srv.Stop()
 
-	if err := duc.run(); err == nil {
+	if err := duc.run(out); err == nil {
 		output := out.String()
 		t.Logf("Output: %s", output)
 		t.Fatal("Expected error, got nil")

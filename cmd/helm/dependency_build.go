@@ -37,7 +37,6 @@ of 'helm dependency update'.
 `
 
 type dependencyBuildCmd struct {
-	out       io.Writer
 	chartpath string
 	verify    bool
 	keyring   string
@@ -45,7 +44,7 @@ type dependencyBuildCmd struct {
 }
 
 func newDependencyBuildCmd(out io.Writer) *cobra.Command {
-	dbc := &dependencyBuildCmd{out: out}
+	dbc := &dependencyBuildCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "build [flags] CHART",
@@ -58,7 +57,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				dbc.chartpath = args[0]
 			}
-			return dbc.run()
+			return dbc.run(out)
 		},
 	}
 
@@ -69,9 +68,9 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (d *dependencyBuildCmd) run() error {
+func (d *dependencyBuildCmd) run(out io.Writer) error {
 	man := &downloader.Manager{
-		Out:       d.out,
+		Out:       out,
 		ChartPath: d.chartpath,
 		HelmHome:  d.helmhome,
 		Keyring:   d.keyring,

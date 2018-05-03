@@ -41,12 +41,11 @@ into the existing index, with local charts taking priority over existing charts.
 type repoIndexCmd struct {
 	dir   string
 	url   string
-	out   io.Writer
 	merge string
 }
 
 func newRepoIndexCmd(out io.Writer) *cobra.Command {
-	index := &repoIndexCmd{out: out}
+	index := &repoIndexCmd{}
 
 	cmd := &cobra.Command{
 		Use:   "index [flags] [DIR]",
@@ -59,7 +58,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 
 			index.dir = args[0]
 
-			return index.run()
+			return index.run(out)
 		},
 	}
 
@@ -70,7 +69,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (i *repoIndexCmd) run() error {
+func (i *repoIndexCmd) run(out io.Writer) error {
 	path, err := filepath.Abs(i.dir)
 	if err != nil {
 		return err

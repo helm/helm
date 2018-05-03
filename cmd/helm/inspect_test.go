@@ -29,9 +29,8 @@ func TestInspect(t *testing.T) {
 	insp := &inspectCmd{
 		chartpath: "testdata/testcharts/alpine",
 		output:    all,
-		out:       b,
 	}
-	insp.run()
+	insp.run(b)
 
 	// Load the data from the textfixture directly.
 	cdata, err := ioutil.ReadFile("testdata/testcharts/alpine/Chart.yaml")
@@ -71,9 +70,8 @@ func TestInspect(t *testing.T) {
 	insp = &inspectCmd{
 		chartpath: "testdata/testcharts/novals",
 		output:    "values",
-		out:       b,
 	}
-	insp.run()
+	insp.run(b)
 	if b.Len() != 0 {
 		t.Errorf("expected empty values buffer, got %q", b.String())
 	}
