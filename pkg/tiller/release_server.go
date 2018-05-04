@@ -168,32 +168,35 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 }
 
 func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
-
 	// If a name is supplied, we check to see if that name is taken. If not, it
 	// is granted. If reuse is true and a deleted release with that name exists,
 	// we re-grant it. Otherwise, an error is returned.
 	if start != "" {
-
 		if len(start) > releaseNameMaxLen {
 			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
 		}
 
 		h, err := s.env.Releases.History(start)
 		if err != nil || len(h) < 1 {
-			return start, nil
+			return start, err
 		}
 		relutil.Reverse(h, relutil.SortByRevision)
 		rel := h[0]
 
-		if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
-			// Allowe re-use of names if the previous release is marked deleted.
-			s.Log("name %s exists but is not in use, reusing name", start)
-			return start, nil
-		} else if reuse {
-			return "", errors.New("cannot re-use a name that is still in use")
+		if !reuse {
+			return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
 		}
 
-		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
+		switch rel.Info.Status.Code {
+		case release.Status_DELETED, release.Status_FAILED, release.Status_SUPERSEDED:
+			// Allow re-use of names if the previous release is marked deleted.
+			// Note that the latest release should never be SUPERSEDED, but this
+			// can happen on certain failures (issue #3134).
+			s.Log("name %s exists but is not in use, reusing name", start)
+			return start, nil
+		default:
+			return "", errors.New("cannot re-use a name that is still in use")
+		}
 	}
 
 	maxTries := 5
