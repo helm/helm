@@ -90,6 +90,8 @@ type Engine interface {
 	// It receives a chart, a config, and a map of overrides to the config.
 	// Overrides are assumed to be passed from the system, not the user.
 	Render(*chart.Chart, chartutil.Values) (map[string]string, error)
+	// ExpandValues will expand all templates found in vals
+	ExpandValues(chartutil.Values) (chartutil.Values, error)
 }
 
 // KubeClient represents a client capable of communicating with the Kubernetes API.

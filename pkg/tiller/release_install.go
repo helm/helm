@@ -24,6 +24,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
@@ -33,7 +34,7 @@ import (
 // InstallRelease installs a release and stores the release record.
 func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	s.Log("preparing install for %s", req.Name)
-	rel, err := s.prepareRelease(req)
+	rel, finalVals, err := s.prepareRelease(req)
 	if err != nil {
 		s.Log("failed install prepare step: %s", err)
 		res := &services.InstallReleaseResponse{Release: rel}
@@ -47,27 +48,34 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 	}
 
 	s.Log("performing install for %s", req.Name)
-	res, err := s.performRelease(rel, req)
-	if err != nil {
-		s.Log("failed install perform step: %s", err)
+	res := &services.InstallReleaseResponse{Release: rel, FinalValues: finalVals}
+	if req.DryRun {
+		s.Log("dry run for %s", rel.Name)
+		res.Release.Info.Description = "Dry run complete"
+	} else {
+		if err := s.performRelease(rel, req); err != nil {
+			s.Log("failed install perform step: %s", err)
+			return res, err
+		}
 	}
-	return res, err
+
+	return res, nil
 }
 
 // prepareRelease builds a release for an install operation.
-func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
+func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, *chart.Config, error) {
 	if req.Chart == nil {
-		return nil, errMissingChart
+		return nil, nil, errMissingChart
 	}
 
 	name, err := s.uniqName(req.Name, req.ReuseName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	caps, err := capabilities(s.clientset.Discovery())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	revision := 1
@@ -81,10 +89,10 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	}
 	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
+	hooks, manifestDoc, notesTxt, finalVals, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
 	if err != nil {
 		// Return a release with partial data so that client can show debugging
 		// information.
@@ -104,7 +112,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		if manifestDoc != nil {
 			rel.Manifest = manifestDoc.String()
 		}
-		return rel, err
+		return rel, finalVals, err
 	}
 
 	// Store a release.
@@ -128,23 +136,15 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 	}
 
 	err = validateManifest(s.env.KubeClient, req.Namespace, manifestDoc.Bytes())
-	return rel, err
+	return rel, finalVals, err
 }
 
 // performRelease runs a release.
-func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
-	res := &services.InstallReleaseResponse{Release: r}
-
-	if req.DryRun {
-		s.Log("dry run for %s", r.Name)
-		res.Release.Info.Description = "Dry run complete"
-		return res, nil
-	}
-
+func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) error {
 	// pre-install hooks
 	if !req.DisableHooks {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.PreInstall, req.Timeout); err != nil {
-			return res, err
+			return err
 		}
 	} else {
 		s.Log("install hooks disabled for %s", req.Name)
@@ -181,7 +181,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Description = msg
 			s.recordRelease(old, true)
 			s.recordRelease(r, true)
-			return res, err
+			return err
 		}
 
 	default:
@@ -194,7 +194,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, true)
-			return res, fmt.Errorf("release %s failed: %s", r.Name, err)
+			return fmt.Errorf("release %s failed: %s", r.Name, err)
 		}
 	}
 
@@ -206,7 +206,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			r.Info.Status.Code = release.Status_FAILED
 			r.Info.Description = msg
 			s.recordRelease(r, true)
-			return res, err
+			return err
 		}
 	}
 
@@ -221,5 +221,5 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	// this stored in the future.
 	s.recordRelease(r, true)
 
-	return res, nil
+	return nil
 }

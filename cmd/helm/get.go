@@ -85,5 +85,5 @@ func (g *getCmd) run() error {
 	if err != nil {
 		return prettyError(err)
 	}
-	return printRelease(g.out, res.Release)
+	return printRelease(g.out, res.Release, nil)
 }

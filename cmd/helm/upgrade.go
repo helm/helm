@@ -230,7 +230,7 @@ func (u *upgradeCmd) run() error {
 	}
 
 	if settings.Debug {
-		printRelease(u.out, resp.Release)
+		printRelease(u.out, resp.Release, resp.GetFinalValues())
 	}
 
 	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)

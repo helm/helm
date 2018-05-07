@@ -18,6 +18,7 @@ package environment
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -36,6 +37,10 @@ type mockEngine struct {
 
 func (e *mockEngine) Render(chrt *chart.Chart, v chartutil.Values) (map[string]string, error) {
 	return e.out, nil
+}
+
+func (e *mockEngine) ExpandValues(chartutil.Values) (chartutil.Values, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 type mockKubeClient struct{}
