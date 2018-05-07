@@ -73,7 +73,7 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
-	// If the service does not exists that would mean we are upgrading from a Tiller version
+	// If the service does not exist that would mean we are upgrading from a Tiller version
 	// that didn't deploy the service, so install it.
 	_, err = client.CoreV1().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -176,7 +176,6 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 			return nil, err
 		}
 	}
-	automountServiceAccountToken := opts.ServiceAccount != ""
 	d := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: opts.Namespace,
@@ -190,8 +189,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{
-					ServiceAccountName:           opts.ServiceAccount,
-					AutomountServiceAccountToken: &automountServiceAccountToken,
+					ServiceAccountName: opts.ServiceAccount,
 					Containers: []v1.Container{
 						{
 							Name:            "tiller",

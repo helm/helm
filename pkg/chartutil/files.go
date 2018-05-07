@@ -175,7 +175,7 @@ func ToYaml(v interface{}) string {
 		// Swallow errors inside of a template.
 		return ""
 	}
-	return strings.TrimSuffix(string(data), "\n")
+	return string(data)
 }
 
 // FromYaml converts a YAML document into a map[string]interface{}.
@@ -211,7 +211,8 @@ func ToToml(v interface{}) string {
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func ToJson(v interface{}) string {
+// TODO: change the function signature in Helm 3
+func ToJson(v interface{}) string { // nolint
 	data, err := json.Marshal(v)
 	if err != nil {
 		// Swallow errors inside of a template.
@@ -226,7 +227,8 @@ func ToJson(v interface{}) string {
 // JSON documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
 // m["Error"] in the returned map.
-func FromJson(str string) map[string]interface{} {
+// TODO: change the function signature in Helm 3
+func FromJson(str string) map[string]interface{} { // nolint
 	m := map[string]interface{}{}
 
 	if err := json.Unmarshal([]byte(str), &m); err != nil {
