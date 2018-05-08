@@ -47,8 +47,8 @@ type Capabilities struct {
 	KubeVersion *version.Info
 	// HelmVersion is the Helm version
 	//
-	// This always comes from pkg/version.GetVersionProto().
-	HelmVersion *tversion.Version
+	// This always comes from pkg/version.BuildInfo().
+	HelmVersion *tversion.BuildInfo
 }
 
 // VersionSet is a set of Kubernetes API versions.

@@ -205,7 +205,7 @@ func (p *packageCmd) run() error {
 }
 
 func setVersion(ch *chart.Chart, ver string) error {
-	// Verify that version is a SemVer, and error out if it is not.
+	// Verify that version is a Version, and error out if it is not.
 	if _, err := semver.NewVersion(ver); err != nil {
 		return err
 	}

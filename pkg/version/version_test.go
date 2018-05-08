@@ -19,27 +19,27 @@ package version // import "k8s.io/helm/pkg/version"
 
 import "testing"
 
-func TestGetVersionProto(t *testing.T) {
+func TestBuildInfo(t *testing.T) {
 	tests := []struct {
 		version       string
 		buildMetadata string
 		gitCommit     string
 		gitTreeState  string
-		expected      Version
+		expected      BuildInfo
 	}{
-		{"", "", "", "", Version{SemVer: "", GitCommit: "", GitTreeState: ""}},
-		{"v1.0.0", "", "", "", Version{SemVer: "v1.0.0", GitCommit: "", GitTreeState: ""}},
-		{"v1.0.0", "79d5c5f7", "", "", Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "", GitTreeState: ""}},
-		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "", Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: ""}},
-		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "clean", Version{SemVer: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: "clean"}},
+		{"", "", "", "", BuildInfo{Version: "", GitCommit: "", GitTreeState: ""}},
+		{"v1.0.0", "", "", "", BuildInfo{Version: "v1.0.0", GitCommit: "", GitTreeState: ""}},
+		{"v1.0.0", "79d5c5f7", "", "", BuildInfo{Version: "v1.0.0+79d5c5f7", GitCommit: "", GitTreeState: ""}},
+		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "", BuildInfo{Version: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: ""}},
+		{"v1.0.0", "79d5c5f7", "0d399baec2acda578a217d1aec8d7d707c71e44d", "clean", BuildInfo{Version: "v1.0.0+79d5c5f7", GitCommit: "0d399baec2acda578a217d1aec8d7d707c71e44d", GitTreeState: "clean"}},
 	}
 	for _, tt := range tests {
 		version = tt.version
-		BuildMetadata = tt.buildMetadata
-		GitCommit = tt.gitCommit
-		GitTreeState = tt.gitTreeState
-		if versionProto := GetVersionProto(); *versionProto != tt.expected {
-			t.Errorf("expected Semver(%s), GitCommit(%s) and GitTreeState(%s) to be %v", tt.expected, tt.gitCommit, tt.gitTreeState, *versionProto)
+		metadata = tt.buildMetadata
+		gitCommit = tt.gitCommit
+		gitTreeState = tt.gitTreeState
+		if versionProto := GetBuildInfo(); *versionProto != tt.expected {
+			t.Errorf("expected Version(%s), GitCommit(%s) and GitTreeState(%s) to be %v", tt.expected, tt.gitCommit, tt.gitTreeState, *versionProto)
 		}
 	}
 

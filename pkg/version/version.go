@@ -17,43 +17,45 @@ limitations under the License.
 package version // import "k8s.io/helm/pkg/version"
 
 var (
-	// Version is the current version of the Helm.
+	// version is the current version of the Helm.
 	// Update this whenever making a new release.
 	// The version is of the format Major.Minor.Patch[-Prerelease][+BuildMetadata]
 	//
 	// Increment major number for new feature additions and behavioral changes.
 	// Increment minor number for bug fixes and performance enhancements.
 	// Increment patch number for critical fixes to existing releases.
-	version = "v2.8"
+	version = "v3.0"
 
-	// BuildMetadata is extra build time data
-	BuildMetadata = "unreleased"
-	// GitCommit is the git sha1
-	GitCommit = ""
-	// GitTreeState is the state of the git tree
-	GitTreeState = ""
+	// metadata is extra build time data
+	metadata = "unreleased"
+	// gitCommit is the git sha1
+	gitCommit = ""
+	// gitTreeState is the state of the git tree
+	gitTreeState = ""
 )
 
 // GetVersion returns the semver string of the version
 func GetVersion() string {
-	if BuildMetadata == "" {
+	if metadata == "" {
 		return version
 	}
-	return version + "+" + BuildMetadata
+	return version + "+" + metadata
 }
 
-type Version struct {
-	// Sem ver string for the version
-	SemVer       string `json:"sem_ver,omitempty"`
-	GitCommit    string `json:"git_commit,omitempty"`
+type BuildInfo struct {
+	// Version is the current semver.
+	Version string `json:"version,omitempty"`
+	// GitCommit is the git sha1
+	GitCommit string `json:"git_commit,omitempty"`
+	// GitTreeState is the state of the git tree
 	GitTreeState string `json:"git_tree_state,omitempty"`
 }
 
-// GetVersionProto returns protobuf representing the version
-func GetVersionProto() *Version {
-	return &Version{
-		SemVer:       GetVersion(),
-		GitCommit:    GitCommit,
-		GitTreeState: GitTreeState,
+// GetBuildInfo returns build info
+func GetBuildInfo() *BuildInfo {
+	return &BuildInfo{
+		Version:      GetVersion(),
+		GitCommit:    gitCommit,
+		GitTreeState: gitTreeState,
 	}
 }

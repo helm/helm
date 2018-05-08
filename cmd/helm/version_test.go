@@ -24,8 +24,8 @@ import (
 )
 
 func TestVersion(t *testing.T) {
-	lver := regexp.QuoteMeta(version.GetVersionProto().SemVer)
-	clientVersion := fmt.Sprintf("Client: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", lver)
+	lver := regexp.QuoteMeta(version.GetVersion())
+	clientVersion := fmt.Sprintf("Client: &version\\.BuildInfo{Version:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", lver)
 
 	tests := []releaseCase{
 		{
@@ -35,7 +35,7 @@ func TestVersion(t *testing.T) {
 		},
 		{
 			name:    "template",
-			cmd:     "version --template='{{.Client.SemVer}}'",
+			cmd:     "version --template='{{.Client.Version}}'",
 			matches: lver,
 		},
 	}
