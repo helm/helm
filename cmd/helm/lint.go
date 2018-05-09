@@ -43,7 +43,7 @@ it will emit [ERROR] messages. If it encounters issues that break with conventio
 or recommendation, it will emit [WARNING] messages.
 `
 
-type lintCmd struct {
+type lintOptions struct {
 	valueFiles valueFiles
 	values     []string
 	sValues    []string
@@ -52,7 +52,7 @@ type lintCmd struct {
 }
 
 func newLintCmd(out io.Writer) *cobra.Command {
-	l := &lintCmd{paths: []string{"."}}
+	o := &lintOptions{paths: []string{"."}}
 
 	cmd := &cobra.Command{
 		Use:   "lint [flags] PATH",
@@ -60,40 +60,40 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		Long:  longLintHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				l.paths = args
+				o.paths = args
 			}
-			return l.run(out)
+			return o.run(out)
 		},
 	}
 
-	cmd.Flags().VarP(&l.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
+	cmd.Flags().VarP(&o.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
+	cmd.Flags().StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&o.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().BoolVar(&o.strict, "strict", false, "fail on lint warnings")
 
 	return cmd
 }
 
 var errLintNoChart = errors.New("No chart found for linting (missing Chart.yaml)")
 
-func (l *lintCmd) run(out io.Writer) error {
+func (o *lintOptions) run(out io.Writer) error {
 	var lowestTolerance int
-	if l.strict {
+	if o.strict {
 		lowestTolerance = support.WarningSev
 	} else {
 		lowestTolerance = support.ErrorSev
 	}
 
 	// Get the raw values
-	rvals, err := l.vals()
+	rvals, err := o.vals()
 	if err != nil {
 		return err
 	}
 
 	var total int
 	var failures int
-	for _, path := range l.paths {
-		if linter, err := lintChart(path, rvals, getNamespace(), l.strict); err != nil {
+	for _, path := range o.paths {
+		if linter, err := lintChart(path, rvals, getNamespace(), o.strict); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
 			if err == errLintNoChart {
@@ -167,11 +167,11 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 	return lint.All(chartPath, vals, namespace, strict), nil
 }
 
-func (l *lintCmd) vals() ([]byte, error) {
+func (o *lintOptions) vals() ([]byte, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
-	for _, filePath := range l.valueFiles {
+	for _, filePath := range o.valueFiles {
 		currentMap := map[string]interface{}{}
 		bytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
@@ -186,14 +186,14 @@ func (l *lintCmd) vals() ([]byte, error) {
 	}
 
 	// User specified a value via --set
-	for _, value := range l.values {
+	for _, value := range o.values {
 		if err := strvals.ParseInto(value, base); err != nil {
 			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
 		}
 	}
 
 	// User specified a value via --set-string
-	for _, value := range l.sValues {
+	for _, value := range o.sValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
 			return []byte{}, fmt.Errorf("failed parsing --set-string data: %s", err)
 		}

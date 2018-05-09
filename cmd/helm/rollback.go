@@ -34,7 +34,7 @@ second is a revision (version) number. To see revision numbers, run
 'helm history RELEASE'.
 `
 
-type rollbackCmd struct {
+type rollbackOptions struct {
 	name         string
 	revision     int
 	dryRun       bool
@@ -47,7 +47,7 @@ type rollbackCmd struct {
 }
 
 func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	rollback := &rollbackCmd{client: c}
+	o := &rollbackOptions{client: c}
 
 	cmd := &cobra.Command{
 		Use:   "rollback [flags] [RELEASE] [REVISION]",
@@ -58,40 +58,40 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			rollback.name = args[0]
+			o.name = args[0]
 
 			v64, err := strconv.ParseInt(args[1], 10, 32)
 			if err != nil {
 				return fmt.Errorf("invalid revision number '%q': %s", args[1], err)
 			}
 
-			rollback.revision = int(v64)
-			rollback.client = ensureHelmClient(rollback.client, false)
-			return rollback.run(out)
+			o.revision = int(v64)
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
-	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.BoolVar(&rollback.force, "force", false, "force resource update through delete/recreate if needed")
-	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
-	f.Int64Var(&rollback.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&rollback.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVar(&o.dryRun, "dry-run", false, "simulate a rollback")
+	f.BoolVar(&o.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&o.force, "force", false, "force resource update through delete/recreate if needed")
+	f.BoolVar(&o.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
+	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&o.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 
 	return cmd
 }
 
-func (r *rollbackCmd) run(out io.Writer) error {
-	_, err := r.client.RollbackRelease(
-		r.name,
-		helm.RollbackDryRun(r.dryRun),
-		helm.RollbackRecreate(r.recreate),
-		helm.RollbackForce(r.force),
-		helm.RollbackDisableHooks(r.disableHooks),
-		helm.RollbackVersion(r.revision),
-		helm.RollbackTimeout(r.timeout),
-		helm.RollbackWait(r.wait))
+func (o *rollbackOptions) run(out io.Writer) error {
+	_, err := o.client.RollbackRelease(
+		o.name,
+		helm.RollbackDryRun(o.dryRun),
+		helm.RollbackRecreate(o.recreate),
+		helm.RollbackForce(o.force),
+		helm.RollbackDisableHooks(o.disableHooks),
+		helm.RollbackVersion(o.revision),
+		helm.RollbackTimeout(o.timeout),
+		helm.RollbackWait(o.wait))
 	if err != nil {
 		return err
 	}

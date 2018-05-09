@@ -28,27 +28,27 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-type repoListCmd struct {
+type repoListOptions struct {
 	home helmpath.Home
 }
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
-	list := &repoListCmd{}
+	o := &repoListOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "list [flags]",
 		Short: "list chart repositories",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			list.home = settings.Home
-			return list.run(out)
+			o.home = settings.Home
+			return o.run(out)
 		},
 	}
 
 	return cmd
 }
 
-func (a *repoListCmd) run(out io.Writer) error {
-	f, err := repo.LoadRepositoriesFile(a.home.RepositoryFile())
+func (o *repoListOptions) run(out io.Writer) error {
+	f, err := repo.LoadRepositoriesFile(o.home.RepositoryFile())
 	if err != nil {
 		return err
 	}

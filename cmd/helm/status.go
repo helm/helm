@@ -44,7 +44,7 @@ The status consists of:
 - additional notes provided by the chart
 `
 
-type statusCmd struct {
+type statusOptions struct {
 	release string
 	client  helm.Interface
 	version int
@@ -52,7 +52,7 @@ type statusCmd struct {
 }
 
 func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	status := &statusCmd{client: client}
+	o := &statusOptions{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "status [flags] RELEASE_NAME",
@@ -62,25 +62,25 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			status.release = args[0]
-			status.client = ensureHelmClient(status.client, false)
-			return status.run(out)
+			o.release = args[0]
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
-	cmd.PersistentFlags().IntVar(&status.version, "revision", 0, "if set, display the status of the named release with revision")
-	cmd.PersistentFlags().StringVarP(&status.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
+	cmd.PersistentFlags().IntVar(&o.version, "revision", 0, "if set, display the status of the named release with revision")
+	cmd.PersistentFlags().StringVarP(&o.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
 
 	return cmd
 }
 
-func (s *statusCmd) run(out io.Writer) error {
-	res, err := s.client.ReleaseStatus(s.release, s.version)
+func (o *statusOptions) run(out io.Writer) error {
+	res, err := o.client.ReleaseStatus(o.release, o.version)
 	if err != nil {
 		return err
 	}
 
-	switch s.outfmt {
+	switch o.outfmt {
 	case "":
 		PrintStatus(out, res)
 		return nil
@@ -100,7 +100,7 @@ func (s *statusCmd) run(out io.Writer) error {
 		return nil
 	}
 
-	return fmt.Errorf("Unknown output format %q", s.outfmt)
+	return fmt.Errorf("Unknown output format %q", o.outfmt)
 }
 
 // PrintStatus prints out the status of a release. Shared because also used by

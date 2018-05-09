@@ -36,47 +36,50 @@ If no lock file is found, 'helm dependency build' will mirror the behavior
 of 'helm dependency update'.
 `
 
-type dependencyBuildCmd struct {
+type dependencyBuildOptions struct {
+	keyring string // --keyring
+	verify  bool   // --verify
+
+	// args
 	chartpath string
-	verify    bool
-	keyring   string
-	helmhome  helmpath.Home
+
+	helmhome helmpath.Home
 }
 
 func newDependencyBuildCmd(out io.Writer) *cobra.Command {
-	dbc := &dependencyBuildCmd{}
+	o := &dependencyBuildOptions{
+		chartpath: ".",
+	}
 
 	cmd := &cobra.Command{
 		Use:   "build [flags] CHART",
 		Short: "rebuild the charts/ directory based on the requirements.lock file",
 		Long:  dependencyBuildDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dbc.helmhome = settings.Home
-			dbc.chartpath = "."
-
+			o.helmhome = settings.Home
 			if len(args) > 0 {
-				dbc.chartpath = args[0]
+				o.chartpath = args[0]
 			}
-			return dbc.run(out)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&dbc.verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&o.verify, "verify", false, "verify the packages against signatures")
+	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 
 	return cmd
 }
 
-func (d *dependencyBuildCmd) run(out io.Writer) error {
+func (o *dependencyBuildOptions) run(out io.Writer) error {
 	man := &downloader.Manager{
 		Out:       out,
-		ChartPath: d.chartpath,
-		HelmHome:  d.helmhome,
-		Keyring:   d.keyring,
+		ChartPath: o.chartpath,
+		HelmHome:  o.helmhome,
+		Keyring:   o.keyring,
 		Getters:   getter.All(settings),
 	}
-	if d.verify {
+	if o.verify {
 		man.Verify = downloader.VerifyIfPossible
 	}
 

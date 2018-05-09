@@ -190,11 +190,11 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	duc := &dependencyUpdateCmd{}
-	duc.helmhome = helmpath.Home(hh)
-	duc.chartpath = hh.Path(chartname)
+	o := &dependencyUpdateOptions{}
+	o.helmhome = helmpath.Home(hh)
+	o.chartpath = hh.Path(chartname)
 
-	if err := duc.run(out); err != nil {
+	if err := o.run(out); err != nil {
 		output := out.String()
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
@@ -203,14 +203,14 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	// Chart repo is down
 	srv.Stop()
 
-	if err := duc.run(out); err == nil {
+	if err := o.run(out); err == nil {
 		output := out.String()
 		t.Logf("Output: %s", output)
 		t.Fatal("Expected error, got nil")
 	}
 
 	// Make sure charts dir still has dependencies
-	files, err := ioutil.ReadDir(filepath.Join(duc.chartpath, "charts"))
+	files, err := ioutil.ReadDir(filepath.Join(o.chartpath, "charts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	// Make sure tmpcharts is deleted
-	if _, err := os.Stat(filepath.Join(duc.chartpath, "tmpcharts")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(o.chartpath, "tmpcharts")); !os.IsNotExist(err) {
 		t.Fatalf("tmpcharts dir still exists")
 	}
 }

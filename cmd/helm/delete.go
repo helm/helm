@@ -34,18 +34,20 @@ Use the '--dry-run' flag to see which releases will be deleted without actually
 deleting them.
 `
 
-type deleteCmd struct {
-	name         string
-	dryRun       bool
-	disableHooks bool
-	purge        bool
-	timeout      int64
+type deleteOptions struct {
+	disableHooks bool  // --no-hooks
+	dryRun       bool  // --dry-run
+	purge        bool  // --purge
+	timeout      int64 // --timeout
+
+	// args
+	name string
 
 	client helm.Interface
 }
 
 func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	del := &deleteCmd{client: c}
+	o := &deleteOptions{client: c}
 
 	cmd := &cobra.Command{
 		Use:        "delete [flags] RELEASE_NAME [...]",
@@ -57,37 +59,37 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errors.New("command 'delete' requires a release name")
 			}
-			del.client = ensureHelmClient(del.client, false)
+			o.client = ensureHelmClient(o.client, false)
 
 			for i := 0; i < len(args); i++ {
-				del.name = args[i]
-				if err := del.run(out); err != nil {
+				o.name = args[i]
+				if err := o.run(out); err != nil {
 					return err
 				}
 
-				fmt.Fprintf(out, "release \"%s\" deleted\n", del.name)
+				fmt.Fprintf(out, "release \"%s\" deleted\n", o.name)
 			}
 			return nil
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
-	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
-	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")
-	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&o.dryRun, "dry-run", false, "simulate a delete")
+	f.BoolVar(&o.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
+	f.BoolVar(&o.purge, "purge", false, "remove the release from the store and make its name free for later use")
+	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 
 	return cmd
 }
 
-func (d *deleteCmd) run(out io.Writer) error {
+func (o *deleteOptions) run(out io.Writer) error {
 	opts := []helm.DeleteOption{
-		helm.DeleteDryRun(d.dryRun),
-		helm.DeleteDisableHooks(d.disableHooks),
-		helm.DeletePurge(d.purge),
-		helm.DeleteTimeout(d.timeout),
+		helm.DeleteDryRun(o.dryRun),
+		helm.DeleteDisableHooks(o.disableHooks),
+		helm.DeletePurge(o.purge),
+		helm.DeleteTimeout(o.timeout),
 	}
-	res, err := d.client.DeleteRelease(d.name, opts...)
+	res, err := o.client.DeleteRelease(o.name, opts...)
 	if res != nil && res.Info != "" {
 		fmt.Fprintln(out, res.Info)
 	}

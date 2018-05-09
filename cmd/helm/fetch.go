@@ -46,29 +46,27 @@ file, and MUST pass the verification process. Failure in any part of this will
 result in an error, and the chart will not be saved locally.
 `
 
-type fetchCmd struct {
-	untar    bool
-	untardir string
+type fetchOptions struct {
+	caFile      string // --ca-file
+	certFile    string // --cert-file
+	destdir     string // --destination
+	devel       bool   // --devel
+	keyFile     string // --key-file
+	keyring     string // --keyring
+	password    string // --password
+	repoURL     string // --repo
+	untar       bool   // --untar
+	untardir    string // --untardir
+	username    string // --username
+	verify      bool   // --verify
+	verifyLater bool   // --prov
+	version     string // --version
+
 	chartRef string
-	destdir  string
-	version  string
-	repoURL  string
-	username string
-	password string
-
-	verify      bool
-	verifyLater bool
-	keyring     string
-
-	certFile string
-	keyFile  string
-	caFile   string
-
-	devel bool
 }
 
 func newFetchCmd(out io.Writer) *cobra.Command {
-	fch := &fetchCmd{}
+	o := &fetchOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "fetch [flags] [chart URL | repo/chartname] [...]",
@@ -79,14 +77,14 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 				return fmt.Errorf("need at least one argument, url or repo/name of the chart")
 			}
 
-			if fch.version == "" && fch.devel {
+			if o.version == "" && o.devel {
 				debug("setting version to >0.0.0-0")
-				fch.version = ">0.0.0-0"
+				o.version = ">0.0.0-0"
 			}
 
 			for i := 0; i < len(args); i++ {
-				fch.chartRef = args[i]
-				if err := fch.run(out); err != nil {
+				o.chartRef = args[i]
+				if err := o.run(out); err != nil {
 					return err
 				}
 			}
@@ -95,45 +93,45 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&fch.untar, "untar", false, "if set to true, will untar the chart after downloading it")
-	f.StringVar(&fch.untardir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
-	f.BoolVar(&fch.verify, "verify", false, "verify the package against its signature")
-	f.BoolVar(&fch.verifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
-	f.StringVar(&fch.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
-	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.StringVarP(&fch.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
-	f.StringVar(&fch.repoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&fch.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&fch.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&fch.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&fch.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.StringVar(&fch.username, "username", "", "chart repository username")
-	f.StringVar(&fch.password, "password", "", "chart repository password")
+	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&o.untar, "untar", false, "if set to true, will untar the chart after downloading it")
+	f.BoolVar(&o.verify, "verify", false, "verify the package against its signature")
+	f.BoolVar(&o.verifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
+	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.StringVar(&o.password, "password", "", "chart repository password")
+	f.StringVar(&o.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&o.untardir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
+	f.StringVar(&o.username, "username", "", "chart repository username")
+	f.StringVar(&o.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
+	f.StringVarP(&o.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
 
 	return cmd
 }
 
-func (f *fetchCmd) run(out io.Writer) error {
+func (o *fetchOptions) run(out io.Writer) error {
 	c := downloader.ChartDownloader{
 		HelmHome: settings.Home,
 		Out:      out,
-		Keyring:  f.keyring,
+		Keyring:  o.keyring,
 		Verify:   downloader.VerifyNever,
 		Getters:  getter.All(settings),
-		Username: f.username,
-		Password: f.password,
+		Username: o.username,
+		Password: o.password,
 	}
 
-	if f.verify {
+	if o.verify {
 		c.Verify = downloader.VerifyAlways
-	} else if f.verifyLater {
+	} else if o.verifyLater {
 		c.Verify = downloader.VerifyLater
 	}
 
 	// If untar is set, we fetch to a tempdir, then untar and copy after
 	// verification.
-	dest := f.destdir
-	if f.untar {
+	dest := o.destdir
+	if o.untar {
 		var err error
 		dest, err = ioutil.TempDir("", "helm-")
 		if err != nil {
@@ -142,28 +140,28 @@ func (f *fetchCmd) run(out io.Writer) error {
 		defer os.RemoveAll(dest)
 	}
 
-	if f.repoURL != "" {
-		chartURL, err := repo.FindChartInAuthRepoURL(f.repoURL, f.username, f.password, f.chartRef, f.version, f.certFile, f.keyFile, f.caFile, getter.All(settings))
+	if o.repoURL != "" {
+		chartURL, err := repo.FindChartInAuthRepoURL(o.repoURL, o.username, o.password, o.chartRef, o.version, o.certFile, o.keyFile, o.caFile, getter.All(settings))
 		if err != nil {
 			return err
 		}
-		f.chartRef = chartURL
+		o.chartRef = chartURL
 	}
 
-	saved, v, err := c.DownloadTo(f.chartRef, f.version, dest)
+	saved, v, err := c.DownloadTo(o.chartRef, o.version, dest)
 	if err != nil {
 		return err
 	}
 
-	if f.verify {
+	if o.verify {
 		fmt.Fprintf(out, "Verification: %v\n", v)
 	}
 
 	// After verification, untar the chart into the requested directory.
-	if f.untar {
-		ud := f.untardir
+	if o.untar {
+		ud := o.untardir
 		if !filepath.IsAbs(ud) {
-			ud = filepath.Join(f.destdir, ud)
+			ud = filepath.Join(o.destdir, ud)
 		}
 		if fi, err := os.Stat(ud); err != nil {
 			if err := os.MkdirAll(ud, 0755); err != nil {

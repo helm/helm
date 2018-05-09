@@ -33,17 +33,20 @@ const initDesc = `
 This command sets up local configuration in $HELM_HOME (default ~/.helm/).
 `
 
-const stableRepository = "stable"
+const (
+	stableRepository           = "stable"
+	defaultStableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
+)
 
-var stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
+type initOptions struct {
+	skipRefresh         bool   // --skip-refresh
+	stableRepositoryURL string // --stable-repo-url
 
-type initCmd struct {
-	skipRefresh bool
-	home        helmpath.Home
+	home helmpath.Home
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
-	i := &initCmd{}
+	o := &initOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -53,27 +56,27 @@ func newInitCmd(out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return errors.New("This command does not accept arguments")
 			}
-			i.home = settings.Home
-			return i.run(out)
+			o.home = settings.Home
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
-	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
+	f.BoolVar(&o.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
+	f.StringVar(&o.stableRepositoryURL, "stable-repo-url", defaultStableRepositoryURL, "URL for stable repository")
 
 	return cmd
 }
 
-// run initializes local config and installs Tiller to Kubernetes cluster.
-func (i *initCmd) run(out io.Writer) error {
-	if err := ensureDirectories(i.home, out); err != nil {
+// run initializes local config.
+func (o *initOptions) run(out io.Writer) error {
+	if err := ensureDirectories(o.home, out); err != nil {
 		return err
 	}
-	if err := ensureDefaultRepos(i.home, out, i.skipRefresh); err != nil {
+	if err := ensureDefaultRepos(o.home, out, o.skipRefresh, o.stableRepositoryURL); err != nil {
 		return err
 	}
-	if err := ensureRepoFileFormat(i.home.RepositoryFile(), out); err != nil {
+	if err := ensureRepoFileFormat(o.home.RepositoryFile(), out); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "$HELM_HOME has been configured at %s.\n", settings.Home)
@@ -107,12 +110,12 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) error {
+func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, url string) error {
 	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository), out, skipRefresh, home)
+		sr, err := initRepo(url, home.CacheIndex(stableRepository), out, skipRefresh, home)
 		if err != nil {
 			return err
 		}
@@ -126,11 +129,11 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	return nil
 }
 
-func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
-	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
+func initRepo(url, cacheFile string, out io.Writer, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
+	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, url)
 	c := repo.Entry{
 		Name:  stableRepository,
-		URL:   stableRepositoryURL,
+		URL:   url,
 		Cache: cacheFile,
 	}
 	r, err := repo.NewChartRepository(&c, getter.All(settings))
@@ -145,7 +148,7 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helm
 	// In this case, the cacheFile is always absolute. So passing empty string
 	// is safe.
 	if err := r.DownloadIndexFile(""); err != nil {
-		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
+		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
 	}
 
 	return &c, nil

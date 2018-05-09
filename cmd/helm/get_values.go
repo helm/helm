@@ -30,15 +30,17 @@ var getValuesHelp = `
 This command downloads a values file for a given release.
 `
 
-type getValuesCmd struct {
-	release   string
-	allValues bool
-	client    helm.Interface
-	version   int
+type getValuesOptions struct {
+	allValues bool // --all
+	version   int  // --revision
+
+	release string
+
+	client helm.Interface
 }
 
 func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	get := &getValuesCmd{client: client}
+	o := &getValuesOptions{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "values [flags] RELEASE_NAME",
@@ -48,26 +50,26 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			get.release = args[0]
-			get.client = ensureHelmClient(get.client, false)
-			return get.run(out)
+			o.release = args[0]
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
-	cmd.Flags().IntVar(&get.version, "revision", 0, "get the named release with revision")
-	cmd.Flags().BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
+	cmd.Flags().BoolVarP(&o.allValues, "all", "a", false, "dump all (computed) values")
+	cmd.Flags().IntVar(&o.version, "revision", 0, "get the named release with revision")
 	return cmd
 }
 
 // getValues implements 'helm get values'
-func (g *getValuesCmd) run(out io.Writer) error {
-	res, err := g.client.ReleaseContent(g.release, g.version)
+func (o *getValuesOptions) run(out io.Writer) error {
+	res, err := o.client.ReleaseContent(o.release, o.version)
 	if err != nil {
 		return err
 	}
 
 	// If the user wants all values, compute the values and return.
-	if g.allValues {
+	if o.allValues {
 		cfg, err := chartutil.CoalesceValues(res.Chart, res.Config)
 		if err != nil {
 			return err

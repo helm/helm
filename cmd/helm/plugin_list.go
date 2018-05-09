@@ -25,24 +25,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type pluginListCmd struct {
+type pluginListOptions struct {
 	home helmpath.Home
 }
 
 func newPluginListCmd(out io.Writer) *cobra.Command {
-	pcmd := &pluginListCmd{}
+	o := &pluginListOptions{}
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "list installed Helm plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pcmd.home = settings.Home
-			return pcmd.run(out)
+			o.home = settings.Home
+			return o.run(out)
 		},
 	}
 	return cmd
 }
 
-func (pcmd *pluginListCmd) run(out io.Writer) error {
+func (o *pluginListOptions) run(out io.Writer) error {
 	debug("pluginDirs: %s", settings.PluginDirs())
 	plugins, err := findPlugins(settings.PluginDirs())
 	if err != nil {

@@ -37,16 +37,11 @@ For example, 'helm create foo' will create a directory structure that looks
 something like this:
 
 	foo/
-	  |
-	  |- .helmignore   # Contains patterns to ignore when packaging Helm charts.
-	  |
-	  |- Chart.yaml    # Information about your chart
-	  |
-	  |- values.yaml   # The default values for your templates
-	  |
-	  |- charts/       # Charts that this chart depends on
-	  |
-	  |- templates/    # The template files
+	├── .helmignore   # Contains patterns to ignore when packaging Helm charts.
+	├── Chart.yaml    # Information about your chart
+	├── values.yaml   # The default values for your templates
+	├── charts/       # Charts that this chart depends on
+	└── templates/    # The template files
 
 'helm create' takes a path for an argument. If directories in the given path
 do not exist, Helm will attempt to create them as it goes. If the given
@@ -54,37 +49,40 @@ destination exists and there are files in that directory, conflicting files
 will be overwritten, but other files will be left alone.
 `
 
-type createCmd struct {
-	home    helmpath.Home
-	name    string
-	starter string
+type createOptions struct {
+	starter string // --starter
+
+	// args
+	name string
+
+	home helmpath.Home
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
-	cc := &createCmd{}
+	o := &createOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "create NAME",
 		Short: "create a new chart with the given name",
 		Long:  createDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cc.home = settings.Home
+			o.home = settings.Home
 			if len(args) == 0 {
 				return errors.New("the name of the new chart is required")
 			}
-			cc.name = args[0]
-			return cc.run(out)
+			o.name = args[0]
+			return o.run(out)
 		},
 	}
 
-	cmd.Flags().StringVarP(&cc.starter, "starter", "p", "", "the named Helm starter scaffold")
+	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the named Helm starter scaffold")
 	return cmd
 }
 
-func (c *createCmd) run(out io.Writer) error {
-	fmt.Fprintf(out, "Creating %s\n", c.name)
+func (o *createOptions) run(out io.Writer) error {
+	fmt.Fprintf(out, "Creating %s\n", o.name)
 
-	chartname := filepath.Base(c.name)
+	chartname := filepath.Base(o.name)
 	cfile := &chart.Metadata{
 		Name:        chartname,
 		Description: "A Helm chart for Kubernetes",
@@ -93,12 +91,12 @@ func (c *createCmd) run(out io.Writer) error {
 		APIVersion:  chartutil.APIVersionv1,
 	}
 
-	if c.starter != "" {
+	if o.starter != "" {
 		// Create from the starter
-		lstarter := filepath.Join(c.home.Starters(), c.starter)
-		return chartutil.CreateFrom(cfile, filepath.Dir(c.name), lstarter)
+		lstarter := filepath.Join(o.home.Starters(), o.starter)
+		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 	}
 
-	_, err := chartutil.Create(cfile, filepath.Dir(c.name))
+	_, err := chartutil.Create(cfile, filepath.Dir(o.name))
 	return err
 }

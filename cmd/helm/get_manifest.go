@@ -33,14 +33,16 @@ were generated from this release's chart(s). If a chart is dependent on other
 charts, those resources will also be included in the manifest.
 `
 
-type getManifestCmd struct {
+type getManifestOptions struct {
+	version int // --revision
+
 	release string
-	client  helm.Interface
-	version int
+
+	client helm.Interface
 }
 
 func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	get := &getManifestCmd{client: client}
+	o := &getManifestOptions{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "manifest [flags] RELEASE_NAME",
@@ -50,19 +52,19 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			get.release = args[0]
-			get.client = ensureHelmClient(get.client, false)
-			return get.run(out)
+			o.release = args[0]
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
-	cmd.Flags().IntVar(&get.version, "revision", 0, "get the named release with revision")
+	cmd.Flags().IntVar(&o.version, "revision", 0, "get the named release with revision")
 	return cmd
 }
 
 // getManifest implements 'helm get manifest'
-func (g *getManifestCmd) run(out io.Writer) error {
-	res, err := g.client.ReleaseContent(g.release, g.version)
+func (o *getManifestOptions) run(out io.Writer) error {
+	res, err := o.client.ReleaseContent(o.release, o.version)
 	if err != nil {
 		return err
 	}

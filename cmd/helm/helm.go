@@ -30,13 +30,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"k8s.io/helm/pkg/helm"
-	helm_env "k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
 var (
-	settings   helm_env.EnvSettings
+	settings   environment.EnvSettings
 	config     clientcmd.ClientConfig
 	configOnce sync.Once
 )

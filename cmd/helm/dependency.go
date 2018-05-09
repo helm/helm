@@ -102,12 +102,14 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-type dependencyListCmd struct {
+type dependencyLisOptions struct {
 	chartpath string
 }
 
 func newDependencyListCmd(out io.Writer) *cobra.Command {
-	dlc := &dependencyListCmd{}
+	o := &dependencyLisOptions{
+		chartpath: ".",
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list [flags] CHART",
@@ -115,20 +117,17 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 		Short:   "list the dependencies for the given chart",
 		Long:    dependencyListDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cp := "."
 			if len(args) > 0 {
-				cp = args[0]
+				o.chartpath = filepath.Clean(args[0])
 			}
-
-			dlc.chartpath = filepath.Clean(cp)
-			return dlc.run()
+			return o.run(out)
 		},
 	}
 	return cmd
 }
 
-func (l *dependencyListCmd) run(out io.Writer) error {
-	c, err := chartutil.Load(l.chartpath)
+func (o *dependencyLisOptions) run(out io.Writer) error {
+	c, err := chartutil.Load(o.chartpath)
 	if err != nil {
 		return err
 	}
@@ -136,21 +135,21 @@ func (l *dependencyListCmd) run(out io.Writer) error {
 	r, err := chartutil.LoadRequirements(c)
 	if err != nil {
 		if err == chartutil.ErrRequirementsNotFound {
-			fmt.Fprintf(out, "WARNING: no requirements at %s/charts\n", l.chartpath)
+			fmt.Fprintf(out, "WARNING: no requirements at %s/charts\n", o.chartpath)
 			return nil
 		}
 		return err
 	}
 
-	l.printRequirements(out, r)
+	o.printRequirements(out, r)
 	fmt.Fprintln(out)
-	l.printMissing(out, r)
+	o.printMissing(out, r)
 	return nil
 }
 
-func (l *dependencyListCmd) dependencyStatus(dep *chartutil.Dependency) string {
+func (o *dependencyLisOptions) dependencyStatus(dep *chartutil.Dependency) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
-	archives, err := filepath.Glob(filepath.Join(l.chartpath, "charts", filename))
+	archives, err := filepath.Glob(filepath.Join(o.chartpath, "charts", filename))
 	if err != nil {
 		return "bad pattern"
 	} else if len(archives) > 1 {
@@ -186,7 +185,7 @@ func (l *dependencyListCmd) dependencyStatus(dep *chartutil.Dependency) string {
 		}
 	}
 
-	folder := filepath.Join(l.chartpath, "charts", dep.Name)
+	folder := filepath.Join(o.chartpath, "charts", dep.Name)
 	if fi, err := os.Stat(folder); err != nil {
 		return "missing"
 	} else if !fi.IsDir() {
@@ -223,19 +222,19 @@ func (l *dependencyListCmd) dependencyStatus(dep *chartutil.Dependency) string {
 }
 
 // printRequirements prints all of the requirements in the yaml file.
-func (l *dependencyListCmd) printRequirements(out io.Writer, reqs *chartutil.Requirements) {
+func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs *chartutil.Requirements) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
 	for _, row := range reqs.Dependencies {
-		table.AddRow(row.Name, row.Version, row.Repository, l.dependencyStatus(row))
+		table.AddRow(row.Name, row.Version, row.Repository, o.dependencyStatus(row))
 	}
 	fmt.Fprintln(out, table)
 }
 
 // printMissing prints warnings about charts that are present on disk, but are not in the requirements.
-func (l *dependencyListCmd) printMissing(out io.Writer, reqs *chartutil.Requirements) {
-	folder := filepath.Join(l.chartpath, "charts/*")
+func (o *dependencyLisOptions) printMissing(out io.Writer, reqs *chartutil.Requirements) {
+	folder := filepath.Join(o.chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {
 		fmt.Fprintln(out, err)

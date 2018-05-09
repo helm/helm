@@ -27,7 +27,7 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-type repoAddCmd struct {
+type repoAddOptions struct {
 	name     string
 	url      string
 	username string
@@ -41,7 +41,7 @@ type repoAddCmd struct {
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
-	add := &repoAddCmd{}
+	o := &repoAddOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "add [flags] [NAME] [URL]",
@@ -51,30 +51,30 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
-			add.name = args[0]
-			add.url = args[1]
-			add.home = settings.Home
+			o.name = args[0]
+			o.url = args[1]
+			o.home = settings.Home
 
-			return add.run(out)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&add.username, "username", "", "chart repository username")
-	f.StringVar(&add.password, "password", "", "chart repository password")
-	f.BoolVar(&add.noupdate, "no-update", false, "raise error if repo is already registered")
-	f.StringVar(&add.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&add.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&add.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.StringVar(&o.username, "username", "", "chart repository username")
+	f.StringVar(&o.password, "password", "", "chart repository password")
+	f.BoolVar(&o.noupdate, "no-update", false, "raise error if repo is already registered")
+	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }
 
-func (a *repoAddCmd) run(out io.Writer) error {
-	if err := addRepository(a.name, a.url, a.username, a.password, a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
+func (o *repoAddOptions) run(out io.Writer) error {
+	if err := addRepository(o.name, o.url, o.username, o.password, o.home, o.certFile, o.keyFile, o.caFile, o.noupdate); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "%q has been added to your repositories\n", a.name)
+	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)
 	return nil
 }
 

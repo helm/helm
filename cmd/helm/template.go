@@ -60,7 +60,7 @@ To render just one template in a chart, use '-x':
 	$ helm template mychart -x templates/deployment.yaml
 `
 
-type templateCmd struct {
+type templateOptions struct {
 	valueFiles   valueFiles
 	chartPath    string
 	values       []string
@@ -74,7 +74,7 @@ type templateCmd struct {
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
-	t := &templateCmd{}
+	o := &templateOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "template [flags] CHART",
@@ -86,39 +86,39 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 			}
 			// verify chart path exists
 			if _, err := os.Stat(args[0]); err == nil {
-				if t.chartPath, err = filepath.Abs(args[0]); err != nil {
+				if o.chartPath, err = filepath.Abs(args[0]); err != nil {
 					return err
 				}
 			} else {
 				return err
 			}
-			return t.run(out)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&t.showNotes, "notes", false, "show the computed NOTES.txt file as well")
-	f.StringVarP(&t.releaseName, "name", "", "RELEASE-NAME", "release name")
-	f.StringArrayVarP(&t.renderFiles, "execute", "x", []string{}, "only execute the given templates")
-	f.VarP(&t.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
-	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
-	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
+	f.BoolVar(&o.showNotes, "notes", false, "show the computed NOTES.txt file as well")
+	f.StringVarP(&o.releaseName, "name", "", "RELEASE-NAME", "release name")
+	f.StringArrayVarP(&o.renderFiles, "execute", "x", []string{}, "only execute the given templates")
+	f.VarP(&o.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
+	f.StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&o.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringVar(&o.nameTemplate, "name-template", "", "specify template used to name the release")
+	f.StringVar(&o.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
+	f.StringVar(&o.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 
 	return cmd
 }
 
-func (t *templateCmd) run(out io.Writer) error {
+func (o *templateOptions) run(out io.Writer) error {
 	// verify specified templates exist relative to chart
 	rf := []string{}
 	var af string
 	var err error
-	if len(t.renderFiles) > 0 {
-		for _, f := range t.renderFiles {
+	if len(o.renderFiles) > 0 {
+		for _, f := range o.renderFiles {
 			if !filepath.IsAbs(f) {
-				af, err = filepath.Abs(filepath.Join(t.chartPath, f))
+				af, err = filepath.Abs(filepath.Join(o.chartPath, f))
 				if err != nil {
 					return fmt.Errorf("could not resolve template path: %s", err)
 				}
@@ -134,29 +134,29 @@ func (t *templateCmd) run(out io.Writer) error {
 	}
 
 	// verify that output-dir exists if provided
-	if t.outputDir != "" {
-		_, err = os.Stat(t.outputDir)
+	if o.outputDir != "" {
+		_, err = os.Stat(o.outputDir)
 		if os.IsNotExist(err) {
-			return fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
+			return fmt.Errorf("output-dir '%s' does not exist", o.outputDir)
 		}
 	}
 
 	// get combined values and create config
-	config, err := vals(t.valueFiles, t.values, t.stringValues)
+	config, err := vals(o.valueFiles, o.values, o.stringValues)
 	if err != nil {
 		return err
 	}
 
 	// If template is specified, try to run the template.
-	if t.nameTemplate != "" {
-		t.releaseName, err = generateName(t.nameTemplate)
+	if o.nameTemplate != "" {
+		o.releaseName, err = generateName(o.nameTemplate)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	c, err := chartutil.Load(t.chartPath)
+	c, err := chartutil.Load(o.chartPath)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (t *templateCmd) run(out io.Writer) error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 	options := chartutil.ReleaseOptions{
-		Name:      t.releaseName,
+		Name:      o.releaseName,
 		Time:      time.Now(),
 		Namespace: getNamespace(),
 	}
@@ -193,7 +193,7 @@ func (t *templateCmd) run(out io.Writer) error {
 	}
 
 	// kubernetes version
-	kv, err := semver.NewVersion(t.kubeVersion)
+	kv, err := semver.NewVersion(o.kubeVersion)
 	if err != nil {
 		return fmt.Errorf("could not parse a kubernetes version: %v", err)
 	}
@@ -226,7 +226,7 @@ func (t *templateCmd) run(out io.Writer) error {
 		// make needle path absolute
 		d := strings.Split(needle, string(os.PathSeparator))
 		dd := d[1:]
-		an := filepath.Join(t.chartPath, strings.Join(dd, string(os.PathSeparator)))
+		an := filepath.Join(o.chartPath, strings.Join(dd, string(os.PathSeparator)))
 
 		for _, h := range haystack {
 			if h == an {
@@ -237,7 +237,7 @@ func (t *templateCmd) run(out io.Writer) error {
 	}
 	if settings.Debug {
 		rel := &release.Release{
-			Name:    t.releaseName,
+			Name:    o.releaseName,
 			Chart:   c,
 			Config:  config,
 			Version: 1,
@@ -247,24 +247,24 @@ func (t *templateCmd) run(out io.Writer) error {
 	}
 
 	for _, m := range tiller.SortByKind(listManifests) {
-		if len(t.renderFiles) > 0 && !in(m.Name, rf) {
+		if len(o.renderFiles) > 0 && !in(m.Name, rf) {
 			continue
 		}
 		data := m.Content
 		b := filepath.Base(m.Name)
-		if !t.showNotes && b == "NOTES.txt" {
+		if !o.showNotes && b == "NOTES.txt" {
 			continue
 		}
 		if strings.HasPrefix(b, "_") {
 			continue
 		}
 
-		if t.outputDir != "" {
+		if o.outputDir != "" {
 			// blank template after execution
 			if whitespaceRegex.MatchString(data) {
 				continue
 			}
-			err = writeToFile(t.outputDir, m.Name, data)
+			err = writeToFile(o.outputDir, m.Name, data)
 			if err != nil {
 				return err
 			}

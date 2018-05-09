@@ -31,14 +31,14 @@ This command downloads hooks for a given release.
 Hooks are formatted in YAML and separated by the YAML '---\n' separator.
 `
 
-type getHooksCmd struct {
+type getHooksOptions struct {
 	release string
 	client  helm.Interface
 	version int
 }
 
 func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	ghc := &getHooksCmd{client: client}
+	o := &getHooksOptions{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "hooks [flags] RELEASE_NAME",
@@ -48,19 +48,19 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			ghc.release = args[0]
-			ghc.client = ensureHelmClient(ghc.client, false)
-			return ghc.run(out)
+			o.release = args[0]
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
-	cmd.Flags().IntVar(&ghc.version, "revision", 0, "get the named release with revision")
+	cmd.Flags().IntVar(&o.version, "revision", 0, "get the named release with revision")
 	return cmd
 }
 
-func (g *getHooksCmd) run(out io.Writer) error {
-	res, err := g.client.ReleaseContent(g.release, g.version)
+func (o *getHooksOptions) run(out io.Writer) error {
+	res, err := o.client.ReleaseContent(o.release, o.version)
 	if err != nil {
-		fmt.Fprintln(out, g.release)
+		fmt.Fprintln(out, o.release)
 		return err
 	}
 

@@ -38,14 +38,14 @@ flag. In this case, the charts found in the current directory will be merged
 into the existing index, with local charts taking priority over existing charts.
 `
 
-type repoIndexCmd struct {
+type repoIndexOptions struct {
 	dir   string
 	url   string
 	merge string
 }
 
 func newRepoIndexCmd(out io.Writer) *cobra.Command {
-	index := &repoIndexCmd{}
+	o := &repoIndexOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "index [flags] [DIR]",
@@ -56,20 +56,20 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
-			index.dir = args[0]
+			o.dir = args[0]
 
-			return index.run(out)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&index.url, "url", "", "url of chart repository")
-	f.StringVar(&index.merge, "merge", "", "merge the generated index into the given index")
+	f.StringVar(&o.url, "url", "", "url of chart repository")
+	f.StringVar(&o.merge, "merge", "", "merge the generated index into the given index")
 
 	return cmd
 }
 
-func (i *repoIndexCmd) run(out io.Writer) error {
+func (i *repoIndexOptions) run(out io.Writer) error {
 	path, err := filepath.Abs(i.dir)
 	if err != nil {
 		return err

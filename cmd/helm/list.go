@@ -56,27 +56,31 @@ server's default, which may be much higher than 256. Pairing the '--max'
 flag with the '--offset' flag allows you to page through results.
 `
 
-type listCmd struct {
-	filter        string
-	short         bool
-	limit         int
-	offset        string
-	byDate        bool
-	sortDesc      bool
-	all           bool
-	deleted       bool
-	deleting      bool
-	deployed      bool
-	failed        bool
-	superseded    bool
-	pending       bool
-	client        helm.Interface
-	colWidth      uint
-	allNamespaces bool
+type listOptions struct {
+	// flags
+	all           bool   // --all
+	allNamespaces bool   // --all-namespaces
+	byDate        bool   // --date
+	colWidth      uint   // --col-width
+	deleted       bool   // --deleted
+	deleting      bool   // --deleting
+	deployed      bool   // --deployed
+	failed        bool   // --failed
+	limit         int    // --max
+	offset        string // --offset
+	pending       bool   // --pending
+	short         bool   // --short
+	sortDesc      bool   // --reverse
+	superseded    bool   // --superseded
+
+	// args
+	filter string
+
+	client helm.Interface
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	list := &listCmd{client: client}
+	o := &listOptions{client: client}
 
 	cmd := &cobra.Command{
 		Use:     "list [flags] [FILTER]",
@@ -85,48 +89,49 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				list.filter = strings.Join(args, " ")
+				o.filter = strings.Join(args, " ")
 			}
-			list.client = ensureHelmClient(list.client, list.allNamespaces)
-			return list.run(out)
+			o.client = ensureHelmClient(o.client, o.allNamespaces)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&list.short, "short", "q", false, "output short (quiet) listing format")
-	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
-	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
-	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.StringVarP(&list.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
-	f.BoolVarP(&list.all, "all", "a", false, "show all releases, not just the ones marked deployed")
-	f.BoolVar(&list.deleted, "deleted", false, "show deleted releases")
-	f.BoolVar(&list.deleting, "deleting", false, "show releases that are currently being deleted")
-	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
-	f.BoolVar(&list.failed, "failed", false, "show failed releases")
-	f.BoolVar(&list.pending, "pending", false, "show pending releases")
-	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
-	f.BoolVar(&list.allNamespaces, "all-namespaces", false, "list releases across all namespaces")
+	f.BoolVarP(&o.short, "short", "q", false, "output short (quiet) listing format")
+	f.BoolVarP(&o.byDate, "date", "d", false, "sort by release date")
+	f.BoolVarP(&o.sortDesc, "reverse", "r", false, "reverse the sort order")
+	f.IntVarP(&o.limit, "max", "m", 256, "maximum number of releases to fetch")
+	f.StringVarP(&o.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
+	f.BoolVarP(&o.all, "all", "a", false, "show all releases, not just the ones marked deployed")
+	f.BoolVar(&o.deleted, "deleted", false, "show deleted releases")
+	f.BoolVar(&o.superseded, "superseded", false, "show superseded releases")
+	f.BoolVar(&o.deleting, "deleting", false, "show releases that are currently being deleted")
+	f.BoolVar(&o.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
+	f.BoolVar(&o.failed, "failed", false, "show failed releases")
+	f.BoolVar(&o.pending, "pending", false, "show pending releases")
+	f.UintVar(&o.colWidth, "col-width", 60, "specifies the max column width of output")
+	f.BoolVar(&o.allNamespaces, "all-namespaces", false, "list releases across all namespaces")
 
 	return cmd
 }
 
-func (l *listCmd) run(out io.Writer) error {
+func (o *listOptions) run(out io.Writer) error {
 	sortBy := hapi.SortByName
-	if l.byDate {
+	if o.byDate {
 		sortBy = hapi.SortByLastReleased
 	}
 
 	sortOrder := hapi.SortAsc
-	if l.sortDesc {
+	if o.sortDesc {
 		sortOrder = hapi.SortDesc
 	}
 
-	stats := l.statusCodes()
+	stats := o.statusCodes()
 
-	res, err := l.client.ListReleases(
-		helm.ReleaseListLimit(l.limit),
-		helm.ReleaseListOffset(l.offset),
-		helm.ReleaseListFilter(l.filter),
+	res, err := o.client.ListReleases(
+		helm.ReleaseListLimit(o.limit),
+		helm.ReleaseListOffset(o.offset),
+		helm.ReleaseListFilter(o.filter),
 		helm.ReleaseListSort(sortBy),
 		helm.ReleaseListOrder(sortOrder),
 		helm.ReleaseListStatuses(stats),
@@ -142,13 +147,13 @@ func (l *listCmd) run(out io.Writer) error {
 
 	rels := filterList(res)
 
-	if l.short {
+	if o.short {
 		for _, r := range rels {
 			fmt.Fprintln(out, r.Name)
 		}
 		return nil
 	}
-	fmt.Fprintln(out, formatList(rels, l.colWidth))
+	fmt.Fprintln(out, formatList(rels, o.colWidth))
 	return nil
 }
 
@@ -177,8 +182,8 @@ func filterList(rels []*release.Release) []*release.Release {
 }
 
 // statusCodes gets the list of status codes that are to be included in the results.
-func (l *listCmd) statusCodes() []release.ReleaseStatus {
-	if l.all {
+func (o *listOptions) statusCodes() []release.ReleaseStatus {
+	if o.all {
 		return []release.ReleaseStatus{
 			release.StatusUnknown,
 			release.StatusDeployed,
@@ -191,22 +196,22 @@ func (l *listCmd) statusCodes() []release.ReleaseStatus {
 		}
 	}
 	status := []release.ReleaseStatus{}
-	if l.deployed {
+	if o.deployed {
 		status = append(status, release.StatusDeployed)
 	}
-	if l.deleted {
+	if o.deleted {
 		status = append(status, release.StatusDeleted)
 	}
-	if l.deleting {
+	if o.deleting {
 		status = append(status, release.StatusDeleting)
 	}
-	if l.failed {
+	if o.failed {
 		status = append(status, release.StatusFailed)
 	}
-	if l.superseded {
+	if o.superseded {
 		status = append(status, release.StatusSuperseded)
 	}
-	if l.pending {
+	if o.pending {
 		status = append(status, release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback)
 	}
 
