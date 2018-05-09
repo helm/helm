@@ -38,9 +38,8 @@ func TestBuildInfo(t *testing.T) {
 		metadata = tt.buildMetadata
 		gitCommit = tt.gitCommit
 		gitTreeState = tt.gitTreeState
-		if versionProto := GetBuildInfo(); *versionProto != tt.expected {
-			t.Errorf("expected Version(%s), GitCommit(%s) and GitTreeState(%s) to be %v", tt.expected, tt.gitCommit, tt.gitTreeState, *versionProto)
+		if GetBuildInfo() != tt.expected {
+			t.Errorf("expected Version(%s), GitCommit(%s) and GitTreeState(%s) to be %v", tt.expected, tt.gitCommit, tt.gitTreeState, GetBuildInfo())
 		}
 	}
-
 }

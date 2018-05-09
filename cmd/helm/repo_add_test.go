@@ -25,8 +25,6 @@ import (
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
-var testName = "test-name"
-
 func TestRepoAddCmd(t *testing.T) {
 	srv, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
@@ -39,16 +37,16 @@ func TestRepoAddCmd(t *testing.T) {
 		os.RemoveAll(thome.String())
 		cleanup()
 	}()
-	if err := ensureTestHome(thome, t); err != nil {
+	if err := ensureTestHome(t, thome); err != nil {
 		t.Fatal(err)
 	}
 
 	settings.Home = thome
 
 	tests := []releaseCase{{
-		name:    "add a repository",
-		cmd:     fmt.Sprintf("repo add %s %s --home %s", testName, srv.URL(), thome),
-		matches: "\"" + testName + "\" has been added to your repositories",
+		name:   "add a repository",
+		cmd:    fmt.Sprintf("repo add test-name %s --home %s", srv.URL(), thome),
+		golden: "output/repo-add.txt",
 	}}
 
 	testReleaseCmd(t, tests)
@@ -67,13 +65,15 @@ func TestRepoAdd(t *testing.T) {
 		os.RemoveAll(thome.String())
 		cleanup()
 	}()
-	if err := ensureTestHome(hh, t); err != nil {
+	if err := ensureTestHome(t, hh); err != nil {
 		t.Fatal(err)
 	}
 
 	settings.Home = thome
 
-	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
+	const testRepoName = "test-name"
+
+	if err := addRepository(testRepoName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
 		t.Error(err)
 	}
 
@@ -82,15 +82,15 @@ func TestRepoAdd(t *testing.T) {
 		t.Error(err)
 	}
 
-	if !f.Has(testName) {
-		t.Errorf("%s was not successfully inserted into %s", testName, hh.RepositoryFile())
+	if !f.Has(testRepoName) {
+		t.Errorf("%s was not successfully inserted into %s", testRepoName, hh.RepositoryFile())
 	}
 
-	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
+	if err := addRepository(testRepoName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
+	if err := addRepository(testRepoName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 }

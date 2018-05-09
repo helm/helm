@@ -1,0 +1,8 @@
+LAST DEPLOYED: 2016-01-16 00:00:00 +0000 UTC
+NAMESPACE: 
+STATUS: deployed
+
+RESOURCES:
+resource A
+resource B
+

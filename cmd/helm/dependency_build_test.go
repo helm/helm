@@ -16,13 +16,11 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
+	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
@@ -53,32 +51,28 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := bytes.NewBuffer(nil)
-	dbc := &dependencyBuildCmd{out: out}
-	dbc.helmhome = helmpath.Home(hh)
-	dbc.chartpath = filepath.Join(hh.String(), chartname)
+	cmd := fmt.Sprintf("--home=%s dependency build %s", hh, hh.Path(chartname))
+	out, err := executeCommand(nil, cmd)
 
 	// In the first pass, we basically want the same results as an update.
-	if err := dbc.run(); err != nil {
-		output := out.String()
-		t.Logf("Output: %s", output)
+	if err != nil {
+		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
 
-	output := out.String()
-	if !strings.Contains(output, `update from the "test" chart repository`) {
-		t.Errorf("Repo did not get updated\n%s", output)
+	if !strings.Contains(out, `update from the "test" chart repository`) {
+		t.Errorf("Repo did not get updated\n%s", out)
 	}
 
 	// Make sure the actual file got downloaded.
-	expect := filepath.Join(hh.String(), chartname, "charts/reqtest-0.1.0.tgz")
+	expect := hh.Path(chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
 
 	// In the second pass, we want to remove the chart's request dependency,
 	// then see if it restores from the lock.
-	lockfile := filepath.Join(hh.String(), chartname, "requirements.lock")
+	lockfile := hh.Path(chartname, "requirements.lock")
 	if _, err := os.Stat(lockfile); err != nil {
 		t.Fatal(err)
 	}
@@ -86,14 +80,14 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := dbc.run(); err != nil {
-		output := out.String()
-		t.Logf("Output: %s", output)
+	out, err = executeCommand(nil, cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
 
 	// Now repeat the test that the dependency exists.
-	expect = filepath.Join(hh.String(), chartname, "charts/reqtest-0.1.0.tgz")
+	expect = hh.Path(chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +98,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(dbc.helmhome.CacheIndex("test"))
+	i, err := repo.LoadIndexFile(hh.CacheIndex("test"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,5 +110,4 @@ func TestDependencyBuildCmd(t *testing.T) {
 	if v := reqver.Version; v != "0.1.0" {
 		t.Errorf("mismatched versions. Expected %q, got %q", "0.1.0", v)
 	}
-
 }

@@ -24,19 +24,16 @@ import (
 )
 
 func TestGetHooks(t *testing.T) {
-	tests := []releaseCase{
-		{
-			name:    "get hooks with release",
-			cmd:     "get hooks aeneas",
-			matches: helm.MockHookTemplate,
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
-			rels:    []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
-		},
-		{
-			name:      "get hooks without args",
-			cmd:       "get hooks",
-			wantError: true,
-		},
-	}
+	tests := []releaseCase{{
+		name:   "get hooks with release",
+		cmd:    "get hooks aeneas",
+		golden: "output/get-hooks.txt",
+		rels:   []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+	}, {
+		name:      "get hooks without args",
+		cmd:       "get hooks",
+		golden:    "output/get-hooks-no-args.txt",
+		wantError: true,
+	}}
 	testReleaseCmd(t, tests)
 }

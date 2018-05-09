@@ -20,87 +20,76 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
-
-	"k8s.io/helm/pkg/helm"
 )
 
 func TestInstall(t *testing.T) {
 	tests := []releaseCase{
 		// Install, base case
 		{
-			name:    "basic install",
-			cmd:     "install testdata/testcharts/alpine --name aeneas",
-			matches: "aeneas",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			name:   "basic install",
+			cmd:    "install testdata/testcharts/alpine --name aeneas",
+			golden: "output/install.txt",
 		},
 		// Install, no hooks
 		{
-			name:    "install without hooks",
-			cmd:     "install testdata/testcharts/alpine --name aeneas --no-hooks",
-			matches: "aeneas",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			name:   "install without hooks",
+			cmd:    "install testdata/testcharts/alpine --name aeneas --no-hooks",
+			golden: "output/install-no-hooks.txt",
 		},
 		// Install, values from cli
 		{
-			name:    "install with values",
-			cmd:     "install testdata/testcharts/alpine --name virgil --set foo=bar",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			matches: "virgil",
+			name:   "install with values",
+			cmd:    "install testdata/testcharts/alpine --name virgil --set foo=bar",
+			golden: "output/install-with-values.txt",
 		},
 		// Install, values from cli via multiple --set
 		{
-			name:    "install with multiple values",
-			cmd:     "install testdata/testcharts/alpine --name virgil --set foo=bar --set bar=foo",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			matches: "virgil",
+			name:   "install with multiple values",
+			cmd:    "install testdata/testcharts/alpine --name virgil --set foo=bar --set bar=foo",
+			golden: "output/install-with-multiple-values.txt",
 		},
 		// Install, values from yaml
 		{
-			name:    "install with values",
-			cmd:     "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			matches: "virgil",
+			name:   "install with values file",
+			cmd:    "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml",
+			golden: "output/install-with-values-file.txt",
 		},
 		// Install, values from multiple yaml
 		{
-			name:    "install with values",
-			cmd:     "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
-			matches: "virgil",
+			name:   "install with values",
+			cmd:    "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml",
+			golden: "output/install-with-multiple-values-files.txt",
 		},
 		// Install, no charts
 		{
 			name:      "install with no chart specified",
 			cmd:       "install",
+			golden:    "output/install-no-args.txt",
 			wantError: true,
 		},
 		// Install, re-use name
 		{
-			name:    "install and replace release",
-			cmd:     "install testdata/testcharts/alpine --name aeneas --replace",
-			matches: "aeneas",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			name:   "install and replace release",
+			cmd:    "install testdata/testcharts/alpine --name aeneas --replace",
+			golden: "output/install-and-replace.txt",
 		},
 		// Install, with timeout
 		{
-			name:    "install with a timeout",
-			cmd:     "install testdata/testcharts/alpine --name foobar --timeout 120",
-			matches: "foobar",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "foobar"}),
+			name:   "install with a timeout",
+			cmd:    "install testdata/testcharts/alpine --name foobar --timeout 120",
+			golden: "output/install-with-timeout.txt",
 		},
 		// Install, with wait
 		{
-			name:    "install with a wait",
-			cmd:     "install testdata/testcharts/alpine --name apollo --wait",
-			matches: "apollo",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
+			name:   "install with a wait",
+			cmd:    "install testdata/testcharts/alpine --name apollo --wait",
+			golden: "output/install-with-wait.txt",
 		},
 		// Install, using the name-template
 		{
-			name:    "install with name-template",
-			cmd:     "install testdata/testcharts/alpine --name-template '{{upper \"foobar\"}}'",
-			matches: "FOOBAR",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "FOOBAR"}),
+			name:   "install with name-template",
+			cmd:    "install testdata/testcharts/alpine --name-template '{{upper \"foobar\"}}'",
+			golden: "output/install-name-template.txt",
 		},
 		// Install, perform chart verification along the way.
 		{

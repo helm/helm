@@ -151,7 +151,7 @@ func TestPackage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ensureTestHome(helmpath.Home(tmp), t)
+	ensureTestHome(t, helmpath.Home(tmp))
 	cleanup := resetEnv()
 	defer func() {
 		os.Chdir(origDir)

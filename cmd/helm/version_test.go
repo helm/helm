@@ -16,28 +16,18 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
-	"regexp"
 	"testing"
-
-	"k8s.io/helm/pkg/version"
 )
 
 func TestVersion(t *testing.T) {
-	lver := regexp.QuoteMeta(version.GetVersion())
-	clientVersion := fmt.Sprintf("Client: &version\\.BuildInfo{Version:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", lver)
-
-	tests := []releaseCase{
-		{
-			name:    "default",
-			cmd:     "version",
-			matches: clientVersion,
-		},
-		{
-			name:    "template",
-			cmd:     "version --template='{{.Client.Version}}'",
-			matches: lver,
-		},
-	}
+	tests := []releaseCase{{
+		name:   "default",
+		cmd:    "version",
+		golden: "output/version.txt",
+	}, {
+		name:   "template",
+		cmd:    "version --template='Version: {{.Version}}'",
+		golden: "output/version-template.txt",
+	}}
 	testReleaseCmd(t, tests)
 }

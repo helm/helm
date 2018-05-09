@@ -115,14 +115,14 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (l *listCmd) run() error {
-	sortBy := hapi.ListSortName
+	sortBy := hapi.SortByName
 	if l.byDate {
-		sortBy = hapi.ListSortLastReleased
+		sortBy = hapi.SortByLastReleased
 	}
 
-	sortOrder := hapi.ListSortAsc
+	sortOrder := hapi.SortAsc
 	if l.sortDesc {
-		sortOrder = hapi.ListSortDesc
+		sortOrder = hapi.SortDesc
 	}
 
 	stats := l.statusCodes()

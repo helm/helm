@@ -22,13 +22,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/internal/test"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -56,19 +56,19 @@ func executeCommandC(client helm.Interface, cmd string) (*cobra.Command, string,
 }
 
 func testReleaseCmd(t *testing.T, tests []releaseCase) {
+	t.Helper()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &helm.FakeClient{
-				Rels:      tt.rels,
-				Responses: tt.responses,
+				Rels:          tt.rels,
+				TestRunStatus: tt.testRunStatus,
 			}
 			out, err := executeCommand(c, tt.cmd)
 			if (err != nil) != tt.wantError {
 				t.Errorf("expected error, got '%v'", err)
 			}
-			re := regexp.MustCompile(tt.matches)
-			if !re.MatchString(out) {
-				t.Errorf("expected\n%q\ngot\n%q", tt.matches, out)
+			if tt.golden != "" {
+				test.AssertGoldenString(t, out, tt.golden)
 			}
 		})
 	}
@@ -76,15 +76,13 @@ func testReleaseCmd(t *testing.T, tests []releaseCase) {
 
 // releaseCase describes a test case that works with releases.
 type releaseCase struct {
-	name string
-	cmd  string
-	// matches is the string to be matched. This supports regular expressions.
-	matches   string
+	name      string
+	cmd       string
+	golden    string
 	wantError bool
-	resp      *release.Release
 	// Rels are the available releases at the start of the test.
-	rels      []*release.Release
-	responses map[string]release.TestRunStatus
+	rels          []*release.Release
+	testRunStatus map[string]release.TestRunStatus
 }
 
 // tempHelmHome sets up a Helm Home in a temp dir.
@@ -99,7 +97,7 @@ func tempHelmHome(t *testing.T) (helmpath.Home, error) {
 	}
 
 	settings.Home = helmpath.Home(dir)
-	if err := ensureTestHome(settings.Home, t); err != nil {
+	if err := ensureTestHome(t, settings.Home); err != nil {
 		return helmpath.Home("n/"), err
 	}
 	settings.Home = oldhome
@@ -109,20 +107,22 @@ func tempHelmHome(t *testing.T) (helmpath.Home, error) {
 // ensureTestHome creates a home directory like ensureHome, but without remote references.
 //
 // t is used only for logging.
-func ensureTestHome(home helmpath.Home, t *testing.T) error {
-	configDirectories := []string{home.String(), home.Repository(), home.Cache(), home.Plugins(), home.Starters()}
-	for _, p := range configDirectories {
-		if fi, err := os.Stat(p); err != nil {
-			if err := os.MkdirAll(p, 0755); err != nil {
-				return fmt.Errorf("Could not create %s: %s", p, err)
-			}
-		} else if !fi.IsDir() {
-			return fmt.Errorf("%s must be a directory", p)
+func ensureTestHome(t *testing.T, home helmpath.Home) error {
+	t.Helper()
+	for _, p := range []string{
+		home.String(),
+		home.Repository(),
+		home.Cache(),
+		home.Plugins(),
+		home.Starters(),
+	} {
+		if err := os.MkdirAll(p, 0755); err != nil {
+			return fmt.Errorf("Could not create %s: %s", p, err)
 		}
 	}
 
 	repoFile := home.RepositoryFile()
-	if fi, err := os.Stat(repoFile); err != nil {
+	if _, err := os.Stat(repoFile); err != nil {
 		rf := repo.NewRepoFile()
 		rf.Add(&repo.Entry{
 			Name:  "charts",
@@ -132,8 +132,6 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		if err := rf.WriteFile(repoFile, 0644); err != nil {
 			return err
 		}
-	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", repoFile)
 	}
 	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
 		t.Log("Updating repository file format...")
