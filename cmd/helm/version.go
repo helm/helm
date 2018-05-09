@@ -40,39 +40,38 @@ version.BuildInfo{Version:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f643
   built, and "dirty" if the binary was built from locally modified code.
 `
 
-type versionCmd struct {
-	out      io.Writer
+type versionOptions struct {
 	short    bool
 	template string
 }
 
 func newVersionCmd(out io.Writer) *cobra.Command {
-	version := &versionCmd{out: out}
+	o := &versionOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "print the client version information",
 		Long:  versionDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return version.run()
+			return o.run(out)
 		},
 	}
 	f := cmd.Flags()
-	f.BoolVar(&version.short, "short", false, "print the version number")
-	f.StringVar(&version.template, "template", "", "template for version string format")
+	f.BoolVar(&o.short, "short", false, "print the version number")
+	f.StringVar(&o.template, "template", "", "template for version string format")
 
 	return cmd
 }
 
-func (v *versionCmd) run() error {
-	if v.template != "" {
-		tt, err := template.New("_").Parse(v.template)
+func (o *versionOptions) run(out io.Writer) error {
+	if o.template != "" {
+		tt, err := template.New("_").Parse(o.template)
 		if err != nil {
 			return err
 		}
-		return tt.Execute(v.out, version.GetBuildInfo())
+		return tt.Execute(out, version.GetBuildInfo())
 	}
-	fmt.Fprintln(v.out, formatVersion(v.short))
+	fmt.Fprintln(out, formatVersion(o.short))
 	return nil
 }
 

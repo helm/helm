@@ -39,32 +39,29 @@ future releases.
 
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
-type repoUpdateCmd struct {
+type repoUpdateOptions struct {
 	update func([]*repo.ChartRepository, io.Writer, helmpath.Home)
 	home   helmpath.Home
-	out    io.Writer
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
-	u := &repoUpdateCmd{
-		out:    out,
-		update: updateCharts,
-	}
+	o := &repoUpdateOptions{update: updateCharts}
+
 	cmd := &cobra.Command{
 		Use:     "update",
 		Aliases: []string{"up"},
 		Short:   "update information of available charts locally from chart repositories",
 		Long:    updateDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			u.home = settings.Home
-			return u.run()
+			o.home = settings.Home
+			return o.run(out)
 		},
 	}
 	return cmd
 }
 
-func (u *repoUpdateCmd) run() error {
-	f, err := repo.LoadRepositoriesFile(u.home.RepositoryFile())
+func (o *repoUpdateOptions) run(out io.Writer) error {
+	f, err := repo.LoadRepositoriesFile(o.home.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -81,7 +78,7 @@ func (u *repoUpdateCmd) run() error {
 		repos = append(repos, r)
 	}
 
-	u.update(repos, u.out, u.home)
+	o.update(repos, out, o.home)
 	return nil
 }
 

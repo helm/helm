@@ -104,7 +104,7 @@ To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
 `
 
-type installCmd struct {
+type installOptions struct {
 	name         string     // --name
 	valueFiles   valueFiles // --values
 	dryRun       bool       // --dry-run
@@ -128,7 +128,6 @@ type installCmd struct {
 	caFile       string     // --ca-file
 	chartPath    string     // arg
 
-	out    io.Writer
 	client helm.Interface
 }
 
@@ -150,10 +149,7 @@ func (v *valueFiles) Set(value string) error {
 }
 
 func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	inst := &installCmd{
-		out:    out,
-		client: c,
-	}
+	o := &installOptions{client: c}
 
 	cmd := &cobra.Command{
 		Use:   "install [CHART]",
@@ -164,69 +160,69 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			debug("Original chart version: %q", inst.version)
-			if inst.version == "" && inst.devel {
+			debug("Original chart version: %q", o.version)
+			if o.version == "" && o.devel {
 				debug("setting version to >0.0.0-0")
-				inst.version = ">0.0.0-0"
+				o.version = ">0.0.0-0"
 			}
 
-			cp, err := locateChartPath(inst.repoURL, inst.username, inst.password, args[0], inst.version, inst.verify, inst.keyring,
-				inst.certFile, inst.keyFile, inst.caFile)
+			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
+				o.certFile, o.keyFile, o.caFile)
 			if err != nil {
 				return err
 			}
-			inst.chartPath = cp
-			inst.client = ensureHelmClient(inst.client, false)
-			return inst.run()
+			o.chartPath = cp
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
-	f.StringVarP(&inst.name, "name", "", "", "release name. If unspecified, it will autogenerate one for you")
-	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
-	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
-	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
-	f.StringArrayVar(&inst.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&inst.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
-	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
-	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
-	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
-	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&inst.username, "username", "", "chart repository username where to locate the requested chart")
-	f.StringVar(&inst.password, "password", "", "chart repository password where to locate the requested chart")
-	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.BoolVar(&inst.depUp, "dep-up", false, "run helm dependency update before installing the chart")
+	f.VarP(&o.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
+	f.StringVarP(&o.name, "name", "", "", "release name. If unspecified, it will autogenerate one for you")
+	f.BoolVar(&o.dryRun, "dry-run", false, "simulate an install")
+	f.BoolVar(&o.disableHooks, "no-hooks", false, "prevent hooks from running during install")
+	f.BoolVar(&o.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
+	f.StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&o.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringVar(&o.nameTemplate, "name-template", "", "specify template used to name the release")
+	f.BoolVar(&o.verify, "verify", false, "verify the package before installing it")
+	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
+	f.StringVar(&o.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
+	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&o.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.StringVar(&o.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&o.depUp, "dep-up", false, "run helm dependency update before installing the chart")
 
 	return cmd
 }
 
-func (i *installCmd) run() error {
-	debug("CHART PATH: %s\n", i.chartPath)
+func (o *installOptions) run(out io.Writer) error {
+	debug("CHART PATH: %s\n", o.chartPath)
 
-	rawVals, err := vals(i.valueFiles, i.values, i.stringValues)
+	rawVals, err := vals(o.valueFiles, o.values, o.stringValues)
 	if err != nil {
 		return err
 	}
 
 	// If template is specified, try to run the template.
-	if i.nameTemplate != "" {
-		i.name, err = generateName(i.nameTemplate)
+	if o.nameTemplate != "" {
+		o.name, err = generateName(o.nameTemplate)
 		if err != nil {
 			return err
 		}
 		// Print the final name so the user knows what the final name of the release is.
-		fmt.Printf("FINAL NAME: %s\n", i.name)
+		fmt.Printf("FINAL NAME: %s\n", o.name)
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	chartRequested, err := chartutil.Load(i.chartPath)
+	chartRequested, err := chartutil.Load(o.chartPath)
 	if err != nil {
 		return err
 	}
@@ -236,10 +232,10 @@ func (i *installCmd) run() error {
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/kubernetes/helm/issues/2209
 		if err := checkDependencies(chartRequested, req); err != nil {
-			if i.depUp {
+			if o.depUp {
 				man := &downloader.Manager{
-					Out:        i.out,
-					ChartPath:  i.chartPath,
+					Out:        out,
+					ChartPath:  o.chartPath,
 					HelmHome:   settings.Home,
 					Keyring:    defaultKeyring(),
 					SkipUpdate: false,
@@ -257,16 +253,16 @@ func (i *installCmd) run() error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
-	rel, err := i.client.InstallReleaseFromChart(
+	rel, err := o.client.InstallReleaseFromChart(
 		chartRequested,
 		getNamespace(),
 		helm.ValueOverrides(rawVals),
-		helm.ReleaseName(i.name),
-		helm.InstallDryRun(i.dryRun),
-		helm.InstallReuseName(i.replace),
-		helm.InstallDisableHooks(i.disableHooks),
-		helm.InstallTimeout(i.timeout),
-		helm.InstallWait(i.wait))
+		helm.ReleaseName(o.name),
+		helm.InstallDryRun(o.dryRun),
+		helm.InstallReuseName(o.replace),
+		helm.InstallDisableHooks(o.disableHooks),
+		helm.InstallTimeout(o.timeout),
+		helm.InstallWait(o.wait))
 	if err != nil {
 		return err
 	}
@@ -274,19 +270,19 @@ func (i *installCmd) run() error {
 	if rel == nil {
 		return nil
 	}
-	i.printRelease(rel)
+	o.printRelease(out, rel)
 
 	// If this is a dry run, we can't display status.
-	if i.dryRun {
+	if o.dryRun {
 		return nil
 	}
 
 	// Print the status like status command does
-	status, err := i.client.ReleaseStatus(rel.Name, 0)
+	status, err := o.client.ReleaseStatus(rel.Name, 0)
 	if err != nil {
 		return err
 	}
-	PrintStatus(i.out, status)
+	PrintStatus(out, status)
 	return nil
 }
 
@@ -363,14 +359,14 @@ func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte
 }
 
 // printRelease prints info about a release if the Debug is true.
-func (i *installCmd) printRelease(rel *release.Release) {
+func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
 	if rel == nil {
 		return
 	}
 	// TODO: Switch to text/template like everything else.
-	fmt.Fprintf(i.out, "NAME:   %s\n", rel.Name)
+	fmt.Fprintf(out, "NAME:   %s\n", rel.Name)
 	if settings.Debug {
-		printRelease(i.out, rel)
+		printRelease(out, rel)
 	}
 }
 

@@ -27,14 +27,13 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-type repoRemoveCmd struct {
-	out  io.Writer
+type repoRemoveOptions struct {
 	name string
 	home helmpath.Home
 }
 
 func newRepoRemoveCmd(out io.Writer) *cobra.Command {
-	remove := &repoRemoveCmd{out: out}
+	o := &repoRemoveOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "remove [flags] [NAME]",
@@ -44,18 +43,18 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "name of chart repository"); err != nil {
 				return err
 			}
-			remove.name = args[0]
-			remove.home = settings.Home
+			o.name = args[0]
+			o.home = settings.Home
 
-			return remove.run()
+			return o.run(out)
 		},
 	}
 
 	return cmd
 }
 
-func (r *repoRemoveCmd) run() error {
-	return removeRepoLine(r.out, r.name, r.home)
+func (r *repoRemoveOptions) run(out io.Writer) error {
+	return removeRepoLine(out, r.name, r.home)
 }
 
 func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {

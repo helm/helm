@@ -49,46 +49,47 @@ Chart.yaml file, and (if found) build the current directory into a chart.
 Versioned chart archives are used by Helm package repositories.
 `
 
-type packageCmd struct {
-	sign             bool
-	path             string
-	valueFiles       valueFiles
-	values           []string
-	stringValues     []string
-	key              string
-	keyring          string
-	version          string
-	appVersion       string
-	destination      string
-	dependencyUpdate bool
+type packageOptions struct {
+	appVersion       string     // --app-version
+	dependencyUpdate bool       // --dependency-update
+	destination      string     // --destination
+	key              string     // --key
+	keyring          string     // --keyring
+	sign             bool       // --sign
+	stringValues     []string   // --set-string
+	valueFiles       valueFiles // --values
+	values           []string   // --set
+	version          string     // --version
 
-	out  io.Writer
+	// args
+	path string
+
 	home helmpath.Home
 }
 
 func newPackageCmd(out io.Writer) *cobra.Command {
-	pkg := &packageCmd{out: out}
+	o := &packageOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "package [flags] [CHART_PATH] [...]",
 		Short: "package a chart directory into a chart archive",
 		Long:  packageDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pkg.home = settings.Home
+			o.home = settings.Home
 			if len(args) == 0 {
 				return fmt.Errorf("need at least one argument, the path to the chart")
 			}
-			if pkg.sign {
-				if pkg.key == "" {
+			if o.sign {
+				if o.key == "" {
 					return errors.New("--key is required for signing a package")
 				}
-				if pkg.keyring == "" {
+				if o.keyring == "" {
 					return errors.New("--keyring is required for signing a package")
 				}
 			}
 			for i := 0; i < len(args); i++ {
-				pkg.path = args[i]
-				if err := pkg.run(); err != nil {
+				o.path = args[i]
+				if err := o.run(out); err != nil {
 					return err
 				}
 			}
@@ -97,32 +98,32 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.VarP(&pkg.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
-	f.StringArrayVar(&pkg.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&pkg.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.BoolVar(&pkg.sign, "sign", false, "use a PGP private key to sign this package")
-	f.StringVar(&pkg.key, "key", "", "name of the key to use when signing. Used if --sign is true")
-	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
-	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
-	f.StringVar(&pkg.appVersion, "app-version", "", "set the appVersion on the chart to this version")
-	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
-	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
+	f.VarP(&o.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
+	f.StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&o.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.BoolVar(&o.sign, "sign", false, "use a PGP private key to sign this package")
+	f.StringVar(&o.key, "key", "", "name of the key to use when signing. Used if --sign is true")
+	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "location of a public keyring")
+	f.StringVar(&o.version, "version", "", "set the version on the chart to this semver version")
+	f.StringVar(&o.appVersion, "app-version", "", "set the appVersion on the chart to this version")
+	f.StringVarP(&o.destination, "destination", "d", ".", "location to write the chart.")
+	f.BoolVarP(&o.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
 
 	return cmd
 }
 
-func (p *packageCmd) run() error {
-	path, err := filepath.Abs(p.path)
+func (o *packageOptions) run(out io.Writer) error {
+	path, err := filepath.Abs(o.path)
 	if err != nil {
 		return err
 	}
 
-	if p.dependencyUpdate {
+	if o.dependencyUpdate {
 		downloadManager := &downloader.Manager{
-			Out:       p.out,
+			Out:       out,
 			ChartPath: path,
 			HelmHome:  settings.Home,
-			Keyring:   p.keyring,
+			Keyring:   o.keyring,
 			Getters:   getter.All(settings),
 			Debug:     settings.Debug,
 		}
@@ -137,7 +138,7 @@ func (p *packageCmd) run() error {
 		return err
 	}
 
-	overrideVals, err := vals(p.valueFiles, p.values, p.stringValues)
+	overrideVals, err := vals(o.valueFiles, o.values, o.stringValues)
 	if err != nil {
 		return err
 	}
@@ -152,16 +153,16 @@ func (p *packageCmd) run() error {
 	ch.Values = newVals
 
 	// If version is set, modify the version.
-	if len(p.version) != 0 {
-		if err := setVersion(ch, p.version); err != nil {
+	if len(o.version) != 0 {
+		if err := setVersion(ch, o.version); err != nil {
 			return err
 		}
-		debug("Setting version to %s", p.version)
+		debug("Setting version to %s", o.version)
 	}
 
-	if p.appVersion != "" {
-		ch.Metadata.AppVersion = p.appVersion
-		debug("Setting appVersion to %s", p.appVersion)
+	if o.appVersion != "" {
+		ch.Metadata.AppVersion = o.appVersion
+		debug("Setting appVersion to %s", o.appVersion)
 	}
 
 	if filepath.Base(path) != ch.Metadata.Name {
@@ -179,7 +180,7 @@ func (p *packageCmd) run() error {
 	}
 
 	var dest string
-	if p.destination == "." {
+	if o.destination == "." {
 		// Save to the current working directory.
 		dest, err = os.Getwd()
 		if err != nil {
@@ -187,18 +188,18 @@ func (p *packageCmd) run() error {
 		}
 	} else {
 		// Otherwise save to set destination
-		dest = p.destination
+		dest = o.destination
 	}
 
 	name, err := chartutil.Save(ch, dest)
 	if err == nil {
-		fmt.Fprintf(p.out, "Successfully packaged chart and saved it to: %s\n", name)
+		fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", name)
 	} else {
 		return fmt.Errorf("Failed to save: %s", err)
 	}
 
-	if p.sign {
-		err = p.clearsign(name)
+	if o.sign {
+		err = o.clearsign(name)
 	}
 
 	return err
@@ -215,9 +216,9 @@ func setVersion(ch *chart.Chart, ver string) error {
 	return nil
 }
 
-func (p *packageCmd) clearsign(filename string) error {
+func (o *packageOptions) clearsign(filename string) error {
 	// Load keyring
-	signer, err := provenance.NewFromKeyring(p.keyring, p.key)
+	signer, err := provenance.NewFromKeyring(o.keyring, o.key)
 	if err != nil {
 		return err
 	}

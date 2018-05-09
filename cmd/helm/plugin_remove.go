@@ -28,49 +28,48 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type pluginRemoveCmd struct {
+type pluginRemoveOptions struct {
 	names []string
 	home  helmpath.Home
-	out   io.Writer
 }
 
 func newPluginRemoveCmd(out io.Writer) *cobra.Command {
-	pcmd := &pluginRemoveCmd{out: out}
+	o := &pluginRemoveOptions{}
 	cmd := &cobra.Command{
 		Use:   "remove <plugin>...",
 		Short: "remove one or more Helm plugins",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return pcmd.complete(args)
+			return o.complete(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pcmd.run()
+			return o.run(out)
 		},
 	}
 	return cmd
 }
 
-func (pcmd *pluginRemoveCmd) complete(args []string) error {
+func (o *pluginRemoveOptions) complete(args []string) error {
 	if len(args) == 0 {
 		return errors.New("please provide plugin name to remove")
 	}
-	pcmd.names = args
-	pcmd.home = settings.Home
+	o.names = args
+	o.home = settings.Home
 	return nil
 }
 
-func (pcmd *pluginRemoveCmd) run() error {
+func (o *pluginRemoveOptions) run(out io.Writer) error {
 	debug("loading installed plugins from %s", settings.PluginDirs())
 	plugins, err := findPlugins(settings.PluginDirs())
 	if err != nil {
 		return err
 	}
 	var errorPlugins []string
-	for _, name := range pcmd.names {
+	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := removePlugin(found); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to remove plugin %s, got error (%v)", name, err))
 			} else {
-				fmt.Fprintf(pcmd.out, "Removed plugin: %s\n", name)
+				fmt.Fprintf(out, "Removed plugin: %s\n", name)
 			}
 		} else {
 			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))

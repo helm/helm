@@ -33,19 +33,15 @@ The argument this command takes is the name of a deployed release.
 The tests to be run are defined in the chart that was installed.
 `
 
-type releaseTestCmd struct {
+type releaseTestOptions struct {
 	name    string
-	out     io.Writer
 	client  helm.Interface
 	timeout int64
 	cleanup bool
 }
 
 func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	rlsTest := &releaseTestCmd{
-		out:    out,
-		client: c,
-	}
+	o := &releaseTestOptions{client: c}
 
 	cmd := &cobra.Command{
 		Use:   "test [RELEASE]",
@@ -56,24 +52,24 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			rlsTest.name = args[0]
-			rlsTest.client = ensureHelmClient(rlsTest.client, false)
-			return rlsTest.run()
+			o.name = args[0]
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
 	f := cmd.Flags()
-	f.Int64Var(&rlsTest.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "delete test pods upon completion")
+	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&o.cleanup, "cleanup", false, "delete test pods upon completion")
 
 	return cmd
 }
 
-func (t *releaseTestCmd) run() (err error) {
-	c, errc := t.client.RunReleaseTest(
-		t.name,
-		helm.ReleaseTestTimeout(t.timeout),
-		helm.ReleaseTestCleanup(t.cleanup),
+func (o *releaseTestOptions) run(out io.Writer) (err error) {
+	c, errc := o.client.RunReleaseTest(
+		o.name,
+		helm.ReleaseTestTimeout(o.timeout),
+		helm.ReleaseTestCleanup(o.cleanup),
 	)
 	testErr := &testErr{}
 
@@ -92,12 +88,9 @@ func (t *releaseTestCmd) run() (err error) {
 			if res.Status == release.TestRunFailure {
 				testErr.failed++
 			}
-
-			fmt.Fprintf(t.out, res.Msg+"\n")
-
+			fmt.Fprintf(out, res.Msg+"\n")
 		}
 	}
-
 }
 
 type testErr struct {

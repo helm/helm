@@ -40,19 +40,16 @@ chart, the supplied values, and the generated manifest file.
 
 var errReleaseRequired = errors.New("release name is required")
 
-type getCmd struct {
-	release string
-	version int
+type getOptions struct {
+	version int // --revision
 
-	out    io.Writer
+	release string
+
 	client helm.Interface
 }
 
 func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	get := &getCmd{
-		out:    out,
-		client: client,
-	}
+	o := &getOptions{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "get [flags] RELEASE_NAME",
@@ -62,13 +59,13 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			get.release = args[0]
-			get.client = ensureHelmClient(get.client, false)
-			return get.run()
+			o.release = args[0]
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
-	cmd.Flags().IntVar(&get.version, "revision", 0, "get the named release with revision")
+	cmd.Flags().IntVar(&o.version, "revision", 0, "get the named release with revision")
 
 	cmd.AddCommand(newGetValuesCmd(client, out))
 	cmd.AddCommand(newGetManifestCmd(client, out))
@@ -77,11 +74,10 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-// getCmd is the command that implements 'helm get'
-func (g *getCmd) run() error {
+func (g *getOptions) run(out io.Writer) error {
 	res, err := g.client.ReleaseContent(g.release, g.version)
 	if err != nil {
 		return err
 	}
-	return printRelease(g.out, res)
+	return printRelease(out, res)
 }

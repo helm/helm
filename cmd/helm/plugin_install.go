@@ -26,11 +26,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type pluginInstallCmd struct {
+type pluginInstallOptions struct {
 	source  string
 	version string
 	home    helmpath.Home
-	out     io.Writer
 }
 
 const pluginInstallDesc = `
@@ -41,35 +40,35 @@ Example usage:
 `
 
 func newPluginInstallCmd(out io.Writer) *cobra.Command {
-	pcmd := &pluginInstallCmd{out: out}
+	o := &pluginInstallOptions{}
 	cmd := &cobra.Command{
 		Use:   "install [options] <path|url>...",
 		Short: "install one or more Helm plugins",
 		Long:  pluginInstallDesc,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return pcmd.complete(args)
+			return o.complete(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return pcmd.run()
+			return o.run(out)
 		},
 	}
-	cmd.Flags().StringVar(&pcmd.version, "version", "", "specify a version constraint. If this is not specified, the latest version is installed")
+	cmd.Flags().StringVar(&o.version, "version", "", "specify a version constraint. If this is not specified, the latest version is installed")
 	return cmd
 }
 
-func (pcmd *pluginInstallCmd) complete(args []string) error {
+func (o *pluginInstallOptions) complete(args []string) error {
 	if err := checkArgsLength(len(args), "plugin"); err != nil {
 		return err
 	}
-	pcmd.source = args[0]
-	pcmd.home = settings.Home
+	o.source = args[0]
+	o.home = settings.Home
 	return nil
 }
 
-func (pcmd *pluginInstallCmd) run() error {
+func (o *pluginInstallOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
 
-	i, err := installer.NewForSource(pcmd.source, pcmd.version, pcmd.home)
+	i, err := installer.NewForSource(o.source, o.version, o.home)
 	if err != nil {
 		return err
 	}
@@ -87,6 +86,6 @@ func (pcmd *pluginInstallCmd) run() error {
 		return err
 	}
 
-	fmt.Fprintf(pcmd.out, "Installed plugin: %s\n", p.Metadata.Name)
+	fmt.Fprintf(out, "Installed plugin: %s\n", p.Metadata.Name)
 	return nil
 }

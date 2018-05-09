@@ -44,19 +44,15 @@ The status consists of:
 - additional notes provided by the chart
 `
 
-type statusCmd struct {
+type statusOptions struct {
 	release string
-	out     io.Writer
 	client  helm.Interface
 	version int
 	outfmt  string
 }
 
 func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	status := &statusCmd{
-		out:    out,
-		client: client,
-	}
+	o := &statusOptions{client: client}
 
 	cmd := &cobra.Command{
 		Use:   "status [flags] RELEASE_NAME",
@@ -66,45 +62,45 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errReleaseRequired
 			}
-			status.release = args[0]
-			status.client = ensureHelmClient(status.client, false)
-			return status.run()
+			o.release = args[0]
+			o.client = ensureHelmClient(o.client, false)
+			return o.run(out)
 		},
 	}
 
-	cmd.PersistentFlags().IntVar(&status.version, "revision", 0, "if set, display the status of the named release with revision")
-	cmd.PersistentFlags().StringVarP(&status.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
+	cmd.PersistentFlags().IntVar(&o.version, "revision", 0, "if set, display the status of the named release with revision")
+	cmd.PersistentFlags().StringVarP(&o.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
 
 	return cmd
 }
 
-func (s *statusCmd) run() error {
-	res, err := s.client.ReleaseStatus(s.release, s.version)
+func (o *statusOptions) run(out io.Writer) error {
+	res, err := o.client.ReleaseStatus(o.release, o.version)
 	if err != nil {
 		return err
 	}
 
-	switch s.outfmt {
+	switch o.outfmt {
 	case "":
-		PrintStatus(s.out, res)
+		PrintStatus(out, res)
 		return nil
 	case "json":
 		data, err := json.Marshal(res)
 		if err != nil {
 			return fmt.Errorf("Failed to Marshal JSON output: %s", err)
 		}
-		s.out.Write(data)
+		out.Write(data)
 		return nil
 	case "yaml":
 		data, err := yaml.Marshal(res)
 		if err != nil {
 			return fmt.Errorf("Failed to Marshal YAML output: %s", err)
 		}
-		s.out.Write(data)
+		out.Write(data)
 		return nil
 	}
 
-	return fmt.Errorf("Unknown output format %q", s.outfmt)
+	return fmt.Errorf("Unknown output format %q", o.outfmt)
 }
 
 // PrintStatus prints out the status of a release. Shared because also used by

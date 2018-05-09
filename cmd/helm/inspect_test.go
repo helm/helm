@@ -26,12 +26,11 @@ import (
 func TestInspect(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 
-	insp := &inspectCmd{
+	o := &inspectOptions{
 		chartpath: "testdata/testcharts/alpine",
 		output:    all,
-		out:       b,
 	}
-	insp.run()
+	o.run(b)
 
 	// Load the data from the textfixture directly.
 	cdata, err := ioutil.ReadFile("testdata/testcharts/alpine/Chart.yaml")
@@ -68,12 +67,11 @@ func TestInspect(t *testing.T) {
 
 	// Regression tests for missing values. See issue #1024.
 	b.Reset()
-	insp = &inspectCmd{
+	o = &inspectOptions{
 		chartpath: "testdata/testcharts/novals",
 		output:    "values",
-		out:       b,
 	}
-	insp.run()
+	o.run(b)
 	if b.Len() != 0 {
 		t.Errorf("expected empty values buffer, got %q", b.String())
 	}

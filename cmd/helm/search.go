@@ -40,8 +40,7 @@ Repositories are managed with 'helm repo' commands.
 // searchMaxScore suggests that any score higher than this is not considered a match.
 const searchMaxScore = 25
 
-type searchCmd struct {
-	out      io.Writer
+type searchOptions struct {
 	helmhome helmpath.Home
 
 	versions bool
@@ -50,28 +49,28 @@ type searchCmd struct {
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
-	sc := &searchCmd{out: out}
+	o := &searchOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",
 		Short: "search for a keyword in charts",
 		Long:  searchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sc.helmhome = settings.Home
-			return sc.run(args)
+			o.helmhome = settings.Home
+			return o.run(out, args)
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&sc.regexp, "regexp", "r", false, "use regular expressions for searching")
-	f.BoolVarP(&sc.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line")
-	f.StringVarP(&sc.version, "version", "v", "", "search using semantic versioning constraints")
+	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching")
+	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line")
+	f.StringVarP(&o.version, "version", "v", "", "search using semantic versioning constraints")
 
 	return cmd
 }
 
-func (s *searchCmd) run(args []string) error {
-	index, err := s.buildIndex()
+func (o *searchOptions) run(out io.Writer, args []string) error {
+	index, err := o.buildIndex(out)
 	if err != nil {
 		return err
 	}
@@ -81,29 +80,29 @@ func (s *searchCmd) run(args []string) error {
 		res = index.All()
 	} else {
 		q := strings.Join(args, " ")
-		res, err = index.Search(q, searchMaxScore, s.regexp)
+		res, err = index.Search(q, searchMaxScore, o.regexp)
 		if err != nil {
 			return err
 		}
 	}
 
 	search.SortScore(res)
-	data, err := s.applyConstraint(res)
+	data, err := o.applyConstraint(res)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintln(s.out, s.formatSearchResults(data))
+	fmt.Fprintln(out, o.formatSearchResults(data))
 
 	return nil
 }
 
-func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, error) {
-	if len(s.version) == 0 {
+func (o *searchOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {
+	if len(o.version) == 0 {
 		return res, nil
 	}
 
-	constraint, err := semver.NewConstraint(s.version)
+	constraint, err := semver.NewConstraint(o.version)
 	if err != nil {
 		return res, fmt.Errorf("an invalid version/constraint format: %s", err)
 	}
@@ -117,7 +116,7 @@ func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, err
 		v, err := semver.NewVersion(r.Chart.Version)
 		if err != nil || constraint.Check(v) {
 			data = append(data, r)
-			if !s.versions {
+			if !o.versions {
 				foundNames[r.Name] = true // If user hasn't requested all versions, only show the latest that matches
 			}
 		}
@@ -126,7 +125,7 @@ func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, err
 	return data, nil
 }
 
-func (s *searchCmd) formatSearchResults(res []*search.Result) string {
+func (o *searchOptions) formatSearchResults(res []*search.Result) string {
 	if len(res) == 0 {
 		return "No results found"
 	}
@@ -139,9 +138,9 @@ func (s *searchCmd) formatSearchResults(res []*search.Result) string {
 	return table.String()
 }
 
-func (s *searchCmd) buildIndex() (*search.Index, error) {
+func (o *searchOptions) buildIndex(out io.Writer) (*search.Index, error) {
 	// Load the repositories.yaml
-	rf, err := repo.LoadRepositoriesFile(s.helmhome.RepositoryFile())
+	rf, err := repo.LoadRepositoriesFile(o.helmhome.RepositoryFile())
 	if err != nil {
 		return nil, err
 	}
@@ -149,14 +148,15 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 	i := search.NewIndex()
 	for _, re := range rf.Repositories {
 		n := re.Name
-		f := s.helmhome.CacheIndex(n)
+		f := o.helmhome.CacheIndex(n)
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			fmt.Fprintf(s.out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			// TODO should print to stderr
+			fmt.Fprintf(out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			continue
 		}
 
-		i.AddRepo(n, ind, s.versions || len(s.version) > 0)
+		i.AddRepo(n, ind, o.versions || len(o.version) > 0)
 	}
 	return i, nil
 }
