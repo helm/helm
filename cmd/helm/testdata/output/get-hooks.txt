@@ -1,0 +1,7 @@
+---
+# pre-install-hook
+apiVersion: v1
+kind: Job
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install

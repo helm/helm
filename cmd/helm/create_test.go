@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -46,8 +47,7 @@ func TestCreateCmd(t *testing.T) {
 	defer os.Chdir(pwd)
 
 	// Run a create
-	cmd := newCreateCmd(ioutil.Discard)
-	if err := cmd.RunE(cmd, []string{cname}); err != nil {
+	if _, err := executeCommand(nil, "create "+cname); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
 	}
@@ -117,9 +117,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	defer os.Chdir(pwd)
 
 	// Run a create
-	cmd := newCreateCmd(ioutil.Discard)
-	cmd.ParseFlags([]string{"--starter", "starterchart"})
-	if err := cmd.RunE(cmd, []string{cname}); err != nil {
+	if _, err := executeCommand(nil, fmt.Sprintf("--home=%s create --starter=starterchart %s", thome, cname)); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
 	}

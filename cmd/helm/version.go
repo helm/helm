@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"text/template"
 
 	"github.com/spf13/cobra"
 
@@ -31,7 +32,7 @@ Show the version for Helm.
 This will print a representation the version of Helm.
 The output will look something like this:
 
-Client: &version.BuildInfo{Version:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"clean"}
+version.BuildInfo{Version:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"clean"}
 
 - Version is the semantic version of the release.
 - GitCommit is the SHA for the commit that this version was built from.
@@ -64,19 +65,19 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 }
 
 func (v *versionCmd) run() error {
-	// Store map data for template rendering
-	data := map[string]interface{}{}
-
-	cv := version.GetBuildInfo()
 	if v.template != "" {
-		data["Client"] = cv
-		return tpl(v.template, data, v.out)
+		tt, err := template.New("_").Parse(v.template)
+		if err != nil {
+			return err
+		}
+		return tt.Execute(v.out, version.GetBuildInfo())
 	}
-	fmt.Fprintf(v.out, "Client: %s\n", formatVersion(cv, v.short))
+	fmt.Fprintln(v.out, formatVersion(v.short))
 	return nil
 }
 
-func formatVersion(v *version.BuildInfo, short bool) string {
+func formatVersion(short bool) string {
+	v := version.GetBuildInfo()
 	if short {
 		return fmt.Sprintf("%s+g%s", v.Version, v.GitCommit[:7])
 	}

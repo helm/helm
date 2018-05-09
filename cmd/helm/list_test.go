@@ -24,103 +24,92 @@ import (
 )
 
 func TestListCmd(t *testing.T) {
-	tests := []releaseCase{
-		{
-			name: "with a release",
-			cmd:  "list",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
-			},
-			matches: "thomas-guide",
+	tests := []releaseCase{{
+		name: "with a release",
+		cmd:  "list",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
 		},
-		{
-			name: "list",
-			cmd:  "list",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
-			},
-			matches: `NAME\s+REVISION\s+UPDATED\s+STATUS\s+CHART\s+NAMESPACE\natlas\s+1\s+(.*)\s+deployed\s+foo-0.1.0-beta.1\s+default`,
+		golden: "output/list-with-release.txt",
+	}, {
+		name: "list",
+		cmd:  "list",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
 		},
-		{
-			name: "list, one deployed, one failed",
-			cmd:  "list -q",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusFailed}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
-			},
-			matches: "thomas-guide\natlas-guide",
+		golden: "output/list.txt",
+	}, {
+		name: "list, one deployed, one failed",
+		cmd:  "list -q",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusFailed}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
-		{
-			name: "with a release, multiple flags",
-			cmd:  "list --deleted --deployed --failed -q",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
-			},
-			// Note: We're really only testing that the flags parsed correctly. Which results are returned
-			// depends on the backend. And until pkg/helm is done, we can't mock this.
-			matches: "thomas-guide\natlas-guide",
+		golden: "output/list-with-failed.txt",
+	}, {
+		name: "with a release, multiple flags",
+		cmd:  "list --deleted --deployed --failed -q",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
-		{
-			name: "with a release, multiple flags",
-			cmd:  "list --all -q",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
-			},
-			// See note on previous test.
-			matches: "thomas-guide\natlas-guide",
+		// Note: We're really only testing that the flags parsed correctly. Which results are returned
+		// depends on the backend. And until pkg/helm is done, we can't mock this.
+		golden: "output/list-with-mulitple-flags.txt",
+	}, {
+		name: "with a release, multiple flags",
+		cmd:  "list --all -q",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
-		{
-			name: "with a release, multiple flags, deleting",
-			cmd:  "list --all -q",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleting}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
-			},
-			// See note on previous test.
-			matches: "thomas-guide\natlas-guide",
+		// See note on previous test.
+		golden: "output/list-with-mulitple-flags2.txt",
+	}, {
+		name: "with a release, multiple flags, deleting",
+		cmd:  "list --all -q",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleting}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
-		{
-			name: "namespace defined, multiple flags",
-			cmd:  "list --all -q --namespace test123",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Namespace: "test123"}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Namespace: "test321"}),
-			},
-			// See note on previous test.
-			matches: "thomas-guide",
+		// See note on previous test.
+		golden: "output/list-with-mulitple-flags-deleting.txt",
+	}, {
+		name: "namespace defined, multiple flags",
+		cmd:  "list --all -q --namespace test123",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Namespace: "test123"}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Namespace: "test321"}),
 		},
-		{
-			name: "with a pending release, multiple flags",
-			cmd:  "list --all -q",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusPendingInstall}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
-			},
-			matches: "thomas-guide\natlas-guide",
+		// See note on previous test.
+		golden: "output/list-with-mulitple-flags-namespaced.txt",
+	}, {
+		name: "with a pending release, multiple flags",
+		cmd:  "list --all -q",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusPendingInstall}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
-		{
-			name: "with a pending release, pending flag",
-			cmd:  "list --pending -q",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusPendingInstall}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "wild-idea", Status: release.StatusPendingUpgrade}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-maps", Status: release.StatusPendingRollback}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
-			},
-			matches: "thomas-guide\nwild-idea\ncrazy-maps",
+		golden: "output/list-with-mulitple-flags-pending.txt",
+	}, {
+		name: "with a pending release, pending flag",
+		cmd:  "list --pending -q",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusPendingInstall}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "wild-idea", Status: release.StatusPendingUpgrade}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-maps", Status: release.StatusPendingRollback}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
-		{
-			name: "with old releases",
-			cmd:  "list",
-			rels: []*release.Release{
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
-				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusFailed}),
-			},
-			matches: "thomas-guide",
+		golden: "output/list-with-pending.txt",
+	}, {
+		name: "with old releases",
+		cmd:  "list",
+		rels: []*release.Release{
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusFailed}),
 		},
-	}
+		golden: "output/list-with-old-releases.txt",
+	}}
 
 	testReleaseCmd(t, tests)
 }

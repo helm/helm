@@ -24,19 +24,16 @@ import (
 )
 
 func TestGetValuesCmd(t *testing.T) {
-	tests := []releaseCase{
-		{
-			name:    "get values with a release",
-			cmd:     "get values thomas-guide",
-			matches: "name: \"value\"",
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
-			rels:    []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"})},
-		},
-		{
-			name:      "get values requires release name arg",
-			cmd:       "get values",
-			wantError: true,
-		},
-	}
+	tests := []releaseCase{{
+		name:   "get values with a release",
+		cmd:    "get values thomas-guide",
+		golden: "output/get-values.txt",
+		rels:   []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"})},
+	}, {
+		name:      "get values requires release name arg",
+		cmd:       "get values",
+		golden:    "output/get-values-args.txt",
+		wantError: true,
+	}}
 	testReleaseCmd(t, tests)
 }

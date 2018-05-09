@@ -18,7 +18,7 @@ package urlutil
 
 import "testing"
 
-func TestUrlJoin(t *testing.T) {
+func TestURLJoin(t *testing.T) {
 	tests := []struct {
 		name, url, expect string
 		paths             []string

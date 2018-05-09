@@ -24,19 +24,16 @@ import (
 )
 
 func TestGetManifest(t *testing.T) {
-	tests := []releaseCase{
-		{
-			name:    "get manifest with release",
-			cmd:     "get manifest juno",
-			matches: helm.MockManifest,
-			resp:    helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"}),
-			rels:    []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"})},
-		},
-		{
-			name:      "get manifest without args",
-			cmd:       "get manifest",
-			wantError: true,
-		},
-	}
+	tests := []releaseCase{{
+		name:   "get manifest with release",
+		cmd:    "get manifest juno",
+		golden: "output/get-manifest.txt",
+		rels:   []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "juno"})},
+	}, {
+		name:      "get manifest without args",
+		cmd:       "get manifest",
+		golden:    "output/get-manifest-no-args.txt",
+		wantError: true,
+	}}
 	testReleaseCmd(t, tests)
 }

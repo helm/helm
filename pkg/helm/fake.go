@@ -30,9 +30,9 @@ import (
 
 // FakeClient implements Interface
 type FakeClient struct {
-	Rels      []*release.Release
-	Responses map[string]release.TestRunStatus
-	Opts      options
+	Rels          []*release.Release
+	TestRunStatus map[string]release.TestRunStatus
+	Opts          options
 }
 
 // Option returns the fake release client
@@ -144,7 +144,7 @@ func (c *FakeClient) RunReleaseTest(rlsName string, opts ...ReleaseTestOption) (
 
 	go func() {
 		var wg sync.WaitGroup
-		for m, s := range c.Responses {
+		for m, s := range c.TestRunStatus {
 			wg.Add(1)
 
 			go func(msg string, status release.TestRunStatus) {

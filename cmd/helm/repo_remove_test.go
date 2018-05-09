@@ -40,34 +40,35 @@ func TestRepoRemove(t *testing.T) {
 		os.RemoveAll(thome.String())
 		cleanup()
 	}()
-	if err := ensureTestHome(hh, t); err != nil {
+	if err := ensureTestHome(t, hh); err != nil {
 		t.Fatal(err)
 	}
 
 	settings.Home = thome
 
-	b := bytes.NewBuffer(nil)
+	const testRepoName = "test-name"
 
-	if err := removeRepoLine(b, testName, hh); err == nil {
-		t.Errorf("Expected error removing %s, but did not get one.", testName)
+	b := bytes.NewBuffer(nil)
+	if err := removeRepoLine(b, testRepoName, hh); err == nil {
+		t.Errorf("Expected error removing %s, but did not get one.", testRepoName)
 	}
-	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
+	if err := addRepository(testRepoName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
 		t.Error(err)
 	}
 
-	mf, _ := os.Create(hh.CacheIndex(testName))
+	mf, _ := os.Create(hh.CacheIndex(testRepoName))
 	mf.Close()
 
 	b.Reset()
-	if err := removeRepoLine(b, testName, hh); err != nil {
-		t.Errorf("Error removing %s from repositories", testName)
+	if err := removeRepoLine(b, testRepoName, hh); err != nil {
+		t.Errorf("Error removing %s from repositories", testRepoName)
 	}
 	if !strings.Contains(b.String(), "has been removed") {
 		t.Errorf("Unexpected output: %s", b.String())
 	}
 
-	if _, err := os.Stat(hh.CacheIndex(testName)); err == nil {
-		t.Errorf("Error cache file was not removed for repository %s", testName)
+	if _, err := os.Stat(hh.CacheIndex(testRepoName)); err == nil {
+		t.Errorf("Error cache file was not removed for repository %s", testRepoName)
 	}
 
 	f, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
@@ -75,7 +76,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Error(err)
 	}
 
-	if f.Has(testName) {
-		t.Errorf("%s was not successfully removed from repositories list", testName)
+	if f.Has(testRepoName) {
+		t.Errorf("%s was not successfully removed from repositories list", testRepoName)
 	}
 }

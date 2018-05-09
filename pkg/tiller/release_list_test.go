@@ -128,7 +128,7 @@ func TestListReleasesSort(t *testing.T) {
 	req := &hapi.ListReleasesRequest{
 		Offset: "",
 		Limit:  int64(limit),
-		SortBy: hapi.ListSortName,
+		SortBy: hapi.SortByName,
 	}
 	rels, err := rs.ListReleases(req)
 	if err != nil {
@@ -171,7 +171,7 @@ func TestListReleasesFilter(t *testing.T) {
 		Offset: "",
 		Limit:  64,
 		Filter: "neuro[a-z]+",
-		SortBy: hapi.ListSortName,
+		SortBy: hapi.SortByName,
 	}
 	rels, err := rs.ListReleases(req)
 	if err != nil {

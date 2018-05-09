@@ -23,49 +23,44 @@ import (
 )
 
 func TestReleaseTesting(t *testing.T) {
-	tests := []releaseCase{
-		{
-			name:      "basic test",
-			cmd:       "test example-release",
-			responses: map[string]release.TestRunStatus{"PASSED: green lights everywhere": release.TestRunSuccess},
-			wantError: false,
-		},
-		{
-			name:      "test failure",
-			cmd:       "test example-fail",
-			responses: map[string]release.TestRunStatus{"FAILURE: red lights everywhere": release.TestRunFailure},
-			wantError: true,
-		},
-		{
-			name:      "test unknown",
-			cmd:       "test example-unknown",
-			responses: map[string]release.TestRunStatus{"UNKNOWN: yellow lights everywhere": release.TestRunUnknown},
-			wantError: false,
-		},
-		{
-			name:      "test error",
-			cmd:       "test example-error",
-			responses: map[string]release.TestRunStatus{"ERROR: yellow lights everywhere": release.TestRunFailure},
-			wantError: true,
-		},
-		{
-			name:      "test running",
-			cmd:       "test example-running",
-			responses: map[string]release.TestRunStatus{"RUNNING: things are happpeningggg": release.TestRunRunning},
-			wantError: false,
-		},
-		{
-			name: "multiple tests example",
-			cmd:  "test example-suite",
-			responses: map[string]release.TestRunStatus{
-				"RUNNING: things are happpeningggg":           release.TestRunRunning,
-				"PASSED: party time":                          release.TestRunSuccess,
-				"RUNNING: things are happening again":         release.TestRunRunning,
-				"FAILURE: good thing u checked :)":            release.TestRunFailure,
-				"RUNNING: things are happpeningggg yet again": release.TestRunRunning,
-				"PASSED: feel free to party again":            release.TestRunSuccess},
-			wantError: true,
-		},
-	}
+	tests := []releaseCase{{
+		name:          "basic test",
+		cmd:           "test example-release",
+		testRunStatus: map[string]release.TestRunStatus{"PASSED: green lights everywhere": release.TestRunSuccess},
+		golden:        "output/test.txt",
+	}, {
+		name:          "test failure",
+		cmd:           "test example-fail",
+		testRunStatus: map[string]release.TestRunStatus{"FAILURE: red lights everywhere": release.TestRunFailure},
+		wantError:     true,
+		golden:        "output/test-failure.txt",
+	}, {
+		name:          "test unknown",
+		cmd:           "test example-unknown",
+		testRunStatus: map[string]release.TestRunStatus{"UNKNOWN: yellow lights everywhere": release.TestRunUnknown},
+		golden:        "output/test-unknown.txt",
+	}, {
+		name:          "test error",
+		cmd:           "test example-error",
+		testRunStatus: map[string]release.TestRunStatus{"ERROR: yellow lights everywhere": release.TestRunFailure},
+		wantError:     true,
+		golden:        "output/test-error.txt",
+	}, {
+		name:          "test running",
+		cmd:           "test example-running",
+		testRunStatus: map[string]release.TestRunStatus{"RUNNING: things are happpeningggg": release.TestRunRunning},
+		golden:        "output/test-running.txt",
+	}, {
+		name: "multiple tests example",
+		cmd:  "test example-suite",
+		testRunStatus: map[string]release.TestRunStatus{
+			"RUNNING: things are happpeningggg":           release.TestRunRunning,
+			"PASSED: party time":                          release.TestRunSuccess,
+			"RUNNING: things are happening again":         release.TestRunRunning,
+			"FAILURE: good thing u checked :)":            release.TestRunFailure,
+			"RUNNING: things are happpeningggg yet again": release.TestRunRunning,
+			"PASSED: feel free to party again":            release.TestRunSuccess},
+		wantError: true,
+	}}
 	testReleaseCmd(t, tests)
 }

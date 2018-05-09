@@ -1,0 +1,23 @@
+REVISION: 1
+RELEASED: Fri Sep  2 22:04:05 1977
+CHART: foo-0.1.0-beta.1
+USER-SUPPLIED VALUES:
+name: "value"
+COMPUTED VALUES:
+name: value
+
+HOOKS:
+---
+# pre-install-hook
+apiVersion: v1
+kind: Job
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install
+
+MANIFEST:
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fixture
+

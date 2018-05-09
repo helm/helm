@@ -79,14 +79,8 @@ func TestUpgradeCmd(t *testing.T) {
 		t.Errorf("Error loading updated chart: %v", err)
 	}
 
-	originalDepsPath := filepath.Join("testdata/testcharts/reqtest")
 	missingDepsPath := filepath.Join("testdata/testcharts/chart-missing-deps")
 	badDepsPath := filepath.Join("testdata/testcharts/chart-bad-requirements")
-	var ch3 *chart.Chart
-	ch3, err = chartutil.Load(originalDepsPath)
-	if err != nil {
-		t.Errorf("Error loading chart with missing dependencies: %v", err)
-	}
 
 	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
 		return helm.ReleaseMock(&helm.MockReleaseOptions{Name: n, Version: v, Chart: ch})
@@ -94,67 +88,59 @@ func TestUpgradeCmd(t *testing.T) {
 
 	tests := []releaseCase{
 		{
-			name:    "upgrade a release",
-			cmd:     "upgrade funny-bunny " + chartPath,
-			resp:    relMock("funny-bunny", 2, ch),
-			matches: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
-			rels:    []*release.Release{relMock("funny-bunny", 2, ch)},
+			name:   "upgrade a release",
+			cmd:    "upgrade funny-bunny " + chartPath,
+			golden: "output/upgrade.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 2, ch)},
 		},
 		{
-			name:    "upgrade a release with timeout",
-			cmd:     "upgrade funny-bunny --timeout 120 " + chartPath,
-			resp:    relMock("funny-bunny", 3, ch2),
-			matches: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
-			rels:    []*release.Release{relMock("funny-bunny", 3, ch2)},
+			name:   "upgrade a release with timeout",
+			cmd:    "upgrade funny-bunny --timeout 120 " + chartPath,
+			golden: "output/upgrade-with-timeout.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 3, ch2)},
 		},
 		{
-			name:    "upgrade a release with --reset-values",
-			cmd:     "upgrade funny-bunny --reset-values " + chartPath,
-			resp:    relMock("funny-bunny", 4, ch2),
-			matches: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
-			rels:    []*release.Release{relMock("funny-bunny", 4, ch2)},
+			name:   "upgrade a release with --reset-values",
+			cmd:    "upgrade funny-bunny --reset-values " + chartPath,
+			golden: "output/upgrade-with-reset-values.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 4, ch2)},
 		},
 		{
-			name:    "upgrade a release with --reuse-values",
-			cmd:     "upgrade funny-bunny --reuse-values " + chartPath,
-			resp:    relMock("funny-bunny", 5, ch2),
-			matches: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
-			rels:    []*release.Release{relMock("funny-bunny", 5, ch2)},
+			name:   "upgrade a release with --reuse-values",
+			cmd:    "upgrade funny-bunny --reuse-values " + chartPath,
+			golden: "output/upgrade-with-reset-values2.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 5, ch2)},
 		},
 		{
-			name:    "install a release with 'upgrade --install'",
-			cmd:     "upgrade zany-bunny -i " + chartPath,
-			resp:    relMock("zany-bunny", 1, ch),
-			matches: "Release \"zany-bunny\" has been upgraded. Happy Helming!\n",
-			rels:    []*release.Release{relMock("zany-bunny", 1, ch)},
+			name:   "install a release with 'upgrade --install'",
+			cmd:    "upgrade zany-bunny -i " + chartPath,
+			golden: "output/upgrade-with-install.txt",
+			rels:   []*release.Release{relMock("zany-bunny", 1, ch)},
 		},
 		{
-			name:    "install a release with 'upgrade --install' and timeout",
-			cmd:     "upgrade crazy-bunny -i --timeout 120 " + chartPath,
-			resp:    relMock("crazy-bunny", 1, ch),
-			matches: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
-			rels:    []*release.Release{relMock("crazy-bunny", 1, ch)},
+			name:   "install a release with 'upgrade --install' and timeout",
+			cmd:    "upgrade crazy-bunny -i --timeout 120 " + chartPath,
+			golden: "output/upgrade-with-install-timeout.txt",
+			rels:   []*release.Release{relMock("crazy-bunny", 1, ch)},
 		},
 		{
-			name:    "upgrade a release with wait",
-			cmd:     "upgrade crazy-bunny --wait " + chartPath,
-			resp:    relMock("crazy-bunny", 2, ch2),
-			matches: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
-			rels:    []*release.Release{relMock("crazy-bunny", 2, ch2)},
+			name:   "upgrade a release with wait",
+			cmd:    "upgrade crazy-bunny --wait " + chartPath,
+			golden: "output/upgrade-with-wait.txt",
+			rels:   []*release.Release{relMock("crazy-bunny", 2, ch2)},
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
 			cmd:       "upgrade bonkers-bunny" + missingDepsPath,
-			resp:      relMock("bonkers-bunny", 1, ch3),
+			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
 		{
 			name:      "upgrade a release with bad dependencies",
 			cmd:       "upgrade bonkers-bunny " + badDepsPath,
-			resp:      relMock("bonkers-bunny", 1, ch3),
+			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
 		},
 	}
 	testReleaseCmd(t, tests)
-
 }

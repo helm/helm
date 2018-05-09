@@ -42,6 +42,7 @@ func GetVersion() string {
 	return version + "+" + metadata
 }
 
+// BuildInfo describes the compile time information.
 type BuildInfo struct {
 	// Version is the current semver.
 	Version string `json:"version,omitempty"`
@@ -52,8 +53,8 @@ type BuildInfo struct {
 }
 
 // GetBuildInfo returns build info
-func GetBuildInfo() *BuildInfo {
-	return &BuildInfo{
+func GetBuildInfo() BuildInfo {
+	return BuildInfo{
 		Version:      GetVersion(),
 		GitCommit:    gitCommit,
 		GitTreeState: gitTreeState,

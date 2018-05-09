@@ -21,13 +21,13 @@ type Maintainer struct {
 	Name string `json:"name,omitempty"`
 	// Email is an optional email address to contact the named maintainer
 	Email string `json:"email,omitempty"`
-	// Url is an optional URL to an address for the named maintainer
-	Url string `json:"url,omitempty"`
+	// URL is an optional URL to an address for the named maintainer
+	URL string `json:"url,omitempty"`
 }
 
-// 	Metadata for a Chart file. This models the structure of a Chart.yaml file.
+// Metadata for a Chart file. This models the structure of a Chart.yaml file.
 //
-// 	Spec: https://k8s.io/helm/blob/master/docs/design/chart_format.md#the-chart-file
+// Spec: https://k8s.io/helm/blob/master/docs/design/chart_format.md#the-chart-file
 type Metadata struct {
 	// The name of the chart
 	Name string `json:"name,omitempty"`

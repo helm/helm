@@ -21,28 +21,23 @@ import (
 )
 
 func TestRollbackCmd(t *testing.T) {
-
-	tests := []releaseCase{
-		{
-			name:    "rollback a release",
-			cmd:     "rollback funny-honey 1",
-			matches: "Rollback was a success! Happy Helming!",
-		},
-		{
-			name:    "rollback a release with timeout",
-			cmd:     "rollback funny-honey 1 --timeout 120",
-			matches: "Rollback was a success! Happy Helming!",
-		},
-		{
-			name:    "rollback a release with wait",
-			cmd:     "rollback funny-honey 1 --wait",
-			matches: "Rollback was a success! Happy Helming!",
-		},
-		{
-			name:      "rollback a release without revision",
-			cmd:       "rollback funny-honey",
-			wantError: true,
-		},
-	}
+	tests := []releaseCase{{
+		name:   "rollback a release",
+		cmd:    "rollback funny-honey 1",
+		golden: "output/rollback.txt",
+	}, {
+		name:   "rollback a release with timeout",
+		cmd:    "rollback funny-honey 1 --timeout 120",
+		golden: "output/rollback-timeout.txt",
+	}, {
+		name:   "rollback a release with wait",
+		cmd:    "rollback funny-honey 1 --wait",
+		golden: "output/rollback-wait.txt",
+	}, {
+		name:      "rollback a release without revision",
+		cmd:       "rollback funny-honey",
+		golden:    "output/rollback-no-args.txt",
+		wantError: true,
+	}}
 	testReleaseCmd(t, tests)
 }

@@ -21,58 +21,47 @@ import (
 )
 
 func TestSearchCmd(t *testing.T) {
-	tests := []releaseCase{
-		{
-			name:    "search for 'maria', expect one match",
-			cmd:     "search maria",
-			matches: "NAME           \tCHART VERSION\tAPP VERSION\tDESCRIPTION      \ntesting/mariadb\t0.3.0        \t           \tChart for MariaDB",
-		},
-		{
-			name:    "search for 'alpine', expect two matches",
-			cmd:     "search alpine",
-			matches: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod",
-		},
-		{
-			name:    "search for 'alpine' with versions, expect three matches",
-			cmd:     "search alpine --versions",
-			matches: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod\ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
-		},
-		{
-			name:    "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-			cmd:     "search alpine --version '>= 0.1, < 0.2'",
-			matches: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
-		},
-		{
-			name:    "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-			cmd:     "search alpine --versions --version '>= 0.1, < 0.2'",
-			matches: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
-		},
-		{
-			name:    "search for 'alpine' with version constraint, expect one match with version 0.2.0",
-			cmd:     "search alpine --version '>= 0.1'",
-			matches: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod",
-		},
-		{
-			name:    "search for 'alpine' with version constraint and --versions, expect two matches",
-			cmd:     "search alpine --versions --version '>= 0.1'",
-			matches: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod\ntesting/alpine\t0.1.0        \t1.2.3      \tDeploy a basic Alpine Linux pod",
-		},
-		{
-			name:    "search for 'syzygy', expect no matches",
-			cmd:     "search syzygy",
-			matches: "No results found",
-		},
-		{
-			name:    "search for 'alp[a-z]+', expect two matches",
-			cmd:     "search alp[a-z]+ --regexp",
-			matches: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod",
-		},
-		{
-			name:      "search for 'alp[', expect failure to compile regexp",
-			cmd:       "search alp[ --regexp",
-			wantError: true,
-		},
-	}
+	tests := []releaseCase{{
+		name:   "search for 'maria', expect one match",
+		cmd:    "search maria",
+		golden: "output/search-single.txt",
+	}, {
+		name:   "search for 'alpine', expect two matches",
+		cmd:    "search alpine",
+		golden: "output/search-multiple.txt",
+	}, {
+		name:   "search for 'alpine' with versions, expect three matches",
+		cmd:    "search alpine --versions",
+		golden: "output/search-multiple-versions.txt",
+	}, {
+		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
+		cmd:    "search alpine --version '>= 0.1, < 0.2'",
+		golden: "output/search-constraint.txt",
+	}, {
+		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
+		cmd:    "search alpine --versions --version '>= 0.1, < 0.2'",
+		golden: "output/search-versions-constraint.txt",
+	}, {
+		name:   "search for 'alpine' with version constraint, expect one match with version 0.2.0",
+		cmd:    "search alpine --version '>= 0.1'",
+		golden: "output/search-constraint-single.txt",
+	}, {
+		name:   "search for 'alpine' with version constraint and --versions, expect two matches",
+		cmd:    "search alpine --versions --version '>= 0.1'",
+		golden: "output/search-multiple-versions-constraints.txt",
+	}, {
+		name:   "search for 'syzygy', expect no matches",
+		cmd:    "search syzygy",
+		golden: "output/search-not-found.txt",
+	}, {
+		name:   "search for 'alp[a-z]+', expect two matches",
+		cmd:    "search alp[a-z]+ --regexp",
+		golden: "output/search-regex.txt",
+	}, {
+		name:      "search for 'alp[', expect failure to compile regexp",
+		cmd:       "search alp[ --regexp",
+		wantError: true,
+	}}
 
 	cleanup := resetEnv()
 	defer cleanup()

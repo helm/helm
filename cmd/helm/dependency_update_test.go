@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -60,25 +61,19 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := bytes.NewBuffer(nil)
-	duc := &dependencyUpdateCmd{out: out}
-	duc.helmhome = helmpath.Home(hh)
-	duc.chartpath = filepath.Join(hh.String(), chartname)
-
-	if err := duc.run(); err != nil {
-		output := out.String()
-		t.Logf("Output: %s", output)
+	out, err := executeCommand(nil, fmt.Sprintf("--home=%s dependency update %s", hh, hh.Path(chartname)))
+	if err != nil {
+		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
 
-	output := out.String()
 	// This is written directly to stdout, so we have to capture as is.
-	if !strings.Contains(output, `update from the "test" chart repository`) {
-		t.Errorf("Repo did not get updated\n%s", output)
+	if !strings.Contains(out, `update from the "test" chart repository`) {
+		t.Errorf("Repo did not get updated\n%s", out)
 	}
 
 	// Make sure the actual file got downloaded.
-	expect := filepath.Join(hh.String(), chartname, "charts/reqtest-0.1.0.tgz")
+	expect := hh.Path(chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +83,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(duc.helmhome.CacheIndex("test"))
+	i, err := repo.LoadIndexFile(hh.CacheIndex("test"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,23 +101,24 @@ func TestDependencyUpdateCmd(t *testing.T) {
 			{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 		},
 	}
-	dir := filepath.Join(hh.String(), chartname)
+	dir := hh.Path(chartname)
 	if err := writeRequirements(dir, reqfile); err != nil {
 		t.Fatal(err)
 	}
-	if err := duc.run(); err != nil {
-		output := out.String()
-		t.Logf("Output: %s", output)
+
+	out, err = executeCommand(nil, fmt.Sprintf("--home=%s dependency update %s", hh, hh.Path(chartname)))
+	if err != nil {
+		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
 
 	// In this second run, we should see compressedchart-0.3.0.tgz, and not
 	// the 0.1.0 version.
-	expect = filepath.Join(hh.String(), chartname, "charts/compressedchart-0.3.0.tgz")
+	expect = hh.Path(chartname, "charts/compressedchart-0.3.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatalf("Expected %q: %s", expect, err)
 	}
-	dontExpect := filepath.Join(hh.String(), chartname, "charts/compressedchart-0.1.0.tgz")
+	dontExpect := hh.Path(chartname, "charts/compressedchart-0.1.0.tgz")
 	if _, err := os.Stat(dontExpect); err == nil {
 		t.Fatalf("Unexpected %q", dontExpect)
 	}
@@ -155,20 +151,14 @@ func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := bytes.NewBuffer(nil)
-	duc := &dependencyUpdateCmd{out: out}
-	duc.helmhome = helmpath.Home(hh)
-	duc.chartpath = filepath.Join(hh.String(), chartname)
-	duc.skipRefresh = true
-
-	if err := duc.run(); err == nil {
+	out, err := executeCommand(nil, fmt.Sprintf("--home=%s dependency update --skip-refresh %s", hh, hh.Path(chartname)))
+	if err == nil {
 		t.Fatal("Expected failure to find the repo with skipRefresh")
 	}
 
-	output := out.String()
 	// This is written directly to stdout, so we have to capture as is.
-	if strings.Contains(output, `update from the "test" chart repository`) {
-		t.Errorf("Repo was unexpectedly updated\n%s", output)
+	if strings.Contains(out, `update from the "test" chart repository`) {
+		t.Errorf("Repo was unexpectedly updated\n%s", out)
 	}
 }
 
@@ -202,7 +192,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	duc := &dependencyUpdateCmd{out: out}
 	duc.helmhome = helmpath.Home(hh)
-	duc.chartpath = filepath.Join(hh.String(), chartname)
+	duc.chartpath = hh.Path(chartname)
 
 	if err := duc.run(); err != nil {
 		output := out.String()

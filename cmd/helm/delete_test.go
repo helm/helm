@@ -25,41 +25,37 @@ import (
 
 func TestDelete(t *testing.T) {
 
-	resp := helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})
 	rels := []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})}
 
 	tests := []releaseCase{
 		{
-			name:    "basic delete",
-			cmd:     "delete aeneas",
-			matches: `release "aeneas" deleted`,
-			resp:    resp,
-			rels:    rels,
+			name:   "basic delete",
+			cmd:    "delete aeneas",
+			golden: "output/delete.txt",
+			rels:   rels,
 		},
 		{
-			name:    "delete with timeout",
-			cmd:     "delete aeneas --timeout 120",
-			matches: `release "aeneas" deleted`,
-			resp:    resp,
-			rels:    rels,
+			name:   "delete with timeout",
+			cmd:    "delete aeneas --timeout 120",
+			golden: "output/delete-timeout.txt",
+			rels:   rels,
 		},
 		{
-			name:    "delete without hooks",
-			cmd:     "delete aeneas --no-hooks",
-			matches: `release "aeneas" deleted`,
-			resp:    resp,
-			rels:    rels,
+			name:   "delete without hooks",
+			cmd:    "delete aeneas --no-hooks",
+			golden: "output/delete-no-hooks.txt",
+			rels:   rels,
 		},
 		{
-			name:    "purge",
-			cmd:     "delete aeneas --purge",
-			matches: `release "aeneas" deleted`,
-			resp:    resp,
-			rels:    rels,
+			name:   "purge",
+			cmd:    "delete aeneas --purge",
+			golden: "output/delete-purge.txt",
+			rels:   rels,
 		},
 		{
 			name:      "delete without release",
 			cmd:       "delete",
+			golden:    "output/delete-no-args.txt",
 			wantError: true,
 		},
 	}

@@ -78,7 +78,7 @@ func TestUpdateCharts(t *testing.T) {
 		os.RemoveAll(thome.String())
 		cleanup()
 	}()
-	if err := ensureTestHome(hh, t); err != nil {
+	if err := ensureTestHome(t, hh); err != nil {
 		t.Fatal(err)
 	}
 

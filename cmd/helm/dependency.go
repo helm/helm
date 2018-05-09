@@ -121,11 +121,7 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 				cp = args[0]
 			}
 
-			var err error
-			dlc.chartpath, err = filepath.Abs(cp)
-			if err != nil {
-				return err
-			}
+			dlc.chartpath = filepath.Clean(cp)
 			return dlc.run()
 		},
 	}

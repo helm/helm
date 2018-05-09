@@ -21,19 +21,23 @@ import (
 )
 
 // SortBy defines sort operations.
-type ListSortBy string
+type SortBy string
 
 const (
-	ListSortName         ListSortBy = "name"
-	ListSortLastReleased ListSortBy = "last-released"
+	// SortByName requests releases sorted by name.
+	SortByName SortBy = "name"
+	// SortByLastReleased requests releases sorted by last released.
+	SortByLastReleased SortBy = "last-released"
 )
 
 // SortOrder defines sort orders to augment sorting operations.
-type ListSortOrder string
+type SortOrder string
 
 const (
-	ListSortAsc  ListSortOrder = "ascending"
-	ListSortDesc ListSortOrder = "descending"
+	//SortAsc defines ascending sorting.
+	SortAsc SortOrder = "ascending"
+	//SortDesc defines descending sorting.
+	SortDesc SortOrder = "descending"
 )
 
 // ListReleasesRequest requests a list of releases.
@@ -51,13 +55,13 @@ type ListReleasesRequest struct {
 	// cause the next batch to return a set of results starting with 'dennis'.
 	Offset string `json:"offset,omitempty"`
 	// SortBy is the sort field that the ListReleases server should sort data before returning.
-	SortBy ListSortBy `json:"sort_by,omitempty"`
+	SortBy SortBy `json:"sort_by,omitempty"`
 	// Filter is a regular expression used to filter which releases should be listed.
 	//
 	// Anything that matches the regexp will be included in the results.
 	Filter string `json:"filter,omitempty"`
 	// SortOrder is the ordering directive used for sorting.
-	SortOrder   ListSortOrder           `json:"sort_order,omitempty"`
+	SortOrder   SortOrder               `json:"sort_order,omitempty"`
 	StatusCodes []release.ReleaseStatus `json:"status_codes,omitempty"`
 }
 
@@ -115,6 +119,8 @@ type UpdateReleaseRequest struct {
 	Force bool `json:"force,omitempty"`
 }
 
+// RollbackReleaseRequest is the request for a release to be rolledback to a
+// previous version.
 type RollbackReleaseRequest struct {
 	// The name of the release
 	Name string `json:"name,omitempty"`

@@ -50,13 +50,13 @@ func (s *ReleaseServer) ListReleases(req *hapi.ListReleasesRequest) ([]*release.
 	}
 
 	switch req.SortBy {
-	case hapi.ListSortName:
+	case hapi.SortByName:
 		relutil.SortByName(rels)
-	case hapi.ListSortLastReleased:
+	case hapi.SortByLastReleased:
 		relutil.SortByDate(rels)
 	}
 
-	if req.SortOrder == hapi.ListSortDesc {
+	if req.SortOrder == hapi.SortDesc {
 		ll := len(rels)
 		rr := make([]*release.Release, ll)
 		for i, item := range rels {

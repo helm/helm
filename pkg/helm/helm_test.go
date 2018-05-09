@@ -40,8 +40,8 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	var limit = 2
 	var offset = "offset"
 	var filter = "filter"
-	var sortBy = hapi.ListSortLastReleased
-	var sortOrd = hapi.ListSortAsc
+	var sortBy = hapi.SortByLastReleased
+	var sortOrd = hapi.SortAsc
 	var codes = []rls.ReleaseStatus{
 		rls.StatusFailed,
 		rls.StatusDeleted,
