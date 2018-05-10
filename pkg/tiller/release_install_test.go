@@ -364,7 +364,7 @@ func TestInstallRelease_WrongKubeVersion(t *testing.T) {
 		t.Fatalf("Expected to fail because of wrong version")
 	}
 
-	expect := "Chart requires kubernetesVersion"
+	expect := "chart requires kubernetesVersion"
 	if !strings.Contains(err.Error(), expect) {
 		t.Errorf("Expected %q to contain %q", err.Error(), expect)
 	}

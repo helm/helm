@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/hapi/chart"
 )
 
@@ -291,10 +293,10 @@ Create chart name and version as used by the chart label.
 `
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
-func CreateFrom(chartfile *chart.Metadata, dest string, src string) error {
+func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	schart, err := Load(src)
 	if err != nil {
-		return fmt.Errorf("could not load %s: %s", src, err)
+		return errors.Wrapf(err, "could not load %s", src)
 	}
 
 	schart.Metadata = chartfile
@@ -334,13 +336,13 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 	if fi, err := os.Stat(path); err != nil {
 		return path, err
 	} else if !fi.IsDir() {
-		return path, fmt.Errorf("no such directory %s", path)
+		return path, errors.Errorf("no such directory %s", path)
 	}
 
 	n := chartfile.Name
 	cdir := filepath.Join(path, n)
 	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
-		return cdir, fmt.Errorf("file %s already exists and is not a directory", cdir)
+		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
 	}
 	if err := os.MkdirAll(cdir, 0755); err != nil {
 		return cdir, err

@@ -23,6 +23,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/gosuri/uitable"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/search"
@@ -104,7 +105,7 @@ func (o *searchOptions) applyConstraint(res []*search.Result) ([]*search.Result,
 
 	constraint, err := semver.NewConstraint(o.version)
 	if err != nil {
-		return res, fmt.Errorf("an invalid version/constraint format: %s", err)
+		return res, errors.Wrap(err, "an invalid version/constraint format")
 	}
 
 	data := res[:0]

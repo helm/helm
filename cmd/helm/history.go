@@ -23,6 +23,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/hapi/chart"
@@ -114,7 +115,7 @@ func (o *historyOptions) run(out io.Writer) error {
 	case "table":
 		history = formatAsTable(releaseHistory, o.colWidth)
 	default:
-		return fmt.Errorf("unknown output format %q", o.outputFormat)
+		return errors.Errorf("unknown output format %q", o.outputFormat)
 	}
 
 	if formattingError != nil {

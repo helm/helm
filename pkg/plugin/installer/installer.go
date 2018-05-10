@@ -16,12 +16,13 @@ limitations under the License.
 package installer
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/helm/helmpath"
 )

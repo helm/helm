@@ -18,13 +18,13 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -68,17 +68,17 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 		}
 		constraint, err := semver.NewConstraint(d.Version)
 		if err != nil {
-			return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %s", d.Name, err)
+			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
 		}
 
 		repoIndex, err := repo.LoadIndexFile(r.helmhome.CacheIndex(repoNames[d.Name]))
 		if err != nil {
-			return nil, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
+			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}
 
 		vs, ok := repoIndex.Entries[d.Name]
 		if !ok {
-			return nil, fmt.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
+			return nil, errors.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
 		}
 
 		locked[i] = &chartutil.Dependency{
@@ -105,7 +105,7 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 		}
 	}
 	if len(missing) > 0 {
-		return nil, fmt.Errorf("Can't get a valid version for repositories %s. Try changing the version constraint in requirements.yaml", strings.Join(missing, ", "))
+		return nil, errors.Errorf("can't get a valid version for repositories %s. Try changing the version constraint in requirements.yaml", strings.Join(missing, ", "))
 	}
 	return &chartutil.RequirementsLock{
 		Generated:    time.Now(),
@@ -129,7 +129,7 @@ func HashReq(req *chartutil.Requirements) (string, error) {
 
 // GetLocalPath generates absolute local path when use
 // "file://" in repository of requirements
-func GetLocalPath(repo string, chartpath string) (string, error) {
+func GetLocalPath(repo, chartpath string) (string, error) {
 	var depPath string
 	var err error
 	p := strings.TrimPrefix(repo, "file://")
@@ -144,7 +144,7 @@ func GetLocalPath(repo string, chartpath string) (string, error) {
 	}
 
 	if _, err = os.Stat(depPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("directory %s not found", depPath)
+		return "", errors.Errorf("directory %s not found", depPath)
 	} else if err != nil {
 		return "", err
 	}

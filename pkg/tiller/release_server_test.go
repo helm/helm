@@ -17,7 +17,6 @@ limitations under the License.
 package tiller
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -28,6 +27,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -396,7 +396,7 @@ type updateFailingKubeClient struct {
 	environment.PrintingKubeClient
 }
 
-func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, force, recreate bool, timeout int64, shouldWait bool) error {
 	return errors.New("Failed update in kube client")
 }
 
@@ -474,16 +474,16 @@ func (kc *mockHooksKubeClient) WatchUntilReady(ns string, r io.Reader, timeout i
 
 	manifest, hasManifest := kc.Resources[paramManifest.Metadata.Name]
 	if !hasManifest {
-		return fmt.Errorf("mockHooksKubeClient.WatchUntilReady: no such resource %s found", paramManifest.Metadata.Name)
+		return errors.Errorf("mockHooksKubeClient.WatchUntilReady: no such resource %s found", paramManifest.Metadata.Name)
 	}
 
 	if manifest.Metadata.Annotations["mockHooksKubeClient/Emulate"] == "hook-failed" {
-		return fmt.Errorf("mockHooksKubeClient.WatchUntilReady: hook-failed")
+		return errors.Errorf("mockHooksKubeClient.WatchUntilReady: hook-failed")
 	}
 
 	return nil
 }
-func (kc *mockHooksKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+func (kc *mockHooksKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force, recreate bool, timeout int64, shouldWait bool) error {
 	return nil
 }
 func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
@@ -533,23 +533,22 @@ name: value`, hookName, extraAnnotationsStr),
 	}
 }
 
-func execHookShouldSucceed(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
-	if err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600); err != nil {
-		return fmt.Errorf("expected hook %s to be successful: %s", hook.Name, err)
-	}
-	return nil
+func execHookShouldSucceed(rs *ReleaseServer, hook *release.Hook, releaseName, namespace, hookType string) error {
+	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+	return errors.Wrapf(err, "expected hook %s to be successful", hook.Name)
 }
 
-func execHookShouldFail(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
+func execHookShouldFail(rs *ReleaseServer, hook *release.Hook, releaseName, namespace, hookType string) error {
 	if err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600); err == nil {
-		return fmt.Errorf("expected hook %s to be failed", hook.Name)
+		return errors.Errorf("expected hook %s to be failed", hook.Name)
 	}
 	return nil
 }
 
-func execHookShouldFailWithError(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string, expectedError error) error {
-	if err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600); err != expectedError {
-		return fmt.Errorf("expected hook %s to fail with error %v, got %v", hook.Name, expectedError, err)
+func execHookShouldFailWithError(rs *ReleaseServer, hook *release.Hook, releaseName, namespace, hookType string, expectedError error) error {
+	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+	if cause := errors.Cause(err); cause != expectedError {
+		return errors.Errorf("expected hook %s to fail with error \n%v \ngot \n%v", hook.Name, expectedError, cause)
 	}
 	return nil
 }

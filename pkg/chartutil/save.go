@@ -19,13 +19,13 @@ package chartutil
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi/chart"
 )
@@ -105,7 +105,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 	if fi, err := os.Stat(outDir); err != nil {
 		return "", err
 	} else if !fi.IsDir() {
-		return "", fmt.Errorf("location %s is not a directory", outDir)
+		return "", errors.Errorf("location %s is not a directory", outDir)
 	}
 
 	if c.Metadata == nil {
@@ -126,7 +126,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 			return "", err
 		}
 	} else if !stat.IsDir() {
-		return "", fmt.Errorf("is not a directory: %s", filepath.Dir(filename))
+		return "", errors.Errorf("is not a directory: %s", filepath.Dir(filename))
 	}
 
 	f, err := os.Create(filename)

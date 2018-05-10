@@ -17,8 +17,9 @@ limitations under the License.
 package releasetesting
 
 import (
-	"errors"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi/release"
 )

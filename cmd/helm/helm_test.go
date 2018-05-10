@@ -18,7 +18,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,6 +25,7 @@ import (
 	"testing"
 
 	shellwords "github.com/mattn/go-shellwords"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/internal/test"
@@ -117,7 +117,7 @@ func ensureTestHome(t *testing.T, home helmpath.Home) error {
 		home.Starters(),
 	} {
 		if err := os.MkdirAll(p, 0755); err != nil {
-			return fmt.Errorf("Could not create %s: %s", p, err)
+			return errors.Wrapf(err, "could not create %s", p)
 		}
 	}
 

@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/gosuri/uitable"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm/helmpath"

@@ -17,11 +17,11 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
-	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/chart"
@@ -88,11 +88,11 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.
 		}
 	}
 
-	return nil, fmt.Errorf("No such release: %s", rlsName)
+	return nil, errors.Errorf("no such release: %s", rlsName)
 }
 
 // UpdateRelease returns the updated release, if it exists
-func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*release.Release, error) {
+func (c *FakeClient) UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*release.Release, error) {
 	return c.UpdateReleaseFromChart(rlsName, &chart.Chart{}, opts...)
 }
 
@@ -118,7 +118,7 @@ func (c *FakeClient) ReleaseStatus(rlsName string, version int) (*hapi.GetReleas
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("No such release: %s", rlsName)
+	return nil, errors.Errorf("no such release: %s", rlsName)
 }
 
 // ReleaseContent returns the configuration for the matching release name in the fake release client.
@@ -128,7 +128,7 @@ func (c *FakeClient) ReleaseContent(rlsName string, version int) (*release.Relea
 			return rel, nil
 		}
 	}
-	return nil, fmt.Errorf("No such release: %s", rlsName)
+	return nil, errors.Errorf("no such release: %s", rlsName)
 }
 
 // ReleaseHistory returns a release's revision history.

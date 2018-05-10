@@ -18,7 +18,8 @@ package getter
 
 import (
 	"bytes"
-	"fmt"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/helm/environment"
 )
@@ -64,7 +65,7 @@ func (p Providers) ByScheme(scheme string) (Constructor, error) {
 			return pp.New, nil
 		}
 	}
-	return nil, fmt.Errorf("scheme %q not supported", scheme)
+	return nil, errors.Errorf("scheme %q not supported", scheme)
 }
 
 // All finds all of the registered getters as a list of Provider instances.
@@ -94,5 +95,5 @@ func ByScheme(scheme string, settings environment.EnvSettings) (Provider, error)
 			return p, nil
 		}
 	}
-	return Provider{}, fmt.Errorf("scheme %q not supported", scheme)
+	return Provider{}, errors.Errorf("scheme %q not supported", scheme)
 }

@@ -17,6 +17,8 @@ limitations under the License.
 package tiller
 
 import (
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	reltesting "k8s.io/helm/pkg/releasetesting"
@@ -26,8 +28,7 @@ import (
 func (s *ReleaseServer) RunReleaseTest(req *hapi.TestReleaseRequest) (<-chan *hapi.TestReleaseResponse, <-chan error) {
 	errc := make(chan error, 1)
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("releaseTest: Release name is invalid: %s", req.Name)
-		errc <- err
+		errc <- errors.Errorf("releaseTest: Release name is invalid: %s", req.Name)
 		return nil, errc
 	}
 
@@ -53,8 +54,7 @@ func (s *ReleaseServer) RunReleaseTest(req *hapi.TestReleaseRequest) (<-chan *ha
 		defer close(ch)
 
 		if err := tSuite.Run(testEnv); err != nil {
-			s.Log("error running test suite for %s: %s", rel.Name, err)
-			errc <- err
+			errc <- errors.Wrapf(err, "error running test suite for %s", rel.Name)
 			return
 		}
 

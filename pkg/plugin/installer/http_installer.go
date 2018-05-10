@@ -19,12 +19,13 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
@@ -62,7 +63,7 @@ func NewExtractor(source string) (Extractor, error) {
 			return extractor, nil
 		}
 	}
-	return nil, fmt.Errorf("no extractor implemented yet for %s", source)
+	return nil, errors.Errorf("no extractor implemented yet for %s", source)
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
@@ -141,7 +142,7 @@ func (i *HTTPInstaller) Install() error {
 // Update updates a local repository
 // Not implemented for now since tarball most likely will be packaged by version
 func (i *HTTPInstaller) Update() error {
-	return fmt.Errorf("method Update() not implemented for HttpInstaller")
+	return errors.Errorf("method Update() not implemented for HttpInstaller")
 }
 
 // Override link because we want to use HttpInstaller.Path() not base.Path()
@@ -200,7 +201,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			}
 			outFile.Close()
 		default:
-			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
+			return errors.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
 		}
 	}
 

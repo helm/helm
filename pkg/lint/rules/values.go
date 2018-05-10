@@ -17,9 +17,10 @@ limitations under the License.
 package rules
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/lint/support"
@@ -41,15 +42,12 @@ func Values(linter *support.Linter) {
 func validateValuesFileExistence(valuesPath string) error {
 	_, err := os.Stat(valuesPath)
 	if err != nil {
-		return fmt.Errorf("file does not exist")
+		return errors.Errorf("file does not exist")
 	}
 	return nil
 }
 
 func validateValuesFile(valuesPath string) error {
 	_, err := chartutil.ReadValuesFile(valuesPath)
-	if err != nil {
-		return fmt.Errorf("unable to parse YAML\n\t%s", err)
-	}
-	return nil
+	return errors.Wrap(err, "unable to parse YAML")
 }

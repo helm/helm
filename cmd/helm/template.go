@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,6 +27,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -120,7 +120,7 @@ func (o *templateOptions) run(out io.Writer) error {
 			if !filepath.IsAbs(f) {
 				af, err = filepath.Abs(filepath.Join(o.chartPath, f))
 				if err != nil {
-					return fmt.Errorf("could not resolve template path: %s", err)
+					return errors.Wrap(err, "could not resolve template path")
 				}
 			} else {
 				af = f
@@ -128,7 +128,7 @@ func (o *templateOptions) run(out io.Writer) error {
 			rf = append(rf, af)
 
 			if _, err := os.Stat(af); err != nil {
-				return fmt.Errorf("could not resolve template path: %s", err)
+				return errors.Wrap(err, "could not resolve template path")
 			}
 		}
 	}
@@ -137,7 +137,7 @@ func (o *templateOptions) run(out io.Writer) error {
 	if o.outputDir != "" {
 		_, err = os.Stat(o.outputDir)
 		if os.IsNotExist(err) {
-			return fmt.Errorf("output-dir '%s' does not exist", o.outputDir)
+			return errors.Errorf("output-dir '%s' does not exist", o.outputDir)
 		}
 	}
 
@@ -166,7 +166,7 @@ func (o *templateOptions) run(out io.Writer) error {
 			return err
 		}
 	} else if err != chartutil.ErrRequirementsNotFound {
-		return fmt.Errorf("cannot load requirements: %v", err)
+		return errors.Wrap(err, "cannot load requirements")
 	}
 	options := chartutil.ReleaseOptions{
 		Name:      o.releaseName,
@@ -195,7 +195,7 @@ func (o *templateOptions) run(out io.Writer) error {
 	// kubernetes version
 	kv, err := semver.NewVersion(o.kubeVersion)
 	if err != nil {
-		return fmt.Errorf("could not parse a kubernetes version: %v", err)
+		return errors.Wrap(err, "could not parse a kubernetes version")
 	}
 	caps.KubeVersion.Major = fmt.Sprint(kv.Major())
 	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
@@ -277,7 +277,7 @@ func (o *templateOptions) run(out io.Writer) error {
 }
 
 // write the <data> to <output-dir>/<name>
-func writeToFile(outputDir string, name string, data string) error {
+func writeToFile(outputDir, name, data string) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
 	err := ensureDirectoryForFile(outfileName)

@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
@@ -60,8 +62,7 @@ func (s *ReleaseServer) RollbackRelease(req *hapi.RollbackReleaseRequest) (*rele
 // the previous release's configuration
 func (s *ReleaseServer) prepareRollback(req *hapi.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("prepareRollback: Release name is invalid: %s", req.Name)
-		return nil, nil, err
+		return nil, nil, errors.Errorf("prepareRollback: Release name is invalid: %s", req.Name)
 	}
 
 	if req.Version < 0 {

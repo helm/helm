@@ -16,12 +16,12 @@ limitations under the License.
 package chartutil
 
 import (
-	"errors"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/version"

@@ -16,7 +16,6 @@ limitations under the License.
 package downloader
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
@@ -80,10 +80,10 @@ func (m *Manager) Build() error {
 	// A lock must accompany a requirements.yaml file.
 	req, err := chartutil.LoadRequirements(c)
 	if err != nil {
-		return fmt.Errorf("requirements.yaml cannot be opened: %s", err)
+		return errors.Wrap(err, "requirements.yaml cannot be opened")
 	}
 	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
-		return fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
+		return errors.New("requirements.lock is out of sync with requirements.yaml")
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
@@ -172,7 +172,7 @@ func (m *Manager) Update() error {
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	if fi, err := os.Stat(m.ChartPath); err != nil {
-		return nil, fmt.Errorf("could not find %s: %s", m.ChartPath, err)
+		return nil, errors.Wrapf(err, "could not find %s", m.ChartPath)
 	} else if !fi.IsDir() {
 		return nil, errors.New("only unpacked charts can be updated")
 	}
@@ -206,11 +206,11 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			return err
 		}
 	} else if !fi.IsDir() {
-		return fmt.Errorf("%q is not a directory", destPath)
+		return errors.Errorf("%q is not a directory", destPath)
 	}
 
 	if err := os.Rename(destPath, tmpPath); err != nil {
-		return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
+		return errors.Wrap(err, "unable to move current charts to tmp dir")
 	}
 
 	if err := os.MkdirAll(destPath, 0755); err != nil {
@@ -239,7 +239,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		// https://github.com/kubernetes/helm/issues/1439
 		churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
-			saveError = fmt.Errorf("could not find %s: %s", churl, err)
+			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
 		}
 
@@ -254,7 +254,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		}
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
-			saveError = fmt.Errorf("could not download %s: %s", churl, err)
+			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
 		}
 	}
@@ -270,7 +270,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			return err
 		}
 		if err := os.RemoveAll(tmpPath); err != nil {
-			return fmt.Errorf("Failed to remove %v: %v", tmpPath, err)
+			return errors.Wrapf(err, "failed to remove %v", tmpPath)
 		}
 	} else {
 		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
@@ -281,10 +281,10 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			}
 		}
 		if err := os.RemoveAll(destPath); err != nil {
-			return fmt.Errorf("Failed to remove %v: %v", destPath, err)
+			return errors.Wrapf(err, "failed to remove %v", destPath)
 		}
 		if err := os.Rename(tmpPath, destPath); err != nil {
-			return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
+			return errors.Wrap(err, "unable to move current charts to tmp dir")
 		}
 		return saveError
 	}
@@ -356,7 +356,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 		}
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("no repository definition for %s. Please add the missing repos via 'helm repo add'", strings.Join(missing, ", "))
+		return errors.Errorf("no repository definition for %s. Please add the missing repos via 'helm repo add'", strings.Join(missing, ", "))
 	}
 	return nil
 }
@@ -500,7 +500,7 @@ func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRep
 			return
 		}
 	}
-	err = fmt.Errorf("chart %s not found in %s", name, repoURL)
+	err = errors.Errorf("chart %s not found in %s", name, repoURL)
 	return
 }
 
@@ -556,7 +556,7 @@ func normalizeURL(baseURL, urlOrPath string) (string, error) {
 	}
 	u2, err := url.Parse(baseURL)
 	if err != nil {
-		return urlOrPath, fmt.Errorf("Base URL failed to parse: %s", err)
+		return urlOrPath, errors.Wrap(err, "base URL failed to parse")
 	}
 
 	u2.Path = path.Join(u2.Path, urlOrPath)
@@ -574,7 +574,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	// Load repositories.yaml file
 	rf, err := repo.LoadRepositoriesFile(repoyaml)
 	if err != nil {
-		return indices, fmt.Errorf("failed to load %s: %s", repoyaml, err)
+		return indices, errors.Wrapf(err, "failed to load %s", repoyaml)
 	}
 
 	for _, re := range rf.Repositories {
@@ -606,11 +606,11 @@ func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 }
 
 // archive a dep chart from local directory and save it into charts/
-func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, error) {
+func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 	destPath := filepath.Join(chartpath, "charts")
 
 	if !strings.HasPrefix(repo, "file://") {
-		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
+		return "", errors.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
 	origPath, err := resolver.GetLocalPath(repo, chartpath)
@@ -625,7 +625,7 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 
 	constraint, err := semver.NewConstraint(version)
 	if err != nil {
-		return "", fmt.Errorf("dependency %s has an invalid version/constraint format: %s", name, err)
+		return "", errors.Wrapf(err, "dependency %s has an invalid version/constraint format", name)
 	}
 
 	v, err := semver.NewVersion(ch.Metadata.Version)
@@ -638,7 +638,7 @@ func tarFromLocalDir(chartpath string, name string, repo string, version string)
 		return ch.Metadata.Version, err
 	}
 
-	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
+	return "", errors.Errorf("can't get a valid version for dependency %s", name)
 }
 
 // move files from tmppath to destpath
@@ -649,7 +649,7 @@ func move(tmpPath, destPath string) error {
 		tmpfile := filepath.Join(tmpPath, filename)
 		destfile := filepath.Join(destPath, filename)
 		if err := os.Rename(tmpfile, destfile); err != nil {
-			return fmt.Errorf("Unable to move local charts to charts dir: %v", err)
+			return errors.Wrap(err, "unable to move local charts to charts dir")
 		}
 	}
 	return nil

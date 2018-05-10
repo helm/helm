@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/getter"
@@ -54,7 +54,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 		Long:  initDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
-				return errors.New("This command does not accept arguments")
+				return errors.New("this command does not accept arguments")
 			}
 			o.home = settings.Home
 			return o.run(out)
@@ -100,10 +100,10 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 		if fi, err := os.Stat(p); err != nil {
 			fmt.Fprintf(out, "Creating %s \n", p)
 			if err := os.MkdirAll(p, 0755); err != nil {
-				return fmt.Errorf("Could not create %s: %s", p, err)
+				return errors.Wrapf(err, "could not create %s", p)
 			}
 		} else if !fi.IsDir() {
-			return fmt.Errorf("%s must be a directory", p)
+			return errors.Errorf("%s must be a directory", p)
 		}
 	}
 
@@ -124,7 +124,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, url
 			return err
 		}
 	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", repoFile)
+		return errors.Errorf("%s must be a file, not a directory", repoFile)
 	}
 	return nil
 }
@@ -148,7 +148,7 @@ func initRepo(url, cacheFile string, out io.Writer, skipRefresh bool, home helmp
 	// In this case, the cacheFile is always absolute. So passing empty string
 	// is safe.
 	if err := r.DownloadIndexFile(""); err != nil {
-		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
+		return nil, errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached: %s", url)
 	}
 
 	return &c, nil

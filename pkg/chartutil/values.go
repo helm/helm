@@ -17,8 +17,6 @@ limitations under the License.
 package chartutil
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -26,6 +24,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi/chart"
 )
@@ -98,7 +97,7 @@ func (v Values) Encode(w io.Writer) error {
 func tableLookup(v Values, simple string) (Values, error) {
 	v2, ok := v[simple]
 	if !ok {
-		return v, ErrNoTable(fmt.Errorf("no table named %q (%v)", simple, v))
+		return v, ErrNoTable(errors.Errorf("no table named %q (%v)", simple, v))
 	}
 	if vv, ok := v2.(map[string]interface{}); ok {
 		return vv, nil
@@ -111,7 +110,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 		return vv, nil
 	}
 
-	var e ErrNoTable = fmt.Errorf("no table named %q", simple)
+	var e ErrNoTable = errors.Errorf("no table named %q", simple)
 	return map[string]interface{}{}, e
 }
 
@@ -182,7 +181,7 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 			// If dest doesn't already have the key, create it.
 			dest[subchart.Metadata.Name] = map[string]interface{}{}
 		} else if !istable(c) {
-			return dest, fmt.Errorf("type mismatch on %s: %t", subchart.Metadata.Name, c)
+			return dest, errors.Errorf("type mismatch on %s: %t", subchart.Metadata.Name, c)
 		}
 		if dv, ok := dest[subchart.Metadata.Name]; ok {
 			dvmap := dv.(map[string]interface{})
@@ -276,7 +275,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 		// On error, we return just the overridden values.
 		// FIXME: We should log this error. It indicates that the YAML data
 		// did not parse.
-		return v, fmt.Errorf("error reading default values (%s): %s", c.Values, err)
+		return v, errors.Wrapf(err, "error reading default values (%s)", c.Values)
 	}
 
 	for key, val := range nv {
@@ -410,7 +409,7 @@ func (v Values) PathValue(ypath string) (interface{}, error) {
 			return vals[yps[0]], nil
 		}
 		// key not found
-		return nil, ErrNoValue(fmt.Errorf("%v is not a value", k))
+		return nil, ErrNoValue(errors.Errorf("%v is not a value", k))
 	}
 	// join all elements of YAML path except last to get string table path
 	ypsLen := len(yps)
@@ -422,7 +421,7 @@ func (v Values) PathValue(ypath string) (interface{}, error) {
 	t, err := v.Table(st)
 	if err != nil {
 		//no table
-		return nil, ErrNoValue(fmt.Errorf("%v is not a value", sk))
+		return nil, ErrNoValue(errors.Errorf("%v is not a value", sk))
 	}
 	// check table for key and ensure value is not a table
 	if k, ok := t[sk]; ok && !istable(k) {
@@ -431,5 +430,5 @@ func (v Values) PathValue(ypath string) (interface{}, error) {
 	}
 
 	// key not found
-	return nil, ErrNoValue(fmt.Errorf("key not found: %s", sk))
+	return nil, ErrNoValue(errors.Errorf("key not found: %s", sk))
 }

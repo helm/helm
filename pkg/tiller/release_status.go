@@ -18,8 +18,8 @@ package tiller
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
@@ -28,8 +28,7 @@ import (
 // GetReleaseStatus gets the status information for a named release.
 func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*hapi.GetReleaseStatusResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("getStatus: Release name is invalid: %s", req.Name)
-		return nil, err
+		return nil, errors.Errorf("getStatus: Release name is invalid: %s", req.Name)
 	}
 
 	var rel *release.Release
@@ -38,12 +37,12 @@ func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*ha
 		var err error
 		rel, err = s.Releases.Last(req.Name)
 		if err != nil {
-			return nil, fmt.Errorf("getting deployed release %q: %s", req.Name, err)
+			return nil, errors.Wrapf(err, "getting deployed release %q", req.Name)
 		}
 	} else {
 		var err error
 		if rel, err = s.Releases.Get(req.Name, req.Version); err != nil {
-			return nil, fmt.Errorf("getting release '%s' (v%d): %s", req.Name, req.Version, err)
+			return nil, errors.Wrapf(err, "getting release '%s' (v%d)", req.Name, req.Version)
 		}
 	}
 
@@ -68,8 +67,7 @@ func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*ha
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil
 	} else if err != nil {
-		s.Log("warning: Get for %s failed: %v", rel.Name, err)
-		return nil, err
+		return nil, errors.Wrapf(err, "warning: Get for %s failed", rel.Name)
 	}
 	rel.Info.Resources = resp
 	return statusResp, nil

@@ -17,10 +17,11 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -67,18 +68,11 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 		if apierrors.IsNotFound(err) {
 			return nil, ErrReleaseNotFound(key)
 		}
-
-		secrets.Log("get: failed to get %q: %s", key, err)
-		return nil, err
+		return nil, errors.Wrapf(err, "get: failed to get %q", key)
 	}
 	// found the secret, decode the base64 data string
 	r, err := decodeRelease(string(obj.Data["release"]))
-	if err != nil {
-		secrets.Log("get: failed to decode data %q: %s", key, err)
-		return nil, err
-	}
-	// return the release object
-	return r, nil
+	return r, errors.Wrapf(err, "get: failed to decode data %q", key)
 }
 
 // List fetches all releases and returns the list releases such
@@ -90,8 +84,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 
 	list, err := secrets.impl.List(opts)
 	if err != nil {
-		secrets.Log("list: failed to list: %s", err)
-		return nil, err
+		return nil, errors.Wrap(err, "list: failed to list")
 	}
 
 	var results []*rspb.Release
@@ -117,7 +110,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
-			return nil, fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
+			return nil, errors.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
 		}
 		ls[k] = v
 	}
@@ -126,8 +119,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 
 	list, err := secrets.impl.List(opts)
 	if err != nil {
-		secrets.Log("query: failed to query with labels: %s", err)
-		return nil, err
+		return nil, errors.Wrap(err, "query: failed to query with labels")
 	}
 
 	if len(list.Items) == 0 {
@@ -158,8 +150,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	// create a new secret to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
 	if err != nil {
-		secrets.Log("create: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return errors.Wrapf(err, "create: failed to encode release %q", rls.Name)
 	}
 	// push the secret object out into the kubiverse
 	if _, err := secrets.impl.Create(obj); err != nil {
@@ -167,8 +158,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 			return ErrReleaseExists(rls.Name)
 		}
 
-		secrets.Log("create: failed to create: %s", err)
-		return err
+		return errors.Wrap(err, "create: failed to create")
 	}
 	return nil
 }
@@ -185,16 +175,11 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
 	if err != nil {
-		secrets.Log("update: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return errors.Wrapf(err, "update: failed to encode release %q", rls.Name)
 	}
 	// push the secret object out into the kubiverse
 	_, err = secrets.impl.Update(obj)
-	if err != nil {
-		secrets.Log("update: failed to update: %s", err)
-		return err
-	}
-	return nil
+	return errors.Wrap(err, "update: failed to update")
 }
 
 // Delete deletes the Secret holding the release named by key.
@@ -205,14 +190,11 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 			return nil, ErrReleaseExists(rls.Name)
 		}
 
-		secrets.Log("delete: failed to get release %q: %s", key, err)
-		return nil, err
+		return nil, errors.Wrapf(err, "delete: failed to get release %q", key)
 	}
 	// delete the release
-	if err = secrets.impl.Delete(key, &metav1.DeleteOptions{}); err != nil {
-		return rls, err
-	}
-	return rls, nil
+	err = secrets.impl.Delete(key, &metav1.DeleteOptions{})
+	return rls, err
 }
 
 // newSecretsObject constructs a kubernetes Secret object

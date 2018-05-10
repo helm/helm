@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -65,7 +66,7 @@ func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {
 	}
 
 	if !r.Remove(name) {
-		return fmt.Errorf("no repo named %q found", name)
+		return errors.Errorf("no repo named %q found", name)
 	}
 	if err := r.WriteFile(repoFile, 0644); err != nil {
 		return err

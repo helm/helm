@@ -21,6 +21,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -132,8 +133,6 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 
-	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
-
 	return cmd
 }
 
@@ -180,7 +179,7 @@ func (o *upgradeOptions) run(out io.Writer) error {
 				return err
 			}
 		} else if err != chartutil.ErrRequirementsNotFound {
-			return fmt.Errorf("cannot load requirements: %v", err)
+			return errors.Wrap(err, "cannot load requirements")
 		}
 	} else {
 		return err
@@ -199,7 +198,7 @@ func (o *upgradeOptions) run(out io.Writer) error {
 		helm.ReuseValues(o.reuseValues),
 		helm.UpgradeWait(o.wait))
 	if err != nil {
-		return fmt.Errorf("UPGRADE FAILED: %v", err)
+		return errors.Wrap(err, "UPGRADE FAILED")
 	}
 
 	if settings.Debug {

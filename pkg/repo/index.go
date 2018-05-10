@@ -18,7 +18,6 @@ package repo
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"
@@ -177,7 +177,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 			return ver, nil
 		}
 	}
-	return nil, fmt.Errorf("No chart version found for %s-%s", name, version)
+	return nil, errors.Errorf("no chart version found for %s-%s", name, version)
 }
 
 // WriteFile writes an index file to the given destination path.

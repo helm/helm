@@ -1,1 +1,1 @@
-Error: This command needs 1 argument: chart name
+Error: this command needs 1 argument: chart name

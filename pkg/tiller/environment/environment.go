@@ -173,7 +173,7 @@ func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force, recreate bool, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }

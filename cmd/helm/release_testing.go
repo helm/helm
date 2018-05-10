@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/hapi/release"
@@ -98,5 +99,5 @@ type testErr struct {
 }
 
 func (err *testErr) Error() error {
-	return fmt.Errorf("%v test(s) failed", err.failed)
+	return errors.Errorf("%v test(s) failed", err.failed)
 }

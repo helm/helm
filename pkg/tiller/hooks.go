@@ -17,13 +17,13 @@ limitations under the License.
 package tiller
 
 import (
-	"fmt"
 	"log"
 	"path"
 	"strconv"
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/release"
@@ -130,15 +130,12 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 func (file *manifestFile) sort(result *result) error {
 	for _, m := range file.entries {
 		var entry util.SimpleHead
-		err := yaml.Unmarshal([]byte(m), &entry)
-
-		if err != nil {
-			e := fmt.Errorf("YAML parse error on %s: %s", file.path, err)
-			return e
+		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
+			return errors.Wrapf(err, "YAML parse error on %s", file.path)
 		}
 
 		if entry.Version != "" && !file.apis.Has(entry.Version) {
-			return fmt.Errorf("apiVersion %q in %s is not available", entry.Version, file.path)
+			return errors.Errorf("apiVersion %q in %s is not available", entry.Version, file.path)
 		}
 
 		if !hasAnyAnnotation(entry) {

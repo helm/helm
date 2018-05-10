@@ -17,10 +17,11 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
-	"errors"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi"

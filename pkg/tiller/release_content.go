@@ -17,6 +17,8 @@ limitations under the License.
 package tiller
 
 import (
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 )
@@ -24,8 +26,7 @@ import (
 // GetReleaseContent gets all of the stored information for the given release.
 func (s *ReleaseServer) GetReleaseContent(req *hapi.GetReleaseContentRequest) (*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("releaseContent: Release name is invalid: %s", req.Name)
-		return nil, err
+		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", req.Name)
 	}
 
 	if req.Version <= 0 {
