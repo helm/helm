@@ -253,11 +253,11 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 }
 
 func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
-	// Guard to make sure Tiller is at the right version to handle this chart.
+	// Guard to make sure Helm is at the right version to handle this chart.
 	sver := version.GetVersion()
 	if ch.Metadata.HelmVersion != "" &&
 		!version.IsCompatibleRange(ch.Metadata.HelmVersion, sver) {
-		return nil, nil, "", errors.Errorf("chart incompatible with Tiller %s", sver)
+		return nil, nil, "", errors.Errorf("chart incompatible with Helm %s", sver)
 	}
 
 	if ch.Metadata.KubeVersion != "" {

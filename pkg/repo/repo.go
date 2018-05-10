@@ -57,11 +57,7 @@ func LoadRepositoriesFile(path string) (*RepoFile, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.Errorf(
-				"couldn't load repositories file (%s).\n"+
-					"You might need to run `helm init` (or "+
-					"`helm init --client-only` if tiller is "+
-					"already installed)", path)
+			return nil, errors.Errorf("couldn't load repositories file (%s).\nYou might need to run `helm init`", path)
 		}
 		return nil, err
 	}

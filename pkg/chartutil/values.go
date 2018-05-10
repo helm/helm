@@ -366,7 +366,7 @@ func ToRenderValuesCaps(chrt *chart.Chart, chrtVals []byte, options ReleaseOptio
 			"IsUpgrade": options.IsUpgrade,
 			"IsInstall": options.IsInstall,
 			"Revision":  options.Revision,
-			"Service":   "Tiller",
+			"Service":   "Helm",
 		},
 		"Chart":        chrt.Metadata,
 		"Files":        NewFiles(chrt.Files),

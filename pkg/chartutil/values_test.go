@@ -145,7 +145,7 @@ where:
 		t.Error("Expected Capabilities to have v1 as an API")
 	}
 	if res["Capabilities"].(*Capabilities).HelmVersion.Version == "" {
-		t.Error("Expected Capabilities to have a Tiller version")
+		t.Error("Expected Capabilities to have a Helm version")
 	}
 	if res["Capabilities"].(*Capabilities).KubeVersion.Major != "1" {
 		t.Error("Expected Capabilities to have a Kube version")

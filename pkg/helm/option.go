@@ -26,8 +26,7 @@ import (
 )
 
 // Option allows specifying various settings configurable by
-// the helm client user for overriding the defaults used when
-// issuing rpc's to the Tiller release server.
+// the helm client user for overriding the defaults.
 type Option func(*options)
 
 // options specify optional settings used by the helm client.
@@ -60,9 +59,9 @@ type options struct {
 	before func(interface{}) error
 	// release history options are applied directly to the get release history request
 	histReq hapi.GetHistoryRequest
-	// resetValues instructs Tiller to reset values to their defaults.
+	// resetValues instructs Helm to reset values to their defaults.
 	resetValues bool
-	// reuseValues instructs Tiller to reuse the values from the last release.
+	// reuseValues instructs Helm to reuse the values from the last release.
 	reuseValues bool
 	// release test options are applied directly to the test release history request
 	testReq hapi.TestReleaseRequest
@@ -262,7 +261,7 @@ func InstallDisableHooks(disable bool) InstallOption {
 	}
 }
 
-// InstallReuseName will (if true) instruct Tiller to re-use an existing name.
+// InstallReuseName will (if true) instruct Helm to re-use an existing name.
 func InstallReuseName(reuse bool) InstallOption {
 	return func(opts *options) {
 		opts.reuseName = reuse
@@ -325,7 +324,7 @@ func ResetValues(reset bool) UpdateOption {
 	}
 }
 
-// ReuseValues will cause Tiller to reuse the values from the last release.
+// ReuseValues will cause Helm to reuse the values from the last release.
 // This is ignored if ResetValues is true.
 func ReuseValues(reuse bool) UpdateOption {
 	return func(opts *options) {

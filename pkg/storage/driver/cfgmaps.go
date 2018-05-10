@@ -86,7 +86,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
 func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	lsel := kblabels.Set{"owner": "tiller"}.AsSelector()
+	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
 	list, err := cfgmaps.impl.List(opts)
@@ -226,11 +226,11 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //    "createdAt"      - timestamp indicating when this configmap was created. (set in Create)
 //    "version"        - version of the release.
 //    "status"         - status of the release (see proto/hapi/release.status.pb.go for variants)
-//    "owner"          - owner of the configmap, currently "tiller".
+//    "owner"          - owner of the configmap, currently "helm".
 //    "name"           - name of the release.
 //
 func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigMap, error) {
-	const owner = "tiller"
+	const owner = "helm"
 
 	// encode the release
 	s, err := encodeRelease(rls)

@@ -79,7 +79,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 // that filter(release) == true. An error is returned if the
 // secret fails to retrieve the releases.
 func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	lsel := kblabels.Set{"owner": "tiller"}.AsSelector()
+	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
 	list, err := secrets.impl.List(opts)
@@ -207,11 +207,11 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 //    "createdAt"     - timestamp indicating when this secret was created. (set in Create)
 //    "version"        - version of the release.
 //    "status"         - status of the release (see proto/hapi/release.status.pb.go for variants)
-//    "owner"          - owner of the secret, currently "tiller".
+//    "owner"          - owner of the secret, currently "helm".
 //    "name"           - name of the release.
 //
 func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, error) {
-	const owner = "tiller"
+	const owner = "helm"
 
 	// encode the release
 	s, err := encodeRelease(rls)

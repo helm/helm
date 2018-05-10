@@ -125,7 +125,7 @@ func newRecord(key string, rls *rspb.Release) *record {
 
 	lbs.init()
 	lbs.set("name", rls.Name)
-	lbs.set("owner", "tiller")
+	lbs.set("owner", "helm")
 	lbs.set("status", rls.Info.Status.String())
 	lbs.set("version", strconv.Itoa(rls.Version))
 
