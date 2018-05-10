@@ -16,8 +16,9 @@ limitations under the License.
 package installer // import "k8s.io/helm/pkg/plugin/installer"
 
 import (
-	"fmt"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/helm/helmpath"
 )
@@ -31,7 +32,7 @@ type LocalInstaller struct {
 func NewLocalInstaller(source string, home helmpath.Home) (*LocalInstaller, error) {
 	src, err := filepath.Abs(source)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get absolute path to plugin: %v", err)
+		return nil, errors.Wrap(err, "unable to get absolute path to plugin")
 	}
 	i := &LocalInstaller{
 		base: newBase(src, home),

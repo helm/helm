@@ -18,7 +18,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,6 +29,7 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -250,7 +250,7 @@ func (o *installOptions) run(out io.Writer) error {
 
 		}
 	} else if err != chartutil.ErrRequirementsNotFound {
-		return fmt.Errorf("cannot load requirements: %v", err)
+		return errors.Wrap(err, "cannot load requirements")
 	}
 
 	rel, err := o.client.InstallReleaseFromChart(
@@ -315,7 +315,7 @@ func mergeValues(dest, src map[string]interface{}) map[string]interface{} {
 
 // vals merges values from files specified via -f/--values and
 // directly via --set or --set-string, marshaling them to YAML
-func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte, error) {
+func vals(valueFiles valueFiles, values, stringValues []string) ([]byte, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -335,7 +335,7 @@ func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte
 		}
 
 		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return []byte{}, fmt.Errorf("failed to parse %s: %s", filePath, err)
+			return []byte{}, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map
 		base = mergeValues(base, currentMap)
@@ -344,14 +344,14 @@ func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte
 	// User specified a value via --set
 	for _, value := range values {
 		if err := strvals.ParseInto(value, base); err != nil {
-			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+			return []byte{}, errors.Wrap(err, "failed parsing --set data")
 		}
 	}
 
 	// User specified a value via --set-string
 	for _, value := range stringValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
-			return []byte{}, fmt.Errorf("failed parsing --set-string data: %s", err)
+			return []byte{}, errors.Wrap(err, "failed parsing --set-string data")
 		}
 	}
 
@@ -401,7 +401,7 @@ func locateChartPath(repoURL, username, password, name, version string, verify b
 		return abs, nil
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, fmt.Errorf("path %q not found", name)
+		return name, errors.Errorf("path %q not found", name)
 	}
 
 	crepo := filepath.Join(settings.Home.Repository(), name)
@@ -445,7 +445,7 @@ func locateChartPath(repoURL, username, password, name, version string, verify b
 		return filename, err
 	}
 
-	return filename, fmt.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
+	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
 }
 
 func generateName(nameTemplate string) (string, error) {
@@ -479,7 +479,7 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+		return errors.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }

@@ -16,10 +16,10 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
@@ -74,6 +74,6 @@ func (o *docsOptions) run(out io.Writer) error {
 	case "bash":
 		return o.topCmd.GenBashCompletionFile(filepath.Join(o.dest, "completions.bash"))
 	default:
-		return fmt.Errorf("unknown doc type %q. Try 'markdown' or 'man'", o.docTypeString)
+		return errors.Errorf("unknown doc type %q. Try 'markdown' or 'man'", o.docTypeString)
 	}
 }

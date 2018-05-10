@@ -18,13 +18,12 @@ package tiller
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"path"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/technosophos/moniker"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,9 +122,7 @@ func (s *ReleaseServer) reuseValues(req *hapi.UpdateReleaseRequest, current *rel
 		// We have to regenerate the old coalesced values:
 		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
-			err := fmt.Errorf("failed to rebuild old values: %s", err)
-			s.Log("%s", err)
-			return err
+			return errors.Wrap(err, "failed to rebuild old values")
 		}
 		nv, err := yaml.Marshal(oldVals)
 		if err != nil {
@@ -170,7 +167,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 	if start != "" {
 
 		if len(start) > releaseNameMaxLen {
-			return "", fmt.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
+			return "", errors.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
 		}
 
 		h, err := s.Releases.History(start)
@@ -188,7 +185,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 			return "", errors.New("cannot re-use a name that is still in use")
 		}
 
-		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
+		return "", errors.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
 	}
 
 	maxTries := 5
@@ -227,7 +224,7 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 	}
 	vs, err := GetVersionSet(disc)
 	if err != nil {
-		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
+		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 	return &chartutil.Capabilities{
 		APIVersions: vs,
@@ -260,7 +257,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	sver := version.GetVersion()
 	if ch.Metadata.HelmVersion != "" &&
 		!version.IsCompatibleRange(ch.Metadata.HelmVersion, sver) {
-		return nil, nil, "", fmt.Errorf("Chart incompatible with Tiller %s", sver)
+		return nil, nil, "", errors.Errorf("chart incompatible with Tiller %s", sver)
 	}
 
 	if ch.Metadata.KubeVersion != "" {
@@ -268,7 +265,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		gitVersion := cap.KubeVersion.String()
 		k8sVersion := strings.Split(gitVersion, "+")[0]
 		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, k8sVersion) {
-			return nil, nil, "", fmt.Errorf("Chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
+			return nil, nil, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
 		}
 	}
 
@@ -341,7 +338,7 @@ func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook string, timeout int64) error {
 	code, ok := events[hook]
 	if !ok {
-		return fmt.Errorf("unknown hook %s", hook)
+		return errors.Errorf("unknown hook %s", hook)
 	}
 
 	s.Log("executing %d %s hooks for %s", len(hs), hook, name)
@@ -363,8 +360,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := s.KubeClient.Create(namespace, b, timeout, false); err != nil {
-			s.Log("warning: Release %s %s %s failed: %s", name, hook, h.Path, err)
-			return err
+			return errors.Wrapf(err, "warning: Release %s %s %s failed", name, hook, h.Path)
 		}
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
@@ -412,7 +408,7 @@ func validateReleaseName(releaseName string) error {
 	return nil
 }
 
-func (s *ReleaseServer) deleteHookIfShouldBeDeletedByDeletePolicy(h *release.Hook, policy string, name, namespace, hook string, kubeCli environment.KubeClient) error {
+func (s *ReleaseServer) deleteHookIfShouldBeDeletedByDeletePolicy(h *release.Hook, policy, name, namespace, hook string, kubeCli environment.KubeClient) error {
 	b := bytes.NewBufferString(h.Manifest)
 	if hookHasDeletePolicy(h, policy) {
 		s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, policy)

@@ -21,10 +21,11 @@ limitations under the License.
 package sympath
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/pkg/errors"
 )
 
 // Walk walks the file tree rooted at root, calling walkFn for each file or directory
@@ -67,7 +68,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 	if IsSymlink(info) {
 		resolved, err := filepath.EvalSymlinks(path)
 		if err != nil {
-			return fmt.Errorf("error evaluating symlink %s: %s", path, err)
+			return errors.Wrapf(err, "error evaluating symlink %s", path)
 		}
 		if info, err = os.Lstat(resolved); err != nil {
 			return err

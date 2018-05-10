@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
@@ -34,22 +36,17 @@ func (s *ReleaseServer) InstallRelease(req *hapi.InstallReleaseRequest) (*releas
 	s.Log("preparing install for %s", req.Name)
 	rel, err := s.prepareRelease(req)
 	if err != nil {
-		s.Log("failed install prepare step: %s", err)
-
 		// On dry run, append the manifest contents to a failed release. This is
 		// a stop-gap until we can revisit an error backchannel post-2.0.
 		if req.DryRun && strings.HasPrefix(err.Error(), "YAML parse error") {
-			err = fmt.Errorf("%s\n%s", err, rel.Manifest)
+			err = errors.Wrap(err, rel.Manifest)
 		}
-		return rel, err
+		return rel, errors.Wrap(err, "failed install prepare step")
 	}
 
 	s.Log("performing install for %s", req.Name)
 	res, err := s.performRelease(rel, req)
-	if err != nil {
-		s.Log("failed install perform step: %s", err)
-	}
-	return res, err
+	return res, errors.Wrap(err, "failed install perform step")
 }
 
 // prepareRelease builds a release for an install operation.
@@ -192,7 +189,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *hapi.InstallRele
 			r.Info.Status = release.StatusFailed
 			r.Info.Description = msg
 			s.recordRelease(r, true)
-			return r, fmt.Errorf("release %s failed: %s", r.Name, err)
+			return r, errors.Wrapf(err, "release %s failed", r.Name)
 		}
 	}
 

@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/plugin"
@@ -87,7 +88,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				if err := prog.Run(); err != nil {
 					if eerr, ok := err.(*exec.ExitError); ok {
 						os.Stderr.Write(eerr.Stderr)
-						return fmt.Errorf("plugin %q exited with error", md.Name)
+						return errors.Errorf("plugin %q exited with error", md.Name)
 					}
 					return err
 				}

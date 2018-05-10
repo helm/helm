@@ -17,11 +17,11 @@ limitations under the License.
 package releasetesting
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 	"k8s.io/kubernetes/pkg/apis/core"
 
 	"k8s.io/helm/pkg/hapi/release"
@@ -141,7 +141,7 @@ func expectedSuccess(hookTypes []string) (bool, error) {
 			return false, nil
 		}
 	}
-	return false, fmt.Errorf("No %s or %s hook found", hooks.ReleaseTestSuccess, hooks.ReleaseTestFailure)
+	return false, errors.Errorf("no %s or %s hook found", hooks.ReleaseTestSuccess, hooks.ReleaseTestFailure)
 }
 
 func extractTestManifestsFromHooks(h []*release.Hook) []string {
@@ -165,7 +165,7 @@ func newTest(testManifest string) (*test, error) {
 	}
 
 	if sh.Kind != "Pod" {
-		return nil, fmt.Errorf("%s is not a pod", sh.Metadata.Name)
+		return nil, errors.Errorf("%s is not a pod", sh.Metadata.Name)
 	}
 
 	hookTypes := sh.Metadata.Annotations[hooks.HookAnno]

@@ -18,13 +18,13 @@ package engine
 
 import (
 	"bytes"
-	"fmt"
 	"path"
 	"sort"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"
@@ -155,10 +155,10 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 	// Add the 'required' function here
 	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
 		if val == nil {
-			return val, fmt.Errorf(warn)
+			return val, errors.Errorf(warn)
 		} else if _, ok := val.(string); ok {
 			if val == "" {
-				return val, fmt.Errorf(warn)
+				return val, errors.Errorf(warn)
 			}
 		}
 		return val, nil
@@ -168,7 +168,7 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
 		basePath, err := vals.PathValue("Template.BasePath")
 		if err != nil {
-			return "", fmt.Errorf("Cannot retrieve Template.Basepath from values inside tpl function: %s (%s)", tpl, err.Error())
+			return "", errors.Wrapf(err, "cannot retrieve Template.Basepath from values inside tpl function: %s", tpl)
 		}
 
 		r := renderable{
@@ -180,14 +180,14 @@ func (e *Engine) alterFuncMap(t *template.Template) template.FuncMap {
 		templates := map[string]renderable{}
 		templateName, err := vals.PathValue("Template.Name")
 		if err != nil {
-			return "", fmt.Errorf("Cannot retrieve Template.Name from values inside tpl function: %s (%s)", tpl, err.Error())
+			return "", errors.Wrapf(err, "cannot retrieve Template.Name from values inside tpl function: %s", tpl)
 		}
 
 		templates[templateName.(string)] = r
 
 		result, err := e.render(templates)
 		if err != nil {
-			return "", fmt.Errorf("Error during tpl function execution for %q: %s", tpl, err.Error())
+			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
 		return result[templateName.(string)], nil
 	}
@@ -206,7 +206,7 @@ func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string,
 	// template engine.
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("rendering template failed: %v", r)
+			err = errors.Errorf("rendering template failed: %v", r)
 		}
 	}()
 	t := template.New("gotpl")
@@ -230,7 +230,7 @@ func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string,
 		r := tpls[fname]
 		t = t.New(fname).Funcs(funcMap)
 		if _, err := t.Parse(r.tpl); err != nil {
-			return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
+			return map[string]string{}, errors.Wrapf(err, "parse error in %q", fname)
 		}
 		files = append(files, fname)
 	}
@@ -241,7 +241,7 @@ func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string,
 		if t.Lookup(fname) == nil {
 			t = t.New(fname).Funcs(funcMap)
 			if _, err := t.Parse(r.tpl); err != nil {
-				return map[string]string{}, fmt.Errorf("parse error in %q: %s", fname, err)
+				return map[string]string{}, errors.Wrapf(err, "parse error in %q", fname)
 			}
 		}
 	}
@@ -258,7 +258,7 @@ func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string,
 		vals := tpls[file].vals
 		vals["Template"] = map[string]interface{}{"Name": file, "BasePath": tpls[file].basePath}
 		if err := t.ExecuteTemplate(&buf, file, vals); err != nil {
-			return map[string]string{}, fmt.Errorf("render error in %q: %s", file, err)
+			return map[string]string{}, errors.Wrapf(err, "render error in %q", file)
 		}
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)

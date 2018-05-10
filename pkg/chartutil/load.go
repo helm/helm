@@ -20,13 +20,13 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/ignore"
@@ -169,7 +169,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		} else if filepath.Ext(n) == ".tgz" {
 			file := files[0]
 			if file.Name != n {
-				return c, fmt.Errorf("error unpacking tar in %s: expected %s, got %s", c.Metadata.Name, n, file.Name)
+				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Metadata.Name, n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
 			b := bytes.NewBuffer(file.Data)
@@ -190,7 +190,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 
 		if err != nil {
-			return c, fmt.Errorf("error unpacking %s in %s: %s", n, c.Metadata.Name, err)
+			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Metadata.Name)
 		}
 
 		c.Dependencies = append(c.Dependencies, sc)
@@ -272,7 +272,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 		data, err := ioutil.ReadFile(name)
 		if err != nil {
-			return fmt.Errorf("error reading %s: %s", n, err)
+			return errors.Wrapf(err, "error reading %s", n)
 		}
 
 		files = append(files, &BufferedFile{Name: n, Data: data})

@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -74,7 +74,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-var errLintNoChart = errors.New("No chart found for linting (missing Chart.yaml)")
+var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")
 
 func (o *lintOptions) run(out io.Writer) error {
 	var lowestTolerance int
@@ -120,7 +120,7 @@ func (o *lintOptions) run(out io.Writer) error {
 
 	msg := fmt.Sprintf("%d chart(s) linted", total)
 	if failures > 0 {
-		return fmt.Errorf("%s, %d chart(s) failed", msg, failures)
+		return errors.Errorf("%s, %d chart(s) failed", msg, failures)
 	}
 
 	fmt.Fprintf(out, "%s, no failures\n", msg)
@@ -151,7 +151,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 
 		lastHyphenIndex := strings.LastIndex(filepath.Base(path), "-")
 		if lastHyphenIndex <= 0 {
-			return linter, fmt.Errorf("unable to parse chart archive %q, missing '-'", filepath.Base(path))
+			return linter, errors.Errorf("unable to parse chart archive %q, missing '-'", filepath.Base(path))
 		}
 		base := filepath.Base(path)[:lastHyphenIndex]
 		chartPath = filepath.Join(tempDir, base)
@@ -179,7 +179,7 @@ func (o *lintOptions) vals() ([]byte, error) {
 		}
 
 		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return []byte{}, fmt.Errorf("failed to parse %s: %s", filePath, err)
+			return []byte{}, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map
 		base = mergeValues(base, currentMap)
@@ -188,14 +188,14 @@ func (o *lintOptions) vals() ([]byte, error) {
 	// User specified a value via --set
 	for _, value := range o.values {
 		if err := strvals.ParseInto(value, base); err != nil {
-			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+			return []byte{}, errors.Wrap(err, "failed parsing --set data")
 		}
 	}
 
 	// User specified a value via --set-string
 	for _, value := range o.sValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
-			return []byte{}, fmt.Errorf("failed parsing --set-string data: %s", err)
+			return []byte{}, errors.Wrap(err, "failed parsing --set-string data")
 		}
 	}
 

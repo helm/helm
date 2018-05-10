@@ -18,10 +18,10 @@ package tiller
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
@@ -33,14 +33,12 @@ import (
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
 func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*hapi.UninstallReleaseResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("uninstallRelease: Release name is invalid: %s", req.Name)
-		return nil, err
+		return nil, errors.Errorf("uninstall: Release name is invalid: %s", req.Name)
 	}
 
 	rels, err := s.Releases.History(req.Name)
 	if err != nil {
-		s.Log("uninstall: Release not loaded: %s", req.Name)
-		return nil, err
+		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", req.Name)
 	}
 	if len(rels) < 1 {
 		return nil, errMissingRelease
@@ -54,12 +52,11 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 	if rel.Info.Status == release.StatusDeleted {
 		if req.Purge {
 			if err := s.purgeReleases(rels...); err != nil {
-				s.Log("uninstall: Failed to purge the release: %s", err)
-				return nil, err
+				return nil, errors.Wrap(err, "uninstall: Failed to purge the release")
 			}
 			return &hapi.UninstallReleaseResponse{Release: rel}, nil
 		}
-		return nil, fmt.Errorf("the release named %q is already deleted", req.Name)
+		return nil, errors.Errorf("the release named %q is already deleted", req.Name)
 	}
 
 	s.Log("uninstall: Deleting %s", req.Name)
@@ -97,10 +94,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 	if req.Purge {
 		s.Log("purge requested for %s", req.Name)
 		err := s.purgeReleases(rels...)
-		if err != nil {
-			s.Log("uninstall: Failed to purge the release: %s", err)
-		}
-		return res, err
+		return res, errors.Wrap(err, "uninstall: Failed to purge the release")
 	}
 
 	if err := s.Releases.Update(rel); err != nil {
@@ -108,7 +102,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 	}
 
 	if len(errs) > 0 {
-		return res, fmt.Errorf("deletion completed with %d error(s): %s", len(errs), joinErrors(errs))
+		return res, errors.Errorf("deletion completed with %d error(s): %s", len(errs), joinErrors(errs))
 	}
 	return res, nil
 }
@@ -134,7 +128,7 @@ func (s *ReleaseServer) purgeReleases(rels ...*release.Release) error {
 func (s *ReleaseServer) deleteRelease(rel *release.Release) (kept string, errs []error) {
 	vs, err := GetVersionSet(s.discovery)
 	if err != nil {
-		return rel.Manifest, []error{fmt.Errorf("Could not get apiVersions from Kubernetes: %v", err)}
+		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
 	}
 
 	manifests := relutil.SplitManifests(rel.Manifest)
@@ -144,7 +138,7 @@ func (s *ReleaseServer) deleteRelease(rel *release.Release) (kept string, errs [
 		// FIXME: One way to delete at this point would be to try a label-based
 		// deletion. The problem with this is that we could get a false positive
 		// and delete something that was not legitimately part of this release.
-		return rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %s", err)}
+		return rel.Manifest, []error{errors.Wrap(err, "corrupted release record. You must manually delete the resources")}
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)

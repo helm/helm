@@ -21,6 +21,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
@@ -62,7 +63,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 			v64, err := strconv.ParseInt(args[1], 10, 32)
 			if err != nil {
-				return fmt.Errorf("invalid revision number '%q': %s", args[1], err)
+				return errors.Wrapf(err, "invalid revision number '%q'", args[1])
 			}
 
 			o.revision = int(v64)

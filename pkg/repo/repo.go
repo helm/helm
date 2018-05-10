@@ -17,13 +17,13 @@ limitations under the License.
 package repo // import "k8s.io/helm/pkg/repo"
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 )
 
 // ErrRepoOutOfDate indicates that the repository file is out of date, but
@@ -57,8 +57,8 @@ func LoadRepositoriesFile(path string) (*RepoFile, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf(
-				"Couldn't load repositories file (%s).\n"+
+			return nil, errors.Errorf(
+				"couldn't load repositories file (%s).\n"+
 					"You might need to run `helm init` (or "+
 					"`helm init --client-only` if tiller is "+
 					"already installed)", path)

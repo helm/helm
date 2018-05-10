@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -132,6 +133,7 @@ func logf(format string, v ...interface{}) {
 func main() {
 	cmd := newRootCmd(nil, os.Stdout, os.Args[1:])
 	if err := cmd.Execute(); err != nil {
+		logf("%+v", err)
 		os.Exit(1)
 	}
 }
@@ -143,7 +145,7 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 		if expectedNum == 1 {
 			arg = "argument"
 		}
-		return fmt.Errorf("This command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
+		return errors.Errorf("this command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
 	}
 	return nil
 }

@@ -19,7 +19,6 @@ package kube // import "k8s.io/helm/pkg/kube"
 import (
 	"bytes"
 	"encoding/json"
-	goerrors "errors"
 	"fmt"
 	"io"
 	"log"
@@ -27,6 +26,7 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	goerrors "github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -213,8 +213,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		}
 		for _, o := range ot {
 			if err := p.PrintObj(o, buf); err != nil {
-				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
-				return "", err
+				return "", goerrors.Wrapf(err, "failed to print object type %s, object: %q", t, o)
 			}
 		}
 		if _, err := buf.WriteString("\n"); err != nil {
@@ -236,16 +235,16 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 // not present in the target configuration.
 //
 // Namespace will set the namespaces.
-func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force, recreate bool, timeout int64, shouldWait bool) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
-		return fmt.Errorf("failed decoding reader into objects: %s", err)
+		return goerrors.Wrap(err, "failed decoding reader into objects")
 	}
 
 	c.Log("building resources from updated manifest")
 	target, err := c.BuildUnstructured(namespace, targetReader)
 	if err != nil {
-		return fmt.Errorf("failed decoding reader into objects: %s", err)
+		return goerrors.Wrap(err, "failed decoding reader into objects")
 	}
 
 	updateErrors := []string{}
@@ -259,12 +258,12 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
 			if !errors.IsNotFound(err) {
-				return fmt.Errorf("Could not get information about the resource: %s", err)
+				return goerrors.Wrap(err, "could not get information about the resource")
 			}
 
 			// Since the resource does not exist, create it.
 			if err := createResource(info); err != nil {
-				return fmt.Errorf("failed to create resource: %s", err)
+				return goerrors.Wrap(err, "failed to create resource")
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
@@ -275,7 +274,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
+			return goerrors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
@@ -290,7 +289,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	case err != nil:
 		return err
 	case len(updateErrors) != 0:
-		return fmt.Errorf(strings.Join(updateErrors, " && "))
+		return goerrors.Errorf(strings.Join(updateErrors, " && "))
 	}
 
 	for _, info := range original.Difference(target) {
@@ -393,11 +392,11 @@ func deleteResource(c *Client, info *resource.Info) error {
 func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
+		return nil, types.StrategicMergePatchType, goerrors.Wrap(err, "serializing current configuration")
 	}
 	newData, err := json.Marshal(target.Object)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
+		return nil, types.StrategicMergePatchType, goerrors.Wrap(err, "serializing target configuration")
 	}
 
 	// While different objects need different merge types, the parent function
@@ -423,24 +422,24 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, types.MergePatchType, err
 	case err != nil:
-		return nil, types.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
+		return nil, types.StrategicMergePatchType, goerrors.Wrap(err, "failed to get versionedObject")
 	default:
 		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
 		return patch, types.StrategicMergePatchType, err
 	}
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force, recreate bool) error {
 	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
-		return fmt.Errorf("failed to create patch: %s", err)
+		return goerrors.Wrap(err, "failed to create patch")
 	}
 	if patch == nil {
 		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
-			return fmt.Errorf("error trying to refresh resource information: %v", err)
+			return goerrors.Wrap(err, "error trying to refresh resource information")
 		}
 	} else {
 		// send patch to server
@@ -460,7 +459,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 				// ... and recreate
 				if err := createResource(target); err != nil {
-					return fmt.Errorf("Failed to recreate resource: %s", err)
+					return goerrors.Wrap(err, "failed to recreate resource")
 				}
 				log.Printf("Created a new %s called %q\n", kind, target.Name)
 
@@ -557,7 +556,7 @@ func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
 		return typed.Spec.Selector.MatchLabels, nil
 
 	default:
-		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
+		return nil, goerrors.Errorf("unsupported kind when getting selector: %v", obj)
 	}
 }
 
@@ -594,7 +593,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 		case watch.Error:
 			// Handle error and return with an error.
 			c.Log("Error event for %s", info.Name)
-			return true, fmt.Errorf("Failed to deploy %s", info.Name)
+			return true, goerrors.Errorf("failed to deploy %s", info.Name)
 		default:
 			return false, nil
 		}
@@ -608,14 +607,14 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 	o, ok := e.Object.(*batchinternal.Job)
 	if !ok {
-		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
+		return true, goerrors.Errorf("expected %s to be a *batch.Job, got %T", name, e.Object)
 	}
 
 	for _, c := range o.Status.Conditions {
 		if c.Type == batchinternal.JobComplete && c.Status == core.ConditionTrue {
 			return true, nil
 		} else if c.Type == batchinternal.JobFailed && c.Status == core.ConditionTrue {
-			return true, fmt.Errorf("Job failed: %s", c.Reason)
+			return true, goerrors.Errorf("job failed: %s", c.Reason)
 		}
 	}
 
@@ -647,7 +646,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 
 	kind := info.Mapping.GroupVersionKind.Kind
 	if kind != "Pod" {
-		return core.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
+		return core.PodUnknown, goerrors.Errorf("%s is not a Pod", info.Name)
 	}
 
 	if err := c.watchPodUntilComplete(timeout, info); err != nil {

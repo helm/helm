@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	rspb "k8s.io/helm/pkg/hapi/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
@@ -124,13 +126,13 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	ls, err := s.DeployedAll(name)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return nil, fmt.Errorf("%q has no deployed releases", name)
+			return nil, errors.Errorf("%q has no deployed releases", name)
 		}
 		return nil, err
 	}
 
 	if len(ls) == 0 {
-		return nil, fmt.Errorf("%q has no deployed releases", name)
+		return nil, errors.Errorf("%q has no deployed releases", name)
 	}
 
 	return ls[0], err
@@ -150,7 +152,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 		return ls, nil
 	}
 	if strings.Contains(err.Error(), "not found") {
-		return nil, fmt.Errorf("%q has no deployed releases", name)
+		return nil, errors.Errorf("%q has no deployed releases", name)
 	}
 	return nil, err
 }
@@ -187,24 +189,24 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 	// Delete as many as possible. In the case of API throughput limitations,
 	// multiple invocations of this function will eventually delete them all.
 	toDelete := h[0:overage]
-	errors := []error{}
+	errs := []error{}
 	for _, rel := range toDelete {
 		key := makeKey(name, rel.Version)
 		_, innerErr := s.Delete(name, rel.Version)
 		if innerErr != nil {
 			s.Log("error pruning %s from release history: %s", key, innerErr)
-			errors = append(errors, innerErr)
+			errs = append(errs, innerErr)
 		}
 	}
 
-	s.Log("Pruned %d record(s) from %s with %d error(s)", len(toDelete), name, len(errors))
-	switch c := len(errors); c {
+	s.Log("Pruned %d record(s) from %s with %d error(s)", len(toDelete), name, len(errs))
+	switch c := len(errs); c {
 	case 0:
 		return nil
 	case 1:
-		return errors[0]
+		return errs[0]
 	default:
-		return fmt.Errorf("encountered %d deletion errors. First is: %s", c, errors[0])
+		return errors.Errorf("encountered %d deletion errors. First is: %s", c, errs[0])
 	}
 }
 
@@ -216,7 +218,7 @@ func (s *Storage) Last(name string) (*rspb.Release, error) {
 		return nil, err
 	}
 	if len(h) == 0 {
-		return nil, fmt.Errorf("no revision for release %q", name)
+		return nil, errors.Errorf("no revision for release %q", name)
 	}
 
 	relutil.Reverse(h, relutil.SortByRevision)

@@ -23,13 +23,14 @@ to find matches.
 package search
 
 import (
-	"errors"
 	"path"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/repo"
 )
 

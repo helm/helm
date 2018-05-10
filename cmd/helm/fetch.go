@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -74,7 +75,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 		Long:  fetchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return fmt.Errorf("need at least one argument, url or repo/name of the chart")
+				return errors.Errorf("need at least one argument, url or repo/name of the chart")
 			}
 
 			if o.version == "" && o.devel {
@@ -135,7 +136,7 @@ func (o *fetchOptions) run(out io.Writer) error {
 		var err error
 		dest, err = ioutil.TempDir("", "helm-")
 		if err != nil {
-			return fmt.Errorf("Failed to untar: %s", err)
+			return errors.Wrap(err, "failed to untar")
 		}
 		defer os.RemoveAll(dest)
 	}
@@ -165,11 +166,11 @@ func (o *fetchOptions) run(out io.Writer) error {
 		}
 		if fi, err := os.Stat(ud); err != nil {
 			if err := os.MkdirAll(ud, 0755); err != nil {
-				return fmt.Errorf("Failed to untar (mkdir): %s", err)
+				return errors.Wrap(err, "failed to untar (mkdir)")
 			}
 
 		} else if !fi.IsDir() {
-			return fmt.Errorf("Failed to untar: %s is not a directory", ud)
+			return errors.Errorf("failed to untar: %s is not a directory", ud)
 		}
 
 		return chartutil.ExpandFile(ud, saved)

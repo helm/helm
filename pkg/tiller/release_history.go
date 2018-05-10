@@ -17,6 +17,8 @@ limitations under the License.
 package tiller
 
 import (
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
@@ -25,8 +27,7 @@ import (
 // GetHistory gets the history for a given release.
 func (s *ReleaseServer) GetHistory(req *hapi.GetHistoryRequest) ([]*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("getHistory: Release name is invalid: %s", req.Name)
-		return nil, err
+		return nil, errors.Errorf("getHistory: Release name is invalid: %s", req.Name)
 	}
 
 	s.Log("getting history for release %s", req.Name)

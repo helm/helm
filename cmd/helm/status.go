@@ -26,6 +26,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/gosuri/uitable/util/strutil"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/hapi"
@@ -87,20 +88,20 @@ func (o *statusOptions) run(out io.Writer) error {
 	case "json":
 		data, err := json.Marshal(res)
 		if err != nil {
-			return fmt.Errorf("Failed to Marshal JSON output: %s", err)
+			return errors.Wrap(err, "failed to Marshal JSON output")
 		}
 		out.Write(data)
 		return nil
 	case "yaml":
 		data, err := yaml.Marshal(res)
 		if err != nil {
-			return fmt.Errorf("Failed to Marshal YAML output: %s", err)
+			return errors.Wrap(err, "failed to Marshal YAML output")
 		}
 		out.Write(data)
 		return nil
 	}
 
-	return fmt.Errorf("Unknown output format %q", o.outfmt)
+	return errors.Errorf("unknown output format %q", o.outfmt)
 }
 
 // PrintStatus prints out the status of a release. Shared because also used by

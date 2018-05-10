@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/getter"
@@ -85,7 +86,7 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 	}
 
 	if noUpdate && f.Has(name) {
-		return fmt.Errorf("repository name (%s) already exists, please specify a different name", name)
+		return errors.Errorf("repository name (%s) already exists, please specify a different name", name)
 	}
 
 	cif := home.CacheIndex(name)
@@ -106,7 +107,7 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 	}
 
 	if err := r.DownloadIndexFile(home.Cache()); err != nil {
-		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
+		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", url)
 	}
 
 	f.Update(&c)

@@ -17,14 +17,12 @@ limitations under the License.
 package rules // import "k8s.io/helm/pkg/lint/rules"
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/Masterminds/semver"
-
 	"github.com/asaskevich/govalidator"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"
@@ -68,7 +66,7 @@ func validateChartYamlNotDirectory(chartPath string) error {
 
 func validateChartYamlFormat(chartFileError error) error {
 	if chartFileError != nil {
-		return fmt.Errorf("unable to parse YAML\n\t%s", chartFileError.Error())
+		return errors.Errorf("unable to parse YAML\n\t%s", chartFileError.Error())
 	}
 	return nil
 }
@@ -82,7 +80,7 @@ func validateChartName(cf *chart.Metadata) error {
 
 func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
 	if cf.Name != filepath.Base(chartDir) {
-		return fmt.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
+		return errors.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
 	}
 	return nil
 }
@@ -95,7 +93,7 @@ func validateChartVersion(cf *chart.Metadata) error {
 	version, err := semver.NewVersion(cf.Version)
 
 	if err != nil {
-		return fmt.Errorf("version '%s' is not a valid SemVer", cf.Version)
+		return errors.Errorf("version '%s' is not a valid SemVer", cf.Version)
 	}
 
 	c, err := semver.NewConstraint("> 0")
@@ -105,7 +103,7 @@ func validateChartVersion(cf *chart.Metadata) error {
 	valid, msg := c.Validate(version)
 
 	if !valid && len(msg) > 0 {
-		return fmt.Errorf("version %v", msg[0])
+		return errors.Errorf("version %v", msg[0])
 	}
 
 	return nil
@@ -116,9 +114,9 @@ func validateChartMaintainer(cf *chart.Metadata) error {
 		if maintainer.Name == "" {
 			return errors.New("each maintainer requires a name")
 		} else if maintainer.Email != "" && !govalidator.IsEmail(maintainer.Email) {
-			return fmt.Errorf("invalid email '%s' for maintainer '%s'", maintainer.Email, maintainer.Name)
+			return errors.Errorf("invalid email '%s' for maintainer '%s'", maintainer.Email, maintainer.Name)
 		} else if maintainer.URL != "" && !govalidator.IsURL(maintainer.URL) {
-			return fmt.Errorf("invalid url '%s' for maintainer '%s'", maintainer.URL, maintainer.Name)
+			return errors.Errorf("invalid url '%s' for maintainer '%s'", maintainer.URL, maintainer.Name)
 		}
 	}
 	return nil
@@ -127,7 +125,7 @@ func validateChartMaintainer(cf *chart.Metadata) error {
 func validateChartSources(cf *chart.Metadata) error {
 	for _, source := range cf.Sources {
 		if source == "" || !govalidator.IsRequestURL(source) {
-			return fmt.Errorf("invalid source URL '%s'", source)
+			return errors.Errorf("invalid source URL '%s'", source)
 		}
 	}
 	return nil
@@ -142,7 +140,7 @@ func validateChartIconPresence(cf *chart.Metadata) error {
 
 func validateChartIconURL(cf *chart.Metadata) error {
 	if cf.Icon != "" && !govalidator.IsRequestURL(cf.Icon) {
-		return fmt.Errorf("invalid icon URL '%s'", cf.Icon)
+		return errors.Errorf("invalid icon URL '%s'", cf.Icon)
 	}
 	return nil
 }

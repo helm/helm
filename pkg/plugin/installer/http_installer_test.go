@@ -18,10 +18,11 @@ package installer // import "k8s.io/helm/pkg/plugin/installer"
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/helm/helmpath"
 )
@@ -131,7 +132,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// inject fake http client responding with error
 	httpInstaller.getter = &TestHTTPGetter{
-		MockError: fmt.Errorf("failed to download plugin for some reason"),
+		MockError: errors.Errorf("failed to download plugin for some reason"),
 	}
 
 	// attempt to install the plugin

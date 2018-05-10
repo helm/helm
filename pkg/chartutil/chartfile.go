@@ -17,13 +17,12 @@ limitations under the License.
 package chartutil
 
 import (
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi/chart"
 )
@@ -68,17 +67,17 @@ func IsChartDir(dirName string) (bool, error) {
 	if fi, err := os.Stat(dirName); err != nil {
 		return false, err
 	} else if !fi.IsDir() {
-		return false, fmt.Errorf("%q is not a directory", dirName)
+		return false, errors.Errorf("%q is not a directory", dirName)
 	}
 
 	chartYaml := filepath.Join(dirName, "Chart.yaml")
 	if _, err := os.Stat(chartYaml); os.IsNotExist(err) {
-		return false, fmt.Errorf("no Chart.yaml exists in directory %q", dirName)
+		return false, errors.Errorf("no Chart.yaml exists in directory %q", dirName)
 	}
 
 	chartYamlContent, err := ioutil.ReadFile(chartYaml)
 	if err != nil {
-		return false, fmt.Errorf("cannot read Chart.Yaml in directory %q", dirName)
+		return false, errors.Errorf("cannot read Chart.Yaml in directory %q", dirName)
 	}
 
 	chartContent, err := UnmarshalChartfile(chartYamlContent)

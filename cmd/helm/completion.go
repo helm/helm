@@ -17,9 +17,9 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -63,14 +63,14 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 
 func runCompletion(out io.Writer, cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("shell not specified")
+		return errors.New("shell not specified")
 	}
 	if len(args) > 1 {
-		return fmt.Errorf("too many arguments, expected only the shell type")
+		return errors.New("too many arguments, expected only the shell type")
 	}
 	run, found := completionShells[args[0]]
 	if !found {
-		return fmt.Errorf("unsupported shell type %q", args[0])
+		return errors.Errorf("unsupported shell type %q", args[0])
 	}
 
 	return run(out, cmd)

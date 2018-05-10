@@ -17,8 +17,9 @@ limitations under the License.
 package support
 
 import (
-	"errors"
 	"testing"
+
+	"github.com/pkg/errors"
 )
 
 var linter = Linter{}

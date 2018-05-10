@@ -1,1 +1,1 @@
-Error: This command needs 2 arguments: release name, chart path
+Error: this command needs 2 arguments: release name, chart path

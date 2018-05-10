@@ -134,7 +134,7 @@ func (c *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.Unin
 }
 
 // UpdateRelease loads a chart from chstr and updates a release to a new/different chart.
-func (c *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOption) (*release.Release, error) {
+func (c *Client) UpdateRelease(rlsName, chstr string, opts ...UpdateOption) (*release.Release, error) {
 	// load the chart to update
 	chart, err := chartutil.Load(chstr)
 	if err != nil {

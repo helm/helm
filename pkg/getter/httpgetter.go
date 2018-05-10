@@ -17,10 +17,11 @@ package getter
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/tlsutil"
 	"k8s.io/helm/pkg/urlutil"
@@ -66,7 +67,7 @@ func (g *HttpGetter) get(href string) (*bytes.Buffer, error) {
 		return buf, err
 	}
 	if resp.StatusCode != 200 {
-		return buf, fmt.Errorf("Failed to fetch %s : %s", href, resp.Status)
+		return buf, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
 	_, err = io.Copy(buf, resp.Body)
@@ -85,7 +86,7 @@ func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HttpGetter, error) {
 	if CertFile != "" && KeyFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(CertFile, KeyFile, CAFile)
 		if err != nil {
-			return &client, fmt.Errorf("can't create TLS config for client: %s", err.Error())
+			return &client, errors.Wrap(err, "can't create TLS config for client")
 		}
 		tlsConf.BuildNameToCertificate()
 

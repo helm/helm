@@ -16,16 +16,16 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
-
-	"github.com/spf13/cobra"
 )
 
 type pluginRemoveOptions struct {
@@ -76,7 +76,7 @@ func (o *pluginRemoveOptions) run(out io.Writer) error {
 		}
 	}
 	if len(errorPlugins) > 0 {
-		return fmt.Errorf(strings.Join(errorPlugins, "\n"))
+		return errors.Errorf(strings.Join(errorPlugins, "\n"))
 	}
 	return nil
 }

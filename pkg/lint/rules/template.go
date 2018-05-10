@@ -17,13 +17,12 @@ limitations under the License.
 package rules
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
@@ -145,14 +144,11 @@ func validateAllowedExtension(fileName string) error {
 		}
 	}
 
-	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
+	return errors.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
 }
 
 func validateYamlContent(err error) error {
-	if err != nil {
-		return fmt.Errorf("unable to parse YAML\n\t%s", err)
-	}
-	return nil
+	return errors.Wrap(err, "unable to parse YAML")
 }
 
 // K8sYamlStruct stubs a Kubernetes YAML file.

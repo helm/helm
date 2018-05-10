@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
@@ -31,8 +33,7 @@ import (
 // UpdateRelease takes an existing release and new information, and upgrades the release.
 func (s *ReleaseServer) UpdateRelease(req *hapi.UpdateReleaseRequest) (*release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("updateRelease: Release name is invalid: %s", req.Name)
-		return nil, err
+		return nil, errors.Errorf("updateRelease: Release name is invalid: %s", req.Name)
 	}
 	s.Log("preparing update for %s", req.Name)
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
@@ -161,13 +162,12 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 		Wait:         req.Wait,
 	})
 	if err != nil {
-		s.Log("failed update prepare step: %s", err)
 		// On dry run, append the manifest contents to a failed release. This is
 		// a stop-gap until we can revisit an error backchannel post-2.0.
 		if req.DryRun && strings.HasPrefix(err.Error(), "YAML parse error") {
-			err = fmt.Errorf("%s\n%s", err, newRelease.Manifest)
+			err = errors.Wrap(err, newRelease.Manifest)
 		}
-		return newRelease, err
+		return newRelease, errors.Wrap(err, "failed update prepare step")
 	}
 
 	// From here on out, the release is considered to be in StatusDeleting or StatusDeleted
@@ -194,7 +194,7 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 	s.recordRelease(oldRelease, true)
 
 	if len(errs) > 0 {
-		return newRelease, fmt.Errorf("Upgrade --force successfully deleted the previous release, but encountered %d error(s) and cannot continue: %s", len(errs), joinErrors(errs))
+		return newRelease, errors.Errorf("upgrade --force successfully deleted the previous release, but encountered %d error(s) and cannot continue: %s", len(errs), joinErrors(errs))
 	}
 
 	// post-delete hooks

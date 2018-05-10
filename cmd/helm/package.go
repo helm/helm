@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,6 +26,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
@@ -77,7 +77,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.home = settings.Home
 			if len(args) == 0 {
-				return fmt.Errorf("need at least one argument, the path to the chart")
+				return errors.Errorf("need at least one argument, the path to the chart")
 			}
 			if o.sign {
 				if o.key == "" {
@@ -166,7 +166,7 @@ func (o *packageOptions) run(out io.Writer) error {
 	}
 
 	if filepath.Base(path) != ch.Metadata.Name {
-		return fmt.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Metadata.Name)
+		return errors.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Metadata.Name)
 	}
 
 	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
@@ -195,7 +195,7 @@ func (o *packageOptions) run(out io.Writer) error {
 	if err == nil {
 		fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", name)
 	} else {
-		return fmt.Errorf("Failed to save: %s", err)
+		return errors.Wrap(err, "failed to save")
 	}
 
 	if o.sign {

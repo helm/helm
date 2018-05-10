@@ -16,9 +16,9 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"io"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/downloader"
