@@ -539,7 +539,7 @@ func readFile(filePath, CertFile, KeyFile, CAFile string) ([]byte, error) {
 		return ioutil.ReadFile(filePath)
 	}
 
-	getter, err := getterConstructor(filePath, CertFile, KeyFile, CAFile)
+	getter, err := getterConstructor(filePath, "", "", "")
 	if err != nil {
 		return []byte{}, err
 	}
