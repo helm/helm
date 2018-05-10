@@ -254,7 +254,7 @@ func (i *installCmd) run() error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
-	res, err := i.client.InstallReleaseFromChart(
+	resp, err := i.client.InstallReleaseFromChart(
 		chartRequested,
 		i.namespace,
 		helm.ValueOverrides(rawVals),
@@ -264,15 +264,25 @@ func (i *installCmd) run() error {
 		helm.InstallDisableHooks(i.disableHooks),
 		helm.InstallTimeout(i.timeout),
 		helm.InstallWait(i.wait))
+
+	// If there is an error while waiting, make a call without waiting to get the release content
+	if (resp == nil || resp.Release == nil) && i.wait {
+		if res, e := i.client.ReleaseContent(i.name); e != nil {
+			fmt.Fprintf(i.out, "Error reading release content: %v", prettyError(e))
+		} else {
+			printRelease(i.out, res.Release)
+		}
+	} else {
+		rel := resp.GetRelease()
+		if rel == nil {
+			return nil
+		}
+		printRelease(i.out, rel)
+	}
+
 	if err != nil {
 		return prettyError(err)
 	}
-
-	rel := res.GetRelease()
-	if rel == nil {
-		return nil
-	}
-	i.printRelease(rel)
 
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
@@ -280,7 +290,7 @@ func (i *installCmd) run() error {
 	}
 
 	// Print the status like status command does
-	status, err := i.client.ReleaseStatus(rel.Name)
+	status, err := i.client.ReleaseStatus(i.name)
 	if err != nil {
 		return prettyError(err)
 	}
@@ -499,12 +509,12 @@ func readFile(filePath string) ([]byte, error) {
 
 	if err != nil {
 		return ioutil.ReadFile(filePath)
-	} else {
-		getter, err := getterConstructor(filePath, "", "", "")
-		if err != nil {
-			return []byte{}, err
-		}
-		data, err := getter.Get(filePath)
-		return data.Bytes(), err
 	}
+
+	getter, err := getterConstructor(filePath, "", "", "")
+	if err != nil {
+		return []byte{}, err
+	}
+	data, err := getter.Get(filePath)
+	return data.Bytes(), err
 }
