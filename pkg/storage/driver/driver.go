@@ -71,7 +71,7 @@ type Queryor interface {
 
 // Driver is the interface composed of Creator, Updator, Deletor, and Queryor
 // interfaces. It defines the behavior for storing, updating, deleted,
-// and retrieving Tiller releases from some underlying storage mechanism,
+// and retrieving Helm releases from some underlying storage mechanism,
 // e.g. memory, configmaps.
 type Driver interface {
 	Creator

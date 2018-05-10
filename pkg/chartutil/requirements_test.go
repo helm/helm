@@ -313,7 +313,7 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v []byte, e ma
 			}
 		default:
 			if pv.(string) != vv {
-				t.Errorf("Failed to match imported string value %v with expected %v", pv, vv)
+				t.Errorf("Failed to match imported string value %q with expected %q", pv, vv)
 				return
 			}
 		}

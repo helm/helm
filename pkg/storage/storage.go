@@ -145,7 +145,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 
 	ls, err := s.Driver.Query(map[string]string{
 		"name":   name,
-		"owner":  "tiller",
+		"owner":  "helm",
 		"status": "deployed",
 	})
 	if err == nil {
@@ -162,7 +162,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	s.Log("getting release history for %q", name)
 
-	return s.Driver.Query(map[string]string{"name": name, "owner": "tiller"})
+	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
 }
 
 // removeLeastRecent removes items from history until the lengh number of releases
