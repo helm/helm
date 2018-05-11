@@ -130,7 +130,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		t.namespace = defaultNamespace()
 	}
 	// get combined values and create config
-	rawVals, err := vals(t.valueFiles, t.values, t.stringValues)
+	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, "", "", "")
 	if err != nil {
 		return err
 	}
