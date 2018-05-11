@@ -51,6 +51,8 @@ type options struct {
 	force bool
 	// if set, skip running hooks
 	disableHooks bool
+	// if set, skip CRD hook only
+	disableCRDHook bool
 	// name of release
 	releaseName string
 	// tls.Config to use for rpc if tls enabled
@@ -292,6 +294,13 @@ func InstallDryRun(dry bool) InstallOption {
 func InstallDisableHooks(disable bool) InstallOption {
 	return func(opts *options) {
 		opts.disableHooks = disable
+	}
+}
+
+// InstallDisableCRDHook disables CRD hook during installation.
+func InstallDisableCRDHook(disable bool) InstallOption {
+	return func(opts *options) {
+		opts.disableCRDHook = disable
 	}
 }
 

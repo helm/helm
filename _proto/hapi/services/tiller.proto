@@ -271,6 +271,8 @@ message InstallReleaseRequest {
 	// wait, if true, will wait until all Pods, PVCs, and Services are in a ready state
 	// before marking the release as successful. It will wait for as long as timeout
 	bool wait = 9;
+
+	bool disable_crd_hook = 10;
 }
 
 // InstallReleaseResponse is the response from a release installation.
