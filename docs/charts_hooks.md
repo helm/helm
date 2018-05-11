@@ -16,6 +16,17 @@ Hooks work like regular templates, but they have special annotations
 that cause Helm to utilize them differently. In this section, we cover
 the basic usage pattern for hooks.
 
+Hooks are declared as an annotation in the metadata section of a manifest:
+
+```yaml
+apiVersion: ...
+kind: ....
+metadata:
+  annotations:
+    "helm.sh/hook": "pre-install"
+# ...
+```
+
 ## The Available Hooks
 
 The following hooks are defined:
@@ -36,6 +47,8 @@ The following hooks are defined:
   rendered, but before any resources have been rolled back.
 - post-rollback: Executes on a rollback request after all resources
   have been modified.
+- crd-install: Adds CRD resources before any other checks are run. This is used
+  only on CRD definitions that are used by other manifests in the chart.
 
 ## Hooks and the Release Lifecycle
 
@@ -62,7 +75,7 @@ hooks, the lifecycle is altered like this:
    Kubernetes)
 5. Tiller sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
 6. Tiller then loads the hook with the lowest weight first (negative to positive)
-7. Tiller waits until the hook is "Ready"
+7. Tiller waits until the hook is "Ready" (except for CRDs)
 8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
 flag is set, Tiller will wait until all resources are in a ready state
 and will not run the `post-install` hook until they are ready.
@@ -184,6 +197,52 @@ You can choose one or more defined annotation values:
 * `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed.
 * `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
 * `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
+
+### Defining a CRD with the `crd-install` Hook
+
+Custom Resource Definitions (CRDs) are a special kind in Kubernetes. They provide
+a way to define other kinds.
+
+On occasion, a chart needs to both define a kind and then use it. This is done
+with the `crd-install` hook.
+
+The `crd-install` hook is executed very early during an installation, before
+the rest of the manifests are verified. CRDs can be annotated with this hook so
+that they are installed before any instances of that CRD are referenced. In this
+way, when verification happens later, the CRDs will be available.
+
+Here is an example of defining a CRD with a hook, and an instance of the CRD:
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: crontabs.stable.example.com
+  annotations:
+    "helm.sh/hook": crd-install
+spec:
+  group: stable.example.com
+  version: v1
+  scope: Namespaced
+  names:
+    plural: crontabs
+    singular: crontab
+    kind: CronTab
+    shortNames:
+    - ct
+```
+
+And:
+
+```yaml
+apiVersion: stable.example.com/v1
+kind: CronTab
+metadata:
+  name: {{ .Release.Name }}-inst
+```
+
+Both of these can now be in the same chart, provided that the CRD is correctly
+annotated.
 
 ### Automatically delete hook from previous release
 

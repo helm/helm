@@ -127,18 +127,57 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 		rel.Info.Status.Notes = notesTxt
 	}
 
-	err = validateManifest(s.env.KubeClient, req.Namespace, manifestDoc.Bytes())
-	return rel, err
+	return rel, nil
+}
+
+func hasCRDHook(hs []*release.Hook) bool {
+	for _, h := range hs {
+		for _, e := range h.Events {
+			if e == events[hooks.CRDInstall] {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // performRelease runs a release.
 func (s *ReleaseServer) performRelease(r *release.Release, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
 	res := &services.InstallReleaseResponse{Release: r}
+	manifestDoc := []byte(r.Manifest)
 
 	if req.DryRun {
 		s.Log("dry run for %s", r.Name)
+
+		if !req.DisableCrdHook && hasCRDHook(r.Hooks) {
+			s.Log("validation skipped because CRD hook is present")
+			res.Release.Info.Description = "Validation skipped because CRDs are not installed"
+			return res, nil
+		}
+
+		// Here's the problem with dry runs and CRDs: We can't install a CRD
+		// during a dry run, which means it cannot be validated.
+		if err := validateManifest(s.env.KubeClient, req.Namespace, manifestDoc); err != nil {
+			return res, err
+		}
+
 		res.Release.Info.Description = "Dry run complete"
 		return res, nil
+	}
+
+	// crd-install hooks
+	if !req.DisableHooks && !req.DisableCrdHook {
+		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.CRDInstall, req.Timeout); err != nil {
+			fmt.Printf("Finished installing CRD: %s", err)
+			return res, err
+		}
+	} else {
+		s.Log("CRD install hooks disabled for %s", req.Name)
+	}
+
+	// Because the CRDs are installed, they are used for validation during this step.
+	if err := validateManifest(s.env.KubeClient, req.Namespace, manifestDoc); err != nil {
+		return res, fmt.Errorf("validation failed: %s", err)
 	}
 
 	// pre-install hooks

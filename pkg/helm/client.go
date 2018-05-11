@@ -97,6 +97,7 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	req.Namespace = ns
 	req.DryRun = reqOpts.dryRun
 	req.DisableHooks = reqOpts.disableHooks
+	req.DisableCrdHook = reqOpts.disableCRDHook
 	req.ReuseName = reqOpts.reuseName
 	ctx := NewContext()
 

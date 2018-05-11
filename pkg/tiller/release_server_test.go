@@ -55,6 +55,25 @@ metadata:
 data:
   name: value`
 
+var manifestWithCRDHook = `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: crontabs.stable.example.com
+  annotations:
+    "helm.sh/hook": crd-install
+spec:
+  group: stable.example.com
+  version: v1
+  scope: Namespaced
+  names:
+    plural: crontabs
+    singular: crontab
+    kind: CronTab
+    shortNames:
+    - ct
+`
+
 var manifestWithTestHook = `kind: Pod
 metadata:
   name: finding-nemo,
