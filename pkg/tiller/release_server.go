@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
+	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
@@ -177,8 +178,14 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		}
 
 		h, err := s.env.Releases.History(start)
-		if err != nil || len(h) < 1 {
-			return start, err
+		if err != nil {
+			if strings.Contains(err.Error(), driver.ErrReleaseNotFound(start).Error()) {
+				return start, nil
+			}
+			return "", err
+		}
+		if len(h) < 1 {
+			return start, nil
 		}
 		relutil.Reverse(h, relutil.SortByRevision)
 		rel := h[0]
