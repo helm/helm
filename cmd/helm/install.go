@@ -220,7 +220,7 @@ func (i *installCmd) run() error {
 		i.namespace = defaultNamespace()
 	}
 
-	rawVals, err := vals(i.valueFiles, i.values, i.stringValues)
+	rawVals, err := vals(i.valueFiles, i.values, i.stringValues, i.certFile, i.keyFile, i.caFile)
 	if err != nil {
 		return err
 	}
@@ -335,7 +335,7 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 
 // vals merges values from files specified via -f/--values and
 // directly via --set or --set-string, marshaling them to YAML
-func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte, error) {
+func vals(valueFiles valueFiles, values []string, stringValues []string, CertFile, KeyFile, CAFile string) ([]byte, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -347,7 +347,7 @@ func vals(valueFiles valueFiles, values []string, stringValues []string) ([]byte
 		if strings.TrimSpace(filePath) == "-" {
 			bytes, err = ioutil.ReadAll(os.Stdin)
 		} else {
-			bytes, err = readFile(filePath)
+			bytes, err = readFile(filePath, CertFile, KeyFile, CAFile)
 		}
 
 		if err != nil {
@@ -512,7 +512,7 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 }
 
 //readFile load a file from the local directory or a remote file with a url.
-func readFile(filePath string) ([]byte, error) {
+func readFile(filePath, CertFile, KeyFile, CAFile string) ([]byte, error) {
 	u, _ := url.Parse(filePath)
 	p := getter.All(settings)
 
@@ -523,7 +523,7 @@ func readFile(filePath string) ([]byte, error) {
 		return ioutil.ReadFile(filePath)
 	}
 
-	getter, err := getterConstructor(filePath, "", "", "")
+	getter, err := getterConstructor(filePath, CertFile, KeyFile, CAFile)
 	if err != nil {
 		return []byte{}, err
 	}
