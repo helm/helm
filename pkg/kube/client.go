@@ -139,6 +139,7 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
+		Schema(c.validator()).
 		Flatten().
 		Do().Infos()
 	return result, scrubValidationError(err)
