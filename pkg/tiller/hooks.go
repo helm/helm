@@ -42,6 +42,7 @@ var events = map[string]release.Hook_Event{
 	hooks.PostRollback:       release.Hook_POST_ROLLBACK,
 	hooks.ReleaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
 	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
+	hooks.CRDInstall:         release.Hook_CRD_INSTALL,
 }
 
 // deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
@@ -137,10 +138,6 @@ func (file *manifestFile) sort(result *result) error {
 			return e
 		}
 
-		if entry.Version != "" && !file.apis.Has(entry.Version) {
-			return fmt.Errorf("apiVersion %q in %s is not available", entry.Version, file.path)
-		}
-
 		if !hasAnyAnnotation(entry) {
 			result.generic = append(result.generic, Manifest{
 				Name:    file.path,
@@ -199,7 +196,6 @@ func (file *manifestFile) sort(result *result) error {
 			}
 		})
 	}
-
 	return nil
 }
 
