@@ -284,14 +284,14 @@ func (i *installCmd) run() error {
 		if res, e := i.client.ReleaseContent(i.name); e != nil {
 			fmt.Fprintf(i.out, "Error reading release content: %v", prettyError(e))
 		} else {
-			printRelease(i.out, res.Release)
+			i.printRelease(res.Release)
 		}
 	} else {
 		rel := resp.GetRelease()
 		if rel == nil {
 			return nil
 		}
-		printRelease(i.out, rel)
+		i.printRelease(rel)
 	}
 
 	if err != nil {
