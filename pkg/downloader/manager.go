@@ -99,11 +99,7 @@ func (m *Manager) Build() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
-		return err
-	}
-
-	return nil
+	return m.downloadAll(lock.Dependencies)
 }
 
 // Update updates a local charts directory.
