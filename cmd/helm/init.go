@@ -281,9 +281,12 @@ func (i *initCmd) run() error {
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.\n\n"+
-				"Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
-				"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
+			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.")
+			if !tlsVerify {
+				fmt.Fprintln(i.out, "\nPlease note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
+					"To prevent this, run `helm init` with the --tiller-tls-verify flag.\n"+
+					"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
+			}
 		}
 		if err := i.ping(); err != nil {
 			return err
