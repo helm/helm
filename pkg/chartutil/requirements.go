@@ -68,6 +68,8 @@ type Dependency struct {
 	ImportValues []interface{} `json:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty"`
+	// SHA256 digest of the tarball
+	Digest string `json:"digest,omitempty"`
 }
 
 // ErrNoRequirementsFile to detect error condition
