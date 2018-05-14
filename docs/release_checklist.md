@@ -121,31 +121,6 @@ index 2109a0a..6f5a1a4 100644
         BuildMetadata = "unreleased"
 ```
 
-The README stores links to the latest release for helm. We want to change the version to the first release candidate which we are releasing (more on that in step 5).
-
-```shell
-$ git diff README.md
-diff --git a/README.md b/README.md
-index 022afd79..547839e2 100644
---- a/README.md
-+++ b/README.md
-@@ -34,10 +34,10 @@ Think of it like apt/yum/homebrew for Kubernetes.
-
- Binary downloads of the Helm client can be found at the following links:
-
--- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-darwin-amd64.tar.gz)
--- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-linux-amd64.tar.gz)
--- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-linux-386.tar.gz)
--- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-windows-amd64.tar.gz)
-+- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-darwin-amd64.tar.gz)
-+- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-amd64.tar.gz)
-+- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-386.tar.gz)
-+- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-windows-amd64.tar.gz)
-
- Unpack the `helm` binary and add it to your PATH and you are good to go!
- macOS/[homebrew](https://brew.sh/) users can also use `brew install kubernetes-helm`.
-```
-
 For patch releases, the old version number will be the latest patch release, so just bump the patch number, incrementing Z by one.
 
 ```shell
