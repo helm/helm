@@ -22,29 +22,24 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
 func TestRepoRemove(t *testing.T) {
-	ts, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
+	defer resetEnv()()
+
+	ts, hh, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	hh := helmpath.Home(thome)
-	cleanup := resetEnv()
 	defer func() {
 		ts.Stop()
-		os.RemoveAll(thome.String())
-		cleanup()
+		os.RemoveAll(hh.String())
 	}()
-	if err := ensureTestHome(t, hh); err != nil {
-		t.Fatal(err)
-	}
-
-	settings.Home = thome
+	ensureTestHome(t, hh)
+	settings.Home = hh
 
 	const testRepoName = "test-name"
 

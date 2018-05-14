@@ -24,7 +24,7 @@ import (
 )
 
 func TestGetCmd(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:   "get with a release",
 		cmd:    "get thomas-guide",
 		golden: "output/get-release.txt",
@@ -35,5 +35,5 @@ func TestGetCmd(t *testing.T) {
 		golden:    "output/get-no-args.txt",
 		wantError: true,
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

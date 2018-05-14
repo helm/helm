@@ -22,7 +22,6 @@ import (
 
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 const dependencyBuildDesc = `
@@ -40,10 +39,7 @@ type dependencyBuildOptions struct {
 	keyring string // --keyring
 	verify  bool   // --verify
 
-	// args
 	chartpath string
-
-	helmhome helmpath.Home
 }
 
 func newDependencyBuildCmd(out io.Writer) *cobra.Command {
@@ -56,7 +52,6 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 		Short: "rebuild the charts/ directory based on the requirements.lock file",
 		Long:  dependencyBuildDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.helmhome = settings.Home
 			if len(args) > 0 {
 				o.chartpath = args[0]
 			}
@@ -75,7 +70,7 @@ func (o *dependencyBuildOptions) run(out io.Writer) error {
 	man := &downloader.Manager{
 		Out:       out,
 		ChartPath: o.chartpath,
-		HelmHome:  o.helmhome,
+		HelmHome:  settings.Home,
 		Keyring:   o.keyring,
 		Getters:   getter.All(settings),
 	}

@@ -27,7 +27,7 @@ func TestDelete(t *testing.T) {
 
 	rels := []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})}
 
-	tests := []releaseCase{
+	tests := []cmdTestCase{
 		{
 			name:   "basic delete",
 			cmd:    "delete aeneas",
@@ -59,5 +59,5 @@ func TestDelete(t *testing.T) {
 			wantError: true,
 		},
 	}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

@@ -35,16 +35,9 @@ import (
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
-	hh, err := tempHelmHome(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cleanup := resetEnv()
-	defer func() {
-		os.RemoveAll(hh.String())
-		cleanup()
-	}()
+	defer resetEnv()()
 
+	hh := testHelmHome(t)
 	settings.Home = hh
 
 	srv := repotest.NewServer(hh.String())
@@ -125,16 +118,9 @@ func TestDependencyUpdateCmd(t *testing.T) {
 }
 
 func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
-	hh, err := tempHelmHome(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cleanup := resetEnv()
-	defer func() {
-		os.RemoveAll(hh.String())
-		cleanup()
-	}()
+	defer resetEnv()()
 
+	hh := testHelmHome(t)
 	settings.Home = hh
 
 	srv := repotest.NewServer(hh.String())
@@ -163,16 +149,9 @@ func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 }
 
 func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
-	hh, err := tempHelmHome(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cleanup := resetEnv()
-	defer func() {
-		os.RemoveAll(hh.String())
-		cleanup()
-	}()
+	defer resetEnv()()
 
+	hh := testHelmHome(t)
 	settings.Home = hh
 
 	srv := repotest.NewServer(hh.String())

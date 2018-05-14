@@ -21,51 +21,52 @@ import (
 )
 
 func TestSearchCmd(t *testing.T) {
-	tests := []releaseCase{{
+	defer resetEnv()()
+
+	setHome := func(cmd string) string {
+		return cmd + " --home=testdata/helmhome"
+	}
+
+	tests := []cmdTestCase{{
 		name:   "search for 'maria', expect one match",
-		cmd:    "search maria",
+		cmd:    setHome("search maria"),
 		golden: "output/search-single.txt",
 	}, {
 		name:   "search for 'alpine', expect two matches",
-		cmd:    "search alpine",
+		cmd:    setHome("search alpine"),
 		golden: "output/search-multiple.txt",
 	}, {
 		name:   "search for 'alpine' with versions, expect three matches",
-		cmd:    "search alpine --versions",
+		cmd:    setHome("search alpine --versions"),
 		golden: "output/search-multiple-versions.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-		cmd:    "search alpine --version '>= 0.1, < 0.2'",
+		cmd:    setHome("search alpine --version '>= 0.1, < 0.2'"),
 		golden: "output/search-constraint.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-		cmd:    "search alpine --versions --version '>= 0.1, < 0.2'",
+		cmd:    setHome("search alpine --versions --version '>= 0.1, < 0.2'"),
 		golden: "output/search-versions-constraint.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint, expect one match with version 0.2.0",
-		cmd:    "search alpine --version '>= 0.1'",
+		cmd:    setHome("search alpine --version '>= 0.1'"),
 		golden: "output/search-constraint-single.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint and --versions, expect two matches",
-		cmd:    "search alpine --versions --version '>= 0.1'",
+		cmd:    setHome("search alpine --versions --version '>= 0.1'"),
 		golden: "output/search-multiple-versions-constraints.txt",
 	}, {
 		name:   "search for 'syzygy', expect no matches",
-		cmd:    "search syzygy",
+		cmd:    setHome("search syzygy"),
 		golden: "output/search-not-found.txt",
 	}, {
 		name:   "search for 'alp[a-z]+', expect two matches",
-		cmd:    "search alp[a-z]+ --regexp",
+		cmd:    setHome("search alp[a-z]+ --regexp"),
 		golden: "output/search-regex.txt",
 	}, {
 		name:      "search for 'alp[', expect failure to compile regexp",
-		cmd:       "search alp[ --regexp",
+		cmd:       setHome("search alp[ --regexp"),
 		wantError: true,
 	}}
-
-	cleanup := resetEnv()
-	defer cleanup()
-
-	settings.Home = "testdata/helmhome"
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

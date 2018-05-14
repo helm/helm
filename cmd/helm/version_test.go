@@ -20,7 +20,7 @@ import (
 )
 
 func TestVersion(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:   "default",
 		cmd:    "version",
 		golden: "output/version.txt",
@@ -29,5 +29,5 @@ func TestVersion(t *testing.T) {
 		cmd:    "version --template='Version: {{.Version}}'",
 		golden: "output/version-template.txt",
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

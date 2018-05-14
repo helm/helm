@@ -20,7 +20,7 @@ import (
 )
 
 func TestDependencyListCmd(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:      "No such chart",
 		cmd:       "dependency list /no/such/chart",
 		golden:    "output/dependency-list-no-chart.txt",
@@ -38,5 +38,5 @@ func TestDependencyListCmd(t *testing.T) {
 		cmd:    "dependency list testdata/testcharts/reqtest-0.1.0.tgz",
 		golden: "output/dependency-list-archive.txt",
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

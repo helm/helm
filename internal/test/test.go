@@ -42,7 +42,7 @@ func AssertGoldenBytes(t TestingT, actual []byte, filename string) {
 	t.Helper()
 
 	if err := compare(actual, path(filename)); err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatalf("%v", err)
 	}
 }
 
@@ -50,7 +50,7 @@ func AssertGoldenString(t TestingT, actual, filename string) {
 	t.Helper()
 
 	if err := compare([]byte(actual), path(filename)); err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatalf("%v", err)
 	}
 }
 

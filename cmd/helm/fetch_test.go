@@ -28,19 +28,13 @@ import (
 )
 
 func TestFetchCmd(t *testing.T) {
-	hh, err := tempHelmHome(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cleanup := resetEnv()
-	defer func() {
-		os.RemoveAll(hh.String())
-		cleanup()
-	}()
+	defer resetEnv()()
+
+	hh := testHelmHome(t)
+	settings.Home = hh
+
 	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
-
-	settings.Home = hh
 
 	// all flags will get "--home=TMDIR -d outdir" appended.
 	tests := []struct {
@@ -131,7 +125,7 @@ func TestFetchCmd(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		outdir := filepath.Join(hh.String(), "testout")
+		outdir := hh.Path("testout")
 		os.RemoveAll(outdir)
 		os.Mkdir(outdir, 0755)
 

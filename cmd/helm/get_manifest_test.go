@@ -24,7 +24,7 @@ import (
 )
 
 func TestGetManifest(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:   "get manifest with release",
 		cmd:    "get manifest juno",
 		golden: "output/get-manifest.txt",
@@ -35,5 +35,5 @@ func TestGetManifest(t *testing.T) {
 		golden:    "output/get-manifest-no-args.txt",
 		wantError: true,
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

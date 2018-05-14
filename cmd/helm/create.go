@@ -26,7 +26,6 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"
-	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 const createDesc = `
@@ -51,11 +50,7 @@ will be overwritten, but other files will be left alone.
 
 type createOptions struct {
 	starter string // --starter
-
-	// args
-	name string
-
-	home helmpath.Home
+	name    string
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
@@ -66,7 +61,6 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		Short: "create a new chart with the given name",
 		Long:  createDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.home = settings.Home
 			if len(args) == 0 {
 				return errors.New("the name of the new chart is required")
 			}
@@ -93,7 +87,7 @@ func (o *createOptions) run(out io.Writer) error {
 
 	if o.starter != "" {
 		// Create from the starter
-		lstarter := filepath.Join(o.home.Starters(), o.starter)
+		lstarter := filepath.Join(settings.Home.Starters(), o.starter)
 		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 	}
 
