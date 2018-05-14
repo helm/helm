@@ -24,7 +24,7 @@ import (
 )
 
 func TestGetHooks(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:   "get hooks with release",
 		cmd:    "get hooks aeneas",
 		golden: "output/get-hooks.txt",
@@ -35,5 +35,5 @@ func TestGetHooks(t *testing.T) {
 		golden:    "output/get-hooks-no-args.txt",
 		wantError: true,
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

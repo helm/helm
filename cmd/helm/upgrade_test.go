@@ -17,9 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -29,8 +26,7 @@ import (
 )
 
 func TestUpgradeCmd(t *testing.T) {
-	tmpChart, _ := ioutil.TempDir("testdata", "tmp")
-	defer os.RemoveAll(tmpChart)
+	tmpChart := testTempDir(t)
 	cfile := &chart.Metadata{
 		Name:        "testUpgradeChart",
 		Description: "A Helm chart for Kubernetes",
@@ -38,9 +34,12 @@ func TestUpgradeCmd(t *testing.T) {
 	}
 	chartPath, err := chartutil.Create(cfile, tmpChart)
 	if err != nil {
-		t.Errorf("Error creating chart for upgrade: %v", err)
+		t.Fatalf("Error creating chart for upgrade: %v", err)
 	}
-	ch, _ := chartutil.Load(chartPath)
+	ch, err := chartutil.Load(chartPath)
+	if err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
 	_ = helm.ReleaseMock(&helm.MockReleaseOptions{
 		Name:  "funny-bunny",
 		Chart: ch,
@@ -55,11 +54,11 @@ func TestUpgradeCmd(t *testing.T) {
 
 	chartPath, err = chartutil.Create(cfile, tmpChart)
 	if err != nil {
-		t.Errorf("Error creating chart: %v", err)
+		t.Fatalf("Error creating chart: %v", err)
 	}
 	ch, err = chartutil.Load(chartPath)
 	if err != nil {
-		t.Errorf("Error loading updated chart: %v", err)
+		t.Fatalf("Error loading updated chart: %v", err)
 	}
 
 	// update chart version again
@@ -71,22 +70,22 @@ func TestUpgradeCmd(t *testing.T) {
 
 	chartPath, err = chartutil.Create(cfile, tmpChart)
 	if err != nil {
-		t.Errorf("Error creating chart: %v", err)
+		t.Fatalf("Error creating chart: %v", err)
 	}
 	var ch2 *chart.Chart
 	ch2, err = chartutil.Load(chartPath)
 	if err != nil {
-		t.Errorf("Error loading updated chart: %v", err)
+		t.Fatalf("Error loading updated chart: %v", err)
 	}
 
-	missingDepsPath := filepath.Join("testdata/testcharts/chart-missing-deps")
-	badDepsPath := filepath.Join("testdata/testcharts/chart-bad-requirements")
+	missingDepsPath := "testdata/testcharts/chart-missing-deps"
+	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 
 	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
 		return helm.ReleaseMock(&helm.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
 
-	tests := []releaseCase{
+	tests := []cmdTestCase{
 		{
 			name:   "upgrade a release",
 			cmd:    "upgrade funny-bunny " + chartPath,
@@ -142,5 +141,5 @@ func TestUpgradeCmd(t *testing.T) {
 			wantError: true,
 		},
 	}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

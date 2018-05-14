@@ -71,11 +71,10 @@ func TestEnvSettings(t *testing.T) {
 		},
 	}
 
-	cleanup := resetEnv()
-	defer cleanup()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defer resetEnv()()
+
 			for k, v := range tt.envars {
 				os.Setenv(k, v)
 			}
@@ -103,8 +102,6 @@ func TestEnvSettings(t *testing.T) {
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
 			}
-
-			cleanup()
 		})
 	}
 }

@@ -19,7 +19,6 @@ package main
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,11 +28,7 @@ import (
 
 func TestRepoIndexCmd(t *testing.T) {
 
-	dir, err := ioutil.TempDir("", "helm-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := testTempDir(t)
 
 	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
 	if err := linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {

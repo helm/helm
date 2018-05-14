@@ -18,7 +18,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -26,14 +25,9 @@ import (
 )
 
 func TestEnsureHome(t *testing.T) {
-	home, err := ioutil.TempDir("", "helm_home")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(home)
+	hh := helmpath.Home(testTempDir(t))
 
 	b := bytes.NewBuffer(nil)
-	hh := helmpath.Home(home)
 	settings.Home = hh
 	if err := ensureDirectories(hh, b); err != nil {
 		t.Error(err)

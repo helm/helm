@@ -62,8 +62,7 @@ func TestManuallyProcessArgs(t *testing.T) {
 }
 
 func TestLoadPlugins(t *testing.T) {
-	cleanup := resetEnv()
-	defer cleanup()
+	defer resetEnv()()
 
 	settings.Home = "testdata/helmhome"
 
@@ -133,8 +132,7 @@ func TestLoadPlugins(t *testing.T) {
 }
 
 func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
-	cleanup := resetEnv()
-	defer cleanup()
+	defer resetEnv()()
 
 	settings.Home = "testdata/helmhome"
 
@@ -151,6 +149,7 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 }
 
 func TestSetupEnv(t *testing.T) {
+	defer resetEnv()()
 	name := "pequod"
 	settings.Home = helmpath.Home("testdata/helmhome")
 	base := filepath.Join(settings.Home.Plugins(), name)

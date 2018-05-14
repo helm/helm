@@ -28,23 +28,10 @@ import (
 )
 
 func TestCreateCmd(t *testing.T) {
-	cname := "testchart"
-	// Make a temp dir
-	tdir, err := ioutil.TempDir("", "helm-create-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := testTempDir(t)
+	defer testChdir(t, tdir)()
 
-	// CD into it
-	pwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(tdir); err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(pwd)
+	cname := "testchart"
 
 	// Run a create
 	if _, err := executeCommand(nil, "create "+cname); err != nil {
@@ -73,28 +60,17 @@ func TestCreateCmd(t *testing.T) {
 }
 
 func TestCreateStarterCmd(t *testing.T) {
+	defer resetEnv()()
+
 	cname := "testchart"
 	// Make a temp dir
-	tdir, err := ioutil.TempDir("", "helm-create-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := testTempDir(t)
 
-	thome, err := tempHelmHome(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cleanup := resetEnv()
-	defer func() {
-		os.RemoveAll(thome.String())
-		cleanup()
-	}()
-
-	settings.Home = thome
+	hh := testHelmHome(t)
+	settings.Home = hh
 
 	// Create a starter.
-	starterchart := filepath.Join(thome.String(), "starters")
+	starterchart := hh.Starters()
 	os.Mkdir(starterchart, 0755)
 	if dest, err := chartutil.Create(&chart.Metadata{Name: "starterchart"}, starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
@@ -106,18 +82,10 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
-	// CD into it
-	pwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(tdir); err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(pwd)
+	defer testChdir(t, tdir)()
 
 	// Run a create
-	if _, err := executeCommand(nil, fmt.Sprintf("--home=%s create --starter=starterchart %s", thome, cname)); err != nil {
+	if _, err := executeCommand(nil, fmt.Sprintf("--home=%s create --starter=starterchart %s", hh, cname)); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
 	}
@@ -149,9 +117,8 @@ func TestCreateStarterCmd(t *testing.T) {
 	for _, tpl := range c.Templates {
 		if tpl.Name == "templates/foo.tpl" {
 			found = true
-			data := tpl.Data
-			if string(data) != "test" {
-				t.Errorf("Expected template 'test', got %q", string(data))
+			if data := string(tpl.Data); data != "test" {
+				t.Errorf("Expected template 'test', got %q", data)
 			}
 		}
 	}

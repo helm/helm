@@ -32,7 +32,7 @@ func TestStatusCmd(t *testing.T) {
 		}}
 	}
 
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:   "get status of a deployed release",
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status.txt",
@@ -89,5 +89,5 @@ func TestStatusCmd(t *testing.T) {
 			},
 		}),
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

@@ -23,7 +23,7 @@ import (
 )
 
 func TestInstall(t *testing.T) {
-	tests := []releaseCase{
+	tests := []cmdTestCase{
 		// Install, base case
 		{
 			name:   "basic install",
@@ -120,7 +120,7 @@ func TestInstall(t *testing.T) {
 		},
 	}
 
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }
 
 type nameTemplateTestCase struct {

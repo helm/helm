@@ -18,14 +18,12 @@ package main // import "k8s.io/helm/cmd/helm"
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
@@ -41,83 +39,6 @@ var (
 	config     clientcmd.ClientConfig
 	configOnce sync.Once
 )
-
-var globalUsage = `The Kubernetes package manager
-
-To begin working with Helm, run the 'helm init' command:
-
-	$ helm init
-
-This will set up any necessary local configuration.
-
-Common actions from this point include:
-
-- helm search:    search for charts
-- helm fetch:     download a chart to your local directory to view
-- helm install:   upload the chart to Kubernetes
-- helm list:      list releases of charts
-
-Environment:
-  $HELM_HOME          set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
-  $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
-`
-
-func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "helm",
-		Short:        "The Helm package manager for Kubernetes.",
-		Long:         globalUsage,
-		SilenceUsage: true,
-	}
-	flags := cmd.PersistentFlags()
-
-	settings.AddFlags(flags)
-
-	cmd.AddCommand(
-		// chart commands
-		newCreateCmd(out),
-		newDependencyCmd(out),
-		newFetchCmd(out),
-		newInspectCmd(out),
-		newLintCmd(out),
-		newPackageCmd(out),
-		newRepoCmd(out),
-		newSearchCmd(out),
-		newVerifyCmd(out),
-
-		// release commands
-		newDeleteCmd(c, out),
-		newGetCmd(c, out),
-		newHistoryCmd(c, out),
-		newInstallCmd(c, out),
-		newListCmd(c, out),
-		newReleaseTestCmd(c, out),
-		newRollbackCmd(c, out),
-		newStatusCmd(c, out),
-		newUpgradeCmd(c, out),
-
-		newCompletionCmd(out),
-		newHomeCmd(out),
-		newInitCmd(out),
-		newPluginCmd(out),
-		newTemplateCmd(out),
-		newVersionCmd(out),
-
-		// Hidden documentation generator command: 'helm docs'
-		newDocsCmd(out),
-	)
-
-	flags.Parse(args)
-
-	// set defaults from environment
-	settings.Init(flags)
-
-	// Find and add plugins
-	loadPlugins(cmd, out)
-
-	return cmd
-}
 
 func init() {
 	log.SetFlags(log.Lshortfile)

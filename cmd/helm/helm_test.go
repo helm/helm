@@ -20,12 +20,10 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	shellwords "github.com/mattn/go-shellwords"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/internal/test"
@@ -34,6 +32,66 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
+
+// base temp directory
+var testingDir string
+
+func init() {
+	var err error
+	testingDir, err = ioutil.TempDir(testingDir, "helm")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestMain(m *testing.M) {
+	os.Unsetenv("HELM_HOME")
+
+	exitCode := m.Run()
+	os.RemoveAll(testingDir)
+	os.Exit(exitCode)
+}
+
+func testTempDir(t *testing.T) string {
+	t.Helper()
+	d, err := ioutil.TempDir(testingDir, "helm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d
+}
+
+func runTestCmd(t *testing.T, tests []cmdTestCase) {
+	t.Helper()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer resetEnv()()
+
+			c := &helm.FakeClient{
+				Rels:          tt.rels,
+				TestRunStatus: tt.testRunStatus,
+			}
+			out, err := executeCommand(c, tt.cmd)
+			if (err != nil) != tt.wantError {
+				t.Errorf("expected error, got '%v'", err)
+			}
+			if tt.golden != "" {
+				test.AssertGoldenString(t, out, tt.golden)
+			}
+		})
+	}
+}
+
+// cmdTestCase describes a test case that works with releases.
+type cmdTestCase struct {
+	name      string
+	cmd       string
+	golden    string
+	wantError bool
+	// Rels are the available releases at the start of the test.
+	rels          []*release.Release
+	testRunStatus map[string]release.TestRunStatus
+}
 
 func executeCommand(c helm.Interface, cmd string) (string, error) {
 	_, output, err := executeCommandC(c, cmd)
@@ -55,59 +113,8 @@ func executeCommandC(client helm.Interface, cmd string) (*cobra.Command, string,
 	return c, buf.String(), err
 }
 
-func testReleaseCmd(t *testing.T, tests []releaseCase) {
-	t.Helper()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &helm.FakeClient{
-				Rels:          tt.rels,
-				TestRunStatus: tt.testRunStatus,
-			}
-			out, err := executeCommand(c, tt.cmd)
-			if (err != nil) != tt.wantError {
-				t.Errorf("expected error, got '%v'", err)
-			}
-			if tt.golden != "" {
-				test.AssertGoldenString(t, out, tt.golden)
-			}
-		})
-	}
-}
-
-// releaseCase describes a test case that works with releases.
-type releaseCase struct {
-	name      string
-	cmd       string
-	golden    string
-	wantError bool
-	// Rels are the available releases at the start of the test.
-	rels          []*release.Release
-	testRunStatus map[string]release.TestRunStatus
-}
-
-// tempHelmHome sets up a Helm Home in a temp dir.
-//
-// This does not clean up the directory. You must do that yourself.
-// You  must also set helmHome yourself.
-func tempHelmHome(t *testing.T) (helmpath.Home, error) {
-	oldhome := settings.Home
-	dir, err := ioutil.TempDir("", "helm_home-")
-	if err != nil {
-		return helmpath.Home("n/"), err
-	}
-
-	settings.Home = helmpath.Home(dir)
-	if err := ensureTestHome(t, settings.Home); err != nil {
-		return helmpath.Home("n/"), err
-	}
-	settings.Home = oldhome
-	return helmpath.Home(dir), nil
-}
-
 // ensureTestHome creates a home directory like ensureHome, but without remote references.
-//
-// t is used only for logging.
-func ensureTestHome(t *testing.T, home helmpath.Home) error {
+func ensureTestHome(t *testing.T, home helmpath.Home) {
 	t.Helper()
 	for _, p := range []string{
 		home.String(),
@@ -117,7 +124,7 @@ func ensureTestHome(t *testing.T, home helmpath.Home) error {
 		home.Starters(),
 	} {
 		if err := os.MkdirAll(p, 0755); err != nil {
-			return errors.Wrapf(err, "could not create %s", p)
+			t.Fatal(err)
 		}
 	}
 
@@ -130,100 +137,46 @@ func ensureTestHome(t *testing.T, home helmpath.Home) error {
 			Cache: "charts-index.yaml",
 		})
 		if err := rf.WriteFile(repoFile, 0644); err != nil {
-			return err
+			t.Fatal(err)
 		}
 	}
 	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
 		t.Log("Updating repository file format...")
 		if err := r.WriteFile(repoFile, 0644); err != nil {
-			return err
+			t.Fatal(err)
 		}
 	}
-
 	t.Logf("$HELM_HOME has been configured at %s.\n", home)
-	return nil
-
 }
 
-func TestRootCmd(t *testing.T) {
-	cleanup := resetEnv()
-	defer cleanup()
-
-	tests := []struct {
-		name, args, home string
-		envars           map[string]string
-	}{
-		{
-			name: "defaults",
-			args: "home",
-			home: filepath.Join(os.Getenv("HOME"), "/.helm"),
-		},
-		{
-			name: "with --home set",
-			args: "--home /foo",
-			home: "/foo",
-		},
-		{
-			name: "subcommands with --home set",
-			args: "home --home /foo",
-			home: "/foo",
-		},
-		{
-			name:   "with $HELM_HOME set",
-			args:   "home",
-			envars: map[string]string{"HELM_HOME": "/bar"},
-			home:   "/bar",
-		},
-		{
-			name:   "subcommands with $HELM_HOME set",
-			args:   "home",
-			envars: map[string]string{"HELM_HOME": "/bar"},
-			home:   "/bar",
-		},
-		{
-			name:   "with $HELM_HOME and --home set",
-			args:   "home --home /foo",
-			envars: map[string]string{"HELM_HOME": "/bar"},
-			home:   "/foo",
-		},
-	}
-
-	// ensure not set locally
-	os.Unsetenv("HELM_HOME")
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			defer os.Unsetenv("HELM_HOME")
-
-			for k, v := range tt.envars {
-				os.Setenv(k, v)
-			}
-
-			cmd, _, err := executeCommandC(nil, tt.args)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err)
-			}
-
-			if settings.Home.String() != tt.home {
-				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
-			}
-			homeFlag := cmd.Flag("home").Value.String()
-			homeFlag = os.ExpandEnv(homeFlag)
-			if homeFlag != tt.home {
-				t.Errorf("expected home %q, got %q", tt.home, homeFlag)
-			}
-		})
-	}
+// testHelmHome sets up a Helm Home in a temp dir.
+func testHelmHome(t *testing.T) helmpath.Home {
+	t.Helper()
+	dir := helmpath.Home(testTempDir(t))
+	ensureTestHome(t, dir)
+	return dir
 }
 
 func resetEnv() func() {
-	origSettings := settings
-	origEnv := os.Environ()
+	origSettings, origEnv := settings, os.Environ()
 	return func() {
+		os.Clearenv()
 		settings = origSettings
 		for _, pair := range origEnv {
 			kv := strings.SplitN(pair, "=", 2)
 			os.Setenv(kv[0], kv[1])
 		}
 	}
+}
+
+func testChdir(t *testing.T, dir string) func() {
+	t.Helper()
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	return func() { os.Chdir(old) }
 }

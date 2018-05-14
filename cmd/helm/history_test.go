@@ -32,7 +32,7 @@ func TestHistoryCmd(t *testing.T) {
 		})
 	}
 
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name: "get history for release",
 		cmd:  "history angry-bird",
 		rels: []*rpb.Release{
@@ -67,5 +67,5 @@ func TestHistoryCmd(t *testing.T) {
 		},
 		golden: "output/history.json",
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

@@ -24,7 +24,7 @@ import (
 )
 
 func TestListCmd(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name: "with a release",
 		cmd:  "list",
 		rels: []*release.Release{
@@ -111,5 +111,5 @@ func TestListCmd(t *testing.T) {
 		golden: "output/list-with-old-releases.txt",
 	}}
 
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

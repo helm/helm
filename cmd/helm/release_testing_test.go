@@ -23,7 +23,7 @@ import (
 )
 
 func TestReleaseTesting(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:          "basic test",
 		cmd:           "test example-release",
 		testRunStatus: map[string]release.TestRunStatus{"PASSED: green lights everywhere": release.TestRunSuccess},
@@ -62,5 +62,5 @@ func TestReleaseTesting(t *testing.T) {
 			"PASSED: feel free to party again":            release.TestRunSuccess},
 		wantError: true,
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

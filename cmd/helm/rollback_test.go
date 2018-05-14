@@ -21,7 +21,7 @@ import (
 )
 
 func TestRollbackCmd(t *testing.T) {
-	tests := []releaseCase{{
+	tests := []cmdTestCase{{
 		name:   "rollback a release",
 		cmd:    "rollback funny-honey 1",
 		golden: "output/rollback.txt",
@@ -39,5 +39,5 @@ func TestRollbackCmd(t *testing.T) {
 		golden:    "output/rollback-no-args.txt",
 		wantError: true,
 	}}
-	testReleaseCmd(t, tests)
+	runTestCmd(t, tests)
 }

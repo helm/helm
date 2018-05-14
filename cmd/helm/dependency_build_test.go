@@ -27,22 +27,14 @@ import (
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
-	hh, err := tempHelmHome(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cleanup := resetEnv()
-	defer func() {
-		os.RemoveAll(hh.String())
-		cleanup()
-	}()
+	defer resetEnv()()
 
+	hh := testHelmHome(t)
 	settings.Home = hh
 
 	srv := repotest.NewServer(hh.String())
 	defer srv.Stop()
-	_, err = srv.CopyCharts("testdata/testcharts/*.tgz")
-	if err != nil {
+	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz"); err != nil {
 		t.Fatal(err)
 	}
 
