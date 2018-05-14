@@ -316,6 +316,8 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 				dst[key] = val
 			} else if istable(innerdst) {
 				coalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}))
+			} else if isnull(innerdst) {
+				delete(dst, key)
 			} else {
 				log.Printf("warning: cannot overwrite table with non table for %s (%v)", key, val)
 			}
@@ -386,6 +388,11 @@ func ToRenderValuesCaps(chrt *chart.Chart, chrtVals *chart.Config, options Relea
 func istable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})
 	return ok
+}
+
+// isnull is a special-purpose function to see if the present thing matches the definition of a YAML null.
+func isnull(v interface{}) bool {
+	return v == "null" || v == "Null" || v == "NULL" || v == "~"
 }
 
 // PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
