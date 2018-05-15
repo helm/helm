@@ -145,8 +145,8 @@ func TestAddDefaults(t *testing.T) {
 	r := Rules{}
 	r.AddDefaults()
 
-	if len(r.patterns) != 1 {
-		t.Errorf("Expected 1 default patterns, got %d", len(r.patterns))
+	if len(r.patterns) != 0 {
+		t.Errorf("Expected 0 default patterns, got %d", len(r.patterns))
 	}
 }
 
