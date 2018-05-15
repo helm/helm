@@ -98,7 +98,8 @@ func TestIgnore(t *testing.T) {
 		{`cargo/*.*`, "cargo/a.txt", true},
 		{`cargo/*.txt`, "mast/a.txt", false},
 		{`ru[c-e]?er.txt`, "rudder.txt", true},
-		{`templates/.?*`, "templates/.dotfile", true},
+        // ".?*" should not get ignored. https://github.com/kubernetes/helm/issues/4058
+		{`templates/.?*`, "templates/.dotfile", false},
 		// "." should never get ignored. https://github.com/kubernetes/helm/issues/1776
 		{`.*`, ".", false},
 		{`.*`, "./", false},
