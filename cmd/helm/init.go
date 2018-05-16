@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
@@ -52,10 +53,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 		Use:   "init",
 		Short: "initialize Helm client",
 		Long:  initDesc,
+		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 0 {
-				return errors.New("this command does not accept arguments")
-			}
 			o.home = settings.Home
 			return o.run(out)
 		},

@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
@@ -70,14 +71,11 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	o := &fetchOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "fetch [flags] [chart URL | repo/chartname] [...]",
+		Use:   "fetch [chart URL | repo/chartname] [...]",
 		Short: "download a chart from a repository and (optionally) unpack it in local directory",
 		Long:  fetchDesc,
+		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errors.Errorf("need at least one argument, url or repo/name of the chart")
-			}
-
 			if o.version == "" && o.devel {
 				debug("setting version to >0.0.0-0")
 				o.version = ">0.0.0-0"

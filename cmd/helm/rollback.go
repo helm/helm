@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -51,14 +52,11 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	o := &rollbackOptions{client: c}
 
 	cmd := &cobra.Command{
-		Use:   "rollback [flags] [RELEASE] [REVISION]",
+		Use:   "rollback [RELEASE] [REVISION]",
 		Short: "roll back a release to a previous revision",
 		Long:  rollbackDesc,
+		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "release name", "revision number"); err != nil {
-				return err
-			}
-
 			o.name = args[0]
 
 			v64, err := strconv.ParseInt(args[1], 10, 32)

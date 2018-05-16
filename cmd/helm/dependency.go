@@ -25,6 +25,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/chartutil"
 )
 
@@ -93,6 +94,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 		Aliases: []string{"dep", "dependencies"},
 		Short:   "manage a chart's dependencies",
 		Long:    dependencyDesc,
+		Args:    require.NoArgs,
 	}
 
 	cmd.AddCommand(newDependencyListCmd(out))
@@ -112,10 +114,11 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list [flags] CHART",
+		Use:     "list CHART",
 		Aliases: []string{"ls"},
 		Short:   "list the dependencies for the given chart",
 		Long:    dependencyListDesc,
+		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				o.chartpath = filepath.Clean(args[0])

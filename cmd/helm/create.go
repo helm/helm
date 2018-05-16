@@ -21,9 +21,9 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"
 )
@@ -60,10 +60,8 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		Use:   "create NAME",
 		Short: "create a new chart with the given name",
 		Long:  createDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errors.New("the name of the new chart is required")
-			}
 			o.name = args[0]
 			return o.run(out)
 		},

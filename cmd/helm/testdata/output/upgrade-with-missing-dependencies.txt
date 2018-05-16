@@ -1,1 +1,3 @@
-Error: this command needs 2 arguments: release name, chart path
+Error: "helm upgrade" requires 2 arguments
+
+Usage:  helm upgrade [RELEASE] [CHART] [flags]

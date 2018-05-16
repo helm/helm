@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 )
@@ -48,11 +49,8 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Use:   "test [RELEASE]",
 		Short: "test a release",
 		Long:  releaseTestDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "release name"); err != nil {
-				return err
-			}
-
 			o.name = args[0]
 			o.client = ensureHelmClient(o.client, false)
 			return o.run(out)

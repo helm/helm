@@ -32,6 +32,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
@@ -155,11 +156,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Use:   "install [CHART]",
 		Short: "install a chart archive",
 		Long:  installDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "chart name"); err != nil {
-				return err
-			}
-
 			debug("Original chart version: %q", o.version)
 			if o.version == "" && o.devel {
 				debug("setting version to >0.0.0-0")

@@ -1,1 +1,3 @@
-Error: command 'delete' requires a release name
+Error: "helm delete" requires at least 1 argument
+
+Usage:  helm delete RELEASE_NAME [...] [flags]

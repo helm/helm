@@ -24,6 +24,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
@@ -83,10 +84,11 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	o := &listOptions{client: client}
 
 	cmd := &cobra.Command{
-		Use:     "list [flags] [FILTER]",
+		Use:     "list [FILTER]",
 		Short:   "list releases",
 		Long:    listHelp,
 		Aliases: []string{"ls"},
+		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				o.filter = strings.Join(args, " ")

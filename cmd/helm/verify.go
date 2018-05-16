@@ -18,9 +18,9 @@ package main
 import (
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/downloader"
 )
 
@@ -44,13 +44,11 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 	o := &verifyOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "verify [flags] PATH",
+		Use:   "verify PATH",
 		Short: "verify that a chart at the given path has been signed and is valid",
 		Long:  verifyDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errors.New("a path to a package file is required")
-			}
 			o.chartfile = args[0]
 			return o.run(out)
 		},

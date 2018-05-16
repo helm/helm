@@ -21,6 +21,8 @@ import (
 	"io"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/cmd/helm/require"
 )
 
 var longHomeHelp = `
@@ -33,6 +35,7 @@ func newHomeCmd(out io.Writer) *cobra.Command {
 		Use:   "home",
 		Short: "displays the location of HELM_HOME",
 		Long:  longHomeHelp,
+		Args:  require.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			h := settings.Home
 			fmt.Fprintln(out, h)

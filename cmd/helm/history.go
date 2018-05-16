@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
@@ -71,14 +72,12 @@ func newHistoryCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	o := &historyOptions{client: c}
 
 	cmd := &cobra.Command{
-		Use:     "history [flags] RELEASE_NAME",
+		Use:     "history RELEASE_NAME",
 		Long:    historyHelp,
 		Short:   "fetch release history",
 		Aliases: []string{"hist"},
+		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errReleaseRequired
-			}
 			o.client = ensureHelmClient(o.client, false)
 			o.release = args[0]
 			return o.run(out)

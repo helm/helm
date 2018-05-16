@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
@@ -45,13 +46,10 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	o := &repoAddOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "add [flags] [NAME] [URL]",
+		Use:   "add [NAME] [URL]",
 		Short: "add a chart repository",
+		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
-				return err
-			}
-
 			o.name = args[0]
 			o.url = args[1]
 			o.home = settings.Home

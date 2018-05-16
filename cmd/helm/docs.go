@@ -22,6 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+
+	"k8s.io/helm/cmd/helm/require"
 )
 
 const docsDesc = `
@@ -51,6 +53,7 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 		Short:  "Generate documentation as markdown or man pages",
 		Long:   docsDesc,
 		Hidden: true,
+		Args:   require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.topCmd = cmd.Root()
 			return o.run(out)

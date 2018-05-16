@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -36,8 +37,9 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 	o := &repoListOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "list [flags]",
+		Use:   "list",
 		Short: "list chart repositories",
+		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.home = settings.Home
 			return o.run(out)

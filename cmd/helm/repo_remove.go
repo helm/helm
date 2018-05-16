@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 )
@@ -37,13 +38,11 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 	o := &repoRemoveOptions{}
 
 	cmd := &cobra.Command{
-		Use:     "remove [flags] [NAME]",
+		Use:     "remove [NAME]",
 		Aliases: []string{"rm"},
 		Short:   "remove a chart repository",
+		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "name of chart repository"); err != nil {
-				return err
-			}
 			o.name = args[0]
 			o.home = settings.Home
 

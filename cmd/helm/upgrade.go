@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/storage/driver"
@@ -90,11 +91,8 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Use:   "upgrade [RELEASE] [CHART]",
 		Short: "upgrade a release",
 		Long:  upgradeDesc,
+		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "release name", "chart path"); err != nil {
-				return err
-			}
-
 			if o.version == "" && o.devel {
 				debug("setting version to >0.0.0-0")
 				o.version = ">0.0.0-0"

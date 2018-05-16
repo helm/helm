@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -50,15 +50,13 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	o := &deleteOptions{client: c}
 
 	cmd := &cobra.Command{
-		Use:        "delete [flags] RELEASE_NAME [...]",
+		Use:        "delete RELEASE_NAME [...]",
 		Aliases:    []string{"del"},
 		SuggestFor: []string{"remove", "rm"},
 		Short:      "given a release name, delete the release from Kubernetes",
 		Long:       deleteDesc,
+		Args:       require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errors.New("command 'delete' requires a release name")
-			}
 			o.client = ensureHelmClient(o.client, false)
 
 			for i := 0; i < len(args); i++ {

@@ -19,9 +19,9 @@ package main
 import (
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -38,8 +38,6 @@ By default, this prints a human readable collection of information about the
 chart, the supplied values, and the generated manifest file.
 `
 
-var errReleaseRequired = errors.New("release name is required")
-
 type getOptions struct {
 	version int // --revision
 
@@ -52,13 +50,11 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	o := &getOptions{client: client}
 
 	cmd := &cobra.Command{
-		Use:   "get [flags] RELEASE_NAME",
+		Use:   "get RELEASE_NAME",
 		Short: "download a named release",
 		Long:  getHelp,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errReleaseRequired
-			}
 			o.release = args[0]
 			o.client = ensureHelmClient(o.client, false)
 			return o.run(out)

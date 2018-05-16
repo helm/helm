@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
@@ -56,13 +57,11 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	o := &statusOptions{client: client}
 
 	cmd := &cobra.Command{
-		Use:   "status [flags] RELEASE_NAME",
+		Use:   "status RELEASE_NAME",
 		Short: "displays the status of the named release",
 		Long:  statusHelp,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errReleaseRequired
-			}
 			o.release = args[0]
 			o.client = ensureHelmClient(o.client, false)
 			return o.run(out)

@@ -24,6 +24,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"
 )
@@ -80,10 +81,8 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Use:   "inspect [CHART]",
 		Short: "inspect a chart",
 		Long:  inspectDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "chart name"); err != nil {
-				return err
-			}
 			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
 				o.certFile, o.keyFile, o.caFile)
 			if err != nil {
@@ -98,11 +97,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Use:   "values [CHART]",
 		Short: "shows inspect values",
 		Long:  inspectValuesDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = valuesOnly
-			if err := checkArgsLength(len(args), "chart name"); err != nil {
-				return err
-			}
 			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
 				o.certFile, o.keyFile, o.caFile)
 			if err != nil {
@@ -117,11 +114,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Use:   "chart [CHART]",
 		Short: "shows inspect chart",
 		Long:  inspectChartDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = chartOnly
-			if err := checkArgsLength(len(args), "chart name"); err != nil {
-				return err
-			}
 			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
 				o.certFile, o.keyFile, o.caFile)
 			if err != nil {
@@ -136,11 +131,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Use:   "readme [CHART]",
 		Short: "shows inspect readme",
 		Long:  readmeChartDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = readmeOnly
-			if err := checkArgsLength(len(args), "chart name"); err != nil {
-				return err
-			}
 			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
 				o.certFile, o.keyFile, o.caFile)
 			if err != nil {

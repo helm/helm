@@ -77,7 +77,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	o := &templateOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "template [flags] CHART",
+		Use:   "template CHART",
 		Short: fmt.Sprintf("locally render templates"),
 		Long:  templateDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
