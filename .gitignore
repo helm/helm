@@ -10,3 +10,4 @@ rootfs/rudder
 vendor/
 *.exe
 .idea/
+*.iml

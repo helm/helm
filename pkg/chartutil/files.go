@@ -24,6 +24,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/gobwas/glob"
 	"github.com/golang/protobuf/ptypes/any"
@@ -116,10 +117,29 @@ func (f Files) AsConfig() string {
 
 	// Explicitly convert to strings, and file names
 	for k, v := range f {
-		m[path.Base(k)] = string(v)
+
+		m[AsConfigKey(k)] = string(v)
 	}
 
 	return ToYaml(m)
+}
+
+// AsConfigKey accepts a string, which is the path of a file then converts
+// it to Kubernetes friendly key to be used in ConfigMap and Secret keys.
+//
+// Used in AsSecrets() and AsConfig() methods.
+func AsConfigKey(k string) string {
+	dir := path.Dir(k)
+
+	prefix := ""
+	if dir != "." {
+		prefix = strings.Replace(dir, "/", "_", -1)
+		prefix += "_"
+	}
+
+	base := path.Base(k)
+
+	return fmt.Sprintf("%s%s", prefix, base)
 }
 
 // AsSecrets returns the base64-encoded value of a Files object suitable for
@@ -144,7 +164,7 @@ func (f Files) AsSecrets() string {
 	m := map[string]string{}
 
 	for k, v := range f {
-		m[path.Base(k)] = base64.StdEncoding.EncodeToString(v)
+		m[AsConfigKey(k)] = base64.StdEncoding.EncodeToString(v)
 	}
 
 	return ToYaml(m)

@@ -27,6 +27,7 @@ var cases = []struct {
 }{
 	{"ship/captain.txt", "The Captain"},
 	{"ship/stowaway.txt", "Legatt"},
+	{"ship/cabin/helm.txt", "Helm"},
 	{"story/name.txt", "The Secret Sharer"},
 	{"story/author.txt", "Joseph Conrad"},
 	{"multiline/test.txt", "bar\nfoo"},
@@ -72,10 +73,10 @@ func TestToConfig(t *testing.T) {
 
 	f := NewFiles(getTestFiles())
 	out := f.Glob("**/captain.txt").AsConfig()
-	as.Equal("captain.txt: The Captain\n", out)
+	as.Equal("ship_captain.txt: The Captain\n", out)
 
 	out = f.Glob("ship/**").AsConfig()
-	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt\n", out)
+	as.Equal("ship_cabin_helm.txt: Helm\nship_captain.txt: The Captain\nship_stowaway.txt: Legatt\n", out)
 }
 
 func TestToSecret(t *testing.T) {
@@ -84,7 +85,7 @@ func TestToSecret(t *testing.T) {
 	f := NewFiles(getTestFiles())
 
 	out := f.Glob("ship/**").AsSecrets()
-	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0\n", out)
+	as.Equal("ship_cabin_helm.txt: SGVsbQ==\nship_captain.txt: VGhlIENhcHRhaW4=\nship_stowaway.txt: TGVnYXR0\n", out)
 }
 
 func TestLines(t *testing.T) {
