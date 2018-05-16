@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -51,6 +52,7 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
+		Args:         require.NoArgs,
 	}
 	flags := cmd.PersistentFlags()
 

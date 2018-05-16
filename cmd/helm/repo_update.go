@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
@@ -52,6 +53,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Aliases: []string{"up"},
 		Short:   "update information of available charts locally from chart repositories",
 		Long:    updateDesc,
+		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.home = settings.Home
 			return o.run(out)

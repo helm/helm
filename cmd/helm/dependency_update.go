@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -60,10 +61,11 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "update [flags] CHART",
+		Use:     "update CHART",
 		Aliases: []string{"up"},
 		Short:   "update charts/ based on the contents of requirements.yaml",
 		Long:    dependencyUpDesc,
+		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				o.chartpath = filepath.Clean(args[0])

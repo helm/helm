@@ -20,10 +20,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
@@ -57,18 +55,6 @@ func main() {
 		logf("%+v", err)
 		os.Exit(1)
 	}
-}
-
-func checkArgsLength(argsReceived int, requiredArgs ...string) error {
-	expectedNum := len(requiredArgs)
-	if argsReceived != expectedNum {
-		arg := "arguments"
-		if expectedNum == 1 {
-			arg = "argument"
-		}
-		return errors.Errorf("this command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
-	}
-	return nil
 }
 
 // ensureHelmClient returns a new helm client impl. if h is not nil.

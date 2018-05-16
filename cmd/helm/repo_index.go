@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -48,16 +49,12 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	o := &repoIndexOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "index [flags] [DIR]",
+		Use:   "index [DIR]",
 		Short: "generate an index file given a directory containing packaged charts",
 		Long:  repoIndexDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkArgsLength(len(args), "path to a directory"); err != nil {
-				return err
-			}
-
 			o.dir = args[0]
-
 			return o.run(out)
 		},
 	}

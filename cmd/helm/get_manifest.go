@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -45,13 +46,11 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	o := &getManifestOptions{client: client}
 
 	cmd := &cobra.Command{
-		Use:   "manifest [flags] RELEASE_NAME",
+		Use:   "manifest RELEASE_NAME",
 		Short: "download the manifest for a named release",
 		Long:  getManifestHelp,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errReleaseRequired
-			}
 			o.release = args[0]
 			o.client = ensureHelmClient(o.client, false)
 			return o.run(out)

@@ -71,7 +71,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	o := &packageOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "package [flags] [CHART_PATH] [...]",
+		Use:   "package [CHART_PATH] [...]",
 		Short: "package a chart directory into a chart archive",
 		Long:  packageDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {

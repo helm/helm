@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -52,6 +53,7 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 		Use:   "version",
 		Short: "print the client version information",
 		Long:  versionDesc,
+		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out)
 		},

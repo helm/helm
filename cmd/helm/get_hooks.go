@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -41,13 +42,11 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	o := &getHooksOptions{client: client}
 
 	cmd := &cobra.Command{
-		Use:   "hooks [flags] RELEASE_NAME",
+		Use:   "hooks RELEASE_NAME",
 		Short: "download all hooks for a named release",
 		Long:  getHooksHelp,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return errReleaseRequired
-			}
 			o.release = args[0]
 			o.client = ensureHelmClient(o.client, false)
 			return o.run(out)

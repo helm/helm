@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
 	"k8s.io/helm/pkg/plugin/installer"
@@ -45,6 +46,7 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 		Use:   "install [options] <path|url>...",
 		Short: "install one or more Helm plugins",
 		Long:  pluginInstallDesc,
+		Args:  require.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return o.complete(args)
 		},
@@ -57,9 +59,6 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *pluginInstallOptions) complete(args []string) error {
-	if err := checkArgsLength(len(args), "plugin"); err != nil {
-		return err
-	}
 	o.source = args[0]
 	o.home = settings.Home
 	return nil

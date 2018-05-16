@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
 )
@@ -48,9 +49,10 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "build [flags] CHART",
+		Use:   "build CHART",
 		Short: "rebuild the charts/ directory based on the requirements.lock file",
 		Long:  dependencyBuildDesc,
+		Args:  require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				o.chartpath = args[0]

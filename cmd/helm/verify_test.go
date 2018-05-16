@@ -41,7 +41,7 @@ func TestVerifyCmd(t *testing.T) {
 		{
 			name:      "verify requires a chart",
 			cmd:       "verify",
-			expect:    "a path to a package file is required",
+			expect:    "\"helm verify\" requires 1 argument\n\nUsage:  helm verify PATH [flags]",
 			wantError: true,
 		},
 		{
