@@ -30,6 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/hapi/release"
@@ -80,10 +81,8 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 		Use:   "template CHART",
 		Short: fmt.Sprintf("locally render templates"),
 		Long:  templateDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return errors.New("chart is required")
-			}
 			// verify chart path exists
 			if _, err := os.Stat(args[0]); err == nil {
 				if o.chartPath, err = filepath.Abs(args[0]); err != nil {
@@ -135,8 +134,7 @@ func (o *templateOptions) run(out io.Writer) error {
 
 	// verify that output-dir exists if provided
 	if o.outputDir != "" {
-		_, err = os.Stat(o.outputDir)
-		if os.IsNotExist(err) {
+		if _, err := os.Stat(o.outputDir); os.IsNotExist(err) {
 			return errors.Errorf("output-dir '%s' does not exist", o.outputDir)
 		}
 	}
@@ -174,12 +172,10 @@ func (o *templateOptions) run(out io.Writer) error {
 		Namespace: getNamespace(),
 	}
 
-	err = chartutil.ProcessRequirementsEnabled(c, config)
-	if err != nil {
+	if err := chartutil.ProcessRequirementsEnabled(c, config); err != nil {
 		return err
 	}
-	err = chartutil.ProcessRequirementsImportValues(c)
-	if err != nil {
+	if err := chartutil.ProcessRequirementsImportValues(c); err != nil {
 		return err
 	}
 
@@ -207,10 +203,11 @@ func (o *templateOptions) run(out io.Writer) error {
 	}
 
 	rendered, err := renderer.Render(c, vals)
-	listManifests := []tiller.Manifest{}
 	if err != nil {
 		return err
 	}
+
+	listManifests := []tiller.Manifest{}
 	// extract kind and name
 	re := regexp.MustCompile("kind:(.*)\n")
 	for k, v := range rendered {
@@ -235,6 +232,7 @@ func (o *templateOptions) run(out io.Writer) error {
 		}
 		return false
 	}
+
 	if settings.Debug {
 		rel := &release.Release{
 			Name:    o.releaseName,
@@ -247,41 +245,34 @@ func (o *templateOptions) run(out io.Writer) error {
 	}
 
 	for _, m := range tiller.SortByKind(listManifests) {
-		if len(o.renderFiles) > 0 && !in(m.Name, rf) {
-			continue
-		}
-		data := m.Content
 		b := filepath.Base(m.Name)
-		if !o.showNotes && b == "NOTES.txt" {
+		switch {
+		case len(o.renderFiles) > 0 && !in(m.Name, rf):
 			continue
-		}
-		if strings.HasPrefix(b, "_") {
+		case !o.showNotes && b == "NOTES.txt":
 			continue
-		}
-
-		if o.outputDir != "" {
+		case strings.HasPrefix(b, "_"):
+			continue
+		case whitespaceRegex.MatchString(m.Content):
 			// blank template after execution
-			if whitespaceRegex.MatchString(data) {
-				continue
-			}
-			err = writeToFile(o.outputDir, m.Name, data)
-			if err != nil {
+			continue
+		case o.outputDir != "":
+			if err := writeToFile(out, o.outputDir, m.Name, m.Content); err != nil {
 				return err
 			}
-			continue
+		default:
+			fmt.Fprintf(out, "---\n# Source: %s\n", m.Name)
+			fmt.Fprintln(out, m.Content)
 		}
-		fmt.Printf("---\n# Source: %s\n", m.Name)
-		fmt.Println(data)
 	}
 	return nil
 }
 
 // write the <data> to <output-dir>/<name>
-func writeToFile(outputDir, name, data string) error {
+func writeToFile(out io.Writer, outputDir, name, data string) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
-	err := ensureDirectoryForFile(outfileName)
-	if err != nil {
+	if err := ensureDirectoryForFile(outfileName); err != nil {
 		return err
 	}
 
@@ -292,21 +283,18 @@ func writeToFile(outputDir, name, data string) error {
 
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("##---\n# Source: %s\n%s", name, data))
-
-	if err != nil {
+	if _, err = f.WriteString(fmt.Sprintf("##---\n# Source: %s\n%s", name, data)); err != nil {
 		return err
 	}
 
-	fmt.Printf("wrote %s\n", outfileName)
+	fmt.Fprintf(out, "wrote %s\n", outfileName)
 	return nil
 }
 
 // check if the directory exists to create file. creates if don't exists
 func ensureDirectoryForFile(file string) error {
 	baseDir := path.Dir(file)
-	_, err := os.Stat(baseDir)
-	if err != nil && !os.IsNotExist(err) {
+	if _, err := os.Stat(baseDir); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 

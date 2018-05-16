@@ -1,0 +1,59 @@
+---
+# Source: subchart1/charts/subcharta/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subcharta
+  labels:
+    chart: "subcharta-0.1.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: apache
+  selector:
+    app: subcharta
+
+---
+# Source: subchart1/charts/subchartb/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subchartb
+  labels:
+    chart: "subchartb-0.1.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: nginx
+  selector:
+    app: subchartb
+
+---
+# Source: subchart1/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subchart1
+  labels:
+    chart: "subchart1-0.1.0"
+    namespace: "default"
+    release-name: "RELEASE-NAME"
+    kube-version/major: "1"
+    kube-version/minor: "9"
+    kube-version/gitversion: "v1.9.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: nginx
+  selector:
+    app: subchart1
+
