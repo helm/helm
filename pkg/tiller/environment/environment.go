@@ -26,6 +26,8 @@ import (
 	"io"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
@@ -143,6 +145,12 @@ type KubeClient interface {
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error)
+
+	// WaitAndGetRunningPodPhase waits up to a timeout for a pod to enter running phase.
+	// Also returns on PodFailed or PodSucceeded (As we can't go back to Running from these phases).
+	WaitAndGetRunningPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error)
+
+	LogsForObject(object, options runtime.Object, timeout time.Duration) (*restclient.Request, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -197,6 +205,17 @@ func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kub
 func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
 	_, err := io.Copy(p.Out, reader)
 	return core.PodUnknown, err
+}
+
+// WaitAndGetRunningPodPhase implements KubeClient WaitAndGetRunningPodPhase.
+func (p *PrintingKubeClient) WaitAndGetRunningPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	_, err := io.Copy(p.Out, reader)
+	return core.PodRunning, err
+}
+
+// LogsForObject implements KubeClient LogsForObject.
+func (p *PrintingKubeClient) LogsForObject(object, options runtime.Object, timeout time.Duration) (*restclient.Request, error) {
+	return nil, nil
 }
 
 // Environment provides the context for executing a client request.

@@ -329,6 +329,8 @@ message TestReleaseRequest {
 	int64 timeout = 2;
 	// cleanup specifies whether or not to attempt pod deletion after test completes
 	bool cleanup = 3;
+	// logs specifies whether or not to stream logs from the test pods
+	bool logs = 4;
 }
 
 // TestReleaseResponse represents a message from executing a test

@@ -227,6 +227,13 @@ func ReleaseTestCleanup(cleanup bool) ReleaseTestOption {
 	}
 }
 
+// ReleaseTestLogs is a boolean value representing whether to stream logs from test pods
+func ReleaseTestLogs(logs bool) ReleaseTestOption {
+	return func(opts *options) {
+		opts.testReq.Logs = logs
+	}
+}
+
 // RollbackTimeout specifies the number of seconds before kubernetes calls timeout
 func RollbackTimeout(timeout int64) RollbackOption {
 	return func(opts *options) {

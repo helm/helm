@@ -39,6 +39,7 @@ type releaseTestCmd struct {
 	client  helm.Interface
 	timeout int64
 	cleanup bool
+	logs    bool
 }
 
 func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -66,6 +67,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.Int64Var(&rlsTest.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "delete test pods upon completion")
+	f.BoolVar(&rlsTest.logs, "logs", false, "show logs from test pods")
 
 	return cmd
 }
@@ -75,6 +77,7 @@ func (t *releaseTestCmd) run() (err error) {
 		t.name,
 		helm.ReleaseTestTimeout(t.timeout),
 		helm.ReleaseTestCleanup(t.cleanup),
+		helm.ReleaseTestLogs(t.logs),
 	)
 	testErr := &testErr{}
 

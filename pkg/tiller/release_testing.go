@@ -41,6 +41,7 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		KubeClient: s.env.KubeClient,
 		Timeout:    req.Timeout,
 		Stream:     stream,
+		StreamLogs: req.Logs,
 	}
 	s.Log("running tests for release %s", rel.Name)
 	tSuite, err := reltesting.NewTestSuite(rel)

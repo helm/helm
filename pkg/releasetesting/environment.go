@@ -17,6 +17,7 @@ limitations under the License.
 package releasetesting
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"log"
@@ -35,6 +36,7 @@ type Environment struct {
 	KubeClient environment.KubeClient
 	Stream     services.ReleaseService_RunReleaseTestServer
 	Timeout    int64
+	StreamLogs bool
 }
 
 func (env *Environment) createTestPod(test *test) error {
@@ -109,6 +111,51 @@ func (env *Environment) streamUnknown(name, info string) error {
 func (env *Environment) streamMessage(msg string, status release.TestRun_Status) error {
 	resp := &services.TestReleaseResponse{Msg: msg, Status: status}
 	return env.Stream.Send(resp)
+}
+
+func (env *Environment) beginLogStream(t *test) error {
+	if _, err := env.KubeClient.WaitAndGetRunningPodPhase(env.Namespace, bytes.NewBufferString(t.manifest), time.Duration(env.Timeout)*time.Second); err != nil {
+		return err
+	}
+
+	infos, err := env.KubeClient.BuildUnstructured(env.Namespace, bytes.NewBufferString(t.manifest))
+	if err != nil {
+		return err
+	}
+
+	// A test manifest is always a single pod, so we don't need to be overly
+	// careful here. This is checked earlier in the test run (in `newTest`)
+	pod := infos[0].AsInternal().(*core.Pod)
+	opt := &core.PodLogOptions{
+		Container:  pod.Spec.Containers[0].Name,
+		Follow:     true,
+		Previous:   false,
+		Timestamps: false,
+	}
+
+	env.Stream.Send(&services.TestReleaseResponse{
+		Msg:    fmt.Sprintf("Streaming logs from container \"%s\"", opt.Container),
+		Status: release.TestRun_RUNNING,
+	})
+
+	req, err := env.KubeClient.LogsForObject(pod, opt, time.Duration(env.Timeout)*time.Second)
+	if err != nil {
+		return err
+	}
+
+	readCloser, err := req.Stream()
+	if err != nil {
+		return err
+	}
+	defer readCloser.Close()
+
+	scanner := bufio.NewScanner(readCloser)
+	for scanner.Scan() {
+		resp := &services.TestReleaseResponse{Msg: scanner.Text(), Status: release.TestRun_RUNNING}
+		env.Stream.Send(resp)
+	}
+
+	return err
 }
 
 // DeleteTestPods deletes resources given in testManifests

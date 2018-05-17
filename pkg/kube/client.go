@@ -631,9 +631,19 @@ func scrubValidationError(err error) error {
 	return err
 }
 
+// WaitAndGetRunningPodPhase waits up to a timeout for a pod to enter running phase.
+// Also returns on PodFailed or PodSucceeded. (As we can't go back to Running from these phases).
+func (c *Client) WaitAndGetRunningPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	return c.waitAndGetPodPhase(namespace, reader, timeout, []core.PodPhase{core.PodRunning, core.PodFailed, core.PodSucceeded})
+}
+
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
 func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	return c.waitAndGetPodPhase(namespace, reader, timeout, []core.PodPhase{core.PodFailed, core.PodSucceeded})
+}
+
+func (c *Client) waitAndGetPodPhase(namespace string, reader io.Reader, timeout time.Duration, phases []core.PodPhase) (core.PodPhase, error) {
 	infos, err := c.Build(namespace, reader)
 	if err != nil {
 		return core.PodUnknown, err
@@ -645,7 +655,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 		return core.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
 	}
 
-	if err := c.watchPodUntilComplete(timeout, info); err != nil {
+	if err := c.watchPodUntilPhase(timeout, info, phases); err != nil {
 		return core.PodUnknown, err
 	}
 
@@ -657,7 +667,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 	return status, nil
 }
 
-func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
+func (c *Client) watchPodUntilPhase(timeout time.Duration, info *resource.Info, phases []core.PodPhase) error {
 	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
 	if err != nil {
 		return err
@@ -665,13 +675,13 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
-		return isPodComplete(e)
+		return isPodInPhase(e, phases)
 	})
 
 	return err
 }
 
-func isPodComplete(event watch.Event) (bool, error) {
+func isPodInPhase(event watch.Event, phases []core.PodPhase) (bool, error) {
 	o, ok := event.Object.(*core.Pod)
 	if !ok {
 		return true, fmt.Errorf("expected a *core.Pod, got %T", event.Object)
@@ -679,10 +689,13 @@ func isPodComplete(event watch.Event) (bool, error) {
 	if event.Type == watch.Deleted {
 		return false, fmt.Errorf("pod not found")
 	}
-	switch o.Status.Phase {
-	case core.PodFailed, core.PodSucceeded:
-		return true, nil
+
+	for _, phase := range phases {
+		if phase == o.Status.Phase {
+			return true, nil
+		}
 	}
+
 	return false, nil
 }
 
