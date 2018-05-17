@@ -260,6 +260,12 @@ func (i *installCmd) run() error {
 				if err := man.Update(); err != nil {
 					return prettyError(err)
 				}
+
+				// Update all dependencies which are present in /charts.
+				chartRequested, err = chartutil.Load(i.chartPath)
+				if err != nil {
+					return prettyError(err)
+				}
 			} else {
 				return prettyError(err)
 			}
