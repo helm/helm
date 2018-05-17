@@ -75,6 +75,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	cmd.AddCommand(addFlagsTLS(newGetValuesCmd(nil, out)))
 	cmd.AddCommand(addFlagsTLS(newGetManifestCmd(nil, out)))
 	cmd.AddCommand(addFlagsTLS(newGetHooksCmd(nil, out)))
+	cmd.AddCommand(addFlagsTLS(newGetNotesCmd(nil, out)))
 
 	return cmd
 }
