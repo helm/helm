@@ -19,7 +19,6 @@ package rules
 import (
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
@@ -51,7 +50,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		return
 	}
 
-	options := chartutil.ReleaseOptions{Name: "testRelease", Time: time.Now(), Namespace: namespace}
+	options := chartutil.ReleaseOptions{Name: "testRelease"}
 	caps := &chartutil.Capabilities{
 		APIVersions: chartutil.DefaultVersionSet,
 		KubeVersion: chartutil.DefaultKubeVersion,
