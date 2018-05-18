@@ -62,16 +62,16 @@ To render just one template in a chart, use '-x':
 `
 
 type templateOptions struct {
-	valueFiles   valueFiles
-	chartPath    string
-	values       []string
-	stringValues []string
-	nameTemplate string
-	showNotes    bool
-	releaseName  string
-	renderFiles  []string
-	kubeVersion  string
-	outputDir    string
+	nameTemplate string   // --name-template
+	showNotes    bool     // --notes
+	releaseName  string   // --name
+	renderFiles  []string // --execute
+	kubeVersion  string   // --kube-version
+	outputDir    string   // --output-dir
+
+	valuesOptions
+
+	chartPath string
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -99,12 +99,10 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&o.showNotes, "notes", false, "show the computed NOTES.txt file as well")
 	f.StringVarP(&o.releaseName, "name", "", "RELEASE-NAME", "release name")
 	f.StringArrayVarP(&o.renderFiles, "execute", "x", []string{}, "only execute the given templates")
-	f.VarP(&o.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	f.StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&o.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&o.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&o.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringVar(&o.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
+	o.valuesOptions.addFlags(f)
 
 	return cmd
 }
@@ -140,7 +138,7 @@ func (o *templateOptions) run(out io.Writer) error {
 	}
 
 	// get combined values and create config
-	config, err := vals(o.valueFiles, o.values, o.stringValues)
+	config, err := o.mergedValues()
 	if err != nil {
 		return err
 	}

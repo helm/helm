@@ -56,32 +56,24 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 `
 
 type upgradeOptions struct {
-	release      string
-	chart        string
-	client       helm.Interface
-	dryRun       bool
-	recreate     bool
-	force        bool
-	disableHooks bool
-	valueFiles   valueFiles
-	values       []string
-	stringValues []string
-	verify       bool
-	keyring      string
-	install      bool
-	version      string
-	timeout      int64
-	resetValues  bool
-	reuseValues  bool
-	wait         bool
-	repoURL      string
-	username     string
-	password     string
-	devel        bool
+	devel        bool  // --devel
+	disableHooks bool  // --disable-hooks
+	dryRun       bool  // --dry-run
+	force        bool  // --force
+	install      bool  // --install
+	recreate     bool  // --recreate-pods
+	resetValues  bool  // --reset-values
+	reuseValues  bool  // --reuse-values
+	timeout      int64 // --timeout
+	wait         bool  // --wait
 
-	certFile string
-	keyFile  string
-	caFile   string
+	valuesOptions
+	chartPathOptions
+
+	release string
+	chart   string
+
+	client helm.Interface
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -107,35 +99,25 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.VarP(&o.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
 	f.BoolVar(&o.dryRun, "dry-run", false, "simulate an upgrade")
 	f.BoolVar(&o.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&o.force, "force", false, "force resource update through delete/recreate if needed")
-	f.StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&o.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&o.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&o.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
-	f.BoolVar(&o.verify, "verify", false, "verify the provenance of the chart before upgrading")
-	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "path to the keyring that contains public signing keys")
 	f.BoolVarP(&o.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
-	f.StringVar(&o.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
 	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&o.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&o.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&o.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.StringVar(&o.repoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
-	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
-	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	o.valuesOptions.addFlags(f)
+	o.chartPathOptions.addFlags(f)
 
 	return cmd
 }
 
 func (o *upgradeOptions) run(out io.Writer) error {
-	chartPath, err := locateChartPath(o.repoURL, o.username, o.password, o.chart, o.version, o.verify, o.keyring, o.certFile, o.keyFile, o.caFile)
+	chartPath, err := o.locateChart(o.chart)
 	if err != nil {
 		return err
 	}
@@ -148,24 +130,21 @@ func (o *upgradeOptions) run(out io.Writer) error {
 		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(o.release).Error()) {
 			fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", o.release)
 			io := &installOptions{
-				chartPath:    chartPath,
-				client:       o.client,
-				name:         o.release,
-				valueFiles:   o.valueFiles,
-				dryRun:       o.dryRun,
-				verify:       o.verify,
-				disableHooks: o.disableHooks,
-				keyring:      o.keyring,
-				values:       o.values,
-				stringValues: o.stringValues,
-				timeout:      o.timeout,
-				wait:         o.wait,
+				chartPath:        chartPath,
+				client:           o.client,
+				name:             o.release,
+				dryRun:           o.dryRun,
+				disableHooks:     o.disableHooks,
+				timeout:          o.timeout,
+				wait:             o.wait,
+				valuesOptions:    o.valuesOptions,
+				chartPathOptions: o.chartPathOptions,
 			}
 			return io.run(out)
 		}
 	}
 
-	rawVals, err := vals(o.valueFiles, o.values, o.stringValues)
+	rawVals, err := o.mergedValues()
 	if err != nil {
 		return err
 	}
