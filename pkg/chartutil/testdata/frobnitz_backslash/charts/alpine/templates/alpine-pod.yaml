@@ -6,8 +6,6 @@ metadata:
     heritage: {{.Release.Service}}
     chartName: {{.Chart.Name}}
     chartVersion: {{.Chart.Version | quote}}
-  annotations:
-    "helm.sh/created": "{{.Release.Time.Seconds}}"
 spec:
   restartPolicy: {{default "Never" .restart_policy}}
   containers:

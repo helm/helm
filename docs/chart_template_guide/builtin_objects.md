@@ -8,10 +8,7 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
 
 - `Release`: This object describes the release itself. It has several objects inside of it:
   - `Release.Name`: The release name
-  - `Release.Time`: The time of the release
-  - `Release.Namespace`: The namespace to be released into (if the manifest doesn't override)
   - `Release.Service`: The name of the releasing service (always `Tiller`).
-  - `Release.Revision`: The revision number of this release. It begins at 1 and is incremented for each `helm upgrade`.
   - `Release.IsUpgrade`: This is set to `true` if the current operation is an upgrade or rollback.
   - `Release.IsInstall`: This is set to `true` if the current operation is an install.
 - `Values`: Values passed into the template from the `values.yaml` file and from user-supplied files. By default, `Values` is empty.

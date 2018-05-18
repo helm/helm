@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
@@ -335,11 +334,8 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 // for the composition of the final values struct
 type ReleaseOptions struct {
 	Name      string
-	Time      time.Time
-	Namespace string
 	IsUpgrade bool
 	IsInstall bool
-	Revision  int
 }
 
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
@@ -361,11 +357,8 @@ func ToRenderValuesCaps(chrt *chart.Chart, chrtVals []byte, options ReleaseOptio
 	top := map[string]interface{}{
 		"Release": map[string]interface{}{
 			"Name":      options.Name,
-			"Time":      options.Time,
-			"Namespace": options.Namespace,
 			"IsUpgrade": options.IsUpgrade,
 			"IsInstall": options.IsInstall,
-			"Revision":  options.Revision,
 			"Service":   "Helm",
 		},
 		"Chart":        chrt.Metadata,

@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"testing"
 	"text/template"
-	"time"
 
 	kversion "k8s.io/apimachinery/pkg/version"
 
@@ -104,10 +103,7 @@ where:
 
 	o := ReleaseOptions{
 		Name:      "Seven Voyages",
-		Time:      time.Now(),
-		Namespace: "al Basrah",
 		IsInstall: true,
-		Revision:  5,
 	}
 
 	caps := &Capabilities{
@@ -128,9 +124,6 @@ where:
 	relmap := res["Release"].(map[string]interface{})
 	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
 		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
-	}
-	if rev := relmap["Revision"]; rev.(int) != 5 {
-		t.Errorf("Expected release revision %d, got %q", 5, rev)
 	}
 	if relmap["IsUpgrade"].(bool) {
 		t.Error("Expected upgrade to be false.")

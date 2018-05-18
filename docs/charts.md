@@ -141,9 +141,9 @@ for greater detail.
 
 ## Chart Dependencies
 
-In Helm, one chart may depend on any number of other charts. 
+In Helm, one chart may depend on any number of other charts.
 These dependencies can be dynamically linked through the `requirements.yaml`
-file or brought in to the `charts/` directory and managed manually. 
+file or brought in to the `charts/` directory and managed manually.
 
 Although manually managing your dependencies has a few advantages some teams need,
 the preferred method of declaring dependencies is by using a
@@ -290,11 +290,11 @@ tags:
 
 In the above example all charts with the tag `front-end` would be disabled but since the
 `subchart1.enabled` path evaluates to 'true' in the parent's values, the condition will override the
-`front-end` tag and `subchart1` will be enabled.  
+`front-end` tag and `subchart1` will be enabled.
 
 Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be
 enabled. Also notes that although `subchart2` has a condition specified in `requirements.yaml`, there
-is no corresponding path and value in the parent's values so that condition has no effect.  
+is no corresponding path and value in the parent's values so that condition has no effect.
 
 ##### Using the CLI with Tags and Conditions
 
@@ -317,19 +317,19 @@ helm install --set tags.front-end=true --set subchart2.enabled=false
 
 #### Importing Child Values via requirements.yaml
 
-In some cases it is desirable to allow a child chart's values to propagate to the parent chart and be 
-shared as common defaults. An additional benefit of using the `exports` format is that it will enable future 
+In some cases it is desirable to allow a child chart's values to propagate to the parent chart and be
+shared as common defaults. An additional benefit of using the `exports` format is that it will enable future
 tooling to introspect user-settable values.
 
-The keys containing the values to be imported can be specified in the parent chart's `requirements.yaml` file 
-using a YAML list. Each item in the list is a key which is imported from the child chart's `exports` field. 
+The keys containing the values to be imported can be specified in the parent chart's `requirements.yaml` file
+using a YAML list. Each item in the list is a key which is imported from the child chart's `exports` field.
 
 To import values not contained in the `exports` key, use the [child-parent](#using-the-child-parent-format) format.
 Examples of both formats are described below.
 
 ##### Using the exports format
 
-If a child chart's `values.yaml` file contains an `exports` field at the root, its contents may be imported 
+If a child chart's `values.yaml` file contains an `exports` field at the root, its contents may be imported
 directly into the parent's values by specifying the keys to import as in the example below:
 
 ```yaml
@@ -346,8 +346,8 @@ exports:
     myint: 99
 ```
 
-Since we are specifying the key `data` in our import list, Helm looks in the `exports` field of the child 
-chart for `data` key and imports its contents. 
+Since we are specifying the key `data` in our import list, Helm looks in the `exports` field of the child
+chart for `data` key and imports its contents.
 
 The final parent values would contain our exported field:
 
@@ -358,16 +358,16 @@ myint: 99
 
 ```
 
-Please note the parent key `data` is not contained in the parent's final values. If you need to specify the 
-parent key, use the 'child-parent' format. 
+Please note the parent key `data` is not contained in the parent's final values. If you need to specify the
+parent key, use the 'child-parent' format.
 
 ##### Using the child-parent format
 
-To access values that are not contained in the `exports` key of the child chart's values, you will need to 
-specify the source key of the values to be imported (`child`) and the destination path in the parent chart's 
+To access values that are not contained in the `exports` key of the child chart's values, you will need to
+specify the source key of the values to be imported (`child`) and the destination path in the parent chart's
 values (`parent`).
 
-The `import-values` in the example below instructs Helm to take any values found at `child:` path and copy them 
+The `import-values` in the example below instructs Helm to take any values found at `child:` path and copy them
 to the parent's values at the path specified in `parent:`
 
 ```yaml
@@ -382,7 +382,7 @@ dependencies:
         parent: myimports
 ```
 In the above example, values found at `default.data` in the subchart1's values will be imported
-to the `myimports` key in the parent chart's values as detailed below: 
+to the `myimports` key in the parent chart's values as detailed below:
 
 ```yaml
 # parent's values.yaml file
@@ -391,7 +391,7 @@ myimports:
   myint: 0
   mybool: false
   mystring: "helm rocks!"
-  
+
 ```
 ```yaml
 # subchart1's values.yaml file
@@ -400,7 +400,7 @@ default:
   data:
     myint: 999
     mybool: true
-    
+
 ```
 The parent chart's resulting values would be:
 
@@ -468,7 +468,7 @@ Furthermore, A is dependent on chart B that creates objects
 - replicaset "B-ReplicaSet"
 - service "B-Service"
 
-After installation/upgrade of chart A a single Helm release is created/modified. The release will 
+After installation/upgrade of chart A a single Helm release is created/modified. The release will
 create/update all of the above Kubernetes objects in the following order:
 
 - A-Namespace
@@ -478,16 +478,16 @@ create/update all of the above Kubernetes objects in the following order:
 - A-Service
 - B-Service
 
-This is because when Helm installs/upgrades charts, 
-the Kubernetes objects from the charts and all its dependencies are 
+This is because when Helm installs/upgrades charts,
+the Kubernetes objects from the charts and all its dependencies are
 
-- aggregrated into a single set; then 
-- sorted by type followed by name; and then 
-- created/updated in that order. 
+- aggregrated into a single set; then
+- sorted by type followed by name; and then
+- created/updated in that order.
 
 Hence a single release is created with all the objects for the chart and its dependencies.
 
-The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go 
+The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go
 (see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26)).
 
 ## Templates and Values
@@ -574,16 +574,11 @@ cannot be overridden. As with all values, the names are _case
 sensitive_.
 
 - `Release.Name`: The name of the release (not the chart)
-- `Release.Time`: The time the chart release was last updated. This will
-  match the `Last Released` time on a Release object.
-- `Release.Namespace`: The namespace the chart was released to.
 - `Release.Service`: The service that conducted the release. Usually
   this is `Tiller`.
 - `Release.IsUpgrade`: This is set to true if the current operation is an upgrade or rollback.
 - `Release.IsInstall`: This is set to true if the current operation is an
   install.
-- `Release.Revision`: The revision number. It begins at 1, and increments with
-  each `helm upgrade`.
 - `Chart`: The contents of the `Chart.yaml`. Thus, the chart version is
   obtainable as `Chart.Version` and the maintainers are in
   `Chart.Maintainers`.

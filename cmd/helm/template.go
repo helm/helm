@@ -165,9 +165,7 @@ func (o *templateOptions) run(out io.Writer) error {
 		return errors.Wrap(err, "cannot load requirements")
 	}
 	options := chartutil.ReleaseOptions{
-		Name:      o.releaseName,
-		Time:      time.Now(),
-		Namespace: getNamespace(),
+		Name: o.releaseName,
 	}
 
 	if err := chartutil.ProcessRequirementsEnabled(c, config); err != nil {
