@@ -50,3 +50,11 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/yuin/gopher-lua"
+
+[[constraint]]
+  name = "layeh.com/gopher-luar"
+  version = "1.0.2"

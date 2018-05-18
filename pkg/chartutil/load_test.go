@@ -78,6 +78,10 @@ icon: https://example.com/64x64.png
 			Name: path.Join("templates", ServiceName),
 			Data: []byte(defaultService),
 		},
+		{
+			Name: path.Join("ext", "lua", "chart.lua"),
+			Data: []byte(`local events = require("events")`),
+		},
 	}
 
 	c, err := LoadFiles(goodFiles)
@@ -95,6 +99,10 @@ icon: https://example.com/64x64.png
 
 	if len(c.Templates) != 2 {
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
+	}
+
+	if l := len(c.Ext); l != 1 {
+		t.Errorf("Expected number of extensions == 1, got %d", l)
 	}
 
 	_, err = LoadFiles([]*BufferedFile{})

@@ -464,6 +464,17 @@
   revision = "ab470f5e105a44d0c87ea21bacd6a335c4816d83"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/yuin/gopher-lua"
+  packages = [
+    ".",
+    "ast",
+    "parse",
+    "pm"
+  ]
+  revision = "b0fa786cf4ea360285924c4a7fd42325be57aec8"
+
+[[projects]]
   name = "golang.org/x/crypto"
   packages = [
     "cast5",
@@ -1070,6 +1081,12 @@
   revision = "aedf551cdb8b0119df3a19c65fde413a13b34997"
 
 [[projects]]
+  name = "layeh.com/gopher-luar"
+  packages = ["."]
+  revision = "7b2b96926970546e504881ee7364c1127508eb4e"
+  version = "v1.0.2"
+
+[[projects]]
   name = "vbom.ml/util"
   packages = ["sortorder"]
   revision = "db5cfe13f5cc80a4990d98e2e1b0707a4d1a5394"
@@ -1077,6 +1094,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4a0464d8de132c8a733f50549ad69e663b992e12537b58626302dc5dd14cd3f0"
+  inputs-digest = "0f24a23217f31025f10e8a3d20eb5b2495298ea8453634cf730462c0e377e1f9"
   solver-name = "gps-cdcl"
   solver-version = 1

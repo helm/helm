@@ -29,4 +29,6 @@ type Chart struct {
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File `json:"files,omitempty"`
+	// Ext jas extension scripts.
+	Ext []*File `json:"ext,omitempty"`
 }
