@@ -49,22 +49,15 @@ result in an error, and the chart will not be saved locally.
 `
 
 type fetchOptions struct {
-	caFile      string // --ca-file
-	certFile    string // --cert-file
 	destdir     string // --destination
 	devel       bool   // --devel
-	keyFile     string // --key-file
-	keyring     string // --keyring
-	password    string // --password
-	repoURL     string // --repo
 	untar       bool   // --untar
 	untardir    string // --untardir
-	username    string // --username
-	verify      bool   // --verify
 	verifyLater bool   // --prov
-	version     string // --version
 
 	chartRef string
+
+	chartPathOptions
 }
 
 func newFetchCmd(out io.Writer) *cobra.Command {
@@ -94,18 +87,11 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&o.untar, "untar", false, "if set to true, will untar the chart after downloading it")
-	f.BoolVar(&o.verify, "verify", false, "verify the package against its signature")
 	f.BoolVar(&o.verifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
-	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.StringVar(&o.password, "password", "", "chart repository password")
-	f.StringVar(&o.repoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&o.untardir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
-	f.StringVar(&o.username, "username", "", "chart repository username")
-	f.StringVar(&o.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
 	f.StringVarP(&o.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
+
+	o.chartPathOptions.addFlags(f)
 
 	return cmd
 }
@@ -174,9 +160,4 @@ func (o *fetchOptions) run(out io.Writer) error {
 		return chartutil.ExpandFile(ud, saved)
 	}
 	return nil
-}
-
-// defaultKeyring returns the expanded path to the default keyring.
-func defaultKeyring() string {
-	return os.ExpandEnv("$HOME/.gnupg/pubring.gpg")
 }

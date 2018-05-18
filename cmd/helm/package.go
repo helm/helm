@@ -50,18 +50,16 @@ Versioned chart archives are used by Helm package repositories.
 `
 
 type packageOptions struct {
-	appVersion       string     // --app-version
-	dependencyUpdate bool       // --dependency-update
-	destination      string     // --destination
-	key              string     // --key
-	keyring          string     // --keyring
-	sign             bool       // --sign
-	stringValues     []string   // --set-string
-	valueFiles       valueFiles // --values
-	values           []string   // --set
-	version          string     // --version
+	appVersion       string // --app-version
+	dependencyUpdate bool   // --dependency-update
+	destination      string // --destination
+	key              string // --key
+	keyring          string // --keyring
+	sign             bool   // --sign
+	version          string // --version
 
-	// args
+	valuesOptions
+
 	path string
 
 	home helmpath.Home
@@ -98,9 +96,6 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.VarP(&o.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
-	f.StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&o.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&o.sign, "sign", false, "use a PGP private key to sign this package")
 	f.StringVar(&o.key, "key", "", "name of the key to use when signing. Used if --sign is true")
 	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "location of a public keyring")
@@ -108,6 +103,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.appVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&o.destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&o.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
+	o.valuesOptions.addFlags(f)
 
 	return cmd
 }
@@ -138,7 +134,7 @@ func (o *packageOptions) run(out io.Writer) error {
 		return err
 	}
 
-	overrideVals, err := vals(o.valueFiles, o.values, o.stringValues)
+	overrideVals, err := o.mergedValues()
 	if err != nil {
 		return err
 	}

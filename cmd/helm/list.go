@@ -74,7 +74,6 @@ type listOptions struct {
 	sortDesc      bool   // --reverse
 	superseded    bool   // --superseded
 
-	// args
 	filter string
 
 	client helm.Interface

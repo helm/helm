@@ -44,11 +44,10 @@ or recommendation, it will emit [WARNING] messages.
 `
 
 type lintOptions struct {
-	valueFiles valueFiles
-	values     []string
-	sValues    []string
-	strict     bool
-	paths      []string
+	strict bool
+	paths  []string
+
+	valuesOptions
 }
 
 func newLintCmd(out io.Writer) *cobra.Command {
@@ -66,10 +65,9 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().VarP(&o.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	cmd.Flags().StringArrayVar(&o.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&o.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().BoolVar(&o.strict, "strict", false, "fail on lint warnings")
+	fs := cmd.Flags()
+	fs.BoolVar(&o.strict, "strict", false, "fail on lint warnings")
+	o.valuesOptions.addFlags(fs)
 
 	return cmd
 }
@@ -193,7 +191,7 @@ func (o *lintOptions) vals() ([]byte, error) {
 	}
 
 	// User specified a value via --set-string
-	for _, value := range o.sValues {
+	for _, value := range o.stringValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
 			return []byte{}, errors.Wrap(err, "failed parsing --set-string data")
 		}

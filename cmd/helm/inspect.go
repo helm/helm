@@ -54,15 +54,8 @@ of the README file
 type inspectOptions struct {
 	chartpath string
 	output    string
-	verify    bool
-	keyring   string
-	version   string
-	repoURL   string
-	username  string
-	password  string
-	certFile  string
-	keyFile   string
-	caFile    string
+
+	chartPathOptions
 }
 
 const (
@@ -83,8 +76,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Long:  inspectDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
-				o.certFile, o.keyFile, o.caFile)
+			cp, err := o.locateChart(args[0])
 			if err != nil {
 				return err
 			}
@@ -100,8 +92,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = valuesOnly
-			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
-				o.certFile, o.keyFile, o.caFile)
+			cp, err := o.locateChart(args[0])
 			if err != nil {
 				return err
 			}
@@ -117,8 +108,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = chartOnly
-			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
-				o.certFile, o.keyFile, o.caFile)
+			cp, err := o.locateChart(args[0])
 			if err != nil {
 				return err
 			}
@@ -134,8 +124,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = readmeOnly
-			cp, err := locateChartPath(o.repoURL, o.username, o.password, args[0], o.version, o.verify, o.keyring,
-				o.certFile, o.keyFile, o.caFile)
+			cp, err := o.locateChart(args[0])
 			if err != nil {
 				return err
 			}
@@ -145,59 +134,8 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmds := []*cobra.Command{inspectCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
-	vflag := "verify"
-	vdesc := "verify the provenance data for this chart"
 	for _, subCmd := range cmds {
-		subCmd.Flags().BoolVar(&o.verify, vflag, false, vdesc)
-	}
-
-	kflag := "keyring"
-	kdesc := "path to the keyring containing public verification keys"
-	kdefault := defaultKeyring()
-	for _, subCmd := range cmds {
-		subCmd.Flags().StringVar(&o.keyring, kflag, kdefault, kdesc)
-	}
-
-	verflag := "version"
-	verdesc := "version of the chart. By default, the newest chart is shown"
-	for _, subCmd := range cmds {
-		subCmd.Flags().StringVar(&o.version, verflag, "", verdesc)
-	}
-
-	repoURL := "repo"
-	repoURLdesc := "chart repository url where to locate the requested chart"
-	for _, subCmd := range cmds {
-		subCmd.Flags().StringVar(&o.repoURL, repoURL, "", repoURLdesc)
-	}
-
-	username := "username"
-	usernamedesc := "chart repository username where to locate the requested chart"
-	inspectCommand.Flags().StringVar(&o.username, username, "", usernamedesc)
-	valuesSubCmd.Flags().StringVar(&o.username, username, "", usernamedesc)
-	chartSubCmd.Flags().StringVar(&o.username, username, "", usernamedesc)
-
-	password := "password"
-	passworddesc := "chart repository password where to locate the requested chart"
-	inspectCommand.Flags().StringVar(&o.password, password, "", passworddesc)
-	valuesSubCmd.Flags().StringVar(&o.password, password, "", passworddesc)
-	chartSubCmd.Flags().StringVar(&o.password, password, "", passworddesc)
-
-	certFile := "cert-file"
-	certFiledesc := "verify certificates of HTTPS-enabled servers using this CA bundle"
-	for _, subCmd := range cmds {
-		subCmd.Flags().StringVar(&o.certFile, certFile, "", certFiledesc)
-	}
-
-	keyFile := "key-file"
-	keyFiledesc := "identify HTTPS client using this SSL key file"
-	for _, subCmd := range cmds {
-		subCmd.Flags().StringVar(&o.keyFile, keyFile, "", keyFiledesc)
-	}
-
-	caFile := "ca-file"
-	caFiledesc := "chart repository url where to locate the requested chart"
-	for _, subCmd := range cmds {
-		subCmd.Flags().StringVar(&o.caFile, caFile, "", caFiledesc)
+		o.chartPathOptions.addFlags(subCmd.Flags())
 	}
 
 	for _, subCmd := range cmds[1:] {
