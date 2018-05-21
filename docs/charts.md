@@ -265,7 +265,7 @@ dependencies:
       - name: subchart1
         repository: http://localhost:10191
         version: 0.1.0
-        condition: subchart1.enabled, global.subchart1.enabled
+        condition: subchart1.enabled,global.subchart1.enabled
         tags:
           - front-end
           - subchart1
