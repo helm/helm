@@ -97,7 +97,9 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	name := filepath.Base(u.Path)
 	destfile := filepath.Join(dest, name)
-	if err := ioutil.WriteFile(destfile, data.Bytes(), 0644); err != nil {
+	tempdestfile := destfile + ".part"
+	if err := ioutil.WriteFile(tempdestfile, data.Bytes(), 0644); err != nil {
+		err = os.Rename(tempdestfile, destfile)
 		return destfile, nil, err
 	}
 
