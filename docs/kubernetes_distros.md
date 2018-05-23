@@ -18,8 +18,9 @@ Hyperkube you may need to do some manual configuration.
 
 ## GKE
 
-Google's GKE hosted Kubernetes platform is known to work with Helm, and requires
-no additional configuration.
+Google's GKE hosted Kubernetes platform enables RBAC by default. You will need to create a service account for tiller, and use the --service-account flag when initializing the helm server.
+
+See [Tiller and role-based access control](https://docs.helm.sh/using_helm/#role-based-access-control) for more information.
 
 ## Ubuntu with 'kubeadm'
 
@@ -48,4 +49,3 @@ Helm Client and Helm Server (Tiller) are pre-installed with [Platform9 Managed K
 
 Helm (both client and server) has been tested and is working on Mesospheres DC/OS 1.11 Kubernetes platform, and requires
 no additional configuration.
-
