@@ -285,7 +285,7 @@ servers:
 ```
 
 Sometimes you need to use special characters in your `--set` lines. You can use
-a backslash to escape the characters; `--set name=value1\,value2` will become:
+a backslash to escape the characters; `--set name="value1\,value2"` will become:
 
 ```yaml
 name: "value1,value2"
