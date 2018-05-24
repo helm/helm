@@ -108,6 +108,20 @@ func TestTemplateCmd(t *testing.T) {
 			expectValue: "release-name: \"test\"",
 		},
 		{
+			name:        "check_release_is_install",
+			desc:        "verify --is-upgrade toggles .Release.IsInstall",
+			args:        []string{subchart1ChartPath, "--is-upgrade=false"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectValue: "release-is-install: \"true\"",
+		},
+		{
+			name:        "check_release_is_upgrade",
+			desc:        "verify --is-upgrade toggles .Release.IsUpgrade",
+			args:        []string{subchart1ChartPath, "--is-upgrade", "true"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectValue: "release-is-upgrade: \"true\"",
+		},
+		{
 			name:        "check_notes",
 			desc:        "verify --notes shows notes",
 			args:        []string{subchart1ChartPath, "--notes", "true"},
