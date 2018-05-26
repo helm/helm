@@ -69,17 +69,40 @@ func (ts *TestSuite) Run(env *Environment) error {
 		env.streamMessage("No Tests Found", release.TestRun_UNKNOWN)
 	}
 
+	var tests []*test
+
 	for _, testManifest := range ts.TestManifests {
 		test, err := newTest(testManifest)
 		if err != nil {
 			return err
 		}
 
-		if err := test.run(env); err != nil {
-			return err
+		tests = append(tests, test)
+	}
+
+	if env.Parallel {
+		c := make(chan error)
+		for _, t := range tests {
+			go func(t *test) {
+				c <- t.run(env)
+			}(t)
 		}
 
-		ts.Results = append(ts.Results, test.result)
+		for range tests {
+			if err := <-c; err != nil {
+				return err
+			}
+		}
+	} else {
+		for _, t := range tests {
+			if err := t.run(env); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, t := range tests {
+		ts.Results = append(ts.Results, t.result)
 	}
 
 	ts.CompletedAt = timeconv.Now()
