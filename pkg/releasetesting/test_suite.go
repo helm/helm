@@ -75,47 +75,55 @@ func (ts *TestSuite) Run(env *Environment) error {
 			return err
 		}
 
-		test.result.StartedAt = timeconv.Now()
-		if err := env.streamRunning(test.result.Name); err != nil {
+		if err := test.run(env); err != nil {
 			return err
 		}
-		test.result.Status = release.TestRun_RUNNING
 
-		resourceCreated := true
-		if err := env.createTestPod(test); err != nil {
-			resourceCreated = false
-			if streamErr := env.streamError(test.result.Info); streamErr != nil {
-				return err
-			}
-		}
-
-		resourceCleanExit := true
-		status := v1.PodUnknown
-		if resourceCreated {
-			status, err = env.getTestPodStatus(test)
-			if err != nil {
-				resourceCleanExit = false
-				if streamErr := env.streamError(test.result.Info); streamErr != nil {
-					return streamErr
-				}
-			}
-		}
-
-		if resourceCreated && resourceCleanExit {
-			if err := test.assignTestResult(status); err != nil {
-				return err
-			}
-
-			if err := env.streamResult(test.result); err != nil {
-				return err
-			}
-		}
-
-		test.result.CompletedAt = timeconv.Now()
 		ts.Results = append(ts.Results, test.result)
 	}
 
 	ts.CompletedAt = timeconv.Now()
+	return nil
+}
+
+func (t *test) run(env *Environment) error {
+	t.result.StartedAt = timeconv.Now()
+	if err := env.streamRunning(t.result.Name); err != nil {
+		return err
+	}
+	t.result.Status = release.TestRun_RUNNING
+
+	resourceCreated := true
+	if err := env.createTestPod(t); err != nil {
+		resourceCreated = false
+		if streamErr := env.streamError(t.result.Info); streamErr != nil {
+			return err
+		}
+	}
+
+	resourceCleanExit := true
+	status := v1.PodUnknown
+	if resourceCreated {
+		status, err = env.getTestPodStatus(test)
+		if err != nil {
+			resourceCleanExit = false
+			if streamErr := env.streamError(test.result.Info); streamErr != nil {
+				return streamErr
+			}
+		}
+	}
+
+	if resourceCreated && resourceCleanExit {
+		if err := t.assignTestResult(status); err != nil {
+			return err
+		}
+
+		if err := env.streamResult(t.result); err != nil {
+			return err
+		}
+	}
+
+	t.result.CompletedAt = timeconv.Now()
 	return nil
 }
 
