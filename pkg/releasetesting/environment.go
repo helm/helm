@@ -35,6 +35,7 @@ type Environment struct {
 	KubeClient environment.KubeClient
 	Stream     services.ReleaseService_RunReleaseTestServer
 	Timeout    int64
+	Parallel   bool
 }
 
 func (env *Environment) createTestPod(test *test) error {

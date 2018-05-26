@@ -227,6 +227,13 @@ func ReleaseTestCleanup(cleanup bool) ReleaseTestOption {
 	}
 }
 
+// ReleaseTestParallel is a boolean value representing whether to run test pods in parallel
+func ReleaseTestParallel(parallel bool) ReleaseTestOption {
+	return func(opts *options) {
+		opts.testReq.Parallel = parallel
+	}
+}
+
 // RollbackTimeout specifies the number of seconds before kubernetes calls timeout
 func RollbackTimeout(timeout int64) RollbackOption {
 	return func(opts *options) {
