@@ -202,6 +202,7 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 	}
 	req := &rls.GetVersionRequest{}
 	ctx := NewContext()
+	h.Option(ConnectTimeout(5))
 
 	if reqOpts.before != nil {
 		if err := reqOpts.before(ctx, req); err != nil {
