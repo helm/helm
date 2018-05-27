@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -86,6 +88,7 @@ type initCmd struct {
 	kubeClient     kubernetes.Interface
 	serviceAccount string
 	maxHistory     int
+	replicas       int
 	wait           bool
 }
 
@@ -130,6 +133,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
 	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
 	f.IntVar(&i.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
+	f.IntVar(&i.replicas, "replicas", 1, "amount of tiller instances to run on the cluster")
 
 	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
 	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
@@ -175,6 +179,7 @@ func (i *initCmd) run() error {
 	i.opts.ForceUpgrade = i.forceUpgrade
 	i.opts.ServiceAccount = i.serviceAccount
 	i.opts.MaxHistory = i.maxHistory
+	i.opts.Replicas = i.replicas
 
 	writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
 		w := i.out
@@ -307,10 +312,12 @@ func (i *initCmd) run() error {
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			if err := i.ping(); err != nil {
-				return err
-			}
-			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.")
+			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.\n\n"+
+				"Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
+				"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
+		}
+		if err := i.ping(); err != nil {
+			return err
 		}
 	} else {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
@@ -322,6 +329,19 @@ func (i *initCmd) run() error {
 
 func (i *initCmd) ping() error {
 	if i.wait {
+		_, kubeClient, err := getKubeClient(settings.KubeContext)
+		if err != nil {
+			return err
+		}
+		if !watchTillerUntilReady(settings.TillerNamespace, kubeClient, settings.TillerConnectionTimeout) {
+			return fmt.Errorf("tiller was not found. polling deadline exceeded")
+		}
+
+		// establish a connection to Tiller now that we've effectively guaranteed it's available
+		if err := setupConnection(); err != nil {
+			return err
+		}
+		i.client = newClient()
 		if err := i.client.PingTiller(); err != nil {
 			return fmt.Errorf("could not ping Tiller: %s", err)
 		}
@@ -362,11 +382,11 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository), out, skipRefresh)
+		sr, err := initStableRepo(home.CacheIndex(stableRepository), out, skipRefresh, home)
 		if err != nil {
 			return err
 		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out)
+		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out, home)
 		if err != nil {
 			return err
 		}
@@ -381,7 +401,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) err
 	return nil
 }
 
-func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool) (*repo.Entry, error) {
+func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
 	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
 	c := repo.Entry{
 		Name:  stableRepository,
@@ -406,7 +426,7 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool) (*repo.En
 	return &c, nil
 }
 
-func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, error) {
+func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Home) (*repo.Entry, error) {
 	if fi, err := os.Stat(indexFile); err != nil {
 		fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
 		i := repo.NewIndexFile()
@@ -415,7 +435,9 @@ func initLocalRepo(indexFile, cacheFile string, out io.Writer) (*repo.Entry, err
 		}
 
 		//TODO: take this out and replace with helm update functionality
-		createLink(indexFile, cacheFile)
+		if err := createLink(indexFile, cacheFile, home); err != nil {
+			return nil, err
+		}
 	} else if fi.IsDir() {
 		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
 	}
@@ -437,4 +459,35 @@ func ensureRepoFileFormat(file string, out io.Writer) error {
 	}
 
 	return nil
+}
+
+// watchTillerUntilReady waits for the tiller pod to become available. This is useful in situations where we
+// want to wait before we call New().
+//
+// Returns true if it exists. If the timeout was reached and it could not find the pod, it returns false.
+func watchTillerUntilReady(namespace string, client kubernetes.Interface, timeout int64) bool {
+	deadlinePollingChan := time.NewTimer(time.Duration(timeout) * time.Second).C
+	checkTillerPodTicker := time.NewTicker(500 * time.Millisecond)
+	doneChan := make(chan bool)
+
+	defer checkTillerPodTicker.Stop()
+
+	go func() {
+		for range checkTillerPodTicker.C {
+			_, err := portforwarder.GetTillerPodName(client.CoreV1(), namespace)
+			if err == nil {
+				doneChan <- true
+				break
+			}
+		}
+	}()
+
+	for {
+		select {
+		case <-deadlinePollingChan:
+			return false
+		case <-doneChan:
+			return true
+		}
+	}
 }

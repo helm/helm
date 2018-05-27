@@ -52,6 +52,16 @@ many cases, cause parsing errors inside of Kubernetes.
 port: {{ .Values.Port }}
 ```
 
+This remark does not apply to env variables values which are expected to be string, even if they represent integers:
+
+```
+env:
+  -name: HOST
+    value: "http://host"
+  -name: PORT
+    value: "1234"
+```
+
 ## Using the 'include' Function
 
 Go provides a way of including one template in another using a built-in
@@ -204,7 +214,7 @@ together in one GitHub repository.
 
 **Deis's [Workflow](https://github.com/deis/workflow/tree/master/charts/workflow):**
 This chart exposes the entire Deis PaaS system with one chart. But it's different
-from the SAP chart in that this master chart is built from each component, and
+from the SAP chart in that this umbrella chart is built from each component, and
 each component is tracked in a different Git repository. Check out the
 `requirements.yaml` file to see how this chart is composed by their CI/CD
 pipeline.
@@ -234,7 +244,7 @@ update of that resource.
 
 ## Upgrade a release idempotently
 
-In order to use the same command when installing and upgrading a release, use the following comand:
+In order to use the same command when installing and upgrading a release, use the following command:
 ```shell
 helm upgrade --install <release name> --values <values file> <chart directory>
 ```

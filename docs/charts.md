@@ -27,8 +27,8 @@ wordpress/
   README.md           # OPTIONAL: A human-readable README file
   requirements.yaml   # OPTIONAL: A YAML file listing dependencies for the chart
   values.yaml         # The default configuration values for this chart
-  charts/             # OPTIONAL: A directory containing any charts upon which this chart depends.
-  templates/          # OPTIONAL: A directory of templates that, when combined with values,
+  charts/             # A directory containing any charts upon which this chart depends.
+  templates/          # A directory of templates that, when combined with values,
                       # will generate valid Kubernetes manifest files.
   templates/NOTES.txt # OPTIONAL: A plain text file containing short usage notes
 ```
@@ -36,15 +36,15 @@ wordpress/
 Helm reserves use of the `charts/` and `templates/` directories, and of
 the listed file names. Other files will be left as they are.
 
-While the `charts` and `template` directories are optional there must be at least one chart dependency or template file for the chart to be valid.
-
 ## The Chart.yaml File
 
 The `Chart.yaml` file is required for a chart. It contains the following fields:
 
 ```yaml
+apiVersion: The chart API version, always "v1" (required)
 name: The name of the chart (required)
 version: A SemVer 2 version (required)
+kubeVersion: A SemVer range of compatible Kubernetes versions (optional)
 description: A single-sentence description of this project (optional)
 keywords:
   - A list of keywords about this project (optional)
@@ -276,7 +276,7 @@ dependencies:
         condition: subchart2.enabled,global.subchart2.enabled
         tags:
           - back-end
-          - subchart1
+          - subchart2
 
 ````
 ````
@@ -325,7 +325,7 @@ tooling to introspect user-settable values.
 The keys containing the values to be imported can be specified in the parent chart's `requirements.yaml` file 
 using a YAML list. Each item in the list is a key which is imported from the child chart's `exports` field. 
 
-To import values not contained in the `exports` key, use the [child/parent](#using-the-child/parent-format) format.
+To import values not contained in the `exports` key, use the [child-parent](#using-the-child-parent-format) format.
 Examples of both formats are described below.
 
 ##### Using the exports format
@@ -360,9 +360,9 @@ myint: 99
 ```
 
 Please note the parent key `data` is not contained in the parent's final values. If you need to specify the 
-parent key, use the 'child/parent' format. 
+parent key, use the 'child-parent' format. 
 
-##### Using the child/parent format
+##### Using the child-parent format
 
 To access values that are not contained in the `exports` key of the child chart's values, you will need to 
 specify the source key of the values to be imported (`child`) and the destination path in the parent chart's 
@@ -849,7 +849,7 @@ considerations in mind:
 - The `Chart.yaml` will be overwritten by the generator.
 - Users will expect to modify such a chart's contents, so documentation
   should indicate how users can do so.
-- All occurances of `<CHARTNAME>` will be replaced with the specified chart
+- All occurrences of `<CHARTNAME>` will be replaced with the specified chart
   name so that starter charts can be used as templates.
 
 Currently the only way to add a chart to `$HELM_HOME/starters` is to manually

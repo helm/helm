@@ -155,7 +155,7 @@ Template comments should be used when documenting features of a template, such a
 ```yaml
 {{- /*
 mychart.shortname provides a 6 char truncated version of the release name.
-*/ }}
+*/ -}}
 {{ define "mychart.shortname" -}}
 {{ .Release.Name | trunc 6 }}
 {{- end -}}

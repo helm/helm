@@ -18,6 +18,7 @@ package helm
 
 import (
 	"crypto/tls"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
@@ -50,6 +51,8 @@ type options struct {
 	force bool
 	// if set, skip running hooks
 	disableHooks bool
+	// if set, skip CRD hook only
+	disableCRDHook bool
 	// name of release
 	releaseName string
 	// tls.Config to use for rpc if tls enabled
@@ -78,6 +81,8 @@ type options struct {
 	reuseValues bool
 	// release test options are applied directly to the test release history request
 	testReq rls.TestReleaseRequest
+	// connectTimeout specifies the time duration Helm will wait to establish a connection to tiller
+	connectTimeout time.Duration
 }
 
 // Host specifies the host address of the Tiller release server, (default = ":44134").
@@ -177,6 +182,13 @@ func ValueOverrides(raw []byte) InstallOption {
 func ReleaseName(name string) InstallOption {
 	return func(opts *options) {
 		opts.instReq.Name = name
+	}
+}
+
+// ConnectTimeout specifies the duration (in seconds) Helm will wait to establish a connection to tiller
+func ConnectTimeout(timeout int64) Option {
+	return func(opts *options) {
+		opts.connectTimeout = time.Duration(timeout) * time.Second
 	}
 }
 
@@ -285,6 +297,13 @@ func InstallDisableHooks(disable bool) InstallOption {
 	}
 }
 
+// InstallDisableCRDHook disables CRD hook during installation.
+func InstallDisableCRDHook(disable bool) InstallOption {
+	return func(opts *options) {
+		opts.disableCRDHook = disable
+	}
+}
+
 // InstallReuseName will (if true) instruct Tiller to re-use an existing name.
 func InstallReuseName(reuse bool) InstallOption {
 	return func(opts *options) {
@@ -375,7 +394,7 @@ func UpgradeForce(force bool) UpdateOption {
 type ContentOption func(*options)
 
 // ContentReleaseVersion will instruct Tiller to retrieve the content
-// of a paritcular version of a release.
+// of a particular version of a release.
 func ContentReleaseVersion(version int32) ContentOption {
 	return func(opts *options) {
 		opts.contentReq.Version = version

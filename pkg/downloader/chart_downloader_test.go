@@ -99,11 +99,11 @@ func TestDownload(t *testing.T) {
 		t.Fatal("No http provider found")
 	}
 
-	getter, err := provider.New(srv.URL, "", "", "")
+	g, err := provider.New(srv.URL, "", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := getter.Get(srv.URL)
+	got, err := g.Get(srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,16 +115,21 @@ func TestDownload(t *testing.T) {
 	// test with server backed by basic auth
 	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" && password != "password" {
+		if !ok || username != "username" || password != "password" {
 			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
 		}
 		fmt.Fprint(w, expect)
 	}))
+
 	defer basicAuthSrv.Close()
 
 	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
-	u.User = url.UserPassword("username", "password")
-	got, err = getter.Get(u.String())
+	httpgetter, err := getter.NewHTTPGetter(u.String(), "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	httpgetter.SetCredentials("username", "password")
+	got, err = httpgetter.Get(u.String())
 	if err != nil {
 		t.Fatal(err)
 	}

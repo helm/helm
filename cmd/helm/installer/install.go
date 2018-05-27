@@ -63,8 +63,8 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	if err != nil {
 		return err
 	}
-	existingImage := obj.Spec.Template.Spec.Containers[0].Image
-	if !isNewerVersion(existingImage) && !opts.ForceUpgrade {
+	tillerImage := obj.Spec.Template.Spec.Containers[0].Image
+	if semverCompare(tillerImage) == -1 && !opts.ForceUpgrade {
 		return errors.New("current Tiller version is newer, use --force-upgrade to downgrade")
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.selectImage()
@@ -73,7 +73,7 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
-	// If the service does not exists that would mean we are upgrading from a Tiller version
+	// If the service does not exist that would mean we are upgrading from a Tiller version
 	// that didn't deploy the service, so install it.
 	_, err = client.CoreV1().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -82,15 +82,24 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	return err
 }
 
-// isNewerVersion returns whether the current version is newer than the give image's version
-func isNewerVersion(image string) bool {
+// semverCompare returns whether the client's version is older, equal or newer than the given image's version.
+func semverCompare(image string) int {
 	split := strings.Split(image, ":")
 	if len(split) < 2 {
-		// If we don't know the version, we consider the current version newer
-		return true
+		// If we don't know the version, we consider the client version newer.
+		return 1
 	}
-	imageVersion := split[1]
-	return semver.MustParse(version.Version).GreaterThan(semver.MustParse(imageVersion))
+	tillerVersion, err := semver.NewVersion(split[1])
+	if err != nil {
+		// same thing with unparsable tiller versions (e.g. canary releases).
+		return 1
+	}
+	clientVersion, err := semver.NewVersion(version.Version)
+	if err != nil {
+		// aaaaaand same thing with unparsable helm versions (e.g. canary releases).
+		return 1
+	}
+	return clientVersion.Compare(tillerVersion)
 }
 
 // createDeployment creates the Tiller Deployment resource.
@@ -174,6 +183,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 			Labels:    labels,
 		},
 		Spec: v1beta1.DeploymentSpec{
+			Replicas: opts.getReplicas(),
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,

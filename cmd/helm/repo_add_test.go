@@ -17,10 +17,13 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
+	"io"
 	"os"
 	"testing"
 
+	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
 )
@@ -36,7 +39,7 @@ func TestRepoAddCmd(t *testing.T) {
 	cleanup := resetEnv()
 	defer func() {
 		srv.Stop()
-		os.Remove(thome.String())
+		os.RemoveAll(thome.String())
 		cleanup()
 	}()
 	if err := ensureTestHome(thome, t); err != nil {
@@ -49,17 +52,13 @@ func TestRepoAddCmd(t *testing.T) {
 		{
 			name:     "add a repository",
 			args:     []string{testName, srv.URL()},
-			expected: testName + " has been added to your repositories",
+			expected: "\"" + testName + "\" has been added to your repositories",
 		},
 	}
 
-	for _, tt := range tests {
-		buf := bytes.NewBuffer(nil)
-		c := newRepoAddCmd(buf)
-		if err := c.RunE(c, tt.args); err != nil {
-			t.Errorf("%q: expected %q, got %q", tt.name, tt.expected, err)
-		}
-	}
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
+		return newRepoAddCmd(out)
+	})
 }
 
 func TestRepoAdd(t *testing.T) {
@@ -72,7 +71,7 @@ func TestRepoAdd(t *testing.T) {
 	hh := thome
 	defer func() {
 		ts.Stop()
-		os.Remove(thome.String())
+		os.RemoveAll(thome.String())
 		cleanup()
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
@@ -81,7 +80,7 @@ func TestRepoAdd(t *testing.T) {
 
 	settings.Home = thome
 
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", true); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
 		t.Error(err)
 	}
 
@@ -94,11 +93,11 @@ func TestRepoAdd(t *testing.T) {
 		t.Errorf("%s was not successfully inserted into %s", testName, hh.RepositoryFile())
 	}
 
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", false); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", false); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 }

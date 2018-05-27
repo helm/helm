@@ -21,14 +21,17 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
-	"k8s.io/helm/pkg/plugin/cache"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	fp "github.com/cyphar/filepath-securejoin"
+
+	"k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.
@@ -181,7 +184,10 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			return err
 		}
 
-		path := filepath.Join(targetDir, header.Name)
+		path, err := fp.SecureJoin(targetDir, header.Name)
+		if err != nil {
+			return err
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -193,10 +199,11 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			if err != nil {
 				return err
 			}
-			defer outFile.Close()
 			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
 				return err
 			}
+			outFile.Close()
 		default:
 			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
 		}

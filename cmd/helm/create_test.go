@@ -33,7 +33,7 @@ func TestCreateCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tdir)
+	defer os.RemoveAll(tdir)
 
 	// CD into it
 	pwd, err := os.Getwd()
@@ -46,7 +46,7 @@ func TestCreateCmd(t *testing.T) {
 	defer os.Chdir(pwd)
 
 	// Run a create
-	cmd := newCreateCmd(os.Stdout)
+	cmd := newCreateCmd(ioutil.Discard)
 	if err := cmd.RunE(cmd, []string{cname}); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
@@ -79,7 +79,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tdir)
+	defer os.RemoveAll(tdir)
 
 	thome, err := tempHelmHome(t)
 	if err != nil {
@@ -117,7 +117,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	defer os.Chdir(pwd)
 
 	// Run a create
-	cmd := newCreateCmd(os.Stdout)
+	cmd := newCreateCmd(ioutil.Discard)
 	cmd.ParseFlags([]string{"--starter", "starterchart"})
 	if err := cmd.RunE(cmd, []string{cname}); err != nil {
 		t.Errorf("Failed to run create: %s", err)

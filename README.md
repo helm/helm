@@ -32,15 +32,14 @@ Think of it like apt/yum/homebrew for Kubernetes.
 
 ## Install
 
-Binary downloads of the Helm client can be found at the following links:
-
-- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-darwin-amd64.tar.gz)
-- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-amd64.tar.gz)
-- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-386.tar.gz)
-- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-windows-amd64.tar.gz)
+Binary downloads of the Helm client can be found on [the latest Releases page](https://github.com/kubernetes/helm/releases/latest).
 
 Unpack the `helm` binary and add it to your PATH and you are good to go!
-macOS/[homebrew](https://brew.sh/) users can also use `brew install kubernetes-helm`.
+
+If you want to use a package manager:
+
+- macOS/[homebrew](https://brew.sh/) users can use `brew install kubernetes-helm`.
+- Windows/[chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 
@@ -59,11 +58,13 @@ The [Helm roadmap uses Github milestones](https://github.com/kubernetes/helm/mil
 
 You can reach the Helm community and developers via the following channels:
 
-- [Kubernetes Slack](https://slack.k8s.io):
+- [Kubernetes Slack](http://slack.k8s.io):
   - #helm-users
   - #helm-dev
   - #charts
-- Mailing List: https://groups.google.com/forum/#!forum/kubernetes-sig-apps
+- Mailing Lists:
+  - [Helm Mailing List](https://lists.cncf.io/g/cncf-kubernetes-helm)
+  - [Kubernetes SIG Apps Mailing List](https://groups.google.com/forum/#!forum/kubernetes-sig-apps)
 - Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/4526666954](https://zoom.us/j/4526666954)
 
 ### Code of conduct

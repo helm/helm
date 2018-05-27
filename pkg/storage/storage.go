@@ -98,7 +98,7 @@ func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 	})
 }
 
-// ListFilterAll returns the set of releases satisfying satisfying the predicate
+// ListFilterAll returns the set of releases satisfying the predicate
 // (filter0 && filter1 && ... && filterN), i.e. a Release is included in the results
 // if and only if all filters return true.
 func (s *Storage) ListFilterAll(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
@@ -108,7 +108,7 @@ func (s *Storage) ListFilterAll(fns ...relutil.FilterFunc) ([]*rspb.Release, err
 	})
 }
 
-// ListFilterAny returns the set of releases satisfying satisfying the predicate
+// ListFilterAny returns the set of releases satisfying the predicate
 // (filter0 || filter1 || ... || filterN), i.e. a Release is included in the results
 // if at least one of the filters returns true.
 func (s *Storage) ListFilterAny(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
@@ -118,10 +118,28 @@ func (s *Storage) ListFilterAny(fns ...relutil.FilterFunc) ([]*rspb.Release, err
 	})
 }
 
-// Deployed returns the deployed release with the provided release name, or
+// Deployed returns the last deployed release with the provided release name, or
 // returns ErrReleaseNotFound if not found.
 func (s *Storage) Deployed(name string) (*rspb.Release, error) {
-	s.Log("getting deployed release from %q history", name)
+	ls, err := s.DeployedAll(name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, fmt.Errorf("%q has no deployed releases", name)
+		}
+		return nil, err
+	}
+
+	if len(ls) == 0 {
+		return nil, fmt.Errorf("%q has no deployed releases", name)
+	}
+
+	return ls[0], err
+}
+
+// DeployedAll returns all deployed releases with the provided name, or
+// returns ErrReleaseNotFound if not found.
+func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
+	s.Log("getting deployed releases from %q history", name)
 
 	ls, err := s.Driver.Query(map[string]string{
 		"NAME":   name,
@@ -129,7 +147,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		"STATUS": "DEPLOYED",
 	})
 	if err == nil {
-		return ls[0], nil
+		return ls, nil
 	}
 	if strings.Contains(err.Error(), "not found") {
 		return nil, fmt.Errorf("%q has no deployed releases", name)

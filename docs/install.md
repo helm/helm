@@ -36,6 +36,15 @@ brew install kubernetes-helm
 (Note: There is also a formula for emacs-helm, which is a different
 project.)
 
+### From Chocolatey (Windows)
+
+Members of the Kubernetes community have contributed a [Helm package](https://chocolatey.org/packages/kubernetes-helm) build to
+[Chocolatey](https://chocolatey.org/). This package is generally up to date.
+
+```
+choco install kubernetes-helm
+```
+
 ## From Script
 
 Helm now has an installer script that will automatically grab the latest version
@@ -72,7 +81,7 @@ Building Helm from source is slightly more work, but is the best way to
 go if you want to test the latest (pre-release) Helm version.
 
 You must have a working Go environment with
-[glide](https://github.com/Masterminds/glide) and Mercurial installed.
+[glide](https://github.com/Masterminds/glide) installed.
 
 ```console
 $ cd $GOPATH

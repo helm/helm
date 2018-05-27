@@ -18,8 +18,9 @@ Hyperkube you may need to do some manual configuration.
 
 ## GKE
 
-Google's GKE hosted Kubernetes platform is known to work with Helm, and requires
-no additional configuration.
+Google's GKE hosted Kubernetes platform enables RBAC by default. You will need to create a service account for tiller, and use the --service-account flag when initializing the helm server.
+
+See [Tiller and role-based access control](https://docs.helm.sh/using_helm/#role-based-access-control) for more information.
 
 ## Ubuntu with 'kubeadm'
 
@@ -42,4 +43,9 @@ Helm works straightforward on OpenShift Online, OpenShift Dedicated, OpenShift C
 
 ## Platform9
 
-Helm Client and Helm Server (Tiller) are pre-installed with [Platform9 Managed Kubernetes](https://platform9.com/managed-kubernetes/?utm_source=helm_distro_notes). Platform9 provides access to all official Helm charts through the App Catalog UI and native Kubernetes CLI. Additional repositories can be manually added. Further details are availble in this [Platform9 App Catalog article](https://platform9.com/support/deploying-kubernetes-apps-platform9-managed-kubernetes/?utm_source=helm_distro_notes).
+Helm Client and Helm Server (Tiller) are pre-installed with [Platform9 Managed Kubernetes](https://platform9.com/managed-kubernetes/?utm_source=helm_distro_notes). Platform9 provides access to all official Helm charts through the App Catalog UI and native Kubernetes CLI. Additional repositories can be manually added. Further details are available in this [Platform9 App Catalog article](https://platform9.com/support/deploying-kubernetes-apps-platform9-managed-kubernetes/?utm_source=helm_distro_notes).
+
+## DC/OS
+
+Helm (both client and server) has been tested and is working on Mesospheres DC/OS 1.11 Kubernetes platform, and requires
+no additional configuration.

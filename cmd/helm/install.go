@@ -50,13 +50,18 @@ The install argument must be a chart reference, a path to a packaged chart,
 a path to an unpacked chart directory or a URL.
 
 To override values in a chart, use either the '--values' flag and pass in a file
-or use the '--set' flag and pass configuration from the command line.
+or use the '--set' flag and pass configuration from the command line, to force
+a string value use '--set-string'.
 
 	$ helm install -f myvalues.yaml ./redis
 
 or
 
 	$ helm install --set name=prod ./redis
+
+or
+
+	$ helm install --set-string long_int=1234567890 ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -101,25 +106,29 @@ charts in a repository, use 'helm search'.
 `
 
 type installCmd struct {
-	name         string
-	namespace    string
-	valueFiles   valueFiles
-	chartPath    string
-	dryRun       bool
-	disableHooks bool
-	replace      bool
-	verify       bool
-	keyring      string
-	out          io.Writer
-	client       helm.Interface
-	values       []string
-	nameTemplate string
-	version      string
-	timeout      int64
-	wait         bool
-	repoURL      string
-	devel        bool
-	depUp        bool
+	name           string
+	namespace      string
+	valueFiles     valueFiles
+	chartPath      string
+	dryRun         bool
+	disableHooks   bool
+	disableCRDHook bool
+	replace        bool
+	verify         bool
+	keyring        string
+	out            io.Writer
+	client         helm.Interface
+	values         []string
+	stringValues   []string
+	nameTemplate   string
+	version        string
+	timeout        int64
+	wait           bool
+	repoURL        string
+	username       string
+	password       string
+	devel          bool
+	depUp          bool
 
 	certFile string
 	keyFile  string
@@ -153,7 +162,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Use:     "install [CHART]",
 		Short:   "install a chart archive",
 		Long:    installDesc,
-		PreRunE: setupConnection,
+		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
@@ -165,7 +174,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				inst.version = ">0.0.0-0"
 			}
 
-			cp, err := locateChartPath(inst.repoURL, args[0], inst.version, inst.verify, inst.keyring,
+			cp, err := locateChartPath(inst.repoURL, inst.username, inst.password, args[0], inst.version, inst.verify, inst.keyring,
 				inst.certFile, inst.keyFile, inst.caFile)
 			if err != nil {
 				return err
@@ -182,8 +191,10 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into. Defaults to the current kube config namespace.")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&inst.disableHooks, "no-hooks", false, "prevent hooks from running during install")
+	f.BoolVar(&inst.disableCRDHook, "no-crd-hook", false, "prevent CRD hooks from running, but run other hooks")
 	f.BoolVar(&inst.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
 	f.StringArrayVar(&inst.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&inst.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringVar(&inst.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
@@ -191,6 +202,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&inst.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&inst.password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -207,7 +220,7 @@ func (i *installCmd) run() error {
 		i.namespace = defaultNamespace()
 	}
 
-	rawVals, err := vals(i.valueFiles, i.values)
+	rawVals, err := vals(i.valueFiles, i.values, i.stringValues, i.certFile, i.keyFile, i.caFile)
 	if err != nil {
 		return err
 	}
@@ -229,7 +242,7 @@ func (i *installCmd) run() error {
 	}
 
 	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
-		// If checkDependencies returns an error, we have unfullfilled dependencies.
+		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/kubernetes/helm/issues/2209
 		if err := checkDependencies(chartRequested, req); err != nil {
@@ -262,6 +275,7 @@ func (i *installCmd) run() error {
 		helm.InstallDryRun(i.dryRun),
 		helm.InstallReuseName(i.replace),
 		helm.InstallDisableHooks(i.disableHooks),
+		helm.InstallDisableCRDHook(i.disableCRDHook),
 		helm.InstallTimeout(i.timeout),
 		helm.InstallWait(i.wait))
 	if err != nil {
@@ -276,6 +290,10 @@ func (i *installCmd) run() error {
 
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
+		// This is special casing to avoid breaking backward compatibility:
+		if res.Release.Info.Description != "Dry run complete" {
+			fmt.Fprintf(os.Stdout, "WARNING: %s\n", res.Release.Info.Description)
+		}
 		return nil
 	}
 
@@ -302,11 +320,6 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 			dest[k] = v
 			continue
 		}
-		// If the key doesn't exist already, then just set the key to that value
-		if _, exists := dest[k]; !exists {
-			dest[k] = nextMap
-			continue
-		}
 		// Edge case: If the key exists in the destination, but isn't a map
 		destMap, isMap := dest[k].(map[string]interface{})
 		// If the source map has a map for this key, prefer it
@@ -321,8 +334,8 @@ func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[st
 }
 
 // vals merges values from files specified via -f/--values and
-// directly via --set, marshaling them to YAML
-func vals(valueFiles valueFiles, values []string) ([]byte, error) {
+// directly via --set or --set-string, marshaling them to YAML
+func vals(valueFiles valueFiles, values []string, stringValues []string, CertFile, KeyFile, CAFile string) ([]byte, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -334,7 +347,7 @@ func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 		if strings.TrimSpace(filePath) == "-" {
 			bytes, err = ioutil.ReadAll(os.Stdin)
 		} else {
-			bytes, err = readFile(filePath)
+			bytes, err = readFile(filePath, CertFile, KeyFile, CAFile)
 		}
 
 		if err != nil {
@@ -352,6 +365,13 @@ func vals(valueFiles valueFiles, values []string) ([]byte, error) {
 	for _, value := range values {
 		if err := strvals.ParseInto(value, base); err != nil {
 			return []byte{}, fmt.Errorf("failed parsing --set data: %s", err)
+		}
+	}
+
+	// User specified a value via --set-string
+	for _, value := range stringValues {
+		if err := strvals.ParseIntoString(value, base); err != nil {
+			return []byte{}, fmt.Errorf("failed parsing --set-string data: %s", err)
 		}
 	}
 
@@ -381,7 +401,7 @@ func (i *installCmd) printRelease(rel *release.Release) {
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func locateChartPath(repoURL, name, version string, verify bool, keyring,
+func locateChartPath(repoURL, username, password, name, version string, verify bool, keyring,
 	certFile, keyFile, caFile string) (string, error) {
 	name = strings.TrimSpace(name)
 	version = strings.TrimSpace(version)
@@ -414,12 +434,14 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		Out:      os.Stdout,
 		Keyring:  keyring,
 		Getters:  getter.All(settings),
+		Username: username,
+		Password: password,
 	}
 	if verify {
 		dl.Verify = downloader.VerifyAlways
 	}
 	if repoURL != "" {
-		chartURL, err := repo.FindChartInRepoURL(repoURL, name, version,
+		chartURL, err := repo.FindChartInAuthRepoURL(repoURL, username, password, name, version,
 			certFile, keyFile, caFile, getter.All(settings))
 		if err != nil {
 			return "", err
@@ -443,7 +465,7 @@ func locateChartPath(repoURL, name, version string, verify bool, keyring,
 		return filename, err
 	}
 
-	return filename, fmt.Errorf("failed to download %q", name)
+	return filename, fmt.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
 }
 
 func generateName(nameTemplate string) (string, error) {
@@ -460,7 +482,7 @@ func generateName(nameTemplate string) (string, error) {
 }
 
 func defaultNamespace() string {
-	if ns, _, err := kube.GetConfig(settings.KubeContext, settings.KubeConfig).Namespace(); err == nil {
+	if ns, _, err := kube.GetConfig(settings.KubeContext).Namespace(); err == nil {
 		return ns
 	}
 	return "default"
@@ -490,7 +512,7 @@ func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
 }
 
 //readFile load a file from the local directory or a remote file with a url.
-func readFile(filePath string) ([]byte, error) {
+func readFile(filePath, CertFile, KeyFile, CAFile string) ([]byte, error) {
 	u, _ := url.Parse(filePath)
 	p := getter.All(settings)
 
@@ -499,12 +521,12 @@ func readFile(filePath string) ([]byte, error) {
 
 	if err != nil {
 		return ioutil.ReadFile(filePath)
-	} else {
-		getter, err := getterConstructor(filePath, "", "", "")
-		if err != nil {
-			return []byte{}, err
-		}
-		data, err := getter.Get(filePath)
-		return data.Bytes(), err
 	}
+
+	getter, err := getterConstructor(filePath, CertFile, KeyFile, CAFile)
+	if err != nil {
+		return []byte{}, err
+	}
+	data, err := getter.Get(filePath)
+	return data.Bytes(), err
 }

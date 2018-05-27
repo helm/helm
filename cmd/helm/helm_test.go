@@ -40,23 +40,25 @@ type releaseCmd func(c *helm.FakeClient, out io.Writer) *cobra.Command
 
 // runReleaseCases runs a set of release cases through the given releaseCmd.
 func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
-
 	var buf bytes.Buffer
 	for _, tt := range tests {
-		c := &helm.FakeClient{
-			Rels: tt.rels,
-		}
-		cmd := rcmd(c, &buf)
-		cmd.ParseFlags(tt.flags)
-		err := cmd.RunE(cmd, tt.args)
-		if (err != nil) != tt.err {
-			t.Errorf("%q. expected error, got '%v'", tt.name, err)
-		}
-		re := regexp.MustCompile(tt.expected)
-		if !re.Match(buf.Bytes()) {
-			t.Errorf("%q. expected\n%q\ngot\n%q", tt.name, tt.expected, buf.String())
-		}
-		buf.Reset()
+		t.Run(tt.name, func(t *testing.T) {
+			c := &helm.FakeClient{
+				Rels:      tt.rels,
+				Responses: tt.responses,
+			}
+			cmd := rcmd(c, &buf)
+			cmd.ParseFlags(tt.flags)
+			err := cmd.RunE(cmd, tt.args)
+			if (err != nil) != tt.err {
+				t.Errorf("expected error, got '%v'", err)
+			}
+			re := regexp.MustCompile(tt.expected)
+			if !re.Match(buf.Bytes()) {
+				t.Errorf("expected\n%q\ngot\n%q", tt.expected, buf.String())
+			}
+			buf.Reset()
+		})
 	}
 }
 
@@ -70,7 +72,8 @@ type releaseCase struct {
 	err      bool
 	resp     *release.Release
 	// Rels are the available releases at the start of the test.
-	rels []*release.Release
+	rels      []*release.Release
+	responses map[string]release.TestRun_Status
 }
 
 // tempHelmHome sets up a Helm Home in a temp dir.

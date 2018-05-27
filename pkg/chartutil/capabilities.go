@@ -42,7 +42,7 @@ var (
 type Capabilities struct {
 	// List of all supported API versions
 	APIVersions VersionSet
-	// KubeVerison is the Kubernetes version
+	// KubeVersion is the Kubernetes version
 	KubeVersion *version.Info
 	// TillerVersion is the Tiller version
 	//

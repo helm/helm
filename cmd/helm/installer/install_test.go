@@ -211,6 +211,10 @@ func TestInstall(t *testing.T) {
 		if ports != 2 {
 			t.Errorf("expected ports = 2, got '%d'", ports)
 		}
+		replicas := obj.Spec.Replicas
+		if int(*replicas) != 1 {
+			t.Errorf("expected replicas = 1, got '%d'", replicas)
+		}
 		return true, obj, nil
 	})
 	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -233,6 +237,29 @@ func TestInstall(t *testing.T) {
 
 	if actions := fc.Actions(); len(actions) != 2 {
 		t.Errorf("unexpected actions: %v, expected 2 actions got %d", actions, len(actions))
+	}
+}
+
+func TestInstallHA(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		replicas := obj.Spec.Replicas
+		if int(*replicas) != 2 {
+			t.Errorf("expected replicas = 2, got '%d'", replicas)
+		}
+		return true, obj, nil
+	})
+
+	opts := &Options{
+		Namespace: v1.NamespaceDefault,
+		ImageSpec: image,
+		Replicas:  2,
+	}
+	if err := Install(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
 	}
 }
 
@@ -473,6 +500,129 @@ func TestUgrade_newerVersion(t *testing.T) {
 
 	if actions := fc.Actions(); len(actions) != 4 {
 		t.Errorf("unexpected actions: %v, expected 4 action got %d", actions, len(actions))
+	}
+}
+
+func TestUpgrade_identical(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	serviceAccount := "newServiceAccount"
+	existingDeployment, _ := deployment(&Options{
+		Namespace:      v1.NamespaceDefault,
+		ImageSpec:      "imageToReplace:v2.0.0",
+		ServiceAccount: "serviceAccountToReplace",
+		UseCanary:      false,
+	})
+	existingService := service(v1.NamespaceDefault)
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingDeployment, nil
+	})
+	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		i := obj.Spec.Template.Spec.Containers[0].Image
+		if i != image {
+			t.Errorf("expected image = '%s', got '%s'", image, i)
+		}
+		sa := obj.Spec.Template.Spec.ServiceAccountName
+		if sa != serviceAccount {
+			t.Errorf("expected serviceAccountName = '%s', got '%s'", serviceAccount, sa)
+		}
+		return true, obj, nil
+	})
+	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingService, nil
+	})
+
+	opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: image, ServiceAccount: serviceAccount}
+	if err := Upgrade(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expected 3 actions got %d", actions, len(actions))
+	}
+}
+
+func TestUpgrade_canaryClient(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:canary"
+	serviceAccount := "newServiceAccount"
+	existingDeployment, _ := deployment(&Options{
+		Namespace:      v1.NamespaceDefault,
+		ImageSpec:      "imageToReplace:v1.0.0",
+		ServiceAccount: "serviceAccountToReplace",
+		UseCanary:      false,
+	})
+	existingService := service(v1.NamespaceDefault)
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingDeployment, nil
+	})
+	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		i := obj.Spec.Template.Spec.Containers[0].Image
+		if i != image {
+			t.Errorf("expected image = '%s', got '%s'", image, i)
+		}
+		sa := obj.Spec.Template.Spec.ServiceAccountName
+		if sa != serviceAccount {
+			t.Errorf("expected serviceAccountName = '%s', got '%s'", serviceAccount, sa)
+		}
+		return true, obj, nil
+	})
+	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingService, nil
+	})
+
+	opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: image, ServiceAccount: serviceAccount}
+	if err := Upgrade(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expected 3 actions got %d", actions, len(actions))
+	}
+}
+
+func TestUpgrade_canaryServer(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	serviceAccount := "newServiceAccount"
+	existingDeployment, _ := deployment(&Options{
+		Namespace:      v1.NamespaceDefault,
+		ImageSpec:      "imageToReplace:canary",
+		ServiceAccount: "serviceAccountToReplace",
+		UseCanary:      false,
+	})
+	existingService := service(v1.NamespaceDefault)
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingDeployment, nil
+	})
+	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		i := obj.Spec.Template.Spec.Containers[0].Image
+		if i != image {
+			t.Errorf("expected image = '%s', got '%s'", image, i)
+		}
+		sa := obj.Spec.Template.Spec.ServiceAccountName
+		if sa != serviceAccount {
+			t.Errorf("expected serviceAccountName = '%s', got '%s'", serviceAccount, sa)
+		}
+		return true, obj, nil
+	})
+	fc.AddReactor("get", "services", func(action testcore.Action) (bool, runtime.Object, error) {
+		return true, existingService, nil
+	})
+
+	opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: image, ServiceAccount: serviceAccount}
+	if err := Upgrade(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expected 3 actions got %d", actions, len(actions))
 	}
 }
 

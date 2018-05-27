@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -128,6 +129,107 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 	}
 }
 
+// This is a regression test for bug found in issue #3655
+func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	installReq := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values: &chart.Config{Raw: "foo: bar"},
+	}
+
+	fmt.Println("Running Install release with foo: bar override")
+	installResp, err := rs.InstallRelease(c, installReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rel := installResp.Release
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+	}
+
+	fmt.Println("Running Update release with no overrides and no reuse-values flag")
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+
+	expect := "foo: bar"
+	if res.Release.Config != nil && res.Release.Config.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Config.Raw)
+	}
+
+	rel = res.Release
+	req = &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values:      &chart.Config{Raw: "foo2: bar2"},
+		ReuseValues: true,
+	}
+
+	fmt.Println("Running Update release with foo2: bar2 override and reuse-values")
+	res, err = rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+
+	// This should have the newly-passed overrides.
+	expect = "foo: bar\nfoo2: bar2\n"
+	if res.Release.Config != nil && res.Release.Config.Raw != expect {
+		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
+	}
+
+	rel = res.Release
+	req = &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values:      &chart.Config{Raw: "foo: baz"},
+		ReuseValues: true,
+	}
+
+	fmt.Println("Running Update release with foo=baz override with reuse-values flag")
+	res, err = rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	expect = "foo: baz\nfoo2: bar2\n"
+	if res.Release.Config != nil && res.Release.Config.Raw != expect {
+		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Config.Raw)
+	}
+}
+
 func TestUpdateRelease_ReuseValues(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
@@ -157,8 +259,8 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 	if res.Release.Chart.Values != nil && res.Release.Chart.Values.Raw != expect {
 		t.Errorf("Expected chart values to be %q, got %q", expect, res.Release.Chart.Values.Raw)
 	}
-	// This should have the newly-passed overrides.
-	expect = "name2: val2"
+	// This should have the newly-passed overrides and any other computed values. `name: value` comes from release Config via releaseStub()
+	expect = "name: value\nname2: val2\n"
 	if res.Release.Config != nil && res.Release.Config.Raw != expect {
 		t.Errorf("Expected request config to be %q, got %q", expect, res.Release.Config.Raw)
 	}
@@ -225,9 +327,9 @@ func TestUpdateReleaseFailure(t *testing.T) {
 
 	compareStoredAndReturnedRelease(t, *rs, *res)
 
-	edesc := "Upgrade \"angry-panda\" failed: Failed update in kube client"
-	if got := res.Release.Info.Description; got != edesc {
-		t.Errorf("Expected description %q, got %q", edesc, got)
+	expectedDescription := "Upgrade \"angry-panda\" failed: Failed update in kube client"
+	if got := res.Release.Info.Description; got != expectedDescription {
+		t.Errorf("Expected description %q, got %q", expectedDescription, got)
 	}
 
 	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
@@ -236,6 +338,50 @@ func TestUpdateReleaseFailure(t *testing.T) {
 	}
 	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_DEPLOYED {
 		t.Errorf("Expected Deployed status on previous Release version. Got %v", oldStatus)
+	}
+}
+
+func TestUpdateReleaseFailure_Force(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := namedReleaseStub("forceful-luke", release.Status_FAILED)
+	rs.env.Releases.Create(rel)
+	rs.Log = t.Logf
+
+	req := &services.UpdateReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/something", Data: []byte("text: 'Did you ever hear the tragedy of Darth Plagueis the Wise? I thought not. It’s not a story the Jedi would tell you. It’s a Sith legend. Darth Plagueis was a Dark Lord of the Sith, so powerful and so wise he could use the Force to influence the Midichlorians to create life... He had such a knowledge of the Dark Side that he could even keep the ones he cared about from dying. The Dark Side of the Force is a pathway to many abilities some consider to be unnatural. He became so powerful... The only thing he was afraid of was losing his power, which eventually, of course, he did. Unfortunately, he taught his apprentice everything he knew, then his apprentice killed him in his sleep. Ironic. He could save others from death, but not himself.'")},
+			},
+		},
+		Force: true,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Errorf("Expected successful update, got %v", err)
+	}
+
+	if updatedStatus := res.Release.Info.Status.Code; updatedStatus != release.Status_DEPLOYED {
+		t.Errorf("Expected DEPLOYED release. Got %d", updatedStatus)
+	}
+
+	compareStoredAndReturnedRelease(t, *rs, *res)
+
+	expectedDescription := "Upgrade complete"
+	if got := res.Release.Info.Description; got != expectedDescription {
+		t.Errorf("Expected description %q, got %q", expectedDescription, got)
+	}
+
+	oldRelease, err := rs.env.Releases.Get(rel.Name, rel.Version)
+	if err != nil {
+		t.Errorf("Expected to be able to get previous release")
+	}
+	if oldStatus := oldRelease.Info.Status.Code; oldStatus != release.Status_DELETED {
+		t.Errorf("Expected Deleted status on previous Release version. Got %v", oldStatus)
 	}
 }
 

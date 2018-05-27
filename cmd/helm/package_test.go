@@ -205,7 +205,19 @@ func TestSetAppVersion(t *testing.T) {
 	var ch *chart.Chart
 	expectedAppVersion := "app-version-foo"
 	tmp, _ := ioutil.TempDir("", "helm-package-app-version-")
-	defer os.RemoveAll(tmp)
+
+	thome, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanup := resetEnv()
+	defer func() {
+		os.RemoveAll(tmp)
+		os.RemoveAll(thome.String())
+		cleanup()
+	}()
+
+	settings.Home = helmpath.Home(thome)
 
 	c := newPackageCmd(&bytes.Buffer{})
 	flags := map[string]string{
@@ -213,7 +225,7 @@ func TestSetAppVersion(t *testing.T) {
 		"app-version": expectedAppVersion,
 	}
 	setFlags(c, flags)
-	err := c.RunE(c, []string{"testdata/testcharts/alpine"})
+	err = c.RunE(c, []string{"testdata/testcharts/alpine"})
 	if err != nil {
 		t.Errorf("unexpected error %q", err)
 	}
