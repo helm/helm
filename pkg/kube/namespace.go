@@ -40,7 +40,16 @@ func getNamespace(client internalclientset.Interface, namespace string) (*core.N
 func ensureNamespace(client internalclientset.Interface, namespace string) error {
 	_, err := getNamespace(client, namespace)
 	if err != nil && errors.IsNotFound(err) {
-		return createNamespace(client, namespace)
+		err = createNamespace(client, namespace)
+
+		// If multiple commands which run `ensureNamespace` are run in
+		// parallel, then protect against the race condition in which
+		// the namespace did not exist when `getNamespace` was executed,
+		// but did exist when `createNamespace` was executed. If that
+		// happens, we can just proceed as normal.
+		if errors.IsAlreadyExists(err) {
+			return nil
+		}
 	}
 	return err
 }
