@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A guestbook Helm chart for Kubernetes.
+name: guestbook
+version: 0.1.0
