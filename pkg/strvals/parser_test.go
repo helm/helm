@@ -80,6 +80,11 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]interface{}{"boolean": "true"},
 			err:    false,
 		},
+		{
+			str:    "is_null=null",
+			expect: map[string]interface{}{"is_null": "null"},
+			err:    false,
+		},
 	}
 	tests := []struct {
 		str    string
