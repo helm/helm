@@ -43,7 +43,7 @@ carefully curated and maintained charts. This chart repository is named
 
 You can see which charts are available by running `helm search`:
 
-```
+```console
 $ helm search
 NAME                 	VERSION 	DESCRIPTION
 stable/drupal   	0.3.2   	One of the most versatile open source content m...
@@ -56,7 +56,7 @@ stable/mysql    	0.1.0   	Chart for MySQL
 With no filter, `helm search` shows you all of the available charts. You
 can narrow down your results by searching with a filter:
 
-```
+```console
 $ helm search mysql
 NAME               	VERSION	DESCRIPTION
 stable/mysql  	0.1.0  	Chart for MySQL
@@ -69,7 +69,7 @@ Why is
 `mariadb` in the list? Because its package description relates it to
 MySQL. We can use `helm inspect chart` to see this:
 
-```
+```console
 $ helm inspect stable/mariadb
 Fetched stable/mariadb to mariadb-0.5.1.tgz
 description: Chart for MariaDB
@@ -91,7 +91,7 @@ package you want to install, you can use `helm install` to install it.
 To install a new package, use the `helm install` command. At its
 simplest, it takes only one argument: The name of the chart.
 
-```
+```console
 $ helm install stable/mariadb
 Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 happy-panda
@@ -139,7 +139,7 @@ may take a long time to install into the cluster.
 To keep track of a release's state, or to re-read configuration
 information, you can use `helm status`:
 
-```
+```console
 $ helm status happy-panda
 Last Deployed: Wed Sep 28 12:32:28 2016
 Namespace: default
@@ -392,14 +392,14 @@ is not a full list of cli flags. To see a description of all flags, just run
 When it is time to uninstall or delete a release from the cluster, use
 the `helm delete` command:
 
-```
+```console
 $ helm delete happy-panda
 ```
 
 This will remove the release from the cluster. You can see all of your
 currently deployed releases with the `helm list` command:
 
-```
+```console
 $ helm list
 NAME           	VERSION	UPDATED                        	STATUS         	CHART
 inky-cat       	1      	Wed Sep 28 12:59:46 2016       	DEPLOYED       	alpine-0.1.0
