@@ -132,6 +132,11 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]interface{}{"boolean": true},
 		},
 		{
+			str:    "is_null=null",
+			expect: map[string]interface{}{"is_null": nil},
+			err:    false,
+		},
+		{
 			str: "name1,name2=",
 			err: true,
 		},
