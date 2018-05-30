@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ type Environment struct {
 	Stream     services.ReleaseService_RunReleaseTestServer
 	Timeout    int64
 	Parallel   bool
+	streamLock sync.Mutex
 }
 
 func (env *Environment) createTestPod(test *test) error {
@@ -109,6 +111,8 @@ func (env *Environment) streamUnknown(name, info string) error {
 
 func (env *Environment) streamMessage(msg string, status release.TestRun_Status) error {
 	resp := &services.TestReleaseResponse{Msg: msg, Status: status}
+	env.streamLock.Lock()
+	defer env.streamLock.Unlock()
 	return env.Stream.Send(resp)
 }
 
