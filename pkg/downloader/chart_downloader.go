@@ -98,15 +98,29 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	name := filepath.Base(u.Path)
 	destfile := filepath.Join(dest, name)
 	tmpfile, err := ioutil.TempFile(dest, "tmp")
+	// Remove the temp file in case an error occurred before renaming.
+	defer func() {
+		if tmpfile != nil {
+			if _, err := os.Stat(tmpfile.Name()); err == nil {
+				os.Remove(tmpfile.Name())
+			}
+		}
+	}()
 	if err != nil {
 		return "", nil, err
 	}
+
 	tmpfilename := tmpfile.Name()
+	// 0644 here is ineffective since TempFile creates files with 0600 permission. We'll chmod it later.
 	if err := ioutil.WriteFile(tmpfilename, data.Bytes(), 0644); err != nil {
 		return tmpfilename, nil, err
 	}
 
 	if err := os.Rename(tmpfilename, destfile); err != nil {
+		return destfile, nil, err
+	}
+
+	if err := os.Chmod(destfile, 0644); err != nil {
 		return destfile, nil, err
 	}
 
