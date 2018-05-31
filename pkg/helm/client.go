@@ -36,6 +36,8 @@ import (
 // grpc library default is 4MB
 const maxMsgSize = 1024 * 1024 * 20
 
+const timeout = 5
+
 // Client manages client side of the Helm-Tiller protocol.
 type Client struct {
 	opts options
@@ -44,8 +46,7 @@ type Client struct {
 // NewClient creates a new client.
 func NewClient(opts ...Option) *Client {
 	var c Client
-	// set some sane defaults
-	c.Option(ConnectTimeout(5))
+	c.Option(ConnectTimeout(timeout))
 	return c.Option(opts...)
 }
 
@@ -202,7 +203,7 @@ func (h *Client) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse, err
 	}
 	req := &rls.GetVersionRequest{}
 	ctx := NewContext()
-	h.Option(ConnectTimeout(5))
+	h.Option(ConnectTimeout(timeout))
 
 	if reqOpts.before != nil {
 		if err := reqOpts.before(ctx, req); err != nil {
