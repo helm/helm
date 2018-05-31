@@ -278,6 +278,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Warning: no %s with the name %q found in internal state", kind, info.Name)
+
+			originalInfo = &resource.Info{}
+			originalInfo.Object = info.Object
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
