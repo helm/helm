@@ -134,7 +134,7 @@ func TestRun(t *testing.T) {
 	}
 
 	if result2.Status != release.TestRun_FAILURE {
-		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
+		t.Errorf("Expected test result to be failure, got: %v", result2.Status)
 	}
 
 }
