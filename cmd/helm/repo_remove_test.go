@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -37,7 +38,7 @@ func TestRepoRemove(t *testing.T) {
 	cleanup := resetEnv()
 	defer func() {
 		ts.Stop()
-		os.Remove(thome.String())
+		os.RemoveAll(thome.String())
 		cleanup()
 	}()
 	if err := ensureTestHome(hh, t); err != nil {
@@ -51,7 +52,7 @@ func TestRepoRemove(t *testing.T) {
 	if err := removeRepoLine(b, testName, hh); err == nil {
 		t.Errorf("Expected error removing %s, but did not get one.", testName)
 	}
-	if err := addRepository(testName, ts.URL(), hh, "", "", "", true); err != nil {
+	if err := addRepository(testName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
 		t.Error(err)
 	}
 
@@ -77,5 +78,68 @@ func TestRepoRemove(t *testing.T) {
 
 	if f.Has(testName) {
 		t.Errorf("%s was not successfully removed from repositories list", testName)
+	}
+}
+
+func TestRepoRemove_NoArguments(t *testing.T) {
+	cmd := newRepoRemoveCmd(ioutil.Discard)
+	if err := cmd.RunE(cmd, []string{}); err == nil {
+		t.Errorf("Expected an error since no repo names were provided")
+	}
+}
+
+func TestRepoRemove_MultipleRepos(t *testing.T) {
+	ts, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hh := helmpath.Home(thome)
+	cleanup := resetEnv()
+	defer func() {
+		ts.Stop()
+		os.RemoveAll(thome.String())
+		cleanup()
+	}()
+	if err := ensureTestHome(hh, t); err != nil {
+		t.Fatal(err)
+	}
+
+	settings.Home = thome
+
+	repoFoo := testName + "foo"
+	repoBar := testName + "bar"
+
+	if err := addRepository(repoFoo, ts.URL(), "", "", hh, "", "", "", true); err != nil {
+		t.Error(err)
+	}
+	if err := addRepository(repoBar, ts.URL(), "", "", hh, "", "", "", true); err != nil {
+		t.Error(err)
+	}
+
+	b := bytes.NewBuffer(nil)
+
+	cmd := newRepoRemoveCmd(b)
+	if err := cmd.RunE(cmd, []string{repoFoo, repoBar}); err != nil {
+		t.Error(err)
+	}
+
+	if !strings.Contains(b.String(), repoFoo) {
+		t.Errorf("Expected %q in output, found: %q", repoFoo, b.String())
+	}
+	if !strings.Contains(b.String(), repoBar) {
+		t.Errorf("Expected %q in output, found: %q", repoBar, b.String())
+	}
+
+	f, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if f.Has(repoFoo) {
+		t.Errorf("%s was not successfully removed from repositories list", repoFoo)
+	}
+	if f.Has(repoBar) {
+		t.Errorf("%s was not successfully removed from repositories list", repoBar)
 	}
 }

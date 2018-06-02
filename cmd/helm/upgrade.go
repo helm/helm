@@ -37,7 +37,8 @@ a packaged chart, or a fully qualified URL. For chart references, the latest
 version will be specified unless the '--version' flag is set.
 
 To override values in a chart, use either the '--values' flag and pass in a file
-or use the '--set' flag and pass configuration from the command line.
+or use the '--set' flag and pass configuration from the command line, to force string
+values, use '--set-string'.
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -63,6 +64,7 @@ type upgradeCmd struct {
 	disableHooks bool
 	valueFiles   valueFiles
 	values       []string
+	stringValues []string
 	verify       bool
 	keyring      string
 	install      bool
@@ -73,6 +75,8 @@ type upgradeCmd struct {
 	reuseValues  bool
 	wait         bool
 	repoURL      string
+	username     string
+	password     string
 	devel        bool
 
 	certFile string
@@ -91,7 +95,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Use:     "upgrade [RELEASE] [CHART]",
 		Short:   "upgrade a release",
 		Long:    upgradeDesc,
-		PreRunE: setupConnection,
+		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "release name", "chart path"); err != nil {
 				return err
@@ -116,6 +120,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
 	f.StringArrayVar(&upgrade.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&upgrade.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
@@ -125,9 +130,11 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
 	f.Int64Var(&upgrade.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
-	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values, and merge in any new values. If '--reset-values' is specified, this is ignored.")
+	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&upgrade.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&upgrade.password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -139,7 +146,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (u *upgradeCmd) run() error {
-	chartPath, err := locateChartPath(u.repoURL, u.chart, u.version, u.verify, u.keyring, u.certFile, u.keyFile, u.caFile)
+	chartPath, err := locateChartPath(u.repoURL, u.username, u.password, u.chart, u.version, u.verify, u.keyring, u.certFile, u.keyFile, u.caFile)
 	if err != nil {
 		return err
 	}
@@ -154,9 +161,15 @@ func (u *upgradeCmd) run() error {
 		releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
 
 		if err == nil {
+			if u.namespace == "" {
+				u.namespace = defaultNamespace()
+			}
 			previousReleaseNamespace := releaseHistory.Releases[0].Namespace
 			if previousReleaseNamespace != u.namespace {
-				fmt.Fprintf(u.out, "WARNING: Namespace doesn't match with previous. Release will be deployed to %s\n", previousReleaseNamespace)
+				fmt.Fprintf(u.out,
+					"WARNING: Namespace %q doesn't match with previous. Release will be deployed to %s\n",
+					u.namespace, previousReleaseNamespace,
+				)
 			}
 		}
 
@@ -173,6 +186,7 @@ func (u *upgradeCmd) run() error {
 				disableHooks: u.disableHooks,
 				keyring:      u.keyring,
 				values:       u.values,
+				stringValues: u.stringValues,
 				namespace:    u.namespace,
 				timeout:      u.timeout,
 				wait:         u.wait,
@@ -181,7 +195,7 @@ func (u *upgradeCmd) run() error {
 		}
 	}
 
-	rawVals, err := vals(u.valueFiles, u.values)
+	rawVals, err := vals(u.valueFiles, u.values, u.stringValues, u.certFile, u.keyFile, u.caFile)
 	if err != nil {
 		return err
 	}

@@ -35,9 +35,7 @@ import (
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,7 +45,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
-	conditions "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -56,7 +53,7 @@ import (
 )
 
 const (
-	// MissingGetHeader is added to Get's outout when a resource is not found.
+	// MissingGetHeader is added to Get's output when a resource is not found.
 	MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
 )
 
@@ -77,9 +74,11 @@ func New(config clientcmd.ClientConfig) *Client {
 	return &Client{
 		Factory:        cmdutil.NewFactory(config),
 		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
-		Log:            func(_ string, _ ...interface{}) {},
+		Log:            nopLogger,
 	}
 }
+
+var nopLogger = func(_ string, _ ...interface{}) {}
 
 // ResourceActorFunc performs an action on a single resource.
 type ResourceActorFunc func(*resource.Info) error
@@ -140,6 +139,7 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 		NamespaceParam(namespace).
 		DefaultNamespace().
 		Stream(reader, "").
+		Schema(c.validator()).
 		Flatten().
 		Do().Infos()
 	return result, scrubValidationError(err)
@@ -179,7 +179,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], info.Object)
+		objs[vk] = append(objs[vk], info.AsInternal())
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
@@ -205,7 +205,10 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths.
 	buf := new(bytes.Buffer)
-	p, _ := c.Printer(nil, printers.PrintOptions{})
+	p, err := cmdutil.PrinterForOptions(&printers.PrintOptions{})
+	if err != nil {
+		return "", err
+	}
 	for t, ot := range objs {
 		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
 			return "", err
@@ -389,26 +392,26 @@ func deleteResource(c *Client, info *resource.Info) error {
 	return reaper.Stop(info.Namespace, info.Name, 0, nil)
 }
 
-func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %s", err)
 	}
-	newData, err := json.Marshal(target)
+	newData, err := json.Marshal(target.Object)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %s", err)
 	}
 
 	// While different objects need different merge types, the parent function
 	// that calls this does not try to create a patch when the data (first
-	// returned object) is nil. We can skip calculating the the merge type as
+	// returned object) is nil. We can skip calculating the merge type as
 	// the returned merge type is ignored.
 	if apiequality.Semantic.DeepEqual(oldData, newData) {
 		return nil, types.StrategicMergePatchType, nil
 	}
 
 	// Get a versioned object
-	versionedObject, err := mapping.ConvertToVersion(target, mapping.GroupVersionKind.GroupVersion())
+	versionedObject, err := target.Versioned()
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
@@ -430,7 +433,7 @@ func createPatch(mapping *meta.RESTMapping, target, current runtime.Object) ([]b
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
-	patch, patchType, err := createPatch(target.Mapping, target.Object, currentObj)
+	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
@@ -480,16 +483,9 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	versioned, err := c.AsVersionedObject(target.Object)
-	if runtime.IsNotRegisteredError(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	selector, err := getSelectorFromObject(versioned)
-	if err != nil {
+	versioned := target.AsVersioned()
+	selector, ok := getSelectorFromObject(versioned)
+	if !ok {
 		return nil
 	}
 
@@ -518,45 +514,45 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	return nil
 }
 
-func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
+func getSelectorFromObject(obj runtime.Object) (map[string]string, bool) {
 	switch typed := obj.(type) {
 
 	case *v1.ReplicationController:
-		return typed.Spec.Selector, nil
+		return typed.Spec.Selector, true
 
 	case *extv1beta1.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *extv1beta1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta2.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *extv1beta1.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta2.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *batch.Job:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	case *appsv1beta1.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1beta2.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 	case *appsv1.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
+		return typed.Spec.Selector.MatchLabels, true
 
 	default:
-		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
+		return nil, false
 	}
 }
 
@@ -599,17 +595,6 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 		}
 	})
 	return err
-}
-
-// AsVersionedObject converts a runtime.object to a versioned object.
-func (c *Client) AsVersionedObject(obj runtime.Object) (runtime.Object, error) {
-	json, err := runtime.Encode(unstructured.UnstructuredJSONScheme, obj)
-	if err != nil {
-		return nil, err
-	}
-	versions := &runtime.VersionedObjects{}
-	err = runtime.DecodeInto(c.Decoder(true), json, versions)
-	return versions.First(), err
 }
 
 // waitForJob is a helper that waits for a job to complete.
@@ -680,13 +665,28 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
-		return conditions.PodCompleted(e)
+		return isPodComplete(e)
 	})
 
 	return err
 }
 
-//get an kubernetes resources's relation pods
+func isPodComplete(event watch.Event) (bool, error) {
+	o, ok := event.Object.(*core.Pod)
+	if !ok {
+		return true, fmt.Errorf("expected a *core.Pod, got %T", event.Object)
+	}
+	if event.Type == watch.Deleted {
+		return false, fmt.Errorf("pod not found")
+	}
+	switch o.Status.Phase {
+	case core.PodFailed, core.PodSucceeded:
+		return true, nil
+	}
+	return false, nil
+}
+
+//get a kubernetes resources' relation pods
 // kubernetes resource used select labels to relate pods
 func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {
 	if info == nil {
@@ -695,22 +695,16 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 
 	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
 
-	versioned, err := c.AsVersionedObject(info.Object)
-	if runtime.IsNotRegisteredError(err) {
+	versioned, err := info.Versioned()
+	switch {
+	case runtime.IsNotRegisteredError(err):
 		return objPods, nil
-	}
-	if err != nil {
+	case err != nil:
 		return objPods, err
 	}
 
-	// We can ignore this error because it will only error if it isn't a type that doesn't
-	// have pods. In that case, we don't care
-	selector, _ := getSelectorFromObject(versioned)
-
-	selectorString := labels.Set(selector).AsSelector().String()
-
-	// If we have an empty selector, this likely is a service or config map, so bail out now
-	if selectorString == "" {
+	selector, ok := getSelectorFromObject(versioned)
+	if !ok {
 		return objPods, nil
 	}
 

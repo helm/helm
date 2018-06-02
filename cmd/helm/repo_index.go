@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -86,9 +87,16 @@ func index(dir, url, mergeTo string) error {
 		return err
 	}
 	if mergeTo != "" {
-		i2, err := repo.LoadIndexFile(mergeTo)
-		if err != nil {
-			return fmt.Errorf("Merge failed: %s", err)
+		// if index.yaml is missing then create an empty one to merge into
+		var i2 *repo.IndexFile
+		if _, err := os.Stat(mergeTo); os.IsNotExist(err) {
+			i2 = repo.NewIndexFile()
+			i2.WriteFile(mergeTo, 0755)
+		} else {
+			i2, err = repo.LoadIndexFile(mergeTo)
+			if err != nil {
+				return fmt.Errorf("Merge failed: %s", err)
+			}
 		}
 		i.Merge(i2)
 	}

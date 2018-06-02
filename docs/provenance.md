@@ -4,13 +4,6 @@ Helm has provenance tools which help chart users verify the integrity and origin
 of a package. Using industry-standard tools based on PKI, GnuPG, and well-respected
 package managers, Helm can generate and verify signature files.
 
-**Note:**
-Version 2.0.0-alpha.4 introduced a system for verifying the authenticity of charts.
-While we do not anticipate that any major changes will be made to the file formats
-or provenancing algorithms, this portion of Helm is not considered _frozen_ until
-2.0.0-RC1 is released. The original plan for this feature can be found
-[at issue 983](https://github.com/kubernetes/helm/issues/983).
-
 ## Overview
 
 Integrity is established by comparing a chart to a provenance record. Provenance
@@ -51,6 +44,12 @@ $ helm package --sign --key 'helm signing key' --keyring path/to/keyring.secret 
 
 **TIP:** for GnuPG users, your secret keyring is in `~/.gnupg/secring.gpg`. You can
 use `gpg --list-secret-keys` to list the keys you have.
+
+**Warning:**  the GnuPG v2 store your secret keyring using a new format 'kbx' on the default location  '~/.gnupg/pubring.kbx'. Please use the following command to convert your keyring to the legacy gpg format:
+
+```
+$ gpg --export-secret-keys >~/.gnupg/secring.gpg
+```
 
 At this point, you should see both `mychart-0.1.0.tgz` and `mychart-0.1.0.tgz.prov`.
 Both files should eventually be uploaded to your desired chart repository.

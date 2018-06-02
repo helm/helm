@@ -18,7 +18,7 @@ package releasetesting
 
 import (
 	"io"
-	"os"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -134,7 +134,7 @@ func TestRun(t *testing.T) {
 	}
 
 	if result2.Status != release.TestRun_FAILURE {
-		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
+		t.Errorf("Expected test result to be failure, got: %v", result2.Status)
 	}
 
 }
@@ -320,7 +320,7 @@ type podSucceededKubeClient struct {
 
 func newPodSucceededKubeClient() *podSucceededKubeClient {
 	return &podSucceededKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
 	}
 }
 
@@ -334,7 +334,7 @@ type podFailedKubeClient struct {
 
 func newPodFailedKubeClient() *podFailedKubeClient {
 	return &podFailedKubeClient{
-		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: os.Stdout},
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
 	}
 }
 

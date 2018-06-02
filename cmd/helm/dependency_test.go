@@ -16,59 +16,43 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
-	"strings"
+	"io"
 	"testing"
+
+	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm"
 )
 
 func TestDependencyListCmd(t *testing.T) {
 
-	tests := []struct {
-		name   string
-		args   []string
-		expect string
-		err    bool
-	}{
+	tests := []releaseCase{
 		{
 			name: "No such chart",
 			args: []string{"/no/such/chart"},
 			err:  true,
 		},
 		{
-			name:   "No requirements.yaml",
-			args:   []string{"testdata/testcharts/alpine"},
-			expect: "WARNING: no requirements at ",
+			name:     "No requirements.yaml",
+			args:     []string{"testdata/testcharts/alpine"},
+			expected: "WARNING: no requirements at ",
 		},
 		{
 			name: "Requirements in chart dir",
 			args: []string{"testdata/testcharts/reqtest"},
-			expect: "NAME        \tVERSION\tREPOSITORY                \tSTATUS  \n" +
+			expected: "NAME        \tVERSION\tREPOSITORY                \tSTATUS  \n" +
 				"reqsubchart \t0.1.0  \thttps://example.com/charts\tunpacked\n" +
 				"reqsubchart2\t0.2.0  \thttps://example.com/charts\tunpacked\n" +
 				"reqsubchart3\t>=0.1.0\thttps://example.com/charts\tok      \n\n",
 		},
 		{
-			name:   "Requirements in chart archive",
-			args:   []string{"testdata/testcharts/reqtest-0.1.0.tgz"},
-			expect: "NAME        \tVERSION\tREPOSITORY                \tSTATUS \nreqsubchart \t0.1.0  \thttps://example.com/charts\tmissing\nreqsubchart2\t0.2.0  \thttps://example.com/charts\tmissing\n",
+			name:     "Requirements in chart archive",
+			args:     []string{"testdata/testcharts/reqtest-0.1.0.tgz"},
+			expected: "NAME        \tVERSION\tREPOSITORY                \tSTATUS \nreqsubchart \t0.1.0  \thttps://example.com/charts\tmissing\nreqsubchart2\t0.2.0  \thttps://example.com/charts\tmissing\n",
 		},
 	}
 
-	for _, tt := range tests {
-		buf := bytes.NewBuffer(nil)
-		dlc := newDependencyListCmd(buf)
-		if err := dlc.RunE(dlc, tt.args); err != nil {
-			if tt.err {
-				continue
-			}
-			t.Errorf("Test %q: %s", tt.name, err)
-			continue
-		}
-
-		got := buf.String()
-		if !strings.Contains(got, tt.expect) {
-			t.Errorf("Test: %q, Expected:\n%q\nGot:\n%q", tt.name, tt.expect, got)
-		}
-	}
-
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
+		return newDependencyListCmd(out)
+	})
 }

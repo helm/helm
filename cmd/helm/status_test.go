@@ -17,10 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -36,120 +34,103 @@ var (
 	dateString = timeconv.String(&date)
 )
 
-// statusCase describes a test case dealing with the status of a release
-type statusCase struct {
-	name     string
-	args     []string
-	flags    []string
-	expected string
-	err      bool
-	rel      *release.Release
-}
-
 func TestStatusCmd(t *testing.T) {
-	tests := []statusCase{
+	tests := []releaseCase{
 		{
 			name:     "get status of a deployed release",
 			args:     []string{"flummoxed-chickadee"},
 			expected: outputWithStatus("DEPLOYED\n\n"),
-			rel: releaseMockWithStatus(&release.Status{
-				Code: release.Status_DEPLOYED,
-			}),
+			rels: []*release.Release{
+				releaseMockWithStatus(&release.Status{
+					Code: release.Status_DEPLOYED,
+				}),
+			},
 		},
 		{
 			name:     "get status of a deployed release with notes",
 			args:     []string{"flummoxed-chickadee"},
 			expected: outputWithStatus("DEPLOYED\n\nNOTES:\nrelease notes\n"),
-			rel: releaseMockWithStatus(&release.Status{
-				Code:  release.Status_DEPLOYED,
-				Notes: "release notes",
-			}),
+			rels: []*release.Release{
+				releaseMockWithStatus(&release.Status{
+					Code:  release.Status_DEPLOYED,
+					Notes: "release notes",
+				}),
+			},
 		},
 		{
 			name:     "get status of a deployed release with notes in json",
 			args:     []string{"flummoxed-chickadee"},
 			flags:    []string{"-o", "json"},
 			expected: `{"name":"flummoxed-chickadee","info":{"status":{"code":1,"notes":"release notes"},"first_deployed":{"seconds":242085845},"last_deployed":{"seconds":242085845}}}`,
-			rel: releaseMockWithStatus(&release.Status{
-				Code:  release.Status_DEPLOYED,
-				Notes: "release notes",
-			}),
+			rels: []*release.Release{
+				releaseMockWithStatus(&release.Status{
+					Code:  release.Status_DEPLOYED,
+					Notes: "release notes",
+				}),
+			},
 		},
 		{
 			name:     "get status of a deployed release with resources",
 			args:     []string{"flummoxed-chickadee"},
 			expected: outputWithStatus("DEPLOYED\n\nRESOURCES:\nresource A\nresource B\n\n"),
-			rel: releaseMockWithStatus(&release.Status{
-				Code:      release.Status_DEPLOYED,
-				Resources: "resource A\nresource B\n",
-			}),
+			rels: []*release.Release{
+				releaseMockWithStatus(&release.Status{
+					Code:      release.Status_DEPLOYED,
+					Resources: "resource A\nresource B\n",
+				}),
+			},
 		},
 		{
 			name:     "get status of a deployed release with resources in YAML",
 			args:     []string{"flummoxed-chickadee"},
 			flags:    []string{"-o", "yaml"},
-			expected: "info:\nfirst_deployed:\nseconds:242085845\nlast_deployed:\nseconds:242085845\nstatus:\ncode:1\nresources:|\nresourceA\nresourceB\nname:flummoxed-chickadee\n",
-			rel: releaseMockWithStatus(&release.Status{
-				Code:      release.Status_DEPLOYED,
-				Resources: "resource A\nresource B\n",
-			}),
+			expected: "info:\n (.*)first_deployed:\n (.*)seconds: 242085845\n (.*)last_deployed:\n (.*)seconds: 242085845\n (.*)status:\n code: 1\n (.*)resources: |\n (.*)resource A\n (.*)resource B\nname: flummoxed-chickadee\n",
+			rels: []*release.Release{
+				releaseMockWithStatus(&release.Status{
+					Code:      release.Status_DEPLOYED,
+					Resources: "resource A\nresource B\n",
+				}),
+			},
 		},
 		{
 			name: "get status of a deployed release with test suite",
 			args: []string{"flummoxed-chickadee"},
 			expected: outputWithStatus(
 				fmt.Sprintf("DEPLOYED\n\nTEST SUITE:\nLast Started: %s\nLast Completed: %s\n\n", dateString, dateString) +
-					"TEST \tSTATUS \tINFO \tSTARTED \tCOMPLETED \n" +
-					fmt.Sprintf("test run 1\tSUCCESS \textra info\t%s\t%s\n", dateString, dateString) +
-					fmt.Sprintf("test run 2\tFAILURE \t \t%s\t%s\n", dateString, dateString)),
-			rel: releaseMockWithStatus(&release.Status{
-				Code: release.Status_DEPLOYED,
-				LastTestSuiteRun: &release.TestSuite{
-					StartedAt:   &date,
-					CompletedAt: &date,
-					Results: []*release.TestRun{
-						{
-							Name:        "test run 1",
-							Status:      release.TestRun_SUCCESS,
-							Info:        "extra info",
-							StartedAt:   &date,
-							CompletedAt: &date,
-						},
-						{
-							Name:        "test run 2",
-							Status:      release.TestRun_FAILURE,
-							StartedAt:   &date,
-							CompletedAt: &date,
+					"TEST      \tSTATUS (.*)\tINFO (.*)\tSTARTED (.*)\tCOMPLETED (.*)\n" +
+					fmt.Sprintf("test run 1\tSUCCESS (.*)\textra info\t%s\t%s\n", dateString, dateString) +
+					fmt.Sprintf("test run 2\tFAILURE (.*)\t (.*)\t%s\t%s\n", dateString, dateString)),
+			rels: []*release.Release{
+				releaseMockWithStatus(&release.Status{
+					Code: release.Status_DEPLOYED,
+					LastTestSuiteRun: &release.TestSuite{
+						StartedAt:   &date,
+						CompletedAt: &date,
+						Results: []*release.TestRun{
+							{
+								Name:        "test run 1",
+								Status:      release.TestRun_SUCCESS,
+								Info:        "extra info",
+								StartedAt:   &date,
+								CompletedAt: &date,
+							},
+							{
+								Name:        "test run 2",
+								Status:      release.TestRun_FAILURE,
+								StartedAt:   &date,
+								CompletedAt: &date,
+							},
 						},
 					},
-				},
-			}),
+				}),
+			},
 		},
 	}
 
-	scmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
 		return newStatusCmd(c, out)
-	}
+	})
 
-	var buf bytes.Buffer
-	for _, tt := range tests {
-		c := &helm.FakeClient{
-			Rels: []*release.Release{tt.rel},
-		}
-		cmd := scmd(c, &buf)
-		cmd.ParseFlags(tt.flags)
-		err := cmd.RunE(cmd, tt.args)
-		if (err != nil) != tt.err {
-			t.Errorf("%q. expected error, got '%v'", tt.name, err)
-		}
-
-		expected := strings.Replace(tt.expected, " ", "", -1)
-		got := strings.Replace(buf.String(), " ", "", -1)
-		if expected != got {
-			t.Errorf("%q. expected\n%q\ngot\n%q", tt.name, expected, got)
-		}
-		buf.Reset()
-	}
 }
 
 func outputWithStatus(status string) string {

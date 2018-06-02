@@ -41,12 +41,14 @@ const (
 	PostRollback       = "post-rollback"
 	ReleaseTestSuccess = "test-success"
 	ReleaseTestFailure = "test-failure"
+	CRDInstall         = "crd-install"
 )
 
 // Type of policy for deleting the hook
 const (
-	HookSucceeded = "hook-succeeded"
-	HookFailed    = "hook-failed"
+	HookSucceeded      = "hook-succeeded"
+	HookFailed         = "hook-failed"
+	BeforeHookCreation = "before-hook-creation"
 )
 
 // FilterTestHooks filters the list of hooks are returns only testing hooks.

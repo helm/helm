@@ -77,14 +77,19 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, err := findChartURL(name, version, repoURL, repos)
+	churl, username, password, err := findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if churl != "https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz" {
 		t.Errorf("Unexpected URL %q", churl)
 	}
-
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
 }
 
 func TestGetRepoNames(t *testing.T) {

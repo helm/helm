@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/technosophos/moniker"
+	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
@@ -135,7 +136,22 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		if err != nil {
 			return err
 		}
+
+		// merge new values with current
+		req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
 		req.Chart.Values = &chart.Config{Raw: nv}
+
+		// yaml unmarshal and marshal to remove duplicate keys
+		y := map[string]interface{}{}
+		if err := yaml.Unmarshal([]byte(req.Values.Raw), &y); err != nil {
+			return err
+		}
+		data, err := yaml.Marshal(y)
+		if err != nil {
+			return err
+		}
+
+		req.Values.Raw = string(data)
 		return nil
 	}
 
@@ -316,6 +332,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	return hooks, b, notes, nil
 }
 
+// recordRelease with an update operation in case reuse has been set.
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
 		if err := s.env.Releases.Update(r); err != nil {
@@ -346,6 +363,9 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	executingHooks = sortByHookWeight(executingHooks)
 
 	for _, h := range executingHooks {
+		if err := s.deleteHookByPolicy(h, hooks.BeforeHookCreation, name, namespace, hook, kubeCli); err != nil {
+			return err
+		}
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b, timeout, false); err != nil {
@@ -355,20 +375,18 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		// No way to rewind a bytes.Buffer()?
 		b.Reset()
 		b.WriteString(h.Manifest)
-		if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
-			s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if hookShouldBeDeleted(h, hooks.HookFailed) {
-				b.Reset()
-				b.WriteString(h.Manifest)
-				s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, hooks.HookFailed)
-				if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
-					s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
-					return errHookDelete
+
+		// We can't watch CRDs
+		if hook != hooks.CRDInstall {
+			if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
+				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
+				// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
+				// under failed condition. If so, then clear the corresponding resource object in the hook
+				if err := s.deleteHookByPolicy(h, hooks.HookFailed, name, namespace, hook, kubeCli); err != nil {
+					return err
 				}
+				return err
 			}
-			return err
 		}
 	}
 
@@ -376,13 +394,8 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		b := bytes.NewBufferString(h.Manifest)
-		if hookShouldBeDeleted(h, hooks.HookSucceeded) {
-			s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, hooks.HookSucceeded)
-			if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
-				s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
-				return errHookDelete
-			}
+		if err := s.deleteHookByPolicy(h, hooks.HookSucceeded, name, namespace, hook, kubeCli); err != nil {
+			return err
 		}
 		h.LastRun = timeconv.Now()
 	}
@@ -408,11 +421,23 @@ func validateReleaseName(releaseName string) error {
 	return nil
 }
 
+func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name, namespace, hook string, kubeCli environment.KubeClient) error {
+	b := bytes.NewBufferString(h.Manifest)
+	if hookHasDeletePolicy(h, policy) {
+		s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, policy)
+		if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
+			s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
+			return errHookDelete
+		}
+	}
+	return nil
+}
+
 // hookShouldBeDeleted determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
-func hookShouldBeDeleted(hook *release.Hook, policy string) bool {
+func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 	if dp, ok := deletePolices[policy]; ok {
-		for _, v := range hook.DeletePolicies {
+		for _, v := range h.DeletePolicies {
 			if dp == v {
 				return true
 			}

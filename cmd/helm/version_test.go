@@ -16,50 +16,50 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
-	"strings"
+	"fmt"
+	"io"
+	"regexp"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/version"
 )
 
 func TestVersion(t *testing.T) {
+	lver := regexp.QuoteMeta(version.GetVersionProto().SemVer)
+	sver := regexp.QuoteMeta("1.2.3-fakeclient+testonly")
+	clientVersion := fmt.Sprintf("Client: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", lver)
+	serverVersion := fmt.Sprintf("Server: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", sver)
 
-	lver := version.GetVersionProto().SemVer
-	sver := "1.2.3-fakeclient+testonly"
-
-	tests := []struct {
-		name           string
-		client, server bool
-		args           []string
-		fail           bool
-	}{
-		{"default", true, true, []string{}, false},
-		{"client", true, false, []string{"-c"}, false},
-		{"server", false, true, []string{"-s"}, false},
-		{"template", true, true, []string{"--template='{{ .Client.SemVer }} {{ .Server.SemVer }}'"}, false},
+	tests := []releaseCase{
+		{
+			name:     "default",
+			args:     []string{},
+			expected: clientVersion + serverVersion,
+		},
+		{
+			name:     "client",
+			args:     []string{},
+			flags:    []string{"-c"},
+			expected: clientVersion,
+		},
+		{
+			name:     "server",
+			args:     []string{},
+			flags:    []string{"-s"},
+			expected: serverVersion,
+		},
+		{
+			name:     "template",
+			args:     []string{},
+			flags:    []string{"--template", "{{ .Client.SemVer }} {{ .Server.SemVer }}"},
+			expected: lver + " " + sver,
+		},
 	}
-
 	settings.TillerHost = "fake-localhost"
-	for _, tt := range tests {
-		b := new(bytes.Buffer)
-		c := &helm.FakeClient{}
-
-		cmd := newVersionCmd(c, b)
-		cmd.ParseFlags(tt.args)
-		if err := cmd.RunE(cmd, tt.args); err != nil {
-			if tt.fail {
-				continue
-			}
-			t.Fatal(err)
-		}
-
-		if tt.client && !strings.Contains(b.String(), lver) {
-			t.Errorf("Expected %q to contain %q", b.String(), lver)
-		}
-		if tt.server && !strings.Contains(b.String(), sver) {
-			t.Errorf("Expected %q to contain %q", b.String(), sver)
-		}
-	}
+	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
+		return newVersionCmd(c, out)
+	})
 }
