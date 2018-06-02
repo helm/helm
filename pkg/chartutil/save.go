@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ghodss/yaml"
 
@@ -205,9 +206,10 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 func writeToTar(out *tar.Writer, name string, body []byte) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
-		Name: filepath.ToSlash(name),
-		Mode: 0755,
-		Size: int64(len(body)),
+		Name:    filepath.ToSlash(name),
+		Mode:    0755,
+		Size:    int64(len(body)),
+		ModTime: time.Now(),
 	}
 	if err := out.WriteHeader(h); err != nil {
 		return err
