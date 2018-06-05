@@ -1,5 +1,6 @@
 DOCKER_REGISTRY   ?= gcr.io
 IMAGE_PREFIX      ?= kubernetes-helm
+DEV_IMAGE         ?= golang:1.10
 SHORT_NAME        ?= tiller
 SHORT_NAME_RUDDER ?= rudder
 TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
@@ -87,16 +88,38 @@ test: TESTFLAGS += -race -v
 test: test-style
 test: test-unit
 
+.PHONY: docker-test
+docker-test: docker-binary
+docker-test: TESTFLAGS += -race -v
+docker-test: docker-test-style
+docker-test: docker-test-unit
+
 .PHONY: test-unit
 test-unit:
 	@echo
 	@echo "==> Running unit tests <=="
 	HELM_HOME=/no/such/dir $(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 
+.PHONY: docker-test-unit
+docker-test-unit: check-docker
+	docker run \
+		-v $(shell pwd):/go/src/k8s.io/helm \
+		-w /go/src/k8s.io/helm \
+		$(DEV_IMAGE) \
+		bash -c "HELM_HOME=/no/such/dir go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)"
+
 .PHONY: test-style
 test-style:
 	@scripts/validate-go.sh
 	@scripts/validate-license.sh
+
+.PHONY: docker-test-style
+docker-test-style: check-docker
+	docker run \
+		-v $(CURDIR):/go/src/k8s.io/helm \
+		-w /go/src/k8s.io/helm \
+		$(DEV_IMAGE) \
+		bash -c "scripts/validate-go.sh && scripts/validate-license.sh"
 
 .PHONY: protoc
 protoc:
