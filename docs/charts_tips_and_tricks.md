@@ -106,6 +106,43 @@ For example:
 The above will render the template when .Values.foo is defined, but will fail
 to render and exit when .Values.foo is undefined.
 
+## Using the 'tpl' Function
+
+The `tpl` function allows developers to evaluate strings as templates inside a template.
+This is useful to pass a template string as a value to a chart or render external configuration files.  
+Syntax: `{{ tpl TEMPLATE_STRING VALUES }}`
+
+Examples:
+```
+# values
+template: "{{ .Values.name }}"
+name: "Tom"
+
+# template
+{{ tpl .Values.template . }}
+
+# output
+Tom
+```
+
+Rendering a external configuration file:
+```
+# external configuration file conf/app.conf
+firstName={{ .Values.firstName }}
+lastName={{ .Values.lastName }}
+
+# values
+firstName: Peter
+lastName: Parker
+
+# template
+{{ tpl (.Files.Get "conf/app.conf") . }}
+
+# output
+firstName=Peter
+lastName=Parker
+```
+
 ## Creating Image Pull Secrets
 Image pull secrets are essentially a combination of _registry_, _username_, and _password_.  You may need them in an application you are deploying, but to create them requires running _base64_ a couple of times.  We can write a helper template to compose the Docker configuration file for use as the Secret's payload.  Here is an example:
 
