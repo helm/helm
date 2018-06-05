@@ -111,8 +111,10 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	tmpfilename := tmpfile.Name()
-	// 0644 here is ineffective since TempFile creates files with 0600 permission. We'll chmod it later.
-	if err := ioutil.WriteFile(tmpfilename, data.Bytes(), 0644); err != nil {
+	if _, err := tmpfile.Write(data.Bytes()); err != nil {
+		return tmpfilename, nil, err
+	}
+	if err := tmpfile.Close(); err != nil {
 		return tmpfilename, nil, err
 	}
 
