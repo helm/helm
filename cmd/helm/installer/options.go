@@ -50,7 +50,7 @@ type Options struct {
 	// Force allows to force upgrading tiller if deployed version is greater than current version
 	ForceUpgrade bool
 
-	// ImageSpec indentifies the image Tiller will use when deployed.
+	// ImageSpec identifies the image Tiller will use when deployed.
 	//
 	// Valid if and only if UseCanary is false.
 	ImageSpec string
