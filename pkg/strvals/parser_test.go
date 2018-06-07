@@ -355,16 +355,50 @@ func TestParseInto(t *testing.T) {
 			"inner2": "value2",
 		},
 	}
-	input := "outer.inner1=value1,outer.inner3=value3"
+	input := "outer.inner1=value1,outer.inner3=value3,outer.inner4=4"
 	expect := map[string]interface{}{
 		"outer": map[string]interface{}{
 			"inner1": "value1",
 			"inner2": "value2",
 			"inner3": "value3",
+			"inner4": 4,
 		},
 	}
 
 	if err := ParseInto(input, got); err != nil {
+		t.Fatal(err)
+	}
+
+	y1, err := yaml.Marshal(expect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	y2, err := yaml.Marshal(got)
+	if err != nil {
+		t.Fatalf("Error serializing parsed value: %s", err)
+	}
+
+	if string(y1) != string(y2) {
+		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
+	}
+}
+func TestParseIntoString(t *testing.T) {
+	got := map[string]interface{}{
+		"outer": map[string]interface{}{
+			"inner1": "overwrite",
+			"inner2": "value2",
+		},
+	}
+	input := "outer.inner1=1,outer.inner3=3"
+	expect := map[string]interface{}{
+		"outer": map[string]interface{}{
+			"inner1": "1",
+			"inner2": "value2",
+			"inner3": "3",
+		},
+	}
+
+	if err := ParseIntoString(input, got); err != nil {
 		t.Fatal(err)
 	}
 
