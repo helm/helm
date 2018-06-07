@@ -303,7 +303,6 @@ The `--set` parameter can be used as usual to alter tag and condition values.
 
 ````
 helm install --set tags.front-end=true --set subchart2.enabled=false
-
 ````
 
 ##### Tags and Condition Resolution
