@@ -14,12 +14,14 @@
 
 FROM alpine:3.7
 
-RUN apk update && apk add ca-certificates socat && rm -rf /var/cache/apk/*
+ARG BIN_DIR
+
+RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
 
 ENV HOME /tmp
 
-COPY helm /bin/helm
-COPY tiller /bin/tiller
+COPY ${BIN_DIR}helm /bin/helm
+COPY ${BIN_DIR}tiller /bin/tiller
 
 EXPOSE 44134
 USER nobody
