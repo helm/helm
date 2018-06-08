@@ -88,7 +88,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (r *rollbackCmd) run() error {
-	resp, err := r.client.RollbackRelease(
+	_, err := r.client.RollbackRelease(
 		r.name,
 		helm.RollbackDryRun(r.dryRun),
 		helm.RollbackRecreate(r.recreate),
@@ -97,24 +97,6 @@ func (r *rollbackCmd) run() error {
 		helm.RollbackVersion(r.revision),
 		helm.RollbackTimeout(r.timeout),
 		helm.RollbackWait(r.wait))
-
-	if settings.Debug {
-		// If there is an error while waiting, make a call without waiting to get the release content
-		if (resp == nil || resp.Release == nil) && r.wait {
-			if res, e := r.client.ReleaseContent(r.name); e != nil {
-				fmt.Fprintf(r.out, "Error reading release content: %v", prettyError(e))
-			} else {
-				printRelease(r.out, res.Release)
-			}
-		} else {
-			rel := resp.GetRelease()
-			if rel == nil {
-				return nil
-			}
-			printRelease(r.out, rel)
-		}
-	}
-
 	if err != nil {
 		return prettyError(err)
 	}

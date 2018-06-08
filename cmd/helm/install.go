@@ -267,7 +267,7 @@ func (i *installCmd) run() error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
-	resp, err := i.client.InstallReleaseFromChart(
+	res, err := i.client.InstallReleaseFromChart(
 		chartRequested,
 		i.namespace,
 		helm.ValueOverrides(rawVals),
@@ -298,6 +298,12 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 
+	rel := res.GetRelease()
+	if rel == nil {
+		return nil
+	}
+	i.printRelease(rel)
+
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
 		// This is special casing to avoid breaking backward compatibility:
@@ -308,7 +314,7 @@ func (i *installCmd) run() error {
 	}
 
 	// Print the status like status command does
-	status, err := i.client.ReleaseStatus(i.name)
+	status, err := i.client.ReleaseStatus(rel.Name)
 	if err != nil {
 		return prettyError(err)
 	}
