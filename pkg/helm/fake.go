@@ -49,9 +49,28 @@ var _ Interface = (*FakeClient)(nil)
 
 // ListReleases lists the current releases
 func (c *FakeClient) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
+	reqOpts := c.Opts
+	for _, opt := range opts {
+		opt(&reqOpts)
+	}
+	req := &reqOpts.listReq
+	rels := c.Rels
+	count := int64(len(c.Rels))
+	var next string
+	limit := req.GetLimit()
+	// TODO: Handle all other options.
+	if limit != 0 && limit < count {
+		rels = rels[:limit]
+		count = limit
+		next = c.Rels[limit].GetName()
+	}
+
 	resp := &rls.ListReleasesResponse{
-		Count:    int64(len(c.Rels)),
-		Releases: c.Rels,
+		Count:    count,
+		Releases: rels,
+	}
+	if next != "" {
+		resp.Next = next
 	}
 	return resp, nil
 }
