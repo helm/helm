@@ -75,6 +75,16 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]interface{}{"long_int_string": "1234567890"},
 			err:    false,
 		},
+		{
+			str:    "boolean=true",
+			expect: map[string]interface{}{"boolean": "true"},
+			err:    false,
+		},
+		{
+			str:    "is_null=null",
+			expect: map[string]interface{}{"is_null": "null"},
+			err:    false,
+		},
 	}
 	tests := []struct {
 		str    string
@@ -116,6 +126,15 @@ func TestParseSet(t *testing.T) {
 		{
 			str:    "long_int=1234567890",
 			expect: map[string]interface{}{"long_int": 1234567890},
+		},
+		{
+			str:    "boolean=true",
+			expect: map[string]interface{}{"boolean": true},
+		},
+		{
+			str:    "is_null=null",
+			expect: map[string]interface{}{"is_null": nil},
+			err:    false,
 		},
 		{
 			str: "name1,name2=",
