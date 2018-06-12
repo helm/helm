@@ -68,8 +68,8 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:        "check_execute_non_existent",
-			desc:        "verify --execute fails on a template that doesnt exist",
-			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesntexist.yaml"},
+			desc:        "verify --execute fails on a template that doesn't exist",
+			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesn'texist.yaml"},
 			expectError: "could not find template",
 		},
 		{
