@@ -50,8 +50,8 @@ func runReleaseCases(t *testing.T, tests []releaseCase, rcmd releaseCmd) {
 			cmd := rcmd(c, &buf)
 			cmd.ParseFlags(tt.flags)
 			err := cmd.RunE(cmd, tt.args)
-			if (err != nil) != tt.err {
-				t.Errorf("expected error, got '%v'", err)
+			if (err == nil) && tt.err {
+				t.Errorf("expected error, got no error")
 			}
 			re := regexp.MustCompile(tt.expected)
 			if !re.Match(buf.Bytes()) {
