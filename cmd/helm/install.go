@@ -267,7 +267,7 @@ func (i *installCmd) run() error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
-	res, err := i.client.InstallReleaseFromChart(
+	resp, err := i.client.InstallReleaseFromChart(
 		chartRequested,
 		i.namespace,
 		helm.ValueOverrides(rawVals),
@@ -278,27 +278,37 @@ func (i *installCmd) run() error {
 		helm.InstallDisableCRDHook(i.disableCRDHook),
 		helm.InstallTimeout(i.timeout),
 		helm.InstallWait(i.wait))
+
+	// If there is an error while waiting, make a call without waiting to get the release content
+	if (resp == nil || resp.Release == nil) && i.wait {
+		if res, e := i.client.ReleaseContent(i.name); e != nil {
+			fmt.Fprintf(i.out, "Error reading release content: %v", prettyError(e))
+		} else {
+			i.printRelease(res.Release)
+		}
+	} else {
+		rel := resp.GetRelease()
+		if rel == nil {
+			return nil
+		}
+		i.printRelease(rel)
+	}
+
 	if err != nil {
 		return prettyError(err)
 	}
 
-	rel := res.GetRelease()
-	if rel == nil {
-		return nil
-	}
-	i.printRelease(rel)
-
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
 		// This is special casing to avoid breaking backward compatibility:
-		if res.Release.Info.Description != "Dry run complete" {
-			fmt.Fprintf(os.Stdout, "WARNING: %s\n", res.Release.Info.Description)
+		if resp.Release.Info.Description != "Dry run complete" {
+			fmt.Fprintf(os.Stdout, "WARNING: %s\n", resp.Release.Info.Description)
 		}
 		return nil
 	}
 
 	// Print the status like status command does
-	status, err := i.client.ReleaseStatus(rel.Name)
+	status, err := i.client.ReleaseStatus(i.name)
 	if err != nil {
 		return prettyError(err)
 	}
@@ -523,7 +533,7 @@ func readFile(filePath, CertFile, KeyFile, CAFile string) ([]byte, error) {
 		return ioutil.ReadFile(filePath)
 	}
 
-	getter, err := getterConstructor(filePath, CertFile, KeyFile, CAFile)
+	getter, err := getterConstructor(filePath, "", "", "")
 	if err != nil {
 		return []byte{}, err
 	}
