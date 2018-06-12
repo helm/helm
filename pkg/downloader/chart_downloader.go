@@ -102,6 +102,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	defer func() {
 		if tmpfile != nil {
 			if _, err := os.Stat(tmpfile.Name()); err == nil {
+				tmpfile.Close()
 				os.Remove(tmpfile.Name())
 			}
 		}
@@ -111,7 +112,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	tmpfilename := tmpfile.Name()
-	if _, err := tmpfile.Write(data.Bytes()); err != nil {
+	if _, err := io.Copy(tmpfile, data); err != nil {
 		return tmpfilename, nil, err
 	}
 	if err := tmpfile.Close(); err != nil {
