@@ -23,39 +23,39 @@ import (
 	"k8s.io/helm/pkg/helm"
 )
 
-func TestDelete(t *testing.T) {
+func TestUninstall(t *testing.T) {
 
 	rels := []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})}
 
 	tests := []cmdTestCase{
 		{
-			name:   "basic delete",
-			cmd:    "delete aeneas",
-			golden: "output/delete.txt",
+			name:   "basic uninstall",
+			cmd:    "uninstall aeneas",
+			golden: "output/uninstall.txt",
 			rels:   rels,
 		},
 		{
-			name:   "delete with timeout",
-			cmd:    "delete aeneas --timeout 120",
-			golden: "output/delete-timeout.txt",
+			name:   "uninstall with timeout",
+			cmd:    "uninstall aeneas --timeout 120",
+			golden: "output/uninstall-timeout.txt",
 			rels:   rels,
 		},
 		{
-			name:   "delete without hooks",
-			cmd:    "delete aeneas --no-hooks",
-			golden: "output/delete-no-hooks.txt",
+			name:   "uninstall without hooks",
+			cmd:    "uninstall aeneas --no-hooks",
+			golden: "output/uninstall-no-hooks.txt",
 			rels:   rels,
 		},
 		{
 			name:   "purge",
-			cmd:    "delete aeneas --purge",
-			golden: "output/delete-purge.txt",
+			cmd:    "uninstall aeneas --purge",
+			golden: "output/uninstall-purge.txt",
 			rels:   rels,
 		},
 		{
-			name:      "delete without release",
-			cmd:       "delete",
-			golden:    "output/delete-no-args.txt",
+			name:      "uninstall without release",
+			cmd:       "uninstall",
+			golden:    "output/uninstall-no-args.txt",
 			wantError: true,
 		},
 	}

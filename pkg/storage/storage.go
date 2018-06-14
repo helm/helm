@@ -82,12 +82,12 @@ func (s *Storage) ListReleases() ([]*rspb.Release, error) {
 	return s.Driver.List(func(_ *rspb.Release) bool { return true })
 }
 
-// ListDeleted returns all releases with Status == DELETED. An error is returned
+// ListUninstalled returns all releases with Status == UNINSTALLED. An error is returned
 // if the storage backend fails to retrieve the releases.
-func (s *Storage) ListDeleted() ([]*rspb.Release, error) {
-	s.Log("listing deleted releases in storage")
+func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
+	s.Log("listing uninstalled releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
-		return relutil.StatusFilter(rspb.StatusDeleted).Check(rls)
+		return relutil.StatusFilter(rspb.StatusUninstalled).Check(rls)
 	})
 }
 

@@ -61,7 +61,7 @@ func TestStorageUpdate(t *testing.T) {
 	assertErrNil(t.Fatal, storage.Create(rls), "StoreRelease")
 
 	// modify the release
-	rls.Info.Status = rspb.StatusDeleted
+	rls.Info.Status = rspb.StatusUninstalled
 	assertErrNil(t.Fatal, storage.Update(rls), "UpdateRelease")
 
 	// retrieve the updated release
@@ -127,8 +127,8 @@ func TestStorageList(t *testing.T) {
 		rls2 := ReleaseTestData{Name: "relaxed-cat", Status: rspb.StatusSuperseded}.ToRelease()
 		rls3 := ReleaseTestData{Name: "hungry-hippo", Status: rspb.StatusDeployed}.ToRelease()
 		rls4 := ReleaseTestData{Name: "angry-beaver", Status: rspb.StatusDeployed}.ToRelease()
-		rls5 := ReleaseTestData{Name: "opulent-frog", Status: rspb.StatusDeleted}.ToRelease()
-		rls6 := ReleaseTestData{Name: "happy-liger", Status: rspb.StatusDeleted}.ToRelease()
+		rls5 := ReleaseTestData{Name: "opulent-frog", Status: rspb.StatusUninstalled}.ToRelease()
+		rls6 := ReleaseTestData{Name: "happy-liger", Status: rspb.StatusUninstalled}.ToRelease()
 
 		// create the release records in the storage
 		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'rls0'")
@@ -145,9 +145,9 @@ func TestStorageList(t *testing.T) {
 		NumExpected int
 		ListFunc    func() ([]*rspb.Release, error)
 	}{
-		{"ListDeleted", 2, storage.ListDeleted},
 		{"ListDeployed", 2, storage.ListDeployed},
 		{"ListReleases", 7, storage.ListReleases},
+		{"ListUninstalled", 2, storage.ListUninstalled},
 	}
 
 	setup()

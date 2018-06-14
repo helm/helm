@@ -387,13 +387,13 @@ is not a full list of cli flags. To see a description of all flags, just run
   will cause all pods to be recreated (with the exception of pods belonging to
   deployments)
 
-## 'helm delete': Deleting a Release
+## 'helm uninstall': Uninstalling a Release
 
-When it is time to uninstall or delete a release from the cluster, use
-the `helm delete` command:
+When it is time to uninstall or uninstall a release from the cluster, use
+the `helm uninstall` command:
 
 ```
-$ helm delete happy-panda
+$ helm uninstall happy-panda
 ```
 
 This will remove the release from the cluster. You can see all of your
@@ -406,28 +406,28 @@ inky-cat       	1      	Wed Sep 28 12:59:46 2016       	DEPLOYED       	alpine-0
 ```
 
 From the output above, we can see that the `happy-panda` release was
-deleted.
+uninstalled.
 
 However, Helm always keeps records of what releases happened. Need to
-see the deleted releases? `helm list --deleted` shows those, and `helm
-list --all` shows all of the releases (deleted and currently deployed,
+see the uninstalled releases? `helm list --uninstalled` shows those, and `helm
+list --all` shows all of the releases (uninstalled and currently deployed,
 as well as releases that failed):
 
 ```console
 ⇒  helm list --all
 NAME           	VERSION	UPDATED                        	STATUS         	CHART
-happy-panda   	2      	Wed Sep 28 12:47:54 2016       	DELETED        	mariadb-0.3.0
+happy-panda   	2      	Wed Sep 28 12:47:54 2016       	UNINSTALLED    	mariadb-0.3.0
 inky-cat       	1      	Wed Sep 28 12:59:46 2016       	DEPLOYED       	alpine-0.1.0
-kindred-angelf 	2      	Tue Sep 27 16:16:10 2016       	DELETED        	alpine-0.1.0
+kindred-angelf 	2      	Tue Sep 27 16:16:10 2016       	UNINSTALLED    	alpine-0.1.0
 ```
 
-Because Helm keeps records of deleted releases, a release name cannot be
-re-used. (If you _really_ need to re-use a release name, you can use the
-`--replace` flag, but it will simply re-use the existing release and
+Because Helm keeps records of uninstalled releases, a release name cannot
+be re-used. (If you _really_ need to re-use a release name, you can use
+the `--replace` flag, but it will simply re-use the existing release and
 replace its resources.)
 
 Note that because releases are preserved in this way, you can rollback a
-deleted resource, and have it re-activate.
+uninstalled resource, and have it re-activate.
 
 ## 'helm repo': Working with Repositories
 
@@ -505,7 +505,7 @@ In some cases you may wish to scope Tiller or deploy multiple Tillers to a singl
 ## Conclusion
 
 This chapter has covered the basic usage patterns of the `helm` client,
-including searching, installation, upgrading, and deleting. It has also
+including searching, installation, upgrading, and uninstalling. It has also
 covered useful utility commands like `helm status`, `helm get`, and
 `helm repo`.
 

@@ -366,7 +366,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
-	if oldStatus := oldRelease.Info.Status; oldStatus != release.StatusDeleted {
+	if oldStatus := oldRelease.Info.Status; oldStatus != release.StatusUninstalled {
 		t.Errorf("Expected Deleted status on previous Release version. Got %v", oldStatus)
 	}
 }

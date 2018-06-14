@@ -314,7 +314,7 @@ func TestInstallRelease_ReuseName(t *testing.T) {
 	rs := rsFixture(t)
 	rs.Log = t.Logf
 	rel := releaseStub()
-	rel.Info.Status = release.StatusDeleted
+	rel.Info.Status = release.StatusUninstalled
 	rs.Releases.Create(rel)
 
 	req := installRequest(

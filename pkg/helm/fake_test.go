@@ -182,13 +182,13 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 	}
 }
 
-func TestFakeClient_DeleteRelease(t *testing.T) {
+func TestFakeClient_UninstallRelease(t *testing.T) {
 	type fields struct {
 		Rels []*release.Release
 	}
 	type args struct {
 		rlsName string
-		opts    []DeleteOption
+		opts    []UninstallOption
 	}
 	tests := []struct {
 		name      string
@@ -199,7 +199,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "Delete a release that exists.",
+			name: "Uninstall a release that exists.",
 			fields: fields{
 				Rels: []*release.Release{
 					ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
@@ -208,7 +208,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			},
 			args: args{
 				rlsName: "trepid-tapir",
-				opts:    []DeleteOption{},
+				opts:    []UninstallOption{},
 			},
 			relsAfter: []*release.Release{
 				ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
@@ -219,7 +219,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Delete a release that does not exist.",
+			name: "Uninstall a release that does not exist.",
 			fields: fields{
 				Rels: []*release.Release{
 					ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
@@ -228,7 +228,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			},
 			args: args{
 				rlsName: "release-that-does-not-exists",
-				opts:    []DeleteOption{},
+				opts:    []UninstallOption{},
 			},
 			relsAfter: []*release.Release{
 				ReleaseMock(&MockReleaseOptions{Name: "angry-dolphin"}),
@@ -238,7 +238,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Delete when only 1 item exists.",
+			name: "Uninstall when only 1 item exists.",
 			fields: fields{
 				Rels: []*release.Release{
 					ReleaseMock(&MockReleaseOptions{Name: "trepid-tapir"}),
@@ -246,7 +246,7 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			},
 			args: args{
 				rlsName: "trepid-tapir",
-				opts:    []DeleteOption{},
+				opts:    []UninstallOption{},
 			},
 			relsAfter: []*release.Release{},
 			want: &hapi.UninstallReleaseResponse{
@@ -260,13 +260,13 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			c := &FakeClient{
 				Rels: tt.fields.Rels,
 			}
-			got, err := c.DeleteRelease(tt.args.rlsName, tt.args.opts...)
+			got, err := c.UninstallRelease(tt.args.rlsName, tt.args.opts...)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FakeClient.DeleteRelease() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("FakeClient.UninstallRelease() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FakeClient.DeleteRelease() = %v, want %v", got, tt.want)
+				t.Errorf("FakeClient.UninstallRelease() = %v, want %v", got, tt.want)
 			}
 
 			if !reflect.DeepEqual(c.Rels, tt.relsAfter) {

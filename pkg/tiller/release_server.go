@@ -177,7 +177,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		relutil.Reverse(h, relutil.SortByRevision)
 		rel := h[0]
 
-		if st := rel.Info.Status; reuse && (st == release.StatusDeleted || st == release.StatusFailed) {
+		if st := rel.Info.Status; reuse && (st == release.StatusUninstalled || st == release.StatusFailed) {
 			// Allowe re-use of names if the previous release is marked deleted.
 			s.Log("name %s exists but is not in use, reusing name", start)
 			return start, nil

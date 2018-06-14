@@ -48,9 +48,9 @@ func TestListCmd(t *testing.T) {
 		golden: "output/list-with-failed.txt",
 	}, {
 		name: "with a release, multiple flags",
-		cmd:  "list --deleted --deployed --failed -q",
+		cmd:  "list --uninstalled --deployed --failed -q",
 		rels: []*release.Release{
-			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusUninstalled}),
 			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
 		// Note: We're really only testing that the flags parsed correctly. Which results are returned
@@ -60,7 +60,7 @@ func TestListCmd(t *testing.T) {
 		name: "with a release, multiple flags",
 		cmd:  "list --all -q",
 		rels: []*release.Release{
-			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleted}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusUninstalled}),
 			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
 		// See note on previous test.
@@ -69,7 +69,7 @@ func TestListCmd(t *testing.T) {
 		name: "with a release, multiple flags, deleting",
 		cmd:  "list --all -q",
 		rels: []*release.Release{
-			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusDeleting}),
+			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide", Status: release.StatusUninstalling}),
 			helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide", Status: release.StatusDeployed}),
 		},
 		// See note on previous test.

@@ -22,14 +22,14 @@ const (
 	StatusUnknown ReleaseStatus = "unknown"
 	// StatusDeployed indicates that the release has been pushed to Kubernetes.
 	StatusDeployed ReleaseStatus = "deployed"
-	// StatusDeleted indicates that a release has been deleted from Kubermetes.
-	StatusDeleted ReleaseStatus = "deleted"
+	// StatusUninstalled indicates that a release has been uninstalled from Kubermetes.
+	StatusUninstalled ReleaseStatus = "uninstalled"
 	// StatusSuperseded indicates that this release object is outdated and a newer one exists.
 	StatusSuperseded ReleaseStatus = "superseded"
 	// StatusFailed indicates that the release was not successfully deployed.
 	StatusFailed ReleaseStatus = "failed"
-	// StatusDeleting indicates that a delete operation is underway.
-	StatusDeleting ReleaseStatus = "deleting"
+	// StatusUninstalling indicates that a uninstall operation is underway.
+	StatusUninstalling ReleaseStatus = "uninstalling"
 	// StatusPendingInstall indicates that an install operation is underway.
 	StatusPendingInstall ReleaseStatus = "pending-install"
 	// StatusPendingUpgrade indicates that an upgrade operation is underway.

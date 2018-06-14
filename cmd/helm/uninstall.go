@@ -26,15 +26,15 @@ import (
 	"k8s.io/helm/pkg/helm"
 )
 
-const deleteDesc = `
-This command takes a release name, and then deletes the release from Kubernetes.
+const uninstallDesc = `
+This command takes a release name, and then uninstalls the release from Kubernetes.
 It removes all of the resources associated with the last release of the chart.
 
-Use the '--dry-run' flag to see which releases will be deleted without actually
-deleting them.
+Use the '--dry-run' flag to see which releases will be uninstalled without actually
+uninstalling them.
 `
 
-type deleteOptions struct {
+type uninstallOptions struct {
 	disableHooks bool  // --no-hooks
 	dryRun       bool  // --dry-run
 	purge        bool  // --purge
@@ -46,15 +46,15 @@ type deleteOptions struct {
 	client helm.Interface
 }
 
-func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	o := &deleteOptions{client: c}
+func newUninstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
+	o := &uninstallOptions{client: c}
 
 	cmd := &cobra.Command{
-		Use:        "delete RELEASE_NAME [...]",
-		Aliases:    []string{"del"},
+		Use:        "uninstall RELEASE_NAME [...]",
+		Aliases:    []string{"del", "delete", "un"},
 		SuggestFor: []string{"remove", "rm"},
-		Short:      "given a release name, delete the release from Kubernetes",
-		Long:       deleteDesc,
+		Short:      "given a release name, uninstall the release from Kubernetes",
+		Long:       uninstallDesc,
 		Args:       require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.client = ensureHelmClient(o.client, false)
@@ -65,29 +65,29 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 					return err
 				}
 
-				fmt.Fprintf(out, "release \"%s\" deleted\n", o.name)
+				fmt.Fprintf(out, "release \"%s\" uninstalled\n", o.name)
 			}
 			return nil
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&o.dryRun, "dry-run", false, "simulate a delete")
-	f.BoolVar(&o.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
+	f.BoolVar(&o.dryRun, "dry-run", false, "simulate a uninstall")
+	f.BoolVar(&o.disableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
 	f.BoolVar(&o.purge, "purge", false, "remove the release from the store and make its name free for later use")
 	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 
 	return cmd
 }
 
-func (o *deleteOptions) run(out io.Writer) error {
-	opts := []helm.DeleteOption{
-		helm.DeleteDryRun(o.dryRun),
-		helm.DeleteDisableHooks(o.disableHooks),
-		helm.DeletePurge(o.purge),
-		helm.DeleteTimeout(o.timeout),
+func (o *uninstallOptions) run(out io.Writer) error {
+	opts := []helm.UninstallOption{
+		helm.UninstallDryRun(o.dryRun),
+		helm.UninstallDisableHooks(o.disableHooks),
+		helm.UninstallPurge(o.purge),
+		helm.UninstallTimeout(o.timeout),
 	}
-	res, err := o.client.DeleteRelease(o.name, opts...)
+	res, err := o.client.UninstallRelease(o.name, opts...)
 	if res != nil && res.Info != "" {
 		fmt.Fprintln(out, res.Info)
 	}

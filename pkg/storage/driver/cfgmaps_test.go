@@ -85,8 +85,8 @@ func TestUNcompressedConfigMapGet(t *testing.T) {
 
 func TestConfigMapList(t *testing.T) {
 	cfgmaps := newTestFixtureCfgMaps(t, []*rspb.Release{
-		releaseStub("key-1", 1, "default", rspb.StatusDeleted),
-		releaseStub("key-2", 1, "default", rspb.StatusDeleted),
+		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
+		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
 		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
@@ -95,7 +95,7 @@ func TestConfigMapList(t *testing.T) {
 
 	// list all deleted releases
 	del, err := cfgmaps.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status == rspb.StatusDeleted
+		return rel.Info.Status == rspb.StatusUninstalled
 	})
 	// check
 	if err != nil {
