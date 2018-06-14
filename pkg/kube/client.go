@@ -258,8 +258,8 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping)
-		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
+		obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, info.Export)
+		if err != nil {
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("Could not get information about the resource: %s", err)
 			}
@@ -274,13 +274,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			return nil
 		}
 
-		originalInfo := original.Get(info)
-		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
-		}
-
-		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
+		if err := updateResource(c, info, obj, force, recreate); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
