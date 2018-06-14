@@ -71,7 +71,6 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		newVerifyCmd(out),
 
 		// release commands
-		newDeleteCmd(c, out),
 		newGetCmd(c, out),
 		newHistoryCmd(c, out),
 		newInstallCmd(c, out),
@@ -79,6 +78,7 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		newReleaseTestCmd(c, out),
 		newRollbackCmd(c, out),
 		newStatusCmd(c, out),
+		newUninstallCmd(c, out),
 		newUpgradeCmd(c, out),
 
 		newCompletionCmd(out),

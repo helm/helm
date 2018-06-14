@@ -49,7 +49,7 @@ func TestListReleasesByStatus(t *testing.T) {
 	rs := rsFixture(t)
 	stubs := []*release.Release{
 		namedReleaseStub("kamal", release.StatusDeployed),
-		namedReleaseStub("astrolabe", release.StatusDeleted),
+		namedReleaseStub("astrolabe", release.StatusUninstalled),
 		namedReleaseStub("octant", release.StatusFailed),
 		namedReleaseStub("sextant", release.StatusUnknown),
 	}
@@ -69,7 +69,7 @@ func TestListReleasesByStatus(t *testing.T) {
 		},
 		{
 			names:       []string{"astrolabe"},
-			statusCodes: []release.ReleaseStatus{release.StatusDeleted},
+			statusCodes: []release.ReleaseStatus{release.StatusUninstalled},
 		},
 		{
 			names:       []string{"kamal", "octant"},
@@ -79,7 +79,7 @@ func TestListReleasesByStatus(t *testing.T) {
 			names: []string{"kamal", "astrolabe", "octant", "sextant"},
 			statusCodes: []release.ReleaseStatus{
 				release.StatusDeployed,
-				release.StatusDeleted,
+				release.StatusUninstalled,
 				release.StatusFailed,
 				release.StatusUnknown,
 			},

@@ -106,8 +106,8 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	return c.tiller.InstallRelease(req)
 }
 
-// DeleteRelease uninstalls a named release and returns the response.
-func (c *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error) {
+// UninstallRelease uninstalls a named release and returns the response.
+func (c *Client) UninstallRelease(rlsName string, opts ...UninstallOption) (*hapi.UninstallReleaseResponse, error) {
 	// apply the uninstall options
 	reqOpts := c.opts
 	for _, opt := range opts {

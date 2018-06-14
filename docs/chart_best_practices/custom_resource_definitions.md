@@ -34,4 +34,4 @@ To package the two together, add a `pre-install` hook to the CRD definition so
 that it is fully installed before the rest of the chart is executed.
 
 Note that if you create the CRD with a `pre-install` hook, that CRD definition
-will not be deleted when `helm delete` is run.
+will not be uninstalled when `helm uninstall` is run.

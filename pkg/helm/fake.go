@@ -77,8 +77,8 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	return release, nil
 }
 
-// DeleteRelease deletes a release from the FakeClient
-func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error) {
+// UninstallRelease uninstalls a release from the FakeClient
+func (c *FakeClient) UninstallRelease(rlsName string, opts ...UninstallOption) (*hapi.UninstallReleaseResponse, error) {
 	for i, rel := range c.Rels {
 		if rel.Name == rlsName {
 			c.Rels = append(c.Rels[:i], c.Rels[i+1:]...)

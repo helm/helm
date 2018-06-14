@@ -133,7 +133,7 @@ generated this YAML document.
 From there on, we can see that the YAML data is exactly what we put in our
 `configmap.yaml` file.
 
-Now we can delete our release: `helm delete full-coral`.
+Now we can uninstall our release: `helm uninstall full-coral`.
 
 ### Adding a Simple Template Call
 

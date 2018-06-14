@@ -94,7 +94,7 @@ release. Once Tiller verifies that the hook has reached its ready state, it
 will leave the hook resource alone.
 
 Practically speaking, this means that if you create resources in a hook, you
-cannot rely upon `helm delete` to remove the resources. To destroy such
+cannot rely upon `helm uninstall` to remove the resources. To destroy such
 resources, you need to either write code to perform this operation in a `pre-delete`
 or `post-delete` hook or add `"helm.sh/hook-delete-policy"` annotation to the hook template file.
 
@@ -185,7 +185,7 @@ You can choose one or more defined annotation values:
 * `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
 * `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
 
-### Automatically delete hook from previous release
+### Automatically uninstall hook from previous release
 
 When helm release being updated it is possible, that hook resource already exists in cluster. By default helm will try to create resource and fail with `"... already exists"` error.
 

@@ -37,7 +37,7 @@ type options struct {
 	reuseName bool
 	// if set, performs pod restart during upgrade/rollback
 	recreate bool
-	// if set, force resource update through delete/recreate if needed
+	// if set, force resource update through uninstall/recreate if needed
 	force bool
 	// if set, skip running hooks
 	disableHooks bool
@@ -170,8 +170,8 @@ func UpgradeTimeout(timeout int64) UpdateOption {
 	}
 }
 
-// DeleteTimeout specifies the number of seconds before kubernetes calls timeout
-func DeleteTimeout(timeout int64) DeleteOption {
+// UninstallTimeout specifies the number of seconds before kubernetes calls timeout
+func UninstallTimeout(timeout int64) UninstallOption {
 	return func(opts *options) {
 		opts.uninstallReq.Timeout = timeout
 	}
@@ -226,22 +226,22 @@ func UpdateValueOverrides(raw []byte) UpdateOption {
 	}
 }
 
-// DeleteDisableHooks will disable hooks for a deletion operation.
-func DeleteDisableHooks(disable bool) DeleteOption {
+// UninstallDisableHooks will disable hooks for a deletion operation.
+func UninstallDisableHooks(disable bool) UninstallOption {
 	return func(opts *options) {
 		opts.disableHooks = disable
 	}
 }
 
-// DeleteDryRun will (if true) execute a deletion as a dry run.
-func DeleteDryRun(dry bool) DeleteOption {
+// UninstallDryRun will (if true) execute a deletion as a dry run.
+func UninstallDryRun(dry bool) UninstallOption {
 	return func(opts *options) {
 		opts.dryRun = dry
 	}
 }
 
-// DeletePurge removes the release from the store and make its name free for later use.
-func DeletePurge(purge bool) DeleteOption {
+// UninstallPurge removes the release from the store and make its name free for later use.
+func UninstallPurge(purge bool) UninstallOption {
 	return func(opts *options) {
 		opts.uninstallReq.Purge = purge
 	}
@@ -289,7 +289,7 @@ func RollbackRecreate(recreate bool) RollbackOption {
 	}
 }
 
-// RollbackForce will (if true) force resource update through delete/recreate if needed
+// RollbackForce will (if true) force resource update through uninstall/recreate if needed
 func RollbackForce(force bool) RollbackOption {
 	return func(opts *options) {
 		opts.force = force
@@ -339,16 +339,16 @@ func UpgradeRecreate(recreate bool) UpdateOption {
 	}
 }
 
-// UpgradeForce will (if true) force resource update through delete/recreate if needed
+// UpgradeForce will (if true) force resource update through uninstall/recreate if needed
 func UpgradeForce(force bool) UpdateOption {
 	return func(opts *options) {
 		opts.force = force
 	}
 }
 
-// DeleteOption allows setting optional attributes when
+// UninstallOption allows setting optional attributes when
 // performing a UninstallRelease tiller rpc.
-type DeleteOption func(*options)
+type UninstallOption func(*options)
 
 // UpdateOption allows specifying various settings
 // configurable by the helm client user for overriding

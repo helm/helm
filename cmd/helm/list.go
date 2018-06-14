@@ -34,8 +34,8 @@ var listHelp = `
 This command lists all of the releases.
 
 By default, it lists only releases that are deployed or failed. Flags like
-'--deleted' and '--all' will alter this behavior. Such flags can be combined:
-'--deleted --failed'.
+'--uninstalled' and '--all' will alter this behavior. Such flags can be combined:
+'--uninstalled --failed'.
 
 By default, items are sorted alphabetically. Use the '-d' flag to sort by
 release date.
@@ -63,8 +63,8 @@ type listOptions struct {
 	allNamespaces bool   // --all-namespaces
 	byDate        bool   // --date
 	colWidth      uint   // --col-width
-	deleted       bool   // --deleted
-	deleting      bool   // --deleting
+	uninstalled   bool   // --uninstalled
+	uninstalling  bool   // --uninstalling
 	deployed      bool   // --deployed
 	failed        bool   // --failed
 	limit         int    // --max
@@ -104,9 +104,9 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.IntVarP(&o.limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.StringVarP(&o.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
 	f.BoolVarP(&o.all, "all", "a", false, "show all releases, not just the ones marked deployed")
-	f.BoolVar(&o.deleted, "deleted", false, "show deleted releases")
+	f.BoolVar(&o.uninstalled, "uninstalled", false, "show uninstalled releases")
 	f.BoolVar(&o.superseded, "superseded", false, "show superseded releases")
-	f.BoolVar(&o.deleting, "deleting", false, "show releases that are currently being deleted")
+	f.BoolVar(&o.uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
 	f.BoolVar(&o.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
 	f.BoolVar(&o.failed, "failed", false, "show failed releases")
 	f.BoolVar(&o.pending, "pending", false, "show pending releases")
@@ -188,8 +188,8 @@ func (o *listOptions) statusCodes() []release.ReleaseStatus {
 		return []release.ReleaseStatus{
 			release.StatusUnknown,
 			release.StatusDeployed,
-			release.StatusDeleted,
-			release.StatusDeleting,
+			release.StatusUninstalled,
+			release.StatusUninstalling,
 			release.StatusFailed,
 			release.StatusPendingInstall,
 			release.StatusPendingUpgrade,
@@ -200,11 +200,11 @@ func (o *listOptions) statusCodes() []release.ReleaseStatus {
 	if o.deployed {
 		status = append(status, release.StatusDeployed)
 	}
-	if o.deleted {
-		status = append(status, release.StatusDeleted)
+	if o.uninstalled {
+		status = append(status, release.StatusUninstalled)
 	}
-	if o.deleting {
-		status = append(status, release.StatusDeleting)
+	if o.uninstalling {
+		status = append(status, release.StatusUninstalling)
 	}
 	if o.failed {
 		status = append(status, release.StatusFailed)

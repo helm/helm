@@ -28,8 +28,8 @@ import (
 var releases = []*rspb.Release{
 	tsRelease("quiet-bear", 2, 2000, rspb.StatusSuperseded),
 	tsRelease("angry-bird", 4, 3000, rspb.StatusDeployed),
-	tsRelease("happy-cats", 1, 4000, rspb.StatusDeleted),
-	tsRelease("vocal-dogs", 3, 6000, rspb.StatusDeleted),
+	tsRelease("happy-cats", 1, 4000, rspb.StatusUninstalled),
+	tsRelease("vocal-dogs", 3, 6000, rspb.StatusUninstalled),
 }
 
 func tsRelease(name string, vers int, dur time.Duration, status rspb.ReleaseStatus) *rspb.Release {

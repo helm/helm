@@ -123,7 +123,7 @@ func TestMemoryUpdate(t *testing.T) {
 		{
 			"update release does not exist",
 			"rls-z.v1",
-			releaseStub("rls-z", 1, "default", rspb.StatusDeleted),
+			releaseStub("rls-z", 1, "default", rspb.StatusUninstalled),
 			true,
 		},
 	}

@@ -41,8 +41,8 @@ func TestUninstallRelease(t *testing.T) {
 		t.Errorf("Expected angry-panda, got %q", res.Release.Name)
 	}
 
-	if res.Release.Info.Status != release.StatusDeleted {
-		t.Errorf("Expected status code to be DELETED, got %s", res.Release.Info.Status)
+	if res.Release.Info.Status != release.StatusUninstalled {
+		t.Errorf("Expected status code to be UNINSTALLED, got %s", res.Release.Info.Status)
 	}
 
 	if res.Release.Hooks[0].LastRun.IsZero() {
@@ -53,8 +53,8 @@ func TestUninstallRelease(t *testing.T) {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Second())
 	}
 
-	if res.Release.Info.Description != "Deletion complete" {
-		t.Errorf("Expected Deletion complete, got %q", res.Release.Info.Description)
+	if res.Release.Info.Description != "Uninstallation complete" {
+		t.Errorf("Expected Uninstallation complete, got %q", res.Release.Info.Description)
 	}
 }
 
@@ -80,8 +80,8 @@ func TestUninstallPurgeRelease(t *testing.T) {
 		t.Errorf("Expected angry-panda, got %q", res.Release.Name)
 	}
 
-	if res.Release.Info.Status != release.StatusDeleted {
-		t.Errorf("Expected status code to be DELETED, got %s", res.Release.Info.Status)
+	if res.Release.Info.Status != release.StatusUninstalled {
+		t.Errorf("Expected status code to be UNINSTALLED, got %s", res.Release.Info.Status)
 	}
 
 	if res.Release.Info.Deleted.Second() <= 0 {
@@ -138,8 +138,8 @@ func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 		t.Errorf("Expected angry-bunny, got %q", res.Release.Name)
 	}
 
-	if res.Release.Info.Status != release.StatusDeleted {
-		t.Errorf("Expected status code to be DELETED, got %s", res.Release.Info.Status)
+	if res.Release.Info.Status != release.StatusUninstalled {
+		t.Errorf("Expected status code to be UNINSTALLED, got %s", res.Release.Info.Status)
 	}
 
 	if res.Info == "" {

@@ -323,7 +323,7 @@ func TestUniqName(t *testing.T) {
 	rel1 := releaseStub()
 	rel2 := releaseStub()
 	rel2.Name = "happy-panda"
-	rel2.Info.Status = release.StatusDeleted
+	rel2.Info.Status = release.StatusUninstalled
 
 	rs.Releases.Create(rel1)
 	rs.Releases.Create(rel2)

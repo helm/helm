@@ -160,11 +160,11 @@ spec:
 See also the `helm upgrade --recreate-pods` flag for a slightly
 different way of addressing this issue.
 
-## Tell Tiller Not To Delete a Resource
+## Tell Tiller Not To Uninstall a Resource
 
-Sometimes there are resources that should not be deleted when Helm runs a
-`helm delete`. Chart developers can add an annotation to a resource to prevent
-it from being deleted.
+Sometimes there are resources that should not be uninstalled when Helm runs a
+`helm uninstall`. Chart developers can add an annotation to a resource to prevent
+it from being uninstalled.
 
 ```yaml
 kind: Secret
@@ -177,9 +177,9 @@ metadata:
 (Quotation marks are required)
 
 The annotation `"helm.sh/resource-policy": keep` instructs Tiller to skip this
-resource during a `helm delete` operation. _However_, this resource becomes
+resource during a `helm uninstall` operation. _However_, this resource becomes
 orphaned. Helm will no longer manage it in any way. This can lead to problems
-if using `helm install --replace` on a release that has already been deleted, but
+if using `helm install --replace` on a release that has already been uninstalled, but
 has kept resources.
 
 ## Using "Partials" and Template Includes

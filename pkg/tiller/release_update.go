@@ -139,7 +139,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	return currentRelease, updatedRelease, err
 }
 
-// performUpdateForce performs the same action as a `helm delete && helm install --replace`.
+// performUpdateForce performs the same action as a `helm uninstall && helm install --replace`.
 func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*release.Release, error) {
 	// find the last release with the given name
 	oldRelease, err := s.Releases.Last(req.Name)
@@ -167,9 +167,9 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 		return newRelease, errors.Wrap(err, "failed update prepare step")
 	}
 
-	// From here on out, the release is considered to be in StatusDeleting or StatusDeleted
+	// From here on out, the release is considered to be in StatusUninstalling or StatusUninstalled
 	// state. There is no turning back.
-	oldRelease.Info.Status = release.StatusDeleting
+	oldRelease.Info.Status = release.StatusUninstalling
 	oldRelease.Info.Deleted = time.Now()
 	oldRelease.Info.Description = "Deletion in progress (or silently failed)"
 	s.recordRelease(oldRelease, true)
@@ -186,12 +186,12 @@ func (s *ReleaseServer) performUpdateForce(req *hapi.UpdateReleaseRequest) (*rel
 	// delete manifests from the old release
 	_, errs := s.deleteRelease(oldRelease)
 
-	oldRelease.Info.Status = release.StatusDeleted
-	oldRelease.Info.Description = "Deletion complete"
+	oldRelease.Info.Status = release.StatusUninstalled
+	oldRelease.Info.Description = "Uninstallation complete"
 	s.recordRelease(oldRelease, true)
 
 	if len(errs) > 0 {
-		return newRelease, errors.Errorf("upgrade --force successfully deleted the previous release, but encountered %d error(s) and cannot continue: %s", len(errs), joinErrors(errs))
+		return newRelease, errors.Errorf("upgrade --force successfully uninstalled the previous release, but encountered %d error(s) and cannot continue: %s", len(errs), joinErrors(errs))
 	}
 
 	// post-delete hooks

@@ -107,10 +107,10 @@ The `helm list` function will show you a list of all deployed releases.
 
 ## Uninstall a Release
 
-To uninstall a release, use the `helm delete` command:
+To uninstall a release, use the `helm uninstall` command:
 
 ```console
-$ helm delete smiling-penguin
+$ helm uninstall smiling-penguin
 Removed smiling-penguin
 ```
 
@@ -119,11 +119,11 @@ still be able to request information about that release:
 
 ```console
 $ helm status smiling-penguin
-Status: DELETED
+Status: UNINSTALLED
 ...
 ```
 
-Because Helm tracks your releases even after you've deleted them, you
+Because Helm tracks your releases even after you've uninstalled them, you
 can audit a cluster's history, and even undelete a release (with `helm
 rollback`).
 
