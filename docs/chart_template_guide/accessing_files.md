@@ -162,6 +162,10 @@ metadata:
 type: Opaque
 data:
 {{ (.Files.Glob "bar/*").AsSecrets | indent 2 }}
+
+In above example, `AsSecrets` and `AsConfig` convert the files in `foo/` directory to
+Kubernetes ConfigMap and Secret definition. Both `AsSecrets` and `AsConfig` methods respect the
+path of the file and include the path in the key. For example, `foo/boo.txt` generates a key of `foo_boo.txt`.
 ```
 
 ## Encoding

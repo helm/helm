@@ -19,12 +19,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
 
-	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/gobwas/glob"
 	"github.com/golang/protobuf/ptypes/any"
@@ -96,8 +96,12 @@ func (f Files) Glob(pattern string) Files {
 
 // AsConfig turns a Files group and flattens it to a YAML map suitable for
 // including in the 'data' section of a Kubernetes ConfigMap definition.
-// Duplicate keys will be overwritten, so be aware that your file names
-// (regardless of path) should be unique.
+// Duplicate keys under the same path will be overwritten, so be aware that
+// your file names should be unique.
+//
+// AsConfig respects the path of the file and converts `/` to `_`:
+//
+// `ship/captain.txt` will be `ship_captain.txt` in the ConfigMap definition.
 //
 // This is designed to be called from a template, and will return empty string
 // (via ToYaml function) if it cannot be serialized to YAML, or if the Files
@@ -144,8 +148,12 @@ func AsConfigKey(k string) string {
 
 // AsSecrets returns the base64-encoded value of a Files object suitable for
 // including in the 'data' section of a Kubernetes Secret definition.
-// Duplicate keys will be overwritten, so be aware that your file names
-// (regardless of path) should be unique.
+// Duplicate keys under the same path will be overwritten, so be aware that
+// your file names should be unique.
+//
+// AsSecrets respects the path of the file and converts `/` to `_`:
+//
+// `ship/captain.txt` will be `ship_captain.txt` in the Secret definition.
 //
 // This is designed to be called from a template, and will return empty string
 // (via ToYaml function) if it cannot be serialized to YAML, or if the Files
