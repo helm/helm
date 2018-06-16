@@ -32,12 +32,13 @@ import (
 
 // Environment encapsulates information about where test suite executes and returns results
 type Environment struct {
-	Namespace  string
-	KubeClient environment.KubeClient
-	Stream     services.ReleaseService_RunReleaseTestServer
-	Timeout    int64
-	Parallel   bool
-	streamLock sync.Mutex
+	Namespace   string
+	KubeClient  environment.KubeClient
+	Stream      services.ReleaseService_RunReleaseTestServer
+	Timeout     int64
+	Parallel    bool
+	Parallelism uint32
+	streamLock  sync.Mutex
 }
 
 func (env *Environment) createTestPod(test *test) error {

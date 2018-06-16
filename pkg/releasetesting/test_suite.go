@@ -17,7 +17,9 @@ limitations under the License.
 package releasetesting
 
 import (
+	"context"
 	"fmt"
+	"golang.org/x/sync/semaphore"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -81,11 +83,16 @@ func (ts *TestSuite) Run(env *Environment) error {
 	}
 
 	if env.Parallel {
-		c := make(chan error)
+		c := make(chan error, len(tests))
+		// Use a semaphore to restrict the number of tests running in parallel.
+		sem := semaphore.NewWeighted(int64(env.Parallelism))
+		ctx := context.Background()
 		for _, t := range tests {
-			go func(t *test) {
+			sem.Acquire(ctx, 1)
+			go func(t *test, sem *semaphore.Weighted) {
+				defer sem.Release(1)
 				c <- t.run(env)
-			}(t)
+			}(t, sem)
 		}
 
 		for range tests {
@@ -93,6 +100,7 @@ func (ts *TestSuite) Run(env *Environment) error {
 				return err
 			}
 		}
+
 	} else {
 		for _, t := range tests {
 			if err := t.run(env); err != nil {
