@@ -189,7 +189,8 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{
-					ServiceAccountName: opts.ServiceAccount,
+					ServiceAccountName:           opts.ServiceAccount,
+					AutomountServiceAccountToken: &[]bool{true}[0],
 					Containers: []v1.Container{
 						{
 							Name:            "tiller",
