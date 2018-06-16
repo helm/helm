@@ -259,7 +259,7 @@ outer:
 ```
 
 Lists can be expressed by enclosing values in `{` and `}`. For example,
-`--set name={a, b, c}` translates to:
+`--set name="{a, b, c}"` translates to:
 
 ```yaml
 name:
