@@ -286,6 +286,41 @@ func TestParallelTestRunFailure(t *testing.T) {
 	}
 }
 
+func TestParallelism(t *testing.T) {
+	ts := testSuiteFixture([]string{manifestWithTestSuccessHook, manifestWithTestSuccessHook, manifestWithTestFailureHook})
+	env := testEnvFixture()
+	env.Parallel = true
+	env.Parallelism = 2
+	env.KubeClient = newSleepOnWaitKubeClient()
+	if err := ts.Run(env); err != nil {
+		t.Errorf("%s", err)
+	}
+
+	stream := env.Stream.(*mockStream)
+
+	if stream.messages[0].Status != release.TestRun_RUNNING {
+		t.Errorf("Expected first message status to be RUNNING, Got: %v", stream.messages[0].Status)
+	}
+	if stream.messages[1].Status != release.TestRun_RUNNING {
+		t.Errorf("Expected second message status to be RUNNING, Got: %v", stream.messages[1].Status)
+	}
+	if stream.messages[2].Status == release.TestRun_RUNNING {
+		t.Errorf("Expected third message status to be not be RUNNING")
+	}
+
+	if ts.Results[0].Status != release.TestRun_SUCCESS {
+		t.Errorf("Expected first test result to be successful, got: %v", ts.Results[0].Status)
+	}
+
+	if ts.Results[1].Status != release.TestRun_SUCCESS {
+		t.Errorf("Expected second test result to be successful, got: %v", ts.Results[1].Status)
+	}
+
+	if ts.Results[2].Status != release.TestRun_FAILURE {
+		t.Errorf("Expected third test result to be failure, got: %v", ts.Results[2].Status)
+	}
+}
+
 func chartStub() *chart.Chart {
 	return &chart.Chart{
 		Metadata: &chart.Metadata{
