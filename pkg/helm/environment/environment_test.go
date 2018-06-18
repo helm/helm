@@ -35,8 +35,8 @@ func TestEnvSettings(t *testing.T) {
 		envars map[string]string
 
 		// expected values
-		home, host, ns, kcontext, plugins string
-		debug                             bool
+		home, host, ns, kcontext, kconfig, plugins string
+		debug                                      bool
 	}{
 		{
 			name:    "defaults",
@@ -47,11 +47,12 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:    "with flags set",
-			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
+			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns", "--kubeconfig", "/bar"},
 			home:    "/foo",
 			plugins: helmpath.Home("/foo").Plugins(),
 			host:    "here",
 			ns:      "myns",
+			kconfig: "/bar",
 			debug:   true,
 		},
 		{
@@ -110,6 +111,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
+			}
+			if settings.KubeConfig != tt.kconfig {
+				t.Errorf("expected kubeconfig %q, got %q", tt.kconfig, settings.KubeConfig)
 			}
 
 			cleanup()
