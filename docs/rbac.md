@@ -71,7 +71,7 @@ metadata:
   name: tiller-manager
   namespace: tiller-world
 rules:
-- apiGroups: ["", "extensions", "apps"]
+- apiGroups: ["", "batch", "extensions", "apps"]
   resources: ["*"]
   verbs: ["*"]
 ```
