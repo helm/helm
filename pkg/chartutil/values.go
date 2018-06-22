@@ -17,13 +17,12 @@ limitations under the License.
 package chartutil
 
 import (
+	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"log"
 	"strings"
-
-	"github.com/ghodss/yaml"
-	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/hapi/chart"
 )
@@ -334,6 +333,7 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 // for the composition of the final values struct
 type ReleaseOptions struct {
 	Name      string
+	Namespace string
 	IsUpgrade bool
 	IsInstall bool
 }
@@ -357,6 +357,7 @@ func ToRenderValuesCaps(chrt *chart.Chart, chrtVals []byte, options ReleaseOptio
 	top := map[string]interface{}{
 		"Release": map[string]interface{}{
 			"Name":      options.Name,
+			"Namespace": options.Namespace,
 			"IsUpgrade": options.IsUpgrade,
 			"IsInstall": options.IsInstall,
 			"Service":   "Helm",

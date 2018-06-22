@@ -69,6 +69,7 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 	ts := time.Now()
 	options := chartutil.ReleaseOptions{
 		Name:      name,
+		Namespace: req.Namespace,
 		IsInstall: true,
 	}
 	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)

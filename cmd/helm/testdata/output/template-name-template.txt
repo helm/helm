@@ -42,6 +42,7 @@ metadata:
   name: subchart1
   labels:
     chart: "subchart1-0.1.0"
+    namespace: "default"
     release-name: "foobar-YWJj-baz"
     kube-version/major: "1"
     kube-version/minor: "9"
