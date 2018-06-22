@@ -103,6 +103,7 @@ where:
 
 	o := ReleaseOptions{
 		Name:      "Seven Voyages",
+		Namespace: "al Basrah",
 		IsInstall: true,
 	}
 
