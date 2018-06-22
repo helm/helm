@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 
@@ -63,6 +65,12 @@ func (k *mockKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Re
 }
 func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
 	return core.PodUnknown, nil
+}
+func (k *mockKubeClient) WaitAndGetRunningPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	return core.PodRunning, nil
+}
+func (k *mockKubeClient) LogsForObject(object, options runtime.Object, timeout time.Duration) (*restclient.Request, error) {
+	return nil, nil
 }
 
 func (k *mockKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {

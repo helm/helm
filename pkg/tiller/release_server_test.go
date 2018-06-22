@@ -30,6 +30,8 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
+	"k8s.io/apimachinery/pkg/runtime"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
@@ -558,6 +560,12 @@ func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (k
 }
 func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
 	return core.PodUnknown, nil
+}
+func (kc *mockHooksKubeClient) WaitAndGetRunningPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+	return core.PodRunning, nil
+}
+func (kc *mockHooksKubeClient) LogsForObject(object, options runtime.Object, timeout time.Duration) (*restclient.Request, error) {
+	return nil, nil
 }
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {

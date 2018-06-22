@@ -92,7 +92,26 @@ func (ts *TestSuite) Run(env *Environment) error {
 		resourceCleanExit := true
 		status := core.PodUnknown
 		if resourceCreated {
+			logChan := make(chan bool)
+			if env.StreamLogs {
+				go func() {
+					if err := env.beginLogStream(test); err != nil {
+						// We don't want to fail the tests if logging failed for whatever reason,
+						// so use UNKNOWN state not ERROR.
+						env.streamMessage(err.Error(), release.TestRun_UNKNOWN)
+					}
+					logChan <- true
+				}()
+			}
+
 			status, err = env.getTestPodStatus(test)
+
+			// Wait for log streaming to finish, which should be before
+			// the pod finishes anyway.
+			if env.StreamLogs {
+				<-logChan
+			}
+
 			if err != nil {
 				resourceCleanExit = false
 				if streamErr := env.streamError(test.result.Info); streamErr != nil {
