@@ -265,7 +265,7 @@ dependencies:
       - name: subchart1
         repository: http://localhost:10191
         version: 0.1.0
-        condition: subchart1.enabled, global.subchart1.enabled
+        condition: subchart1.enabled,global.subchart1.enabled
         tags:
           - front-end
           - subchart1
@@ -303,7 +303,6 @@ The `--set` parameter can be used as usual to alter tag and condition values.
 
 ````
 helm install --set tags.front-end=true --set subchart2.enabled=false
-
 ````
 
 ##### Tags and Condition Resolution

@@ -325,6 +325,11 @@ func inMap(k rune, m map[rune]bool) bool {
 
 func typedVal(v []rune, st bool) interface{} {
 	val := string(v)
+
+	if st {
+		return val
+	}
+
 	if strings.EqualFold(val, "true") {
 		return true
 	}
@@ -337,8 +342,8 @@ func typedVal(v []rune, st bool) interface{} {
 		return nil
 	}
 
-	// If this value does not start with zero, and not returnString, try parsing it to an int
-	if !st && len(val) != 0 && val[0] != '0' {
+	// If this value does not start with zero, try parsing it to an int
+	if len(val) != 0 && val[0] != '0' {
 		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return iv
 		}

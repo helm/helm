@@ -16,10 +16,20 @@ limitations under the License.
 package getter
 
 import (
+	"io"
 	"net/http"
+	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
+
+type TestFileHandler struct{}
+
+func (h *TestFileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	HandleClient(w, r)
+}
 
 func TestHTTPGetter(t *testing.T) {
 	g, err := newHTTPGetter("http://example.com", "", "", "")
@@ -54,5 +64,44 @@ func TestHTTPGetter(t *testing.T) {
 		t.Fatal("Expected newHTTPGetter to produce an HttpGetter")
 	} else if hg.client == http.DefaultClient {
 		t.Fatal("Expected newHTTPGetter to return a non-default HTTP client")
+	}
+}
+
+func HandleClient(writer http.ResponseWriter, request *http.Request) {
+	f, _ := os.Open("testdata/sssd-0.1.0.tgz")
+	defer f.Close()
+
+	b := make([]byte, 512)
+	f.Read(b)
+	//Get the file size
+	FileStat, _ := f.Stat()
+	FileSize := strconv.FormatInt(FileStat.Size(), 10)
+
+	//Simulating improper header values from bitbucket
+	writer.Header().Set("Content-Type", "application/x-tar")
+	writer.Header().Set("Content-Encoding", "gzip")
+	writer.Header().Set("Content-Length", FileSize)
+
+	f.Seek(0, 0)
+	io.Copy(writer, f)
+	return
+}
+
+func TestHTTPGetterTarDownload(t *testing.T) {
+	h := &TestFileHandler{}
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	g, err := newHTTPGetter(server.URL, "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := g.Get(server.URL)
+	mimeType := http.DetectContentType(data.Bytes())
+
+	expectedMimeType := "application/x-gzip"
+	if mimeType != expectedMimeType {
+		t.Fatalf("Expected response with MIME type %s, but got %s", expectedMimeType, mimeType)
 	}
 }
