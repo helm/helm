@@ -161,35 +161,58 @@ func TestServiceManifest(t *testing.T) {
 }
 
 func TestSecretManifest(t *testing.T) {
-	o, err := SecretManifest(&Options{
-		VerifyTLS:     true,
-		EnableTLS:     true,
-		Namespace:     v1.NamespaceDefault,
-		TLSKeyFile:    tlsTestFile(t, "key.pem"),
-		TLSCertFile:   tlsTestFile(t, "crt.pem"),
-		TLSCaCertFile: tlsTestFile(t, "ca.pem"),
-	})
-
-	if err != nil {
-		t.Fatalf("error %q", err)
+	tests := []struct {
+		opts Options
+		name string
+	}{
+		{
+			Options{
+				VerifyTLS:     true,
+				EnableTLS:     true,
+				Namespace:     v1.NamespaceDefault,
+				TLSKeyFile:    tlsTestFile(t, "key.pem"),
+				TLSCertFile:   tlsTestFile(t, "crt.pem"),
+				TLSCaCertFile: tlsTestFile(t, "ca.pem"),
+			},
+			"tls secret from file",
+		},
+		{
+			Options{
+				VerifyTLS:     true,
+				EnableTLS:     true,
+				Namespace:     v1.NamespaceDefault,
+				TLSKeyData:    "1",
+				TLSCertData:   "2",
+				TLSCaCertData: "3",
+			},
+			"tls secret from data",
+		},
 	}
 
-	var obj v1.Secret
-	if err := yaml.Unmarshal([]byte(o), &obj); err != nil {
-		t.Fatalf("error %q", err)
-	}
+	for _, tt := range tests {
+		o, err := SecretManifest(&tt.opts)
 
-	if got := obj.ObjectMeta.Namespace; got != v1.NamespaceDefault {
-		t.Errorf("expected namespace %s, got %s", v1.NamespaceDefault, got)
-	}
-	if _, ok := obj.Data["tls.key"]; !ok {
-		t.Errorf("missing 'tls.key' in generated secret object")
-	}
-	if _, ok := obj.Data["tls.crt"]; !ok {
-		t.Errorf("missing 'tls.crt' in generated secret object")
-	}
-	if _, ok := obj.Data["ca.crt"]; !ok {
-		t.Errorf("missing 'ca.crt' in generated secret object")
+		if err != nil {
+			t.Fatalf("error %q", err)
+		}
+
+		var obj v1.Secret
+		if err := yaml.Unmarshal([]byte(o), &obj); err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+
+		if got := obj.ObjectMeta.Namespace; got != v1.NamespaceDefault {
+			t.Errorf("%s: expected namespace %s, got %s", tt.name, v1.NamespaceDefault, got)
+		}
+		if _, ok := obj.Data["tls.key"]; !ok {
+			t.Errorf("%s: missing 'tls.key' in generated secret object", tt.name)
+		}
+		if _, ok := obj.Data["tls.crt"]; !ok {
+			t.Errorf("%s: missing 'tls.crt' in generated secret object", tt.name)
+		}
+		if _, ok := obj.Data["ca.crt"]; !ok {
+			t.Errorf("%s: missing 'ca.crt' in generated secret object", tt.name)
+		}
 	}
 }
 

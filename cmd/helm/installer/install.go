@@ -355,18 +355,23 @@ func generateSecret(opts *Options) (*v1.Secret, error) {
 		},
 	}
 	var err error
-	if secret.Data["tls.key"], err = read(opts.TLSKeyFile); err != nil {
+	if secret.Data["tls.key"], err = read(opts.TLSKeyFile, opts.TLSKeyData); err != nil {
 		return nil, err
 	}
-	if secret.Data["tls.crt"], err = read(opts.TLSCertFile); err != nil {
+	if secret.Data["tls.crt"], err = read(opts.TLSCertFile, opts.TLSCertData); err != nil {
 		return nil, err
 	}
 	if opts.VerifyTLS {
-		if secret.Data["ca.crt"], err = read(opts.TLSCaCertFile); err != nil {
+		if secret.Data["ca.crt"], err = read(opts.TLSCaCertFile, opts.TLSCaCertFile); err != nil {
 			return nil, err
 		}
 	}
 	return secret, nil
 }
 
-func read(path string) (b []byte, err error) { return ioutil.ReadFile(path) }
+func read(path string, override []byte) (b []byte, err error) {
+	if len(override) > 0 {
+		return override, nil
+	}
+	return ioutil.ReadFile(path)
+}

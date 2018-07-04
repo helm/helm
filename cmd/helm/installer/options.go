@@ -73,6 +73,15 @@ type Options struct {
 	// Required and valid if and only if VerifyTLS is set.
 	TLSCaCertFile string
 
+	// TLSKeyData contains raw PEM encoded data instead of TLSKeyFile path.
+	TLSKeyData []byte
+
+	// TLSCertData contains raw PEM encoded data instead of TLSCertFile path.
+	TLSCertData []byte
+
+	// TLSCaCertData contains raw PEM encoded data instead of TLSKeyFile path.
+	TLSCaCertData []byte
+
 	// EnableHostNetwork installs Tiller with net=host.
 	EnableHostNetwork bool
 
