@@ -246,7 +246,9 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			}
 
 			for _, manifest := range listManifests {
-				manifestPathSplit := strings.Split(manifest.Name, string(filepath.Separator))
+				// manifest.Name is rendered using linux-style filepath separators on Windows as
+				// well as macOS/linux.
+				manifestPathSplit := strings.Split(manifest.Name, "/")
 				// remove the chart name from the path
 				manifestPathSplit = manifestPathSplit[1:]
 				toJoin := append([]string{t.chartPath}, manifestPathSplit...)
