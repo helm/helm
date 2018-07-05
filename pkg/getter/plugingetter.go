@@ -69,6 +69,7 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
 	prog.Stdout = buf
 	prog.Stderr = os.Stderr
+	prog.Stdin = os.Stdin
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
 			os.Stderr.Write(eerr.Stderr)
