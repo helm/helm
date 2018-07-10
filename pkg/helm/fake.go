@@ -88,6 +88,7 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	}
 
 	releaseName := c.Opts.instReq.Name
+	releaseDescription := c.Opts.instReq.Description
 
 	// Check to see if the release already exists.
 	rel, err := c.ReleaseStatus(releaseName, nil)
@@ -95,7 +96,7 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 		return nil, errors.New("cannot re-use a name that is still in use")
 	}
 
-	release := ReleaseMock(&MockReleaseOptions{Name: releaseName, Namespace: ns})
+	release := ReleaseMock(&MockReleaseOptions{Name: releaseName, Namespace: ns, Description: releaseDescription})
 	c.Rels = append(c.Rels, release)
 
 	return &rls.InstallReleaseResponse{
@@ -225,11 +226,12 @@ metadata:
 
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
-	Name       string
-	Version    int32
-	Chart      *chart.Chart
-	StatusCode release.Status_Code
-	Namespace  string
+	Name        string
+	Version     int32
+	Chart       *chart.Chart
+	StatusCode  release.Status_Code
+	Namespace   string
+	Description string
 }
 
 // ReleaseMock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -249,6 +251,11 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 	namespace := opts.Namespace
 	if namespace == "" {
 		namespace = "default"
+	}
+
+	description := opts.Description
+	if description == "" {
+		description = "Release mock"
 	}
 
 	ch := opts.Chart
@@ -275,7 +282,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: scode},
-			Description:   "Release mock",
+			Description:   description,
 		},
 		Chart:     ch,
 		Config:    &chart.Config{Raw: `name: "value"`},

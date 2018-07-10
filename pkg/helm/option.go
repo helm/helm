@@ -262,6 +262,34 @@ func UpdateValueOverrides(raw []byte) UpdateOption {
 	}
 }
 
+// InstallDescription specifies the description for the release
+func InstallDescription(description string) InstallOption {
+	return func(opts *options) {
+		opts.instReq.Description = description
+	}
+}
+
+// UpgradeDescription specifies the description for the update
+func UpgradeDescription(description string) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Description = description
+	}
+}
+
+// RollbackDescription specifies the description for the release
+func RollbackDescription(description string) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.Description = description
+	}
+}
+
+// DeleteDescription specifies the description for the release
+func DeleteDescription(description string) DeleteOption {
+	return func(opts *options) {
+		opts.uninstallReq.Description = description
+	}
+}
+
 // DeleteDisableHooks will disable hooks for a deletion operation.
 func DeleteDisableHooks(disable bool) DeleteOption {
 	return func(opts *options) {

@@ -250,7 +250,11 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	}
 
 	r.Info.Status.Code = release.Status_DEPLOYED
-	r.Info.Description = "Install complete"
+	if req.Description == "" {
+		r.Info.Description = "Install complete"
+	} else {
+		r.Info.Description = req.Description
+	}
 	// This is a tricky case. The release has been created, but the result
 	// cannot be recorded. The truest thing to tell the user is that the
 	// release was created. However, the user will not be able to do anything

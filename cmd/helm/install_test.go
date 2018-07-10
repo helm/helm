@@ -115,6 +115,13 @@ func TestInstall(t *testing.T) {
 			expected: "FOOBAR",
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "FOOBAR"}),
 		},
+		{
+			name:     "install with custom description",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    []string{"--name", "virgil", "--description", "foobar"},
+			expected: "virgil",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil", Description: "foobar"}),
+		},
 		// Install, perform chart verification along the way.
 		{
 			name:  "install with verification, missing provenance",
