@@ -183,8 +183,7 @@ deterministic executing order. Weights are defined using the following annotatio
 ```
 
 Hook weights can be positive or negative numbers but must be represented as
-strings. When Tiller starts the execution cycle of hooks of a particular Kind it
-will sort those hooks in ascending order. 
+strings. When Tiller starts the execution cycle of hooks of a particular kind (ex. the `pre-install` hooks or `post-install` hooks, etc.) it will sort those hooks in ascending order.
 
 It is also possible to define policies that determine when to delete corresponding hook resources. Hook deletion policies are defined using the following annotation:
 
