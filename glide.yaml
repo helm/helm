@@ -33,6 +33,7 @@ import:
 - package: golang.org/x/crypto
   subpackages:
   - openpgp
+  - ssh/terminal
 # pin version of golang.org/x/sys that is compatible with golang.org/x/crypto
 - package: golang.org/x/sys
   version: 43eea11
