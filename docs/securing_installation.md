@@ -65,7 +65,7 @@ For historical reasons, Tiller stores its release information in ConfigMaps. We 
 
 Secrets are the Kubernetes accepted mechanism for saving configuration data that is considered sensitive. While secrets don't themselves offer many protections, Kubernetes cluster management software often treats them differently than other objects. Thus, we suggest using secrets to store releases.
 
-Enabling this feature currently requires setting the `--storage=secret` flag in the tiller-deploy deployment. This entails directly modifying the deployment or using `helm init --override=...`, as no helm init flag is currently available to do this for you. For more information, see [Using --override](install.md#using---override).
+Enabling this feature currently requires setting the `--storage=secret` flag in the tiller-deploy deployment. This entails directly modifying the deployment or using `helm init --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}'`, as no helm init flag is currently available to do this for you.
 
 ### Thinking about Charts
 
@@ -93,6 +93,7 @@ If these steps are followed, an example `helm init` command might look something
  
 ```bash
 $ helm init \
+--override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' \
 --tiller-tls \
 --tiller-tls-verify \
 --tiller-tls-cert=cert.pem \
@@ -101,7 +102,7 @@ $ helm init \
 --service-account=accountname
 ```
 
-This command will start Tiller with both strong authentication over gRPC, and a service account to which RBAC policies have been applied. 
+This command will start Tiller with strong authentication over gRPC, release information stored in a Kubernetes Secret, and a service account to which RBAC policies have been applied. 
 
 
 
