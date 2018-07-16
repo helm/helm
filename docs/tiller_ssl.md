@@ -284,6 +284,23 @@ the host name that Helm connects to matches the host name on the certificate. In
 some cases this is awkward, since Helm will connect over localhost, or the FQDN is
 not available for public resolution.
 
+*If I use `--tls-verify` on the client, I get `Error: x509: cannot validate certificate for 127.0.0.1 because it doesn't contain any IP SANs`*
+
+By default, the Helm client connects to Tiller via tunnel (i.e. kube proxy) at 127.0.0.1. During the TLS handshake,
+a target, usually provided as a hostname (e.g. example.com), is checked against the subject and subject alternative
+names of the certificate (i.e. hostname verficiation). However, because of the tunnel, the target is an IP address.
+Therefore, to validate the certificate, the IP address 127.0.0.1 must be listed as an IP subject alternative name
+(IP SAN) in the Tiller certificate.
+
+For example, to list 127.0.0.1 as an IP SAN when generating the Tiller certificate:
+
+```console
+$ echo subjectAltName=IP:127.0.0.1 > extfile.cnf
+$ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in tiller.csr.pem -out tiller.cert.pem -days 365 -extfile extfile.cnf
+```
+
+Alternatively, you can override the expected hostname of the tiller certificate using the `--tls-hostname` flag.
+
 *If I use `--tls-verify` on the client, I get `Error: x509: certificate has expired or is not yet valid`*
 
 Your helm certificate has expired, you need to sign a new certificate using your private key and the CA (and consider increasing the number of days)
