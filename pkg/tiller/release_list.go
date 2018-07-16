@@ -65,6 +65,8 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		relutil.SortByName(rels)
 	case services.ListSort_LAST_RELEASED:
 		relutil.SortByDate(rels)
+	case services.ListSort_CHART_NAME:
+		relutil.SortByChartName(rels)
 	}
 
 	if req.SortOrder == services.ListSort_DESC {
