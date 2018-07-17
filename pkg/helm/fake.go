@@ -97,7 +97,9 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	}
 
 	release := ReleaseMock(&MockReleaseOptions{Name: releaseName, Namespace: ns, Description: releaseDescription})
-	c.Rels = append(c.Rels, release)
+	if !c.Opts.dryRun {
+		c.Rels = append(c.Rels, release)
+	}
 
 	return &rls.InstallReleaseResponse{
 		Release: release,
