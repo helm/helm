@@ -46,7 +46,7 @@ func TestUpdateCmd(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, hh helmpath.Home) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, hh helmpath.Home, strict bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -95,7 +95,7 @@ func TestUpdateCharts(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	updateCharts([]*repo.ChartRepository{r}, b, hh)
+	updateCharts([]*repo.ChartRepository{r}, b, hh, false)
 
 	got := b.String()
 	if strings.Contains(got, "Unable to get an update") {

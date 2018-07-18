@@ -445,10 +445,7 @@ func (m *Manager) UpdateRepositories() error {
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 	out := m.Out
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
-	var (
-		errorCounter int
-		wg           sync.WaitGroup
-	)
+	var wg sync.WaitGroup
 	for _, c := range repos {
 		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
@@ -457,7 +454,6 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
 			if err := r.DownloadIndexFile(m.HelmHome.Cache()); err != nil {
-				errorCounter++
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
@@ -466,9 +462,6 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}(r)
 	}
 	wg.Wait()
-	if errorCounter != 0 {
-		return errors.New("Update Failed. Check log for details")
-	}
 	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
 	return nil
 }

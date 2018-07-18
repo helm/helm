@@ -40,9 +40,10 @@ future releases.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateCmd struct {
-	update func([]*repo.ChartRepository, io.Writer, helmpath.Home) error
+	update func([]*repo.ChartRepository, io.Writer, helmpath.Home, bool) error
 	home   helmpath.Home
 	out    io.Writer
+	strict bool
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -60,6 +61,10 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 			return u.run()
 		},
 	}
+
+	f := cmd.Flags()
+	f.BoolVar(&u.strict, "strict", false, "fail on update warnings")
+
 	return cmd
 }
 
@@ -80,10 +85,10 @@ func (u *repoUpdateCmd) run() error {
 		}
 		repos = append(repos, r)
 	}
-	return u.update(repos, u.out, u.home)
+	return u.update(repos, u.out, u.home, u.strict)
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Home) error {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Home, strict bool) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var (
 		errorCounter int
@@ -107,9 +112,11 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 		}(re)
 	}
 	wg.Wait()
-	if errorCounter != 0 {
+
+	if errorCounter != 0 && strict {
 		return errors.New("Update Failed. Check log for details")
 	}
+
 	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming!⎈ ")
 	return nil
 }
