@@ -25,6 +25,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
@@ -211,7 +212,7 @@ func (u *upgradeCmd) run() error {
 	// Check chart requirements to make sure all dependencies are present in /charts
 	if ch, err := chartutil.Load(chartPath); err == nil {
 		if req, err := chartutil.LoadRequirements(ch); err == nil {
-			if err := checkDependencies(ch, req); err != nil {
+			if err := renderutil.CheckDependencies(ch, req); err != nil {
 				return err
 			}
 		} else if err != chartutil.ErrRequirementsNotFound {

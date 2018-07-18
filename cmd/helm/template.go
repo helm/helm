@@ -27,17 +27,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/engine"
+	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
-	util "k8s.io/helm/pkg/releaseutil"
+	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/timeconv"
-	tversion "k8s.io/helm/pkg/version"
 )
 
 const defaultDirectoryPermission = 0755
@@ -154,68 +152,20 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		return prettyError(err)
 	}
 
-	if req, err := chartutil.LoadRequirements(c); err == nil {
-		if err := checkDependencies(c, req); err != nil {
-			return prettyError(err)
-		}
-	} else if err != chartutil.ErrRequirementsNotFound {
-		return fmt.Errorf("cannot load requirements: %v", err)
-	}
-	options := chartutil.ReleaseOptions{
-		Name:      t.releaseName,
-		IsInstall: !t.releaseIsUpgrade,
-		IsUpgrade: t.releaseIsUpgrade,
-		Time:      timeconv.Now(),
-		Namespace: t.namespace,
+	renderOpts := renderutil.Options{
+		ReleaseOptions: chartutil.ReleaseOptions{
+			Name:      t.releaseName,
+			IsInstall: !t.releaseIsUpgrade,
+			IsUpgrade: t.releaseIsUpgrade,
+			Time:      timeconv.Now(),
+			Namespace: t.namespace,
+		},
+		KubeVersion: t.kubeVersion,
 	}
 
-	err = chartutil.ProcessRequirementsEnabled(c, config)
+	renderedTemplates, err := renderutil.Render(c, config, renderOpts)
 	if err != nil {
 		return err
-	}
-	err = chartutil.ProcessRequirementsImportValues(c)
-	if err != nil {
-		return err
-	}
-
-	// Set up engine.
-	renderer := engine.New()
-
-	caps := &chartutil.Capabilities{
-		APIVersions:   chartutil.DefaultVersionSet,
-		KubeVersion:   chartutil.DefaultKubeVersion,
-		TillerVersion: tversion.GetVersionProto(),
-	}
-
-	// kubernetes version
-	kv, err := semver.NewVersion(t.kubeVersion)
-	if err != nil {
-		return fmt.Errorf("could not parse a kubernetes version: %v", err)
-	}
-	caps.KubeVersion.Major = fmt.Sprint(kv.Major())
-	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
-	caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
-
-	vals, err := chartutil.ToRenderValuesCaps(c, config, options, caps)
-	if err != nil {
-		return err
-	}
-
-	out, err := renderer.Render(c, vals)
-	listManifests := []tiller.Manifest{}
-	if err != nil {
-		return err
-	}
-	// extract kind and name
-	re := regexp.MustCompile("kind:(.*)\n")
-	for k, v := range out {
-		match := re.FindStringSubmatch(v)
-		h := "Unknown"
-		if len(match) == 2 {
-			h = strings.TrimSpace(match[1])
-		}
-		m := tiller.Manifest{Name: k, Content: v, Head: &util.SimpleHead{Kind: h}}
-		listManifests = append(listManifests, m)
 	}
 
 	if settings.Debug {
@@ -230,7 +180,8 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		printRelease(os.Stdout, rel)
 	}
 
-	var manifestsToRender []tiller.Manifest
+	listManifests := manifest.SplitManifests(renderedTemplates)
+	var manifestsToRender []manifest.Manifest
 
 	// if we have a list of files to render, then check that each of the
 	// provided files exists in the chart.
