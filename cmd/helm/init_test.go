@@ -280,13 +280,14 @@ func TestInitCmd_tlsOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		// emulate tls file specific flags
-		tlsCaCertFile, tlsCertFile, tlsKeyFile = tt.caFile, tt.certFile, tt.keyFile
-
-		// emulate tls enable/verify flags
-		tlsEnable, tlsVerify = tt.enable, tt.verify
-
-		cmd := &initCmd{}
+		// emulate tls flags
+		cmd := &initCmd{
+			tlsCaCertFile: tt.caFile,
+			tlsCertFile:   tt.certFile,
+			tlsKeyFile:    tt.keyFile,
+			tlsVerify:     tt.verify,
+			tlsEnable:     tt.enable,
+		}
 		if err := cmd.tlsOptions(); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
