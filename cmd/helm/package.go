@@ -35,6 +35,7 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
+	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -151,7 +152,7 @@ func (p *packageCmd) run() error {
 	}
 
 	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
-		if err := checkDependencies(ch, reqs); err != nil {
+		if err := renderutil.CheckDependencies(ch, reqs); err != nil {
 			return err
 		}
 	} else {
