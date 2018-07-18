@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -34,6 +35,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/helm/notify"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/tlsutil"
@@ -79,6 +81,8 @@ Environment:
 `
 
 func newRootCmd(args []string) *cobra.Command {
+	updateMessages := make(chan string)
+
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -88,9 +92,29 @@ func newRootCmd(args []string) *cobra.Command {
 			tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
 			tlsCertFile = os.ExpandEnv(tlsCertFile)
 			tlsKeyFile = os.ExpandEnv(tlsKeyFile)
+
+			// Check for update in pre-run via goroutine and print update in post-run
+			// This allows the update check to happen concurrently from the command
+			if !settings.SkipSelfUpdateCheck {
+				lastUpdatePath := filepath.Join(settings.Home.String(), "last_update_check")
+				go func() {
+					// 604800 = 60 seconds * 60 minutes * 24 hours * 7 days
+					newVer, err := notify.IfTimeFromFile(lastUpdatePath, 604800, "https://mattfarina.github.io/test_helm_releases_url/releases.json")
+					if err != nil {
+						debug("Error checking for newer version of Helm: %q", err)
+					}
+					updateMessages <- newVer
+				}()
+			}
+
 		},
-		PersistentPostRun: func(*cobra.Command, []string) {
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			teardown()
+			msg := <-updateMessages
+			if msg != "" {
+				out := cmd.OutOrStdout()
+				fmt.Fprintf(out, "A new release of Helm is available at the version %s\n", msg)
+			}
 		},
 	}
 	flags := cmd.PersistentFlags()
