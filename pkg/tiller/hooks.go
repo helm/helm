@@ -27,6 +27,7 @@ import (
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 )
@@ -52,12 +53,7 @@ var deletePolices = map[string]release.Hook_DeletePolicy{
 	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
 }
 
-// Manifest represents a manifest file, which has a name and some content.
-type Manifest struct {
-	Name    string
-	Content string
-	Head    *util.SimpleHead
-}
+type Manifest = manifest.Manifest
 
 type result struct {
 	hooks   []*release.Hook
