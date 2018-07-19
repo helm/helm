@@ -129,6 +129,46 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 	}
 }
 
+func TestUpdateRelease_ReuseValuesWithNoValues(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	installReq := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+	}
+
+	installResp, err := rs.InstallRelease(c, installReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rel := installResp.Release
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+			},
+		},
+		Values:      &chart.Config{Raw: ""},
+		ReuseValues: true,
+	}
+
+	_, err = rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+}
+
 // This is a regression test for bug found in issue #3655
 func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	c := helm.NewContext()
