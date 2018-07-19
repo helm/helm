@@ -85,10 +85,10 @@ You must have a working Go environment with
 
 ```console
 $ cd $GOPATH
-$ mkdir -p src/k8s.io
-$ cd src/k8s.io
-$ git clone https://github.com/kubernetes/helm.git
-$ cd helm
+$ mkdir -p src/github.com/helm
+$ cd src/github.com/helm
+$ git clone https://github.com/helm/helm.git
+$ cd helm/
 $ make bootstrap build
 ```
 
