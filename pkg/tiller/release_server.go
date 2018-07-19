@@ -138,7 +138,9 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		}
 
 		// merge new values with current
-		req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
+		if current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
+			req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
+		}
 		req.Chart.Values = &chart.Config{Raw: nv}
 
 		// yaml unmarshal and marshal to remove duplicate keys
