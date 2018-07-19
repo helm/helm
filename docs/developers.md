@@ -19,8 +19,8 @@ We use Make to build our programs. The simplest way to get started is:
 $ make bootstrap build
 ```
 
-NOTE: This will fail if not running from the path `$GOPATH/src/k8s.io/helm`. The
-directory `k8s.io` should not be a symlink or `build` will not find the relevant
+NOTE: This will fail if not running from the path `$GOPATH/src/github.com/helm/helm/`. The
+directory `github.com` should not be a symlink or `build` will not find the relevant
 packages.
 
 This will build both Helm and Tiller. `make bootstrap` will attempt to
@@ -45,7 +45,7 @@ To expose the Helm man pages to your `man` client, you can put the files in your
 `$MANPATH`:
 
 ```
-$ export MANPATH=$GOPATH/src/k8s.io/helm/docs/man:$MANPATH
+$ export MANPATH=$GOPATH/src/github.com/helm/helm/docs/man:$MANPATH
 $ man helm
 ```
 
@@ -131,7 +131,7 @@ elegant and high-quality open source code so that our users will benefit.
 
 Make sure you have read and understood the main CONTRIBUTING guide:
 
-https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md
+https://github.com/helm/helm/blob/master/CONTRIBUTING.md
 
 ### Structure of the Code
 
@@ -160,10 +160,10 @@ home of the current development candidate. Releases are tagged.
 We accept changes to the code via GitHub Pull Requests (PRs). One
 workflow for doing this is as follows:
 
-1. Go to your `$GOPATH/src/k8s.io` directory and `git clone` the
-   `github.com/kubernetes/helm` repository.
+1. Go to your `$GOPATH/src/github.com/helm/` directory and `git clone` the
+   `github.com/helm/helm` repository.
 2. Fork that repository into your GitHub account
-3. Add your repository as a remote for `$GOPATH/src/k8s.io/helm`
+3. Add your repository as a remote for `$GOPATH/src/github.com/helm/helm`
 4. Create a new working branch (`git checkout -b feat/my-feature`) and
    do your work on that branch.
 5. When you are ready for us to review, push your branch to GitHub, and
