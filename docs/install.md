@@ -24,6 +24,15 @@ can be manually downloaded and installed.
 
 From there, you should be able to run the client: `helm help`.
 
+### From Snap (Linux)
+
+The Snap package for Helm is maintained by
+[Snapcrafters](https://github.com/snapcrafters/helm).
+
+```
+$ sudo snap install helm
+```
+
 ### From Homebrew (macOS)
 
 Members of the Kubernetes community have contributed a Helm formula build to
@@ -74,15 +83,6 @@ Here are links to the common builds:
 - [Linux AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-linux-amd64.tar.gz)
 - [macOS AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
 - [Experimental Windows AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-windows-amd64.zip)
-
-### From Snap (Linux)
-
-The Snap package for Helm is maintained by
-[Snapcrafters](https://github.com/snapcrafters/helm).
-
-```
-$ sudo snap install helm
-```
 
 ### From Source (Linux, macOS)
 
