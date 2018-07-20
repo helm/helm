@@ -158,7 +158,12 @@ func init() {
 func main() {
 	cmd := newRootCmd(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
+		switch e := err.(type) {
+		case pluginError:
+			os.Exit(e.code)
+		default:
+			os.Exit(1)
+		}
 	}
 }
 

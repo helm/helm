@@ -22,11 +22,17 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/plugin"
 )
+
+type pluginError struct {
+	error
+	code int
+}
 
 // loadPlugins loads plugins into the command list.
 //
@@ -87,7 +93,11 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				if err := prog.Run(); err != nil {
 					if eerr, ok := err.(*exec.ExitError); ok {
 						os.Stderr.Write(eerr.Stderr)
-						return fmt.Errorf("plugin %q exited with error", md.Name)
+						status := eerr.Sys().(syscall.WaitStatus)
+						return pluginError{
+							error: fmt.Errorf("plugin %q exited with error", md.Name),
+							code:  status.ExitStatus(),
+						}
 					}
 					return err
 				}
