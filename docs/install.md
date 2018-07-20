@@ -75,6 +75,15 @@ Here are links to the common builds:
 - [macOS AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
 - [Experimental Windows AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-windows-amd64.zip)
 
+### From Snap (Linux)
+
+The Snap package for Helm is maintained by
+[Snapcrafters](https://github.com/snapcrafters/helm).
+
+```
+$ sudo snap install helm
+```
+
 ### From Source (Linux, macOS)
 
 Building Helm from source is slightly more work, but is the best way to
