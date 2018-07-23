@@ -24,6 +24,15 @@ can be manually downloaded and installed.
 
 From there, you should be able to run the client: `helm help`.
 
+### From Snap (Linux)
+
+The Snap package for Helm is maintained by
+[Snapcrafters](https://github.com/snapcrafters/helm).
+
+```
+$ sudo snap install helm
+```
+
 ### From Homebrew (macOS)
 
 Members of the Kubernetes community have contributed a Helm formula build to
