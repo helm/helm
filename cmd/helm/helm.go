@@ -169,7 +169,7 @@ func markDeprecated(cmd *cobra.Command, notice string) *cobra.Command {
 
 func setupConnection() error {
 	if settings.TillerHost == "" {
-		config, client, err := getKubeClient(settings.KubeContext)
+		config, client, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 		if err != nil {
 			return err
 		}
@@ -223,8 +223,8 @@ func prettyError(err error) error {
 }
 
 // configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
-func configForContext(context string) (*rest.Config, error) {
-	config, err := kube.GetConfig(context).ClientConfig()
+func configForContext(context string, kubeconfig string) (*rest.Config, error) {
+	config, err := kube.GetConfig(context, kubeconfig).ClientConfig()
 	if err != nil {
 		return nil, fmt.Errorf("could not get Kubernetes config for context %q: %s", context, err)
 	}
@@ -232,8 +232,8 @@ func configForContext(context string) (*rest.Config, error) {
 }
 
 // getKubeClient creates a Kubernetes config and client for a given kubeconfig context.
-func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
-	config, err := configForContext(context)
+func getKubeClient(context string, kubeconfig string) (*rest.Config, kubernetes.Interface, error) {
+	config, err := configForContext(context, kubeconfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -247,8 +247,8 @@ func getKubeClient(context string) (*rest.Config, kubernetes.Interface, error) {
 // getInternalKubeClient creates a Kubernetes config and an "internal" client for a given kubeconfig context.
 //
 // Prefer the similar getKubeClient if you don't need to use such an internal client.
-func getInternalKubeClient(context string) (internalclientset.Interface, error) {
-	config, err := configForContext(context)
+func getInternalKubeClient(context string, kubeconfig string) (internalclientset.Interface, error) {
+	config, err := configForContext(context, kubeconfig)
 	if err != nil {
 		return nil, err
 	}
