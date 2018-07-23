@@ -289,7 +289,7 @@ func (i *initCmd) run() error {
 
 	if !i.clientOnly {
 		if i.kubeClient == nil {
-			_, c, err := getKubeClient(settings.KubeContext)
+			_, c, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 			if err != nil {
 				return fmt.Errorf("could not get kubernetes client: %s", err)
 			}
@@ -332,7 +332,7 @@ func (i *initCmd) run() error {
 
 func (i *initCmd) ping() error {
 	if i.wait {
-		_, kubeClient, err := getKubeClient(settings.KubeContext)
+		_, kubeClient, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 		if err != nil {
 			return err
 		}
