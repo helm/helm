@@ -37,8 +37,10 @@ a packaged chart, or a fully qualified URL. For chart references, the latest
 version will be specified unless the '--version' flag is set.
 
 To override values in a chart, use either the '--values' flag and pass in a file
-or use the '--set' flag and pass configuration from the command line, to force string
-values, use '--set-string'.
+or use the '--set' flag and pass configuration from the command line. To force string
+values in '--set', use '--set-string' instead. In case a value is large and therefore
+you want not to use neither '--values' nor '--set', use '--set-file' to read the
+single large value from file.
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -65,6 +67,7 @@ type upgradeCmd struct {
 	valueFiles   valueFiles
 	values       []string
 	stringValues []string
+	fileValues   []string
 	verify       bool
 	keyring      string
 	install      bool
@@ -122,6 +125,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
 	f.StringArrayVar(&upgrade.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&upgrade.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&upgrade.fileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
@@ -189,6 +193,7 @@ func (u *upgradeCmd) run() error {
 				keyring:      u.keyring,
 				values:       u.values,
 				stringValues: u.stringValues,
+				fileValues:   u.fileValues,
 				namespace:    u.namespace,
 				timeout:      u.timeout,
 				wait:         u.wait,
@@ -198,7 +203,7 @@ func (u *upgradeCmd) run() error {
 		}
 	}
 
-	rawVals, err := vals(u.valueFiles, u.values, u.stringValues, u.certFile, u.keyFile, u.caFile)
+	rawVals, err := vals(u.valueFiles, u.values, u.stringValues, u.fileValues, u.certFile, u.keyFile, u.caFile)
 	if err != nil {
 		return err
 	}
