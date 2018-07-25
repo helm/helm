@@ -4,19 +4,20 @@ This part of the Best Practices Guide explains general conventions.
 
 ## Chart Names
 
-Chart names should be lower case letters and numbers. Dashes (-) are not allowed:
+Chart names should be camelCase case letters and numbers.
 
 Examples:
 
 ```
 drupal
 cluster01
-aws-cluster-autoscaler #incorrect do not use dashes in the name
+aws-cluster-autoscaler #not recommend dashes in the name as it will require the use of index to reference as a sub chart
+awsClusterAutoscaler # is the recommended name
 ```
 
-Neither uppercase letters nor underscores should be used in chart names. Dots should not be used in chart names.
+Dots anduUnderscores should not be used due to not being compabitible with DNS names.  Dashes are not recommended due to subcharts requiring the use of `index` to reference a subchart that has a dash in the name.
 
-The directory that contains a chart MUST have the same name as the chart. Thus, the chart `nginx-lego` MUST be created in a directory called `nginx-lego/`. This is not merely a stylistic detail, but a requirement of the Helm Chart format.
+The directory that contains a chart MUST have the same name as the chart. Thus, the chart `nginxLego` MUST be created in a directory called `nginxLego/`. This is not merely a stylistic detail, but a requirement of the Helm Chart format.
 
 ## Version Numbers
 
