@@ -227,7 +227,7 @@ There are two ways to pass configuration data during install:
 
 - `--values` (or `-f`): Specify a YAML file with overrides. This can be specified multiple times
   and the rightmost file will take precedence
-- `--set`: Specify overrides on the command line.
+- `--set` (and its variants `--set-string` and `--set-file`): Specify overrides on the command line.
 
 If both are used, `--set` values are merged into `--values` with higher precedence.
 Overrides specified with `--set` are persisted in a configmap. Values that have been
@@ -303,6 +303,35 @@ nodeSelector:
 Deeply nested data structures can be difficult to express using `--set`. Chart
 designers are encouraged to consider the `--set` usage when designing the format
 of a `values.yaml` file.
+
+Helm will cast certain values specified with `--set` to integers.
+For example, `--set foo=true` results Helm to cast `true` into an int64 value.
+In case you want a string, use a `--set`'s variant named `--set-string`. `--set-string foo=true` results in a string value of `"true"`.
+
+`--set-file key=filepath` is another variant of `--set`.
+It reads the file and use its content as a value.
+An example use case of it is to inject a multi-line text into values without dealing with indentation in YAML.
+Say you want to create a [brigade](https://github.com/Azure/brigade) project with certain value containing 5 lines JavaScript code, you might write a `values.yaml` like:
+
+```yaml
+defaultScript: |
+  const { events, Job } = require("brigadier")
+  function run(e, project) {
+    console.log("hello default script")
+  }
+  events.on("run", run)
+```
+
+Being embedded in a YAML, this makes it harder for you to use IDE features and testing framework and so on that supports writing code.
+Instead, you can use `--set-file defaultScript=brigade.js` with `brigade.js` containing:
+
+```javascript
+const { events, Job } = require("brigadier")
+function run(e, project) {
+  console.log("hello default script")
+}
+events.on("run", run)
+```
 
 ### More Installation Methods
 
