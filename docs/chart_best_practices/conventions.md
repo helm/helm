@@ -4,14 +4,14 @@ This part of the Best Practices Guide explains general conventions.
 
 ## Chart Names
 
-Chart names should be lower case letters and numbers. Words _may_ be separated with dashes (-):
+Chart names should be lower case letters and numbers. Dashes (-) are not allowed:
 
 Examples:
 
 ```
 drupal
-nginx-lego
-aws-cluster-autoscaler
+cluster01
+aws-cluster-autoscaler #incorrect do not use dashes in the name
 ```
 
 Neither uppercase letters nor underscores should be used in chart names. Dots should not be used in chart names.
