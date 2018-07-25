@@ -69,6 +69,7 @@ type templateCmd struct {
 	out              io.Writer
 	values           []string
 	stringValues     []string
+	fileValues       []string
 	nameTemplate     string
 	showNotes        bool
 	releaseName      string
@@ -100,6 +101,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&t.namespace, "namespace", "", "namespace to install the release into")
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&t.fileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
@@ -132,7 +134,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		t.namespace = defaultNamespace()
 	}
 	// get combined values and create config
-	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, "", "", "")
+	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, t.fileValues, "", "", "")
 	if err != nil {
 		return err
 	}
