@@ -16,6 +16,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [GitLab, Consumer Driven Contracts, Helm and Kubernetes](https://medium.com/@enxebre/gitlab-consumer-driven-contracts-helm-and-kubernetes-b7235a60a1cb#.xwp1y4tgi)
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [Creating a Helm Plugin in 3 Steps](http://technosophos.com/2017/03/21/creating-a-helm-plugin.html)
+- [Awesome Helm](https://github.com/cdwv/awesome-helm) - List of awesome Helm resources
 
 ## Video, Audio, and Podcast
 
@@ -38,6 +39,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
 - [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
 - [helm-gcs](https://github.com/nouney/helm-gcs) - Plugin to manage repositories on Google Cloud Storage
+- [helm-cos](https://github.com/imroc/helm-cos) - Plugin to manage repositories on Tencent Cloud Object Storage
 - [helm-github](https://github.com/sagansystems/helm-github) - Plugin to install Helm Charts from Github repositories
 - [helm-monitor](https://github.com/ContainerSolutions/helm-monitor) - Plugin to monitor a release and rollback based on Prometheus/ElasticSearch query
 - [helm-k8comp](https://github.com/cststack/k8comp) - Plugin to create Helm Charts from hiera using k8comp

@@ -20,10 +20,11 @@ helm delete [flags] RELEASE_NAME [...]
 ### Options
 
 ```
-      --dry-run       simulate a delete
-      --no-hooks      prevent hooks from running during deletion
-      --purge         remove the release from the store and make its name free for later use
-      --timeout int   time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks) (default 300)
+      --description string   specify a description for the release
+      --dry-run              simulate a delete
+      --no-hooks             prevent hooks from running during deletion
+      --purge                remove the release from the store and make its name free for later use
+      --timeout int          time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks) (default 300)
 ```
 
 ### Options inherited from parent commands
@@ -33,6 +34,7 @@ helm delete [flags] RELEASE_NAME [...]
       --home string                     location of your Helm config. Overrides $HELM_HOME (default "~/.helm")
       --host string                     address of Tiller. Overrides $HELM_HOST
       --kube-context string             name of the kubeconfig context to use
+      --kubeconfig string               absolute path to the kubeconfig file to use
       --tiller-connection-timeout int   the duration (in seconds) Helm will wait to establish a connection to tiller (default 300)
       --tiller-namespace string         namespace of Tiller (default "kube-system")
       --tls                             enable TLS connection between Helm and Tiller

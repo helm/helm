@@ -62,6 +62,14 @@ func TestDelete(t *testing.T) {
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
+			name:     "delete with description",
+			args:     []string{"aeneas"},
+			flags:    []string{"--description", "foo"},
+			expected: "",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+		},
+		{
 			name: "delete without release",
 			args: []string{},
 			err:  true,

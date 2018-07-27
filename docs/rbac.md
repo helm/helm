@@ -14,11 +14,6 @@ Once you have satisfied the pre-requisite and have a service account with the co
 
 ### Example: Service account with cluster-admin role
 
-```console
-$ kubectl create serviceaccount tiller --namespace kube-system
-serviceaccount "tiller" created
-```
-
 In `rbac-config.yaml`:
 
 ```yaml
@@ -71,7 +66,7 @@ metadata:
   name: tiller-manager
   namespace: tiller-world
 rules:
-- apiGroups: ["", "extensions", "apps"]
+- apiGroups: ["", "batch", "extensions", "apps"]
   resources: ["*"]
   verbs: ["*"]
 ```

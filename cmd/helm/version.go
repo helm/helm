@@ -76,7 +76,10 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			if version.showServer {
 				// We do this manually instead of in PreRun because we only
 				// need a tunnel if server version is requested.
-				setupConnection()
+				err := setupConnection()
+				if err != nil {
+					return err
+				}
 			}
 			version.client = ensureHelmClient(version.client)
 			return version.run()
@@ -115,7 +118,6 @@ func (v *versionCmd) run() error {
 		}
 		fmt.Fprintf(v.out, "Kubernetes: %#v\n", k8sVersion)
 	}
-
 	resp, err := v.client.GetVersion()
 	if err != nil {
 		if grpc.Code(err) == codes.Unimplemented {
@@ -135,7 +137,7 @@ func (v *versionCmd) run() error {
 
 func getK8sVersion() (*apiVersion.Info, error) {
 	var v *apiVersion.Info
-	_, client, err := getKubeClient(settings.KubeContext)
+	_, client, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 	if err != nil {
 		return v, err
 	}

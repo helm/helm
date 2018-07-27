@@ -35,10 +35,10 @@ func TestEnvSettings(t *testing.T) {
 		envars map[string]string
 
 		// expected values
-		home, host, ns, kcontext, plugins string
-		debug                             bool
-		tlsca, tlscert, tlskey            string
-		tlsenable, tlsverify              bool
+		home, host, ns, kcontext, kconfig, plugins string
+		debug                                      bool
+		tlsca, tlscert, tlskey                     string
+		tlsenable, tlsverify                       bool
 	}{
 		{
 			name:      "defaults",
@@ -49,6 +49,21 @@ func TestEnvSettings(t *testing.T) {
 			tlsca:     helmpath.Home(DefaultHelmHome).TLSCaCert(),
 			tlscert:   helmpath.Home(DefaultHelmHome).TLSCert(),
 			tlskey:    helmpath.Home(DefaultHelmHome).TLSKey(),
+			tlsenable: false,
+			tlsverify: false,
+		},
+		{
+			name:      "with flags set",
+			args:      []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns", "--kubeconfig", "/bar"},
+			home:      "/foo",
+			plugins:   helmpath.Home("/foo").Plugins(),
+			host:      "here",
+			ns:        "myns",
+			kconfig:   "/bar",
+			debug:     true,
+			tlsca:     helmpath.Home("/foo").TLSCaCert(),
+			tlscert:   helmpath.Home("/foo").TLSCert(),
+			tlskey:    helmpath.Home("/foo").TLSKey(),
 			tlsenable: false,
 			tlsverify: false,
 		},
@@ -171,6 +186,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
+			}
+			if settings.KubeConfig != tt.kconfig {
+				t.Errorf("expected kubeconfig %q, got %q", tt.kconfig, settings.KubeConfig)
 			}
 			if settings.TLSCaCertFile != tt.tlsca {
 				t.Errorf("expected tls-ca-cert %q, got %q", tt.tlsca, settings.TLSCaCertFile)

@@ -2,9 +2,36 @@
 
 **IMPORTANT**: If your experience deviates from this document, please document the changes to keep it up-to-date.
 
+## Release Meetings
+As part of the release process, two of the weekly developer calls will be co-opted
+as "release meetings." 
+
+### Start of the Release Cycle
+The first developer call after a release will be used as the release meeting to
+start the next release cycle. During this meeting, the following items must be
+identified:
+
+- Release date
+- Goals/Objectives for this release
+- The release manager (basically whoever is going to cut the release)
+- Any other important details for the community
+
+All of this information should be added to the GitHub milestone for the given
+release. This should give the community and maintainers a clear set of guidelines
+to follow when choosing whether or not to add issues and PRs to a given release.
+
+### End (almost) of the Release Cycle
+The developer call closest to two weeks before the scheduled release date will
+be used to review any remaining PRs that should be pulled into the release. This
+is the place to debate whether or not we should wait before cutting a release and
+any other concerns. At the end of this meeting, if the release date has not been
+pushed out, the first RC should be cut. Subsequent developer calls in between this
+meeting and the release date should have some time set aside to see if any bugs
+were found. Once the release date is reached, the final release can be cut
+
 ## A Maintainer's Guide to Releasing Helm
 
-So you're in charge of a new release for helm? Cool. Here's what to do...
+So you're in charge of a new release for Helm? Cool. Here's what to do...
 
 ![TODO: Nothing](images/nothing.png)
 

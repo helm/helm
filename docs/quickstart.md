@@ -65,7 +65,7 @@ This will install Tiller into the Kubernetes cluster you saw with
 
 **TIP:** When you want to upgrade Tiller, just run `helm init --upgrade`.
 
-By default, when Tiller is installed,it does not have authentication enabled.
+By default, when Tiller is installed, it does not have authentication enabled.
 To learn more about configuring strong TLS authentication for Tiller, consult
 [the Tiller TLS guide](tiller_ssl.md).
 

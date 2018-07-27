@@ -20,12 +20,13 @@ helm rollback [flags] [RELEASE] [REVISION]
 ### Options
 
 ```
-      --dry-run         simulate a rollback
-      --force           force resource update through delete/recreate if needed
-      --no-hooks        prevent hooks from running during rollback
-      --recreate-pods   performs pods restart for the resource if applicable
-      --timeout int     time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks) (default 300)
-      --wait            if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout
+      --description string   specify a description for the release
+      --dry-run              simulate a rollback
+      --force                force resource update through delete/recreate if needed
+      --no-hooks             prevent hooks from running during rollback
+      --recreate-pods        performs pods restart for the resource if applicable
+      --timeout int          time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks) (default 300)
+      --wait                 if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout
 ```
 
 ### Options inherited from parent commands
@@ -35,6 +36,7 @@ helm rollback [flags] [RELEASE] [REVISION]
       --home string                     location of your Helm config. Overrides $HELM_HOME (default "~/.helm")
       --host string                     address of Tiller. Overrides $HELM_HOST
       --kube-context string             name of the kubeconfig context to use
+      --kubeconfig string               absolute path to the kubeconfig file to use
       --tiller-connection-timeout int   the duration (in seconds) Helm will wait to establish a connection to tiller (default 300)
       --tiller-namespace string         namespace of Tiller (default "kube-system")
       --tls                             enable TLS connection between Helm and Tiller

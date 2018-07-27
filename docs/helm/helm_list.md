@@ -49,6 +49,7 @@ helm list [flags] [FILTER]
   -m, --max int            maximum number of releases to fetch (default 256)
       --namespace string   show releases within a specific namespace
   -o, --offset string      next release name in the list, used to offset from start value
+      --output string      output the specified format (json or yaml)
       --pending            show pending releases
   -r, --reverse            reverse the sort order
   -q, --short              output short (quiet) listing format
@@ -61,6 +62,7 @@ helm list [flags] [FILTER]
       --home string                     location of your Helm config. Overrides $HELM_HOME (default "~/.helm")
       --host string                     address of Tiller. Overrides $HELM_HOST
       --kube-context string             name of the kubeconfig context to use
+      --kubeconfig string               absolute path to the kubeconfig file to use
       --tiller-connection-timeout int   the duration (in seconds) Helm will wait to establish a connection to tiller (default 300)
       --tiller-namespace string         namespace of Tiller (default "kube-system")
       --tls                             enable TLS connection between Helm and Tiller

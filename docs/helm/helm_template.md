@@ -34,6 +34,7 @@ helm template [flags] CHART
       --notes                    show the computed NOTES.txt file as well
       --output-dir string        writes the executed templates to files in output-dir instead of stdout
       --set stringArray          set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
+      --set-file stringArray     set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)
       --set-string stringArray   set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
   -f, --values valueFiles        specify values in a YAML file (can specify multiple) (default [])
 ```
@@ -45,6 +46,7 @@ helm template [flags] CHART
       --home string                     location of your Helm config. Overrides $HELM_HOME (default "~/.helm")
       --host string                     address of Tiller. Overrides $HELM_HOST
       --kube-context string             name of the kubeconfig context to use
+      --kubeconfig string               absolute path to the kubeconfig file to use
       --tiller-connection-timeout int   the duration (in seconds) Helm will wait to establish a connection to tiller (default 300)
       --tiller-namespace string         namespace of Tiller (default "kube-system")
       --tls                             enable TLS connection between Helm and Tiller

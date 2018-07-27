@@ -43,7 +43,7 @@ carefully curated and maintained charts. This chart repository is named
 
 You can see which charts are available by running `helm search`:
 
-```
+```console
 $ helm search
 NAME                 	VERSION 	DESCRIPTION
 stable/drupal   	0.3.2   	One of the most versatile open source content m...
@@ -56,7 +56,7 @@ stable/mysql    	0.1.0   	Chart for MySQL
 With no filter, `helm search` shows you all of the available charts. You
 can narrow down your results by searching with a filter:
 
-```
+```console
 $ helm search mysql
 NAME               	VERSION	DESCRIPTION
 stable/mysql  	0.1.0  	Chart for MySQL
@@ -69,7 +69,7 @@ Why is
 `mariadb` in the list? Because its package description relates it to
 MySQL. We can use `helm inspect chart` to see this:
 
-```
+```console
 $ helm inspect stable/mariadb
 Fetched stable/mariadb to mariadb-0.5.1.tgz
 description: Chart for MariaDB
@@ -91,7 +91,7 @@ package you want to install, you can use `helm install` to install it.
 To install a new package, use the `helm install` command. At its
 simplest, it takes only one argument: The name of the chart.
 
-```
+```console
 $ helm install stable/mariadb
 Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 happy-panda
@@ -139,7 +139,7 @@ may take a long time to install into the cluster.
 To keep track of a release's state, or to re-read configuration
 information, you can use `helm status`:
 
-```
+```console
 $ helm status happy-panda
 Last Deployed: Wed Sep 28 12:32:28 2016
 Namespace: default
@@ -227,7 +227,7 @@ There are two ways to pass configuration data during install:
 
 - `--values` (or `-f`): Specify a YAML file with overrides. This can be specified multiple times
   and the rightmost file will take precedence
-- `--set`: Specify overrides on the command line.
+- `--set` (and its variants `--set-string` and `--set-file`): Specify overrides on the command line.
 
 If both are used, `--set` values are merged into `--values` with higher precedence.
 Overrides specified with `--set` are persisted in a configmap. Values that have been
@@ -303,6 +303,35 @@ nodeSelector:
 Deeply nested data structures can be difficult to express using `--set`. Chart
 designers are encouraged to consider the `--set` usage when designing the format
 of a `values.yaml` file.
+
+Helm will cast certain values specified with `--set` to integers.
+For example, `--set foo=true` results Helm to cast `true` into an int64 value.
+In case you want a string, use a `--set`'s variant named `--set-string`. `--set-string foo=true` results in a string value of `"true"`.
+
+`--set-file key=filepath` is another variant of `--set`.
+It reads the file and use its content as a value.
+An example use case of it is to inject a multi-line text into values without dealing with indentation in YAML.
+Say you want to create a [brigade](https://github.com/Azure/brigade) project with certain value containing 5 lines JavaScript code, you might write a `values.yaml` like:
+
+```yaml
+defaultScript: |
+  const { events, Job } = require("brigadier")
+  function run(e, project) {
+    console.log("hello default script")
+  }
+  events.on("run", run)
+```
+
+Being embedded in a YAML, this makes it harder for you to use IDE features and testing framework and so on that supports writing code.
+Instead, you can use `--set-file defaultScript=brigade.js` with `brigade.js` containing:
+
+```javascript
+const { events, Job } = require("brigadier")
+function run(e, project) {
+  console.log("hello default script")
+}
+events.on("run", run)
+```
 
 ### More Installation Methods
 
@@ -392,14 +421,14 @@ is not a full list of cli flags. To see a description of all flags, just run
 When it is time to uninstall or delete a release from the cluster, use
 the `helm delete` command:
 
-```
+```console
 $ helm delete happy-panda
 ```
 
 This will remove the release from the cluster. You can see all of your
 currently deployed releases with the `helm list` command:
 
-```
+```console
 $ helm list
 NAME           	VERSION	UPDATED                        	STATUS         	CHART
 inky-cat       	1      	Wed Sep 28 12:59:46 2016       	DEPLOYED       	alpine-0.1.0
