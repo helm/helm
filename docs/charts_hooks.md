@@ -193,6 +193,7 @@ It is also possible to define policies that determine when to delete correspondi
 ```
 
 You can choose one or more defined annotation values:
+
 * `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed.
 * `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
 * `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
