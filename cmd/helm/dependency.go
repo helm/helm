@@ -141,7 +141,7 @@ func (l *dependencyListCmd) run() error {
 	r, err := chartutil.LoadRequirements(c)
 	if err != nil {
 		if err == chartutil.ErrRequirementsNotFound {
-			fmt.Fprintf(l.out, "WARNING: no requirements at %s/charts\n", l.chartpath)
+			fmt.Fprintf(l.out, "WARNING: no requirements at %s\n", filepath.Join(l.chartpath, "charts"))
 			return nil
 		}
 		return err
