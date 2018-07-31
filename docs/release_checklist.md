@@ -4,7 +4,7 @@
 
 ## Release Meetings
 As part of the release process, two of the weekly developer calls will be co-opted
-as "release meetings." 
+as "release meetings."
 
 ### Start of the Release Cycle
 The first developer call after a release will be used as the release meeting to
@@ -52,7 +52,7 @@ In this doc, we are going to reference a few environment variables as well, whic
 ```shell
 export RELEASE_NAME=vX.Y.0
 export RELEASE_BRANCH_NAME="release-X.Y"
-export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc1"
+export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.1"
 ```
 
 If you are creating a patch release, you may want to use the following instead:
@@ -61,7 +61,7 @@ If you are creating a patch release, you may want to use the following instead:
 export PREVIOUS_PATCH_RELEASE=vX.Y.Z
 export RELEASE_NAME=vX.Y.Z+1
 export RELEASE_BRANCH_NAME="release-X.Y"
-export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc1"
+export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.1"
 ```
 
 ## 1. Create the Release Branch
@@ -188,7 +188,7 @@ You will also want to update the release version number and the CHANGELOG as we 
 After that, tag it and notify users of the new release candidate:
 
 ```shell
-export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc2"
+export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.2"
 git tag --sign --annotate "${RELEASE_CANDIDATE_NAME}" --message "Helm release ${RELEASE_CANDIDATE_NAME}"
 git push upstream $RELEASE_CANDIDATE_NAME
 ```
