@@ -4,9 +4,9 @@ import:
   subpackages:
   - context
 - package: github.com/spf13/cobra
-  version: f62e98d28ab7ad31d707ba837a966378465c7b57
+  version: c439c4fa093711d42e1b01acb1235b52004753c1
 - package: github.com/spf13/pflag
-  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+  version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - package: github.com/Masterminds/vcs
   version: ~1.11.0
   # Pin version of mergo that is compatible with both sprig and Kubernetes
@@ -49,15 +49,15 @@ import:
 - package: github.com/grpc-ecosystem/go-grpc-prometheus
 
 - package: k8s.io/kubernetes
-  version: release-1.10
+  version: release-1.11
 - package: k8s.io/client-go
-  version: kubernetes-1.10.0
+  version: kubernetes-1.11.1
 - package: k8s.io/api
-  version: release-1.10
+  version: kubernetes-1.11.1
 - package: k8s.io/apimachinery
-  version: release-1.10
+  version: kubernetes-1.11.1
 - package: k8s.io/apiserver
-  version: release-1.10
+  version: kubernetes-1.11.1
 - package: github.com/cyphar/filepath-securejoin
   version: ^0.2.1
 
