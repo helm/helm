@@ -18,10 +18,10 @@ RUN apk update && apk add ca-certificates socat && rm -rf /var/cache/apk/*
 
 ENV HOME /tmp
 
-COPY helm /bin/helm
-COPY tiller /bin/tiller
+COPY helm /helm
+COPY tiller /tiller
 
 EXPOSE 44134
 USER nobody
-ENTRYPOINT ["/bin/tiller"]
+ENTRYPOINT ["/tiller"]
 
