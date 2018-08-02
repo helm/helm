@@ -98,6 +98,9 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	ts := time.Now()
 	options := chartutil.ReleaseOptions{
 		Name:      req.Name,
+		Namespace: currentRelease.Namespace,
+		Revision: revision,
+		Time: ts,
 		IsUpgrade: true,
 	}
 

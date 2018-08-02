@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"testing"
 	"text/template"
+	"time"
 
 	kversion "k8s.io/apimachinery/pkg/version"
 
@@ -101,8 +102,16 @@ where:
 	}
 	v := []byte(overideValues)
 
+	ts, err := time.Parse(time.RFC3339, "2017-08-14T10:00:00+00:00")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	o := ReleaseOptions{
 		Name:      "Seven Voyages",
+		Namespace: "my-namespace",
+		Time: ts,
+		Revision: 0,
 		IsInstall: true,
 	}
 
@@ -124,6 +133,15 @@ where:
 	relmap := res["Release"].(map[string]interface{})
 	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
 		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
+	}
+	if namespace := relmap["Namespace"]; namespace.(string) != "my-namespace" {
+		t.Errorf("Expected namespace 'my-namespace', got %q", namespace)
+	}
+	if relts := relmap["Time"]; relts.(time.Time) != ts {
+		t.Errorf("Expected time '2017-08-14T10:00:00z', got %q", relts)
+	}
+	if revision := relmap["Revision"]; revision.(int) != 0 {
+		t.Errorf("Expected revision '0', got %q", revision)
 	}
 	if relmap["IsUpgrade"].(bool) {
 		t.Error("Expected upgrade to be false.")
