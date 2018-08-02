@@ -148,10 +148,10 @@ $ openssl req -key helm.key.pem -new -sha256 -out helm.csr.pem
 
 (In rare cases, we've had to add the `-nodes` flag when generating the request.)
 
-Now we sign each of these CSRs with the CA certificate we created:
+Now we sign each of these CSRs with the CA certificate we created (adjust the days parameter to suit your requirements):
 
 ```console
-$ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in tiller.csr.pem -out tiller.cert.pem
+$ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in tiller.csr.pem -out tiller.cert.pem -days 365
 Signature ok
 subject=/C=US/ST=CO/L=Boulder/O=Tiller Server/CN=tiller-server
 Getting CA Private Key
@@ -161,7 +161,7 @@ Enter pass phrase for ca.key.pem:
 And again for the client certificate:
 
 ```console
-$ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in helm.csr.pem -out helm.cert.pem
+$ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in helm.csr.pem -out helm.cert.pem  -days 365
 ```
 
 At this point, the important files for us are these:
@@ -283,6 +283,13 @@ If you plan to use `--tls-verify` on the client, you will need to make sure that
 the host name that Helm connects to matches the host name on the certificate. In
 some cases this is awkward, since Helm will connect over localhost, or the FQDN is
 not available for public resolution.
+
+*If I use `--tls-verify` on the client, I get `Error: x509: certificate has expired or is not yet valid`*
+
+Your helm certificate has expired, you need to sign a new certificate using your private key and the CA (and consider increasing the number of days)
+
+If your tiller certificate has expired, you'll need to sign a new certificate, base64 encode it and update the Tiller Secret:
+`kubectl edit secret tiller-secret`
 
 ## References
 

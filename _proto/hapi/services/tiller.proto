@@ -1,4 +1,4 @@
-// Copyright 2016 The Kubernetes Authors All rights reserved.
+// Copyright The Helm Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ service ReleaseService {
 //
 // Releases can be retrieved in chunks by setting limit and offset.
 //
-// Releases can be sorted according to a few pre-determined sort stategies.
+// Releases can be sorted according to a few pre-determined sort strategies.
 message ListReleasesRequest {
 	// Limit is the maximum number of releases to be returned.
 	int64 limit  = 1;
@@ -209,6 +209,8 @@ message UpdateReleaseRequest {
 	bool reuse_values = 10;
 	// Force resource update through delete/recreate if needed.
 	bool force = 11;
+	// Description, if set, will set the description for the updated release
+	string description = 12;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -234,6 +236,8 @@ message RollbackReleaseRequest {
 	bool wait = 7;
 	// Force resource update through delete/recreate if needed.
 	bool force = 8;
+	// Description, if set, will set the description for the rollback
+	string description = 9;
 }
 
 // RollbackReleaseResponse is the response to an update request.
@@ -260,10 +264,10 @@ message InstallReleaseRequest {
 	// DisableHooks causes the server to skip running any hooks for the install.
 	bool disable_hooks = 5;
 
-	// Namepace is the kubernetes namespace of the release.
+	// Namespace is the kubernetes namespace of the release.
 	string namespace = 6;
 
-	// ReuseName requests that Tiller re-uses a name, instead of erroring out.
+	// Reuse_name requests that Tiller re-uses a name, instead of erroring out.
 	bool reuse_name = 7;
 
 	// timeout specifies the max amount of time any kubernetes client command can run.
@@ -273,6 +277,9 @@ message InstallReleaseRequest {
 	bool wait = 9;
 
 	bool disable_crd_hook = 10;
+
+	// Description, if set, will set the description for the installed release
+	string description = 11;
 }
 
 // InstallReleaseResponse is the response from a release installation.
@@ -290,6 +297,8 @@ message UninstallReleaseRequest {
 	bool purge = 3;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 4;
+	// Description, if set, will set the description for the uninnstalled release
+	string description = 5;
 }
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ type deleteCmd struct {
 	disableHooks bool
 	purge        bool
 	timeout      int64
+	description  string
 
 	out    io.Writer
 	client helm.Interface
@@ -81,6 +82,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
 	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")
 	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.StringVar(&del.description, "description", "", "specify a description for the release")
 
 	return cmd
 }
@@ -91,6 +93,7 @@ func (d *deleteCmd) run() error {
 		helm.DeleteDisableHooks(d.disableHooks),
 		helm.DeletePurge(d.purge),
 		helm.DeleteTimeout(d.timeout),
+		helm.DeleteDescription(d.description),
 	}
 	res, err := d.client.DeleteRelease(d.name, opts...)
 	if res != nil && res.Info != "" {

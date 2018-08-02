@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,16 +18,18 @@ package main
 
 import (
 	"io"
+	"regexp"
 	"testing"
 
 	"github.com/spf13/cobra"
 
 	"io/ioutil"
+	"os"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
-	"os"
 )
 
 func TestListCmd(t *testing.T) {
@@ -46,6 +48,11 @@ func TestListCmd(t *testing.T) {
 	ch, _ := chartutil.Load(chartPath)
 
 	tests := []releaseCase{
+		{
+			name:     "empty",
+			rels:     []*release.Release{},
+			expected: "",
+		},
 		{
 			name: "with a release",
 			rels: []*release.Release{
@@ -66,6 +73,77 @@ func TestListCmd(t *testing.T) {
 				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas", Chart: ch}),
 			},
 			expected: "NAME \tREVISION\tUPDATED                 \tSTATUS  \tCHART           \tAPP VERSION\tNAMESPACE\natlas\t1       \t(.*)\tDEPLOYED\tfoo-0.1.0-beta.1\t2.X.A      \tdefault  \n",
+		},
+		{
+			name:  "with json output",
+			flags: []string{"--max", "1", "--output", "json"},
+			rels: []*release.Release{
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide"}),
+			},
+			expected: regexp.QuoteMeta(`{"Next":"atlas-guide","Releases":[{"Name":"thomas-guide","Revision":1,"Updated":"`) + `([^"]*)` + regexp.QuoteMeta(`","Status":"DEPLOYED","Chart":"foo-0.1.0-beta.1","AppVersion":"","Namespace":"default"}]}
+`),
+		},
+		{
+			name:  "with yaml output",
+			flags: []string{"--max", "1", "--output", "yaml"},
+			rels: []*release.Release{
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas-guide"}),
+			},
+			expected: regexp.QuoteMeta(`Next: atlas-guide
+Releases:
+- AppVersion: ""
+  Chart: foo-0.1.0-beta.1
+  Name: thomas-guide
+  Namespace: default
+  Revision: 1
+  Status: DEPLOYED
+  Updated: `) + `(.*)` + `
+
+`,
+		},
+		{
+			name:  "with short json output",
+			flags: []string{"-q", "--output", "json"},
+			rels: []*release.Release{
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
+			},
+			expected: regexp.QuoteMeta(`["atlas"]
+`),
+		},
+		{
+			name:  "with short yaml output",
+			flags: []string{"-q", "--output", "yaml"},
+			rels: []*release.Release{
+				helm.ReleaseMock(&helm.MockReleaseOptions{Name: "atlas"}),
+			},
+			expected: regexp.QuoteMeta(`- atlas
+
+`),
+		},
+		{
+			name:  "with json output without next",
+			flags: []string{"--output", "json"},
+			rels:  []*release.Release{},
+			expected: regexp.QuoteMeta(`{"Next":"","Releases":[]}
+`),
+		},
+		{
+			name:  "with yaml output without next",
+			flags: []string{"--output", "yaml"},
+			rels:  []*release.Release{},
+			expected: regexp.QuoteMeta(`Next: ""
+Releases: []
+
+`),
+		},
+		{
+			name:     "with unknown output format",
+			flags:    []string{"--output", "_unknown_"},
+			rels:     []*release.Release{},
+			err:      true,
+			expected: regexp.QuoteMeta(``),
 		},
 		{
 			name:  "list, one deployed, one failed",

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -181,94 +181,63 @@ func (i *initCmd) run() error {
 	i.opts.MaxHistory = i.maxHistory
 	i.opts.Replicas = i.replicas
 
-	writeYAMLManifest := func(apiVersion, kind, body string, first, last bool) error {
+	writeYAMLManifests := func(manifests []string) error {
 		w := i.out
-		if !first {
-			// YAML starting document boundary marker
+		for _, manifest := range manifests {
 			if _, err := fmt.Fprintln(w, "---"); err != nil {
 				return err
 			}
+
+			if _, err := fmt.Fprintln(w, manifest); err != nil {
+				return err
+			}
 		}
-		if _, err := fmt.Fprintln(w, "apiVersion:", apiVersion); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintln(w, "kind:", kind); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprint(w, body); err != nil {
-			return err
-		}
-		if !last {
-			return nil
-		}
+
 		// YAML ending document boundary marker
 		_, err := fmt.Fprintln(w, "...")
 		return err
 	}
 	if len(i.opts.Output) > 0 {
-		var body string
+		var manifests []string
 		var err error
-		const tm = `{"apiVersion":"extensions/v1beta1","kind":"Deployment",`
-		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
+		if manifests, err = installer.TillerManifests(&i.opts); err != nil {
 			return err
 		}
 		switch i.opts.Output.String() {
 		case "json":
-			var out bytes.Buffer
-			jsonb, err := yaml.ToJSON([]byte(body))
-			if err != nil {
-				return err
+			for _, manifest := range manifests {
+				var out bytes.Buffer
+				jsonb, err := yaml.ToJSON([]byte(manifest))
+				if err != nil {
+					return err
+				}
+				buf := bytes.NewBuffer(jsonb)
+				if err := json.Indent(&out, buf.Bytes(), "", "    "); err != nil {
+					return err
+				}
+				if _, err = i.out.Write(out.Bytes()); err != nil {
+					return err
+				}
+				fmt.Fprint(i.out, "\n")
 			}
-			buf := bytes.NewBuffer(make([]byte, 0, len(tm)+len(jsonb)-1))
-			buf.WriteString(tm)
-			// Drop the opening object delimiter ('{').
-			buf.Write(jsonb[1:])
-			if err := json.Indent(&out, buf.Bytes(), "", "    "); err != nil {
-				return err
-			}
-			if _, err = i.out.Write(out.Bytes()); err != nil {
-				return err
-			}
-
 			return nil
 		case "yaml":
-			if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
-				return err
-			}
-			return nil
+			return writeYAMLManifests(manifests)
 		default:
 			return fmt.Errorf("unknown output format: %q", i.opts.Output)
 		}
 	}
 	if settings.Debug {
-
-		var body string
+		var manifests []string
 		var err error
 
-		// write Deployment manifest
-		if body, err = installer.DeploymentManifest(&i.opts); err != nil {
-			return err
-		}
-		if err := writeYAMLManifest("extensions/v1beta1", "Deployment", body, true, false); err != nil {
+		// write Tiller manifests
+		if manifests, err = installer.TillerManifests(&i.opts); err != nil {
 			return err
 		}
 
-		// write Service manifest
-		if body, err = installer.ServiceManifest(i.namespace); err != nil {
+		if err = writeYAMLManifests(manifests); err != nil {
 			return err
-		}
-		if err := writeYAMLManifest("v1", "Service", body, false, !i.opts.EnableTLS); err != nil {
-			return err
-		}
-
-		// write Secret manifest
-		if i.opts.EnableTLS {
-			if body, err = installer.SecretManifest(&i.opts); err != nil {
-				return err
-			}
-			if err := writeYAMLManifest("v1", "Secret", body, false, true); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -289,7 +258,7 @@ func (i *initCmd) run() error {
 
 	if !i.clientOnly {
 		if i.kubeClient == nil {
-			_, c, err := getKubeClient(settings.KubeContext)
+			_, c, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 			if err != nil {
 				return fmt.Errorf("could not get kubernetes client: %s", err)
 			}
@@ -312,9 +281,12 @@ func (i *initCmd) run() error {
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
 		} else {
-			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.\n\n"+
-				"Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
-				"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
+			fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been installed into your Kubernetes Cluster.")
+			if !tlsVerify {
+				fmt.Fprintln(i.out, "\nPlease note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
+					"To prevent this, run `helm init` with the --tiller-tls-verify flag.\n"+
+					"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
+			}
 		}
 		if err := i.ping(); err != nil {
 			return err
@@ -329,7 +301,7 @@ func (i *initCmd) run() error {
 
 func (i *initCmd) ping() error {
 	if i.wait {
-		_, kubeClient, err := getKubeClient(settings.KubeContext)
+		_, kubeClient, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 		if err != nil {
 			return err
 		}

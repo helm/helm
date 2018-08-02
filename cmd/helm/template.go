@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,18 +63,20 @@ To render just one template in a chart, use '-x':
 `
 
 type templateCmd struct {
-	namespace    string
-	valueFiles   valueFiles
-	chartPath    string
-	out          io.Writer
-	values       []string
-	stringValues []string
-	nameTemplate string
-	showNotes    bool
-	releaseName  string
-	renderFiles  []string
-	kubeVersion  string
-	outputDir    string
+	namespace        string
+	valueFiles       valueFiles
+	chartPath        string
+	out              io.Writer
+	values           []string
+	stringValues     []string
+	fileValues       []string
+	nameTemplate     string
+	showNotes        bool
+	releaseName      string
+	releaseIsUpgrade bool
+	renderFiles      []string
+	kubeVersion      string
+	outputDir        string
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -93,11 +95,13 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&t.showNotes, "notes", false, "show the computed NOTES.txt file as well")
 	f.StringVarP(&t.releaseName, "name", "n", "RELEASE-NAME", "release name")
+	f.BoolVar(&t.releaseIsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringArrayVarP(&t.renderFiles, "execute", "x", []string{}, "only execute the given templates")
 	f.VarP(&t.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	f.StringVar(&t.namespace, "namespace", "", "namespace to install the release into")
 	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&t.fileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
@@ -130,7 +134,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		t.namespace = defaultNamespace()
 	}
 	// get combined values and create config
-	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, "", "", "")
+	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, t.fileValues, "", "", "")
 	if err != nil {
 		return err
 	}
@@ -159,6 +163,8 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	}
 	options := chartutil.ReleaseOptions{
 		Name:      t.releaseName,
+		IsInstall: !t.releaseIsUpgrade,
+		IsUpgrade: t.releaseIsUpgrade,
 		Time:      timeconv.Now(),
 		Namespace: t.namespace,
 	}
@@ -240,7 +246,9 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			}
 
 			for _, manifest := range listManifests {
-				manifestPathSplit := strings.Split(manifest.Name, string(filepath.Separator))
+				// manifest.Name is rendered using linux-style filepath separators on Windows as
+				// well as macOS/linux.
+				manifestPathSplit := strings.Split(manifest.Name, "/")
 				// remove the chart name from the path
 				manifestPathSplit = manifestPathSplit[1:]
 				toJoin := append([]string{t.chartPath}, manifestPathSplit...)
@@ -305,7 +313,7 @@ func writeToFile(outputDir string, name string, data string) error {
 
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("##---\n# Source: %s\n%s", name, data))
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s", name, data))
 
 	if err != nil {
 		return err

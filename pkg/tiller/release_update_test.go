@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -430,6 +430,55 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
+}
+
+func TestUpdateReleaseCustomDescription(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	customDescription := "foo"
+
+	req := &services.UpdateReleaseRequest{
+		Name:        rel.Name,
+		Chart:       rel.GetChart(),
+		Description: customDescription,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected release description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
+}
+
+func TestUpdateReleaseCustomDescription_Force(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	customDescription := "foo"
+
+	req := &services.UpdateReleaseRequest{
+		Name:        rel.Name,
+		Chart:       rel.GetChart(),
+		Force:       true,
+		Description: customDescription,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected release description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
 }
 
 func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res services.UpdateReleaseResponse) *release.Release {

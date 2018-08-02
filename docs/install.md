@@ -24,6 +24,15 @@ can be manually downloaded and installed.
 
 From there, you should be able to run the client: `helm help`.
 
+### From Snap (Linux)
+
+The Snap package for Helm is maintained by
+[Snapcrafters](https://github.com/snapcrafters/helm).
+
+```
+$ sudo snap install helm
+```
+
 ### From Homebrew (macOS)
 
 Members of the Kubernetes community have contributed a Helm formula build to
@@ -122,6 +131,7 @@ You can explicitly tell `helm init` to...
 - Install a particular image (version) with `--tiller-image`
 - Install to a particular cluster with `--kube-context`
 - Install into a particular namespace with `--tiller-namespace`
+- Install Tiller with a Service Account with `--service-account` (for [RBAC enabled clusters](securing_installation.md#rbac))
 
 Once Tiller is installed, running `helm version` should show you both
 the client and server version. (If it shows only the client version,

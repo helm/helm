@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -161,6 +161,10 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		Timeout:      req.Timeout,
 		Wait:         req.Wait,
 	})
+
+	// update new release with next revision number so as to append to the old release's history
+	newRelease.Version = oldRelease.Version + 1
+
 	res := &services.UpdateReleaseResponse{Release: newRelease}
 	if err != nil {
 		s.Log("failed update prepare step: %s", err)
@@ -170,6 +174,12 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 			err = fmt.Errorf("%s\n%s", err, newRelease.Manifest)
 		}
 		return res, err
+	}
+
+	if req.DryRun {
+		s.Log("dry run for %s", newRelease.Name)
+		res.Release.Info.Description = "Dry run complete"
+		return res, nil
 	}
 
 	// From here on out, the release is considered to be in Status_DELETING or Status_DELETED
@@ -218,8 +228,6 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		}
 	}
 
-	// update new release with next revision number so as to append to the old release's history
-	newRelease.Version = oldRelease.Version + 1
 	s.recordRelease(newRelease, false)
 	if err := s.ReleaseModule.Update(oldRelease, newRelease, req, s.env); err != nil {
 		msg := fmt.Sprintf("Upgrade %q failed: %s", newRelease.Name, err)
@@ -243,7 +251,11 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 	}
 
 	newRelease.Info.Status.Code = release.Status_DEPLOYED
-	newRelease.Info.Description = "Upgrade complete"
+	if req.Description == "" {
+		newRelease.Info.Description = "Upgrade complete"
+	} else {
+		newRelease.Info.Description = req.Description
+	}
 	s.recordRelease(newRelease, true)
 
 	return res, nil
@@ -287,7 +299,11 @@ func (s *ReleaseServer) performUpdate(originalRelease, updatedRelease *release.R
 	s.recordRelease(originalRelease, true)
 
 	updatedRelease.Info.Status.Code = release.Status_DEPLOYED
-	updatedRelease.Info.Description = "Upgrade complete"
+	if req.Description == "" {
+		updatedRelease.Info.Description = "Upgrade complete"
+	} else {
+		updatedRelease.Info.Description = req.Description
+	}
 
 	return res, nil
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -174,5 +174,26 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 	// The default value for a protobuf timestamp is nil.
 	if res.Release.Hooks[0].LastRun != nil {
 		t.Errorf("Expected LastRun to be zero, got %d.", res.Release.Hooks[0].LastRun.Seconds)
+	}
+}
+
+func TestUninstallReleaseCustomDescription(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	customDescription := "foo"
+	req := &services.UninstallReleaseRequest{
+		Name:        "angry-panda",
+		Description: "foo",
+	}
+
+	res, err := rs.UninstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed uninstall: %s", err)
+	}
+
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected description to be %q, got %q", customDescription, res.Release.Info.Description)
 	}
 }

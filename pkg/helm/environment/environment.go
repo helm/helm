@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,6 +49,8 @@ type EnvSettings struct {
 	Debug bool
 	// KubeContext is the name of the kubeconfig context.
 	KubeContext string
+	// KubeConfig is the path to an explicit kubeconfig file. This overwrites the value in $KUBECONFIG
+	KubeConfig string
 }
 
 // AddFlags binds flags to the given flagset.
@@ -56,6 +58,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
 	fs.StringVar(&s.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
+	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "absolute path to the kubeconfig file to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
 	fs.Int64Var(&s.TillerConnectionTimeout, "tiller-connection-timeout", int64(300), "the duration (in seconds) Helm will wait to establish a connection to tiller")

@@ -1,7 +1,7 @@
 # Kubernetes Helm
 
-[![CircleCI](https://circleci.com/gh/kubernetes/helm.svg?style=svg)](https://circleci.com/gh/kubernetes/helm)
-[![Go Report Card](https://goreportcard.com/badge/github.com/kubernetes/helm)](https://goreportcard.com/report/github.com/kubernetes/helm)
+[![CircleCI](https://circleci.com/gh/helm/helm.svg?style=svg)](https://circleci.com/gh/helm/helm)
+[![Go Report Card](https://goreportcard.com/badge/github.com/helm/helm)](https://goreportcard.com/report/github.com/helm/helm)
 [![GoDoc](https://godoc.org/github.com/kubernetes/helm?status.svg)](https://godoc.org/github.com/kubernetes/helm)
 
 Helm is a tool for managing Kubernetes charts. Charts are packages of
@@ -9,7 +9,7 @@ pre-configured Kubernetes resources.
 
 Use Helm to:
 
-- Find and use [popular software packaged as Kubernetes charts](https://github.com/kubernetes/charts)
+- Find and use [popular software packaged as Kubernetes charts](https://github.com/helm/charts)
 - Share your own applications as Kubernetes charts
 - Create reproducible builds of your Kubernetes applications
 - Intelligently manage your Kubernetes manifest files
@@ -32,14 +32,15 @@ Think of it like apt/yum/homebrew for Kubernetes.
 
 ## Install
 
-Binary downloads of the Helm client can be found on [the latest Releases page](https://github.com/kubernetes/helm/releases/latest).
+Binary downloads of the Helm client can be found on [the Releases page](https://github.com/helm/helm/releases/latest).
 
 Unpack the `helm` binary and add it to your PATH and you are good to go!
 
 If you want to use a package manager:
 
-- macOS/[homebrew](https://brew.sh/) users can use `brew install kubernetes-helm`.
-- Windows/[chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
+- [Homebrew](https://brew.sh/) users can use `brew install kubernetes-helm`.
+- [Chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
+- [GoFish](https://gofi.sh/) users can use `gofish install helm`.
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 
@@ -52,16 +53,16 @@ Get started with the [Quick Start guide](https://docs.helm.sh/using_helm/#quicks
 
 ## Roadmap
 
-The [Helm roadmap uses Github milestones](https://github.com/kubernetes/helm/milestones) to track the progress of the project.
+The [Helm roadmap uses Github milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
 
 ## Community, discussion, contribution, and support
 
 You can reach the Helm community and developers via the following channels:
 
 - [Kubernetes Slack](http://slack.k8s.io):
-  - #helm-users
-  - #helm-dev
-  - #charts
+  - [#helm-users](https://kubernetes.slack.com/messages/helm-users)
+  - [#helm-dev](https://kubernetes.slack.com/messages/helm-dev)
+  - [#charts](https://kubernetes.slack.com/messages/charts)
 - Mailing Lists:
   - [Helm Mailing List](https://lists.cncf.io/g/cncf-kubernetes-helm)
   - [Kubernetes SIG Apps Mailing List](https://groups.google.com/forum/#!forum/kubernetes-sig-apps)

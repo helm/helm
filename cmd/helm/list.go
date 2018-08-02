@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,10 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
@@ -75,6 +77,22 @@ type listCmd struct {
 	pending    bool
 	client     helm.Interface
 	colWidth   uint
+	output     string
+}
+
+type listResult struct {
+	Next     string
+	Releases []listRelease
+}
+
+type listRelease struct {
+	Name       string
+	Revision   int32
+	Updated    string
+	Status     string
+	Chart      string
+	AppVersion string
+	Namespace  string
 }
 
 func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -114,6 +132,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&list.pending, "pending", false, "show pending releases")
 	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
 	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
+	f.StringVar(&list.output, "output", "", "output the specified format (json or yaml)")
 
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
@@ -147,24 +166,21 @@ func (l *listCmd) run() error {
 	if err != nil {
 		return prettyError(err)
 	}
-
-	if len(res.GetReleases()) == 0 {
+	if res == nil {
 		return nil
 	}
 
-	if res.Next != "" && !l.short {
-		fmt.Fprintf(l.out, "\tnext: %s\n", res.Next)
+	rels := filterList(res.GetReleases())
+
+	result := getListResult(rels, res.Next)
+
+	output, err := formatResult(l.output, l.short, result, l.colWidth)
+
+	if err != nil {
+		return prettyError(err)
 	}
 
-	rels := filterList(res.Releases)
-
-	if l.short {
-		for _, r := range rels {
-			fmt.Fprintln(l.out, r.Name)
-		}
-		return nil
-	}
-	fmt.Fprintln(l.out, formatList(rels, l.colWidth))
+	fmt.Fprintln(l.out, output)
 	return nil
 }
 
@@ -233,23 +249,98 @@ func (l *listCmd) statusCodes() []release.Status_Code {
 	return status
 }
 
-func formatList(rels []*release.Release, colWidth uint) string {
-	table := uitable.New()
-
-	table.MaxColWidth = colWidth
-	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "NAMESPACE")
+func getListResult(rels []*release.Release, next string) listResult {
+	listReleases := []listRelease{}
 	for _, r := range rels {
 		md := r.GetChart().GetMetadata()
-		c := fmt.Sprintf("%s-%s", md.GetName(), md.GetVersion())
 		t := "-"
 		if tspb := r.GetInfo().GetLastDeployed(); tspb != nil {
 			t = timeconv.String(tspb)
 		}
-		s := r.GetInfo().GetStatus().GetCode().String()
-		v := r.GetVersion()
-		a := md.GetAppVersion()
-		n := r.GetNamespace()
-		table.AddRow(r.GetName(), v, t, s, c, a, n)
+
+		lr := listRelease{
+			Name:       r.GetName(),
+			Revision:   r.GetVersion(),
+			Updated:    t,
+			Status:     r.GetInfo().GetStatus().GetCode().String(),
+			Chart:      fmt.Sprintf("%s-%s", md.GetName(), md.GetVersion()),
+			AppVersion: md.GetAppVersion(),
+			Namespace:  r.GetNamespace(),
+		}
+		listReleases = append(listReleases, lr)
 	}
-	return table.String()
+
+	return listResult{
+		Releases: listReleases,
+		Next:     next,
+	}
+}
+
+func shortenListResult(result listResult) []string {
+	names := []string{}
+	for _, r := range result.Releases {
+		names = append(names, r.Name)
+	}
+
+	return names
+}
+
+func formatResult(format string, short bool, result listResult, colWidth uint) (string, error) {
+	var output string
+	var err error
+
+	var shortResult []string
+	var finalResult interface{}
+	if short {
+		shortResult = shortenListResult(result)
+		finalResult = shortResult
+	} else {
+		finalResult = result
+	}
+
+	switch format {
+	case "":
+		if short {
+			output = formatTextShort(shortResult)
+		} else {
+			output = formatText(result, colWidth)
+		}
+	case "json":
+		o, e := json.Marshal(finalResult)
+		if e != nil {
+			err = fmt.Errorf("Failed to Marshal JSON output: %s", e)
+		} else {
+			output = string(o)
+		}
+	case "yaml":
+		o, e := yaml.Marshal(finalResult)
+		if e != nil {
+			err = fmt.Errorf("Failed to Marshal YAML output: %s", e)
+		} else {
+			output = string(o)
+		}
+	default:
+		err = fmt.Errorf("Unknown output format \"%s\"", format)
+	}
+	return output, err
+}
+
+func formatText(result listResult, colWidth uint) string {
+	nextOutput := ""
+	if result.Next != "" {
+		nextOutput = fmt.Sprintf("\tnext: %s\n", result.Next)
+	}
+
+	table := uitable.New()
+	table.MaxColWidth = colWidth
+	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "NAMESPACE")
+	for _, lr := range result.Releases {
+		table.AddRow(lr.Name, lr.Revision, lr.Updated, lr.Status, lr.Chart, lr.AppVersion, lr.Namespace)
+	}
+
+	return fmt.Sprintf("%s%s", nextOutput, table.String())
+}
+
+func formatTextShort(shortResult []string) string {
+	return strings.Join(shortResult, "\n")
 }

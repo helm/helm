@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -81,19 +81,17 @@ func newHTTPGetter(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
 // NewHTTPGetter constructs a valid http/https client as HttpGetter
 func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HttpGetter, error) {
 	var client HttpGetter
+	tr := &http.Transport{
+		DisableCompression: true,
+	}
 	if (CertFile != "" && KeyFile != "") || CAFile != "" {
 		tlsConf, err := tlsutil.NewTLSConfig(URL, CertFile, KeyFile, CAFile)
 		if err != nil {
 			return &client, fmt.Errorf("can't create TLS config: %s", err.Error())
 		}
-		client.client = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConf,
-				Proxy:           http.ProxyFromEnvironment,
-			},
-		}
-	} else {
-		client.client = http.DefaultClient
+		tr.TLSClientConfig = tlsConf
+		tr.Proxy = http.ProxyFromEnvironment
 	}
+	client.client = &http.Client{Transport: tr}
 	return &client, nil
 }

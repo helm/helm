@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,6 +57,14 @@ func TestDelete(t *testing.T) {
 			name:     "purge",
 			args:     []string{"aeneas"},
 			flags:    []string{"--purge"},
+			expected: "",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+		},
+		{
+			name:     "delete with description",
+			args:     []string{"aeneas"},
+			flags:    []string{"--description", "foo"},
 			expected: "",
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"}),
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},

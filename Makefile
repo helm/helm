@@ -2,7 +2,7 @@ DOCKER_REGISTRY   ?= gcr.io
 IMAGE_PREFIX      ?= kubernetes-helm
 SHORT_NAME        ?= tiller
 SHORT_NAME_RUDDER ?= rudder
-TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
 DIST_DIRS         = find * -type d -exec
 APP               = helm
 
@@ -60,6 +60,7 @@ check-docker:
 docker-binary: BINDIR = ./rootfs
 docker-binary: GOFLAGS += -a -installsuffix cgo
 docker-binary:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/helm $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/tiller $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/tiller
 
 .PHONY: docker-build
