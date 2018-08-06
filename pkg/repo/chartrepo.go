@@ -270,8 +270,13 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 		return "", fmt.Errorf("failed to parse %s as URL: %v", refURL, err)
 	}
 
+	// if the base URL contains query string parameters,
+	// propagate them to the child URL but only if the
+	// refURL is relative to baseURL
 	resolvedURL := parsedBaseURL.ResolveReference(parsedRefURL)
-	resolvedURL.RawQuery = parsedBaseURL.RawQuery
+	if (resolvedURL.Hostname() == parsedBaseURL.Hostname()) && (resolvedURL.Port() == parsedBaseURL.Port()) {
+		resolvedURL.RawQuery = parsedBaseURL.RawQuery
+	}
 
 	return resolvedURL.String(), nil
 }
