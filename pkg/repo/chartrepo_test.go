@@ -302,4 +302,12 @@ func TestResolveReferenceURL(t *testing.T) {
 	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
 		t.Errorf("%s", chartURL)
 	}
+
+	chartURL, err = ResolveReferenceURL("http://localhost:8123/?querystring", "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
+		t.Errorf("%s contains query string from base URL when it shouldn't", chartURL)
+	}
 }
