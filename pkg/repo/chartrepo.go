@@ -270,5 +270,8 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 		return "", fmt.Errorf("failed to parse %s as URL: %v", refURL, err)
 	}
 
-	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
+	resolvedURL := parsedBaseURL.ResolveReference(parsedRefURL)
+	resolvedURL.RawQuery = parsedBaseURL.RawQuery
+
+	return resolvedURL.String(), nil
 }
