@@ -40,6 +40,7 @@ import (
 )
 
 var (
+	tlsServerName string // overrides the server name used to verify the hostname on the returned certificates from the server.
 	tlsCaCertFile string // path to TLS CA certificate file
 	tlsCertFile   string // path to TLS certificate file
 	tlsKeyFile    string // path to TLS key file
@@ -285,8 +286,13 @@ func newClient() helm.Interface {
 		if tlsKeyFile == "" {
 			tlsKeyFile = settings.Home.TLSKey()
 		}
-		debug("Key=%q, Cert=%q, CA=%q\n", tlsKeyFile, tlsCertFile, tlsCaCertFile)
-		tlsopts := tlsutil.Options{KeyFile: tlsKeyFile, CertFile: tlsCertFile, InsecureSkipVerify: true}
+		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", tlsKeyFile, tlsCertFile, tlsCaCertFile)
+		tlsopts := tlsutil.Options{
+			ServerName:         tlsServerName,
+			KeyFile:            tlsKeyFile,
+			CertFile:           tlsCertFile,
+			InsecureSkipVerify: true,
+		}
 		if tlsVerify {
 			tlsopts.CaCertFile = tlsCaCertFile
 			tlsopts.InsecureSkipVerify = false
@@ -306,6 +312,7 @@ func newClient() helm.Interface {
 func addFlagsTLS(cmd *cobra.Command) *cobra.Command {
 
 	// add flags
+	cmd.Flags().StringVar(&tlsServerName, "tls-hostname", settings.TillerHost, "the server name used to verify the hostname on the returned certificates from the server")
 	cmd.Flags().StringVar(&tlsCaCertFile, "tls-ca-cert", tlsCaCertDefault, "path to TLS CA certificate file")
 	cmd.Flags().StringVar(&tlsCertFile, "tls-cert", tlsCertDefault, "path to TLS certificate file")
 	cmd.Flags().StringVar(&tlsKeyFile, "tls-key", tlsKeyDefault, "path to TLS key file")
