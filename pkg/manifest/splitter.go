@@ -23,14 +23,17 @@ import (
 	"k8s.io/helm/pkg/releaseutil"
 )
 
+var (
+	kindRegex = regexp.MustCompile("kind:(.*)\n")
+)
+
 // SplitManifests takes a map of rendered templates and splits them into the
 // detected manifests.
 func SplitManifests(templates map[string]string) []Manifest {
 	var listManifests []Manifest
 	// extract kind and name
-	re := regexp.MustCompile("kind:(.*)\n")
 	for k, v := range templates {
-		match := re.FindStringSubmatch(v)
+		match := kindRegex.FindStringSubmatch(v)
 		h := "Unknown"
 		if len(match) == 2 {
 			h = strings.TrimSpace(match[1])
