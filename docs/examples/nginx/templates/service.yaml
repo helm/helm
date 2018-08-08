@@ -6,10 +6,10 @@ metadata:
 {{ toYaml .Values.service.annotations | indent 4 }}
 {{- end }}
   labels:
-    app: {{ template "nginx.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ template "nginx.name" . }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
   name: {{ template "nginx.fullname" . }}
 spec:
 # Provides options for the service so chart users have the full choice
@@ -35,5 +35,5 @@ spec:
       nodePort: {{ .Values.service.nodePort }}
       {{- end }}
   selector:
-    app: {{ template "nginx.name" . }}
-    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ template "nginx.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}

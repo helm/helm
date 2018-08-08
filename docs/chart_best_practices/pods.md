@@ -52,11 +52,11 @@ All PodTemplate sections should specify a selector. For example:
 ```yaml
 selector:
   matchLabels:
-      app: MyName
+      app.kubernetes.io/name: MyName
 template:
   metadata:
     labels:
-      app: MyName
+      app.kubernetes.io/name: MyName
 ```
 
 This is a good practice because it makes the relationship between the set and

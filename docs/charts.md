@@ -526,15 +526,15 @@ metadata:
   name: deis-database
   namespace: deis
   labels:
-    heritage: deis
+    app.kubernetes.io/managed-by: deis
 spec:
   replicas: 1
   selector:
-    app: deis-database
+    app.kubernetes.io/name: deis-database
   template:
     metadata:
       labels:
-        app: deis-database
+        app.kubernetes.io/name: deis-database
     spec:
       serviceAccount: deis-database
       containers:
@@ -663,15 +663,15 @@ metadata:
   name: deis-database
   namespace: deis
   labels:
-    heritage: deis
+    app.kubernetes.io/managed-by: deis
 spec:
   replicas: 1
   selector:
-    app: deis-database
+    app.kubernetes.io/name: deis-database
   template:
     metadata:
       labels:
-        app: deis-database
+        app.kubernetes.io/name: deis-database
     spec:
       serviceAccount: deis-database
       containers:
