@@ -18,6 +18,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [The Workflow "Umbrella" Helm Chart](https://deis.com/blog/2017/workflow-chart-assembly)
 - [Using Helm to Deploy to Kubernetes](https://daemonza.github.io/2017/02/20/using-helm-to-deploy-to-kubernetes/)
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
+- [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
 
 ## Video, Audio, and Podcast
 
