@@ -19,6 +19,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [Using Helm to Deploy to Kubernetes](https://daemonza.github.io/2017/02/20/using-helm-to-deploy-to-kubernetes/)
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
+- [Tillerless Helm v2](https://rimusz.net/tillerless-helm/)
 
 ## Video, Audio, and Podcast
 
@@ -48,6 +49,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
 - [helm-tiller](https://github.com/adamreese/helm-tiller) - Additional commands to work with Tiller
 - [helm-unittest](https://github.com/lrills/helm-unittest) - Plugin for unit testing chart locally with YAML
+- [Tillerless Helm v2](https://github.com/rimusz/helm-tiller) - Helm plugin for using Tiller locally and in CI/CD pipelines
 
 We also encourage GitHub authors to use the [helm-plugin](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories)
 tag on their plugin repositories.
