@@ -277,7 +277,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
+			return fmt.Errorf("no %s with the name %q found in previous release, but it already exist in kubernetes", kind, info.Name)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
