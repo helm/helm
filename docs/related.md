@@ -17,6 +17,7 @@ or [pull request](https://github.com/kubernetes/helm/pulls).
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [Creating a Helm Plugin in 3 Steps](http://technosophos.com/2017/03/21/creating-a-helm-plugin.html)
 - [Awesome Helm](https://github.com/cdwv/awesome-helm) - List of awesome Helm resources
+- [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
 
 ## Video, Audio, and Podcast
 
