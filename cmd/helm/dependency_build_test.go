@@ -16,13 +16,19 @@ limitations under the License.
 package main
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
@@ -116,5 +122,132 @@ func TestDependencyBuildCmd(t *testing.T) {
 	if v := reqver.Version; v != "0.1.0" {
 		t.Errorf("mismatched versions. Expected %q, got %q", "0.1.0", v)
 	}
+}
 
+func TestDependencyRecursiveBuildCmd(t *testing.T) {
+	hh, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanup := resetEnv()
+	defer func() {
+		os.RemoveAll(hh.String())
+		cleanup()
+	}()
+
+	settings.Home = hh
+
+	srv := repotest.NewServer(hh.String())
+	defer srv.Stop()
+
+	chartname := "rectest"
+	if err := createTestingChartWithRecursiveDep(hh.String(), chartname, srv); err != nil {
+		t.Fatal(err)
+	}
+
+	out := bytes.NewBuffer(nil)
+	dbc := &dependencyBuildCmd{out: out}
+	dbc.helmhome = helmpath.Home(hh)
+	dbc.chartpath = filepath.Join(hh.String(), chartname)
+	dbc.recursive = true
+
+	if err := dbc.run(); err != nil {
+		output := out.String()
+		t.Logf("Output: %s", output)
+		t.Fatal(err)
+	}
+
+	expect := filepath.Join(hh.String(), chartname, "charts/rectest1-0.1.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatal(err)
+	}
+
+	expect = filepath.Join(hh.String(), chartname, "charts/rectest1/charts/rectest2-0.1.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func createTestingChartWithRecursiveDep(dest string, name string, srv *repotest.Server) error {
+	// Create the deepest chart without any dependency
+	rectestChart2 := "rectest2"
+	rectestChart2Version := "0.1.0"
+	err := createAndSaveTestingChart(dest, rectestChart2, rectestChart2Version, nil)
+	if err != nil {
+		return err
+	}
+	rectestChart1 := "rectest1"
+	rectestChart1Version := "0.1.0"
+	err = createAndSaveTestingChart(dest, rectestChart1, rectestChart1Version,
+		[]*chartutil.Dependency{
+			{Name: rectestChart2, Version: rectestChart2Version, Repository: srv.URL()}},
+	)
+	if err != nil {
+		return err
+	}
+	_, err = srv.CopyCharts(filepath.Join(dest, "/*.tgz"))
+	if err != nil {
+		return err
+	}
+	return createAndSaveTestingChart(dest, name, "0.1.0",
+		[]*chartutil.Dependency{
+			{Name: rectestChart1, Version: rectestChart1Version, Repository: srv.URL()}},
+	)
+}
+
+func createAndSaveTestingChart(dest string, name, version string, deps []*chartutil.Dependency) error {
+	cfile := &chart.Metadata{
+		Name:    name,
+		Version: version,
+	}
+	dir := filepath.Join(dest, name)
+	_, err := chartutil.Create(cfile, dest)
+	if err != nil {
+		return err
+	}
+
+	if len(deps) > 0 {
+		req := &chartutil.Requirements{
+			Dependencies: deps,
+		}
+		err := writeRequirements(dir, req)
+		if err != nil {
+			return err
+		}
+	}
+
+	archiveFile := filepath.Join(dest, fmt.Sprintf("%s-%s.tgz", name, version))
+	f, err := os.Create(archiveFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	zipper := gzip.NewWriter(f)
+	defer zipper.Close()
+	tarball := tar.NewWriter(zipper)
+	defer tarball.Close()
+	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		header, err := tar.FileInfoHeader(info, info.Name())
+		if err != nil {
+			return err
+		}
+
+		header.Name = filepath.Join(filepath.Base(dir), strings.TrimPrefix(path, dir))
+		if err := tarball.WriteHeader(header); err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = io.Copy(tarball, file)
+		return err
+	})
 }

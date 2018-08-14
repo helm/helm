@@ -41,6 +41,7 @@ type dependencyBuildCmd struct {
 	chartpath string
 	verify    bool
 	keyring   string
+	recursive bool
 	helmhome  helmpath.Home
 }
 
@@ -65,6 +66,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&dbc.verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&dbc.recursive, "recursive", false, "run build recursively for the dependent charts")
 
 	return cmd
 }
@@ -75,11 +77,16 @@ func (d *dependencyBuildCmd) run() error {
 		ChartPath: d.chartpath,
 		HelmHome:  d.helmhome,
 		Keyring:   d.keyring,
+		Recursive: d.recursive,
 		Getters:   getter.All(settings),
 	}
 	if d.verify {
 		man.Verify = downloader.VerifyIfPossible
 	}
 
-	return man.Build()
+	if d.recursive {
+		return man.BuildRecursively()
+	}
+	_, err := man.Build()
+	return err
 }

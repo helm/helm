@@ -55,6 +55,8 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
+	// Recursive indicates that there is a recursive build
+	Recursive bool
 	// Getter collection for the operation
 	Getters []getter.Provider
 }
@@ -64,42 +66,102 @@ type Manager struct {
 // If the lockfile is not present, this will run a Manager.Update()
 //
 // If SkipUpdate is set, this will not update the repository.
-func (m *Manager) Build() error {
+func (m *Manager) Build() ([]*chartutil.Dependency, error) {
 	c, err := m.loadChartDir()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// If a lock file is found, run a build from that. Otherwise, just do
 	// an update.
 	lock, err := chartutil.LoadRequirementsLock(c)
 	if err != nil {
-		return m.Update()
+		err = m.Update()
+		if err != nil {
+			return nil, err
+		}
+		req, err := chartutil.LoadRequirements(c)
+		if err != nil {
+			if err == chartutil.ErrRequirementsNotFound {
+				return nil, nil
+			}
+			return nil, err
+		}
+		return req.Dependencies, nil
 	}
 
 	// A lock must accompany a requirements.yaml file.
 	req, err := chartutil.LoadRequirements(c)
 	if err != nil {
-		return fmt.Errorf("requirements.yaml cannot be opened: %s", err)
+		return nil, fmt.Errorf("requirements.yaml cannot be opened: %s", err)
 	}
 	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
-		return fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
+		return nil, fmt.Errorf("requirements.lock is out of sync with requirements.yaml")
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
 	if err := m.hasAllRepos(lock.Dependencies); err != nil {
-		return err
+		return nil, err
 	}
 
 	if !m.SkipUpdate {
 		// For each repo in the file, update the cached copy of that repo
 		if err := m.UpdateRepositories(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	// Now we need to fetch every package here into charts/
-	return m.downloadAll(lock.Dependencies)
+	return req.Dependencies, m.downloadAll(lock.Dependencies)
+}
+
+// BuildRecursively rebuilds recursively a local charts directory from a lockfile.
+// If the lockfile is not present, this will run a Manager.Update()
+//
+// If SkipUpdate is set, this will not update the repository.
+func (m *Manager) BuildRecursively() error {
+	// Build the main chart
+	dependencies, err := m.Build()
+	if err != nil {
+		return err
+	}
+
+	m.SkipUpdate = true
+	baseChartPath := filepath.Join(m.ChartPath, "charts")
+
+	// Do a Breadth-first traversal over the chart dependencies and
+	// build them on by one
+	type chartDep struct {
+		path string
+		deps []*chartutil.Dependency
+	}
+	depQueue := []chartDep{{
+		path: baseChartPath,
+		deps: dependencies,
+	}}
+	for {
+		if len(depQueue) == 0 {
+			break
+		}
+		currChartDep := depQueue[0]
+		depQueue = depQueue[1:]
+		for _, dep := range currChartDep.deps {
+			chartPath := filepath.Join(currChartDep.path, dep.Name)
+			m.ChartPath = chartPath
+			newDeps, err := m.Build()
+			if err != nil {
+				return err
+			}
+			if len(newDeps) > 0 {
+				depQueue = append(depQueue, chartDep{
+					path: filepath.Join(chartPath, "charts"),
+					deps: newDeps,
+				})
+			}
+		}
+	}
+
+	return nil
 }
 
 // Update updates a local charts directory.
@@ -252,6 +314,15 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
 			saveError = fmt.Errorf("could not download %s: %s", churl, err)
 			break
+		}
+
+		if m.Recursive {
+			tarPath := filepath.Join(destPath, filepath.Base(churl))
+			fmt.Fprintln(m.Out, "Unpacking:", tarPath)
+			err := chartutil.ExpandFile(destPath, tarPath)
+			if err != nil {
+				return fmt.Errorf("could not unpack %s: %s", tarPath, err)
+			}
 		}
 	}
 
@@ -647,6 +718,12 @@ func move(tmpPath, destPath string) error {
 		filename := file.Name()
 		tmpfile := filepath.Join(tmpPath, filename)
 		destfile := filepath.Join(destPath, filename)
+		if _, err := os.Stat(destfile); err == nil {
+			err := os.RemoveAll(destfile)
+			if err != nil {
+				return err
+			}
+		}
 		if err := os.Rename(tmpfile, destfile); err != nil {
 			return fmt.Errorf("Unable to move local charts to charts dir: %v", err)
 		}
