@@ -286,7 +286,7 @@ func newClient() helm.Interface {
 		if tlsKeyFile == "" {
 			tlsKeyFile = settings.Home.TLSKey()
 		}
-		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", tlsKeyFile, tlsCertFile, tlsCaCertFile)
+		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", tlsServerName, tlsKeyFile, tlsCertFile, tlsCaCertFile)
 		tlsopts := tlsutil.Options{
 			ServerName:         tlsServerName,
 			KeyFile:            tlsKeyFile,
