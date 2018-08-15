@@ -126,6 +126,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
 	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with Tiller")
 	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
+	f.StringVar(&tlsServerName, "tiller-tls-hostname", settings.TillerHost, "the server name used to verify the hostname on the returned certificates from Tiller")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
