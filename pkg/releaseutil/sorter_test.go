@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
 )
@@ -27,19 +28,20 @@ import (
 // note: this test data is shared with filter_test.go.
 
 var releases = []*rspb.Release{
-	tsRelease("quiet-bear", 2, 2000, rspb.Status_SUPERSEDED),
-	tsRelease("angry-bird", 4, 3000, rspb.Status_DEPLOYED),
-	tsRelease("happy-cats", 1, 4000, rspb.Status_DELETED),
-	tsRelease("vocal-dogs", 3, 6000, rspb.Status_DELETED),
+	tsRelease("quiet-bear", 2, 2000, rspb.Status_SUPERSEDED, "stable-chart"),
+	tsRelease("angry-bird", 4, 3000, rspb.Status_DEPLOYED, "incubator-chart"),
+	tsRelease("happy-cats", 1, 4000, rspb.Status_DELETED, "experimental-chart"),
+	tsRelease("vocal-dogs", 3, 6000, rspb.Status_DELETED, "outdated-chart"),
 }
 
-func tsRelease(name string, vers int32, dur time.Duration, code rspb.Status_Code) *rspb.Release {
+func tsRelease(name string, vers int32, dur time.Duration, code rspb.Status_Code, chartName string) *rspb.Release {
 	tmsp := timeconv.Timestamp(time.Now().Add(time.Duration(dur)))
 	info := &rspb.Info{Status: &rspb.Status{Code: code}, LastDeployed: tmsp}
 	return &rspb.Release{
 		Name:    name,
 		Version: vers,
 		Info:    info,
+		Chart:   &chart.Chart{Metadata: &chart.Metadata{Name: chartName}},
 	}
 }
 
@@ -77,6 +79,16 @@ func TestSortByRevision(t *testing.T) {
 	check(t, "ByRevision", func(i, j int) bool {
 		vi := releases[i].Version
 		vj := releases[j].Version
+		return vi < vj
+	})
+}
+
+func TestSortByChartName(t *testing.T) {
+	SortByChartName(releases)
+
+	check(t, "ByChart", func(i, j int) bool {
+		vi := releases[i].Chart.GetMetadata().GetName()
+		vj := releases[j].Chart.GetMetadata().GetName()
 		return vi < vj
 	})
 }

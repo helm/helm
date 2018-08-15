@@ -75,3 +75,15 @@ func SortByRevision(list []*rspb.Release) {
 	}
 	sort.Sort(s)
 }
+
+// SortByChartName returns the list of releases sorted by a
+// release's chart name (release.Chart.Metadata.Name).
+func SortByChartName(list []*rspb.Release) {
+	s := &sorter{list: list}
+	s.less = func(i, j int) bool {
+		vi := s.list[i].Chart.Metadata.Name
+		vj := s.list[j].Chart.Metadata.Name
+		return vi < vj
+	}
+	sort.Sort(s)
+}
