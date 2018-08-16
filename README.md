@@ -1,16 +1,16 @@
-# Kubernetes Helm
+# Helm
 
 [![CircleCI](https://circleci.com/gh/helm/helm.svg?style=svg)](https://circleci.com/gh/helm/helm)
 [![Go Report Card](https://goreportcard.com/badge/github.com/helm/helm)](https://goreportcard.com/report/github.com/helm/helm)
-[![GoDoc](https://godoc.org/github.com/kubernetes/helm?status.svg)](https://godoc.org/github.com/kubernetes/helm)
+[![GoDoc](https://godoc.org/k8s.io/helm?status.svg)](https://godoc.org/k8s.io/helm)
 
 Helm is a tool for managing Kubernetes charts. Charts are packages of
 pre-configured Kubernetes resources.
 
 Use Helm to:
 
-- Find and use [popular software packaged as Kubernetes charts](https://github.com/helm/charts)
-- Share your own applications as Kubernetes charts
+- Find and use [popular software packaged as Helm charts](https://github.com/helm/charts) to run in Kubernetes
+- Share your own applications as Helm charts
 - Create reproducible builds of your Kubernetes applications
 - Intelligently manage your Kubernetes manifest files
 - Manage releases of Helm packages
@@ -63,11 +63,10 @@ You can reach the Helm community and developers via the following channels:
   - [#helm-users](https://kubernetes.slack.com/messages/helm-users)
   - [#helm-dev](https://kubernetes.slack.com/messages/helm-dev)
   - [#charts](https://kubernetes.slack.com/messages/charts)
-- Mailing Lists:
-  - [Helm Mailing List](https://lists.cncf.io/g/cncf-kubernetes-helm)
-  - [Kubernetes SIG Apps Mailing List](https://groups.google.com/forum/#!forum/kubernetes-sig-apps)
-- Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/4526666954](https://zoom.us/j/4526666954)
+- Mailing List:
+  - [Helm Mailing List](https://lists.cncf.io/g/cncf-helm)
+- Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/696660622](https://zoom.us/j/696660622)
 
 ### Code of conduct
 
-Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct](code-of-conduct.md).
+Participation in the Helm community is governed by the [Code of Conduct](code-of-conduct.md).
