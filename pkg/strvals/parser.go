@@ -94,7 +94,7 @@ func ParseIntoFile(s string, dest map[string]interface{}, runesToVal runesToVal)
 	return t.parse()
 }
 
-// ParseIntoString parses a strvals line nad merges the result into dest.
+// ParseIntoString parses a strvals line and merges the result into dest.
 //
 // This method always returns a string as the value.
 func ParseIntoString(s string, dest map[string]interface{}) error {
