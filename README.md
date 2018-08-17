@@ -66,7 +66,7 @@ You can reach the Helm community and developers via the following channels:
 - Mailing Lists:
   - [Helm Mailing List](https://lists.cncf.io/g/cncf-kubernetes-helm)
   - [Kubernetes SIG Apps Mailing List](https://groups.google.com/forum/#!forum/kubernetes-sig-apps)
-- Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/4526666954](https://zoom.us/j/4526666954)
+- Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/696660622](https://zoom.us/j/696660622)
 
 ### Code of conduct
 
