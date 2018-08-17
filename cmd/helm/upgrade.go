@@ -43,7 +43,7 @@ To customize the chart values use any of
  - '--set-string' to provide key=val forcing val to be stored as a string,
  - '--set-file' to provide key=path to read a single large value from a file at path.
 
-To edit or append to the existing customized values add the
+To edit or append to the existing customized values add the 
  '--reuse-values' flag, otherwise any existing customized values are ignored.
 
 If no chart value arguments are provided on the command line, any existing customized values are carried
