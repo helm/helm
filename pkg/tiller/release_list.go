@@ -18,11 +18,12 @@ package tiller
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/golang/protobuf/proto"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
-	"regexp"
 )
 
 // ListReleases lists the releases found by the server.
@@ -65,6 +66,8 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 		relutil.SortByName(rels)
 	case services.ListSort_LAST_RELEASED:
 		relutil.SortByDate(rels)
+	case services.ListSort_CHART_NAME:
+		relutil.SortByChartName(rels)
 	}
 
 	if req.SortOrder == services.ListSort_DESC {

@@ -60,24 +60,25 @@ flag with the '--offset' flag allows you to page through results.
 `
 
 type listCmd struct {
-	filter     string
-	short      bool
-	limit      int
-	offset     string
-	byDate     bool
-	sortDesc   bool
-	out        io.Writer
-	all        bool
-	deleted    bool
-	deleting   bool
-	deployed   bool
-	failed     bool
-	namespace  string
-	superseded bool
-	pending    bool
-	client     helm.Interface
-	colWidth   uint
-	output     string
+	filter      string
+	short       bool
+	limit       int
+	offset      string
+	byDate      bool
+	byChartName bool
+	sortDesc    bool
+	out         io.Writer
+	all         bool
+	deleted     bool
+	deleting    bool
+	deployed    bool
+	failed      bool
+	namespace   string
+	superseded  bool
+	pending     bool
+	client      helm.Interface
+	colWidth    uint
+	output      string
 }
 
 type listResult struct {
@@ -121,6 +122,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&list.short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
+	f.BoolVar(&list.byChartName, "chart-name", false, "sort by chart name")
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.StringVarP(&list.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
@@ -144,6 +146,10 @@ func (l *listCmd) run() error {
 	sortBy := services.ListSort_NAME
 	if l.byDate {
 		sortBy = services.ListSort_LAST_RELEASED
+	}
+
+	if l.byChartName {
+		sortBy = services.ListSort_CHART_NAME
 	}
 
 	sortOrder := services.ListSort_ASC

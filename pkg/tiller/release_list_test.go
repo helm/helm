@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
@@ -110,41 +111,104 @@ func TestListReleasesByStatus(t *testing.T) {
 	}
 }
 
+type sortTestCase struct {
+	name      string
+	in        []*release.Release
+	out       []*release.Release
+	sortBy    services.ListSort_SortBy
+	limit     int
+	sortOrder services.ListSort_SortOrder
+}
+
 func TestListReleasesSort(t *testing.T) {
-	rs := rsFixture()
+	rel1 := releaseStub()
+	rel1.Name = "rel-1"
+	rel1.Chart.Metadata.Name = "chart-b"
+	rel1.Info.LastDeployed = &timestamp.Timestamp{Seconds: 2000}
 
-	// Put them in by reverse order so that the mock doesn't "accidentally"
-	// sort.
-	num := 7
-	for i := num; i > 0; i-- {
-		rel := releaseStub()
-		rel.Name = fmt.Sprintf("rel-%d", i)
-		if err := rs.env.Releases.Create(rel); err != nil {
-			t.Fatalf("Could not store mock release: %s", err)
+	rel2 := releaseStub()
+	rel2.Name = "rel-2"
+	rel2.Chart.Metadata.Name = "chart-a"
+	rel2.Info.LastDeployed = &timestamp.Timestamp{Seconds: 3000}
+
+	rel3 := releaseStub()
+	rel3.Name = "rel-3"
+	rel3.Chart.Metadata.Name = "chart-g"
+	rel3.Info.LastDeployed = &timestamp.Timestamp{Seconds: 1000}
+
+	rel4 := releaseStub()
+	rel4.Name = "rel-4"
+	rel4.Chart.Metadata.Name = "chart-z"
+	rel4.Info.LastDeployed = &timestamp.Timestamp{Seconds: 10000}
+
+	tests := []sortTestCase{
+		{
+			name:      "ListSort_NAME",
+			sortBy:    services.ListSort_NAME,
+			in:        []*release.Release{rel1, rel2, rel3, rel4},
+			out:       []*release.Release{rel1, rel2, rel3},
+			limit:     3,
+			sortOrder: services.ListSort_ASC,
+		},
+		{
+			name:      "ListSort_CHART_NAME",
+			sortBy:    services.ListSort_CHART_NAME,
+			in:        []*release.Release{rel1, rel2, rel3, rel4},
+			out:       []*release.Release{rel4, rel3, rel1},
+			limit:     3,
+			sortOrder: services.ListSort_DESC,
+		},
+		{
+			name:      "ListSort_LAST_RELEASED",
+			sortBy:    services.ListSort_LAST_RELEASED,
+			in:        []*release.Release{rel1, rel2, rel3, rel4},
+			out:       []*release.Release{rel3, rel1, rel2, rel4},
+			limit:     4,
+			sortOrder: services.ListSort_ASC,
+		},
+	}
+
+	for _, tt := range tests {
+		rs := rsFixture()
+
+		testCase := tt.name
+		inputReleases := tt.in
+		expectedReleases := tt.out
+		limit := tt.limit
+		sortBy := tt.sortBy
+		sortOrder := tt.sortOrder
+
+		for _, rel := range inputReleases {
+			if err := rs.env.Releases.Create(rel); err != nil {
+				t.Fatalf("Could not store mock release: %s", err)
+			}
+		}
+		mrs := &mockListServer{}
+		req := &services.ListReleasesRequest{
+			Offset:    "",
+			Limit:     int64(limit),
+			SortBy:    sortBy,
+			SortOrder: sortOrder,
+		}
+		if err := rs.ListReleases(req, mrs); err != nil {
+			t.Fatalf("Failed listing: %s", err)
+		}
+
+		if len(mrs.val.Releases) != limit {
+			t.Errorf("Expected %d releases, got %d", limit, len(mrs.val.Releases))
+		}
+
+		if len(mrs.val.Releases) != len(expectedReleases) {
+			t.Errorf("Expected %d releases, got %d", len(expectedReleases), len(mrs.val.Releases))
+		}
+
+		for i, expectedRelease := range expectedReleases {
+			if mrs.val.Releases[i].Name != expectedRelease.Name {
+				t.Errorf("%s Failed, Expected %q, got %q", testCase, expectedRelease.Name, mrs.val.Releases[i].Name)
+			}
 		}
 	}
 
-	limit := 6
-	mrs := &mockListServer{}
-	req := &services.ListReleasesRequest{
-		Offset: "",
-		Limit:  int64(limit),
-		SortBy: services.ListSort_NAME,
-	}
-	if err := rs.ListReleases(req, mrs); err != nil {
-		t.Fatalf("Failed listing: %s", err)
-	}
-
-	if len(mrs.val.Releases) != limit {
-		t.Errorf("Expected %d releases, got %d", limit, len(mrs.val.Releases))
-	}
-
-	for i := 0; i < limit; i++ {
-		n := fmt.Sprintf("rel-%d", i+1)
-		if mrs.val.Releases[i].Name != n {
-			t.Errorf("Expected %q, got %q", n, mrs.val.Releases[i].Name)
-		}
-	}
 }
 
 func TestListReleasesFilter(t *testing.T) {
