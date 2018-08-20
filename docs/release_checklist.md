@@ -223,7 +223,7 @@ The community keeps growing, and we'd love to see you there!
 - Join the discussion in [Kubernetes Slack](https://slack.k8s.io/):
   - `#helm-users` for questions and just to hang out
   - `#helm-dev` for discussing PRs, code, and bugs
-- Hang out at the Public Developer Call: Thursday, 9:30 Pacific via [Zoom](https://zoom.us/j/4526666954)
+- Hang out at the Public Developer Call: Thursday, 9:30 Pacific via [Zoom](https://zoom.us/j/696660622)
 - Test, debug, and contribute charts: [GitHub/kubernetes/charts](https://github.com/kubernetes/charts)
 
 ## Installation and Upgrading
