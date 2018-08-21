@@ -19,10 +19,8 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
-	"k8s.io/kubernetes/pkg/kubectl"
 )
 
 const (
@@ -52,8 +50,7 @@ func deleteService(client coreclient.ServicesGetter, namespace string) error {
 // We need to use the reaper instead of the kube API because GC for deployment dependents
 // is not yet supported at the k8s server level (<= 1.5)
 func deleteDeployment(client internalclientset.Interface, namespace string) error {
-	reaper, _ := kubectl.ReaperFor(extensions.Kind("Deployment"), client)
-	err := reaper.Stop(namespace, deploymentName, 0, nil)
+	err := client.Extensions().Deployments(namespace).Delete(deploymentName, &metav1.DeleteOptions{})
 	return ingoreNotFound(err)
 }
 
