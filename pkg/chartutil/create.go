@@ -198,8 +198,10 @@ spec:
             httpGet:
               path: /
               port: http
+        {{- with .Values.resources }}
           resources:
-{{ toYaml .Values.resources | indent 12 }}
+{{ toYaml . | indent 12 }}
+        {{- end }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
