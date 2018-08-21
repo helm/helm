@@ -31,6 +31,8 @@ type Option func(*options)
 
 // options specify optional settings used by the helm client.
 type options struct {
+	// if set, annotations will be applied to a release
+	annotations map[string]string
 	// if set dry-run helm client calls
 	dryRun bool
 	// if set, re-use an existing name
@@ -268,6 +270,13 @@ func InstallReuseName(reuse bool) InstallOption {
 	}
 }
 
+// InstallAnnotations will add annotations to a Helm release.
+func InstallAnnotations(annoations map[string]string) InstallOption {
+	return func(opts *options) {
+		opts.annotations = annoations
+	}
+}
+
 // RollbackDisableHooks will disable hooks for a rollback operation
 func RollbackDisableHooks(disable bool) RollbackOption {
 	return func(opts *options) {
@@ -343,6 +352,13 @@ func UpgradeRecreate(recreate bool) UpdateOption {
 func UpgradeForce(force bool) UpdateOption {
 	return func(opts *options) {
 		opts.force = force
+	}
+}
+
+// UpdateAnnotations will assign annotations to a Helm release.
+func UpdateAnnotations(annoations map[string]string) UpdateOption {
+	return func(opts *options) {
+		opts.annotations = annoations
 	}
 }
 

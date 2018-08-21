@@ -90,6 +90,7 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	req.DryRun = reqOpts.dryRun
 	req.DisableHooks = reqOpts.disableHooks
 	req.ReuseName = reqOpts.reuseName
+	req.Annotations = reqOpts.annotations
 
 	if err := reqOpts.runBefore(req); err != nil {
 		return nil, err
@@ -160,6 +161,7 @@ func (c *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	req.Force = reqOpts.force
 	req.ResetValues = reqOpts.resetValues
 	req.ReuseValues = reqOpts.reuseValues
+	req.Annotations = reqOpts.annotations
 
 	if err := reqOpts.runBefore(req); err != nil {
 		return nil, err

@@ -81,10 +81,11 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 		// Return a release with partial data so that client can show debugging
 		// information.
 		rel := &release.Release{
-			Name:      name,
-			Namespace: req.Namespace,
-			Chart:     req.Chart,
-			Config:    req.Values,
+			Name:        name,
+			Namespace:   req.Namespace,
+			Annotations: req.Annotations,
+			Chart:       req.Chart,
+			Config:      req.Values,
 			Info: &release.Info{
 				FirstDeployed: ts,
 				LastDeployed:  ts,
@@ -101,10 +102,11 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 
 	// Store a release.
 	rel := &release.Release{
-		Name:      name,
-		Namespace: req.Namespace,
-		Chart:     req.Chart,
-		Config:    req.Values,
+		Name:        name,
+		Namespace:   req.Namespace,
+		Annotations: req.Annotations,
+		Chart:       req.Chart,
+		Config:      req.Values,
 		Info: &release.Info{
 			FirstDeployed: ts,
 			LastDeployed:  ts,

@@ -93,6 +93,8 @@ type GetReleaseContentRequest struct {
 
 // UpdateReleaseRequest updates a release.
 type UpdateReleaseRequest struct {
+	// Annotations used by external tools.
+	Annotations map[string]string
 	// The name of the release
 	Name string `json:"name,omitempty"`
 	// Chart is the protobuf representation of a chart.
@@ -143,6 +145,8 @@ type RollbackReleaseRequest struct {
 
 // InstallReleaseRequest is the request for an installation of a chart.
 type InstallReleaseRequest struct {
+	// Annotations used by external tools.
+	Annotations map[string]string
 	// Chart is the protobuf representation of a chart.
 	Chart *chart.Chart `json:"chart,omitempty"`
 	// Values is a string containing (unparsed) YAML values.

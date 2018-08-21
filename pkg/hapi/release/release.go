@@ -22,6 +22,10 @@ import "k8s.io/helm/pkg/hapi/chart"
 type Release struct {
 	// Name is the name of the release
 	Name string `json:"name,omitempty"`
+	// Annotations is an unstructured key value map stored with a resource that may be
+	// set by external tools to store and retrieve arbitrary metadata. They are not
+	// queryable and should be preserved when modifying objects.
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// Info provides information about a release
 	Info *Info `json:"info,omitempty"`
 	// Chart is the chart that was released.
