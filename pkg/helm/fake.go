@@ -34,6 +34,9 @@ import (
 	"k8s.io/helm/pkg/renderutil"
 )
 
+//copied from pkg/storage/driver/driver.go to avoid pullling in k8s.io/kubernetes
+var errReleaseNotFound = func(release string) error { return fmt.Errorf("release: %q not found", release) }
+
 // FakeClient implements Interface
 type FakeClient struct {
 	Rels            []*release.Release
@@ -138,7 +141,7 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.U
 		}
 	}
 
-	return nil, fmt.Errorf("release: %q not found", rlsName)
+	return nil, errReleaseNotFound(rlsName)
 }
 
 // GetVersion returns a fake version
@@ -212,7 +215,7 @@ func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.G
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("release: %q not found", rlsName)
+	return nil, errReleaseNotFound(rlsName)
 }
 
 // ReleaseContent returns the configuration for the matching release name in the fake release client.
@@ -224,7 +227,7 @@ func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp
 			}, nil
 		}
 	}
-	return resp, fmt.Errorf("release: %q not found", rlsName)
+	return resp, errReleaseNotFound(rlsName)
 }
 
 // ReleaseHistory returns a release's revision history.
