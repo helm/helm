@@ -372,6 +372,6 @@ func TestDoesNotImportKubernetes(t *testing.T) {
 	}
 
 	if strings.Contains(string(output), "k8s.io/kubernetes") {
-		t.Fatal("k8s.io/helm/pkg/helm contains a dependency on k8s.io/kubernetes")
+		t.Fatal("k8s.io/helm/pkg/helm contains a dependency on k8s.io/kubernetes. See https://github.com/helm/helm/pull/4499 for more details.")
 	}
 }
