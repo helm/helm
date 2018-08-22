@@ -24,7 +24,7 @@ import (
 
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/environment"
@@ -34,7 +34,7 @@ import (
 
 var (
 	settings   environment.EnvSettings
-	config     clientcmd.ClientConfig
+	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
 )
 
@@ -89,7 +89,7 @@ func newClient(allNamespaces bool) helm.Interface {
 	)
 }
 
-func kubeConfig() clientcmd.ClientConfig {
+func kubeConfig() genericclioptions.RESTClientGetter {
 	configOnce.Do(func() {
 		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)
 	})
@@ -97,7 +97,7 @@ func kubeConfig() clientcmd.ClientConfig {
 }
 
 func getNamespace() string {
-	if ns, _, err := kubeConfig().Namespace(); err == nil {
+	if ns, _, err := kubeConfig().ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
 	return "default"
