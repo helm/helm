@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/chart"

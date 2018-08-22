@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -37,8 +36,8 @@ import (
 
 // deployment holds associated replicaSets for a deployment
 type deployment struct {
-	replicaSets *extensions.ReplicaSet
-	deployment  *extensions.Deployment
+	replicaSets *appsv1.ReplicaSet
+	deployment  *appsv1.Deployment
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
@@ -56,11 +55,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		pvc := []v1.PersistentVolumeClaim{}
 		deployments := []deployment{}
 		for _, v := range created {
-			obj, err := v.Versioned()
-			if err != nil && !runtime.IsNotRegisteredError(err) {
-				return false, err
-			}
-			switch value := obj.(type) {
+			switch value := asVersioned(v).(type) {
 			case *v1.ReplicationController:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector)
 				if err != nil {
@@ -74,12 +69,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				pods = append(pods, *pod)
 			case *appsv1.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -89,12 +84,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				deployments = append(deployments, newDeployment)
 			case *appsv1beta1.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -104,12 +99,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				deployments = append(deployments, newDeployment)
 			case *appsv1beta2.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -119,12 +114,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				deployments = append(deployments, newDeployment)
 			case *extensions.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}

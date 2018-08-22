@@ -23,25 +23,20 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
-var unstructuredSerializer = dynamic.ContentConfig().NegotiatedSerializer
+var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
 
 func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
@@ -98,24 +93,6 @@ func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
-type fakeReaper struct {
-	name string
-}
-
-func (r *fakeReaper) Stop(namespace, name string, timeout time.Duration, gracePeriod *metav1.DeleteOptions) error {
-	r.name = name
-	return nil
-}
-
-type fakeReaperFactory struct {
-	cmdutil.Factory
-	reaper kubectl.Reaper
-}
-
-func (f *fakeReaperFactory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error) {
-	return f.reaper, nil
-}
-
 type testClient struct {
 	*Client
 	*cmdtesting.TestFactory
@@ -123,8 +100,6 @@ type testClient struct {
 
 func newTestClient() *testClient {
 	tf := cmdtesting.NewTestFactory()
-	tf.Namespace = core.NamespaceDefault
-
 	c := &Client{Factory: tf, Log: nopLogger}
 	return &testClient{Client: c, TestFactory: tf}
 }
@@ -141,7 +116,6 @@ func TestUpdate(t *testing.T) {
 	tf := cmdtesting.NewTestFactory()
 	defer tf.Cleanup()
 	tf.UnstructuredClient = &fake.RESTClient{
-		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
@@ -176,12 +150,11 @@ func TestUpdate(t *testing.T) {
 		}),
 	}
 
-	c := newTestClient()
-	tf.Namespace = core.NamespaceDefault
-	reaper := &fakeReaper{}
-	rf := &fakeReaperFactory{Factory: tf, reaper: reaper}
-	c.Client.Factory = rf
-	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+	c := &Client{
+		Factory: tf,
+		Log:     nopLogger,
+	}
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 	if err := c.Update(core.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
@@ -202,6 +175,7 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/dolphin:GET",
 		"/namespaces/default/pods:POST",
+		"/namespaces/default/pods/squid:DELETE",
 	}
 	if len(expectedActions) != len(actions) {
 		t.Errorf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
@@ -212,11 +186,6 @@ func TestUpdate(t *testing.T) {
 			t.Errorf("expected %s request got %s", v, actions[k])
 		}
 	}
-
-	if reaper.name != "squid" {
-		t.Errorf("unexpected reaper: %#v", reaper)
-	}
-
 }
 
 func TestBuild(t *testing.T) {

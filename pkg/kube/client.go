@@ -43,14 +43,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
-	"k8s.io/kubernetes/pkg/printers"
 )
 
 const (
@@ -68,9 +68,12 @@ type Client struct {
 }
 
 // New creates a new Client.
-func New(config clientcmd.ClientConfig) *Client {
+func New(getter genericclioptions.RESTClientGetter) *Client {
+	if getter == nil {
+		getter = genericclioptions.NewConfigFlags()
+	}
 	return &Client{
-		Factory: cmdutil.NewFactory(config),
+		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
 	}
 }
@@ -100,7 +103,7 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 }
 
 func (c *Client) namespace() string {
-	if ns, _, err := c.DefaultNamespace(); err == nil {
+	if ns, _, err := c.ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
 	return v1.NamespaceDefault
@@ -108,8 +111,8 @@ func (c *Client) namespace() string {
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
 	return c.NewBuilder().
-		Internal().
 		ContinueOnError().
+		WithScheme(legacyscheme.Scheme).
 		Schema(c.validator()).
 		NamespaceParam(c.namespace()).
 		DefaultNamespace().
@@ -177,7 +180,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], info.AsInternal())
+		objs[vk] = append(objs[vk], asVersioned(info))
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
@@ -203,10 +206,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths.
 	buf := new(bytes.Buffer)
-	p, err := cmdutil.PrinterForOptions(&printers.PrintOptions{})
-	if err != nil {
-		return "", err
-	}
+	p, _ := get.NewHumanPrintFlags().ToPrinter("")
 	for t, ot := range objs {
 		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
 			return "", err
@@ -294,7 +294,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
-		if err := deleteResource(c, info); err != nil {
+		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
 	}
@@ -314,7 +314,7 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 	}
 	return perform(infos, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(c, info)
+		err := deleteResource(info)
 		return c.skipIfNotFound(err)
 	})
 }
@@ -376,17 +376,11 @@ func createResource(info *resource.Info) error {
 	return info.Refresh(obj, true)
 }
 
-func deleteResource(c *Client, info *resource.Info) error {
-	reaper, err := c.Reaper(info.Mapping)
-	if err != nil {
-		// If there is no reaper for this resources, delete it.
-		if kubectl.IsNoSuchReaperError(err) {
-			return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
-		}
-		return err
-	}
-	c.Log("Using reaper for deleting %q", info.Name)
-	return reaper.Stop(info.Namespace, info.Name, 0, nil)
+func deleteResource(info *resource.Info) error {
+	policy := metav1.DeletePropagationBackground
+	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
+	_, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptions(info.Namespace, info.Name, opts)
+	return err
 }
 
 func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
@@ -408,7 +402,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Get a versioned object
-	versionedObject, err := target.Versioned()
+	versionedObject := asVersioned(target)
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
@@ -452,7 +446,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 			if force {
 				// Attempt to delete...
-				if err := deleteResource(c, target); err != nil {
+				if err := deleteResource(target); err != nil {
 					return err
 				}
 				log.Printf("Deleted %s: %q", kind, target.Name)
@@ -480,14 +474,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	versioned, err := target.Versioned()
-	if runtime.IsNotRegisteredError(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
+	versioned := asVersioned(target)
 	selector, err := getSelectorFromObject(versioned)
 	if err != nil {
 		return nil
@@ -695,13 +682,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 
 	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
 
-	versioned, err := info.Versioned()
-	if runtime.IsNotRegisteredError(err) {
-		return objPods, nil
-	}
-	if err != nil {
-		return objPods, err
-	}
+	versioned := asVersioned(info)
 
 	// We can ignore this error because it will only error if it isn't a type that doesn't
 	// have pods. In that case, we don't care
@@ -748,4 +729,8 @@ func isFoundPod(podItem []core.Pod, pod core.Pod) bool {
 		}
 	}
 	return false
+}
+
+func asVersioned(info *resource.Info) runtime.Object {
+	return cmdutil.AsDefaultVersionedOrOriginal(info.Object, info.Mapping)
 }
