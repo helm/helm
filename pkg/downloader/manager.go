@@ -66,7 +66,12 @@ type Manager struct {
 // If the lockfile is not present, this will run a Manager.Update()
 //
 // If SkipUpdate is set, this will not update the repository.
-func (m *Manager) Build() ([]*chartutil.Dependency, error) {
+func (m *Manager) Build() error {
+	_, err := m.build()
+	return err
+}
+
+func (m *Manager) build() ([]*chartutil.Dependency, error) {
 	c, err := m.loadChartDir()
 	if err != nil {
 		return nil, err
@@ -121,7 +126,7 @@ func (m *Manager) Build() ([]*chartutil.Dependency, error) {
 // If SkipUpdate is set, this will not update the repository.
 func (m *Manager) BuildRecursively() error {
 	// Build the main chart
-	dependencies, err := m.Build()
+	dependencies, err := m.build()
 	if err != nil {
 		return err
 	}
@@ -152,7 +157,7 @@ func (m *Manager) BuildRecursively() error {
 		for _, dep := range currChartDep.deps {
 			chartPath := filepath.Join(currChartDep.path, dep.Name)
 			m.ChartPath = chartPath
-			newDeps, err := m.Build()
+			newDeps, err := m.build()
 			if err != nil {
 				return err
 			}

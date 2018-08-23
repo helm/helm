@@ -87,6 +87,5 @@ func (d *dependencyBuildCmd) run() error {
 	if d.recursive {
 		return man.BuildRecursively()
 	}
-	_, err := man.Build()
-	return err
+	return man.Build()
 }
