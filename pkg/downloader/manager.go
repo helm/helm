@@ -126,7 +126,11 @@ func (m *Manager) BuildRecursively() error {
 		return err
 	}
 
+	// The local repositories are already updated by the root build. Skip the update
+	// for each dependent chart to improve performance.
+	prevSkipUpdate := m.SkipUpdate
 	m.SkipUpdate = true
+
 	baseChartPath := filepath.Join(m.ChartPath, "charts")
 
 	// Do a Breadth-first traversal over the chart dependencies and
@@ -160,6 +164,9 @@ func (m *Manager) BuildRecursively() error {
 			}
 		}
 	}
+
+	// Restore to the original value before running the recursive build
+	m.SkipUpdate = prevSkipUpdate
 
 	return nil
 }
