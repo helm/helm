@@ -18,7 +18,7 @@ package support
 
 import "fmt"
 
-// Severity indicatest the severity of a Message.
+// Severity indicates the severity of a Message.
 const (
 	// UnknownSev indicates that the severity of the error is unknown, and should not stop processing.
 	UnknownSev = iota
