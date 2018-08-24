@@ -23,8 +23,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
 )
 
 func TestCreateCmd(t *testing.T) {
@@ -46,15 +47,15 @@ func TestCreateCmd(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := chartutil.LoadDir(cname)
+	c, err := loader.LoadDir(cname)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c.Metadata.Name != cname {
-		t.Errorf("Expected %q name, got %q", cname, c.Metadata.Name)
+	if c.Name() != cname {
+		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
-	if c.Metadata.APIVersion != chartutil.APIVersionv1 {
+	if c.Metadata.APIVersion != chart.APIVersionv1 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 }
@@ -97,15 +98,15 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := chartutil.LoadDir(cname)
+	c, err := loader.LoadDir(cname)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c.Metadata.Name != cname {
-		t.Errorf("Expected %q name, got %q", cname, c.Metadata.Name)
+	if c.Name() != cname {
+		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
-	if c.Metadata.APIVersion != chartutil.APIVersionv1 {
+	if c.Metadata.APIVersion != chart.APIVersionv1 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 

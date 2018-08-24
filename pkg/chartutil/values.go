@@ -25,7 +25,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 // ErrNoTable indicates that a chart does not have a matching table.
@@ -59,11 +59,10 @@ func (v Values) YAML() (string, error) {
 //
 // An ErrNoTable is returned if the table does not exist.
 func (v Values) Table(name string) (Values, error) {
-	names := strings.Split(name, ".")
 	table := v
 	var err error
 
-	for _, n := range names {
+	for _, n := range strings.Split(name, ".") {
 		table, err = tableLookup(table, n)
 		if err != nil {
 			return table, err
@@ -110,7 +109,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 	}
 
 	var e ErrNoTable = errors.Errorf("no table named %q", simple)
-	return map[string]interface{}{}, e
+	return Values{}, e
 }
 
 // ReadValues will parse YAML byte data into a Values.
@@ -141,23 +140,23 @@ func ReadValuesFile(filename string) (Values, error) {
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals []byte) (Values, error) {
+	var err error
 	cvals := Values{}
 	// Parse values if not nil. We merge these at the top level because
 	// the passed-in values are in the same namespace as the parent chart.
 	if vals != nil {
-		evals, err := ReadValues(vals)
-		if err != nil {
-			return cvals, err
-		}
-		cvals, err = coalesce(chrt, evals)
+		cvals, err = ReadValues(vals)
 		if err != nil {
 			return cvals, err
 		}
 	}
 
-	var err error
-	cvals, err = coalesceDeps(chrt, cvals)
-	return cvals, err
+	cvals, err = coalesce(chrt, cvals)
+	if err != nil {
+		return cvals, err
+	}
+
+	return coalesceDeps(chrt, cvals)
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
@@ -175,14 +174,14 @@ func coalesce(ch *chart.Chart, dest map[string]interface{}) (map[string]interfac
 
 // coalesceDeps coalesces the dependencies of the given chart.
 func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
-	for _, subchart := range chrt.Dependencies {
-		if c, ok := dest[subchart.Metadata.Name]; !ok {
+	for _, subchart := range chrt.Dependencies() {
+		if c, ok := dest[subchart.Name()]; !ok {
 			// If dest doesn't already have the key, create it.
-			dest[subchart.Metadata.Name] = map[string]interface{}{}
+			dest[subchart.Name()] = make(map[string]interface{})
 		} else if !istable(c) {
-			return dest, errors.Errorf("type mismatch on %s: %t", subchart.Metadata.Name, c)
+			return dest, errors.Errorf("type mismatch on %s: %t", subchart.Name(), c)
 		}
-		if dv, ok := dest[subchart.Metadata.Name]; ok {
+		if dv, ok := dest[subchart.Name()]; ok {
 			dvmap := dv.(map[string]interface{})
 
 			// Get globals out of dest and merge them into dvmap.
@@ -190,7 +189,7 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 
 			var err error
 			// Now coalesce the rest of the values.
-			dest[subchart.Metadata.Name], err = coalesce(subchart, dvmap)
+			dest[subchart.Name()], err = coalesce(subchart, dvmap)
 			if err != nil {
 				return dest, err
 			}
@@ -206,14 +205,14 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 	var dg, sg map[string]interface{}
 
 	if destglob, ok := dest[GlobalKey]; !ok {
-		dg = map[string]interface{}{}
+		dg = make(map[string]interface{})
 	} else if dg, ok = destglob.(map[string]interface{}); !ok {
 		log.Printf("warning: skipping globals because destination %s is not a table.", GlobalKey)
 		return dg
 	}
 
 	if srcglob, ok := src[GlobalKey]; !ok {
-		sg = map[string]interface{}{}
+		sg = make(map[string]interface{})
 	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
 		log.Printf("warning: skipping globals because source %s is not a table.", GlobalKey)
 		return dg
@@ -340,19 +339,8 @@ type ReleaseOptions struct {
 
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 //
-// WARNING: This function is deprecated for Helm > 2.1.99 Use ToRenderValuesCaps() instead. It will
-// remain in the codebase to stay SemVer compliant.
-//
-// In Helm 3.0, this will be changed to accept Capabilities as a fourth parameter.
-func ToRenderValues(chrt *chart.Chart, chrtVals []byte, options ReleaseOptions) (Values, error) {
-	caps := &Capabilities{APIVersions: DefaultVersionSet}
-	return ToRenderValuesCaps(chrt, chrtVals, options, caps)
-}
-
-// ToRenderValuesCaps composes the struct from the data coming from the Releases, Charts and Values files
-//
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValuesCaps(chrt *chart.Chart, chrtVals []byte, options ReleaseOptions, caps *Capabilities) (Values, error) {
+func ToRenderValues(chrt *chart.Chart, chrtVals []byte, options ReleaseOptions, caps *Capabilities) (Values, error) {
 
 	top := map[string]interface{}{
 		"Release": map[string]interface{}{

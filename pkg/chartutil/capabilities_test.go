@@ -38,9 +38,6 @@ func TestDefaultVersionSet(t *testing.T) {
 	if !DefaultVersionSet.Has("v1") {
 		t.Error("Expected core v1 version set")
 	}
-	if d := len(DefaultVersionSet); d != 1 {
-		t.Errorf("Expected only one version, got %d", d)
-	}
 }
 
 func TestCapabilities(t *testing.T) {

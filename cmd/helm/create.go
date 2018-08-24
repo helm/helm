@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
 )
 
 const createDesc = `
@@ -80,7 +80,7 @@ func (o *createOptions) run(out io.Writer) error {
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
 		AppVersion:  "1.0",
-		APIVersion:  chartutil.APIVersionv1,
+		APIVersion:  chart.APIVersionv1,
 	}
 
 	if o.starter != "" {

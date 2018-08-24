@@ -27,7 +27,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/provenance"
 )
@@ -172,7 +172,7 @@ func (r *ChartRepository) saveIndexFile() error {
 
 func (r *ChartRepository) generateIndex() error {
 	for _, path := range r.ChartPaths {
-		ch, err := chartutil.Load(path)
+		ch, err := loader.Load(path)
 		if err != nil {
 			return err
 		}
@@ -182,7 +182,7 @@ func (r *ChartRepository) generateIndex() error {
 			return err
 		}
 
-		if !r.IndexFile.Has(ch.Metadata.Name, ch.Metadata.Version) {
+		if !r.IndexFile.Has(ch.Name(), ch.Metadata.Version) {
 			r.IndexFile.Add(ch.Metadata, path, r.Config.URL, digest)
 		}
 		// TODO: If a chart exists, but has a different Digest, should we error?

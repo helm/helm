@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chartutil"
+	cpb "k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/hapi"
-	cpb "k8s.io/helm/pkg/hapi/chart"
 	rls "k8s.io/helm/pkg/hapi/release"
 )
 
@@ -349,7 +349,7 @@ func assert(t *testing.T, expect, actual interface{}) {
 }
 
 func loadChart(t *testing.T, name string) *cpb.Chart {
-	c, err := chartutil.Load(filepath.Join(chartsDir, name))
+	c, err := loader.Load(filepath.Join(chartsDir, name))
 	if err != nil {
 		t.Fatalf("failed to load test chart (%q): %s\n", name, err)
 	}

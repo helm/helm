@@ -15,7 +15,7 @@ limitations under the License.
 
 package release
 
-import "k8s.io/helm/pkg/hapi/chart"
+import "k8s.io/helm/pkg/chart"
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.

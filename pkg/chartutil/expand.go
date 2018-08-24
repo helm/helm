@@ -40,8 +40,8 @@ func Expand(dir string, r io.Reader) error {
 			return err
 		}
 
-		//split header name and create missing directories
-		d, _ := filepath.Split(header.Name)
+		// split header name and create missing directories
+		d := filepath.Dir(header.Name)
 		fullDir := filepath.Join(dir, d)
 		_, err = os.Stat(fullDir)
 		if err != nil && d != "" {
@@ -63,8 +63,7 @@ func Expand(dir string, r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(file, tr)
-		if err != nil {
+		if _, err = io.Copy(file, tr); err != nil {
 			file.Close()
 			return err
 		}

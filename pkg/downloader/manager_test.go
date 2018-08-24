@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
@@ -100,48 +100,48 @@ func TestGetRepoNames(t *testing.T) {
 	}
 	tests := []struct {
 		name   string
-		req    []*chartutil.Dependency
+		req    []*chart.Dependency
 		expect map[string]string
 		err    bool
 	}{
 		{
 			name: "no repo definition failure",
-			req: []*chartutil.Dependency{
+			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com/test"},
 			},
 			err: true,
 		},
 		{
 			name: "no repo definition failure -- stable repo",
-			req: []*chartutil.Dependency{
+			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "stable"},
 			},
 			err: true,
 		},
 		{
 			name: "no repo definition failure",
-			req: []*chartutil.Dependency{
+			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com"},
 			},
 			expect: map[string]string{"oedipus-rex": "testing"},
 		},
 		{
 			name: "repo from local path",
-			req: []*chartutil.Dependency{
+			req: []*chart.Dependency{
 				{Name: "local-dep", Repository: "file://./testdata/signtest"},
 			},
 			expect: map[string]string{"local-dep": "file://./testdata/signtest"},
 		},
 		{
 			name: "repo alias (alias:)",
-			req: []*chartutil.Dependency{
+			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "alias:testing"},
 			},
 			expect: map[string]string{"oedipus-rex": "testing"},
 		},
 		{
 			name: "repo alias (@)",
-			req: []*chartutil.Dependency{
+			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "@testing"},
 			},
 			expect: map[string]string{"oedipus-rex": "testing"},

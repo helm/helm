@@ -23,10 +23,10 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/lint/support"
-	tversion "k8s.io/helm/pkg/version"
 )
 
 // Templates lints the templates in the Linter.
@@ -42,7 +42,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 	}
 
 	// Load chart and parse templates, based on tiller/release_server
-	chart, err := chartutil.Load(linter.ChartDir)
+	chart, err := loader.Load(linter.ChartDir)
 
 	chartLoaded := linter.RunLinterRule(support.ErrorSev, path, err)
 
@@ -51,11 +51,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 	}
 
 	options := chartutil.ReleaseOptions{Name: "testRelease"}
-	caps := &chartutil.Capabilities{
-		APIVersions: chartutil.DefaultVersionSet,
-		KubeVersion: chartutil.DefaultKubeVersion,
-		HelmVersion: tversion.GetBuildInfo(),
-	}
+
 	cvals, err := chartutil.CoalesceValues(chart, values)
 	if err != nil {
 		return
@@ -65,7 +61,8 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 	if err != nil {
 		return
 	}
-	valuesToRender, err := chartutil.ToRenderValuesCaps(chart, yvals, options, caps)
+	caps := chartutil.DefaultCapabilities
+	valuesToRender, err := chartutil.ToRenderValues(chart, yvals, options, caps)
 	if err != nil {
 		// FIXME: This seems to generate a duplicate, but I can't find where the first
 		// error is coming from.
@@ -109,7 +106,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		// NOTE: disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
 		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
-		renderedContent := renderedContentMap[filepath.Join(chart.Metadata.Name, fileName)]
+		renderedContent := renderedContentMap[filepath.Join(chart.Name(), fileName)]
 		var yamlStruct K8sYamlStruct
 		// Even though K8sYamlStruct only defines Metadata namespace, an error in any other
 		// key will be raised as well

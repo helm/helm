@@ -25,8 +25,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 )
 
 const inspectDesc = `
@@ -146,7 +146,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 }
 
 func (i *inspectOptions) run(out io.Writer) error {
-	chrt, err := chartutil.Load(i.chartpath)
+	chrt, err := loader.Load(i.chartpath)
 	if err != nil {
 		return err
 	}

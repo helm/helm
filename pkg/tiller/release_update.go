@@ -105,7 +105,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 	if err != nil {
 		return nil, nil, err
 	}
-	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options, caps)
 	if err != nil {
 		return nil, nil, err
 	}

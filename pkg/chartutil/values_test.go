@@ -25,7 +25,8 @@ import (
 
 	kversion "k8s.io/apimachinery/pkg/version"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -89,16 +90,14 @@ where:
 		Metadata:  &chart.Metadata{Name: "test"},
 		Templates: []*chart.File{},
 		Values:    []byte(chartValues),
-		Dependencies: []*chart.Chart{
-			{
-				Metadata: &chart.Metadata{Name: "where"},
-				Values:   []byte{},
-			},
-		},
 		Files: []*chart.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 	}
+	c.AddDependency(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "where"},
+		Values:   []byte{},
+	})
 	v := []byte(overideValues)
 
 	o := ReleaseOptions{
@@ -112,7 +111,7 @@ where:
 		KubeVersion: &kversion.Info{Major: "1"},
 	}
 
-	res, err := ToRenderValuesCaps(c, v, o, caps)
+	res, err := ToRenderValues(c, v, o, caps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,10 +258,8 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
-	if err := tt.Execute(&b, v); err != nil {
-		return "", err
-	}
-	return b.String(), nil
+	err := tt.Execute(&b, v)
+	return b.String(), err
 }
 
 // ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
@@ -293,7 +290,7 @@ pequod:
 
 func TestCoalesceValues(t *testing.T) {
 	tchart := "testdata/moby"
-	c, err := LoadDir(tchart)
+	c, err := loader.LoadDir(tchart)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -23,7 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 )
 
 func TestSave(t *testing.T) {
@@ -55,13 +56,13 @@ func TestSave(t *testing.T) {
 		t.Fatalf("Expected %q to end with .tgz", where)
 	}
 
-	c2, err := LoadFile(where)
+	c2, err := loader.LoadFile(where)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c2.Metadata.Name != c.Metadata.Name {
-		t.Fatalf("Expected chart archive to have %q, got %q", c.Metadata.Name, c2.Metadata.Name)
+	if c2.Name() != c.Name() {
+		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
 	if !bytes.Equal(c2.Values, c.Values) {
 		t.Fatal("Values data did not match")
@@ -93,13 +94,13 @@ func TestSaveDir(t *testing.T) {
 		t.Fatalf("Failed to save: %s", err)
 	}
 
-	c2, err := LoadDir(tmp + "/ahab")
+	c2, err := loader.LoadDir(tmp + "/ahab")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c2.Metadata.Name != c.Metadata.Name {
-		t.Fatalf("Expected chart archive to have %q, got %q", c.Metadata.Name, c2.Metadata.Name)
+	if c2.Name() != c.Name() {
+		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
 	if !bytes.Equal(c2.Values, c.Values) {
 		t.Fatal("Values data did not match")

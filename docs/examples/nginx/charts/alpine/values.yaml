@@ -1,0 +1,6 @@
+image:
+  repository: alpine
+  tag: 3.3
+  pullPolicy: IfNotPresent
+
+restartPolicy: Never

@@ -17,37 +17,16 @@ limitations under the License.
 package tiller
 
 import (
-	"sort"
-
 	"k8s.io/helm/pkg/hapi/release"
 )
 
-// sortByHookWeight does an in-place sort of hooks by their supplied weight.
-func sortByHookWeight(hooks []*release.Hook) []*release.Hook {
-	hs := newHookWeightSorter(hooks)
-	sort.Sort(hs)
-	return hs.hooks
-}
+type hookByWeight []*release.Hook
 
-type hookWeightSorter struct {
-	hooks []*release.Hook
-}
-
-func newHookWeightSorter(h []*release.Hook) *hookWeightSorter {
-	return &hookWeightSorter{
-		hooks: h,
+func (x hookByWeight) Len() int      { return len(x) }
+func (x hookByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
+func (x hookByWeight) Less(i, j int) bool {
+	if x[i].Weight == x[j].Weight {
+		return x[i].Name < x[j].Name
 	}
-}
-
-func (hs *hookWeightSorter) Len() int { return len(hs.hooks) }
-
-func (hs *hookWeightSorter) Swap(i, j int) {
-	hs.hooks[i], hs.hooks[j] = hs.hooks[j], hs.hooks[i]
-}
-
-func (hs *hookWeightSorter) Less(i, j int) bool {
-	if hs.hooks[i].Weight == hs.hooks[j].Weight {
-		return hs.hooks[i].Name < hs.hooks[j].Name
-	}
-	return hs.hooks[i].Weight < hs.hooks[j].Weight
+	return x[i].Weight < x[j].Weight
 }

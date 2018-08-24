@@ -30,9 +30,10 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/resolver"
@@ -72,16 +73,13 @@ func (m *Manager) Build() error {
 
 	// If a lock file is found, run a build from that. Otherwise, just do
 	// an update.
-	lock, err := chartutil.LoadRequirementsLock(c)
-	if err != nil {
+	lock := c.RequirementsLock
+	if lock == nil {
 		return m.Update()
 	}
 
 	// A lock must accompany a requirements.yaml file.
-	req, err := chartutil.LoadRequirements(c)
-	if err != nil {
-		return errors.Wrap(err, "requirements.yaml cannot be opened")
-	}
+	req := c.Requirements
 	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
 		return errors.New("requirements.lock is out of sync with requirements.yaml")
 	}
@@ -119,13 +117,9 @@ func (m *Manager) Update() error {
 
 	// If no requirements file is found, we consider this a successful
 	// completion.
-	req, err := chartutil.LoadRequirements(c)
-	if err != nil {
-		if err == chartutil.ErrRequirementsNotFound {
-			fmt.Fprintf(m.Out, "No requirements found in %s/charts.\n", m.ChartPath)
-			return nil
-		}
-		return err
+	req := c.Requirements
+	if req == nil {
+		return nil
 	}
 
 	// Hash requirements.yaml
@@ -161,8 +155,8 @@ func (m *Manager) Update() error {
 	}
 
 	// If the lock file hasn't changed, don't write a new one.
-	oldLock, err := chartutil.LoadRequirementsLock(c)
-	if err == nil && oldLock.Digest == lock.Digest {
+	oldLock := c.RequirementsLock
+	if oldLock != nil && oldLock.Digest == lock.Digest {
 		return nil
 	}
 
@@ -176,13 +170,13 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	} else if !fi.IsDir() {
 		return nil, errors.New("only unpacked charts can be updated")
 	}
-	return chartutil.LoadDir(m.ChartPath)
+	return loader.LoadDir(m.ChartPath)
 }
 
 // resolve takes a list of requirements and translates them into an exact version to download.
 //
 // This returns a lock file, which has all of the requirements normalized to a specific version.
-func (m *Manager) resolve(req *chartutil.Requirements, repoNames map[string]string, hash string) (*chartutil.RequirementsLock, error) {
+func (m *Manager) resolve(req *chart.Requirements, repoNames map[string]string, hash string) (*chart.RequirementsLock, error) {
 	res := resolver.New(m.ChartPath, m.HelmHome)
 	return res.Resolve(req, repoNames, hash)
 }
@@ -191,7 +185,7 @@ func (m *Manager) resolve(req *chartutil.Requirements, repoNames map[string]stri
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
-func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
+func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
@@ -307,12 +301,12 @@ func (m *Manager) safeDeleteDep(name, dir string) error {
 		return err
 	}
 	for _, fname := range files {
-		ch, err := chartutil.LoadFile(fname)
+		ch, err := loader.LoadFile(fname)
 		if err != nil {
 			fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)", fname, err)
 			continue
 		}
-		if ch.Metadata.Name != name {
+		if ch.Name() != name {
 			// This is not the file you are looking for.
 			continue
 		}
@@ -325,7 +319,7 @@ func (m *Manager) safeDeleteDep(name, dir string) error {
 }
 
 // hasAllRepos ensures that all of the referenced deps are in the local repo cache.
-func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
+func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
 	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return err
@@ -335,25 +329,22 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 	// Verify that all repositories referenced in the deps are actually known
 	// by Helm.
 	missing := []string{}
+Loop:
 	for _, dd := range deps {
 		// If repo is from local path, continue
 		if strings.HasPrefix(dd.Repository, "file://") {
 			continue
 		}
 
-		found := false
 		if dd.Repository == "" {
-			found = true
-		} else {
-			for _, repo := range repos {
-				if urlutil.Equal(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
-					found = true
-				}
+			continue
+		}
+		for _, repo := range repos {
+			if urlutil.Equal(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
+				continue Loop
 			}
 		}
-		if !found {
-			missing = append(missing, dd.Repository)
-		}
+		missing = append(missing, dd.Repository)
 	}
 	if len(missing) > 0 {
 		return errors.Errorf("no repository definition for %s. Please add the missing repos via 'helm repo add'", strings.Join(missing, ", "))
@@ -362,7 +353,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 }
 
 // getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
-func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string, error) {
+func (m *Manager) getRepoNames(deps []*chart.Dependency) (map[string]string, error) {
 	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return nil, err
@@ -408,24 +399,22 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 		}
 	}
 	if len(missing) > 0 {
-		if len(missing) > 0 {
-			errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
-			// It is common for people to try to enter "stable" as a repository instead of the actual URL.
-			// For this case, let's give them a suggestion.
-			containsNonURL := false
-			for _, repo := range missing {
-				if !strings.Contains(repo, "//") && !strings.HasPrefix(repo, "@") && !strings.HasPrefix(repo, "alias:") {
-					containsNonURL = true
-				}
+		errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
+		// It is common for people to try to enter "stable" as a repository instead of the actual URL.
+		// For this case, let's give them a suggestion.
+		containsNonURL := false
+		for _, repo := range missing {
+			if !strings.Contains(repo, "//") && !strings.HasPrefix(repo, "@") && !strings.HasPrefix(repo, "alias:") {
+				containsNonURL = true
 			}
-			if containsNonURL {
-				errorMessage += `
+		}
+		if containsNonURL {
+			errorMessage += `
 Note that repositories must be URLs or aliases. For example, to refer to the stable
 repository, use "https://kubernetes-charts.storage.googleapis.com/" or "@stable" instead of
 "stable". Don't forget to add the repo, too ('helm repo add').`
-			}
-			return nil, errors.New(errorMessage)
 		}
+		return nil, errors.New(errorMessage)
 	}
 	return reposMap, nil
 }
@@ -596,7 +585,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 }
 
 // writeLock writes a lockfile to disk
-func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
+func writeLock(chartpath string, lock *chart.RequirementsLock) error {
 	data, err := yaml.Marshal(lock)
 	if err != nil {
 		return err
@@ -618,7 +607,7 @@ func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 		return "", err
 	}
 
-	ch, err := chartutil.LoadDir(origPath)
+	ch, err := loader.LoadDir(origPath)
 	if err != nil {
 		return "", err
 	}

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ template "alpine.fullname" . }}
+  labels:
+    # The "heritage" label is used to track which tool deployed a given chart.
+    # It is useful for admins who want to see what releases a particular tool
+    # is responsible for.
+    heritage: {{ .Release.Service }}
+    # The "release" convention makes it easy to tie a release to all of the
+    # Kubernetes resources that were created as part of that release.
+    release: {{ .Release.Name }}
+    # This makes it easy to audit chart usage.
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app: {{ template "alpine.name" . }}
+spec:
+  # This shows how to use a simple value. This will look for a passed-in value called restartPolicy.
+  restartPolicy: {{ .Values.restartPolicy }}
+  containers:
+  - name: waiter
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+    imagePullPolicy: {{ .Values.image.pullPolicy }}
+    command: ["/bin/sleep", "9000"]

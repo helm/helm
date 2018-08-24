@@ -20,13 +20,14 @@ import (
 	"runtime"
 
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	tversion "k8s.io/helm/pkg/version"
 )
 
 var (
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
-	DefaultVersionSet = NewVersionSet("v1")
+	DefaultVersionSet = allKnownVersions()
 
 	// DefaultKubeVersion is the default kubernetes version
 	DefaultKubeVersion = &version.Info{
@@ -36,6 +37,12 @@ var (
 		GoVersion:  runtime.Version(),
 		Compiler:   runtime.Compiler,
 		Platform:   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+	}
+
+	// DefaultCapabilities is the default set of capabilities.
+	DefaultCapabilities = &Capabilities{
+		APIVersions: DefaultVersionSet,
+		KubeVersion: DefaultKubeVersion,
 	}
 )
 
@@ -52,11 +59,11 @@ type Capabilities struct {
 }
 
 // VersionSet is a set of Kubernetes API versions.
-type VersionSet map[string]interface{}
+type VersionSet map[string]struct{}
 
 // NewVersionSet creates a new version set from a list of strings.
 func NewVersionSet(apiVersions ...string) VersionSet {
-	vs := VersionSet{}
+	vs := make(VersionSet)
 	for _, v := range apiVersions {
 		vs[v] = struct{}{}
 	}
@@ -69,4 +76,12 @@ func NewVersionSet(apiVersions ...string) VersionSet {
 func (v VersionSet) Has(apiVersion string) bool {
 	_, ok := v[apiVersion]
 	return ok
+}
+
+func allKnownVersions() VersionSet {
+	vs := make(VersionSet)
+	for gvk := range scheme.Scheme.AllKnownTypes() {
+		vs[gvk.GroupVersion().String()] = struct{}{}
+	}
+	return vs
 }
