@@ -44,8 +44,10 @@ const (
 	ServiceName = "service.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = "NOTES.txt"
-	// HelpersName is the name of the example NOTES.txt file.
+	// HelpersName is the name of the example helpers file.
 	HelpersName = "_helpers.tpl"
+	// ServiceTestName is the name of the example test service file.
+	ServiceTestName = "service-test.yaml"
 )
 
 const defaultValues = `# Default values for %s.
@@ -290,6 +292,26 @@ Create chart name and version as used by the chart label.
 {{- end -}}
 `
 
+const defaultServiceTest = `apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ template "<CHARTNAME>.fullname" . }}-service-test"
+  labels:
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app: {{ template "<CHARTNAME>.name" . }}
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: curl
+      image: radial/busyboxplus:curl
+      command: ['curl']
+      args:  ['{{ template "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
+`
+
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
 func CreateFrom(chartfile *chart.Metadata, dest string, src string) error {
 	schart, err := Load(src)
@@ -398,6 +420,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 			// _helpers.tpl
 			path:    filepath.Join(cdir, TemplatesDir, HelpersName),
 			content: Transform(defaultHelpers, "<CHARTNAME>", chartfile.Name),
+		},
+		{
+			// service-test.yaml
+			path:    filepath.Join(cdir, TemplatesDir, ServiceTestName),
+			content: Transform(defaultServiceTest, "<CHARTNAME>", chartfile.Name),
 		},
 	}
 

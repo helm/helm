@@ -67,7 +67,7 @@ func TestCreate(t *testing.T) {
 		}
 	}
 
-	for _, f := range []string{NotesName, DeploymentName, ServiceName, HelpersName} {
+	for _, f := range []string{NotesName, DeploymentName, ServiceName, HelpersName, ServiceTestName} {
 		if fi, err := os.Stat(filepath.Join(dir, TemplatesDir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
 		} else if fi.IsDir() {
