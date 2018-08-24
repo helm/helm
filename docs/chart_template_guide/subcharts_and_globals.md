@@ -201,7 +201,7 @@ will only accept a string literal.
 
 The Go template language provides a `block` keyword that allows developers to provide
 a default implementation which is overridden later. In Helm charts, blocks are not
-the best tool for overriding because it if multiple implementations of the same block
+the best tool for overriding because if multiple implementations of the same block
 are provided, the one selected is unpredictable.
 
 The suggestion is to instead use `include`.
