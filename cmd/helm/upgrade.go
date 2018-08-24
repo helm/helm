@@ -37,17 +37,17 @@ Required arguments are release and chart. The chart argument can be one of:
  - a packaged chart,
  - a fully qualified URL.
 
-To customize the chart values use any of
+To customize the chart values, use any of
  - '--values'/'-f' to pass in a yaml file holding settings,
  - '--set' to provide one or more key=val pairs directly,
  - '--set-string' to provide key=val forcing val to be stored as a string,
  - '--set-file' to provide key=path to read a single large value from a file at path.
 
-To edit or append to the existing customized values add the 
+To edit or append to the existing customized values, add the 
  '--reuse-values' flag, otherwise any existing customized values are ignored.
 
 If no chart value arguments are provided on the command line, any existing customized values are carried
-forward. To revert to use only values provided in the chart, use the '--reset-values' flag.
+forward. If you want to revert to just the values provided in the chart, use the '--reset-values' flag.
 
 You can specify any of the chart value flags multiple times. The priority will be given to the last
 (right-most) value specified. For example, if both myvalues.yaml and override.yaml contained a key
@@ -61,7 +61,7 @@ structure elements. Examples:
   - livenessProbe.timeoutSeconds=10
   - metrics.annotations[0]=hey,metrics.annotations[1]=ho
 
-which sets the top level key mybool to true, the nested timeoutSeconds to 10 and two array values respectively.
+which sets the top level key mybool to true, the nested timeoutSeconds to 10, and two array values, respectively.
 
 Note that the value side of the key=val provided to '--set' and '--set-string' flags will pass through
 shell evaluation followed by yaml type parsing to produce the final value. This may alter inputs with
