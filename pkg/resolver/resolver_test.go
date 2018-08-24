@@ -18,20 +18,20 @@ package resolver
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/chart"
 )
 
 func TestResolve(t *testing.T) {
 	tests := []struct {
 		name   string
-		req    *chartutil.Requirements
-		expect *chartutil.RequirementsLock
+		req    *chart.Requirements
+		expect *chart.RequirementsLock
 		err    bool
 	}{
 		{
 			name: "version failure",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
+			req: &chart.Requirements{
+				Dependencies: []*chart.Dependency{
 					{Name: "oedipus-rex", Repository: "http://example.com", Version: ">a1"},
 				},
 			},
@@ -39,8 +39,8 @@ func TestResolve(t *testing.T) {
 		},
 		{
 			name: "cache index failure",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
+			req: &chart.Requirements{
+				Dependencies: []*chart.Dependency{
 					{Name: "oedipus-rex", Repository: "http://example.com", Version: "1.0.0"},
 				},
 			},
@@ -48,8 +48,8 @@ func TestResolve(t *testing.T) {
 		},
 		{
 			name: "chart not found failure",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
+			req: &chart.Requirements{
+				Dependencies: []*chart.Dependency{
 					{Name: "redis", Repository: "http://example.com", Version: "1.0.0"},
 				},
 			},
@@ -57,8 +57,8 @@ func TestResolve(t *testing.T) {
 		},
 		{
 			name: "constraint not satisfied failure",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
+			req: &chart.Requirements{
+				Dependencies: []*chart.Dependency{
 					{Name: "alpine", Repository: "http://example.com", Version: ">=1.0.0"},
 				},
 			},
@@ -66,34 +66,34 @@ func TestResolve(t *testing.T) {
 		},
 		{
 			name: "valid lock",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
+			req: &chart.Requirements{
+				Dependencies: []*chart.Dependency{
 					{Name: "alpine", Repository: "http://example.com", Version: ">=0.1.0"},
 				},
 			},
-			expect: &chartutil.RequirementsLock{
-				Dependencies: []*chartutil.Dependency{
+			expect: &chart.RequirementsLock{
+				Dependencies: []*chart.Dependency{
 					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
 				},
 			},
 		},
 		{
 			name: "repo from valid local path",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
+			req: &chart.Requirements{
+				Dependencies: []*chart.Dependency{
 					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},
 			},
-			expect: &chartutil.RequirementsLock{
-				Dependencies: []*chartutil.Dependency{
+			expect: &chart.RequirementsLock{
+				Dependencies: []*chart.Dependency{
 					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},
 			},
 		},
 		{
 			name: "repo from invalid local path",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
+			req: &chart.Requirements{
+				Dependencies: []*chart.Dependency{
 					{Name: "notexist", Repository: "file://../testdata/notexist", Version: "0.1.0"},
 				},
 			},
@@ -147,8 +147,8 @@ func TestResolve(t *testing.T) {
 
 func TestHashReq(t *testing.T) {
 	expect := "sha256:e70e41f8922e19558a8bf62f591a8b70c8e4622e3c03e5415f09aba881f13885"
-	req := &chartutil.Requirements{
-		Dependencies: []*chartutil.Dependency{
+	req := &chart.Requirements{
+		Dependencies: []*chart.Dependency{
 			{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
 		},
 	}
@@ -160,7 +160,7 @@ func TestHashReq(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expect, h)
 	}
 
-	req = &chartutil.Requirements{Dependencies: []*chartutil.Dependency{}}
+	req = &chart.Requirements{Dependencies: []*chart.Dependency{}}
 	h, err = HashReq(req)
 	if err != nil {
 		t.Fatal(err)

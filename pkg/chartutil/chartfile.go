@@ -24,21 +24,8 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 )
-
-// APIVersionv1 is the API version number for version 1.
-const APIVersionv1 = "v1"
-
-// UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.
-func UnmarshalChartfile(data []byte) (*chart.Metadata, error) {
-	y := &chart.Metadata{}
-	err := yaml.Unmarshal(data, y)
-	if err != nil {
-		return nil, err
-	}
-	return y, nil
-}
 
 // LoadChartfile loads a Chart.yaml file into a *chart.Metadata.
 func LoadChartfile(filename string) (*chart.Metadata, error) {
@@ -46,7 +33,9 @@ func LoadChartfile(filename string) (*chart.Metadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	return UnmarshalChartfile(b)
+	y := new(chart.Metadata)
+	err = yaml.Unmarshal(b, y)
+	return y, err
 }
 
 // SaveChartfile saves the given metadata as a Chart.yaml file at the given path.
@@ -80,8 +69,8 @@ func IsChartDir(dirName string) (bool, error) {
 		return false, errors.Errorf("cannot read Chart.Yaml in directory %q", dirName)
 	}
 
-	chartContent, err := UnmarshalChartfile(chartYamlContent)
-	if err != nil {
+	chartContent := new(chart.Metadata)
+	if err := yaml.Unmarshal(chartYamlContent, &chartContent); err != nil {
 		return false, err
 	}
 	if chartContent == nil {

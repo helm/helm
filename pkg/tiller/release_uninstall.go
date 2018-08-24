@@ -132,7 +132,7 @@ func (s *ReleaseServer) deleteRelease(rel *release.Release) (kept string, errs [
 	}
 
 	manifests := relutil.SplitManifests(rel.Manifest)
-	_, files, err := sortManifests(manifests, vs, UninstallOrder)
+	_, files, err := SortManifests(manifests, vs, UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based

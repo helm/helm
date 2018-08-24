@@ -20,12 +20,13 @@ import (
 
 	"strconv"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/version"
 )
 
 func TestLoadRequirements(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
+	c, err := loader.Load("testdata/frobnitz")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -33,158 +34,89 @@ func TestLoadRequirements(t *testing.T) {
 }
 
 func TestLoadRequirementsLock(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
+	c, err := loader.Load("testdata/frobnitz")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 	verifyRequirementsLock(t, c)
 }
-func TestRequirementsTagsNonValue(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+
+func TestRequirementsEnabled(t *testing.T) {
+	tests := []struct {
+		name string
+		v    []byte
+		e    []string // expected charts including duplicates in alphanumeric order
+	}{{
+		"tags with no effect",
+		[]byte("tags:\n  nothinguseful: false\n\n"),
+		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
+	}, {
+		"tags with no effect",
+		[]byte("tags:\n  nothinguseful: false\n\n"),
+		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
+	}, {
+		"tags disabling a group",
+		[]byte("tags:\n  front-end: false\n\n"),
+		[]string{"parentchart"},
+	}, {
+		"tags disabling a group and enabling a different group",
+		[]byte("tags:\n  front-end: false\n\n  back-end: true\n"),
+		[]string{"parentchart", "subchart2", "subchartb", "subchartc"},
+	}, {
+		"tags disabling only children, children still enabled since tag front-end=true in values.yaml",
+		[]byte("tags:\n  subcharta: false\n\n  subchartb: false\n"),
+		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
+	}, {
+		"tags disabling all parents/children with additional tag re-enabling a parent",
+		[]byte("tags:\n  front-end: false\n\n  subchart1: true\n\n  back-end: false\n"),
+		[]string{"parentchart", "subchart1"},
+	}, {
+		"tags with no effect",
+		[]byte("subchart1:\n  nothinguseful: false\n\n"),
+		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
+	}, {
+		"conditions enabling the parent charts, but back-end (b, c) is still disabled via values.yaml",
+		[]byte("subchart1:\n  enabled: true\nsubchart2:\n  enabled: true\n"),
+		[]string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb"},
+	}, {
+		"conditions disabling the parent charts, effectively disabling children",
+		[]byte("subchart1:\n  enabled: false\nsubchart2:\n  enabled: false\n"),
+		[]string{"parentchart"},
+	}, {
+		"conditions a child using the second condition path of child's condition",
+		[]byte("subchart1:\n  subcharta:\n    enabled: false\n"),
+		[]string{"parentchart", "subchart1", "subchartb"},
+	}, {
+		"tags enabling a parent/child group with condition disabling one child",
+		[]byte("subchartc:\n  enabled: false\ntags:\n  back-end: true\n"),
+		[]string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb", "subchartb"},
+	}, {
+		"tags will not enable a child if parent is explicitly disabled with condition",
+		[]byte("subchart1:\n  enabled: false\ntags:\n  front-end: true\n"),
+		[]string{"parentchart"},
+	}}
+
+	for _, tc := range tests {
+		c, err := loader.Load("testdata/subpop")
+		if err != nil {
+			t.Fatalf("Failed to load testdata: %s", err)
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			verifyRequirementsEnabled(t, c, tc.v, tc.e)
+		})
 	}
-	// tags with no effect
-	v := []byte("tags:\n  nothinguseful: false\n\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1", "subcharta", "subchartb"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsTagsDisabledL1(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// tags disabling a group
-	v := []byte("tags:\n  front-end: false\n\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsTagsEnabledL1(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// tags disabling a group and enabling a different group
-	v := []byte("tags:\n  front-end: false\n\n  back-end: true\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart2", "subchartb", "subchartc"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-
-func TestRequirementsTagsDisabledL2(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// tags disabling only children, children still enabled since tag front-end=true in values.yaml
-	v := []byte("tags:\n  subcharta: false\n\n  subchartb: false\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1", "subcharta", "subchartb"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsTagsDisabledL1Mixed(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// tags disabling all parents/children with additional tag re-enabling a parent
-	v := []byte("tags:\n  front-end: false\n\n  subchart1: true\n\n  back-end: false\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsConditionsNonValue(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// tags with no effect
-	v := []byte("subchart1:\n  nothinguseful: false\n\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1", "subcharta", "subchartb"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsConditionsEnabledL1Both(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// conditions enabling the parent charts, but back-end (b, c) is still disabled via values.yaml
-	v := []byte("subchart1:\n  enabled: true\nsubchart2:\n  enabled: true\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsConditionsDisabledL1Both(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// conditions disabling the parent charts, effectively disabling children
-	v := []byte("subchart1:\n  enabled: false\nsubchart2:\n  enabled: false\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-
-func TestRequirementsConditionsSecond(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// conditions a child using the second condition path of child's condition
-	v := []byte("subchart1:\n  subcharta:\n    enabled: false\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1", "subchartb"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsCombinedDisabledL2(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// tags enabling a parent/child group with condition disabling one child
-	v := []byte("subchartc:\n  enabled: false\ntags:\n  back-end: true\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb", "subchartb"}
-
-	verifyRequirementsEnabled(t, c, v, e)
-}
-func TestRequirementsCombinedDisabledL1(t *testing.T) {
-	c, err := Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-	// tags will not enable a child if parent is explicitly disabled with condition
-	v := []byte("subchart1:\n  enabled: false\ntags:\n  front-end: true\n")
-	// expected charts including duplicates in alphanumeric order
-	e := []string{"parentchart"}
-
-	verifyRequirementsEnabled(t, c, v, e)
 }
 
 func verifyRequirementsEnabled(t *testing.T, c *chart.Chart, v []byte, e []string) {
-	out := []*chart.Chart{}
-	err := ProcessRequirementsEnabled(c, v)
-	if err != nil {
+	if err := ProcessRequirementsEnabled(c, v); err != nil {
 		t.Errorf("Error processing enabled requirements %v", err)
 	}
-	out = extractCharts(c, out)
+
+	out := extractCharts(c, nil)
 	// build list of chart names
-	p := []string{}
+	var p []string
 	for _, r := range out {
-		p = append(p, r.Metadata.Name)
+		p = append(p, r.Name())
 	}
 	//sort alphanumeric and compare to expectations
 	sort.Strings(p)
@@ -201,22 +133,20 @@ func verifyRequirementsEnabled(t *testing.T, c *chart.Chart, v []byte, e []strin
 
 // extractCharts recursively searches chart dependencies returning all charts found
 func extractCharts(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
-
-	if len(c.Metadata.Name) > 0 {
+	if len(c.Name()) > 0 {
 		out = append(out, c)
 	}
-	for _, d := range c.Dependencies {
+	for _, d := range c.Dependencies() {
 		out = extractCharts(d, out)
 	}
 	return out
 }
+
 func TestProcessRequirementsImportValues(t *testing.T) {
-	c, err := Load("testdata/subpop")
+	c, err := loader.Load("testdata/subpop")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-
-	v := []byte{}
 
 	e := make(map[string]string)
 
@@ -279,17 +209,16 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	verifyRequirementsImportValues(t, c, v, e)
+	verifyRequirementsImportValues(t, c, e)
 }
-func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v []byte, e map[string]string) {
 
-	err := ProcessRequirementsImportValues(c)
-	if err != nil {
-		t.Errorf("Error processing import values requirements %v", err)
+func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, e map[string]string) {
+	if err := ProcessRequirementsImportValues(c); err != nil {
+		t.Fatalf("Error processing import values requirements %v", err)
 	}
 	cc, err := ReadValues(c.Values)
 	if err != nil {
-		t.Errorf("Error reading import values %v", err)
+		t.Fatalf("Error reading import values %v", err)
 	}
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
@@ -317,182 +246,203 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v []byte, e ma
 				return
 			}
 		}
-
 	}
 }
 
 func TestGetAliasDependency(t *testing.T) {
-	c, err := Load("testdata/frobnitz")
+	c, err := loader.Load("testdata/frobnitz")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	req, err := LoadRequirements(c)
-	if err != nil {
-		t.Fatalf("Failed to load requirement for testdata: %s", err)
-	}
+
+	req := c.Requirements
+
 	if len(req.Dependencies) == 0 {
 		t.Fatalf("There are no requirements to test")
 	}
 
 	// Success case
-	aliasChart := getAliasDependency(c.Dependencies, req.Dependencies[0])
+	aliasChart := getAliasDependency(c.Dependencies(), req.Dependencies[0])
 	if aliasChart == nil {
 		t.Fatalf("Failed to get dependency chart for alias %s", req.Dependencies[0].Name)
 	}
 	if req.Dependencies[0].Alias != "" {
-		if aliasChart.Metadata.Name != req.Dependencies[0].Alias {
-			t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Alias, aliasChart.Metadata.Name)
+		if aliasChart.Name() != req.Dependencies[0].Alias {
+			t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Alias, aliasChart.Name())
 		}
-	} else if aliasChart.Metadata.Name != req.Dependencies[0].Name {
-		t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Name, aliasChart.Metadata.Name)
+	} else if aliasChart.Name() != req.Dependencies[0].Name {
+		t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Name, aliasChart.Name())
 	}
 
 	if req.Dependencies[0].Version != "" {
 		if !version.IsCompatibleRange(req.Dependencies[0].Version, aliasChart.Metadata.Version) {
 			t.Fatalf("Dependency chart version is not in the compatible range")
 		}
-
 	}
 
 	// Failure case
 	req.Dependencies[0].Name = "something-else"
-	if aliasChart := getAliasDependency(c.Dependencies, req.Dependencies[0]); aliasChart != nil {
-		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
+	if aliasChart := getAliasDependency(c.Dependencies(), req.Dependencies[0]); aliasChart != nil {
+		t.Fatalf("expected no chart but got %s", aliasChart.Name())
 	}
 
 	req.Dependencies[0].Version = "something else which is not in the compatible range"
 	if version.IsCompatibleRange(req.Dependencies[0].Version, aliasChart.Metadata.Version) {
 		t.Fatalf("Dependency chart version which is not in the compatible range should cause a failure other than a success ")
 	}
-
 }
 
 func TestDependentChartAliases(t *testing.T) {
-	c, err := Load("testdata/dependent-chart-alias")
+	c, err := loader.Load("testdata/dependent-chart-alias")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	if len(c.Dependencies) == 0 {
+	if len(c.Dependencies()) == 0 {
 		t.Fatal("There are no dependencies to run this test")
 	}
 
-	origLength := len(c.Dependencies)
+	origLength := len(c.Dependencies())
 	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
-	if len(c.Dependencies) == origLength {
+	if len(c.Dependencies()) == origLength {
 		t.Fatal("Expected alias dependencies to be added, but did not got that")
 	}
 
-	reqmts, err := LoadRequirements(c)
-	if err != nil {
-		t.Fatalf("Cannot load requirements for test chart, %v", err)
+	if len(c.Dependencies()) != len(c.Requirements.Dependencies) {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Requirements.Dependencies), len(c.Dependencies()))
 	}
-
-	if len(c.Dependencies) != len(reqmts.Dependencies) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(reqmts.Dependencies), len(c.Dependencies))
-	}
-
 }
 
 func TestDependentChartWithSubChartsAbsentInRequirements(t *testing.T) {
-	c, err := Load("testdata/dependent-chart-no-requirements-yaml")
+	c, err := loader.Load("testdata/dependent-chart-no-requirements-yaml")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	if len(c.Dependencies) != 2 {
-		t.Fatalf("Expected 2 dependencies for this chart, but got %d", len(c.Dependencies))
+	if len(c.Dependencies()) != 2 {
+		t.Fatalf("Expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	origLength := len(c.Dependencies)
+	origLength := len(c.Dependencies())
 	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
-	if len(c.Dependencies) != origLength {
+	if len(c.Dependencies()) != origLength {
 		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
 	}
-
 }
 
 func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
-	if _, err := Load("testdata/dependent-chart-helmignore"); err != nil {
+	if _, err := loader.Load("testdata/dependent-chart-helmignore"); err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 }
 
 func TestDependentChartsWithSubChartsSymlink(t *testing.T) {
-	c, err := Load("testdata/joonix")
+	c, err := loader.Load("testdata/joonix")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	if c.Metadata.Name != "joonix" {
-		t.Fatalf("Unexpected chart name: %s", c.Metadata.Name)
+	if c.Name() != "joonix" {
+		t.Fatalf("Unexpected chart name: %s", c.Name())
 	}
-	if n := len(c.Dependencies); n != 1 {
+	if n := len(c.Dependencies()); n != 1 {
 		t.Fatalf("Expected 1 dependency for this chart, but got %d", n)
 	}
 }
 
 func TestDependentChartsWithSubchartsAllSpecifiedInRequirements(t *testing.T) {
-	c, err := Load("testdata/dependent-chart-with-all-in-requirements-yaml")
+	c, err := loader.Load("testdata/dependent-chart-with-all-in-requirements-yaml")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	if len(c.Dependencies) == 0 {
+	if len(c.Dependencies()) == 0 {
 		t.Fatal("There are no dependencies to run this test")
 	}
 
-	origLength := len(c.Dependencies)
+	origLength := len(c.Dependencies())
 	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
-	if len(c.Dependencies) != origLength {
+	if len(c.Dependencies()) != origLength {
 		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
 	}
 
-	reqmts, err := LoadRequirements(c)
-	if err != nil {
-		t.Fatalf("Cannot load requirements for test chart, %v", err)
+	if len(c.Dependencies()) != len(c.Requirements.Dependencies) {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Requirements.Dependencies), len(c.Dependencies()))
 	}
-
-	if len(c.Dependencies) != len(reqmts.Dependencies) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(reqmts.Dependencies), len(c.Dependencies))
-	}
-
 }
 
 func TestDependentChartsWithSomeSubchartsSpecifiedInRequirements(t *testing.T) {
-	c, err := Load("testdata/dependent-chart-with-mixed-requirements-yaml")
+	c, err := loader.Load("testdata/dependent-chart-with-mixed-requirements-yaml")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	if len(c.Dependencies) == 0 {
+	if len(c.Dependencies()) == 0 {
 		t.Fatal("There are no dependencies to run this test")
 	}
 
-	origLength := len(c.Dependencies)
+	origLength := len(c.Dependencies())
 	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
-	if len(c.Dependencies) != origLength {
+	if len(c.Dependencies()) != origLength {
 		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
 	}
 
-	reqmts, err := LoadRequirements(c)
-	if err != nil {
-		t.Fatalf("Cannot load requirements for test chart, %v", err)
+	if len(c.Dependencies()) <= len(c.Requirements.Dependencies) {
+		t.Fatalf("Expected more dependencies than specified in requirements.yaml(%d), but got %d", len(c.Requirements.Dependencies), len(c.Dependencies()))
 	}
+}
 
-	if len(c.Dependencies) <= len(reqmts.Dependencies) {
-		t.Fatalf("Expected more dependencies than specified in requirements.yaml(%d), but got %d", len(reqmts.Dependencies), len(c.Dependencies))
+func verifyRequirements(t *testing.T, c *chart.Chart) {
+	if len(c.Requirements.Dependencies) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(c.Requirements.Dependencies))
 	}
+	tests := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+	}
+	for i, tt := range tests {
+		d := c.Requirements.Dependencies[i]
+		if d.Name != tt.Name {
+			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
+		}
+		if d.Version != tt.Version {
+			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
+		}
+		if d.Repository != tt.Repository {
+			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
+		}
+	}
+}
 
+func verifyRequirementsLock(t *testing.T, c *chart.Chart) {
+	if len(c.Requirements.Dependencies) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(c.Requirements.Dependencies))
+	}
+	tests := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+	}
+	for i, tt := range tests {
+		d := c.Requirements.Dependencies[i]
+		if d.Name != tt.Name {
+			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
+		}
+		if d.Version != tt.Version {
+			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
+		}
+		if d.Repository != tt.Repository {
+			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
+		}
+	}
 }

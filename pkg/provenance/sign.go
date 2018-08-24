@@ -31,8 +31,8 @@ import (
 	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/packet"
 
-	"k8s.io/helm/pkg/chartutil"
-	hapi "k8s.io/helm/pkg/hapi/chart"
+	hapi "k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 )
 
 var defaultPGPConfig = packet.Config{
@@ -317,7 +317,7 @@ func messageBlock(chartpath string) (*bytes.Buffer, error) {
 	}
 
 	// Load the archive into memory.
-	chart, err := chartutil.LoadFile(chartpath)
+	chart, err := loader.LoadFile(chartpath)
 	if err != nil {
 		return b, err
 	}

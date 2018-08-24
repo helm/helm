@@ -16,7 +16,7 @@ limitations under the License.
 package hapi
 
 import (
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/hapi/release"
 )
 

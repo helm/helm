@@ -66,16 +66,16 @@ func (s *ReleaseServer) prepareRelease(req *hapi.InstallReleaseRequest) (*releas
 	}
 
 	revision := 1
-	ts := time.Now()
 	options := chartutil.ReleaseOptions{
 		Name:      name,
 		IsInstall: true,
 	}
-	valuesToRender, err := chartutil.ToRenderValuesCaps(req.Chart, req.Values, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(req.Chart, req.Values, options, caps)
 	if err != nil {
 		return nil, err
 	}
 
+	ts := time.Now()
 	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
 	if err != nil {
 		// Return a release with partial data so that client can show debugging

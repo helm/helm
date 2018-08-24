@@ -30,10 +30,11 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 )
@@ -129,7 +130,7 @@ func (o *packageOptions) run(out io.Writer) error {
 		}
 	}
 
-	ch, err := chartutil.LoadDir(path)
+	ch, err := loader.LoadDir(path)
 	if err != nil {
 		return err
 	}
@@ -161,16 +162,12 @@ func (o *packageOptions) run(out io.Writer) error {
 		debug("Setting appVersion to %s", o.appVersion)
 	}
 
-	if filepath.Base(path) != ch.Metadata.Name {
-		return errors.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Metadata.Name)
+	if filepath.Base(path) != ch.Name() {
+		return errors.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Name())
 	}
 
-	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
+	if reqs := ch.Requirements; reqs != nil {
 		if err := checkDependencies(ch, reqs); err != nil {
-			return err
-		}
-	} else {
-		if err != chartutil.ErrRequirementsNotFound {
 			return err
 		}
 	}

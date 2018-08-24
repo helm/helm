@@ -31,12 +31,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller"
-	tversion "k8s.io/helm/pkg/version"
 )
 
 const defaultDirectoryPermission = 0755
@@ -152,17 +152,15 @@ func (o *templateOptions) run(out io.Writer) error {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	c, err := chartutil.Load(o.chartPath)
+	c, err := loader.Load(o.chartPath)
 	if err != nil {
 		return err
 	}
 
-	if req, err := chartutil.LoadRequirements(c); err == nil {
+	if req := c.Requirements; req != nil {
 		if err := checkDependencies(c, req); err != nil {
 			return err
 		}
-	} else if err != chartutil.ErrRequirementsNotFound {
-		return errors.Wrap(err, "cannot load requirements")
 	}
 	options := chartutil.ReleaseOptions{
 		Name: o.releaseName,
@@ -178,22 +176,18 @@ func (o *templateOptions) run(out io.Writer) error {
 	// Set up engine.
 	renderer := engine.New()
 
-	caps := &chartutil.Capabilities{
-		APIVersions: chartutil.DefaultVersionSet,
-		KubeVersion: chartutil.DefaultKubeVersion,
-		HelmVersion: tversion.GetBuildInfo(),
-	}
-
 	// kubernetes version
 	kv, err := semver.NewVersion(o.kubeVersion)
 	if err != nil {
 		return errors.Wrap(err, "could not parse a kubernetes version")
 	}
+
+	caps := chartutil.DefaultCapabilities
 	caps.KubeVersion.Major = fmt.Sprint(kv.Major())
 	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
 	caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
 
-	vals, err := chartutil.ToRenderValuesCaps(c, config, options, caps)
+	vals, err := chartutil.ToRenderValues(c, config, options, caps)
 	if err != nil {
 		return err
 	}

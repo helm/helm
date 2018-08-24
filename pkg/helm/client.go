@@ -17,13 +17,13 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/tiller"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // Client manages client side of the Helm-Tiller protocol.
@@ -39,8 +39,7 @@ func NewClient(opts ...Option) *Client {
 }
 
 func (c *Client) init() *Client {
-	env := environment.New()
-	c.tiller = tiller.NewReleaseServer(env, c.opts.discovery, c.opts.kubeClient)
+	c.tiller = tiller.NewReleaseServer(c.opts.discovery, c.opts.kubeClient)
 	c.tiller.Releases = storage.Init(c.opts.driver)
 	return c
 }
@@ -69,7 +68,7 @@ func (c *Client) ListReleases(opts ...ReleaseListOption) ([]*release.Release, er
 // InstallRelease loads a chart from chstr, installs it, and returns the release response.
 func (c *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*release.Release, error) {
 	// load the chart to install
-	chart, err := chartutil.Load(chstr)
+	chart, err := loader.Load(chstr)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +135,7 @@ func (c *Client) UninstallRelease(rlsName string, opts ...UninstallOption) (*hap
 // UpdateRelease loads a chart from chstr and updates a release to a new/different chart.
 func (c *Client) UpdateRelease(rlsName, chstr string, opts ...UpdateOption) (*release.Release, error) {
 	// load the chart to update
-	chart, err := chartutil.Load(chstr)
+	chart, err := loader.Load(chstr)
 	if err != nil {
 		return nil, err
 	}

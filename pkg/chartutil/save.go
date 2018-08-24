@@ -27,7 +27,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
@@ -35,7 +35,7 @@ var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 // SaveDir saves a chart as files in a directory.
 func SaveDir(c *chart.Chart, dest string) error {
 	// Create the chart directory
-	outdir := filepath.Join(dest, c.Metadata.Name)
+	outdir := filepath.Join(dest, c.Name())
 	if err := os.Mkdir(outdir, 0755); err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 
 	// Save dependencies
 	base := filepath.Join(outdir, ChartsDir)
-	for _, dep := range c.Dependencies {
+	for _, dep := range c.Dependencies() {
 		// Here, we write each dependency as a tar file.
 		if _, err := Save(dep, base); err != nil {
 			return err
@@ -158,7 +158,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 }
 
 func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
-	base := filepath.Join(prefix, c.Metadata.Name)
+	base := filepath.Join(prefix, c.Name())
 
 	// Save Chart.yaml
 	cdata, err := yaml.Marshal(c.Metadata)
@@ -193,7 +193,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 
 	// Save dependencies
-	for _, dep := range c.Dependencies {
+	for _, dep := range c.Dependencies() {
 		if err := writeTarContents(out, dep, base+"/charts"); err != nil {
 			return err
 		}
@@ -212,8 +212,6 @@ func writeToTar(out *tar.Writer, name string, body []byte) error {
 	if err := out.WriteHeader(h); err != nil {
 		return err
 	}
-	if _, err := out.Write(body); err != nil {
-		return err
-	}
-	return nil
+	_, err := out.Write(body)
+	return err
 }

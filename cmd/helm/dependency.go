@@ -26,7 +26,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 )
 
 const dependencyDesc = `
@@ -130,27 +131,23 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *dependencyLisOptions) run(out io.Writer) error {
-	c, err := chartutil.Load(o.chartpath)
+	c, err := loader.Load(o.chartpath)
 	if err != nil {
 		return err
 	}
 
-	r, err := chartutil.LoadRequirements(c)
-	if err != nil {
-		if err == chartutil.ErrRequirementsNotFound {
-			fmt.Fprintf(out, "WARNING: no requirements at %s/charts\n", o.chartpath)
-			return nil
-		}
-		return err
+	if c.Requirements == nil {
+		fmt.Fprintf(out, "WARNING: no requirements at %s/charts\n", o.chartpath)
+		return nil
 	}
 
-	o.printRequirements(out, r)
+	o.printRequirements(out, c.Requirements)
 	fmt.Fprintln(out)
-	o.printMissing(out, r)
+	o.printMissing(out, c.Requirements)
 	return nil
 }
 
-func (o *dependencyLisOptions) dependencyStatus(dep *chartutil.Dependency) string {
+func (o *dependencyLisOptions) dependencyStatus(dep *chart.Dependency) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 	archives, err := filepath.Glob(filepath.Join(o.chartpath, "charts", filename))
 	if err != nil {
@@ -160,11 +157,11 @@ func (o *dependencyLisOptions) dependencyStatus(dep *chartutil.Dependency) strin
 	} else if len(archives) == 1 {
 		archive := archives[0]
 		if _, err := os.Stat(archive); err == nil {
-			c, err := chartutil.Load(archive)
+			c, err := loader.Load(archive)
 			if err != nil {
 				return "corrupt"
 			}
-			if c.Metadata.Name != dep.Name {
+			if c.Name() != dep.Name {
 				return "misnamed"
 			}
 
@@ -195,12 +192,12 @@ func (o *dependencyLisOptions) dependencyStatus(dep *chartutil.Dependency) strin
 		return "mispackaged"
 	}
 
-	c, err := chartutil.Load(folder)
+	c, err := loader.Load(folder)
 	if err != nil {
 		return "corrupt"
 	}
 
-	if c.Metadata.Name != dep.Name {
+	if c.Name() != dep.Name {
 		return "misnamed"
 	}
 
@@ -225,7 +222,7 @@ func (o *dependencyLisOptions) dependencyStatus(dep *chartutil.Dependency) strin
 }
 
 // printRequirements prints all of the requirements in the yaml file.
-func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs *chartutil.Requirements) {
+func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs *chart.Requirements) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
@@ -236,7 +233,7 @@ func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs *chartutil.
 }
 
 // printMissing prints warnings about charts that are present on disk, but are not in the requirements.
-func (o *dependencyLisOptions) printMissing(out io.Writer, reqs *chartutil.Requirements) {
+func (o *dependencyLisOptions) printMissing(out io.Writer, reqs *chart.Requirements) {
 	folder := filepath.Join(o.chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {
@@ -253,14 +250,14 @@ func (o *dependencyLisOptions) printMissing(out io.Writer, reqs *chartutil.Requi
 		if !fi.IsDir() && filepath.Ext(f) != ".tgz" {
 			continue
 		}
-		c, err := chartutil.Load(f)
+		c, err := loader.Load(f)
 		if err != nil {
 			fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
 			continue
 		}
 		found := false
 		for _, d := range reqs.Dependencies {
-			if d.Name == c.Metadata.Name {
+			if d.Name == c.Name() {
 				found = true
 				break
 			}

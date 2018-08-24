@@ -19,7 +19,7 @@ package chartutil
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 const testfile = "testdata/chartfiletest.yaml"
@@ -40,8 +40,8 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	}
 
 	// Api instead of API because it was generated via protobuf.
-	if f.APIVersion != APIVersionv1 {
-		t.Errorf("Expected API Version %q, got %q", APIVersionv1, f.APIVersion)
+	if f.APIVersion != chart.APIVersionv1 {
+		t.Errorf("Expected API Version %q, got %q", chart.APIVersionv1, f.APIVersion)
 	}
 
 	if f.Name != name {

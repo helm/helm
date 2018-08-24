@@ -26,7 +26,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gobwas/glob"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 // Files is a map of files in a chart that can be accessed from a template.
@@ -35,7 +35,7 @@ type Files map[string][]byte
 // NewFiles creates a new Files from chart files.
 // Given an []*any.Any (the format for files in a chart.Chart), extract a map of files.
 func NewFiles(from []*chart.File) Files {
-	files := map[string][]byte{}
+	files := make(map[string][]byte)
 	for _, f := range from {
 		files[f.Name] = f.Data
 	}
@@ -50,11 +50,10 @@ func NewFiles(from []*chart.File) Files {
 // This is intended to be accessed from within a template, so a missed key returns
 // an empty []byte.
 func (f Files) GetBytes(name string) []byte {
-	v, ok := f[name]
-	if !ok {
-		return []byte{}
+	if v, ok := f[name]; ok {
+		return v
 	}
-	return v
+	return []byte{}
 }
 
 // Get returns a string representation of the given file.
@@ -97,7 +96,7 @@ func (f Files) Glob(pattern string) Files {
 // (regardless of path) should be unique.
 //
 // This is designed to be called from a template, and will return empty string
-// (via ToYaml function) if it cannot be serialized to YAML, or if the Files
+// (via ToYAML function) if it cannot be serialized to YAML, or if the Files
 // object is nil.
 //
 // The output will not be indented, so you will want to pipe this to the
@@ -110,14 +109,14 @@ func (f Files) AsConfig() string {
 		return ""
 	}
 
-	m := map[string]string{}
+	m := make(map[string]string)
 
 	// Explicitly convert to strings, and file names
 	for k, v := range f {
 		m[path.Base(k)] = string(v)
 	}
 
-	return ToYaml(m)
+	return ToYAML(m)
 }
 
 // AsSecrets returns the base64-encoded value of a Files object suitable for
@@ -126,7 +125,7 @@ func (f Files) AsConfig() string {
 // (regardless of path) should be unique.
 //
 // This is designed to be called from a template, and will return empty string
-// (via ToYaml function) if it cannot be serialized to YAML, or if the Files
+// (via ToYAML function) if it cannot be serialized to YAML, or if the Files
 // object is nil.
 //
 // The output will not be indented, so you will want to pipe this to the
@@ -139,13 +138,13 @@ func (f Files) AsSecrets() string {
 		return ""
 	}
 
-	m := map[string]string{}
+	m := make(map[string]string)
 
 	for k, v := range f {
 		m[path.Base(k)] = base64.StdEncoding.EncodeToString(v)
 	}
 
-	return ToYaml(m)
+	return ToYAML(m)
 }
 
 // Lines returns each line of a named file (split by "\n") as a slice, so it can
@@ -163,11 +162,11 @@ func (f Files) Lines(path string) []string {
 	return strings.Split(string(f[path]), "\n")
 }
 
-// ToYaml takes an interface, marshals it to yaml, and returns a string. It will
+// ToYAML takes an interface, marshals it to yaml, and returns a string. It will
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func ToYaml(v interface{}) string {
+func ToYAML(v interface{}) string {
 	data, err := yaml.Marshal(v)
 	if err != nil {
 		// Swallow errors inside of a template.
@@ -176,13 +175,13 @@ func ToYaml(v interface{}) string {
 	return strings.TrimSuffix(string(data), "\n")
 }
 
-// FromYaml converts a YAML document into a map[string]interface{}.
+// FromYAML converts a YAML document into a map[string]interface{}.
 //
 // This is not a general-purpose YAML parser, and will not parse all valid
 // YAML documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
 // m["Error"] in the returned map.
-func FromYaml(str string) map[string]interface{} {
+func FromYAML(str string) map[string]interface{} {
 	m := map[string]interface{}{}
 
 	if err := yaml.Unmarshal([]byte(str), &m); err != nil {
@@ -191,11 +190,11 @@ func FromYaml(str string) map[string]interface{} {
 	return m
 }
 
-// ToToml takes an interface, marshals it to toml, and returns a string. It will
+// ToTOML takes an interface, marshals it to toml, and returns a string. It will
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func ToToml(v interface{}) string {
+func ToTOML(v interface{}) string {
 	b := bytes.NewBuffer(nil)
 	e := toml.NewEncoder(b)
 	err := e.Encode(v)
@@ -205,11 +204,11 @@ func ToToml(v interface{}) string {
 	return b.String()
 }
 
-// ToJson takes an interface, marshals it to json, and returns a string. It will
+// ToJSON takes an interface, marshals it to json, and returns a string. It will
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func ToJson(v interface{}) string {
+func ToJSON(v interface{}) string {
 	data, err := json.Marshal(v)
 	if err != nil {
 		// Swallow errors inside of a template.
@@ -218,14 +217,14 @@ func ToJson(v interface{}) string {
 	return string(data)
 }
 
-// FromJson converts a JSON document into a map[string]interface{}.
+// FromJSON converts a JSON document into a map[string]interface{}.
 //
 // This is not a general-purpose JSON parser, and will not parse all valid
 // JSON documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
 // m["Error"] in the returned map.
-func FromJson(str string) map[string]interface{} {
-	m := map[string]interface{}{}
+func FromJSON(str string) map[string]interface{} {
+	m := make(map[string]interface{})
 
 	if err := json.Unmarshal([]byte(str), &m); err != nil {
 		m["Error"] = err.Error()

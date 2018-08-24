@@ -27,8 +27,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/helm/environment"
 )
 

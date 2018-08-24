@@ -34,7 +34,7 @@ func TestGetReleaseContent(t *testing.T) {
 		t.Errorf("Error getting release content: %s", err)
 	}
 
-	if res.Chart.Metadata.Name != rel.Chart.Metadata.Name {
-		t.Errorf("Expected %q, got %q", rel.Chart.Metadata.Name, res.Chart.Metadata.Name)
+	if res.Chart.Name() != rel.Chart.Name() {
+		t.Errorf("Expected %q, got %q", rel.Chart.Name(), res.Chart.Name())
 	}
 }

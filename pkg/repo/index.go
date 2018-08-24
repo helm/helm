@@ -30,8 +30,8 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/urlutil"
 )
@@ -251,7 +251,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 			parentURL = filepath.Join(baseURL, parentDir)
 		}
 
-		c, err := chartutil.Load(arch)
+		c, err := loader.Load(arch)
 		if err != nil {
 			// Assume this is not a chart.
 			continue

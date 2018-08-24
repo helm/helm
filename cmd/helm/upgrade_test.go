@@ -19,8 +19,9 @@ package main
 import (
 	"testing"
 
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 )
@@ -36,7 +37,7 @@ func TestUpgradeCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating chart for upgrade: %v", err)
 	}
-	ch, err := chartutil.Load(chartPath)
+	ch, err := loader.Load(chartPath)
 	if err != nil {
 		t.Fatalf("Error loading chart: %v", err)
 	}
@@ -56,7 +57,7 @@ func TestUpgradeCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating chart: %v", err)
 	}
-	ch, err = chartutil.Load(chartPath)
+	ch, err = loader.Load(chartPath)
 	if err != nil {
 		t.Fatalf("Error loading updated chart: %v", err)
 	}
@@ -73,7 +74,7 @@ func TestUpgradeCmd(t *testing.T) {
 		t.Fatalf("Error creating chart: %v", err)
 	}
 	var ch2 *chart.Chart
-	ch2, err = chartutil.Load(chartPath)
+	ch2, err = loader.Load(chartPath)
 	if err != nil {
 		t.Fatalf("Error loading updated chart: %v", err)
 	}

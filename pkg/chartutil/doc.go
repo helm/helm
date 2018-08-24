@@ -16,7 +16,7 @@ limitations under the License.
 
 /*Package chartutil contains tools for working with charts.
 
-Charts are described in the protocol buffer definition (pkg/proto/hapi/charts).
+Charts are described in the protocol buffer definition (pkg/proto/charts).
 This packe provides utilities for serializing and deserializing charts.
 
 A chart can be represented on the file system in one of two ways:
@@ -27,18 +27,18 @@ A chart can be represented on the file system in one of two ways:
 
 This package provides utilitites for working with those file formats.
 
-The preferred way of loading a chart is using 'chartutil.Load`:
+The preferred way of loading a chart is using 'loader.Load`:
 
-	chart, err := chartutil.Load(filename)
+	chart, err := loader.Load(filename)
 
 This will attempt to discover whether the file at 'filename' is a directory or
 a chart archive. It will then load accordingly.
 
 For accepting raw compressed tar file data from an io.Reader, the
-'chartutil.LoadArchive()' will read in the data, uncompress it, and unpack it
+'loader.LoadArchive()' will read in the data, uncompress it, and unpack it
 into a Chart.
 
-When creating charts in memory, use the 'k8s.io/helm/pkg/proto/hapi/chart'
+When creating charts in memory, use the 'k8s.io/helm/pkg/proto/chart'
 package directly.
 */
 package chartutil // import "k8s.io/helm/pkg/chartutil"

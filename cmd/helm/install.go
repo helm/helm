@@ -28,10 +28,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 )
@@ -176,12 +176,12 @@ func (o *installOptions) run(out io.Writer) error {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	chartRequested, err := chartutil.Load(o.chartPath)
+	chartRequested, err := loader.Load(o.chartPath)
 	if err != nil {
 		return err
 	}
 
-	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
+	if req := chartRequested.Requirements; req != nil {
 		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/kubernetes/helm/issues/2209
@@ -203,8 +203,6 @@ func (o *installOptions) run(out io.Writer) error {
 			}
 
 		}
-	} else if err != chartutil.ErrRequirementsNotFound {
-		return errors.Wrap(err, "cannot load requirements")
 	}
 
 	rel, err := o.client.InstallReleaseFromChart(
@@ -272,7 +270,6 @@ func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
 	if rel == nil {
 		return
 	}
-	// TODO: Switch to text/template like everything else.
 	fmt.Fprintf(out, "NAME:   %s\n", rel.Name)
 	if settings.Debug {
 		printRelease(out, rel)
@@ -286,27 +283,20 @@ func generateName(nameTemplate string) (string, error) {
 	}
 	var b bytes.Buffer
 	err = t.Execute(&b, nil)
-	if err != nil {
-		return "", err
-	}
-	return b.String(), nil
+	return b.String(), err
 }
 
-func checkDependencies(ch *chart.Chart, reqs *chartutil.Requirements) error {
-	missing := []string{}
+func checkDependencies(ch *chart.Chart, reqs *chart.Requirements) error {
+	var missing []string
 
-	deps := ch.Dependencies
+OUTER:
 	for _, r := range reqs.Dependencies {
-		found := false
-		for _, d := range deps {
-			if d.Metadata.Name == r.Name {
-				found = true
-				break
+		for _, d := range ch.Dependencies() {
+			if d.Name() == r.Name {
+				continue OUTER
 			}
 		}
-		if !found {
-			missing = append(missing, r.Name)
-		}
+		missing = append(missing, r.Name)
 	}
 
 	if len(missing) > 0 {

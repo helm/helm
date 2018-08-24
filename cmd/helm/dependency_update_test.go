@@ -26,9 +26,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
@@ -88,8 +87,8 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	// Now change the dependencies and update. This verifies that on update,
 	// old dependencies are cleansed and new dependencies are added.
-	reqfile := &chartutil.Requirements{
-		Dependencies: []*chartutil.Dependency{
+	reqfile := &chart.Requirements{
+		Dependencies: []*chart.Dependency{
 			{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
 			{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 		},
@@ -170,7 +169,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	o := &dependencyUpdateOptions{}
-	o.helmhome = helmpath.Home(hh)
+	o.helmhome = hh
 	o.chartpath = hh.Path(chartname)
 
 	if err := o.run(out); err != nil {
@@ -223,8 +222,8 @@ func createTestingChart(dest, name, baseURL string) error {
 	if err != nil {
 		return err
 	}
-	req := &chartutil.Requirements{
-		Dependencies: []*chartutil.Dependency{
+	req := &chart.Requirements{
+		Dependencies: []*chart.Dependency{
 			{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
 			{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
 		},
@@ -232,7 +231,7 @@ func createTestingChart(dest, name, baseURL string) error {
 	return writeRequirements(dir, req)
 }
 
-func writeRequirements(dir string, req *chartutil.Requirements) error {
+func writeRequirements(dir string, req *chart.Requirements) error {
 	data, err := yaml.Marshal(req)
 	if err != nil {
 		return err

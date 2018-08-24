@@ -21,10 +21,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 )
 
 const (
@@ -294,7 +296,7 @@ Create chart name and version as used by the chart label.
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
-	schart, err := Load(src)
+	schart, err := loader.Load(src)
 	if err != nil {
 		return errors.Wrapf(err, "could not load %s", src)
 	}
@@ -304,12 +306,12 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	var updatedTemplates []*chart.File
 
 	for _, template := range schart.Templates {
-		newData := Transform(string(template.Data), "<CHARTNAME>", schart.Metadata.Name)
+		newData := transform(string(template.Data), schart.Name())
 		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates
-	schart.Values = Transform(string(schart.Values), "<CHARTNAME>", schart.Metadata.Name)
+	schart.Values = transform(string(schart.Values), schart.Name())
 
 	return SaveDir(schart, dest)
 }
@@ -378,27 +380,27 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		{
 			// ingress.yaml
 			path:    filepath.Join(cdir, TemplatesDir, IngressFileName),
-			content: Transform(defaultIngress, "<CHARTNAME>", chartfile.Name),
+			content: transform(defaultIngress, chartfile.Name),
 		},
 		{
 			// deployment.yaml
 			path:    filepath.Join(cdir, TemplatesDir, DeploymentName),
-			content: Transform(defaultDeployment, "<CHARTNAME>", chartfile.Name),
+			content: transform(defaultDeployment, chartfile.Name),
 		},
 		{
 			// service.yaml
 			path:    filepath.Join(cdir, TemplatesDir, ServiceName),
-			content: Transform(defaultService, "<CHARTNAME>", chartfile.Name),
+			content: transform(defaultService, chartfile.Name),
 		},
 		{
 			// NOTES.txt
 			path:    filepath.Join(cdir, TemplatesDir, NotesName),
-			content: Transform(defaultNotes, "<CHARTNAME>", chartfile.Name),
+			content: transform(defaultNotes, chartfile.Name),
 		},
 		{
 			// _helpers.tpl
 			path:    filepath.Join(cdir, TemplatesDir, HelpersName),
-			content: Transform(defaultHelpers, "<CHARTNAME>", chartfile.Name),
+			content: transform(defaultHelpers, chartfile.Name),
 		},
 	}
 
@@ -412,4 +414,10 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		}
 	}
 	return cdir, nil
+}
+
+// transform performs a string replacement of the specified source for
+// a given key with the replacement string
+func transform(src, replacement string) []byte {
+	return []byte(strings.Replace(src, "<CHARTNAME>", replacement, -1))
 }
