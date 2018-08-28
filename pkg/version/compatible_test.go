@@ -32,7 +32,7 @@ func TestIsCompatible(t *testing.T) {
 		{"v2.0.0", "v2.0.1", true},
 		{"v2.0.1", "v2.0.0", true},
 		{"v2.0.0", "v2.1.1", true},
-		{"v2.1.0", "v2.0.1", false},
+		{"v2.1.0", "v2.0.1", true},
 	}
 
 	for _, tt := range tests {
