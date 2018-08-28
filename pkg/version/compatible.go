@@ -37,7 +37,7 @@ func IsCompatible(client, server string) bool {
 		return false
 	}
 
-	constraint := fmt.Sprintf("^%d.%d.x", cv.Major(), cv.Minor())
+	constraint := fmt.Sprintf("^%d.x.x", cv.Major())
 	if cv.Prerelease() != "" || sv.Prerelease() != "" {
 		constraint = cv.String()
 	}
