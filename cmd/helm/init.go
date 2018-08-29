@@ -147,7 +147,7 @@ func initRepo(url, cacheFile string, out io.Writer, skipRefresh bool, home helmp
 	// In this case, the cacheFile is always absolute. So passing empty string
 	// is safe.
 	if err := r.DownloadIndexFile(""); err != nil {
-		return nil, errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached: %s", url)
+		return nil, errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", url)
 	}
 
 	return &c, nil

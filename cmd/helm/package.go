@@ -25,7 +25,6 @@ import (
 	"syscall"
 
 	"github.com/Masterminds/semver"
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
@@ -143,11 +142,7 @@ func (o *packageOptions) run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	newVals, err := yaml.Marshal(combinedVals)
-	if err != nil {
-		return err
-	}
-	ch.Values = newVals
+	ch.Values = combinedVals
 
 	// If version is set, modify the version.
 	if len(o.version) != 0 {
@@ -185,11 +180,10 @@ func (o *packageOptions) run(out io.Writer) error {
 	}
 
 	name, err := chartutil.Save(ch, dest)
-	if err == nil {
-		fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", name)
-	} else {
+	if err != nil {
 		return errors.Wrap(err, "failed to save")
 	}
+	fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", name)
 
 	if o.sign {
 		err = o.clearsign(name)

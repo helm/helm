@@ -20,6 +20,8 @@ import (
 
 	"strconv"
 
+	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/version"
@@ -108,7 +110,9 @@ func TestRequirementsEnabled(t *testing.T) {
 }
 
 func verifyRequirementsEnabled(t *testing.T, c *chart.Chart, v []byte, e []string) {
-	if err := ProcessRequirementsEnabled(c, v); err != nil {
+	var m map[string]interface{}
+	yaml.Unmarshal(v, &m)
+	if err := ProcessRequirementsEnabled(c, m); err != nil {
 		t.Errorf("Error processing enabled requirements %v", err)
 	}
 
@@ -216,10 +220,7 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, e map[string]s
 	if err := ProcessRequirementsImportValues(c); err != nil {
 		t.Fatalf("Error processing import values requirements %v", err)
 	}
-	cc, err := ReadValues(c.Values)
-	if err != nil {
-		t.Fatalf("Error reading import values %v", err)
-	}
+	cc := Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
 		if err != nil {

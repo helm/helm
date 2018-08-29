@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chart"
@@ -311,7 +312,16 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	}
 
 	schart.Templates = updatedTemplates
-	schart.Values = transform(string(schart.Values), schart.Name())
+	b, err := yaml.Marshal(schart.Values)
+	if err != nil {
+		return err
+	}
+
+	var m map[string]interface{}
+	if err := yaml.Unmarshal([]byte(transform(string(b), schart.Name())), &m); err != nil {
+		return err
+	}
+	schart.Values = m
 
 	return SaveDir(schart, dest)
 }

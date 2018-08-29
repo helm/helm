@@ -163,7 +163,11 @@ func (i *inspectOptions) run(out io.Writer) error {
 		if i.output == all {
 			fmt.Fprintln(out, "---")
 		}
-		fmt.Fprintln(out, string(chrt.Values))
+		b, err := yaml.Marshal(chrt.Values)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, string(b))
 	}
 
 	if i.output == readmeOnly || i.output == all {

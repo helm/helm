@@ -126,7 +126,7 @@ func getAliasDependency(charts []*chart.Chart, aliasChart *chart.Dependency) *ch
 }
 
 // ProcessRequirementsEnabled removes disabled charts from dependencies
-func ProcessRequirementsEnabled(c *chart.Chart, v []byte) error {
+func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error {
 	if c.Requirements == nil {
 		return nil
 	}
@@ -164,12 +164,8 @@ func ProcessRequirementsEnabled(c *chart.Chart, v []byte) error {
 	for _, lr := range c.Requirements.Dependencies {
 		lr.Enabled = true
 	}
-	cvals, err := CoalesceValues(c, v)
-	if err != nil {
-		return err
-	}
-	// convert our values back into config
-	yvals, err := yaml.Marshal(cvals)
+	b, _ := yaml.Marshal(v)
+	cvals, err := CoalesceValues(c, b)
 	if err != nil {
 		return err
 	}
@@ -195,7 +191,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v []byte) error {
 
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
-		if err := ProcessRequirementsEnabled(t, yvals); err != nil {
+		if err := ProcessRequirementsEnabled(t, cvals); err != nil {
 			return err
 		}
 	}
@@ -282,14 +278,9 @@ func processImportValues(c *chart.Chart) error {
 		// set our formatted import values
 		r.ImportValues = outiv
 	}
-	b = coalesceTables(b, cvals)
-	y, err := yaml.Marshal(b)
-	if err != nil {
-		return err
-	}
 
 	// set the new values
-	c.Values = y
+	c.Values = coalesceTables(b, cvals)
 
 	return nil
 }
