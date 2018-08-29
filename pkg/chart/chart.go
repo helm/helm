@@ -20,8 +20,8 @@ package chart
 type Chart struct {
 	// Metadata is the contents of the Chartfile.
 	Metadata *Metadata
-	// RequirementsLock is the contents of requirements.lock.
-	RequirementsLock *RequirementsLock
+	// LocK is the contents of Chart.lock.
+	Lock *Lock
 	// Templates for this chart.
 	Templates []*File
 	// TODO Delete RawValues after unit tests for `create` are refactored.

@@ -64,7 +64,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	// In the second pass, we want to remove the chart's request dependency,
 	// then see if it restores from the lock.
-	lockfile := hh.Path(chartname, "requirements.lock")
+	lockfile := hh.Path(chartname, "Chart.lock")
 	if _, err := os.Stat(lockfile); err != nil {
 		t.Fatal(err)
 	}

@@ -35,12 +35,12 @@ func TestLoadRequirements(t *testing.T) {
 	verifyRequirements(t, c)
 }
 
-func TestLoadRequirementsLock(t *testing.T) {
+func TestLoadChartLock(t *testing.T) {
 	c, err := loader.Load("testdata/frobnitz")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	verifyRequirementsLock(t, c)
+	verifyChartLock(t, c)
 }
 
 func TestRequirementsEnabled(t *testing.T) {
@@ -426,7 +426,7 @@ func verifyRequirements(t *testing.T, c *chart.Chart) {
 	}
 }
 
-func verifyRequirementsLock(t *testing.T, c *chart.Chart) {
+func verifyChartLock(t *testing.T, c *chart.Chart) {
 	if len(c.Metadata.Requirements) != 2 {
 		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
 	}

@@ -73,14 +73,14 @@ func (m *Manager) Build() error {
 
 	// If a lock file is found, run a build from that. Otherwise, just do
 	// an update.
-	lock := c.RequirementsLock
+	lock := c.Lock
 	if lock == nil {
 		return m.Update()
 	}
 
 	req := c.Metadata.Requirements
 	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
-		return errors.New("requirements.lock is out of sync with Chart.yaml")
+		return errors.New("Chart.lock is out of sync with Chart.yaml")
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
@@ -155,7 +155,7 @@ func (m *Manager) Update() error {
 	}
 
 	// If the lock file hasn't changed, don't write a new one.
-	oldLock := c.RequirementsLock
+	oldLock := c.Lock
 	if oldLock != nil && oldLock.Digest == lock.Digest {
 		return nil
 	}
@@ -176,7 +176,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 // resolve takes a list of requirements and translates them into an exact version to download.
 //
 // This returns a lock file, which has all of the requirements normalized to a specific version.
-func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string, hash string) (*chart.RequirementsLock, error) {
+func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string, hash string) (*chart.Lock, error) {
 	res := resolver.New(m.ChartPath, m.HelmHome)
 	return res.Resolve(req, repoNames, hash)
 }
@@ -585,12 +585,12 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 }
 
 // writeLock writes a lockfile to disk
-func writeLock(chartpath string, lock *chart.RequirementsLock) error {
+func writeLock(chartpath string, lock *chart.Lock) error {
 	data, err := yaml.Marshal(lock)
 	if err != nil {
 		return err
 	}
-	dest := filepath.Join(chartpath, "requirements.lock")
+	dest := filepath.Join(chartpath, "Chart.lock")
 	return ioutil.WriteFile(dest, data, 0644)
 }
 
