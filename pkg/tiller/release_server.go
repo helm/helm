@@ -126,15 +126,12 @@ func (s *ReleaseServer) reuseValues(req *hapi.UpdateReleaseRequest, current *rel
 		if err != nil {
 			return errors.Wrap(err, "failed to rebuild old values")
 		}
-		nv, err := yaml.Marshal(oldVals)
-		if err != nil {
-			return err
-		}
 
 		// merge new values with current
 		b := append(current.Config, '\n')
 		req.Values = append(b, req.Values...)
-		req.Chart.Values = nv
+
+		req.Chart.Values = oldVals
 
 		// yaml unmarshal and marshal to remove duplicate keys
 		y := map[string]interface{}{}

@@ -26,8 +26,10 @@ type Chart struct {
 	RequirementsLock *RequirementsLock
 	// Templates for this chart.
 	Templates []*File
+	// TODO Delete RawValues after unit tests for `create` are refactored.
+	RawValues []byte
 	// Values are default config for this template.
-	Values []byte
+	Values map[string]interface{}
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File

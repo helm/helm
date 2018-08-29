@@ -292,6 +292,7 @@ func TestPackageValues(t *testing.T) {
 }
 
 func runAndVerifyPackageCommandValues(t *testing.T, args []string, flags map[string]string, valueFiles string, expected chartutil.Values) {
+	t.Helper()
 	outputDir := testTempDir(t)
 
 	if len(flags) == 0 {
@@ -338,10 +339,11 @@ func getChartValues(chartPath string) (chartutil.Values, error) {
 		return nil, err
 	}
 
-	return chartutil.ReadValues(chart.Values)
+	return chart.Values, nil
 }
 
 func verifyValues(t *testing.T, actual, expected chartutil.Values) {
+	t.Helper()
 	for key, value := range expected.AsMap() {
 		if got := actual[key]; got != value {
 			t.Errorf("Expected %q, got %q (%v)", value, got, actual)

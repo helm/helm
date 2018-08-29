@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -166,7 +167,11 @@ func (o *templateOptions) run(out io.Writer) error {
 		Name: o.releaseName,
 	}
 
-	if err := chartutil.ProcessRequirementsEnabled(c, config); err != nil {
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(config, &m); err != nil {
+		return err
+	}
+	if err := chartutil.ProcessRequirementsEnabled(c, m); err != nil {
 		return err
 	}
 	if err := chartutil.ProcessRequirementsImportValues(c); err != nil {

@@ -97,7 +97,7 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test2", Data: []byte("{{.global.callme | lower }}")},
 			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
 		},
-		Values: []byte("outer: DEFAULT\ninner: DEFAULT"),
+		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
 
 	vals := []byte(`
@@ -275,7 +275,7 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 			{Name: checkrelease, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
-		Values: []byte(`what: "milkshake"`),
+		Values: map[string]interface{}{"what": "milkshake"},
 	}
 
 	inner := &chart.Chart{
@@ -283,7 +283,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: innerpath, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
-		Values: []byte(`who: "Robert"`),
+		Values: map[string]interface{}{"who": "Robert"},
 	}
 	inner.AddDependency(deepest)
 
@@ -292,11 +292,13 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: outerpath, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
 		},
-		Values: []byte(`
-what: stinkweed
-who: me
-herrick:
-    who: time`),
+		Values: map[string]interface{}{
+			"what": "stinkweed",
+			"who":  "me",
+			"herrick": map[string]interface{}{
+				"who": "time",
+			},
+		},
 	}
 	outer.AddDependency(inner)
 

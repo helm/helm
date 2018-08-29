@@ -201,21 +201,21 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 // coalesceGlobals copies the globals out of src and merges them into dest.
 //
 // For convenience, returns dest.
-func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
+func coalesceGlobals(dest, src map[string]interface{}) {
 	var dg, sg map[string]interface{}
 
 	if destglob, ok := dest[GlobalKey]; !ok {
 		dg = make(map[string]interface{})
 	} else if dg, ok = destglob.(map[string]interface{}); !ok {
 		log.Printf("warning: skipping globals because destination %s is not a table.", GlobalKey)
-		return dg
+		return
 	}
 
 	if srcglob, ok := src[GlobalKey]; !ok {
 		sg = make(map[string]interface{})
 	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
 		log.Printf("warning: skipping globals because source %s is not a table.", GlobalKey)
-		return dg
+		return
 	}
 
 	// EXPERIMENTAL: In the past, we have disallowed globals to test tables. This
@@ -225,19 +225,19 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 	for key, val := range sg {
 		if istable(val) {
 			vv := copyMap(val.(map[string]interface{}))
-			if destv, ok := dg[key]; ok {
-				if destvmap, ok := destv.(map[string]interface{}); ok {
+			if destv, ok := dg[key]; !ok {
+				// Here there is no merge. We're just adding.
+				dg[key] = vv
+			} else {
+				if destvmap, ok := destv.(map[string]interface{}); !ok {
+					log.Printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
+				} else {
 					// Basically, we reverse order of coalesce here to merge
 					// top-down.
 					coalesceTables(vv, destvmap)
 					dg[key] = vv
 					continue
-				} else {
-					log.Printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
 				}
-			} else {
-				// Here there is no merge. We're just adding.
-				dg[key] = vv
 			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
 			// It's not clear if this condition can actually ever trigger.
@@ -248,7 +248,6 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 		dg[key] = val
 	}
 	dest[GlobalKey] = dg
-	return dest
 }
 
 func copyMap(src map[string]interface{}) map[string]interface{} {
@@ -263,20 +262,7 @@ func copyMap(src map[string]interface{}) map[string]interface{} {
 //
 // Values in v will override the values in the chart.
 func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interface{}, error) {
-	// If there are no values in the chart, we just return the given values
-	if len(c.Values) == 0 {
-		return v, nil
-	}
-
-	nv, err := ReadValues(c.Values)
-	if err != nil {
-		// On error, we return just the overridden values.
-		// FIXME: We should log this error. It indicates that the YAML data
-		// did not parse.
-		return v, errors.Wrapf(err, "error reading default values (%s)", c.Values)
-	}
-
-	for key, val := range nv {
+	for key, val := range c.Values {
 		if value, ok := v[key]; ok {
 			if value == nil {
 				// When the YAML value is null, we remove the value's key.

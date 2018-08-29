@@ -73,12 +73,14 @@ water:
 
 func TestToRenderValuesCaps(t *testing.T) {
 
-	chartValues := `
-name: al Rashid
-where:
-  city: Basrah
-  title: caliph
-`
+	chartValues := map[string]interface{}{
+		"name": "al Rashid",
+		"where": map[string]interface{}{
+			"city":  "Basrah",
+			"title": "caliph",
+		},
+	}
+
 	overideValues := `
 name: Haroun
 where:
@@ -89,14 +91,13 @@ where:
 	c := &chart.Chart{
 		Metadata:  &chart.Metadata{Name: "test"},
 		Templates: []*chart.File{},
-		Values:    []byte(chartValues),
+		Values:    chartValues,
 		Files: []*chart.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 	}
 	c.AddDependency(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "where"},
-		Values:   []byte{},
 	})
 	v := []byte(overideValues)
 
