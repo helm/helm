@@ -294,12 +294,19 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
-			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
+			ver, archiveFile, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
 			if err != nil {
 				saveError = err
 				break
 			}
 			dep.Version = ver
+			if m.Recursive {
+				fmt.Fprintln(m.Out, "Unpacking:", archiveFile)
+				err := chartutil.ExpandFile(destPath, archiveFile)
+				if err != nil {
+					return fmt.Errorf("could not unpack %s: %s", archiveFile, err)
+				}
+			}
 			continue
 		}
 
@@ -687,40 +694,40 @@ func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 	return ioutil.WriteFile(dest, data, 0644)
 }
 
-// tarFromLocalDir archive a dep chart from local directory and save it into charts/
-func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, error) {
+// archive a dep chart from local directory and save it into charts/
+func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, string, error) {
 	destPath := filepath.Join(chartpath, "charts")
 
 	if !strings.HasPrefix(repo, "file://") {
-		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
+		return "", "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
 	origPath, err := resolver.GetLocalPath(repo, chartpath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	ch, err := chartutil.LoadDir(origPath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	constraint, err := semver.NewConstraint(version)
 	if err != nil {
-		return "", fmt.Errorf("dependency %s has an invalid version/constraint format: %s", name, err)
+		return "", "", fmt.Errorf("dependency %s has an invalid version/constraint format: %s", name, err)
 	}
 
 	v, err := semver.NewVersion(ch.Metadata.Version)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if constraint.Check(v) {
-		_, err = chartutil.Save(ch, destPath)
-		return ch.Metadata.Version, err
+		archiveFile, err := chartutil.Save(ch, destPath)
+		return ch.Metadata.Version, archiveFile, err
 	}
 
-	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
+	return "", "", fmt.Errorf("can't get a valid version for dependency %s", name)
 }
 
 // move files from tmppath to destpath
