@@ -154,7 +154,7 @@ func (o *upgradeOptions) run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if req := ch.Requirements; req != nil {
+	if req := ch.Metadata.Requirements; req != nil {
 		if err := checkDependencies(ch, req); err != nil {
 			return err
 		}

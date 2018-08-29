@@ -176,15 +176,15 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 }
 
 func verifyRequirements(t *testing.T, c *chart.Chart) {
-	if len(c.Requirements.Dependencies) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Requirements.Dependencies))
+	if len(c.Metadata.Requirements) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Requirements.Dependencies[i]
+		d := c.Metadata.Requirements[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}
@@ -198,15 +198,15 @@ func verifyRequirements(t *testing.T, c *chart.Chart) {
 }
 
 func verifyRequirementsLock(t *testing.T, c *chart.Chart) {
-	if len(c.Requirements.Dependencies) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Requirements.Dependencies))
+	if len(c.Metadata.Requirements) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Requirements.Dependencies[i]
+		d := c.Metadata.Requirements[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}
@@ -224,7 +224,6 @@ func verifyFrobnitz(t *testing.T, c *chart.Chart) {
 }
 
 func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
-
 	if c.Metadata == nil {
 		t.Fatal("Metadata is nil")
 	}
@@ -246,8 +245,8 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	if len(c.Dependencies()) != 2 {
 		t.Fatalf("Expected 2 Dependency, got %d", len(c.Dependencies()))
 	}
-	if len(c.Requirements.Dependencies) != 2 {
-		t.Fatalf("Expected 2 Requirements.Dependency, got %d", len(c.Requirements.Dependencies))
+	if len(c.Metadata.Requirements) != 2 {
+		t.Fatalf("Expected 2 Requirements.Dependency, got %d", len(c.Metadata.Requirements))
 	}
 	if len(c.RequirementsLock.Dependencies) != 2 {
 		t.Fatalf("Expected 2 RequirementsLock.Dependency, got %d", len(c.RequirementsLock.Dependencies))

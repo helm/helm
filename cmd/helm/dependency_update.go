@@ -28,18 +28,18 @@ import (
 )
 
 const dependencyUpDesc = `
-Update the on-disk dependencies to mirror the requirements.yaml file.
+Update the on-disk dependencies to mirror Chart.yaml.
 
-This command verifies that the required charts, as expressed in 'requirements.yaml',
+This command verifies that the required charts, as expressed in 'Chart.yaml',
 are present in 'charts/' and are at an acceptable version. It will pull down
 the latest charts that satisfy the dependencies, and clean up old dependencies.
 
 On successful update, this will generate a lock file that can be used to
 rebuild the requirements to an exact version.
 
-Dependencies are not required to be represented in 'requirements.yaml'. For that
+Dependencies are not required to be represented in 'Chart.yaml'. For that
 reason, an update command will not remove charts unless they are (a) present
-in the requirements.yaml file, but (b) at the wrong version.
+in the Chart.yaml file, but (b) at the wrong version.
 `
 
 // dependencyUpdateOptions describes a 'helm dependency update'
@@ -63,7 +63,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "update CHART",
 		Aliases: []string{"up"},
-		Short:   "update charts/ based on the contents of requirements.yaml",
+		Short:   "update charts/ based on the contents of Chart.yaml",
 		Long:    dependencyUpDesc,
 		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

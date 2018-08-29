@@ -158,7 +158,7 @@ func (o *templateOptions) run(out io.Writer) error {
 		return err
 	}
 
-	if req := c.Requirements; req != nil {
+	if req := c.Metadata.Requirements; req != nil {
 		if err := checkDependencies(c, req); err != nil {
 			return err
 		}

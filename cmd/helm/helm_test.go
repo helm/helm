@@ -141,12 +141,10 @@ func ensureTestHome(t *testing.T, home helmpath.Home) {
 		}
 	}
 	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
-		t.Log("Updating repository file format...")
 		if err := r.WriteFile(repoFile, 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	t.Logf("$HELM_HOME has been configured at %s.\n", home)
 }
 
 // testHelmHome sets up a Helm Home in a temp dir.

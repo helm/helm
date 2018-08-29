@@ -102,7 +102,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.version, "version", "", "set the version on the chart to this semver version")
 	f.StringVar(&o.appVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&o.destination, "destination", "d", ".", "location to write the chart.")
-	f.BoolVarP(&o.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
+	f.BoolVarP(&o.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
 	o.valuesOptions.addFlags(f)
 
 	return cmd
@@ -161,7 +161,7 @@ func (o *packageOptions) run(out io.Writer) error {
 		return errors.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Name())
 	}
 
-	if reqs := ch.Requirements; reqs != nil {
+	if reqs := ch.Metadata.Requirements; reqs != nil {
 		if err := checkDependencies(ch, reqs); err != nil {
 			return err
 		}

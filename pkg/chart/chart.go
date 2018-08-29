@@ -20,8 +20,6 @@ package chart
 type Chart struct {
 	// Metadata is the contents of the Chartfile.
 	Metadata *Metadata
-	// Requirements is the contents of requirements.yaml.
-	Requirements *Requirements
 	// RequirementsLock is the contents of requirements.lock.
 	RequirementsLock *RequirementsLock
 	// Templates for this chart.

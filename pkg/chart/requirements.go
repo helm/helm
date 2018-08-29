@@ -49,14 +49,6 @@ type Dependency struct {
 	Alias string `json:"alias,omitempty"`
 }
 
-// Requirements is a list of requirements for a chart.
-//
-// Requirements are charts upon which this chart depends. This expresses
-// developer intent.
-type Requirements struct {
-	Dependencies []*Dependency `json:"dependencies"`
-}
-
 // RequirementsLock is a lock file for requirements.
 //
 // It represents the state that the dependencies should be in.
