@@ -151,10 +151,7 @@ func CoalesceValues(chrt *chart.Chart, vals []byte) (Values, error) {
 		}
 	}
 
-	cvals, err = coalesce(chrt, cvals)
-	if err != nil {
-		return cvals, err
-	}
+	coalesce(chrt, cvals)
 
 	return coalesceDeps(chrt, cvals)
 }
@@ -162,14 +159,10 @@ func CoalesceValues(chrt *chart.Chart, vals []byte) (Values, error) {
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
 // This is a helper function for CoalesceValues.
-func coalesce(ch *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	dest, err = coalesceValues(ch, dest)
-	if err != nil {
-		return dest, err
-	}
+func coalesce(ch *chart.Chart, dest map[string]interface{}) map[string]interface{} {
+	coalesceValues(ch, dest)
 	coalesceDeps(ch, dest)
-	return dest, nil
+	return dest
 }
 
 // coalesceDeps coalesces the dependencies of the given chart.
@@ -187,12 +180,8 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 			// Get globals out of dest and merge them into dvmap.
 			coalesceGlobals(dvmap, dest)
 
-			var err error
 			// Now coalesce the rest of the values.
-			dest[subchart.Name()], err = coalesce(subchart, dvmap)
-			if err != nil {
-				return dest, err
-			}
+			dest[subchart.Name()] = coalesce(subchart, dvmap)
 		}
 	}
 	return dest, nil
@@ -261,7 +250,7 @@ func copyMap(src map[string]interface{}) map[string]interface{} {
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.
-func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interface{}, error) {
+func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 	for key, val := range c.Values {
 		if value, ok := v[key]; ok {
 			if value == nil {
@@ -285,7 +274,6 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 			v[key] = val
 		}
 	}
-	return v, nil
 }
 
 // coalesceTables merges a source map into a destination map.

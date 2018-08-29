@@ -256,39 +256,39 @@ func TestGetAliasDependency(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	req := c.Requirements
+	req := c.Metadata.Requirements
 
-	if len(req.Dependencies) == 0 {
+	if len(req) == 0 {
 		t.Fatalf("There are no requirements to test")
 	}
 
 	// Success case
-	aliasChart := getAliasDependency(c.Dependencies(), req.Dependencies[0])
+	aliasChart := getAliasDependency(c.Dependencies(), req[0])
 	if aliasChart == nil {
-		t.Fatalf("Failed to get dependency chart for alias %s", req.Dependencies[0].Name)
+		t.Fatalf("Failed to get dependency chart for alias %s", req[0].Name)
 	}
-	if req.Dependencies[0].Alias != "" {
-		if aliasChart.Name() != req.Dependencies[0].Alias {
-			t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Alias, aliasChart.Name())
+	if req[0].Alias != "" {
+		if aliasChart.Name() != req[0].Alias {
+			t.Fatalf("Dependency chart name should be %s but got %s", req[0].Alias, aliasChart.Name())
 		}
-	} else if aliasChart.Name() != req.Dependencies[0].Name {
-		t.Fatalf("Dependency chart name should be %s but got %s", req.Dependencies[0].Name, aliasChart.Name())
+	} else if aliasChart.Name() != req[0].Name {
+		t.Fatalf("Dependency chart name should be %s but got %s", req[0].Name, aliasChart.Name())
 	}
 
-	if req.Dependencies[0].Version != "" {
-		if !version.IsCompatibleRange(req.Dependencies[0].Version, aliasChart.Metadata.Version) {
+	if req[0].Version != "" {
+		if !version.IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
 			t.Fatalf("Dependency chart version is not in the compatible range")
 		}
 	}
 
 	// Failure case
-	req.Dependencies[0].Name = "something-else"
-	if aliasChart := getAliasDependency(c.Dependencies(), req.Dependencies[0]); aliasChart != nil {
+	req[0].Name = "something-else"
+	if aliasChart := getAliasDependency(c.Dependencies(), req[0]); aliasChart != nil {
 		t.Fatalf("expected no chart but got %s", aliasChart.Name())
 	}
 
-	req.Dependencies[0].Version = "something else which is not in the compatible range"
-	if version.IsCompatibleRange(req.Dependencies[0].Version, aliasChart.Metadata.Version) {
+	req[0].Version = "something else which is not in the compatible range"
+	if version.IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
 		t.Fatalf("Dependency chart version which is not in the compatible range should cause a failure other than a success ")
 	}
 }
@@ -312,8 +312,8 @@ func TestDependentChartAliases(t *testing.T) {
 		t.Fatal("Expected alias dependencies to be added, but did not got that")
 	}
 
-	if len(c.Dependencies()) != len(c.Requirements.Dependencies) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Requirements.Dependencies), len(c.Dependencies()))
+	if len(c.Dependencies()) != len(c.Metadata.Requirements) {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Requirements), len(c.Dependencies()))
 	}
 }
 
@@ -375,8 +375,8 @@ func TestDependentChartsWithSubchartsAllSpecifiedInRequirements(t *testing.T) {
 		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
 	}
 
-	if len(c.Dependencies()) != len(c.Requirements.Dependencies) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Requirements.Dependencies), len(c.Dependencies()))
+	if len(c.Dependencies()) != len(c.Metadata.Requirements) {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Requirements), len(c.Dependencies()))
 	}
 }
 
@@ -399,21 +399,21 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInRequirements(t *testing.T) {
 		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
 	}
 
-	if len(c.Dependencies()) <= len(c.Requirements.Dependencies) {
-		t.Fatalf("Expected more dependencies than specified in requirements.yaml(%d), but got %d", len(c.Requirements.Dependencies), len(c.Dependencies()))
+	if len(c.Dependencies()) <= len(c.Metadata.Requirements) {
+		t.Fatalf("Expected more dependencies than specified in requirements.yaml(%d), but got %d", len(c.Metadata.Requirements), len(c.Dependencies()))
 	}
 }
 
 func verifyRequirements(t *testing.T, c *chart.Chart) {
-	if len(c.Requirements.Dependencies) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Requirements.Dependencies))
+	if len(c.Metadata.Requirements) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Requirements.Dependencies[i]
+		d := c.Metadata.Requirements[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}
@@ -427,15 +427,15 @@ func verifyRequirements(t *testing.T, c *chart.Chart) {
 }
 
 func verifyRequirementsLock(t *testing.T, c *chart.Chart) {
-	if len(c.Requirements.Dependencies) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Requirements.Dependencies))
+	if len(c.Metadata.Requirements) != 2 {
+		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Requirements.Dependencies[i]
+		d := c.Metadata.Requirements[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}

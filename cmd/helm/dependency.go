@@ -136,14 +136,14 @@ func (o *dependencyLisOptions) run(out io.Writer) error {
 		return err
 	}
 
-	if c.Requirements == nil {
+	if c.Metadata.Requirements == nil {
 		fmt.Fprintf(out, "WARNING: no requirements at %s/charts\n", o.chartpath)
 		return nil
 	}
 
-	o.printRequirements(out, c.Requirements)
+	o.printRequirements(out, c.Metadata.Requirements)
 	fmt.Fprintln(out)
-	o.printMissing(out, c.Requirements)
+	o.printMissing(out, c.Metadata.Requirements)
 	return nil
 }
 
@@ -222,18 +222,18 @@ func (o *dependencyLisOptions) dependencyStatus(dep *chart.Dependency) string {
 }
 
 // printRequirements prints all of the requirements in the yaml file.
-func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs *chart.Requirements) {
+func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs []*chart.Dependency) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
-	for _, row := range reqs.Dependencies {
+	for _, row := range reqs {
 		table.AddRow(row.Name, row.Version, row.Repository, o.dependencyStatus(row))
 	}
 	fmt.Fprintln(out, table)
 }
 
 // printMissing prints warnings about charts that are present on disk, but are not in the requirements.
-func (o *dependencyLisOptions) printMissing(out io.Writer, reqs *chart.Requirements) {
+func (o *dependencyLisOptions) printMissing(out io.Writer, reqs []*chart.Dependency) {
 	folder := filepath.Join(o.chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {
@@ -256,14 +256,14 @@ func (o *dependencyLisOptions) printMissing(out io.Writer, reqs *chart.Requireme
 			continue
 		}
 		found := false
-		for _, d := range reqs.Dependencies {
+		for _, d := range reqs {
 			if d.Name == c.Name() {
 				found = true
 				break
 			}
 		}
 		if !found {
-			fmt.Fprintf(out, "WARNING: %q is not in requirements.yaml.\n", f)
+			fmt.Fprintf(out, "WARNING: %q is not in Chart.yaml.\n", f)
 		}
 	}
 

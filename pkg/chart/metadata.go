@@ -65,4 +65,6 @@ type Metadata struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// KubeVersion is a SemVer constraint specifying the version of Kubernetes required.
 	KubeVersion string `json:"kubeVersion,omitempty"`
+	// Requirements are a list of requirements for a chart.
+	Requirements []*Dependency `json:"dependencies,omitempty"`
 }

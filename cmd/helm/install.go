@@ -181,7 +181,7 @@ func (o *installOptions) run(out io.Writer) error {
 		return err
 	}
 
-	if req := chartRequested.Requirements; req != nil {
+	if req := chartRequested.Metadata.Requirements; req != nil {
 		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/kubernetes/helm/issues/2209
@@ -286,11 +286,11 @@ func generateName(nameTemplate string) (string, error) {
 	return b.String(), err
 }
 
-func checkDependencies(ch *chart.Chart, reqs *chart.Requirements) error {
+func checkDependencies(ch *chart.Chart, reqs []*chart.Dependency) error {
 	var missing []string
 
 OUTER:
-	for _, r := range reqs.Dependencies {
+	for _, r := range reqs {
 		for _, d := range ch.Dependencies() {
 			if d.Name() == r.Name {
 				continue OUTER

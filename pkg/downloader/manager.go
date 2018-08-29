@@ -78,10 +78,9 @@ func (m *Manager) Build() error {
 		return m.Update()
 	}
 
-	// A lock must accompany a requirements.yaml file.
-	req := c.Requirements
+	req := c.Metadata.Requirements
 	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
-		return errors.New("requirements.lock is out of sync with requirements.yaml")
+		return errors.New("requirements.lock is out of sync with Chart.yaml")
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
@@ -106,7 +105,7 @@ func (m *Manager) Build() error {
 
 // Update updates a local charts directory.
 //
-// It first reads the requirements.yaml file, and then attempts to
+// It first reads the Chart.yaml file, and then attempts to
 // negotiate versions based on that. It will download the versions
 // from remote chart repositories unless SkipUpdate is true.
 func (m *Manager) Update() error {
@@ -117,12 +116,13 @@ func (m *Manager) Update() error {
 
 	// If no requirements file is found, we consider this a successful
 	// completion.
-	req := c.Requirements
+	req := c.Metadata.Requirements
 	if req == nil {
 		return nil
 	}
 
 	// Hash requirements.yaml
+	// FIXME should this hash all of Chart.yaml
 	hash, err := resolver.HashReq(req)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (m *Manager) Update() error {
 
 	// Check that all of the repos we're dependent on actually exist and
 	// the repo index names.
-	repoNames, err := m.getRepoNames(req.Dependencies)
+	repoNames, err := m.getRepoNames(req)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to find out which version of a chart best satisfies the
-	// requirements the requirements.yaml
+	// requirements in the Chart.yaml
 	lock, err := m.resolve(req, repoNames, hash)
 	if err != nil {
 		return err
@@ -176,7 +176,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 // resolve takes a list of requirements and translates them into an exact version to download.
 //
 // This returns a lock file, which has all of the requirements normalized to a specific version.
-func (m *Manager) resolve(req *chart.Requirements, repoNames map[string]string, hash string) (*chart.RequirementsLock, error) {
+func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string, hash string) (*chart.RequirementsLock, error) {
 	res := resolver.New(m.ChartPath, m.HelmHome)
 	return res.Resolve(req, repoNames, hash)
 }

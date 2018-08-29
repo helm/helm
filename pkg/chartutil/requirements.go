@@ -26,11 +26,11 @@ import (
 )
 
 // ProcessRequirementsConditions disables charts based on condition path value in values
-func ProcessRequirementsConditions(reqs *chart.Requirements, cvals Values) {
+func ProcessRequirementsConditions(reqs []*chart.Dependency, cvals Values) {
 	if reqs == nil {
 		return
 	}
-	for _, r := range reqs.Dependencies {
+	for _, r := range reqs {
 		var hasTrue, hasFalse bool
 		for _, c := range strings.Split(strings.TrimSpace(r.Condition), ",") {
 			if len(c) > 0 {
@@ -67,7 +67,7 @@ func ProcessRequirementsConditions(reqs *chart.Requirements, cvals Values) {
 }
 
 // ProcessRequirementsTags disables charts based on tags in values
-func ProcessRequirementsTags(reqs *chart.Requirements, cvals Values) {
+func ProcessRequirementsTags(reqs []*chart.Dependency, cvals Values) {
 	if reqs == nil {
 		return
 	}
@@ -75,7 +75,7 @@ func ProcessRequirementsTags(reqs *chart.Requirements, cvals Values) {
 	if err != nil {
 		return
 	}
-	for _, r := range reqs.Dependencies {
+	for _, r := range reqs {
 		var hasTrue, hasFalse bool
 		for _, k := range r.Tags {
 			if b, ok := vt[k]; ok {
@@ -127,19 +127,19 @@ func getAliasDependency(charts []*chart.Chart, aliasChart *chart.Dependency) *ch
 
 // ProcessRequirementsEnabled removes disabled charts from dependencies
 func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error {
-	if c.Requirements == nil {
+	if c.Metadata.Requirements == nil {
 		return nil
 	}
 
 	var chartDependencies []*chart.Chart
-	// If any dependency is not a part of requirements.yaml
+	// If any dependency is not a part of Chart.yaml
 	// then this should be added to chartDependencies.
-	// However, if the dependency is already specified in requirements.yaml
-	// we should not add it, as it would be anyways processed from requirements.yaml
+	// However, if the dependency is already specified in Chart.yaml
+	// we should not add it, as it would be anyways processed from Chart.yaml
 
 	for _, existingDependency := range c.Dependencies() {
 		var dependencyFound bool
-		for _, req := range c.Requirements.Dependencies {
+		for _, req := range c.Metadata.Requirements {
 			if existingDependency.Metadata.Name == req.Name && version.IsCompatibleRange(req.Version, existingDependency.Metadata.Version) {
 				dependencyFound = true
 				break
@@ -150,7 +150,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 		}
 	}
 
-	for _, req := range c.Requirements.Dependencies {
+	for _, req := range c.Metadata.Requirements {
 		if chartDependency := getAliasDependency(c.Dependencies(), req); chartDependency != nil {
 			chartDependencies = append(chartDependencies, chartDependency)
 		}
@@ -161,7 +161,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 	c.SetDependencies(chartDependencies...)
 
 	// set all to true
-	for _, lr := range c.Requirements.Dependencies {
+	for _, lr := range c.Metadata.Requirements {
 		lr.Enabled = true
 	}
 	b, _ := yaml.Marshal(v)
@@ -170,11 +170,11 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 		return err
 	}
 	// flag dependencies as enabled/disabled
-	ProcessRequirementsTags(c.Requirements, cvals)
-	ProcessRequirementsConditions(c.Requirements, cvals)
+	ProcessRequirementsTags(c.Metadata.Requirements, cvals)
+	ProcessRequirementsConditions(c.Metadata.Requirements, cvals)
 	// make a map of charts to remove
 	rm := map[string]struct{}{}
-	for _, r := range c.Requirements.Dependencies {
+	for _, r := range c.Metadata.Requirements {
 		if !r.Enabled {
 			// remove disabled chart
 			rm[r.Name] = struct{}{}
@@ -232,7 +232,7 @@ func pathToMap(path string, data map[string]interface{}) map[string]interface{} 
 
 // processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
 func processImportValues(c *chart.Chart) error {
-	if c.Requirements == nil {
+	if c.Metadata.Requirements == nil {
 		return nil
 	}
 	// combine chart values and empty config to get Values
@@ -242,7 +242,7 @@ func processImportValues(c *chart.Chart) error {
 	}
 	b := make(map[string]interface{})
 	// import values from each dependency if specified in import-values
-	for _, r := range c.Requirements.Dependencies {
+	for _, r := range c.Metadata.Requirements {
 		var outiv []interface{}
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {

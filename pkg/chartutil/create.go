@@ -318,7 +318,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	}
 
 	var m map[string]interface{}
-	if err := yaml.Unmarshal([]byte(transform(string(b), schart.Name())), &m); err != nil {
+	if err := yaml.Unmarshal(transform(string(b), schart.Name()), &m); err != nil {
 		return err
 	}
 	schart.Values = m

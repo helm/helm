@@ -112,9 +112,9 @@ func TestInstall(t *testing.T) {
 			cmd:       "install testdata/testcharts/chart-missing-deps",
 			wantError: true,
 		},
-		// Install, chart with bad requirements.yaml in /charts
+		// Install, chart with bad dependencies in Chart.yaml in /charts
 		{
-			name:      "install chart with bad requirements.yaml",
+			name:      "install chart with bad  dependencies in Chart.yaml",
 			cmd:       "install testdata/testcharts/chart-bad-requirements",
 			wantError: true,
 		},

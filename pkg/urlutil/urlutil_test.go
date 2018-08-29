@@ -65,8 +65,9 @@ func TestEqual(t *testing.T) {
 
 func TestExtractHostname(t *testing.T) {
 	tests := map[string]string{
-		"http://example.com":                                      "example.com",
-		"https://example.com/foo":                                 "example.com",
+		"http://example.com":      "example.com",
+		"https://example.com/foo": "example.com",
+
 		"https://example.com:31337/not/with/a/bang/but/a/whimper": "example.com",
 	}
 	for start, expect := range tests {
