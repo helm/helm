@@ -77,10 +77,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
 				return c, errors.Wrap(err, "cannot load Chart.yaml")
 			}
-		case f.Name == "requirements.lock":
-			c.RequirementsLock = new(chart.RequirementsLock)
-			if err := yaml.Unmarshal(f.Data, &c.RequirementsLock); err != nil {
-				return c, errors.Wrap(err, "cannot load requirements.lock")
+		case f.Name == "Chart.lock":
+			c.Lock = new(chart.Lock)
+			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
+				return c, errors.Wrap(err, "cannot load Chart.lock")
 			}
 		case f.Name == "values.yaml":
 			c.Values = make(map[string]interface{})

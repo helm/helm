@@ -248,8 +248,8 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	if len(c.Metadata.Requirements) != 2 {
 		t.Fatalf("Expected 2 Requirements.Dependency, got %d", len(c.Metadata.Requirements))
 	}
-	if len(c.RequirementsLock.Dependencies) != 2 {
-		t.Fatalf("Expected 2 RequirementsLock.Dependency, got %d", len(c.RequirementsLock.Dependencies))
+	if len(c.Lock.Dependencies) != 2 {
+		t.Fatalf("Expected 2 Lock.Dependency, got %d", len(c.Lock.Dependencies))
 	}
 
 	for _, dep := range c.Dependencies() {

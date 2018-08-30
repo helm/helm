@@ -25,7 +25,7 @@ func TestResolve(t *testing.T) {
 	tests := []struct {
 		name   string
 		req    []*chart.Dependency
-		expect *chart.RequirementsLock
+		expect *chart.Lock
 		err    bool
 	}{
 		{
@@ -61,7 +61,7 @@ func TestResolve(t *testing.T) {
 			req: []*chart.Dependency{
 				{Name: "alpine", Repository: "http://example.com", Version: ">=0.1.0"},
 			},
-			expect: &chart.RequirementsLock{
+			expect: &chart.Lock{
 				Dependencies: []*chart.Dependency{
 					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
 				},
@@ -72,7 +72,7 @@ func TestResolve(t *testing.T) {
 			req: []*chart.Dependency{
 				{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 			},
-			expect: &chart.RequirementsLock{
+			expect: &chart.Lock{
 				Dependencies: []*chart.Dependency{
 					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},

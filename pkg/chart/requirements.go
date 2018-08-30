@@ -49,10 +49,10 @@ type Dependency struct {
 	Alias string `json:"alias,omitempty"`
 }
 
-// RequirementsLock is a lock file for requirements.
+// Lock is a lock file for requirements.
 //
 // It represents the state that the dependencies should be in.
-type RequirementsLock struct {
+type Lock struct {
 	// Genderated is the date the lock file was last generated.
 	Generated time.Time `json:"generated"`
 	// Digest is a hash of the requirements file used to generate it.
