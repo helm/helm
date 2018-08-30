@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -133,9 +133,9 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 
 	if err := Install(i); err == nil {
-		t.Error("expected error for version does not exists, got none")
+		t.Error("expected error for version does not exist, got none")
 	} else if err.Error() != fmt.Sprintf("requested version %q does not exist for plugin %q", version, source) {
-		t.Errorf("expected error for version does not exists, got (%v)", err)
+		t.Errorf("expected error for version does not exist, got (%v)", err)
 	}
 }
 func TestVCSInstallerUpdate(t *testing.T) {

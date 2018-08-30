@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,14 +21,17 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm/environment"
-	"k8s.io/helm/pkg/helm/helmpath"
-	"k8s.io/helm/pkg/plugin/cache"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	fp "github.com/cyphar/filepath-securejoin"
+
+	"k8s.io/helm/pkg/getter"
+	"k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.
@@ -181,7 +184,10 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			return err
 		}
 
-		path := filepath.Join(targetDir, header.Name)
+		path, err := fp.SecureJoin(targetDir, header.Name)
+		if err != nil {
+			return err
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -86,7 +86,7 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 // runReset uninstalls tiller from Kubernetes Cluster and deletes local config
 func (d *resetCmd) run() error {
 	if d.kubeClient == nil {
-		c, err := getInternalKubeClient(settings.KubeContext)
+		c, err := getInternalKubeClient(settings.KubeContext, settings.KubeConfig)
 		if err != nil {
 			return fmt.Errorf("could not get kubernetes client: %s", err)
 		}

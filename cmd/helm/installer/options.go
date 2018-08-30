@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ type Options struct {
 	// Force allows to force upgrading tiller if deployed version is greater than current version
 	ForceUpgrade bool
 
-	// ImageSpec indentifies the image Tiller will use when deployed.
+	// ImageSpec identifies the image Tiller will use when deployed.
 	//
 	// Valid if and only if UseCanary is false.
 	ImageSpec string

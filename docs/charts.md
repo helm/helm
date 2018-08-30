@@ -27,8 +27,8 @@ wordpress/
   README.md           # OPTIONAL: A human-readable README file
   requirements.yaml   # OPTIONAL: A YAML file listing dependencies for the chart
   values.yaml         # The default configuration values for this chart
-  charts/             # OPTIONAL: A directory containing any charts upon which this chart depends.
-  templates/          # OPTIONAL: A directory of templates that, when combined with values,
+  charts/             # A directory containing any charts upon which this chart depends.
+  templates/          # A directory of templates that, when combined with values,
                       # will generate valid Kubernetes manifest files.
   templates/NOTES.txt # OPTIONAL: A plain text file containing short usage notes
 ```
@@ -36,13 +36,12 @@ wordpress/
 Helm reserves use of the `charts/` and `templates/` directories, and of
 the listed file names. Other files will be left as they are.
 
-While the `charts` and `templates` directories are optional there must be at least one chart dependency or template file for the chart to be valid.
-
 ## The Chart.yaml File
 
 The `Chart.yaml` file is required for a chart. It contains the following fields:
 
 ```yaml
+apiVersion: The chart API version, always "v1" (required)
 name: The name of the chart (required)
 version: A SemVer 2 version (required)
 kubeVersion: A SemVer range of compatible Kubernetes versions (optional)
@@ -266,7 +265,7 @@ dependencies:
       - name: subchart1
         repository: http://localhost:10191
         version: 0.1.0
-        condition: subchart1.enabled, global.subchart1.enabled
+        condition: subchart1.enabled,global.subchart1.enabled
         tags:
           - front-end
           - subchart1
@@ -304,7 +303,6 @@ The `--set` parameter can be used as usual to alter tag and condition values.
 
 ````
 helm install --set tags.front-end=true --set subchart2.enabled=false
-
 ````
 
 ##### Tags and Condition Resolution
@@ -528,15 +526,15 @@ metadata:
   name: deis-database
   namespace: deis
   labels:
-    heritage: deis
+    app.kubernetes.io/managed-by: deis
 spec:
   replicas: 1
   selector:
-    app: deis-database
+    app.kubernetes.io/name: deis-database
   template:
     metadata:
       labels:
-        app: deis-database
+        app.kubernetes.io/name: deis-database
     spec:
       serviceAccount: deis-database
       containers:
@@ -665,15 +663,15 @@ metadata:
   name: deis-database
   namespace: deis
   labels:
-    heritage: deis
+    app.kubernetes.io/managed-by: deis
 spec:
   replicas: 1
   selector:
-    app: deis-database
+    app.kubernetes.io/name: deis-database
   template:
     metadata:
       labels:
-        app: deis-database
+        app.kubernetes.io/name: deis-database
     spec:
       serviceAccount: deis-database
       containers:
@@ -850,7 +848,7 @@ considerations in mind:
 - The `Chart.yaml` will be overwritten by the generator.
 - Users will expect to modify such a chart's contents, so documentation
   should indicate how users can do so.
-- All occurences of `<CHARTNAME>` will be replaced with the specified chart
+- All occurrences of `<CHARTNAME>` will be replaced with the specified chart
   name so that starter charts can be used as templates.
 
 Currently the only way to add a chart to `$HELM_HOME/starters` is to manually

@@ -1,4 +1,4 @@
-// Copyright 2016 The Kubernetes Authors All rights reserved.
+// Copyright The Helm Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,10 +34,12 @@ message Hook {
         POST_ROLLBACK = 8;
         RELEASE_TEST_SUCCESS = 9;
         RELEASE_TEST_FAILURE = 10;
+        CRD_INSTALL = 11;
 	}
 	enum DeletePolicy {
 	    SUCCEEDED = 0;
 	    FAILED = 1;
+	    BEFORE_HOOK_CREATION = 2;
 	}
 	string name = 1;
 	// Kind is the Kubernetes kind.

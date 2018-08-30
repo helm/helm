@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,9 +55,7 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				return errReleaseRequired
 			}
 			get.release = args[0]
-			if get.client == nil {
-				get.client = helm.NewClient(helm.Host(settings.TillerHost))
-			}
+			get.client = ensureHelmClient(get.client)
 			return get.run()
 		},
 	}

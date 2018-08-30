@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ type Client struct {
 // NewClient creates a new client.
 func NewClient(opts ...Option) *Client {
 	var c Client
+	// set some sane defaults
+	c.Option(ConnectTimeout(5))
 	return c.Option(opts...)
 }
 
@@ -95,6 +97,7 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	req.Namespace = ns
 	req.DryRun = reqOpts.dryRun
 	req.DisableHooks = reqOpts.disableHooks
+	req.DisableCrdHook = reqOpts.disableCRDHook
 	req.ReuseName = reqOpts.reuseName
 	ctx := NewContext()
 
@@ -344,8 +347,22 @@ func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.L
 	if err != nil {
 		return nil, err
 	}
-
-	return s.Recv()
+	var resp *rls.ListReleasesResponse
+	for {
+		r, err := s.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if resp == nil {
+			resp = r
+			continue
+		}
+		resp.Releases = append(resp.Releases, r.GetReleases()...)
+	}
+	return resp, nil
 }
 
 // Executes tiller.InstallRelease RPC.

@@ -5,9 +5,9 @@ kind: Service
 metadata:
   name: "{{ .Values.name }}"
   labels:
-    heritage: {{ .Release.Service | quote }}
-    release: {{ .Release.Name | quote }}
-    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
     kubeVersion: {{ .Capabilities.KubeVersion.Major }}
     tillerVersion: {{ .Capabilities.TillerVersion }}
 spec:

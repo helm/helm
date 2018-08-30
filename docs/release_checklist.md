@@ -2,9 +2,36 @@
 
 **IMPORTANT**: If your experience deviates from this document, please document the changes to keep it up-to-date.
 
+## Release Meetings
+As part of the release process, two of the weekly developer calls will be co-opted
+as "release meetings."
+
+### Start of the Release Cycle
+The first developer call after a release will be used as the release meeting to
+start the next release cycle. During this meeting, the following items must be
+identified:
+
+- Release date
+- Goals/Objectives for this release
+- The release manager (basically whoever is going to cut the release)
+- Any other important details for the community
+
+All of this information should be added to the GitHub milestone for the given
+release. This should give the community and maintainers a clear set of guidelines
+to follow when choosing whether or not to add issues and PRs to a given release.
+
+### End (almost) of the Release Cycle
+The developer call closest to two weeks before the scheduled release date will
+be used to review any remaining PRs that should be pulled into the release. This
+is the place to debate whether or not we should wait before cutting a release and
+any other concerns. At the end of this meeting, if the release date has not been
+pushed out, the first RC should be cut. Subsequent developer calls in between this
+meeting and the release date should have some time set aside to see if any bugs
+were found. Once the release date is reached, the final release can be cut
+
 ## A Maintainer's Guide to Releasing Helm
 
-So you're in charge of a new release for helm? Cool. Here's what to do...
+So you're in charge of a new release for Helm? Cool. Here's what to do...
 
 ![TODO: Nothing](images/nothing.png)
 
@@ -24,8 +51,8 @@ In this doc, we are going to reference a few environment variables as well, whic
 
 ```shell
 export RELEASE_NAME=vX.Y.0
-export RELEASE_BRANCH_NAME="release-$RELEASE_NAME"
-export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc1"
+export RELEASE_BRANCH_NAME="release-X.Y"
+export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.1"
 ```
 
 If you are creating a patch release, you may want to use the following instead:
@@ -34,7 +61,7 @@ If you are creating a patch release, you may want to use the following instead:
 export PREVIOUS_PATCH_RELEASE=vX.Y.Z
 export RELEASE_NAME=vX.Y.Z+1
 export RELEASE_BRANCH_NAME="release-X.Y"
-export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc1"
+export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.1"
 ```
 
 ## 1. Create the Release Branch
@@ -94,33 +121,6 @@ index 2109a0a..6f5a1a4 100644
         BuildMetadata = "unreleased"
 ```
 
-The README stores links to the latest release for helm. We want to change the version to the first release candidate which we are releasing (more on that in step 5).
-
-```shell
-$ git diff README.md
-diff --git a/README.md b/README.md
-index 022afd79..547839e2 100644
---- a/README.md
-+++ b/README.md
-@@ -34,10 +34,10 @@ Think of it like apt/yum/homebrew for Kubernetes.
-
- Binary downloads of the Helm client can be found at the following links:
-
--- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-darwin-amd64.tar.gz)
--- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-linux-amd64.tar.gz)
--- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-linux-386.tar.gz)
--- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-windows-amd64.tar.gz)
-+- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-darwin-amd64.tar.gz)
-+- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-amd64.tar.gz)
-+- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-386.tar.gz)
-+- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-windows-amd64.tar.gz)
-
- Unpack the `helm` binary and add it to your PATH and you are good to go!
- macOS/[homebrew](https://brew.sh/) users can also use `brew install kubernetes-helm`.
-```
-
-For patch releases, the old version number will be the latest patch release, so just bump the patch number, incrementing Z by one.
-
 ```shell
 git add .
 git commit -m "bump version to $RELEASE_CANDIDATE_NAME"
@@ -166,7 +166,7 @@ wget https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME
 windows/amd64, using PowerShell:
 
 ```shell
-PS C:\> Invoke-WebRequest -Uri "https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.tar.gz" -OutFile "helm-$ReleaseCandidateName-windows-amd64.tar.gz"
+PS C:\> Invoke-WebRequest -Uri "https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.zip" -OutFile "helm-$ReleaseCandidateName-windows-amd64.zip"
 ```
 
 Then, unpack and move the binary to somewhere on your $PATH, or move it somewhere and add it to your $PATH (e.g. /usr/local/bin/helm for linux/macOS, C:\Program Files\helm\helm.exe for Windows).
@@ -188,7 +188,7 @@ You will also want to update the release version number and the CHANGELOG as we 
 After that, tag it and notify users of the new release candidate:
 
 ```shell
-export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc2"
+export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.2"
 git tag --sign --annotate "${RELEASE_CANDIDATE_NAME}" --message "Helm release ${RELEASE_CANDIDATE_NAME}"
 git push upstream $RELEASE_CANDIDATE_NAME
 ```
@@ -197,7 +197,7 @@ From here on just repeat this process, continuously testing until you're happy w
 
 ## 6. Finalize the Release
 
-When you're finally happy with the quality of a release candidate, you can move on and create the real thing. Double-check one last time to make sure eveything is in order, then finally push the release tag.
+When you're finally happy with the quality of a release candidate, you can move on and create the real thing. Double-check one last time to make sure everything is in order, then finally push the release tag.
 
 ```shell
 git checkout $RELEASE_BRANCH_NAME
@@ -218,21 +218,25 @@ An example release note for a minor release would look like this:
 
 Helm vX.Y.Z is a feature release. This release, we focused on <insert focal point>. Users are encouraged to upgrade for the best experience.
 
-The community keeps growing, and we'd love to see you there.
+The community keeps growing, and we'd love to see you there!
 
 - Join the discussion in [Kubernetes Slack](https://slack.k8s.io/):
   - `#helm-users` for questions and just to hang out
   - `#helm-dev` for discussing PRs, code, and bugs
-- Hang out at the Public Developer Call: Thursday, 9:30 Pacific via [Zoom](https://zoom.us/j/4526666954)
+- Hang out at the Public Developer Call: Thursday, 9:30 Pacific via [Zoom](https://zoom.us/j/696660622)
 - Test, debug, and contribute charts: [GitHub/kubernetes/charts](https://github.com/kubernetes/charts)
 
 ## Installation and Upgrading
 
 Download Helm X.Y. The common platform binaries are here:
 
-- [OSX](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz)
-- [Linux](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz)
-- [Windows](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.tar.gz)
+- [MacOS amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz.sha256))
+- [Linux amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz.sha256))
+- [Linux arm](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz.sha256))
+- [Linux arm64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz.sha256))
+- [Linux i386](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz.sha256))
+- [Linux ppc64le](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256))
+- [Windows amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip.sha256))
 
 Once you have the client installed, upgrade Tiller with `helm init --upgrade`.
 
@@ -258,7 +262,7 @@ git log --no-merges --pretty=format:'- %s %H (%aN)' $RELEASE_NAME $PREVIOUS_RELE
 
 Once finished, go into GitHub and edit the release notes for the tagged release with the notes written here.
 
-## 9. Evangelize
+## 8. Evangelize
 
 Congratulations! You're done. Go grab yourself a $DRINK_OF_CHOICE. You've earned it.
 

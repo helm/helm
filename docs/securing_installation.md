@@ -34,7 +34,7 @@ There are four main areas to consider when securing a tiller installation:
 
 ### RBAC
 
-Recent versions of Kubernetes employ a [role-based access control (or RBAC)](https://en.wikipedia.org/wiki/Role-based_access_control) system (as do modern operating systems) to help mitigate the damage that can done if credentials are misused or bugs exist. Even where an identity is hijacked, the identity has only so many permissions to a controlled space. This effectively adds a layer of security to limit the scope of any attack with that identity. 
+Recent versions of Kubernetes employ a [role-based access control (or RBAC)](https://en.wikipedia.org/wiki/Role-based_access_control) system (as do modern operating systems) to help mitigate the damage that can be done if credentials are misused or bugs exist. Even where an identity is hijacked, the identity has only so many permissions to a controlled space. This effectively adds a layer of security to limit the scope of any attack with that identity.
 
 Helm and Tiller are designed to install, remove, and modify logical applications that can contain many services interacting together. As a result, often its usefulness involves cluster-wide operations, which in a multitenant cluster means that great care must be taken with access to a cluster-wide Tiller installation to prevent improper activity. 
 
@@ -53,11 +53,11 @@ This situation may change in the future. While the community has several methods
 
 In the default installation the gRPC endpoint that Tiller offers is available inside the cluster (not external to the cluster) without authentication configuration applied. Without applying authentication, any process in the cluster can use the gRPC endpoint to perform operations inside the cluster. In a local or secured private cluster, this enables rapid usage and is normal. (When running outside the cluster, Helm authenticates through the Kubernetes API server to reach Tiller, leveraging existing Kubernetes authentication support.)
 
-Shared and production clusters -- for the most part -- should use Helm 2.7.2 at a minimum and configure TLS for each Tiller gRPC endpoint to ensure that within the cluster usage of gRPC endpoints is only for the properly authenticated identity for that endpoint. Doing so enables any number of Tiller instances to be deployed in any number of namespaces and yet no unauthenticated usage of any gRPC endpoint is possible. Finally, usa Helm `init` with the `--tiller-tls-verify` option to install Tiller with TLS enabled and to verify remote certificates, and all other Helm commands should use the `--tls` option.
+Shared and production clusters -- for the most part -- should use Helm 2.7.2 at a minimum and configure TLS for each Tiller gRPC endpoint to ensure that within the cluster usage of gRPC endpoints is only for the properly authenticated identity for that endpoint. Doing so enables any number of Tiller instances to be deployed in any number of namespaces and yet no unauthenticated usage of any gRPC endpoint is possible. Finally, use Helm `init` with the `--tiller-tls-verify` option to install Tiller with TLS enabled and to verify remote certificates, and all other Helm commands should use the `--tls` option.
 
 For more information about the proper steps to configure Tiller and use Helm properly with TLS configured, see [Using SSL between Helm and Tiller](tiller_ssl.md).
 
-When Helm clients are connecting from outside of the cluster, the security between the Helm client and the API server is managed by Kubernetes itself. You may want to ensure that this link is secure. Note that if you are using the TLS configuration recommended above, not even the Kubernetes API server has access to the unencrypted messages between the client and Tiller.
+When Helm clients are connecting from outside of the cluster, the security between the Helm client and the API server is managed by Kubernetes itself. You may want to ensure that this link is secure. Note that if you are using the TLS configuration recommended above, not even the Kubernetes API server has access to the encrypted messages between the client and Tiller.
 
 ### Tiller's Release Information
 
@@ -65,13 +65,13 @@ For historical reasons, Tiller stores its release information in ConfigMaps. We 
 
 Secrets are the Kubernetes accepted mechanism for saving configuration data that is considered sensitive. While secrets don't themselves offer many protections, Kubernetes cluster management software often treats them differently than other objects. Thus, we suggest using secrets to store releases.
 
-Enabling this feature currently requires setting the `--storage=secret` flag in the tiller-deploy deployment. This entails directly modifying the deployment or using `helm init --override=...`, as no helm init flag is currently available to do this for you. For more information, see [Using --override](install.md#using---override).
+Enabling this feature currently requires setting the `--storage=secret` flag in the tiller-deploy deployment. This entails directly modifying the deployment or using `helm init --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}'`, as no helm init flag is currently available to do this for you.
 
 ### Thinking about Charts
 
 Because of the relative longevity of Helm, the Helm chart ecosystem evolved without the immediate concern for cluster-wide control, and especially in the developer space this makes complete sense. However, charts are a kind of package that not only installs containers you may or may not have validated yourself, but it may also install into more than one namespace. 
 
-As with all shared software, in a controlled or shared environment you must validate all software you install yourself _before_ you install it. If you have secured Tiller with TLS and have installed it with permissions to only one or a subset of namespaces, some charts may fail to install -- but in these environments, that is exactly what you want. If you need to use the chart, you may have to work with the creator or modify it yourself in order to use it securely in a mulitenant cluster with proper RBAC rules applied. The `helm template` command renders the chart locally and displays the output. 
+As with all shared software, in a controlled or shared environment you must validate all software you install yourself _before_ you install it. If you have secured Tiller with TLS and have installed it with permissions to only one or a subset of namespaces, some charts may fail to install -- but in these environments, that is exactly what you want. If you need to use the chart, you may have to work with the creator or modify it yourself in order to use it securely in a multitenant cluster with proper RBAC rules applied. The `helm template` command renders the chart locally and displays the output. 
 
 Once vetted, you can use Helm's provenance tools to [ensure the provenance and integrity of charts](provenance.md) that you use.
 
@@ -93,15 +93,16 @@ If these steps are followed, an example `helm init` command might look something
  
 ```bash
 $ helm init \
+--override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' \
 --tiller-tls \
 --tiller-tls-verify \
---tiller-tls-ca-cert=ca.pem \
 --tiller-tls-cert=cert.pem \
 --tiller-tls-key=key.pem \
---service-account=accountname  
+--tls-ca-cert=ca.pem \
+--service-account=accountname
 ```
 
-This command will start Tiller with both strong authentication over gRPC, and a service account to which RBAC policies have been applied. 
+This command will start Tiller with strong authentication over gRPC, release information stored in a Kubernetes Secret, and a service account to which RBAC policies have been applied. 
 
 
 

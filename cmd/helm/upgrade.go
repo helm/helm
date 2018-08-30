@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,28 +29,57 @@ import (
 )
 
 const upgradeDesc = `
-This command upgrades a release to a new version of a chart.
+This command upgrades a release to a specified version of a chart and/or updates chart values.
 
-The upgrade arguments must be a release and chart. The chart
-argument can be either: a chart reference('stable/mariadb'), a path to a chart directory,
-a packaged chart, or a fully qualified URL. For chart references, the latest
-version will be specified unless the '--version' flag is set.
+Required arguments are release and chart. The chart argument can be one of:
+ - a chart reference('stable/mariadb'); use '--version' and '--devel' flags for versions other than latest,
+ - a path to a chart directory,
+ - a packaged chart,
+ - a fully qualified URL.
 
-To override values in a chart, use either the '--values' flag and pass in a file
-or use the '--set' flag and pass configuration from the command line, to force string
-values, use '--set-string'.
+To customize the chart values, use any of
+ - '--values'/'-f' to pass in a yaml file holding settings,
+ - '--set' to provide one or more key=val pairs directly,
+ - '--set-string' to provide key=val forcing val to be stored as a string,
+ - '--set-file' to provide key=path to read a single large value from a file at path.
 
-You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
-last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
-contained a key called 'Test', the value set in override.yaml would take precedence:
+To edit or append to the existing customized values, add the 
+ '--reuse-values' flag, otherwise any existing customized values are ignored.
+
+If no chart value arguments are provided on the command line, any existing customized values are carried
+forward. If you want to revert to just the values provided in the chart, use the '--reset-values' flag.
+
+You can specify any of the chart value flags multiple times. The priority will be given to the last
+(right-most) value specified. For example, if both myvalues.yaml and override.yaml contained a key
+called 'Test', the value set in override.yaml would take precedence:
 
 	$ helm upgrade -f myvalues.yaml -f override.yaml redis ./redis
 
-You can specify the '--set' flag multiple times. The priority will be given to the
-last (right-most) set specified. For example, if both 'bar' and 'newbar' values are
-set for a key called 'foo', the 'newbar' value would take precedence:
+Note that the key name provided to the '--set', '--set-string' and '--set-file' flags can reference
+structure elements. Examples:
+  - mybool=TRUE
+  - livenessProbe.timeoutSeconds=10
+  - metrics.annotations[0]=hey,metrics.annotations[1]=ho
 
-	$ helm upgrade --set foo=bar --set foo=newbar redis ./redis
+which sets the top level key mybool to true, the nested timeoutSeconds to 10, and two array values, respectively.
+
+Note that the value side of the key=val provided to '--set' and '--set-string' flags will pass through
+shell evaluation followed by yaml type parsing to produce the final value. This may alter inputs with
+special characters in unexpected ways, for example
+
+	$ helm upgrade --set pwd=3jk$o2,z=f\30.e redis ./redis
+
+results in "pwd: 3jk" and "z: f30.e". Use single quotes to avoid shell evaluation and argument delimiters,
+and use backslash to escape yaml special characters:
+
+	$ helm upgrade --set pwd='3jk$o2z=f\\30.e' redis ./redis
+
+which results in the expected "pwd: 3jk$o2z=f\30.e". If a single quote occurs in your value then follow
+your shell convention for escaping it; for example in bash:
+
+	$ helm upgrade --set pwd='3jk$o2z=f\\30with'\''quote'
+
+which results in "pwd: 3jk$o2z=f\30with'quote".
 `
 
 type upgradeCmd struct {
@@ -65,6 +94,7 @@ type upgradeCmd struct {
 	valueFiles   valueFiles
 	values       []string
 	stringValues []string
+	fileValues   []string
 	verify       bool
 	keyring      string
 	install      bool
@@ -78,6 +108,7 @@ type upgradeCmd struct {
 	username     string
 	password     string
 	devel        bool
+	description  string
 
 	certFile string
 	keyFile  string
@@ -121,6 +152,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
 	f.StringArrayVar(&upgrade.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&upgrade.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&upgrade.fileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
 	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
@@ -130,7 +162,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
 	f.Int64Var(&upgrade.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
-	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values, and merge in any new values. If '--reset-values' is specified, this is ignored.")
+	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&upgrade.username, "username", "", "chart repository username where to locate the requested chart")
@@ -139,6 +171,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.StringVar(&upgrade.description, "description", "", "specify the description to use for the upgrade, rather than the default")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
@@ -187,15 +220,17 @@ func (u *upgradeCmd) run() error {
 				keyring:      u.keyring,
 				values:       u.values,
 				stringValues: u.stringValues,
+				fileValues:   u.fileValues,
 				namespace:    u.namespace,
 				timeout:      u.timeout,
 				wait:         u.wait,
+				description:  u.description,
 			}
 			return ic.run()
 		}
 	}
 
-	rawVals, err := vals(u.valueFiles, u.values, u.stringValues)
+	rawVals, err := vals(u.valueFiles, u.values, u.stringValues, u.fileValues, u.certFile, u.keyFile, u.caFile)
 	if err != nil {
 		return err
 	}
@@ -224,7 +259,8 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeTimeout(u.timeout),
 		helm.ResetValues(u.resetValues),
 		helm.ReuseValues(u.reuseValues),
-		helm.UpgradeWait(u.wait))
+		helm.UpgradeWait(u.wait),
+		helm.UpgradeDescription(u.description))
 	if err != nil {
 		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}

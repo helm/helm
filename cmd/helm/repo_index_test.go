@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -99,6 +99,36 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if len(index.Entries) != 2 {
+		t.Errorf("expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
+	}
+
+	vs = index.Entries["compressedchart"]
+	if len(vs) != 3 {
+		t.Errorf("expected 3 versions, got %d: %#v", len(vs), vs)
+	}
+
+	expectedVersion = "0.3.0"
+	if vs[0].Version != expectedVersion {
+		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
+	}
+
+	// test that index.yaml gets generated on merge even when it doesn't exist
+	if err := os.Remove(destIndex); err != nil {
+		t.Fatal(err)
+	}
+
+	c.ParseFlags([]string{"--merge", destIndex})
+	if err := c.RunE(c, []string{dir}); err != nil {
+		t.Error(err)
+	}
+
+	_, err = repo.LoadIndexFile(destIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// verify it didn't create an empty index.yaml and the merged happened
 	if len(index.Entries) != 2 {
 		t.Errorf("expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
 	}

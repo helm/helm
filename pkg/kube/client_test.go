@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,31 +18,25 @@ package kube
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest/fake"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
-	"k8s.io/kubernetes/pkg/printers"
-	watchjson "k8s.io/kubernetes/pkg/watch/json"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
+	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
+
+var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
 
 func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
@@ -99,49 +93,21 @@ func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
-type fakeReaper struct {
-	name string
+type testClient struct {
+	*Client
+	*cmdtesting.TestFactory
 }
 
-func (r *fakeReaper) Stop(namespace, name string, timeout time.Duration, gracePeriod *metav1.DeleteOptions) error {
-	r.name = name
-	return nil
-}
-
-type fakeReaperFactory struct {
-	cmdutil.Factory
-	reaper kubectl.Reaper
-}
-
-func (f *fakeReaperFactory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error) {
-	return f.reaper, nil
-}
-
-func newEventResponse(code int, e *watch.Event) (*http.Response, error) {
-	dispatchedEvent, err := encodeAndMarshalEvent(e)
-	if err != nil {
-		return nil, err
+func newTestClient() *testClient {
+	tf := cmdtesting.NewTestFactory()
+	c := &Client{
+		Factory: tf,
+		Log:     nopLogger,
 	}
-
-	header := http.Header{}
-	header.Set("Content-Type", runtime.ContentTypeJSON)
-	body := ioutil.NopCloser(bytes.NewReader(dispatchedEvent))
-	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
-}
-
-func encodeAndMarshalEvent(e *watch.Event) ([]byte, error) {
-	encodedEvent, err := watchjson.Object(testapi.Default.Codec(), e)
-	if err != nil {
-		return nil, err
+	return &testClient{
+		Client:      c,
+		TestFactory: tf,
 	}
-
-	return json.Marshal(encodedEvent)
-}
-
-func newTestClient(f cmdutil.Factory) *Client {
-	c := New(nil)
-	c.Factory = f
-	return c
 }
 
 func TestUpdate(t *testing.T) {
@@ -153,10 +119,11 @@ func TestUpdate(t *testing.T) {
 
 	var actions []string
 
-	f, tf, codec, _ := cmdtesting.NewAPIFactory()
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
 	tf.UnstructuredClient = &fake.RESTClient{
-		GroupVersion:         schema.GroupVersion{Version: "v1"},
-		NegotiatedSerializer: dynamic.ContentConfig().NegotiatedSerializer,
+		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
 			actions = append(actions, p+":"+m)
@@ -190,9 +157,12 @@ func TestUpdate(t *testing.T) {
 		}),
 	}
 
-	reaper := &fakeReaper{}
-	rf := &fakeReaperFactory{Factory: f, reaper: reaper}
-	c := newTestClient(rf)
+	c := &Client{
+		Factory: tf,
+		Log:     nopLogger,
+	}
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+
 	if err := c.Update(core.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
@@ -213,6 +183,7 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/dolphin:GET",
 		"/namespaces/default/pods:POST",
+		"/namespaces/default/pods/squid:DELETE",
 	}
 	if len(expectedActions) != len(actions) {
 		t.Errorf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
@@ -223,11 +194,6 @@ func TestUpdate(t *testing.T) {
 			t.Errorf("expected %s request got %s", v, actions[k])
 		}
 	}
-
-	if reaper.name != "squid" {
-		t.Errorf("unexpected reaper: %#v", reaper)
-	}
-
 }
 
 func TestBuild(t *testing.T) {
@@ -251,54 +217,35 @@ func TestBuild(t *testing.T) {
 		},
 	}
 
+	c := newTestClient()
 	for _, tt := range tests {
-		f, _, _, _ := cmdtesting.NewAPIFactory()
-		c := newTestClient(f)
+		t.Run(tt.name, func(t *testing.T) {
+			c.Cleanup()
 
-		// Test for an invalid manifest
-		infos, err := c.Build(tt.namespace, tt.reader)
-		if err != nil && !tt.err {
-			t.Errorf("%q. Got error message when no error should have occurred: %v", tt.name, err)
-		} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
-			t.Errorf("%q. error message was not scrubbed", tt.name)
-		}
+			// Test for an invalid manifest
+			infos, err := c.Build(tt.namespace, tt.reader)
+			if err != nil && !tt.err {
+				t.Errorf("Got error message when no error should have occurred: %v", err)
+			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
+				t.Error("error message was not scrubbed")
+			}
 
-		if len(infos) != tt.count {
-			t.Errorf("%q. expected %d result objects, got %d", tt.name, tt.count, len(infos))
-		}
+			if len(infos) != tt.count {
+				t.Errorf("expected %d result objects, got %d", tt.count, len(infos))
+			}
+		})
 	}
-}
-
-type testPrinter struct {
-	Objects []runtime.Object
-	Err     error
-	printers.ResourcePrinter
-}
-
-func (t *testPrinter) PrintObj(obj runtime.Object, out io.Writer) error {
-	t.Objects = append(t.Objects, obj)
-	fmt.Fprintf(out, "%#v", obj)
-	return t.Err
-}
-
-func (t *testPrinter) HandledResources() []string {
-	return []string{}
-}
-
-func (t *testPrinter) AfterPrint(io.Writer, string) error {
-	return t.Err
 }
 
 func TestGet(t *testing.T) {
 	list := newPodList("starfish", "otter")
-	f, tf, _, _ := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
-	tf.UnstructuredClient = &fake.RESTClient{
+	c := newTestClient()
+	defer c.Cleanup()
+	c.TestFactory.UnstructuredClient = &fake.RESTClient{
 		GroupVersion:         schema.GroupVersion{Version: "v1"},
-		NegotiatedSerializer: dynamic.ContentConfig().NegotiatedSerializer,
+		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
-			//actions = append(actions, p+":"+m)
 			t.Logf("got request %s %s", p, m)
 			switch {
 			case p == "/namespaces/default/pods/starfish" && m == "GET":
@@ -311,7 +258,6 @@ func TestGet(t *testing.T) {
 			}
 		}),
 	}
-	c := newTestClient(f)
 
 	// Test Success
 	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
@@ -358,101 +304,37 @@ func TestPerform(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		results := []*resource.Info{}
+		t.Run(tt.name, func(t *testing.T) {
+			results := []*resource.Info{}
 
-		fn := func(info *resource.Info) error {
-			results = append(results, info)
+			fn := func(info *resource.Info) error {
+				results = append(results, info)
 
-			if info.Namespace != tt.namespace {
-				t.Errorf("%q. expected namespace to be '%s', got %s", tt.name, tt.namespace, info.Namespace)
-			}
-			return nil
-		}
-
-		f, _, _, _ := cmdtesting.NewAPIFactory()
-		c := newTestClient(f)
-		infos, err := c.Build(tt.namespace, tt.reader)
-		if err != nil && err.Error() != tt.errMessage {
-			t.Errorf("%q. Error while building manifests: %v", tt.name, err)
-		}
-
-		err = perform(infos, fn)
-		if (err != nil) != tt.err {
-			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
-		}
-		if err != nil && err.Error() != tt.errMessage {
-			t.Errorf("%q. expected error message: %v, got %v", tt.name, tt.errMessage, err)
-		}
-
-		if len(results) != tt.count {
-			t.Errorf("%q. expected %d result objects, got %d", tt.name, tt.count, len(results))
-		}
-	}
-}
-
-func TestWaitAndGetCompletedPodPhase(t *testing.T) {
-	tests := []struct {
-		podPhase      core.PodPhase
-		expectedPhase core.PodPhase
-		err           bool
-		errMessage    string
-	}{
-		{
-			podPhase:      core.PodPending,
-			expectedPhase: core.PodUnknown,
-			err:           true,
-			errMessage:    "watch closed before Until timeout",
-		}, {
-			podPhase:      core.PodRunning,
-			expectedPhase: core.PodUnknown,
-			err:           true,
-			errMessage:    "watch closed before Until timeout",
-		}, {
-			podPhase:      core.PodSucceeded,
-			expectedPhase: core.PodSucceeded,
-		}, {
-			podPhase:      core.PodFailed,
-			expectedPhase: core.PodFailed,
-		},
-	}
-
-	for _, tt := range tests {
-		f, tf, codec, ns := cmdtesting.NewAPIFactory()
-		actions := make(map[string]string)
-
-		var testPodList core.PodList
-		testPodList.Items = append(testPodList.Items, newPodWithStatus("bestpod", core.PodStatus{Phase: tt.podPhase}, "test"))
-
-		tf.Client = &fake.RESTClient{
-			NegotiatedSerializer: ns,
-			Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-				p, m := req.URL.Path, req.Method
-				actions[p] = m
-				switch {
-				case p == "/namespaces/test/pods/bestpod" && m == "GET":
-					return newResponse(200, &testPodList.Items[0])
-				case p == "/namespaces/test/pods" && m == "GET":
-					event := watch.Event{Type: watch.Added, Object: &testPodList.Items[0]}
-					return newEventResponse(200, &event)
-				default:
-					t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
-					return nil, nil
+				if info.Namespace != tt.namespace {
+					t.Errorf("expected namespace to be '%s', got %s", tt.namespace, info.Namespace)
 				}
-			}),
-		}
+				return nil
+			}
 
-		c := newTestClient(f)
+			c := newTestClient()
+			defer c.Cleanup()
+			infos, err := c.Build(tt.namespace, tt.reader)
+			if err != nil && err.Error() != tt.errMessage {
+				t.Errorf("Error while building manifests: %v", err)
+			}
 
-		phase, err := c.WaitAndGetCompletedPodPhase("test", objBody(codec, &testPodList), 1*time.Second)
-		if (err != nil) != tt.err {
-			t.Fatalf("Expected error but there was none.")
-		}
-		if err != nil && err.Error() != tt.errMessage {
-			t.Fatalf("Expected error %s, got %s", tt.errMessage, err.Error())
-		}
-		if phase != tt.expectedPhase {
-			t.Fatalf("Expected pod phase %s, got %s", tt.expectedPhase, phase)
-		}
+			err = perform(infos, fn)
+			if (err != nil) != tt.err {
+				t.Errorf("expected error: %v, got %v", tt.err, err)
+			}
+			if err != nil && err.Error() != tt.errMessage {
+				t.Errorf("expected error message: %v, got %v", tt.errMessage, err)
+			}
+
+			if len(results) != tt.count {
+				t.Errorf("expected %d result objects, got %d", tt.count, len(results))
+			}
+		})
 	}
 }
 

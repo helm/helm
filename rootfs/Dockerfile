@@ -1,4 +1,4 @@
-# Copyright 2016 The Kubernetes Authors.
+# Copyright The Helm Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.3
+FROM alpine:3.7
 
-RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+RUN apk update && apk add ca-certificates socat && rm -rf /var/cache/apk/*
 
 ENV HOME /tmp
 
+COPY helm /helm
 COPY tiller /tiller
 
 EXPOSE 44134
-
-CMD ["/tiller"]
+USER nobody
+ENTRYPOINT ["/tiller"]
 

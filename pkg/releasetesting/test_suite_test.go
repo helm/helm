@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -134,7 +134,7 @@ func TestRun(t *testing.T) {
 	}
 
 	if result2.Status != release.TestRun_FAILURE {
-		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
+		t.Errorf("Expected test result to be failure, got: %v", result2.Status)
 	}
 
 }

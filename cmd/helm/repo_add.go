@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,9 +22,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"golang.org/x/crypto/ssh/terminal"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
+	"syscall"
 )
 
 type repoAddCmd struct {
@@ -73,11 +75,29 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (a *repoAddCmd) run() error {
+	if a.username != "" && a.password == "" {
+		fmt.Fprint(a.out, "Password:")
+		password, err := readPassword()
+		fmt.Fprintln(a.out)
+		if err != nil {
+			return err
+		}
+		a.password = password
+	}
+
 	if err := addRepository(a.name, a.url, a.username, a.password, a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
 		return err
 	}
 	fmt.Fprintf(a.out, "%q has been added to your repositories\n", a.name)
 	return nil
+}
+
+func readPassword() (string, error) {
+	password, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return "", err
+	}
+	return string(password), nil
 }
 
 func addRepository(name, url, username, password string, home helmpath.Home, certFile, keyFile, caFile string, noUpdate bool) error {

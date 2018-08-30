@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
@@ -97,8 +97,6 @@ type Engine interface {
 // A KubeClient must be concurrency safe.
 type KubeClient interface {
 	// Create creates one or more resources.
-	//
-	// namespace must contain a valid existing namespace.
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").

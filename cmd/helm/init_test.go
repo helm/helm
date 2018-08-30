@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -32,10 +33,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/fake"
 	testcore "k8s.io/client-go/testing"
-
-	"encoding/json"
 
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -306,7 +306,7 @@ func TestInitCmd_tlsOptions(t *testing.T) {
 	}
 }
 
-// TestInitCmd_output tests that init -o formats are unmarshal-able
+// TestInitCmd_output tests that init -o can be decoded
 func TestInitCmd_output(t *testing.T) {
 	// This is purely defensive in this case.
 	home, err := ioutil.TempDir("", "helm_home")
@@ -320,26 +320,14 @@ func TestInitCmd_output(t *testing.T) {
 		settings.Debug = dbg
 	}()
 	fc := fake.NewSimpleClientset()
-	tests := []struct {
-		expectF    func([]byte, interface{}) error
-		expectName string
-	}{
-		{
-			json.Unmarshal,
-			"json",
-		},
-		{
-			yaml.Unmarshal,
-			"yaml",
-		},
-	}
+	tests := []string{"json", "yaml"}
 	for _, s := range tests {
 		var buf bytes.Buffer
 		cmd := &initCmd{
 			out:        &buf,
 			home:       helmpath.Home(home),
 			kubeClient: fc,
-			opts:       installer.Options{Output: installer.OutputFormat(s.expectName)},
+			opts:       installer.Options{Output: installer.OutputFormat(s)},
 			namespace:  v1.NamespaceDefault,
 		}
 		if err := cmd.run(); err != nil {
@@ -348,10 +336,17 @@ func TestInitCmd_output(t *testing.T) {
 		if got := len(fc.Actions()); got != 0 {
 			t.Errorf("expected no server calls, got %d", got)
 		}
-		d := &v1beta1.Deployment{}
-		if err = s.expectF(buf.Bytes(), &d); err != nil {
-			t.Errorf("error unmarshalling init %s output %s %s", s.expectName, err, buf.String())
+
+		var obj interface{}
+		decoder := yamlutil.NewYAMLOrJSONDecoder(&buf, 4096)
+		for {
+			err := decoder.Decode(&obj)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				t.Errorf("error decoding init %s output %s %s", s, err, buf.String())
+			}
 		}
 	}
-
 }

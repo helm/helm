@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -114,6 +114,13 @@ func TestInstall(t *testing.T) {
 			flags:    []string{"--name-template", "{{upper \"foobar\"}}"},
 			expected: "FOOBAR",
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "FOOBAR"}),
+		},
+		{
+			name:     "install with custom description",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    []string{"--name", "virgil", "--description", "foobar"},
+			expected: "virgil",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil", Description: "foobar"}),
 		},
 		// Install, perform chart verification along the way.
 		{

@@ -134,7 +134,7 @@ downloaders:
 
 If such plugin is installed, Helm can interact with the repository using the specified
 protocol scheme by invoking the `command`. The special repository shall be added
-similarily to the regular ones: `helm repo add favorite myprotocol://example.com/`
+similarly to the regular ones: `helm repo add favorite myprotocol://example.com/`
 The rules for the special repos are the same to the regular ones: Helm must be able
 to download the `index.yaml` file in order to discover and cache the list of
 available Charts.
@@ -183,7 +183,7 @@ If a plugin specifies `useTunnel: true`, Helm will do the following (in order):
 5. Close the tunnel
 
 The tunnel is removed as soon as the `command` returns. So, for example, a
-command cannot background a process and assume that that process will be able
+command cannot background a process and assume that process will be able
 to use the tunnel.
 
 ## A Note on Flag Parsing

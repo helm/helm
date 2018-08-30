@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package helm // import "k8s.io/helm/pkg/helm"
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 
@@ -27,6 +26,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/proto/hapi/version"
+	storage "k8s.io/helm/pkg/storage/driver"
 )
 
 // FakeClient implements Interface
@@ -49,9 +49,28 @@ var _ Interface = (*FakeClient)(nil)
 
 // ListReleases lists the current releases
 func (c *FakeClient) ListReleases(opts ...ReleaseListOption) (*rls.ListReleasesResponse, error) {
+	reqOpts := c.Opts
+	for _, opt := range opts {
+		opt(&reqOpts)
+	}
+	req := &reqOpts.listReq
+	rels := c.Rels
+	count := int64(len(c.Rels))
+	var next string
+	limit := req.GetLimit()
+	// TODO: Handle all other options.
+	if limit != 0 && limit < count {
+		rels = rels[:limit]
+		count = limit
+		next = c.Rels[limit].GetName()
+	}
+
 	resp := &rls.ListReleasesResponse{
-		Count:    int64(len(c.Rels)),
-		Releases: c.Rels,
+		Count:    count,
+		Releases: rels,
+	}
+	if next != "" {
+		resp.Next = next
 	}
 	return resp, nil
 }
@@ -69,6 +88,7 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	}
 
 	releaseName := c.Opts.instReq.Name
+	releaseDescription := c.Opts.instReq.Description
 
 	// Check to see if the release already exists.
 	rel, err := c.ReleaseStatus(releaseName, nil)
@@ -76,8 +96,10 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 		return nil, errors.New("cannot re-use a name that is still in use")
 	}
 
-	release := ReleaseMock(&MockReleaseOptions{Name: releaseName, Namespace: ns})
-	c.Rels = append(c.Rels, release)
+	release := ReleaseMock(&MockReleaseOptions{Name: releaseName, Namespace: ns, Description: releaseDescription})
+	if !c.Opts.dryRun {
+		c.Rels = append(c.Rels, release)
+	}
 
 	return &rls.InstallReleaseResponse{
 		Release: release,
@@ -95,7 +117,7 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.U
 		}
 	}
 
-	return nil, fmt.Errorf("No such release: %s", rlsName)
+	return nil, storage.ErrReleaseNotFound(rlsName)
 }
 
 // GetVersion returns a fake version
@@ -139,7 +161,7 @@ func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.G
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("No such release: %s", rlsName)
+	return nil, storage.ErrReleaseNotFound(rlsName)
 }
 
 // ReleaseContent returns the configuration for the matching release name in the fake release client.
@@ -151,7 +173,7 @@ func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp
 			}, nil
 		}
 	}
-	return resp, fmt.Errorf("No such release: %s", rlsName)
+	return resp, storage.ErrReleaseNotFound(rlsName)
 }
 
 // ReleaseHistory returns a release's revision history.
@@ -206,11 +228,12 @@ metadata:
 
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
-	Name       string
-	Version    int32
-	Chart      *chart.Chart
-	StatusCode release.Status_Code
-	Namespace  string
+	Name        string
+	Version     int32
+	Chart       *chart.Chart
+	StatusCode  release.Status_Code
+	Namespace   string
+	Description string
 }
 
 // ReleaseMock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -230,6 +253,11 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 	namespace := opts.Namespace
 	if namespace == "" {
 		namespace = "default"
+	}
+
+	description := opts.Description
+	if description == "" {
+		description = "Release mock"
 	}
 
 	ch := opts.Chart
@@ -256,7 +284,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: scode},
-			Description:   "Release mock",
+			Description:   description,
 		},
 		Chart:     ch,
 		Config:    &chart.Config{Raw: `name: "value"`},

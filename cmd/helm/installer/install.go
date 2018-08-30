@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -73,7 +74,7 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
-	// If the service does not exists that would mean we are upgrading from a Tiller version
+	// If the service does not exist that would mean we are upgrading from a Tiller version
 	// that didn't deploy the service, so install it.
 	_, err = client.CoreV1().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -104,7 +105,7 @@ func semverCompare(image string) int {
 
 // createDeployment creates the Tiller Deployment resource.
 func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) error {
-	obj, err := deployment(opts)
+	obj, err := generateDeployment(opts)
 	if err != nil {
 		return err
 	}
@@ -113,40 +114,68 @@ func createDeployment(client extensionsclient.DeploymentsGetter, opts *Options) 
 
 }
 
-// deployment gets the deployment object that installs Tiller.
-func deployment(opts *Options) (*v1beta1.Deployment, error) {
-	return generateDeployment(opts)
+// Deployment gets a deployment object that can be used to generate a manifest
+// as a string. This object should not be submitted directly to the Kubernetes
+// api
+func Deployment(opts *Options) (*v1beta1.Deployment, error) {
+	dep, err := generateDeployment(opts)
+	if err != nil {
+		return nil, err
+	}
+	dep.TypeMeta = metav1.TypeMeta{
+		Kind:       "Deployment",
+		APIVersion: "extensions/v1beta1",
+	}
+	return dep, nil
 }
 
 // createService creates the Tiller service resource
 func createService(client corev1.ServicesGetter, namespace string) error {
-	obj := service(namespace)
+	obj := generateService(namespace)
 	_, err := client.Services(obj.Namespace).Create(obj)
 	return err
 }
 
-// service gets the service object that installs Tiller.
-func service(namespace string) *v1.Service {
-	return generateService(namespace)
-}
-
-// DeploymentManifest gets the manifest (as a string) that describes the Tiller Deployment
-// resource.
-func DeploymentManifest(opts *Options) (string, error) {
-	obj, err := deployment(opts)
-	if err != nil {
-		return "", err
+// Service gets a service object that can be used to generate a manifest as a
+// string. This object should not be submitted directly to the Kubernetes api
+func Service(namespace string) *v1.Service {
+	svc := generateService(namespace)
+	svc.TypeMeta = metav1.TypeMeta{
+		Kind:       "Service",
+		APIVersion: "v1",
 	}
-	buf, err := yaml.Marshal(obj)
-	return string(buf), err
+	return svc
 }
 
-// ServiceManifest gets the manifest (as a string) that describes the Tiller Service
-// resource.
-func ServiceManifest(namespace string) (string, error) {
-	obj := service(namespace)
-	buf, err := yaml.Marshal(obj)
-	return string(buf), err
+// TillerManifests gets the Deployment, Service, and Secret (if tls-enabled) manifests
+func TillerManifests(opts *Options) ([]string, error) {
+	dep, err := Deployment(opts)
+	if err != nil {
+		return []string{}, err
+	}
+
+	svc := Service(opts.Namespace)
+
+	objs := []runtime.Object{dep, svc}
+
+	if opts.EnableTLS {
+		secret, err := Secret(opts)
+		if err != nil {
+			return []string{}, err
+		}
+		objs = append(objs, secret)
+	}
+
+	manifests := make([]string, len(objs))
+	for i, obj := range objs {
+		o, err := yaml.Marshal(obj)
+		if err != nil {
+			return []string{}, err
+		}
+		manifests[i] = string(o)
+	}
+
+	return manifests, err
 }
 
 func generateLabels(labels map[string]string) map[string]string {
@@ -321,14 +350,20 @@ func generateService(namespace string) *v1.Service {
 	return s
 }
 
-// SecretManifest gets the manifest (as a string) that describes the Tiller Secret resource.
-func SecretManifest(opts *Options) (string, error) {
-	o, err := generateSecret(opts)
+// Secret gets a secret object that can be used to generate a manifest as a
+// string. This object should not be submitted directly to the Kubernetes api
+func Secret(opts *Options) (*v1.Secret, error) {
+	secret, err := generateSecret(opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	buf, err := yaml.Marshal(o)
-	return string(buf), err
+
+	secret.TypeMeta = metav1.TypeMeta{
+		Kind:       "Secret",
+		APIVersion: "v1",
+	}
+
+	return secret, nil
 }
 
 // createSecret creates the Tiller secret resource.

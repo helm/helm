@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,6 +51,8 @@ type options struct {
 	force bool
 	// if set, skip running hooks
 	disableHooks bool
+	// if set, skip CRD hook only
+	disableCRDHook bool
 	// name of release
 	releaseName string
 	// tls.Config to use for rpc if tls enabled
@@ -260,6 +262,34 @@ func UpdateValueOverrides(raw []byte) UpdateOption {
 	}
 }
 
+// InstallDescription specifies the description for the release
+func InstallDescription(description string) InstallOption {
+	return func(opts *options) {
+		opts.instReq.Description = description
+	}
+}
+
+// UpgradeDescription specifies the description for the update
+func UpgradeDescription(description string) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Description = description
+	}
+}
+
+// RollbackDescription specifies the description for the release
+func RollbackDescription(description string) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.Description = description
+	}
+}
+
+// DeleteDescription specifies the description for the release
+func DeleteDescription(description string) DeleteOption {
+	return func(opts *options) {
+		opts.uninstallReq.Description = description
+	}
+}
+
 // DeleteDisableHooks will disable hooks for a deletion operation.
 func DeleteDisableHooks(disable bool) DeleteOption {
 	return func(opts *options) {
@@ -292,6 +322,13 @@ func InstallDryRun(dry bool) InstallOption {
 func InstallDisableHooks(disable bool) InstallOption {
 	return func(opts *options) {
 		opts.disableHooks = disable
+	}
+}
+
+// InstallDisableCRDHook disables CRD hook during installation.
+func InstallDisableCRDHook(disable bool) InstallOption {
+	return func(opts *options) {
+		opts.disableCRDHook = disable
 	}
 }
 

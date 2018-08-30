@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import (
 // ApiVersionV1 is the API version number for version 1.
 //
 // This is ApiVersionV1 instead of APIVersionV1 to match the protobuf-generated name.
-const ApiVersionV1 = "v1"
+const ApiVersionV1 = "v1" // nolint
 
 // UnmarshalChartfile takes raw Chart.yaml data and unmarshals it.
 func UnmarshalChartfile(data []byte) (*chart.Metadata, error) {

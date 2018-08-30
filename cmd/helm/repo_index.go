@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -86,12 +87,19 @@ func index(dir, url, mergeTo string) error {
 		return err
 	}
 	if mergeTo != "" {
-		i2, err := repo.LoadIndexFile(mergeTo)
-		if err != nil {
-			return fmt.Errorf("Merge failed: %s", err)
+		// if index.yaml is missing then create an empty one to merge into
+		var i2 *repo.IndexFile
+		if _, err := os.Stat(mergeTo); os.IsNotExist(err) {
+			i2 = repo.NewIndexFile()
+			i2.WriteFile(mergeTo, 0644)
+		} else {
+			i2, err = repo.LoadIndexFile(mergeTo)
+			if err != nil {
+				return fmt.Errorf("Merge failed: %s", err)
+			}
 		}
 		i.Merge(i2)
 	}
 	i.SortEntries()
-	return i.WriteFile(out, 0755)
+	return i.WriteFile(out, 0644)
 }

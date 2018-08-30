@@ -4,19 +4,21 @@ This part of the Best Practices Guide explains general conventions.
 
 ## Chart Names
 
-Chart names should be lower case letters and numbers. Words _may_ be separated with dashes (-):
+Chart names should use lower case letters and numbers, and start with a letter.
 
-Examples:
+Hyphens (-) are allowed, but are known to be a little trickier to work with in Helm templates (see [issue #2192](https://github.com/helm/helm/issues/2192) for more information).
+
+Here are a few examples of good chart names from the [Helm Community Charts](https://github.com/helm/charts):
 
 ```
 drupal
-nginx-lego
-aws-cluster-autoscaler
+cert-manager
+oauth2-proxy
 ```
 
 Neither uppercase letters nor underscores should be used in chart names. Dots should not be used in chart names.
 
-The directory that contains a chart MUST have the same name as the chart. Thus, the chart `nginx-lego` MUST be created in a directory called `nginx-lego/`. This is not merely a stylistic detail, but a requirement of the Helm Chart format.
+The directory that contains a chart MUST have the same name as the chart. Thus, the chart `cert-manager` MUST be created in a directory called `cert-manager/`. This is not merely a stylistic detail, but a requirement of the Helm Chart format.
 
 ## Version Numbers
 

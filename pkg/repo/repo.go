@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,8 @@ import (
 var ErrRepoOutOfDate = errors.New("repository file is out of date")
 
 // RepoFile represents the repositories.yaml file in $HELM_HOME
-type RepoFile struct {
+// TODO: change type name to File in Helm 3 to resolve linter warning
+type RepoFile struct { // nolint
 	APIVersion   string    `json:"apiVersion"`
 	Generated    time.Time `json:"generated"`
 	Repositories []*Entry  `json:"repositories"`

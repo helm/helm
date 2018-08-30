@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,12 +42,14 @@ var events = map[string]release.Hook_Event{
 	hooks.PostRollback:       release.Hook_POST_ROLLBACK,
 	hooks.ReleaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
 	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
+	hooks.CRDInstall:         release.Hook_CRD_INSTALL,
 }
 
 // deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
 var deletePolices = map[string]release.Hook_DeletePolicy{
-	hooks.HookSucceeded: release.Hook_SUCCEEDED,
-	hooks.HookFailed:    release.Hook_FAILED,
+	hooks.HookSucceeded:      release.Hook_SUCCEEDED,
+	hooks.HookFailed:         release.Hook_FAILED,
+	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
 }
 
 // Manifest represents a manifest file, which has a name and some content.
@@ -136,10 +138,6 @@ func (file *manifestFile) sort(result *result) error {
 			return e
 		}
 
-		if entry.Version != "" && !file.apis.Has(entry.Version) {
-			return fmt.Errorf("apiVersion %q in %s is not available", entry.Version, file.path)
-		}
-
 		if !hasAnyAnnotation(entry) {
 			result.generic = append(result.generic, Manifest{
 				Name:    file.path,
@@ -189,23 +187,15 @@ func (file *manifestFile) sort(result *result) error {
 
 		result.hooks = append(result.hooks, h)
 
-		isKnownDeletePolices := false
-		dps, ok := entry.Metadata.Annotations[hooks.HookDeleteAnno]
-		if ok {
-			for _, dp := range strings.Split(dps, ",") {
-				dp = strings.ToLower(strings.TrimSpace(dp))
-				p, exist := deletePolices[dp]
-				if exist {
-					isKnownDeletePolices = true
-					h.DeletePolicies = append(h.DeletePolicies, p)
-				}
+		operateAnnotationValues(entry, hooks.HookDeleteAnno, func(value string) {
+			policy, exist := deletePolices[value]
+			if exist {
+				h.DeletePolicies = append(h.DeletePolicies, policy)
+			} else {
+				log.Printf("info: skipping unknown hook delete policy: %q", value)
 			}
-			if !isKnownDeletePolices {
-				log.Printf("info: skipping unknown hook delete policy: %q", dps)
-			}
-		}
+		})
 	}
-
 	return nil
 }
 
@@ -227,4 +217,13 @@ func calculateHookWeight(entry util.SimpleHead) int32 {
 	}
 
 	return int32(hw)
+}
+
+func operateAnnotationValues(entry util.SimpleHead, annotation string, operate func(p string)) {
+	if dps, ok := entry.Metadata.Annotations[annotation]; ok {
+		for _, dp := range strings.Split(dps, ",") {
+			dp = strings.ToLower(strings.TrimSpace(dp))
+			operate(dp)
+		}
+	}
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,8 +34,8 @@ func TestUninstall(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
-	if actions := fc.Actions(); len(actions) != 7 {
-		t.Errorf("unexpected actions: %v, expected 7 actions got %d", actions, len(actions))
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expected 3 actions got %d", actions, len(actions))
 	}
 }
 
@@ -50,8 +50,8 @@ func TestUninstall_serviceNotFound(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
-	if actions := fc.Actions(); len(actions) != 7 {
-		t.Errorf("unexpected actions: %v, expected 7 actions got %d", actions, len(actions))
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expected 3 actions got %d", actions, len(actions))
 	}
 }
 
@@ -66,8 +66,8 @@ func TestUninstall_deploymentNotFound(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
-	if actions := fc.Actions(); len(actions) != 7 {
-		t.Errorf("unexpected actions: %v, expected 7 actions got %d", actions, len(actions))
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expected 3 actions got %d", actions, len(actions))
 	}
 }
 
@@ -82,7 +82,7 @@ func TestUninstall_secretNotFound(t *testing.T) {
 		t.Errorf("unexpected error: %#+v", err)
 	}
 
-	if actions := fc.Actions(); len(actions) != 7 {
-		t.Errorf("unexpected actions: %v, expect 7 actions got %d", actions, len(actions))
+	if actions := fc.Actions(); len(actions) != 3 {
+		t.Errorf("unexpected actions: %v, expect 3 actions got %d", actions, len(actions))
 	}
 }

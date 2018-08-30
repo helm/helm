@@ -3,7 +3,7 @@
 
 ## Prerequisites
 * Install the [gsutil](https://cloud.google.com/storage/docs/gsutil) tool. *We rely heavily on the gsutil rsync functionality*
-* Be sure to have access to the helm binary
+* Be sure to have access to the Helm binary
 * _Optional: We recommend you set [object versioning](https://cloud.google.com/storage/docs/gsutil/addlhelp/ObjectVersioningandConcurrencyControl#top_of_page) on your GCS bucket in case you accidentally delete something._
 
 ## Set up a local chart repository directory
@@ -16,7 +16,7 @@ $ mv alpine-0.1.0.tgz fantastic-charts/
 ```
 
 ## Generate an updated index.yaml
-Use helm to generate an updated index.yaml file by passing in the directory path and the url of the remote repository to the `helm repo index` command like this:
+Use Helm to generate an updated index.yaml file by passing in the directory path and the url of the remote repository to the `helm repo index` command like this:
 
 ```console
 $ helm repo index fantastic-charts/ --url https://fantastic-charts.storage.googleapis.com
