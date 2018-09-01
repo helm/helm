@@ -76,6 +76,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		return
 	}
 	e := engine.New()
+	e.LintMode = true
 	if strict {
 		e.Strict = true
 	}
