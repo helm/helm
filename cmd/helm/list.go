@@ -60,24 +60,25 @@ flag with the '--offset' flag allows you to page through results.
 `
 
 type listCmd struct {
-	filter     string
-	short      bool
-	limit      int
-	offset     string
-	byDate     bool
-	sortDesc   bool
-	out        io.Writer
-	all        bool
-	deleted    bool
-	deleting   bool
-	deployed   bool
-	failed     bool
-	namespace  string
-	superseded bool
-	pending    bool
-	client     helm.Interface
-	colWidth   uint
-	output     string
+	filter      string
+	short       bool
+	limit       int
+	offset      string
+	byDate      bool
+	sortDesc    bool
+	out         io.Writer
+	all         bool
+	deleted     bool
+	deleting    bool
+	deployed    bool
+	failed      bool
+	namespace   string
+	superseded  bool
+	pending     bool
+	client      helm.Interface
+	colWidth    uint
+	output      string
+	byChartName bool
 }
 
 type listResult struct {
@@ -133,6 +134,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
 	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
 	f.StringVar(&list.output, "output", "", "output the specified format (json or yaml)")
+	f.BoolVarP(&list.byChartName, "chart-name", "c", false, "sort by chart name")
 
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
@@ -144,6 +146,9 @@ func (l *listCmd) run() error {
 	sortBy := services.ListSort_NAME
 	if l.byDate {
 		sortBy = services.ListSort_LAST_RELEASED
+	}
+	if l.byChartName {
+		sortBy = services.ListSort_CHART_NAME
 	}
 
 	sortOrder := services.ListSort_ASC

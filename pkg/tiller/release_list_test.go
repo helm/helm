@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
@@ -143,6 +144,48 @@ func TestListReleasesSort(t *testing.T) {
 		n := fmt.Sprintf("rel-%d", i+1)
 		if mrs.val.Releases[i].Name != n {
 			t.Errorf("Expected %q, got %q", n, mrs.val.Releases[i].Name)
+		}
+	}
+}
+
+func TestListReleasesSortByChartName(t *testing.T) {
+	rs := rsFixture()
+
+	// Put them in by reverse order so that the mock doesn't "accidentally"
+	// sort.
+	num := 7
+	for i := num; i > 0; i-- {
+		rel := releaseStub()
+		rel.Name = fmt.Sprintf("rel-%d", num-i)
+		rel.Chart = &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name: fmt.Sprintf("chartName-%d", i),
+			},
+		}
+		if err := rs.env.Releases.Create(rel); err != nil {
+			t.Fatalf("Could not store mock release: %s", err)
+		}
+	}
+
+	limit := 6
+	mrs := &mockListServer{}
+	req := &services.ListReleasesRequest{
+		Offset: "",
+		Limit:  int64(limit),
+		SortBy: services.ListSort_CHART_NAME,
+	}
+	if err := rs.ListReleases(req, mrs); err != nil {
+		t.Fatalf("Failed listing: %s", err)
+	}
+
+	if len(mrs.val.Releases) != limit {
+		t.Errorf("Expected %d releases, got %d", limit, len(mrs.val.Releases))
+	}
+
+	for i := 0; i < limit; i++ {
+		n := fmt.Sprintf("chartName-%d", i+1)
+		if mrs.val.Releases[i].Chart.Metadata.Name != n {
+			t.Errorf("Expected %q, got %q", n, mrs.val.Releases[i].Chart.Metadata.Name)
 		}
 	}
 }
