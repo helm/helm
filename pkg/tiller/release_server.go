@@ -365,7 +365,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	executingHooks = sortByHookWeight(executingHooks)
 
 	for index, h := range executingHooks {
-		if err := s.deleteHookByPolicy(h, hooks.BeforeHookCreation, name, namespace, hook, kubeCli); err != nil {
+		if err := s.deleteHookByPolicy(h, []string{hooks.BeforeHookCreation}, name, namespace, hook, kubeCli); err != nil {
 			return err
 		}
 
@@ -384,13 +384,12 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
 				// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 				// under failed condition. If so, then clear the corresponding resource object in the hook
-				// Delete previous succeeded hooks with hook-delete-policy hook-succeeded
 				for _, hp := range executingHooks[:index] {
-					if err := s.deleteHookByPolicy(hp, hooks.HookSucceeded, name, namespace, hook, kubeCli); err != nil {
+					if err := s.deleteHookByPolicy(hp, []string{hooks.ThisHookSucceeded, hooks.AnyHookFailed}, name, namespace, hook, kubeCli); err != nil {
 						return err
 					}
 				}
-				if err := s.deleteHookByPolicy(h, hooks.HookFailed, name, namespace, hook, kubeCli); err != nil {
+				if err := s.deleteHookByPolicy(h, []string{hooks.ThisHookFailed, hooks.AnyHookFailed}, name, namespace, hook, kubeCli); err != nil {
 					return err
 				}
 				return err
@@ -402,7 +401,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := s.deleteHookByPolicy(h, hooks.HookSucceeded, name, namespace, hook, kubeCli); err != nil {
+		if err := s.deleteHookByPolicy(h, []string{hooks.ThisHookSucceeded, hooks.AllHooksSucceeded}, name, namespace, hook, kubeCli); err != nil {
 			return err
 		}
 		h.LastRun = timeconv.Now()
@@ -429,13 +428,15 @@ func validateReleaseName(releaseName string) error {
 	return nil
 }
 
-func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name, namespace, hook string, kubeCli environment.KubeClient) error {
+func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policies []string, name, namespace, hook string, kubeCli environment.KubeClient) error {
 	b := bytes.NewBufferString(h.Manifest)
-	if hookHasDeletePolicy(h, policy) {
-		s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, policy)
-		if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
-			s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
-			return errHookDelete
+	for _, policy := range append(policies, hooks.InAnyCase) {
+		if hookHasDeletePolicy(h, policy) {
+			s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, policy)
+			if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
+				s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
+				return errHookDelete
+			}
 		}
 	}
 	return nil

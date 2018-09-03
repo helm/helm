@@ -244,3 +244,62 @@ func TestVersionSet(t *testing.T) {
 		t.Error("Found nonexistent extension")
 	}
 }
+
+func TestHookDeletePolicyAnnotationsShift(t *testing.T) {
+
+	data := []struct {
+		name     []string
+		path     string
+		kind     []string
+		hooks    map[string][]release.Hook_Event
+		manifest string
+	}{
+		{
+			name:  []string{"first"},
+			path:  "one",
+			kind:  []string{"Job"},
+			hooks: map[string][]release.Hook_Event{"first": {release.Hook_PRE_INSTALL}},
+			manifest: `apiVersion: v1
+kind: Job
+metadata:
+  name: first
+  labels:
+    doesnot: matter
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-delete-policy": "hook-succeeded"
+`,
+		}, {
+			name:  []string{"second"},
+			path:  "two",
+			kind:  []string{"Job"},
+			hooks: map[string][]release.Hook_Event{"second": {release.Hook_PRE_INSTALL}},
+			manifest: `apiVersion: v1
+kind: Job
+metadata:
+  name: second
+  labels:
+    doesnot: matter
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-delete-policy": "hook-failed"
+`,
+		},
+	}
+	manifests := make(map[string]string, len(data))
+	for _, o := range data {
+		manifests[o.path] = o.manifest
+	}
+
+	hs, _, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	if hs[0].DeletePolicies[0] != release.Hook_SUCCEEDED {
+		t.Errorf("Expected delete policy hook-succeed shifted to release.Hook_SUCCEEDED")
+	}
+	if hs[1].DeletePolicies[0] != release.Hook_FAILED {
+		t.Errorf("Expected delete policy hook-failed shifted to release.Hook_FAILED")
+	}
+}

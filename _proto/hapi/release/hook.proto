@@ -36,10 +36,15 @@ message Hook {
         RELEASE_TEST_FAILURE = 10;
         CRD_INSTALL = 11;
 	}
+
+	// SUCCEEDED represents 'this hook succeed', FAILED represents 'this hook failed'
 	enum DeletePolicy {
 	    SUCCEEDED = 0;
 	    FAILED = 1;
 	    BEFORE_HOOK_CREATION = 2;
+	    ALL_SUCCEED = 3;
+	    ANY_FAILED = 4;
+	    IN_ANY_CASE = 5;
 	}
 	string name = 1;
 	// Kind is the Kubernetes kind.

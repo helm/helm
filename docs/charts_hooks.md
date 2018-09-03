@@ -135,7 +135,7 @@ metadata:
     # job is considered part of the release.
     "helm.sh/hook": post-install
     "helm.sh/hook-weight": "-5"
-    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-delete-policy": all-hooks-succeeded
 spec:
   template:
     metadata:
@@ -189,14 +189,24 @@ It is also possible to define policies that determine when to delete correspondi
 
 ```
   annotations:
-    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-delete-policy": all-hooks-succeeded
 ```
 
 You can choose one or more defined annotation values:
 
-* `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed.
-* `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
-* `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
+* `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched. Deletion happened before any execution.
+* `"this-hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed. Deletion happened after all hooks succeeded or any hook failed.
+* `"this-hook-failed"` specifies Tiller should delete the hook if the hook failed during execution. Deletion happened after all hooks succeeded or any hook failed.
+* `"all-hooks-succeeded"` specifies Tiller should delete the hook after all hook in its execution stage executed successfully. Deletion happened after all hooks succeeded.
+* `"any-hook-failed"` specifies Tiller should delete the hook if any hook in its execution stage failed during execution, including when itself failed. Deletion happened after any hook failed.
+* `"in-any-case"` specifies Tiller should delete the hook in any case listed above.
+
+Notice that all these policies are effect in its execution stage. For example, the delete policy of a `pre-install` hook should effect before the `pre-install` stage finished.
+
+### deprecated hooks
+
+- `"hook-succeeded"` is deprecated, use `"this-hook-succeeded"` instead.
+- `"hook-failed"` is deprecated, use `"this-hook-failed"` instead.
 
 ### Defining a CRD with the `crd-install` Hook
 
@@ -248,7 +258,7 @@ annotated.
 
 When helm release being updated it is possible, that hook resource already exists in cluster. By default helm will try to create resource and fail with `"... already exists"` error.
 
-One might choose `"helm.sh/hook-delete-policy": "before-hook-creation"` over `"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"` because:
+One might choose `"helm.sh/hook-delete-policy": "before-hook-creation"` because:
 
 * It is convenient to keep failed hook job resource in kubernetes for example for manual debug.
 * It may be necessary to keep succeeded hook resource in kubernetes for some reason.

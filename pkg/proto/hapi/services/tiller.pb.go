@@ -110,7 +110,7 @@ func (ListSort_SortOrder) EnumDescriptor() ([]byte, []int) { return fileDescript
 //
 // Releases can be retrieved in chunks by setting limit and offset.
 //
-// Releases can be sorted according to a few pre-determined sort stategies.
+// Releases can be sorted according to a few pre-determined sort strategies.
 type ListReleasesRequest struct {
 	// Limit is the maximum number of releases to be returned.
 	Limit int64 `protobuf:"varint,1,opt,name=limit" json:"limit,omitempty"`
@@ -609,9 +609,9 @@ type InstallReleaseRequest struct {
 	Name string `protobuf:"bytes,4,opt,name=name" json:"name,omitempty"`
 	// DisableHooks causes the server to skip running any hooks for the install.
 	DisableHooks bool `protobuf:"varint,5,opt,name=disable_hooks,json=disableHooks" json:"disable_hooks,omitempty"`
-	// Namepace is the kubernetes namespace of the release.
+	// Namespace is the kubernetes namespace of the release.
 	Namespace string `protobuf:"bytes,6,opt,name=namespace" json:"namespace,omitempty"`
-	// ReuseName requests that Tiller re-uses a name, instead of erroring out.
+	// Reuse_name requests that Tiller re-uses a name, instead of erroring out.
 	ReuseName bool `protobuf:"varint,7,opt,name=reuse_name,json=reuseName" json:"reuse_name,omitempty"`
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	Timeout int64 `protobuf:"varint,8,opt,name=timeout" json:"timeout,omitempty"`

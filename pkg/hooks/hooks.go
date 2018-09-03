@@ -44,11 +44,20 @@ const (
 	CRDInstall         = "crd-install"
 )
 
+// Type of deprecated policies for deleting the hook
+const (
+	HookSucceeded = "hook-succeeded" // deprecated, use ThisHookSucceeded instead
+	HookFailed    = "hook-failed"    // deprecated, use ThisHookFailed instead
+)
+
 // Type of policy for deleting the hook
 const (
-	HookSucceeded      = "hook-succeeded"
-	HookFailed         = "hook-failed"
 	BeforeHookCreation = "before-hook-creation"
+	ThisHookSucceeded  = "this-hook-succeeded"
+	ThisHookFailed     = "this-hook-failed"
+	AllHooksSucceeded  = "all-hooks-succeeded"
+	AnyHookFailed      = "any-hook-failed"
+	InAnyCase          = "in-any-case"
 )
 
 // FilterTestHooks filters the list of hooks are returns only testing hooks.

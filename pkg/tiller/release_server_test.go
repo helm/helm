@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -601,26 +602,34 @@ name: value`, hookName, extraAnnotationsStr),
 	}
 }
 
-func execHookShouldSucceed(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
-	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+func getHooksNameList(hooks []*release.Hook) string {
+	var nameList []string
+	for _, hook := range hooks {
+		nameList = append(nameList, hook.Name)
+	}
+	return strings.Join(nameList, ",")
+}
+
+func execHooksShouldSucceed(rs *ReleaseServer, hooks []*release.Hook, releaseName string, namespace string, hookType string) error {
+	err := rs.execHook(hooks, releaseName, namespace, hookType, 600)
 	if err != nil {
-		return fmt.Errorf("expected hook %s to be successful: %s", hook.Name, err)
+		return fmt.Errorf("expected all these hooks %s to be successful: %s", getHooksNameList(hooks), err)
 	}
 	return nil
 }
 
-func execHookShouldFail(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string) error {
-	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+func execHooksShouldFail(rs *ReleaseServer, hooks []*release.Hook, releaseName string, namespace string, hookType string) error {
+	err := rs.execHook(hooks, releaseName, namespace, hookType, 600)
 	if err == nil {
-		return fmt.Errorf("expected hook %s to be failed", hook.Name)
+		return fmt.Errorf("expected some of these hooks %s to be failed", getHooksNameList(hooks))
 	}
 	return nil
 }
 
-func execHookShouldFailWithError(rs *ReleaseServer, hook *release.Hook, releaseName string, namespace string, hookType string, expectedError error) error {
-	err := rs.execHook([]*release.Hook{hook}, releaseName, namespace, hookType, 600)
+func execHooksShouldFailWithError(rs *ReleaseServer, hooks []*release.Hook, releaseName string, namespace string, hookType string, expectedError error) error {
+	err := rs.execHook(hooks, releaseName, namespace, hookType, 600)
 	if err != expectedError {
-		return fmt.Errorf("expected hook %s to fail with error %v, got %v", hook.Name, expectedError, err)
+		return fmt.Errorf("expected some of these hooks %s to fail with error %v, got %v", getHooksNameList(hooks), expectedError, err)
 	}
 	return nil
 }
@@ -647,11 +656,30 @@ func newDeletePolicyContext() *deletePolicyContext {
 	}
 }
 
+func newDeletePolicyContextsWithHookName(hookNames []string) []*deletePolicyContext {
+	kubeClient := &mockHooksKubeClient{
+		Resources: make(map[string]*mockHooksManifest),
+	}
+	releaseServer := deletePolicyStub(kubeClient)
+	var contexts []*deletePolicyContext
+
+	for _, hookName := range hookNames {
+		contexts = append(contexts, &deletePolicyContext{
+			KubeClient:    kubeClient,
+			ReleaseServer: releaseServer,
+			ReleaseName:   "flying-carp",
+			Namespace:     "river",
+			HookName:      hookName,
+		})
+	}
+	return contexts
+}
+
 func TestSuccessfulHookWithoutDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName, nil, nil)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -667,7 +695,7 @@ func TestFailedHookWithoutDeletePolicy(t *testing.T) {
 		nil,
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldFail(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -679,11 +707,11 @@ func TestFailedHookWithoutDeletePolicy(t *testing.T) {
 func TestSuccessfulHookWithSucceededDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName,
-		map[string]string{"helm.sh/hook-delete-policy": "hook-succeeded"},
+		map[string]string{"helm.sh/hook-delete-policy": "this-hook-succeeded"},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -695,11 +723,11 @@ func TestSuccessfulHookWithSucceededDeletePolicy(t *testing.T) {
 func TestSuccessfulHookWithFailedDeletePolicy(t *testing.T) {
 	ctx := newDeletePolicyContext()
 	hook := deletePolicyHookStub(ctx.HookName,
-		map[string]string{"helm.sh/hook-delete-policy": "hook-failed"},
+		map[string]string{"helm.sh/hook-delete-policy": "this-hook-failed"},
 		[]release.Hook_DeletePolicy{release.Hook_FAILED},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -714,12 +742,12 @@ func TestFailedHookWithSucceededDeletePolicy(t *testing.T) {
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{
 			"mockHooksKubeClient/Emulate": "hook-failed",
-			"helm.sh/hook-delete-policy":  "hook-succeeded",
+			"helm.sh/hook-delete-policy":  "this-hook-succeeded",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldFail(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -734,12 +762,12 @@ func TestFailedHookWithFailedDeletePolicy(t *testing.T) {
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{
 			"mockHooksKubeClient/Emulate": "hook-failed",
-			"helm.sh/hook-delete-policy":  "hook-failed",
+			"helm.sh/hook-delete-policy":  "this-hook-failed",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_FAILED},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldFail(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -753,12 +781,12 @@ func TestSuccessfulHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{
-			"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed",
+			"helm.sh/hook-delete-policy": "this-hook-succeeded,this-hook-failed",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -773,12 +801,12 @@ func TestFailedHookWithSuccededOrFailedDeletePolicy(t *testing.T) {
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{
 			"mockHooksKubeClient/Emulate": "hook-failed",
-			"helm.sh/hook-delete-policy":  "hook-succeeded,hook-failed",
+			"helm.sh/hook-delete-policy":  "this-hook-succeeded,this-hook-failed",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_FAILED},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldFail(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -792,7 +820,7 @@ func TestHookAlreadyExists(t *testing.T) {
 
 	hook := deletePolicyHookStub(ctx.HookName, nil, nil)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -801,7 +829,7 @@ func TestHookAlreadyExists(t *testing.T) {
 		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
 	}
 
-	err = execHookShouldFailWithError(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade, errResourceExists)
+	err = execHooksShouldFailWithError(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade, errResourceExists)
 	if err != nil {
 		t.Error(err)
 	}
@@ -819,7 +847,7 @@ func TestHookDeletingWithBeforeHookCreationDeletePolicy(t *testing.T) {
 		[]release.Hook_DeletePolicy{release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -828,7 +856,7 @@ func TestHookDeletingWithBeforeHookCreationDeletePolicy(t *testing.T) {
 		t.Errorf("expected resource %s to be existing after hook succeeded", hook.Name)
 	}
 
-	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	err = execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
 	if err != nil {
 		t.Error(err)
 	}
@@ -843,12 +871,12 @@ func TestSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{
-			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
+			"helm.sh/hook-delete-policy": "this-hook-succeeded,before-hook-creation",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -857,7 +885,7 @@ func TestSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
 	}
 
-	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	err = execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
 	if err != nil {
 		t.Error(err)
 	}
@@ -873,12 +901,12 @@ func TestFailedHookWithMixedDeletePolicies(t *testing.T) {
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{
 			"mockHooksKubeClient/Emulate": "hook-failed",
-			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
+			"helm.sh/hook-delete-policy":  "this-hook-succeeded,before-hook-creation",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldFail(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -887,7 +915,7 @@ func TestFailedHookWithMixedDeletePolicies(t *testing.T) {
 		t.Errorf("expected resource %s to be existing after hook failed", hook.Name)
 	}
 
-	err = execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	err = execHooksShouldFail(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
 	if err != nil {
 		t.Error(err)
 	}
@@ -903,12 +931,12 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 	hook := deletePolicyHookStub(ctx.HookName,
 		map[string]string{
 			"mockHooksKubeClient/Emulate": "hook-failed",
-			"helm.sh/hook-delete-policy":  "hook-succeeded,before-hook-creation",
+			"helm.sh/hook-delete-policy":  "this-hook-succeeded,before-hook-creation",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err := execHookShouldFail(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
+	err := execHooksShouldFail(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreInstall)
 	if err != nil {
 		t.Error(err)
 	}
@@ -919,12 +947,12 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 
 	hook = deletePolicyHookStub(ctx.HookName,
 		map[string]string{
-			"helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation",
+			"helm.sh/hook-delete-policy": "this-hook-succeeded,before-hook-creation",
 		},
 		[]release.Hook_DeletePolicy{release.Hook_SUCCEEDED, release.Hook_BEFORE_HOOK_CREATION},
 	)
 
-	err = execHookShouldSucceed(ctx.ReleaseServer, hook, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
+	err = execHooksShouldSucceed(ctx.ReleaseServer, []*release.Hook{hook}, ctx.ReleaseName, ctx.Namespace, hooks.PreUpgrade)
 	if err != nil {
 		t.Error(err)
 	}
@@ -932,4 +960,412 @@ func TestFailedThenSuccessfulHookWithMixedDeletePolicies(t *testing.T) {
 	if _, hasResource := ctx.KubeClient.Resources[hook.Name]; hasResource {
 		t.Errorf("expected resource %s to be unexisting after hook succeeded", hook.Name)
 	}
+}
+
+func TestAllHooksSucceedWithAndWithoutAllHooksSucceededPolicy(t *testing.T) {
+	hookCases := []struct {
+		hookName    string
+		execResult  string
+		shouldExist bool
+		policy      []release.Hook_DeletePolicy
+		policyAnno  string
+	}{
+		{
+			hookName:    "hook1",
+			execResult:  "",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_ALL_SUCCEED},
+			policyAnno:  "all-hooks-succeeded",
+		}, {
+			hookName:    "hook2",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{},
+			policyAnno:  "",
+		},
+	}
+
+	var hookNames []string
+	var releaseHooks []*release.Hook
+
+	for _, hookCase := range hookCases {
+		hookNames = append(hookNames, hookCase.hookName)
+	}
+	ctxs := newDeletePolicyContextsWithHookName(hookNames)
+
+	for _, hookCase := range hookCases {
+		releaseHooks = append(releaseHooks, deletePolicyHookStub(hookCase.hookName,
+			map[string]string{
+				"mockHooksKubeClient/Emulate": hookCase.execResult,
+				"helm.sh/hook-delete-policy":  hookCase.policyAnno,
+			},
+			hookCase.policy,
+		))
+	}
+
+	err := execHooksShouldSucceed(ctxs[0].ReleaseServer, releaseHooks, ctxs[0].ReleaseName, ctxs[0].Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for index, hookCase := range hookCases {
+		if _, hasResource := ctxs[index].KubeClient.Resources[releaseHooks[index].Name]; hasResource != hookCase.shouldExist {
+			if hasResource {
+				t.Errorf("expected resource %s to be unexisting after all hooks succeeded.", hookCase.hookName)
+			} else {
+				t.Errorf("expected resource %s to be existing after all hooks succeeded.", hookCase.hookName)
+			}
+		}
+	}
+}
+
+func TestAnyHookFailedWithAndWithoutAllHooksSucceededPolicy(t *testing.T) {
+	hookCases := []struct {
+		hookName    string
+		execResult  string
+		shouldExist bool
+		policy      []release.Hook_DeletePolicy
+		policyAnno  string
+	}{
+		{
+			hookName:    "hook1",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{release.Hook_ALL_SUCCEED},
+			policyAnno:  "all-hooks-succeeded",
+		}, {
+			hookName:    "hook2",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{},
+			policyAnno:  "",
+		}, {
+			hookName:    "hook3",
+			execResult:  "hook-failed",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{},
+			policyAnno:  "",
+		},
+	}
+
+	var hookNames []string
+	var releaseHooks []*release.Hook
+
+	for _, hookCase := range hookCases {
+		hookNames = append(hookNames, hookCase.hookName)
+	}
+	ctxs := newDeletePolicyContextsWithHookName(hookNames)
+
+	for _, hookCase := range hookCases {
+		releaseHooks = append(releaseHooks, deletePolicyHookStub(hookCase.hookName,
+			map[string]string{
+				"mockHooksKubeClient/Emulate": hookCase.execResult,
+				"helm.sh/hook-delete-policy":  hookCase.policyAnno,
+			},
+			hookCase.policy,
+		))
+	}
+
+	err := execHooksShouldFail(ctxs[0].ReleaseServer, releaseHooks, ctxs[0].ReleaseName, ctxs[0].Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for index, hookCase := range hookCases {
+		if _, hasResource := ctxs[index].KubeClient.Resources[releaseHooks[index].Name]; hasResource != hookCase.shouldExist {
+			if hasResource {
+				t.Errorf("expected resource %s to be unexisting after any hook failed.", hookCase.hookName)
+			} else {
+				t.Errorf("expected resource %s to be existing after any hook failed.", hookCase.hookName)
+			}
+		}
+	}
+}
+
+func TestAllHooksSucceedWithAndWithoutAnyHookFailedPolicy(t *testing.T) {
+	hookCases := []struct {
+		hookName    string
+		execResult  string
+		shouldExist bool
+		policy      []release.Hook_DeletePolicy
+		policyAnno  string
+	}{
+		{
+			hookName:    "hook1",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{release.Hook_ANY_FAILED},
+			policyAnno:  "any-hook-failed",
+		}, {
+			hookName:    "hook2",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{},
+			policyAnno:  "",
+		},
+	}
+
+	var hookNames []string
+	var releaseHooks []*release.Hook
+
+	for _, hookCase := range hookCases {
+		hookNames = append(hookNames, hookCase.hookName)
+	}
+	ctxs := newDeletePolicyContextsWithHookName(hookNames)
+
+	for _, hookCase := range hookCases {
+		releaseHooks = append(releaseHooks, deletePolicyHookStub(hookCase.hookName,
+			map[string]string{
+				"mockHooksKubeClient/Emulate": hookCase.execResult,
+				"helm.sh/hook-delete-policy":  hookCase.policyAnno,
+			},
+			hookCase.policy,
+		))
+	}
+
+	err := execHooksShouldSucceed(ctxs[0].ReleaseServer, releaseHooks, ctxs[0].ReleaseName, ctxs[0].Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for index, hookCase := range hookCases {
+		if _, hasResource := ctxs[index].KubeClient.Resources[releaseHooks[index].Name]; hasResource != hookCase.shouldExist {
+			if hasResource {
+				t.Errorf("expected resource %s to be unexisting after all hooks succeeded.", hookCase.hookName)
+			} else {
+				t.Errorf("expected resource %s to be existing after all hooks succeeded.", hookCase.hookName)
+			}
+		}
+	}
+}
+
+func TestAnyHookFailedWithAndWithoutAnyHookFailedPolicy(t *testing.T) {
+	hookCases := []struct {
+		hookName    string
+		execResult  string
+		shouldExist bool
+		policy      []release.Hook_DeletePolicy
+		policyAnno  string
+	}{
+		{
+			hookName:    "hook1",
+			execResult:  "",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_ANY_FAILED},
+			policyAnno:  "any-hook-failed",
+		}, {
+			hookName:    "hook2",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{},
+			policyAnno:  "",
+		}, {
+			hookName:    "hook3",
+			execResult:  "hook-failed",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_ANY_FAILED},
+			policyAnno:  "any-hook-failed",
+		},
+	}
+
+	var hookNames []string
+	var releaseHooks []*release.Hook
+
+	for _, hookCase := range hookCases {
+		hookNames = append(hookNames, hookCase.hookName)
+	}
+	ctxs := newDeletePolicyContextsWithHookName(hookNames)
+
+	for _, hookCase := range hookCases {
+		releaseHooks = append(releaseHooks, deletePolicyHookStub(hookCase.hookName,
+			map[string]string{
+				"mockHooksKubeClient/Emulate": hookCase.execResult,
+				"helm.sh/hook-delete-policy":  hookCase.policyAnno,
+			},
+			hookCase.policy,
+		))
+	}
+
+	err := execHooksShouldFail(ctxs[0].ReleaseServer, releaseHooks, ctxs[0].ReleaseName, ctxs[0].Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for index, hookCase := range hookCases {
+		if _, hasResource := ctxs[index].KubeClient.Resources[releaseHooks[index].Name]; hasResource != hookCase.shouldExist {
+			if hasResource {
+				t.Errorf("expected resource %s to be unexisting after any hook failed.", hookCase.hookName)
+			} else {
+				t.Errorf("expected resource %s to be existing after any hook failed.", hookCase.hookName)
+			}
+		}
+	}
+}
+
+func TestAllHooksSucceedWithMixedPolicy(t *testing.T) {
+	hookCases := []struct {
+		hookName    string
+		execResult  string
+		shouldExist bool
+		policy      []release.Hook_DeletePolicy
+		policyAnno  string
+	}{
+		{
+			hookName:    "hook1",
+			execResult:  "",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_SUCCEEDED},
+			policyAnno:  "this-hook-succeeded, this-hook-failed",
+		}, {
+			hookName:    "hook2",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{release.Hook_FAILED},
+			policyAnno:  "this-hook-failed",
+		}, {
+			hookName:    "hook3",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{release.Hook_ALL_SUCCEED},
+			policyAnno:  "all-hooks-succeeded",
+		}, {
+			hookName:    "hook4",
+			execResult:  "",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_ANY_FAILED},
+			policyAnno:  "any-hook-failed",
+		}, {
+			hookName:    "hook5",
+			execResult:  "hook-failed",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_IN_ANY_CASE},
+			policyAnno:  "in-any-case",
+		},
+	}
+
+	var hookNames []string
+	var releaseHooks []*release.Hook
+
+	for _, hookCase := range hookCases {
+		hookNames = append(hookNames, hookCase.hookName)
+	}
+	ctxs := newDeletePolicyContextsWithHookName(hookNames)
+
+	for _, hookCase := range hookCases {
+		releaseHooks = append(releaseHooks, deletePolicyHookStub(hookCase.hookName,
+			map[string]string{
+				"mockHooksKubeClient/Emulate": hookCase.execResult,
+				"helm.sh/hook-delete-policy":  hookCase.policyAnno,
+			},
+			hookCase.policy,
+		))
+	}
+
+	err := execHooksShouldFail(ctxs[0].ReleaseServer, releaseHooks, ctxs[0].ReleaseName, ctxs[0].Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for index, hookCase := range hookCases {
+		if _, hasResource := ctxs[index].KubeClient.Resources[releaseHooks[index].Name]; hasResource != hookCase.shouldExist {
+			if hasResource {
+				t.Errorf("expected resource %s to be unexisting after any hook failed.", hookCase.hookName)
+			} else {
+				t.Errorf("expected resource %s to be existing after any hook failed.", hookCase.hookName)
+			}
+		}
+	}
+}
+
+func TestInAnyCasePolicy(t *testing.T) {
+	hookCases := []struct {
+		hookName    string
+		execResult  string
+		shouldExist bool
+		policy      []release.Hook_DeletePolicy
+		policyAnno  string
+	}{
+		{
+			hookName:    "hook1",
+			execResult:  "",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_IN_ANY_CASE},
+			policyAnno:  "in-any-case",
+		}, {
+			hookName:    "hook2",
+			execResult:  "",
+			shouldExist: true,
+			policy:      []release.Hook_DeletePolicy{},
+			policyAnno:  "",
+		}, {
+			hookName:    "hook3",
+			execResult:  "hook-failed",
+			shouldExist: false,
+			policy:      []release.Hook_DeletePolicy{release.Hook_IN_ANY_CASE},
+			policyAnno:  "in-any-case",
+		},
+	}
+	var hookNames []string
+	var releaseHooks []*release.Hook
+
+	for _, hookCase := range hookCases {
+		hookNames = append(hookNames, hookCase.hookName)
+	}
+	ctxs := newDeletePolicyContextsWithHookName(hookNames)
+
+	for _, hookCase := range hookCases {
+		releaseHooks = append(releaseHooks, deletePolicyHookStub(hookCase.hookName,
+			map[string]string{
+				"mockHooksKubeClient/Emulate": hookCase.execResult,
+				"helm.sh/hook-delete-policy":  hookCase.policyAnno,
+			},
+			hookCase.policy,
+		))
+	}
+
+	err := execHooksShouldFail(ctxs[0].ReleaseServer, releaseHooks, ctxs[0].ReleaseName, ctxs[0].Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for index, hookCase := range hookCases {
+		if _, hasResource := ctxs[index].KubeClient.Resources[releaseHooks[index].Name]; hasResource != hookCase.shouldExist {
+			if hasResource {
+				t.Errorf("expected resource %s to be unexisting after first release.", hookCase.hookName)
+			} else {
+				t.Errorf("expected resource %s to be existing after first release.", hookCase.hookName)
+			}
+		}
+	}
+
+	hookCases[1].shouldExist = false
+	hookCases[1].policy = []release.Hook_DeletePolicy{release.Hook_IN_ANY_CASE}
+	hookCases[1].policyAnno = "in-any-case"
+
+	releaseHooks = releaseHooks[:0]
+	for _, hookCase := range hookCases {
+		releaseHooks = append(releaseHooks, deletePolicyHookStub(hookCase.hookName,
+			map[string]string{
+				"mockHooksKubeClient/Emulate": hookCase.execResult,
+				"helm.sh/hook-delete-policy":  hookCase.policyAnno,
+			},
+			hookCase.policy,
+		))
+	}
+
+	err = execHooksShouldFail(ctxs[0].ReleaseServer, releaseHooks, ctxs[0].ReleaseName, ctxs[0].Namespace, hooks.PreUpgrade)
+	if err != nil {
+		t.Error(err)
+	}
+
+	for index, hookCase := range hookCases {
+		if _, hasResource := ctxs[index].KubeClient.Resources[releaseHooks[index].Name]; hasResource != hookCase.shouldExist {
+			if hasResource {
+				t.Errorf("expected resource %s to be unexisting after second release.", hookCase.hookName)
+			} else {
+				t.Errorf("expected resource %s to be existing after second release.", hookCase.hookName)
+			}
+		}
+	}
+
 }

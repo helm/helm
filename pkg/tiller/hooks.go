@@ -47,9 +47,12 @@ var events = map[string]release.Hook_Event{
 
 // deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
 var deletePolices = map[string]release.Hook_DeletePolicy{
-	hooks.HookSucceeded:      release.Hook_SUCCEEDED,
-	hooks.HookFailed:         release.Hook_FAILED,
 	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
+	hooks.ThisHookSucceeded:  release.Hook_SUCCEEDED,
+	hooks.ThisHookFailed:     release.Hook_FAILED,
+	hooks.AllHooksSucceeded:  release.Hook_ALL_SUCCEED,
+	hooks.AnyHookFailed:      release.Hook_ANY_FAILED,
+	hooks.InAnyCase:          release.Hook_IN_ANY_CASE,
 }
 
 // Manifest represents a manifest file, which has a name and some content.
@@ -127,7 +130,7 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 //  apiVersion: v1
 //  metadata:
 // 		annotations:
-// 			helm.sh/hook-delete-policy: hook-succeeded
+// 			helm.sh/hook-delete-policy: this-hook-succeeded
 func (file *manifestFile) sort(result *result) error {
 	for _, m := range file.entries {
 		var entry util.SimpleHead
@@ -192,7 +195,21 @@ func (file *manifestFile) sort(result *result) error {
 			if exist {
 				h.DeletePolicies = append(h.DeletePolicies, policy)
 			} else {
-				log.Printf("info: skipping unknown hook delete policy: %q", value)
+				if value != hooks.HookFailed && value != hooks.HookSucceeded {
+					log.Printf("info: skipping unknown hook delete policy: %q", value)
+				} else {
+					if value == hooks.HookSucceeded {
+						log.Printf("warning: hook delete policy %q is deprecated, use %q instead.",
+							value, hooks.ThisHookSucceeded)
+						policy = deletePolices[hooks.ThisHookSucceeded]
+					} else if value == hooks.HookFailed {
+						log.Printf("warning: hook delete policy %q is deprecated, use %q instead.",
+							value, hooks.ThisHookFailed)
+						policy = deletePolices[hooks.ThisHookFailed]
+					}
+					log.Printf("warning: check https://docs.helm.sh/developing_charts#deprecated-hooks")
+					h.DeletePolicies = append(h.DeletePolicies, policy)
+				}
 			}
 		})
 	}
