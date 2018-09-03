@@ -83,6 +83,7 @@ func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HttpGetter, error) {
 	var client HttpGetter
 	tr := &http.Transport{
 		DisableCompression: true,
+		Proxy:              http.ProxyFromEnvironment,
 	}
 	if (CertFile != "" && KeyFile != "") || CAFile != "" {
 		tlsConf, err := tlsutil.NewTLSConfig(URL, CertFile, KeyFile, CAFile)
@@ -90,7 +91,6 @@ func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HttpGetter, error) {
 			return &client, fmt.Errorf("can't create TLS config: %s", err.Error())
 		}
 		tr.TLSClientConfig = tlsConf
-		tr.Proxy = http.ProxyFromEnvironment
 	}
 	client.client = &http.Client{Transport: tr}
 	return &client, nil
