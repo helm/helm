@@ -30,6 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	storageerrors "k8s.io/helm/pkg/storage/errors"
 )
 
 var _ Driver = (*Secrets)(nil)
@@ -65,7 +66,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	obj, err := secrets.impl.Get(key, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseNotFound(key)
+			return nil, storageerrors.ErrReleaseNotFound(key)
 		}
 
 		secrets.Log("get: failed to get %q: %s", key, err)
@@ -131,7 +132,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	}
 
 	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound(labels["NAME"])
+		return nil, storageerrors.ErrReleaseNotFound(labels["NAME"])
 	}
 
 	var results []*rspb.Release
@@ -164,7 +165,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	// push the secret object out into the kubiverse
 	if _, err := secrets.impl.Create(obj); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return ErrReleaseExists(rls.Name)
+			return storageerrors.ErrReleaseExists(rls.Name)
 		}
 
 		secrets.Log("create: failed to create: %s", err)
@@ -202,7 +203,7 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = secrets.Get(key); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseExists(rls.Name)
+			return nil, storageerrors.ErrReleaseExists(rls.Name)
 		}
 
 		secrets.Log("delete: failed to get release %q: %s", key, err)

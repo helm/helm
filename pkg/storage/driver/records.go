@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	storageerrors "k8s.io/helm/pkg/storage/errors"
 )
 
 // records holds a list of in-memory release records
@@ -38,7 +39,7 @@ func (rs *records) Add(r *record) error {
 	}
 
 	if rs.Exists(r.key) {
-		return ErrReleaseExists(r.key)
+		return storageerrors.ErrReleaseExists(r.key)
 	}
 
 	*rs = append(*rs, r)

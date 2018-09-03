@@ -19,7 +19,6 @@ package helm // import "k8s.io/helm/pkg/helm"
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math/rand"
 	"strings"
 	"sync"
@@ -32,10 +31,8 @@ import (
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/proto/hapi/version"
 	"k8s.io/helm/pkg/renderutil"
+	storageerrors "k8s.io/helm/pkg/storage/errors"
 )
-
-//copied from pkg/storage/driver/driver.go to avoid pullling in k8s.io/kubernetes
-var errReleaseNotFound = func(release string) error { return fmt.Errorf("release: %q not found", release) }
 
 // FakeClient implements Interface
 type FakeClient struct {
@@ -141,7 +138,7 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.U
 		}
 	}
 
-	return nil, errReleaseNotFound(rlsName)
+	return nil, storageerrors.ErrReleaseNotFound(rlsName)
 }
 
 // GetVersion returns a fake version
@@ -215,7 +212,7 @@ func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.G
 			}, nil
 		}
 	}
-	return nil, errReleaseNotFound(rlsName)
+	return nil, storageerrors.ErrReleaseNotFound(rlsName)
 }
 
 // ReleaseContent returns the configuration for the matching release name in the fake release client.
@@ -227,7 +224,7 @@ func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp
 			}, nil
 		}
 	}
-	return resp, errReleaseNotFound(rlsName)
+	return resp, storageerrors.ErrReleaseNotFound(rlsName)
 }
 
 // ReleaseHistory returns a release's revision history.
