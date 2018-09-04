@@ -47,6 +47,9 @@ type Options struct {
 	// ServiceAccount is the Kubernetes service account to add to Tiller.
 	ServiceAccount string
 
+	// AutoMountServiceAccountToken determines whether or not the service account should be added to Tiller.
+	AutoMountServiceAccountToken bool
+
 	// Force allows to force upgrading tiller if deployed version is greater than current version
 	ForceUpgrade bool
 
