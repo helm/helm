@@ -18,6 +18,16 @@ package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	storageerrors "k8s.io/helm/pkg/storage/errors"
+)
+
+var (
+	// ErrReleaseNotFound has been deprecated; please use storageerrors.ErrReleaseNotFound instead.
+	ErrReleaseNotFound = storageerrors.ErrReleaseNotFound
+	// ErrReleaseExists has been deprecated; please use storageerrors.ErrReleaseExists instead.
+	ErrReleaseExists = storageerrors.ErrReleaseExists
+	// ErrInvalidKey has been deprecated; please use storageerrors.ErrInvalidKey instead.
+	ErrInvalidKey = storageerrors.ErrInvalidKey
 )
 
 // Creator is the interface that wraps the Create method.
