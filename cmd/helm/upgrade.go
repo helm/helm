@@ -26,7 +26,7 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/storage/driver"
+	storageerrors "k8s.io/helm/pkg/storage/errors"
 )
 
 const upgradeDesc = `
@@ -207,7 +207,7 @@ func (u *upgradeCmd) run() error {
 			}
 		}
 
-		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(u.release).Error()) {
+		if err != nil && strings.Contains(err.Error(), storageerrors.ErrReleaseNotFound(u.release).Error()) {
 			fmt.Fprintf(u.out, "Release %q does not exist. Installing it now.\n", u.release)
 			ic := &installCmd{
 				chartPath:    chartPath,
