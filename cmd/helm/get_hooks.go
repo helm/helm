@@ -57,7 +57,9 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			return ghc.run()
 		},
 	}
-	cmd.Flags().Int32Var(&ghc.version, "revision", 0, "get the named release with revision")
+	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
+	f.Int32Var(&ghc.version, "revision", 0, "get the named release with revision")
 	return cmd
 }
 

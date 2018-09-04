@@ -64,6 +64,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.Int64Var(&rlsTest.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "delete test pods upon completion")
 

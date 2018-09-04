@@ -58,8 +58,10 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int32Var(&get.version, "revision", 0, "get the named release with revision")
-	cmd.Flags().BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
+	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
+	f.Int32Var(&get.version, "revision", 0, "get the named release with revision")
+	f.BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
 	return cmd
 }
 

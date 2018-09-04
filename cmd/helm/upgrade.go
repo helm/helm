@@ -147,6 +147,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
