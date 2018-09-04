@@ -17,18 +17,17 @@ limitations under the License.
 package driver // import "k8s.io/helm/pkg/storage/driver"
 
 import (
-	"fmt"
-
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
+	storageerrors "k8s.io/helm/pkg/storage/errors"
 )
 
 var (
-	// ErrReleaseNotFound indicates that a release is not found.
-	ErrReleaseNotFound = func(release string) error { return fmt.Errorf("release: %q not found", release) }
-	// ErrReleaseExists indicates that a release already exists.
-	ErrReleaseExists = func(release string) error { return fmt.Errorf("release: %q already exists", release) }
-	// ErrInvalidKey indicates that a release key could not be parsed.
-	ErrInvalidKey = func(release string) error { return fmt.Errorf("release: %q invalid key", release) }
+	// ErrReleaseNotFound has been deprecated; please use storageerrors.ErrReleaseNotFound instead.
+	ErrReleaseNotFound = storageerrors.ErrReleaseNotFound
+	// ErrReleaseExists has been deprecated; please use storageerrors.ErrReleaseExists instead.
+	ErrReleaseExists = storageerrors.ErrReleaseExists
+	// ErrInvalidKey has been deprecated; please use storageerrors.ErrInvalidKey instead.
+	ErrInvalidKey = storageerrors.ErrInvalidKey
 )
 
 // Creator is the interface that wraps the Create method.
