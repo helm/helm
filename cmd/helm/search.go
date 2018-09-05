@@ -44,10 +44,11 @@ type searchCmd struct {
 	out      io.Writer
 	helmhome helmpath.Home
 
-	versions bool
-	regexp   bool
-	version  string
-	colWidth uint
+	versions    bool
+	regexp      bool
+	version     string
+	colWidth    uint
+	shortOutput bool
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -64,6 +65,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	f.BoolVarP(&sc.shortOutput, "short-output", "s", false, "only display chart information")
 	f.BoolVarP(&sc.regexp, "regexp", "r", false, "use regular expressions for searching")
 	f.BoolVarP(&sc.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line")
 	f.StringVarP(&sc.version, "version", "v", "", "search using semantic versioning constraints")
@@ -95,7 +97,7 @@ func (s *searchCmd) run(args []string) error {
 		return err
 	}
 
-	fmt.Fprintln(s.out, s.formatSearchResults(data, s.colWidth))
+	fmt.Fprintln(s.out, s.formatSearchResults(data, s.colWidth, s.shortOutput))
 
 	return nil
 }
@@ -128,13 +130,15 @@ func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, err
 	return data, nil
 }
 
-func (s *searchCmd) formatSearchResults(res []*search.Result, colWidth uint) string {
+func (s *searchCmd) formatSearchResults(res []*search.Result, colWidth uint, shortOutput bool) string {
 	if len(res) == 0 {
 		return "No results found"
 	}
 	table := uitable.New()
 	table.MaxColWidth = colWidth
-	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	if !shortOutput {
+		table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	}
 	for _, r := range res {
 		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
 	}
