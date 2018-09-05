@@ -84,6 +84,18 @@ func TestSearchCmd(t *testing.T) {
 			flags: []string{"--regexp"},
 			err:   true,
 		},
+		{
+			name:     "search for 'maria', expect one match, expect to be the short version",
+			args:     []string{"maria"},
+			flags:    []string{"--short-output"},
+			expected: "testing/mariadb\t0.3.0        \t           \tChart for MariaDB\n",
+		},
+		{
+			name:     "search for 'maria', expect one match, expect to be the short version",
+			args:     []string{"maria"},
+			flags:    []string{"-s"},
+			expected: "testing/mariadb\t0.3.0        \t           \tChart for MariaDB\n",
+		},
 	}
 
 	cleanup := resetEnv()
