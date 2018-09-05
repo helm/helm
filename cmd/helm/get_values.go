@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -36,6 +37,7 @@ type getValuesCmd struct {
 	out       io.Writer
 	client    helm.Interface
 	version   int32
+	output    string
 }
 
 func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -62,6 +64,7 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	settings.AddFlagsTLS(f)
 	f.Int32Var(&get.version, "revision", 0, "get the named release with revision")
 	f.BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
+	f.StringVar(&get.output, "output", "yaml", "output the specified format (json or yaml)")
 	return cmd
 }
 
@@ -72,20 +75,42 @@ func (g *getValuesCmd) run() error {
 		return prettyError(err)
 	}
 
-	// If the user wants all values, compute the values and return.
-	if g.allValues {
-		cfg, err := chartutil.CoalesceValues(res.Release.Chart, res.Release.Config)
-		if err != nil {
-			return err
-		}
-		cfgStr, err := cfg.YAML()
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(g.out, cfgStr)
-		return nil
+	values, err := chartutil.ReadValues([]byte(res.Release.Config.Raw))
+	if err != nil {
+		return err
 	}
 
-	fmt.Fprintln(g.out, res.Release.Config.Raw)
+	// If the user wants all values, compute the values and return.
+	if g.allValues {
+		values, err = chartutil.CoalesceValues(res.Release.Chart, res.Release.Config)
+		if err != nil {
+			return err
+		}
+	}
+
+	result, err := formatValues(g.output, values)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(g.out, result)
 	return nil
+}
+
+func formatValues(format string, values chartutil.Values) (string, error) {
+	switch format {
+	case "", "yaml":
+		out, err := values.YAML()
+		if err != nil {
+			return "", err
+		}
+		return out, nil
+	case "json":
+		out, err := json.Marshal(values)
+		if err != nil {
+			return "", fmt.Errorf("Failed to Marshal JSON output: %s", err)
+		}
+		return string(out), nil
+	default:
+		return "", fmt.Errorf("Unknown output format %q", format)
+	}
 }
