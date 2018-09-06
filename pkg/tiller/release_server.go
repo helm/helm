@@ -139,7 +139,11 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 
 		// merge new values with current
 		if current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
-			req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
+			if req.Values.Raw != "{}\n" {
+				req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
+			} else {
+				req.Values.Raw = current.Config.Raw + "\n"
+			}
 		}
 		req.Chart.Values = &chart.Config{Raw: nv}
 

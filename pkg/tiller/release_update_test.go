@@ -159,12 +159,11 @@ func TestUpdateRelease_ReuseValuesWithNoValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 			},
 		},
-		Values:      &chart.Config{Raw: ""},
+		Values:      &chart.Config{Raw: "{}\n"},
 		ReuseValues: true,
 	}
 
-	_, err = rs.UpdateRelease(c, req)
-	if err != nil {
+	if _, err := rs.UpdateRelease(c, req); err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
 }
