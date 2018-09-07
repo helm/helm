@@ -139,6 +139,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
 	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
 	f.StringArrayVar(&i.opts.Values, "override", []string{}, "override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.BoolVar(&i.opts.AutoMountServiceAccountToken, "automount-service-account-token", true, "auto-mount the given service account to tiller")
 
 	return cmd
 }
