@@ -80,13 +80,26 @@ func TestDeploymentForServiceAccount(t *testing.T) {
 		{"withoutSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", ""},
 	}
 	for _, tt := range tests {
-		d, err := Deployment(&Options{Namespace: v1.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary, ServiceAccount: tt.serviceAccount})
+		opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary, ServiceAccount: tt.serviceAccount}
+		d, err := Deployment(opts)
 		if err != nil {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
 
 		if got := d.Spec.Template.Spec.ServiceAccountName; got != tt.serviceAccount {
 			t.Errorf("%s: expected service account value %q, got %q", tt.name, tt.serviceAccount, got)
+		}
+		if got := *d.Spec.Template.Spec.AutomountServiceAccountToken; got != false {
+			t.Errorf("%s: expected AutomountServiceAccountToken = %t, got %t", tt.name, false, got)
+		}
+
+		opts.AutoMountServiceAccountToken = true
+		d, err = Deployment(opts)
+		if err != nil {
+			t.Fatalf("%s: error %q", tt.name, err)
+		}
+		if got := *d.Spec.Template.Spec.AutomountServiceAccountToken; got != true {
+			t.Errorf("%s: expected AutomountServiceAccountToken = %t, got %t", tt.name, true, got)
 		}
 	}
 }
