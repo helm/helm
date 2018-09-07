@@ -78,6 +78,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
 	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
 	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")

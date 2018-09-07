@@ -77,6 +77,7 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.BoolVarP(&version.showClient, "client", "c", false, "client version only")
 	f.BoolVarP(&version.showServer, "server", "s", false, "server version only")
 	f.BoolVar(&version.short, "short", false, "print the version number")
