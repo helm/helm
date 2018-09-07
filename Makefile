@@ -18,7 +18,7 @@ BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
 
 # Required for globs to work correctly
-SHELL=/bin/bash
+SHELL=/usr/bin/env bash
 
 .PHONY: all
 all: build
