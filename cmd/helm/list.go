@@ -120,6 +120,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.BoolVarP(&list.short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")

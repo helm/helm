@@ -78,6 +78,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&rollback.force, "force", false, "force resource update through delete/recreate if needed")
