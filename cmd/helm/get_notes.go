@@ -59,7 +59,9 @@ func newGetNotesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().Int32Var(&get.version, "revision", 0, "get the notes of the named release with revision")
+	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
+	f.Int32Var(&get.version, "revision", 0, "get the notes of the named release with revision")
 
 	return cmd
 }
