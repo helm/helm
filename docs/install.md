@@ -132,6 +132,7 @@ You can explicitly tell `helm init` to...
 - Install to a particular cluster with `--kube-context`
 - Install into a particular namespace with `--tiller-namespace`
 - Install Tiller with a Service Account with `--service-account` (for [RBAC enabled clusters](securing_installation.md#rbac))
+- Install Tiller without mounting a service account with `--automount-service-account false`
 
 Once Tiller is installed, running `helm version` should show you both
 the client and server version. (If it shows only the client version,
