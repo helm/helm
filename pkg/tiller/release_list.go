@@ -140,7 +140,7 @@ func (s *ReleaseServer) partition(rels []*release.Release, cap int) <-chan []*re
 				s.Log("partitioned at %d with %d releases (cap=%d)", fill, len(chunk), cap)
 				chunks <- chunk
 				// reset paritioning state
-				chunk = chunk[:0]
+				chunk = nil
 				fill = 0
 			}
 			chunk = append(chunk, rls)
