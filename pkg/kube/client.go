@@ -235,16 +235,6 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //
 // Namespace will set the namespaces.
 func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
-	// if namespace != "" {
-	// client, err := c.ClientSet()
-	// if err != nil {
-	// return err
-	// }
-	// if err := ensureNamespace(client, namespace); err != nil {
-	// return err
-	// }
-	// }
-	
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
