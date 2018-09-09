@@ -274,7 +274,7 @@ func (i *initCmd) run() error {
 				if err := installer.Upgrade(i.kubeClient, &i.opts); err != nil {
 					return fmt.Errorf("error when upgrading: %s", err)
 				}
-				if err := i.ping(); err != nil {
+				if err := i.ping(i.opts.SelectImage()); err != nil {
 					return err
 				}
 				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
@@ -290,7 +290,7 @@ func (i *initCmd) run() error {
 					"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
 			}
 		}
-		if err := i.ping(); err != nil {
+		if err := i.ping(i.opts.SelectImage()); err != nil {
 			return err
 		}
 	} else {
@@ -301,13 +301,13 @@ func (i *initCmd) run() error {
 	return nil
 }
 
-func (i *initCmd) ping() error {
+func (i *initCmd) ping(image string) error {
 	if i.wait {
 		_, kubeClient, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 		if err != nil {
 			return err
 		}
-		if !watchTillerUntilReady(settings.TillerNamespace, kubeClient, settings.TillerConnectionTimeout) {
+		if !watchTillerUntilReady(settings.TillerNamespace, kubeClient, settings.TillerConnectionTimeout, image) {
 			return fmt.Errorf("tiller was not found. polling deadline exceeded")
 		}
 
@@ -439,7 +439,7 @@ func ensureRepoFileFormat(file string, out io.Writer) error {
 // want to wait before we call New().
 //
 // Returns true if it exists. If the timeout was reached and it could not find the pod, it returns false.
-func watchTillerUntilReady(namespace string, client kubernetes.Interface, timeout int64) bool {
+func watchTillerUntilReady(namespace string, client kubernetes.Interface, timeout int64, newImage string) bool {
 	deadlinePollingChan := time.NewTimer(time.Duration(timeout) * time.Second).C
 	checkTillerPodTicker := time.NewTicker(500 * time.Millisecond)
 	doneChan := make(chan bool)
@@ -448,8 +448,8 @@ func watchTillerUntilReady(namespace string, client kubernetes.Interface, timeou
 
 	go func() {
 		for range checkTillerPodTicker.C {
-			_, err := portforwarder.GetTillerPodName(client.CoreV1(), namespace)
-			if err == nil {
+			image, err := portforwarder.GetTillerPodImage(client.CoreV1(), namespace)
+			if err == nil && image == newImage {
 				doneChan <- true
 				break
 			}
