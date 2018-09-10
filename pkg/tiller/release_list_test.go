@@ -274,3 +274,26 @@ func TestReleasesNamespace(t *testing.T) {
 		t.Errorf("Expected 2 releases, got %d", len(mrs.val.Releases))
 	}
 }
+
+func TestReleasePartition(t *testing.T) {
+	var rl []*release.Release
+	rs := rsFixture()
+	rs.Log = t.Logf
+	num := 7
+	for i := 0; i < num; i++ {
+		rel := releaseStub()
+		rel.Name = fmt.Sprintf("rel-%d", i)
+		rl = append(rl, rel)
+	}
+	visited := map[string]bool{}
+
+	chunks := rs.partition(rl, 0)
+	for chunk := range chunks {
+		for _, rel := range chunk {
+			if visited[rel.Name] {
+				t.Errorf("%s was already visited", rel.Name)
+			}
+			visited[rel.Name] = true
+		}
+	}
+}
