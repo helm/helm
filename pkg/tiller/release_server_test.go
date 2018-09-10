@@ -112,23 +112,15 @@ data:
   name: value
 `
 
-func rsFixture() *ReleaseServer {
-	clientset := fake.NewSimpleClientset()
-	return &ReleaseServer{
-		ReleaseModule: &LocalReleaseModule{
-			clientset: clientset,
-		},
-		env:       MockEnvironment(),
-		clientset: clientset,
-		Log:       func(_ string, _ ...interface{}) {},
-	}
-}
-
 type chartOptions struct {
 	*chart.Chart
 }
 
 type chartOption func(*chartOptions)
+
+func rsFixture() *ReleaseServer {
+	return NewReleaseServer(MockEnvironment(), fake.NewSimpleClientset(), false)
+}
 
 func buildChart(opts ...chartOption) *chart.Chart {
 	c := &chartOptions{
