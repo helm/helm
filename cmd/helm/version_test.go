@@ -57,6 +57,12 @@ func TestVersion(t *testing.T) {
 			flags:    []string{"--template", "{{ .Client.SemVer }} {{ .Server.SemVer }}"},
 			expected: lver + " " + sver,
 		},
+		{
+			name:     "client short empty git",
+			args:     []string{},
+			flags:    []string{"-c", "--short"},
+			expected: lver,
+		},
 	}
 	settings.TillerHost = "fake-localhost"
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
