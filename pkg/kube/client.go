@@ -45,6 +45,7 @@ import (
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	"k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
@@ -239,8 +240,12 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 	if err != nil {
 		return err
 	}
-	if namespace != "" && err := ensureNamespace(clientset, namespace); err != nil {
-		return err
+
+	if namespace != "" {
+		err := ensureNamespace(clientset, namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	original, err := c.BuildUnstructured(namespace, originalReader)
