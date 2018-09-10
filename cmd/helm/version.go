@@ -145,7 +145,7 @@ func getK8sVersion() (*apiVersion.Info, error) {
 }
 
 func formatVersion(v *pb.Version, short bool) string {
-	if short {
+	if short && v.GitCommit != "" {
 		return fmt.Sprintf("%s+g%s", v.SemVer, v.GitCommit[:7])
 	}
 	return fmt.Sprintf("%#v", v)
