@@ -18,11 +18,12 @@ package tiller
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/golang/protobuf/proto"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
-	"regexp"
 )
 
 // ListReleases lists the releases found by the server.
