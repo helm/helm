@@ -86,11 +86,11 @@ type ResourceActorFunc func(*resource.Info) error
 //
 // Namespace will set the namespace.
 func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	client, err := c.ClientSet()
+	clientset, err := c.ClientSet()
 	if err != nil {
 		return err
 	}
-	if err := ensureNamespace(client, namespace); err != nil {
+	if err := ensureNamespace(clientset, namespace); err != nil {
 		return err
 	}
 	c.Log("building resources from manifest")
@@ -235,14 +235,12 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 //
 // Namespace will set the namespaces.
 func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
-	if namespace != "" {
-		client, err := c.ClientSet()
-		if err != nil {
-			return err
-		}
-		if err := ensureNamespace(client, namespace); err != nil {
-			return err
-		}
+	clientset, err := c.ClientSet()
+	if err != nil {
+		return err
+	}
+	if namespace != "" && err := ensureNamespace(clientset, namespace); err != nil {
+		return err
 	}
 
 	original, err := c.BuildUnstructured(namespace, originalReader)
@@ -286,7 +284,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
+		if err := updateResource(c, clientset, info, originalInfo.Object, force, recreate); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -432,7 +430,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
+func updateResource(c *Client, clientset internalclientset.Interface, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
 	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)
@@ -489,12 +487,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	client, err := c.ClientSet()
-	if err != nil {
-		return err
-	}
-
-	pods, err := client.Core().Pods(target.Namespace).List(metav1.ListOptions{
+	pods, err := clientset.Core().Pods(target.Namespace).List(metav1.ListOptions{
 		FieldSelector: fields.Everything().String(),
 		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
@@ -507,7 +500,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		c.Log("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
-		if err := client.Core().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
+		if err := clientset.Core().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
 			return err
 		}
 	}
@@ -701,9 +694,9 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 		return objPods, nil
 	}
 
-	client, _ := c.ClientSet()
+	clientset, _ := c.ClientSet()
 
-	pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
+	pods, err := clientset.Core().Pods(info.Namespace).List(metav1.ListOptions{
 		FieldSelector: fields.Everything().String(),
 		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
