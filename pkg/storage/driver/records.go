@@ -36,7 +36,7 @@ func (rs *records) Add(r *record) error {
 	}
 
 	if rs.Exists(r.key) {
-		return ErrReleaseExists(r.key)
+		return ErrReleaseExists
 	}
 
 	*rs = append(*rs, r)
