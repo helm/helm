@@ -40,7 +40,7 @@ A pipeline is evaluated as _false_ if the value is:
 - a `nil` (empty or null)
 - an empty collection (`map`, `slice`, `tuple`, `dict`, `array`)
 
-Under all other conditions, the condition is true.
+In any other case, the condition is evaluated to _true_ and the pipeline is executed.
 
 Let's add a simple conditional to our ConfigMap. We'll add another setting if the drink is set to coffee:
 
