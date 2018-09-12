@@ -73,7 +73,7 @@ Blocks (such as control structures) may be indented to indicate flow of the temp
 ```
 {{ if $foo -}}
   {{- with .Bar }}Hello{{ end -}}
-{{- end -}} 
+{{- end -}}
 ```
 
 However, since YAML is a whitespace-oriented language, it is often not possible for code indentation to follow that convention.
@@ -132,6 +132,43 @@ metadata:
 
 ```
 
+## Resource Naming in Templates
+
+Hard-coding the `name:` into a resource is usually considered to be bad practice.
+Names should be unique to a release. So we might want to generate a name field
+by inserting the release name - for example:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-myservice
+```
+
+Or if there is only one resource of this kind then full template name (which includes the release name):
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fullname" . }}
+```
+
+However, there may be cases where it is known that there won't be naming conflicts from a fixed name.
+In these cases a fixed name might make it easier for an application to find a resource such as a Service.
+If the option for fixed names is needed then one way to manage this might be to make the setting of the name explicit by using a service.name value from the values.yaml if provided:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if .Values.service.name }}
+    name: {{ .Values.service.name }}
+  {{- else }}
+    name: {{ template "fullname" . }}
+  {{- end }}
+```
+
 ## Comments (YAML Comments vs. Template Comments)
 
 Both YAML and Helm Templates have comment markers.
@@ -180,7 +217,7 @@ readable than other YAML representations.
 For example, this YAML is closer to the normal YAML method of expressing lists:
 
 ```yaml
-arguments: 
+arguments:
   - "--dirname"
   - "/foo"
 ```
