@@ -145,7 +145,7 @@ metadata:
   name: {{ .Release.Name }}-myservice
 ```
 
-Or if there is only one resource of this kind then full template name (which includes the release name):
+Or if there is only one resource of this kind then we could use .Release.Name or the template fullname function defined in _helpers.tpl (which uses release name):
 
 ```yaml
 apiVersion: v1
