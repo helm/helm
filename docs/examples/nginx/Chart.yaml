@@ -7,7 +7,7 @@ keywords:
   - nginx
   - www
   - web
-home: https://github.com/kubernetes/helm
+home: https://github.com/helm/helm
 sources:
   - https://hub.docker.com/_/nginx/
 maintainers:

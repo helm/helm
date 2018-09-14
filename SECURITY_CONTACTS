@@ -8,7 +8,7 @@
 # and will be removed and replaced if they violate that agreement.
 #
 # DO NOT REPORT SECURITY VULNERABILITIES DIRECTLY TO THESE NAMES, FOLLOW THE
-# INSTRUCTIONS AT https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md#reporting-a-security-issue
+# INSTRUCTIONS AT https://github.com/helm/helm/blob/master/CONTRIBUTING.md#reporting-a-security-issue
 
 adamreese
 bacongobbler
