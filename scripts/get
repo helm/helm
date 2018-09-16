@@ -18,6 +18,7 @@
 # the package manager for Go: https://github.com/Masterminds/glide.sh/blob/master/get
 
 PROJECT_NAME="helm"
+USE_SUDO="true"
 
 : ${HELM_INSTALL_DIR:="/usr/local/bin"}
 
@@ -50,7 +51,7 @@ initOS() {
 runAsRoot() {
   local CMD="$*"
 
-  if [ $EUID -ne 0 ]; then
+  if [ $EUID -ne 0 -a $USE_SUDO = "true" ]; then
     CMD="sudo $CMD"
   fi
 
@@ -180,6 +181,7 @@ help () {
   echo -e "\t[--help|-h ] ->> prints this help"
   echo -e "\t[--version|-v <desired_version>] . When not defined it defaults to latest"
   echo -e "\te.g. --version v2.4.0  or -v latest"
+  echo -e "\t[--no-sudo]  ->> install without sudo"
 }
 
 # cleanup temporary files to avoid https://github.com/helm/helm/issues/2977
@@ -208,6 +210,9 @@ while [[ $# -gt 0 ]]; do
            echo -e "Please provide the desired version. e.g. --version v2.4.0 or -v latest"
            exit 0
        fi
+       ;;
+    '--no-sudo')
+       USE_SUDO="false"
        ;;
     '--help'|-h)
        help
