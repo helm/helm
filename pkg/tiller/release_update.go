@@ -150,6 +150,8 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		return nil, err
 	}
 
+	res := &services.UpdateReleaseResponse{}
+
 	newRelease, err := s.prepareRelease(&services.InstallReleaseRequest{
 		Chart:        req.Chart,
 		Values:       req.Values,
@@ -161,11 +163,6 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		Timeout:      req.Timeout,
 		Wait:         req.Wait,
 	})
-
-	// update new release with next revision number so as to append to the old release's history
-	newRelease.Version = oldRelease.Version + 1
-
-	res := &services.UpdateReleaseResponse{Release: newRelease}
 	if err != nil {
 		s.Log("failed update prepare step: %s", err)
 		// On dry run, append the manifest contents to a failed release. This is
@@ -175,6 +172,10 @@ func (s *ReleaseServer) performUpdateForce(req *services.UpdateReleaseRequest) (
 		}
 		return res, err
 	}
+
+	// update new release with next revision number so as to append to the old release's history
+	newRelease.Version = oldRelease.Version + 1
+	res.Release = newRelease
 
 	if req.DryRun {
 		s.Log("dry run for %s", newRelease.Name)
