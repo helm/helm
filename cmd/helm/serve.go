@@ -38,7 +38,7 @@ This command is intended to be used for educational and testing purposes only.
 It is best to rely on a dedicated web server or a cloud-hosted solution like
 Google Cloud Storage for production use.
 
-See https://github.com/kubernetes/helm/blob/master/docs/chart_repository.md#hosting-chart-repositories
+See https://github.com/helm/helm/blob/master/docs/chart_repository.md#hosting-chart-repositories
 for more information on hosting chart repositories in a production setting.
 `
 

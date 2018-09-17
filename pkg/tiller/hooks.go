@@ -53,6 +53,7 @@ var deletePolices = map[string]release.Hook_DeletePolicy{
 	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
 }
 
+// Manifest represents a manifest file, which has a name and some content.
 type Manifest = manifest.Manifest
 
 type result struct {
