@@ -40,13 +40,6 @@ import (
 )
 
 var (
-	tlsServerName string // overrides the server name used to verify the hostname on the returned certificates from the server.
-	tlsCaCertFile string // path to TLS CA certificate file
-	tlsCertFile   string // path to TLS certificate file
-	tlsKeyFile    string // path to TLS key file
-	tlsVerify     bool   // enable TLS and verify remote certificates
-	tlsEnable     bool   // enable TLS
-
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
 )
@@ -142,6 +135,9 @@ func newRootCmd(args []string) *cobra.Command {
 	)
 
 	flags.Parse(args)
+
+	// set defaults from environment
+	settings.Init(flags)
 
 	// Find and add plugins
 	loadPlugins(cmd, out)
@@ -284,14 +280,14 @@ func newClient() helm.Interface {
 		if tlsKeyFile == "" {
 			tlsKeyFile = settings.Home.TLSKey()
 		}
-		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", tlsServerName, tlsKeyFile, tlsCertFile, tlsCaCertFile)
+		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", settings.TLSServerName, tlsKeyFile, tlsCertFile, tlsCaCertFile)
 		tlsopts := tlsutil.Options{
-			ServerName:         tlsServerName,
+			ServerName:         settings.TLSServerName,
 			KeyFile:            tlsKeyFile,
 			CertFile:           tlsCertFile,
 			InsecureSkipVerify: true,
 		}
-		if tlsVerify {
+		if settings.TLSVerify {
 			tlsopts.CaCertFile = tlsCaCertFile
 			tlsopts.InsecureSkipVerify = false
 		}

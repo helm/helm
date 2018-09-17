@@ -70,6 +70,12 @@ var (
 	// This is the IPv4 loopback, not localhost, because we have to force IPv4
 	// for Dockerized Helm: https://github.com/kubernetes/helm/issues/1410
 	localRepositoryURL = "http://127.0.0.1:8879/charts"
+	tlsServerName      string // overrides the server name used to verify the hostname on the returned certificates from the server.
+	tlsCaCertFile      string // path to TLS CA certificate file
+	tlsCertFile        string // path to TLS certificate file
+	tlsKeyFile         string // path to TLS key file
+	tlsVerify          bool   // enable TLS and verify remote certificates
+	tlsEnable          bool   // enable TLS
 )
 
 type initCmd struct {
@@ -121,6 +127,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
 
+	// TODO: use pkg/helm/environment.AddFlagsTLS() instead
 	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
 	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
 	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
