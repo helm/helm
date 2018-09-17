@@ -87,9 +87,9 @@ func newRootCmd(args []string) *cobra.Command {
 		Long:         globalUsage,
 		SilenceUsage: true,
 		PersistentPreRun: func(*cobra.Command, []string) {
-			tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
-			tlsCertFile = os.ExpandEnv(tlsCertFile)
-			tlsKeyFile = os.ExpandEnv(tlsKeyFile)
+			tlsCaCertFile = os.ExpandEnv("$HELM_TLS_CA_CERT")
+			tlsCertFile = os.ExpandEnv("$HELM_TLS_CERT")
+			tlsKeyFile = os.ExpandEnv("$HELM_TLS_KEY")
 		},
 		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
@@ -275,15 +275,22 @@ func newClient() helm.Interface {
 	options := []helm.Option{helm.Host(settings.TillerHost), helm.ConnectTimeout(settings.TillerConnectionTimeout)}
 
 	if settings.TLSVerify || settings.TLSEnable {
+
+		tlsCaCertFile = settings.TLSCaCertFile
 		if tlsCaCertFile == "" {
 			tlsCaCertFile = settings.Home.TLSCaCert()
 		}
+
+		tlsCertFile = settings.TLSCertFile
 		if tlsCertFile == "" {
 			tlsCertFile = settings.Home.TLSCert()
 		}
+
+		tlsKeyFile = settings.TLSKeyFile
 		if tlsKeyFile == "" {
 			tlsKeyFile = settings.Home.TLSKey()
 		}
+
 		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", tlsServerName, tlsKeyFile, tlsCertFile, tlsCaCertFile)
 		tlsopts := tlsutil.Options{
 			ServerName:         tlsServerName,
