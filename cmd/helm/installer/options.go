@@ -99,7 +99,8 @@ type Options struct {
 	Values []string
 }
 
-func (opts *Options) selectImage() string {
+// SelectImage returns the image according to whether UseCanary is true or not
+func (opts *Options) SelectImage() string {
 	switch {
 	case opts.UseCanary:
 		return defaultImage + ":canary"
