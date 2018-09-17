@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -125,9 +124,7 @@ func (o *upgradeOptions) run(out io.Writer) error {
 	if o.install {
 		// If a release does not exist, install it. If another error occurs during
 		// the check, ignore the error and continue with the upgrade.
-		_, err := o.client.ReleaseHistory(o.release, 1)
-
-		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(o.release).Error()) {
+		if _, err := o.client.ReleaseHistory(o.release, 1); err == driver.ErrReleaseNotFound {
 			fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", o.release)
 			io := &installOptions{
 				chartPath:        chartPath,

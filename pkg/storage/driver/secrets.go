@@ -66,7 +66,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	obj, err := secrets.impl.Get(key, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseNotFound(key)
+			return nil, ErrReleaseNotFound
 		}
 		return nil, errors.Wrapf(err, "get: failed to get %q", key)
 	}
@@ -123,7 +123,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	}
 
 	if len(list.Items) == 0 {
-		return nil, ErrReleaseNotFound(labels["name"])
+		return nil, ErrReleaseNotFound
 	}
 
 	var results []*rspb.Release
@@ -155,7 +155,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	// push the secret object out into the kubiverse
 	if _, err := secrets.impl.Create(obj); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return ErrReleaseExists(rls.Name)
+			return ErrReleaseExists
 		}
 
 		return errors.Wrap(err, "create: failed to create")
@@ -187,7 +187,7 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = secrets.Get(key); err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseExists(rls.Name)
+			return nil, ErrReleaseExists
 		}
 
 		return nil, errors.Wrapf(err, "delete: failed to get release %q", key)
