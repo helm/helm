@@ -46,8 +46,10 @@ const (
 	NotesName = "NOTES.txt"
 	// HelpersName is the name of the example helpers file.
 	HelpersName = "_helpers.tpl"
-	// ServiceTestName is the name of the example test service file.
-	ServiceTestName = "service-test.yaml"
+	// TemplatesTestsDir is the relative directory name for templates tests.
+	TemplatesTestsDir = "templates/tests"
+	// TestConnectionName is the name of the example connection test file.
+	TestConnectionName = "test-connection.yaml"
 )
 
 const defaultValues = `# Default values for %s.
@@ -292,23 +294,23 @@ Create chart name and version as used by the chart label.
 {{- end -}}
 `
 
-const defaultServiceTest = `apiVersion: v1
+const defaultTestConnection = `apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{ template "<CHARTNAME>.fullname" . }}-service-test"
+  name: "{{ include "<CHARTNAME>.fullname" . }}-test-connection"
   labels:
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    app: {{ template "<CHARTNAME>.name" . }}
+    app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
+    helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
   annotations:
     "helm.sh/hook": test-success
 spec:
   containers:
-    - name: curl
-      image: radial/busyboxplus:curl
-      command: ['curl']
-      args:  ['{{ template "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
 `
 
@@ -376,7 +378,7 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		}
 	}
 
-	for _, d := range []string{TemplatesDir, ChartsDir} {
+	for _, d := range []string{TemplatesDir, TemplatesTestsDir, ChartsDir} {
 		if err := os.MkdirAll(filepath.Join(cdir, d), 0755); err != nil {
 			return cdir, err
 		}
@@ -422,9 +424,9 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 			content: Transform(defaultHelpers, "<CHARTNAME>", chartfile.Name),
 		},
 		{
-			// service-test.yaml
-			path:    filepath.Join(cdir, TemplatesDir, ServiceTestName),
-			content: Transform(defaultServiceTest, "<CHARTNAME>", chartfile.Name),
+			// test-connection.yaml
+			path:    filepath.Join(cdir, TemplatesTestsDir, TestConnectionName),
+			content: Transform(defaultTestConnection, "<CHARTNAME>", chartfile.Name),
 		},
 	}
 
