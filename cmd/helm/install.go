@@ -114,6 +114,7 @@ type installCmd struct {
 	name           string
 	namespace      string
 	valueFiles     valueFiles
+	reqFile        string
 	chartPath      string
 	dryRun         bool
 	disableHooks   bool
@@ -195,6 +196,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
 	f.VarP(&inst.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
+	f.StringVarP(&inst.reqFile, "requirements", "r", "", "specify a yaml file to override dependencies(specify 'none' to remove all dependencies)")
 	f.StringVarP(&inst.name, "name", "n", "", "release name. If unspecified, it will autogenerate one for you")
 	f.StringVar(&inst.namespace, "namespace", "", "namespace to install the release into. Defaults to the current kube config namespace.")
 	f.BoolVar(&inst.dryRun, "dry-run", false, "simulate an install")
@@ -254,6 +256,18 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 
+	// Override the requirements
+	if i.reqFile != "" {
+		if err := chartutil.SetRequirements(chartRequested, i.reqFile); err != nil {
+			return prettyError(err)
+		}
+
+		// Run `helm dependency update` to update dependencies
+		i.depUp = true
+		// Ignore the existing dependencies
+		chartRequested.Dependencies = nil
+	}
+
 	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
 		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
@@ -268,6 +282,9 @@ func (i *installCmd) run() error {
 					SkipUpdate: false,
 					Getters:    getter.All(settings),
 				}
+				if i.reqFile != "" {
+					man.Requirements = req
+				}
 				if err := man.Update(); err != nil {
 					return prettyError(err)
 				}
@@ -277,10 +294,18 @@ func (i *installCmd) run() error {
 				if err != nil {
 					return prettyError(err)
 				}
+
+				if i.reqFile != "" {
+					if err := chartutil.SetRequirements(chartRequested, i.reqFile); err != nil {
+						return prettyError(err)
+					}
+					if err := chartutil.RemoveDependenciesNotPresent(chartRequested); err != nil {
+						return prettyError(err)
+					}
+				}
 			} else {
 				return prettyError(err)
 			}
-
 		}
 	} else if err != chartutil.ErrRequirementsNotFound {
 		return fmt.Errorf("cannot load requirements: %v", err)

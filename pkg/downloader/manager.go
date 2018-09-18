@@ -57,6 +57,8 @@ type Manager struct {
 	SkipUpdate bool
 	// Getter collection for the operation
 	Getters []getter.Provider
+	// Requirements is the requirements override
+	Requirements *chartutil.Requirements
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -113,15 +115,20 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// If no requirements file is found, we consider this a successful
-	// completion.
-	req, err := chartutil.LoadRequirements(c)
-	if err != nil {
-		if err == chartutil.ErrRequirementsNotFound {
-			fmt.Fprintf(m.Out, "No requirements found in %s/charts.\n", m.ChartPath)
-			return nil
+	var req *chartutil.Requirements
+	if m.Requirements == nil {
+		// If no requirements file is found, we consider this a successful
+		// completion.
+		req, err = chartutil.LoadRequirements(c)
+		if err != nil {
+			if err == chartutil.ErrRequirementsNotFound {
+				fmt.Fprintf(m.Out, "No requirements found in %s/charts.\n", m.ChartPath)
+				return nil
+			}
+			return err
 		}
-		return err
+	} else {
+		req = m.Requirements
 	}
 
 	// Hash requirements.yaml

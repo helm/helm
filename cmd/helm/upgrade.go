@@ -24,6 +24,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/renderutil"
 	storageerrors "k8s.io/helm/pkg/storage/errors"
@@ -96,6 +98,7 @@ type upgradeCmd struct {
 	values       []string
 	stringValues []string
 	fileValues   []string
+	reqFile      string
 	verify       bool
 	keyring      string
 	install      bool
@@ -149,6 +152,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
 	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
+	f.StringVarP(&upgrade.reqFile, "requirements", "r", "", "specify a yaml file to override dependencies(specify 'none' to remove all dependencies)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
@@ -219,6 +223,7 @@ func (u *upgradeCmd) run() error {
 				out:          u.out,
 				name:         u.release,
 				valueFiles:   u.valueFiles,
+				reqFile:      u.reqFile,
 				dryRun:       u.dryRun,
 				verify:       u.verify,
 				disableHooks: u.disableHooks,
@@ -240,22 +245,60 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
-	// Check chart requirements to make sure all dependencies are present in /charts
-	if ch, err := chartutil.Load(chartPath); err == nil {
-		if req, err := chartutil.LoadRequirements(ch); err == nil {
-			if err := renderutil.CheckDependencies(ch, req); err != nil {
-				return err
-			}
-		} else if err != chartutil.ErrRequirementsNotFound {
-			return fmt.Errorf("cannot load requirements: %v", err)
-		}
-	} else {
+	ch, err := chartutil.Load(chartPath)
+	if err != nil {
 		return prettyError(err)
 	}
 
-	resp, err := u.client.UpdateRelease(
+	// Override requirements
+	if u.reqFile != "" {
+		if err = chartutil.SetRequirements(ch, u.reqFile); err != nil {
+			return prettyError(err)
+		}
+
+		// Ignore existing dependencies
+		ch.Dependencies = nil
+	}
+
+	// Check chart requirements to make sure all dependencies are present in /charts
+	if req, err := chartutil.LoadRequirements(ch); err == nil {
+		if err := renderutil.CheckDependencies(ch, req); err != nil {
+			if u.reqFile != "" {
+				man := &downloader.Manager{
+					Out:          u.out,
+					ChartPath:    chartPath,
+					HelmHome:     settings.Home,
+					Keyring:      defaultKeyring(),
+					SkipUpdate:   false,
+					Getters:      getter.All(settings),
+					Requirements: req,
+				}
+				if err := man.Update(); err != nil {
+					return prettyError(err)
+				}
+
+				// Update all dependencies which are present in /charts.
+				ch, err = chartutil.Load(chartPath)
+				if err != nil {
+					return prettyError(err)
+				}
+				if err := chartutil.SetRequirements(ch, u.reqFile); err != nil {
+					return prettyError(err)
+				}
+				if err := chartutil.RemoveDependenciesNotPresent(ch); err != nil {
+					return prettyError(err)
+				}
+			} else {
+				return prettyError(err)
+			}
+		}
+	} else if err != chartutil.ErrRequirementsNotFound {
+		return fmt.Errorf("cannot load requirements: %v", err)
+	}
+
+	resp, err := u.client.UpdateReleaseFromChart(
 		u.release,
-		chartPath,
+		ch,
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),

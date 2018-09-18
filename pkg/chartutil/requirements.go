@@ -17,6 +17,8 @@ package chartutil
 
 import (
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"strings"
 	"time"
@@ -27,8 +29,9 @@ import (
 )
 
 const (
-	requirementsName = "requirements.yaml"
-	lockfileName     = "requirements.lock"
+	requirementsName       = "requirements.yaml"
+	lockfileName           = "requirements.lock"
+	removeRequirementsName = "none"
 )
 
 var (
@@ -121,6 +124,46 @@ func LoadRequirementsLock(c *chart.Chart) (*RequirementsLock, error) {
 	}
 	r := &RequirementsLock{}
 	return r, yaml.Unmarshal(data, r)
+}
+
+// SetRequirements sets a requirements file from an in-memory chart.
+func SetRequirements(c *chart.Chart, filename string) error {
+	var data []byte
+
+	if filename == removeRequirementsName {
+		data = []byte("dependencies:")
+	} else {
+		var err error
+		data, err = ioutil.ReadFile(filename)
+		if err != nil {
+			return fmt.Errorf("error reading %s: %s", filename, err)
+		}
+	}
+	for _, f := range c.Files {
+		if f.TypeUrl == requirementsName {
+			f.Value = data
+		}
+	}
+
+	return nil
+}
+
+// RemoveDependenciesNotPresent removes the charts not present in requirements
+func RemoveDependenciesNotPresent(c *chart.Chart) error {
+	var deps []*chart.Chart
+	req, err := LoadRequirements(c)
+	if err != nil {
+		return err
+	}
+	for _, depInRequestments := range req.Dependencies {
+		for _, dep := range c.Dependencies {
+			if depInRequestments.Name == dep.Metadata.Name {
+				deps = append(deps, dep)
+			}
+		}
+	}
+	c.Dependencies = deps
+	return nil
 }
 
 // ProcessRequirementsConditions disables charts based on condition path value in values
