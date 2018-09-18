@@ -173,6 +173,14 @@ func (i *initCmd) tlsOptions() error {
 				return errors.New("missing required TLS CA file")
 			}
 		}
+
+		// FIXME: refactor this all to pkg/helm/environment
+		settings.TLSEnable = tlsEnable
+		settings.TLSVerify = tlsVerify
+		settings.TLSServerName = tlsServerName
+		settings.TLSCaCertFile = tlsCaCertFile
+		settings.TLSCertFile = tlsCertFile
+		settings.TLSKeyFile = tlsKeyFile
 	}
 	return nil
 }

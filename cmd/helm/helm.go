@@ -80,9 +80,21 @@ func newRootCmd(args []string) *cobra.Command {
 		Long:         globalUsage,
 		SilenceUsage: true,
 		PersistentPreRun: func(*cobra.Command, []string) {
-			tlsCaCertFile = os.ExpandEnv(tlsCaCertFile)
-			tlsCertFile = os.ExpandEnv(tlsCertFile)
-			tlsKeyFile = os.ExpandEnv(tlsKeyFile)
+			if settings.TLSCaCertFile == helm_env.DefaultTLSCaCert || settings.TLSCaCertFile == "" {
+				settings.TLSCaCertFile = settings.Home.TLSCaCert()
+			} else {
+				settings.TLSCaCertFile = os.ExpandEnv(settings.TLSCaCertFile)
+			}
+			if settings.TLSCertFile == helm_env.DefaultTLSCert || settings.TLSCertFile == "" {
+				settings.TLSCertFile = settings.Home.TLSCert()
+			} else {
+				settings.TLSCertFile = os.ExpandEnv(settings.TLSCertFile)
+			}
+			if settings.TLSKeyFile == helm_env.DefaultTLSKeyFile || settings.TLSKeyFile == "" {
+				settings.TLSKeyFile = settings.Home.TLSKey()
+			} else {
+				settings.TLSKeyFile = os.ExpandEnv(settings.TLSKeyFile)
+			}
 		},
 		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
@@ -271,24 +283,15 @@ func newClient() helm.Interface {
 	options := []helm.Option{helm.Host(settings.TillerHost), helm.ConnectTimeout(settings.TillerConnectionTimeout)}
 
 	if settings.TLSVerify || settings.TLSEnable {
-		if tlsCaCertFile == "" {
-			tlsCaCertFile = settings.Home.TLSCaCert()
-		}
-		if tlsCertFile == "" {
-			tlsCertFile = settings.Home.TLSCert()
-		}
-		if tlsKeyFile == "" {
-			tlsKeyFile = settings.Home.TLSKey()
-		}
-		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", settings.TLSServerName, tlsKeyFile, tlsCertFile, tlsCaCertFile)
+		debug("Host=%q, Key=%q, Cert=%q, CA=%q\n", settings.TLSServerName, settings.TLSKeyFile, settings.TLSCertFile, settings.TLSCaCertFile)
 		tlsopts := tlsutil.Options{
 			ServerName:         settings.TLSServerName,
-			KeyFile:            tlsKeyFile,
-			CertFile:           tlsCertFile,
+			KeyFile:            settings.TLSKeyFile,
+			CertFile:           settings.TLSCertFile,
 			InsecureSkipVerify: true,
 		}
 		if settings.TLSVerify {
-			tlsopts.CaCertFile = tlsCaCertFile
+			tlsopts.CaCertFile = settings.TLSCaCertFile
 			tlsopts.InsecureSkipVerify = false
 		}
 		tlscfg, err := tlsutil.ClientConfig(tlsopts)
