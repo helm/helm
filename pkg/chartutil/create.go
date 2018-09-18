@@ -232,7 +232,7 @@ spec:
       name: http
   selector:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-    app.kubernetes.io/instancelease: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
