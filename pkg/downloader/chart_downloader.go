@@ -170,8 +170,11 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 				if err != nil {
 					return u, nil, err
 				}
-				getter, err := getterConstructor(ref, "", "", "")
-				return u, getter, err
+				g, err := getterConstructor(ref, "", "", "")
+				if t, ok := g.(*getter.HttpGetter); ok {
+					t.SetCredentials(c.Username, c.Password)
+				}
+				return u, g, err
 			}
 			return u, nil, err
 		}
