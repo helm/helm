@@ -81,6 +81,9 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
 	f.StringVarP(&status.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

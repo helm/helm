@@ -83,6 +83,9 @@ func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&version.short, "short", false, "print the version number")
 	f.StringVar(&version.template, "template", "", "template for version string format")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 
