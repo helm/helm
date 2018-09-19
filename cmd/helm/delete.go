@@ -85,6 +85,9 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.StringVar(&del.description, "description", "", "specify a description for the release")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

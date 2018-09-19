@@ -62,6 +62,10 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	settings.AddFlagsTLS(f)
 	f.Int32Var(&get.version, "revision", 0, "get the named release with revision")
 	f.BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
+
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

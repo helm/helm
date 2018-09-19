@@ -123,6 +123,7 @@ func TestEnvSettings(t *testing.T) {
 			flags.Parse(tt.args)
 
 			settings.Init(flags)
+			settings.InitTLS(flags)
 
 			if settings.Home != helmpath.Home(tt.home) {
 				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
