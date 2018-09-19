@@ -87,17 +87,6 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
 	fs.Int64Var(&s.TillerConnectionTimeout, "tiller-connection-timeout", int64(300), "the duration (in seconds) Helm will wait to establish a connection to tiller")
-
-	envMap := map[string]string{
-		"debug":            "HELM_DEBUG",
-		"home":             "HELM_HOME",
-		"host":             "HELM_HOST",
-		"tiller-namespace": "TILLER_NAMESPACE",
-	}
-
-	for name, envar := range envMap {
-		setFlagFromEnv(name, envar, fs)
-	}
 }
 
 // AddFlagsTLS adds the flags for supporting client side TLS to the given flagset.
@@ -108,23 +97,38 @@ func (s *EnvSettings) AddFlagsTLS(fs *pflag.FlagSet) {
 	fs.StringVar(&s.TLSKeyFile, "tls-key", DefaultTLSKeyFile, "path to TLS key file")
 	fs.BoolVar(&s.TLSVerify, "tls-verify", DefaultTLSVerify, "enable TLS for request and verify remote")
 	fs.BoolVar(&s.TLSEnable, "tls", DefaultTLSEnable, "enable TLS for request")
+}
 
-	envMap := map[string]string{
-		"tls-hostname": "HELM_TLS_HOSTNAME",
-		"tls-ca-cert":  "HELM_TLS_CA_CERT",
-		"tls-cert":     "HELM_TLS_CERT",
-		"tls-key":      "HELM_TLS_KEY",
-		"tls-verify":   "HELM_TLS_VERIFY",
-		"tls":          "HELM_TLS_ENABLE",
-	}
-
+// Init sets values from the environment.
+func (s *EnvSettings) Init(fs *pflag.FlagSet) {
 	for name, envar := range envMap {
 		setFlagFromEnv(name, envar, fs)
 	}
 }
 
-// Init is deprecated; calling `.AddFlags` or `.AddFlagsTLS` directly will set the flags to their default values from the environment, so this is a no-op.
-func (s *EnvSettings) Init(fs *pflag.FlagSet) {}
+// InitTLS sets TLS values from the environment.
+func (s *EnvSettings) InitTLS(fs *pflag.FlagSet) {
+	for name, envar := range tlsEnvMap {
+		setFlagFromEnv(name, envar, fs)
+	}
+}
+
+// envMap maps flag names to envvars
+var envMap = map[string]string{
+	"debug":            "HELM_DEBUG",
+	"home":             "HELM_HOME",
+	"host":             "HELM_HOST",
+	"tiller-namespace": "TILLER_NAMESPACE",
+}
+
+var tlsEnvMap = map[string]string{
+	"tls-hostname": "HELM_TLS_HOSTNAME",
+	"tls-ca-cert":  "HELM_TLS_CA_CERT",
+	"tls-cert":     "HELM_TLS_CERT",
+	"tls-key":      "HELM_TLS_KEY",
+	"tls-verify":   "HELM_TLS_VERIFY",
+	"tls":          "HELM_TLS_ENABLE",
+}
 
 // PluginDirs is the path to the plugin directories.
 func (s EnvSettings) PluginDirs() string {
@@ -134,6 +138,9 @@ func (s EnvSettings) PluginDirs() string {
 	return s.Home.Plugins()
 }
 
+// setFlagFromEnv looks up and sets a flag if the corresponding environment variable changed.
+// if the flag with the corresponding name was set during fs.Parse(), then the environment
+// variable is ignored.
 func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
 	if fs.Changed(name) {
 		return

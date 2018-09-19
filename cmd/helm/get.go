@@ -79,6 +79,9 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	cmd.AddCommand(newGetHooksCmd(nil, out))
 	cmd.AddCommand(newGetNotesCmd(nil, out))
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

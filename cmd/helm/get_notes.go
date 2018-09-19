@@ -63,6 +63,9 @@ func newGetNotesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	settings.AddFlagsTLS(f)
 	f.Int32Var(&get.version, "revision", 0, "get the notes of the named release with revision")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 
