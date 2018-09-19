@@ -220,6 +220,9 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.depUp, "dep-up", false, "run helm dependency update before installing the chart")
 	f.StringVar(&inst.description, "description", "", "specify a description for the release")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

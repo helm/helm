@@ -140,6 +140,9 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

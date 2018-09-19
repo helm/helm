@@ -93,6 +93,9 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	f.UintVar(&his.colWidth, "col-width", 60, "specifies the max column width of output")
 	f.StringVarP(&his.outputFormat, "output", "o", "table", "prints the output in the specified format (json|table|yaml)")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

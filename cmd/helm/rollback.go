@@ -87,6 +87,9 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&rollback.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&rollback.description, "description", "", "specify a description for the release")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 

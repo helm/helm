@@ -70,6 +70,12 @@ var (
 	// This is the IPv4 loopback, not localhost, because we have to force IPv4
 	// for Dockerized Helm: https://github.com/kubernetes/helm/issues/1410
 	localRepositoryURL = "http://127.0.0.1:8879/charts"
+	tlsServerName      string // overrides the server name used to verify the hostname on the returned certificates from the server.
+	tlsCaCertFile      string // path to TLS CA certificate file
+	tlsCertFile        string // path to TLS certificate file
+	tlsKeyFile         string // path to TLS key file
+	tlsVerify          bool   // enable TLS and verify remote certificates
+	tlsEnable          bool   // enable TLS
 )
 
 type initCmd struct {
@@ -121,6 +127,10 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
 
+	// TODO: replace TLS flags with pkg/helm/environment.AddFlagsTLS() in Helm 3
+	//
+	// NOTE (bacongobbler): we can't do this in Helm 2 because the flag names differ, and `helm init --tls-ca-cert`
+	// doesn't conform with the rest of the TLS flag names (should be --tiller-tls-ca-cert in Helm 3)
 	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
 	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
 	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
@@ -166,6 +176,14 @@ func (i *initCmd) tlsOptions() error {
 				return errors.New("missing required TLS CA file")
 			}
 		}
+
+		// FIXME: remove once we use pkg/helm/environment.AddFlagsTLS() in Helm 3
+		settings.TLSEnable = tlsEnable
+		settings.TLSVerify = tlsVerify
+		settings.TLSServerName = tlsServerName
+		settings.TLSCaCertFile = tlsCaCertFile
+		settings.TLSCertFile = tlsCertFile
+		settings.TLSKeyFile = tlsKeyFile
 	}
 	return nil
 }
