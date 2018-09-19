@@ -177,6 +177,9 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
+	// set defaults from environment
+	settings.InitTLS(f)
+
 	return cmd
 }
 
