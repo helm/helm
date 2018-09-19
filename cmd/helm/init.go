@@ -127,7 +127,10 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
 
-	// TODO: use pkg/helm/environment.AddFlagsTLS() instead
+	// TODO: replace TLS flags with pkg/helm/environment.AddFlagsTLS() in Helm 3
+	//
+	// NOTE (bacongobbler): we can't do this in Helm 2 because the flag names differ, and `helm init --tls-ca-cert`
+	// doesn't conform with the rest of the TLS flag names (should be --tiller-tls-ca-cert in Helm 3)
 	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
 	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
 	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
@@ -174,7 +177,7 @@ func (i *initCmd) tlsOptions() error {
 			}
 		}
 
-		// FIXME: refactor this all to pkg/helm/environment
+		// FIXME: remove once we use pkg/helm/environment.AddFlagsTLS() in Helm 3
 		settings.TLSEnable = tlsEnable
 		settings.TLSVerify = tlsVerify
 		settings.TLSServerName = tlsServerName
