@@ -37,10 +37,13 @@ import (
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/manifest"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/strvals"
+	"k8s.io/helm/pkg/timeconv"
 )
 
 const installDesc = `
@@ -299,6 +302,26 @@ func (i *installCmd) run() error {
 		helm.InstallWait(i.wait),
 		helm.InstallDescription(i.description))
 	if err != nil {
+		if settings.Debug {
+			config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
+			renderOpts := renderutil.Options{
+				ReleaseOptions: chartutil.ReleaseOptions{
+					Name:      i.name,
+					Time:      timeconv.Now(),
+					Namespace: i.namespace,
+				},
+			}
+			renderedTemplates, er := renderutil.Render(chartRequested, config, renderOpts)
+			if er != nil {
+				fmt.Printf("%s", "chart failed")
+				return prettyError(err)
+			}
+			listManifests := manifest.SplitManifests(renderedTemplates)
+			for _, manifest := range listManifests {
+				fmt.Printf("---\n# Source: %s\n", manifest.Name)
+				fmt.Println(manifest.Content)
+			}
+		}
 		return prettyError(err)
 	}
 
