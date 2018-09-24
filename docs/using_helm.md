@@ -211,12 +211,12 @@ imageTag: 10.1.14-r3
 # mariadbDatabase:
 ```
 
-You can then override any of these settings in a YAML formatted file,
+You can then override any of these settings in a JSON or YAML formatted file,
 and then pass that file during installation.
 
 ```console
-$ echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.yaml
-$ helm install -f config.yaml stable/mariadb
+$ echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.json
+$ helm install -f config.json stable/mariadb
 ```
 
 The above will create a default MariaDB user with the name `user0`, and
