@@ -257,7 +257,7 @@ The changelog at the bottom of the release notes can be generated with this comm
 
 ```shell
 PREVIOUS_RELEASE=vX.Y.Z
-git log --no-merges --pretty=format:'- %s %H (%aN)' $RELEASE_NAME $PREVIOUS_RELEASE
+git log --no-merges --pretty=format:'- %s %H (%aN)' $PREVIOUS_RELEASE..$RELEASE_NAME
 ```
 
 Once finished, go into GitHub and edit the release notes for the tagged release with the notes written here.
