@@ -28,6 +28,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/technosophos/moniker"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 	"k8s.io/kubernetes/pkg/apis/core"
@@ -378,6 +379,62 @@ func TestUniqName(t *testing.T) {
 			t.Errorf("Expected %q to match %q", u, tt.expect)
 		}
 	}
+}
+
+type fakeNamer struct {
+	name string
+}
+
+func NewFakeNamer(nam string) moniker.Namer {
+	return &fakeNamer{
+		name: nam,
+	}
+}
+
+func (f *fakeNamer) Name() string {
+	return f.NameSep(" ")
+}
+
+func (f *fakeNamer) NameSep(sep string) string {
+	return f.name
+}
+
+func TestCreateUniqueName(t *testing.T) {
+	rs := rsFixture()
+
+	rel1 := releaseStub()
+	rel1.Name = "happy-panda"
+
+	rs.env.Releases.Create(rel1)
+
+	tests := []struct {
+		name   string
+		expect string
+		err    bool
+	}{
+		{"happy-panda", "ERROR", true},
+		{"wobbly-octopus", "[a-z]+-[a-z]+", false},
+	}
+
+	for _, tt := range tests {
+		m := NewFakeNamer(tt.name)
+		u, err := rs.createUniqName(m)
+		if err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatal(err)
+		}
+		if tt.err {
+			t.Errorf("Expected an error for %q", tt.name)
+		}
+		if match, err := regexp.MatchString(tt.expect, u); err != nil {
+			t.Fatal(err)
+		} else if !match {
+			t.Errorf("Expected %q to match %q", u, tt.expect)
+		}
+	}
+
 }
 
 func releaseWithKeepStub(rlsName string) *release.Release {
