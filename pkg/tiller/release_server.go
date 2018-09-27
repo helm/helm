@@ -202,15 +202,28 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
 	}
 
+	moniker := moniker.New()
+	newname, err := s.createUniqName(moniker)
+	if err != nil {
+		return "ERROR", err
+	}
+
+	s.Log("info: Created new release name %s", newname)
+	return newname, nil
+
+}
+
+func (s *ReleaseServer) createUniqName(m moniker.Namer) (string, error) {
 	maxTries := 5
 	for i := 0; i < maxTries; i++ {
-		namer := moniker.New()
-		name := namer.NameSep("-")
+		name := m.NameSep("-")
 		if len(name) > releaseNameMaxLen {
 			name = name[:releaseNameMaxLen]
 		}
-		if _, err := s.env.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
-			return name, nil
+		if _, err := s.env.Releases.Get(name, 1); err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				return name, nil
+			}
 		}
 		s.Log("info: generated name %s is taken. Searching again.", name)
 	}
