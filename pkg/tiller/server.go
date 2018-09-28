@@ -29,15 +29,15 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-// maxMsgSize use 20MB as the default message size limit.
+// DefaultMaxMsgSize use 20MB as the default message size limit.
 // grpc library default is 4MB
-const maxMsgSize = 1024 * 1024 * 20
+const DefaultMaxMsgSize = 1024 * 1024 * 20
 
 // DefaultServerOpts returns the set of default grpc ServerOption's that Tiller requires.
 func DefaultServerOpts() []grpc.ServerOption {
 	return []grpc.ServerOption{
-		grpc.MaxRecvMsgSize(maxMsgSize),
-		grpc.MaxSendMsgSize(maxMsgSize),
+		grpc.MaxRecvMsgSize(DefaultMaxMsgSize),
+		grpc.MaxSendMsgSize(DefaultMaxMsgSize),
 		grpc.UnaryInterceptor(newUnaryInterceptor()),
 		grpc.StreamInterceptor(newStreamInterceptor()),
 	}
