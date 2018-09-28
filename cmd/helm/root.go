@@ -62,7 +62,7 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		// chart commands
 		newCreateCmd(out),
 		newDependencyCmd(out),
-		newFetchCmd(out),
+		newPullCmd(out),
 		newInspectCmd(out),
 		newLintCmd(out),
 		newPackageCmd(out),

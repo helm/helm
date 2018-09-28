@@ -6,9 +6,9 @@ This section tracks some of the more frequently encountered issues with using ch
 information, [file an issue](https://github.com/kubernetes/helm/issues) or
 send us a pull request.
 
-## Fetching
+## Pulling
 
-**Q: Why do I get a `unsupported protocol scheme ""` error when trying to fetch a chart from my custom repo?**
+**Q: Why do I get a `unsupported protocol scheme ""` error when trying to pull a chart from my custom repo?**
 
 A: (Helm < 2.5.0) This is likely caused by you creating your chart repo index without specifying the `--url` flag.
 Try recreating your `index.yaml` file with a command like `helm repo index --url http://my-repo/charts .`,
