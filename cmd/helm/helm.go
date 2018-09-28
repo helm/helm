@@ -271,7 +271,7 @@ func getInternalKubeClient(context string, kubeconfig string) (internalclientset
 	return client, nil
 }
 
-// ensureHelmClient returns a new helm client impl. if h is not nil.
+// ensureHelmClient returns a new helm client impl. if h is nil.
 func ensureHelmClient(h helm.Interface) helm.Interface {
 	if h != nil {
 		return h
