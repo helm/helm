@@ -52,8 +52,9 @@ func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 		resourcePolicyType = strings.ToLower(strings.TrimSpace(resourcePolicyType))
 		if resourcePolicyType == keepPolicy {
 			keep = append(keep, m)
+		} else {
+			remaining = append(remaining, m)
 		}
-
 	}
 	return keep, remaining
 }
