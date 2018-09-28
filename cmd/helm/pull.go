@@ -33,7 +33,7 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
-const fetchDesc = `
+const pullDesc = `
 Retrieve a package from a package repository, and download it locally.
 
 This is useful for fetching packages to inspect, modify, or repackage. It can
@@ -48,7 +48,7 @@ file, and MUST pass the verification process. Failure in any part of this will
 result in an error, and the chart will not be saved locally.
 `
 
-type fetchOptions struct {
+type pullOptions struct {
 	destdir     string // --destination
 	devel       bool   // --devel
 	untar       bool   // --untar
@@ -60,14 +60,15 @@ type fetchOptions struct {
 	chartPathOptions
 }
 
-func newFetchCmd(out io.Writer) *cobra.Command {
-	o := &fetchOptions{}
+func newPullCmd(out io.Writer) *cobra.Command {
+	o := &pullOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "fetch [chart URL | repo/chartname] [...]",
-		Short: "download a chart from a repository and (optionally) unpack it in local directory",
-		Long:  fetchDesc,
-		Args:  require.MinimumNArgs(1),
+		Use:     "pull [chart URL | repo/chartname] [...]",
+		Short:   "download a chart from a repository and (optionally) unpack it in local directory",
+		Aliases: []string{"fetch"},
+		Long:    pullDesc,
+		Args:    require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if o.version == "" && o.devel {
 				debug("setting version to >0.0.0-0")
@@ -96,7 +97,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *fetchOptions) run(out io.Writer) error {
+func (o *pullOptions) run(out io.Writer) error {
 	c := downloader.ChartDownloader{
 		HelmHome: settings.Home,
 		Out:      out,

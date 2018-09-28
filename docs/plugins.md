@@ -112,7 +112,7 @@ There are some strategies for working with plugin commands:
   but will not handle `helm myplugin --help`.
 
 ## Downloader Plugins
-By default, Helm is able to fetch Charts using HTTP/S. As of Helm 2.4.0, plugins
+By default, Helm is able to pull Charts using HTTP/S. As of Helm 2.4.0, plugins
 can have a special capability to download Charts from arbitrary sources.
 
 Plugins shall declare this special capability in the `plugin.yaml` file (top level):

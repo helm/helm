@@ -27,7 +27,7 @@ import (
 	"k8s.io/helm/pkg/repo/repotest"
 )
 
-func TestFetchCmd(t *testing.T) {
+func TestPullCmd(t *testing.T) {
 	defer resetEnv()()
 
 	hh := testHelmHome(t)
