@@ -161,7 +161,7 @@ spec:
 {{- end }}
 `
 
-const defaultDeployment = `apiVersion: apps/v1beta2
+const defaultDeployment = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "<CHARTNAME>.fullname" . }}
