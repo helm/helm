@@ -39,6 +39,7 @@ import (
 
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/storage"
@@ -120,7 +121,7 @@ func start() {
 	healthSrv := health.NewServer()
 	healthSrv.SetServingStatus("Tiller", healthpb.HealthCheckResponse_NOT_SERVING)
 
-	clientset, err := kube.New(nil).ClientSet()
+	clientset, err := kube.New(nil).KubernetesClientSet()
 	if err != nil {
 		logger.Fatalf("Cannot initialize Kubernetes connection: %s", err)
 	}
@@ -129,13 +130,13 @@ func start() {
 	case storageMemory:
 		env.Releases = storage.Init(driver.NewMemory())
 	case storageConfigMap:
-		cfgmaps := driver.NewConfigMaps(clientset.Core().ConfigMaps(namespace()))
+		cfgmaps := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace()))
 		cfgmaps.Log = newLogger("storage/driver").Printf
 
 		env.Releases = storage.Init(cfgmaps)
 		env.Releases.Log = newLogger("storage").Printf
 	case storageSecret:
-		secrets := driver.NewSecrets(clientset.Core().Secrets(namespace()))
+		secrets := driver.NewSecrets(clientset.CoreV1().Secrets(namespace()))
 		secrets.Log = newLogger("storage/driver").Printf
 
 		env.Releases = storage.Init(secrets)

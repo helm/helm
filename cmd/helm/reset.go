@@ -23,7 +23,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm"
@@ -44,7 +45,7 @@ type resetCmd struct {
 	out            io.Writer
 	home           helmpath.Home
 	client         helm.Interface
-	kubeClient     internalclientset.Interface
+	kubeClient     kubernetes.Interface
 }
 
 func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -90,7 +91,7 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 // runReset uninstalls tiller from Kubernetes Cluster and deletes local config
 func (d *resetCmd) run() error {
 	if d.kubeClient == nil {
-		c, err := getInternalKubeClient(settings.KubeContext, settings.KubeConfig)
+		_, c, err := getKubeClient(settings.KubeContext, settings.KubeConfig)
 		if err != nil {
 			return fmt.Errorf("could not get kubernetes client: %s", err)
 		}

@@ -28,10 +28,10 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	"k8s.io/helm/pkg/helm"
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/portforwarder"
@@ -254,21 +254,6 @@ func getKubeClient(context string, kubeconfig string) (*rest.Config, kubernetes.
 		return nil, nil, fmt.Errorf("could not get Kubernetes client: %s", err)
 	}
 	return config, client, nil
-}
-
-// getInternalKubeClient creates a Kubernetes config and an "internal" client for a given kubeconfig context.
-//
-// Prefer the similar getKubeClient if you don't need to use such an internal client.
-func getInternalKubeClient(context string, kubeconfig string) (internalclientset.Interface, error) {
-	config, err := configForContext(context, kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-	client, err := internalclientset.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("could not get Kubernetes client: %s", err)
-	}
-	return client, nil
 }
 
 // ensureHelmClient returns a new helm client impl. if h is not nil.

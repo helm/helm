@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
+	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -101,7 +101,7 @@ func verifyResetCmd(t *testing.T, tc resetCase) {
 		home:           helmpath.Home(home),
 		client:         c,
 		kubeClient:     fc,
-		namespace:      core.NamespaceDefault,
+		namespace:      v1.NamespaceDefault,
 	}
 
 	err = cmd.run()
