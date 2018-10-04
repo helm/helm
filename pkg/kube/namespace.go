@@ -17,14 +17,14 @@ limitations under the License.
 package kube // import "k8s.io/helm/pkg/kube"
 
 import (
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 )
 
-func createNamespace(client internalclientset.Interface, namespace string) error {
-	ns := &core.Namespace{
+func createNamespace(client kubernetes.Interface, namespace string) error {
+	ns := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
 			Labels: map[string]string{
@@ -32,15 +32,15 @@ func createNamespace(client internalclientset.Interface, namespace string) error
 			},
 		},
 	}
-	_, err := client.Core().Namespaces().Create(ns)
+	_, err := client.CoreV1().Namespaces().Create(ns)
 	return err
 }
 
-func getNamespace(client internalclientset.Interface, namespace string) (*core.Namespace, error) {
-	return client.Core().Namespaces().Get(namespace, metav1.GetOptions{})
+func getNamespace(client kubernetes.Interface, namespace string) (*v1.Namespace, error) {
+	return client.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
 }
 
-func ensureNamespace(client internalclientset.Interface, namespace string) error {
+func ensureNamespace(client kubernetes.Interface, namespace string) error {
 	_, err := getNamespace(client, namespace)
 	if err != nil && errors.IsNotFound(err) {
 		err = createNamespace(client, namespace)
