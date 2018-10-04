@@ -48,7 +48,7 @@ kubeVersion: A SemVer range of compatible Kubernetes versions (optional)
 description: A single-sentence description of this project (optional)
 keywords:
   - A list of keywords about this project (optional)
-home: The URL of this project's home page (optional)
+home: The URL of this project's home page (recommended)
 sources:
   - A list of URLs to source code for this project (optional)
 maintainers: # (optional)
@@ -56,11 +56,13 @@ maintainers: # (optional)
     email: The maintainer's email (optional for each maintainer)
     url: A URL for the maintainer (optional for each maintainer)
 engine: gotpl # The name of the template engine (optional, defaults to gotpl)
-icon: A URL to an SVG or PNG image to be used as an icon (optional).
-appVersion: The version of the app that this contains (optional). This needn't be SemVer.
+icon: A URL to an SVG or PNG image to be used as an icon (recommended).
+appVersion: The version of the app that this contains (recommended). This needn't be SemVer.
 deprecated: Whether this chart is deprecated (optional, boolean)
 tillerVersion: The version of Tiller that this chart requires. This should be expressed as a SemVer range: ">2.0.0" (optional)
 ```
+
+Recommended fields if missing will fail linting.
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
 notice that fields specifying dependencies have been removed. That is because
