@@ -28,7 +28,7 @@ import (
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
@@ -83,12 +83,12 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 type ReleaseServer struct {
 	ReleaseModule
 	env       *environment.Environment
-	clientset internalclientset.Interface
+	clientset kubernetes.Interface
 	Log       func(string, ...interface{})
 }
 
 // NewReleaseServer creates a new release server.
-func NewReleaseServer(env *environment.Environment, clientset internalclientset.Interface, useRemote bool) *ReleaseServer {
+func NewReleaseServer(env *environment.Environment, clientset kubernetes.Interface, useRemote bool) *ReleaseServer {
 	var releaseModule ReleaseModule
 	if useRemote {
 		releaseModule = &RemoteReleaseModule{}

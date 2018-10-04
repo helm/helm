@@ -24,15 +24,15 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/rest/fake"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/apis/core"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
@@ -42,34 +42,34 @@ func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 }
 
-func newPod(name string) core.Pod {
-	return newPodWithStatus(name, core.PodStatus{}, "")
+func newPod(name string) v1.Pod {
+	return newPodWithStatus(name, v1.PodStatus{}, "")
 }
 
-func newPodWithStatus(name string, status core.PodStatus, namespace string) core.Pod {
-	ns := core.NamespaceDefault
+func newPodWithStatus(name string, status v1.PodStatus, namespace string) v1.Pod {
+	ns := v1.NamespaceDefault
 	if namespace != "" {
 		ns = namespace
 	}
-	return core.Pod{
+	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
 			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
 		},
-		Spec: core.PodSpec{
-			Containers: []core.Container{{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{{
 				Name:  "app:v4",
 				Image: "abc/app:v4",
-				Ports: []core.ContainerPort{{Name: "http", ContainerPort: 80}},
+				Ports: []v1.ContainerPort{{Name: "http", ContainerPort: 80}},
 			}},
 		},
 		Status: status,
 	}
 }
 
-func newPodList(names ...string) core.PodList {
-	var list core.PodList
+func newPodList(names ...string) v1.PodList {
+	var list v1.PodList
 	for _, name := range names {
 		list.Items = append(list.Items, newPod(name))
 	}
@@ -114,8 +114,8 @@ func TestUpdate(t *testing.T) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
 	listC := newPodList("starfish", "otter", "dolphin")
-	listB.Items[0].Spec.Containers[0].Ports = []core.ContainerPort{{Name: "https", ContainerPort: 443}}
-	listC.Items[0].Spec.Containers[0].Ports = []core.ContainerPort{{Name: "https", ContainerPort: 443}}
+	listB.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+	listC.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
 
 	var actions []string
 
@@ -163,7 +163,7 @@ func TestUpdate(t *testing.T) {
 	}
 	codec := legacyscheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
-	if err := c.Update(core.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
+	if err := c.Update(v1.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
