@@ -161,7 +161,8 @@ func (e *Engine) alterFuncMap(t *template.Template, referenceTpls map[string]ren
 				log.Printf("[INFO] Missing required value: %s", warn)
 				return val, nil
 			}
-			return val, fmt.Errorf(warn)
+			// Convert nil to "" in case required is piped into other functions
+			return "", fmt.Errorf(warn)
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
