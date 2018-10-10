@@ -36,10 +36,8 @@ type Files map[string][]byte
 // Given an []*any.Any (the format for files in a chart.Chart), extract a map of files.
 func NewFiles(from []*any.Any) Files {
 	files := map[string][]byte{}
-	if from != nil {
-		for _, f := range from {
-			files[f.TypeUrl] = f.Value
-		}
+	for _, f := range from {
+		files[f.TypeUrl] = f.Value
 	}
 	return files
 }
