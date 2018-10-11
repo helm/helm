@@ -21,7 +21,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 )
 
 func TestResult(t *testing.T) {

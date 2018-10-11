@@ -23,7 +23,7 @@ import (
 	"log"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/kube"
@@ -46,7 +46,7 @@ type ReleaseModule interface {
 
 // LocalReleaseModule is a local implementation of ReleaseModule
 type LocalReleaseModule struct {
-	clientset internalclientset.Interface
+	clientset kubernetes.Interface
 }
 
 // Create creates a release via kubeclient from provided environment

@@ -31,9 +31,9 @@ import (
 	"github.com/technosophos/moniker"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
+	"k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/hooks"
@@ -605,8 +605,8 @@ func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, 
 func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
-	return core.PodUnknown, nil
+func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
+	return v1.PodUnknown, nil
 }
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
