@@ -5,7 +5,7 @@ high level, a chart repository is a location where packaged charts can be
 stored and shared.
 
 The official chart repository is maintained by the
-[Kubernetes Charts](https://github.com/kubernetes/charts), and we welcome
+[Helm Charts](https://github.com/helm/charts), and we welcome
 participation. But Helm also makes it easy to create and run your own chart
 repository. This guide explains how to do so.
 
