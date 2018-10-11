@@ -119,6 +119,7 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 .project
 .idea/
 *.tmproj
+.vscode/
 `
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
