@@ -133,6 +133,10 @@ func TestKindSorter(t *testing.T) {
 			Name: "w",
 			Head: &util.SimpleHead{Kind: "APIService"},
 		},
+		{
+			Name: "z",
+			Head: &util.SimpleHead{Kind: "PodDisruptionBudget"},
+		},
 	}
 
 	for _, test := range []struct {
@@ -140,8 +144,8 @@ func TestKindSorter(t *testing.T) {
 		order       SortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "abc3de1fgh2ijklmnopqrstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsrqponlkji2hgf1ed3cba!"},
+		{"install", InstallOrder, "abc3zde1fgh2ijklmnopqrstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsrqponlkji2hgf1edz3cba!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
