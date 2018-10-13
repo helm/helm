@@ -32,6 +32,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [Helm Diff](https://github.com/databus23/helm-diff) - Preview `helm upgrade` as a coloured diff
 - [Helm Value Store](https://github.com/skuid/helm-value-store) - Plugin for working with Helm deployment values
 - [Technosophos's Helm Plugins](https://github.com/technosophos/helm-plugins) - Plugins for GitHub, Keybase, and GPG
+- [helm-convert](https://github.com/ContainerSolutions/helm-convert) - Plugin to convert charts into Kustomize compatible packages
 - [helm-cos](https://github.com/imroc/helm-cos) - Plugin to manage repositories on Tencent Cloud Object Storage
 - [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
 - [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
@@ -68,7 +69,7 @@ Tools layered on top of Helm or Tiller.
 - [Helm Chart Publisher](https://github.com/luizbafilho/helm-chart-publisher) - HTTP API for publishing Helm Charts in an easy way
 - [Helm.NET](https://github.com/qmfrederik/helm) - A .NET client for Tiller's API
 - [Helmfile](https://github.com/roboll/helmfile) - Helmfile is a declarative spec for deploying helm charts
-- [Helmsman](https://github.com/Praqma/helmsman) - Helmsman is a helm-charts-as-code tool which enables installing/upgrading/protecting/moving/deleting releases from version controlled desired state files (described in a simple TOML format).  
+- [Helmsman](https://github.com/Praqma/helmsman) - Helmsman is a helm-charts-as-code tool which enables installing/upgrading/protecting/moving/deleting releases from version controlled desired state files (described in a simple TOML format).
 - [Landscaper](https://github.com/Eneco/landscaper/) - "Landscaper takes a set of Helm Chart references with values (a desired state), and realizes this in a Kubernetes cluster."
 - [Monocular](https://github.com/helm/monocular) - Web UI for Helm Chart repositories
 - [Quay App Registry](https://coreos.com/blog/quay-application-registry-for-kubernetes.html) - Open Kubernetes application registry, including a Helm access client
