@@ -34,29 +34,33 @@ const resourcePolicyAnno = "helm.sh/resource-policy"
 const keepPolicy = "keep"
 
 func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
-	remaining := []Manifest{}
-	keep := []Manifest{}
+	toDelete := []Manifest{}
+	toKeep := []Manifest{}
 
 	for _, m := range manifests {
 		if m.Head.Metadata == nil || m.Head.Metadata.Annotations == nil || len(m.Head.Metadata.Annotations) == 0 {
-			remaining = append(remaining, m)
+			toDelete = append(toDelete, m)
 			continue
 		}
 
 		resourcePolicyType, ok := m.Head.Metadata.Annotations[resourcePolicyAnno]
 		if !ok {
-			remaining = append(remaining, m)
+			toDelete = append(toDelete, m)
 			continue
 		}
 
 		resourcePolicyType = strings.ToLower(strings.TrimSpace(resourcePolicyType))
 		if resourcePolicyType == keepPolicy {
-			keep = append(keep, m)
+			toKeep = append(toKeep, m)
+		} else if resourcePolicyType == "" {
+			// Empty annotation means keep in Helm 2
+			toKeep = append(toKeep, m)
 		} else {
-			remaining = append(remaining, m)
+			// Any other annotation means delete in Helm 2
+			toDelete = append(toDelete, m)
 		}
 	}
-	return keep, remaining
+	return toKeep, toDelete
 }
 
 func summarizeKeptManifests(manifests []Manifest, kubeClient environment.KubeClient, namespace string) string {

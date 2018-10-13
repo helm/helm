@@ -219,6 +219,9 @@ orphaned. Helm will no longer manage it in any way. This can lead to problems
 if using `helm install --replace` on a release that has already been deleted, but
 has kept resources.
 
+For backward compatibility, an `"helm.sh/resource-policy"` annotation with an empty
+value also means to keep the resource. Any other value means to delete the resource.
+
 ## Using "Partials" and Template Includes
 
 Sometimes you want to create some reusable parts in your chart, whether
