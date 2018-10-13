@@ -23,7 +23,7 @@ metadata:
   name: tiller
   namespace: kube-system
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tiller
@@ -61,7 +61,7 @@ Define a Role that allows Tiller to manage all resources in `tiller-world` like 
 
 ```yaml
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tiller-manager
   namespace: tiller-world
@@ -80,7 +80,7 @@ In `rolebinding-tiller.yaml`,
 
 ```yaml
 kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tiller-binding
   namespace: tiller-world
@@ -137,7 +137,7 @@ Define a Role that allows Tiller to manage all resources in `myorg-users` like i
 
 ```yaml
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tiller-manager
   namespace: myorg-users
@@ -156,7 +156,7 @@ Bind the service account to that role. In `rolebinding-tiller.yaml`,
 
 ```yaml
 kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tiller-binding
   namespace: myorg-users
@@ -179,7 +179,7 @@ We'll also need to grant Tiller access to read configmaps in myorg-system so it 
 
 ```yaml
 kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: myorg-system
   name: tiller-manager
@@ -198,7 +198,7 @@ And the respective role binding. In `rolebinding-tiller-myorg-system.yaml`:
 
 ```yaml
 kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tiller-binding
   namespace: myorg-system
@@ -234,7 +234,7 @@ metadata:
   name: helm
   namespace: helm-world
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: tiller-user
@@ -253,7 +253,7 @@ rules:
   verbs:
   - list
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: tiller-user-binding
