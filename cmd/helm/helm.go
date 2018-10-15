@@ -186,13 +186,13 @@ func setupConnection() error {
 			return err
 		}
 
-		tunnel, err := portforwarder.New(settings.TillerNamespace, client, config)
+		tillerTunnel, err = portforwarder.New(settings.TillerNamespace, client, config)
 		if err != nil {
 			return err
 		}
 
-		settings.TillerHost = fmt.Sprintf("127.0.0.1:%d", tunnel.Local)
-		debug("Created tunnel using local port: '%d'\n", tunnel.Local)
+		settings.TillerHost = fmt.Sprintf("127.0.0.1:%d", tillerTunnel.Local)
+		debug("Created tunnel using local port: '%d'\n", tillerTunnel.Local)
 	}
 
 	// Set up the gRPC config.
