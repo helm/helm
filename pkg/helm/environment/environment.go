@@ -138,6 +138,14 @@ func (s EnvSettings) PluginDirs() string {
 	return s.Home.Plugins()
 }
 
+// HelmKeyPassphrase is the passphrase used to sign a helm chart.
+func (s EnvSettings) HelmKeyPassphrase() string {
+	if d, ok := os.LookupEnv("HELM_KEY_PASSPHRASE"); ok {
+		return d
+	}
+	return ""
+}
+
 // setFlagFromEnv looks up and sets a flag if the corresponding environment variable changed.
 // if the flag with the corresponding name was set during fs.Parse(), then the environment
 // variable is ignored.
