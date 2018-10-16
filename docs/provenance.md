@@ -26,7 +26,9 @@ Prerequisites:
 - Keybase command line tools (optional)
 
 **NOTE:** If your PGP private key has a passphrase, you will be prompted to enter
-that passphrase for any commands that support the `--sign` option.
+that passphrase for any commands that support the `--sign` option. You can set the
+HELM_KEY_PASSPHRASE environment variable to that passphrase in case you don't want 
+to be prompted to enter the passphrase.
 
 **NOTE:** The keyfile format for GnuPG changed in version 2.1. Prior to that release
 it was unnecessary to export keys out of GnuPG, and you could instead point Helm
