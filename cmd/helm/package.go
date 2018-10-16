@@ -215,7 +215,7 @@ func (p *packageCmd) clearsign(filename string) error {
 		return err
 	}
 
-	if err := signer.DecryptKey(promptUser); err != nil {
+	if err := signer.DecryptKey(passphraseFetcher); err != nil {
 		return err
 	}
 
@@ -229,8 +229,13 @@ func (p *packageCmd) clearsign(filename string) error {
 	return ioutil.WriteFile(filename+".prov", []byte(sig), 0755)
 }
 
-// promptUser implements provenance.PassphraseFetcher
-func promptUser(name string) ([]byte, error) {
+// passphraseFetcher implements provenance.PassphraseFetcher
+func passphraseFetcher(name string) ([]byte, error) {
+	var passphrase = settings.HelmKeyPassphrase()
+	if passphrase != "" {
+		return []byte(passphrase), nil
+	}
+
 	fmt.Printf("Password for key %q >  ", name)
 	pw, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
