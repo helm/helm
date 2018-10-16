@@ -76,8 +76,8 @@ $ helm install --verify mychart-0.1.0.tgz
 If the keyring (containing the public key associated with the signed chart) is not in the default location, you may need to point to the
 keyring with `--keyring PATH` as in the `helm package` example.
 
-If verification fails, the install will be aborted before the chart is even pushed
-up to Tiller.
+If verification fails, the install will be aborted before the chart is even rendered.
+
 
 ### Using Keybase.io credentials
 

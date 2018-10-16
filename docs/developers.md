@@ -1,17 +1,16 @@
 # Developers Guide
 
 This guide explains how to set up your environment for developing on
-Helm and Tiller.
+Helm.
 
 ## Prerequisites
 
 - The latest version of Go
 - The latest version of Dep
 - A Kubernetes cluster w/ kubectl (optional)
-- The gRPC toolchain
 - Git
 
-## Building Helm/Tiller
+## Building Helm
 
 We use Make to build our programs. The simplest way to get started is:
 
@@ -23,18 +22,15 @@ NOTE: This will fail if not running from the path `$GOPATH/src/k8s.io/helm`. The
 directory `k8s.io` should not be a symlink or `build` will not find the relevant
 packages.
 
-This will build both Helm and Tiller. `make bootstrap` will attempt to
+This will build both Helm and the Helm library. `make bootstrap` will attempt to
 install certain tools if they are missing.
 
 To run all the tests (without running the tests for `vendor/`), run
 `make test`.
 
-To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
+To run Helm locally, you can run `bin/helm`.
 
-- Helm and Tiller are known to run on macOS and most Linuxes, including
-  Alpine.
-- Tiller must have access to a Kubernetes cluster. It learns about the
-  cluster by examining the Kube config files that `kubectl` uses.
+- Helm is known to run on macOS and most Linuxes, including Alpine.
 
 ### Man pages
 
@@ -49,30 +45,6 @@ $ export MANPATH=$GOPATH/src/k8s.io/helm/docs/man:$MANPATH
 $ man helm
 ```
 
-## gRPC and Protobuf
-
-Helm and Tiller communicate using gRPC. To get started with gRPC, you will need to...
-
-- Install `protoc` for compiling protobuf files. Releases are
-  [here](https://github.com/google/protobuf/releases)
-- Run Helm's `make bootstrap` to generate the `protoc-gen-go` plugin and
-  place it in `bin/`.
-
-Note that you need to be on protobuf 3.2.0 (`protoc --version`). The
-version of `protoc-gen-go` is tied to the version of gRPC used in
-Kubernetes. So the plugin is maintained locally.
-
-While the gRPC and ProtoBuf specs remain silent on indentation, we
-require that the indentation style matches the Go format specification.
-Namely, protocol buffers should use tab-based indentation and rpc
-declarations should follow the style of Go function declarations.
-
-### The Helm API (HAPI)
-
-We use gRPC as an API layer. See `pkg/proto/hapi` for the generated Go code,
-and `_proto` for the protocol buffer definitions.
-
-To regenerate the Go files from the protobuf source, `make protoc`.
 
 ## Docker Images
 
@@ -85,41 +57,7 @@ GCR registry.
 
 For development, we highly recommend using the
 [Kubernetes Minikube](https://github.com/kubernetes/minikube)
-developer-oriented distribution. Once this is installed, you can use
-`helm init` to install into the cluster. Note that version of tiller you're using for
-development may not be available in Google Cloud Container Registry. If you're getting
-image pull errors, you can override the version of Tiller. Example:
-
-```console
-helm init --tiller-image=gcr.io/kubernetes-helm/tiller:2.7.2
-```
-
-Or use the latest version:
-
-```console
-helm init --canary-image
-```
-
-For developing on Tiller, it is sometimes more expedient to run Tiller locally
-instead of packaging it into an image and running it in-cluster. You can do
-this by telling the Helm client to us a local instance.
-
-```console
-$ make build
-$ bin/tiller
-```
-
-And to configure the Helm client, use the `--host` flag or export the `HELM_HOST`
-environment variable:
-
-```console
-$ export HELM_HOST=localhost:44134
-$ helm install foo
-```
-
-(Note that you do not need to use `helm init` when you are running Tiller directly)
-
-Tiller should run on any >= 1.3 Kubernetes cluster.
+developer-oriented distribution.
 
 ## Contribution Guidelines
 
@@ -191,8 +129,6 @@ Common commit types:
 Common scopes:
 
 - helm: The Helm CLI
-- tiller: The Tiller server
-- proto: Protobuf definitions
 - pkg/lint: The lint package. Follow a similar convention for any
   package
 - `*`: two or more scopes

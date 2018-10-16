@@ -7,8 +7,7 @@ is now part of the CNCF. Many companies now contribute regularly to Helm.
 
 Differences from Helm Classic:
 
-- Helm now has both a client (`helm`) and a server (`tiller`). The
-  server runs inside of Kubernetes, and manages your resources.
+- Helm now has both a client (`helm`) and a library. In version 2 it had a server (`tiller`) but the capability is now contained within the library. 
 - Helm's chart format has changed for the better:
   - Dependencies are immutable and stored inside of a chart's `charts/`
     directory.
