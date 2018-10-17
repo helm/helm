@@ -213,8 +213,13 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// track of tab widths.
 	buf := new(bytes.Buffer)
 	p, _ := get.NewHumanPrintFlags().ToPrinter("")
+	index := 0
 	for t, ot := range objs {
-		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
+		kindHeader := fmt.Sprintf("==> %s", t)
+		if index == 0 {
+			kindHeader = kindHeader + "\n"
+		}
+		if _, err = buf.WriteString(kindHeader); err != nil {
 			return "", err
 		}
 		for _, o := range ot {
@@ -226,6 +231,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		if _, err := buf.WriteString("\n"); err != nil {
 			return "", err
 		}
+		index += 1
 	}
 	if len(missing) > 0 {
 		buf.WriteString(MissingGetHeader)
