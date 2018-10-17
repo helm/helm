@@ -54,7 +54,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 		}
 	}
 
-	for _, d := range []string{TemplatesDir, ChartsDir} {
+	for _, d := range []string{TemplatesDir, ChartsDir, TemplatesTestsDir} {
 		if err := os.MkdirAll(filepath.Join(outdir, d), 0755); err != nil {
 			return err
 		}
