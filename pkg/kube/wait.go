@@ -29,8 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 )
 
@@ -50,11 +48,13 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		return err
 	}
 	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
-		pods := []v1.Pod{}
-		services := []v1.Service{}
-		pvc := []v1.PersistentVolumeClaim{}
-		deployments := []deployment{}
-		for _, v := range created {
+		var (
+			pods        []v1.Pod
+			services    []v1.Service
+			pvc         []v1.PersistentVolumeClaim
+			deployments []deployment
+		)
+		for _, v := range created[:0] {
 			switch value := asVersioned(v).(type) {
 			case *v1.ReplicationController:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector)
@@ -203,12 +203,22 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 
 func (c *Client) podsReady(pods []v1.Pod) bool {
 	for _, pod := range pods {
-		if !podutil.IsPodReady(&pod) {
+		if !IsPodReady(&pod) {
 			c.Log("Pod is not ready: %s/%s", pod.GetNamespace(), pod.GetName())
 			return false
 		}
 	}
 	return true
+}
+
+// IsPodReady returns true if a pod is ready; false otherwise.
+func IsPodReady(pod *v1.Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == v1.PodReady && c.Status == v1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Client) servicesReady(svc []v1.Service) bool {
@@ -219,7 +229,7 @@ func (c *Client) servicesReady(svc []v1.Service) bool {
 		}
 
 		// Make sure the service is not explicitly set to "None" before checking the IP
-		if s.Spec.ClusterIP != v1.ClusterIPNone && !helper.IsServiceIPSet(&s) {
+		if s.Spec.ClusterIP != v1.ClusterIPNone && !IsServiceIPSet(&s) {
 			c.Log("Service is not ready: %s/%s", s.GetNamespace(), s.GetName())
 			return false
 		}
@@ -230,6 +240,12 @@ func (c *Client) servicesReady(svc []v1.Service) bool {
 		}
 	}
 	return true
+}
+
+// this function aims to check if the service's ClusterIP is set or not
+// the objective is not to perform validation here
+func IsServiceIPSet(service *v1.Service) bool {
+	return service.Spec.ClusterIP != v1.ClusterIPNone && service.Spec.ClusterIP != ""
 }
 
 func (c *Client) volumesReady(vols []v1.PersistentVolumeClaim) bool {

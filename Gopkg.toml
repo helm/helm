@@ -33,19 +33,23 @@
 
 [[constraint]]
   name = "k8s.io/api"
-  branch = "release-1.11"
+  branch = "release-1.12"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.11"
+  branch = "release-1.12"
 
 [[constraint]]
-  version = "kubernetes-1.11.2"
+  version = "kubernetes-1.12.1"
   name = "k8s.io/client-go"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  branch = "release-1.11"
+  branch = "release-1.12"
+
+[[override]]
+  name = "k8s.io/apiserver"
+  branch = "release-1.12"
 
 [[override]]
   name = "github.com/json-iterator/go"
@@ -54,6 +58,14 @@
 [[override]]
   name = "github.com/Azure/go-autorest"
   revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
+
+[[override]]
+  name = "github.com/imdario/mergo"
+  version = "v0.3.5"
+
+[[override]]
+  name = "gopkg.in/square/go-jose.v2"
+  revision = "89060dee6a84df9a4dae49f676f0c755037834f1"
 
 [prune]
   go-tests = true

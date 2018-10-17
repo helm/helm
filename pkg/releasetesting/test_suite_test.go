@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/api/core/v1"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
@@ -250,11 +250,11 @@ type mockKubeClient struct {
 	err     error
 }
 
-func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader, _ time.Duration) (core.PodPhase, error) {
+func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader, _ time.Duration) (v1.PodPhase, error) {
 	if c.podFail {
-		return core.PodFailed, nil
+		return v1.PodFailed, nil
 	}
-	return core.PodSucceeded, nil
+	return v1.PodSucceeded, nil
 }
 func (c *mockKubeClient) Get(_ string, _ io.Reader) (string, error) {
 	return "", nil

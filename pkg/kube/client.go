@@ -18,6 +18,7 @@ package kube // import "k8s.io/helm/pkg/kube"
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,28 +44,26 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/client-go/kubernetes"
+	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
-	"k8s.io/kubernetes/pkg/kubectl/validation"
 )
 
-const (
-	// MissingGetHeader is added to Get's output when a resource is not found.
-	MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
-)
+// MissingGetHeader is added to Get's output when a resource is not found.
+const MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = goerrors.New("no objects visited")
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
-	cmdutil.Factory
-	Log func(string, ...interface{})
+	Factory Factory
+	Log     func(string, ...interface{})
 }
 
 // New creates a new Client.
@@ -76,6 +75,10 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
 	}
+}
+
+func (c *Client) KubernetesClientSet() (*kubernetes.Clientset, error) {
+	return c.Factory.KubernetesClientSet()
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
@@ -103,27 +106,24 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 }
 
 func (c *Client) namespace() string {
-	if ns, _, err := c.ToRawKubeConfigLoader().Namespace(); err == nil {
+	if ns, _, err := c.Factory.ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
 	return v1.NamespaceDefault
 }
 
-func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
-	return c.NewBuilder().
+// newBuilder returns a new resource builder for structured api objects.
+func (c *Client) newBuilder() *resource.Builder {
+	return c.Factory.NewBuilder().
 		ContinueOnError().
-		WithScheme(legacyscheme.Scheme).
-		Schema(c.validator()).
 		NamespaceParam(c.namespace()).
 		DefaultNamespace().
 		RequireNamespace().
-		Stream(reader, "").
-		Flatten().
-		Do()
+		Flatten()
 }
 
-func (c *Client) validator() validation.Schema {
-	schema, err := c.Validator(true)
+func (c *Client) validator() resource.ContentValidator {
+	schema, err := c.Factory.Validator(true)
 	if err != nil {
 		c.Log("warning: failed to load schema: %s", err)
 	}
@@ -134,14 +134,9 @@ func (c *Client) validator() validation.Schema {
 func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
 	var result Result
 
-	result, err := c.NewBuilder().
+	result, err := c.newBuilder().
 		Unstructured().
-		ContinueOnError().
-		NamespaceParam(c.namespace()).
-		DefaultNamespace().
-		RequireNamespace().
 		Stream(reader, "").
-		Flatten().
 		Do().Infos()
 	return result, scrubValidationError(err)
 }
@@ -149,7 +144,12 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
 func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	var result Result
-	result, err := c.newBuilder(namespace, reader).Infos()
+	result, err := c.newBuilder().
+		WithScheme(legacyscheme.Scheme).
+		Schema(c.validator()).
+		Stream(reader, "").
+		Do().
+		Infos()
 	return result, scrubValidationError(err)
 }
 
@@ -165,7 +165,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
-	var objPods = make(map[string][]core.Pod)
+	var objPods = make(map[string][]v1.Pod)
 
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
@@ -369,7 +369,7 @@ func perform(infos Result, fn ResourceActorFunc) error {
 }
 
 func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, nil)
 	if err != nil {
 		return err
 	}
@@ -439,7 +439,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		// send patch to server
 		helper := resource.NewHelper(target.Client, target.Mapping)
 
-		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
+		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			kind := target.Mapping.GroupVersionKind.Kind
 			log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
@@ -480,12 +480,12 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	client, err := c.ClientSet()
+	client, err := c.KubernetesClientSet()
 	if err != nil {
 		return err
 	}
 
-	pods, err := client.Core().Pods(target.Namespace).List(metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(target.Namespace).List(metav1.ListOptions{
 		FieldSelector: fields.Everything().String(),
 		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
@@ -498,7 +498,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		c.Log("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
-		if err := client.Core().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
+		if err := client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
 			return err
 		}
 	}
@@ -562,7 +562,9 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 	// In the future, we might want to add some special logic for types
 	// like Ingress, Volume, etc.
 
-	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
+	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+	defer cancel()
+	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
 		switch e.Type {
 		case watch.Added, watch.Modified:
 			// For things like a secret or a config map, this is the best indicator
@@ -598,9 +600,9 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 	}
 
 	for _, c := range o.Status.Conditions {
-		if c.Type == batchinternal.JobComplete && c.Status == core.ConditionTrue {
+		if c.Type == batchinternal.JobComplete && c.Status == "True" {
 			return true, nil
-		} else if c.Type == batchinternal.JobFailed && c.Status == core.ConditionTrue {
+		} else if c.Type == batchinternal.JobFailed && c.Status == "True" {
 			return true, goerrors.Errorf("job failed: %s", c.Reason)
 		}
 	}
@@ -624,26 +626,26 @@ func scrubValidationError(err error) error {
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	infos, err := c.Build(namespace, reader)
 	if err != nil {
-		return core.PodUnknown, err
+		return v1.PodUnknown, err
 	}
 	info := infos[0]
 
 	kind := info.Mapping.GroupVersionKind.Kind
 	if kind != "Pod" {
-		return core.PodUnknown, goerrors.Errorf("%s is not a Pod", info.Name)
+		return v1.PodUnknown, goerrors.Errorf("%s is not a Pod", info.Name)
 	}
 
 	if err := c.watchPodUntilComplete(timeout, info); err != nil {
-		return core.PodUnknown, err
+		return v1.PodUnknown, err
 	}
 
 	if err := info.Get(); err != nil {
-		return core.PodUnknown, err
+		return v1.PodUnknown, err
 	}
-	status := info.Object.(*core.Pod).Status.Phase
+	status := info.Object.(*v1.Pod).Status.Phase
 
 	return status, nil
 }
@@ -655,15 +657,17 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	}
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
-	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
+	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+	defer cancel()
+	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
 		switch e.Type {
 		case watch.Deleted:
 			return false, errors.NewNotFound(schema.GroupResource{Resource: "pods"}, "")
 		}
 		switch t := e.Object.(type) {
-		case *core.Pod:
+		case *v1.Pod:
 			switch t.Status.Phase {
-			case core.PodFailed, core.PodSucceeded:
+			case v1.PodFailed, v1.PodSucceeded:
 				return true, nil
 			}
 		}
@@ -675,7 +679,7 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 
 //get a kubernetes resources' relation pods
 // kubernetes resource used select labels to relate pods
-func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]v1.Pod) (map[string][]v1.Pod, error) {
 	if info == nil {
 		return objPods, nil
 	}
@@ -695,9 +699,9 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 		return objPods, nil
 	}
 
-	client, _ := c.ClientSet()
+	client, _ := c.KubernetesClientSet()
 
-	pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
+	pods, err := client.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{
 		FieldSelector: fields.Everything().String(),
 		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
@@ -722,15 +726,11 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 	return objPods, nil
 }
 
-func isFoundPod(podItem []core.Pod, pod core.Pod) bool {
+func isFoundPod(podItem []v1.Pod, pod v1.Pod) bool {
 	for _, value := range podItem {
 		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
 			return true
 		}
 	}
 	return false
-}
-
-func asVersioned(info *resource.Info) runtime.Object {
-	return cmdutil.AsDefaultVersionedOrOriginal(info.Object, info.Mapping)
 }

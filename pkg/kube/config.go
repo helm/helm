@@ -16,9 +16,7 @@ limitations under the License.
 
 package kube // import "k8s.io/helm/pkg/kube"
 
-import (
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
-)
+import "k8s.io/cli-runtime/pkg/genericclioptions"
 
 // GetConfig returns a Kubernetes client config.
 func GetConfig(kubeconfig, context, namespace string) *genericclioptions.ConfigFlags {
