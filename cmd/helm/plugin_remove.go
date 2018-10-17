@@ -23,7 +23,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
 )
@@ -59,7 +58,7 @@ func (o *pluginRemoveOptions) complete(args []string) error {
 
 func (o *pluginRemoveOptions) run(out io.Writer) error {
 	debug("loading installed plugins from %s", settings.PluginDirs())
-	plugins, err := findPlugins(settings.PluginDirs())
+	plugins, err := findPlugins([]string{settings.PluginDirs()})
 	if err != nil {
 		return err
 	}

@@ -18,12 +18,12 @@ package environment
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
-
 	"github.com/spf13/pflag"
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 func TestEnvSettings(t *testing.T) {
@@ -90,7 +90,7 @@ func TestEnvSettings(t *testing.T) {
 			if settings.Home != helmpath.Home(tt.home) {
 				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
 			}
-			if settings.PluginDirs() != tt.plugins {
+			if !reflect.DeepEqual(settings.PluginDirs(), tt.plugins) {
 				t.Errorf("expected plugins %q, got %q", tt.plugins, settings.PluginDirs())
 			}
 			if settings.Debug != tt.debug {

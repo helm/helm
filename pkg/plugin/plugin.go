@@ -21,9 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	helm_env "k8s.io/helm/pkg/helm/environment"
-
 	"github.com/ghodss/yaml"
+	helm_env "k8s.io/helm/pkg/helm/environment"
 )
 
 const pluginFileName = "plugin.yaml"
@@ -148,15 +147,17 @@ func LoadAll(basedir string) ([]*Plugin, error) {
 }
 
 // FindPlugins returns a list of YAML files that describe plugins.
-func FindPlugins(plugdirs string) ([]*Plugin, error) {
+func FindPlugins(plugdirs []string) ([]*Plugin, error) {
 	found := []*Plugin{}
 	// Let's get all UNIXy and allow path separators
-	for _, p := range filepath.SplitList(plugdirs) {
-		matches, err := LoadAll(p)
-		if err != nil {
-			return matches, err
+	for _, pd := range plugdirs {
+		for _, p := range filepath.SplitList(pd) {
+			matches, err := LoadAll(p)
+			if err != nil {
+				return matches, err
+			}
+			found = append(found, matches...)
 		}
-		found = append(found, matches...)
 	}
 	return found, nil
 }

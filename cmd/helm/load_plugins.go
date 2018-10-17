@@ -25,7 +25,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-
 	"k8s.io/helm/pkg/plugin"
 )
 
@@ -41,8 +40,9 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		return
 	}
 
+	pluginsDirs := []string{settings.PluginDirs(), settings.SystemPluginsDir}
 	// debug("HELM_PLUGIN_DIRS=%s", settings.PluginDirs())
-	found, err := findPlugins(settings.PluginDirs())
+	found, err := findPlugins(pluginsDirs)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
 		return
@@ -137,15 +137,17 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 }
 
 // findPlugins returns a list of YAML files that describe plugins.
-func findPlugins(plugdirs string) ([]*plugin.Plugin, error) {
+func findPlugins(plugdirs []string) ([]*plugin.Plugin, error) {
 	found := []*plugin.Plugin{}
 	// Let's get all UNIXy and allow path separators
-	for _, p := range filepath.SplitList(plugdirs) {
-		matches, err := plugin.LoadAll(p)
-		if err != nil {
-			return matches, err
+	for _, pd := range plugdirs {
+		for _, p := range filepath.SplitList(pd) {
+			matches, err := plugin.LoadAll(p)
+			if err != nil {
+				return matches, err
+			}
+			found = append(found, matches...)
 		}
-		found = append(found, matches...)
 	}
 	return found, nil
 }

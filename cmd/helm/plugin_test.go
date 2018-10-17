@@ -23,10 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
-
-	"github.com/spf13/cobra"
 )
 
 func TestManuallyProcessArgs(t *testing.T) {
@@ -65,6 +64,7 @@ func TestLoadPlugins(t *testing.T) {
 	defer resetEnv()()
 
 	settings.Home = "testdata/helmhome"
+	settings.SystemPluginsDir = "test"
 
 	os.Setenv("HELM_HOME", settings.Home.String())
 	hh := settings.Home

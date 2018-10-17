@@ -21,6 +21,10 @@ Helm plugins have the following features:
 - They can be written in any programming language.
 - They integrate with Helm, and will show up in `helm help` and other places.
 
+## Plugins Backends
+
+### Native
+
 Helm plugins live in `$(helm home)/plugins`.
 
 The Helm plugin model is partially modeled on Git's plugin model. To that end,
@@ -29,9 +33,27 @@ plugins being the _plumbing_. This is a shorthand way of suggesting that
 Helm provides the user experience and top level processing logic, while the
 plugins do the "detail work" of performing a desired action.
 
-## Installing a Plugin
+### External
 
-Plugins are installed using the `$ helm plugin install <path|url>` command. You can pass in a path to a plugin on your local file system or a url of a remote VCS repo. The `helm plugin install` command clones or copies the plugin at the path/url given into `$ (helm home)/plugins`
+Helm external plugins can live anywhere in your `PATH`.
+
+These plugins become necessary because of systems that are closed to manual
+configuration and the only way to get software installed is by an administrator
+managing the plugins at system level via a linux distribution package manager.
+
+These plugins are going to be available globally. All users may use the plugin,
+not limited to a user like Native Plugins.
+
+The only condition for these plugins is that they provide the yaml description
+in the folder `/usr/share`; and the full path should look like this
+`/usr/share/<helm-external-plugin>/plugin.yaml`.
+
+## Installing a Native Plugin
+
+Native Plugins are installed using the `$ helm plugin install <path|url>` command.
+You can pass in a path to a plugin on your local file system or a url of a remote
+VCS repo. The `helm plugin install` command clones or copies the plugin at the
+path/url given into `$ (helm home)/plugins`
 
 ```console
 $ helm plugin install https://github.com/technosophos/helm-template
@@ -42,7 +64,12 @@ If you have a plugin tar distribution, simply untar the plugin into the
 
 You can also install tarball plugins directly from url by issuing `helm plugin install http://domain/path/to/plugin.tar.gz`
 
-## Building Plugins
+## Installing an External Plugin
+
+Each external plugin has its own installation process, you should check with the plugin's
+site/help to get the correct information.
+
+## Building Native Plugins
 
 In many ways, a plugin is similar to a chart. Each plugin has a top-level
 directory, and then a `plugin.yaml` file.
@@ -73,7 +100,7 @@ ignoreFlags: false
 command: "$HELM_PLUGIN_DIR/keybase.sh"
 ```
 
-The `name` is the name of the plugin. When Helm executes it plugin, this is the
+The `name` is the name of the plugin. When Helm executes a plugin, this is the
 name it will use (e.g. `helm NAME` will invoke this plugin).
 
 _`name` should match the directory name._ In our example above, that means the
@@ -111,8 +138,8 @@ There are some strategies for working with plugin commands:
   Helm will use `usage` and `description` for `helm help` and `helm help myplugin`,
   but will not handle `helm myplugin --help`.
 
-## Downloader Plugins
-By default, Helm is able to pull Charts using HTTP/S. As of Helm 2.4.0, plugins
+## Downloader Native Plugins
+By default, Helm is able to fetch Charts using HTTP/S. As of Helm 2.4.0, plugins
 can have a special capability to download Charts from arbitrary sources.
 
 Plugins shall declare this special capability in the `plugin.yaml` file (top level):
@@ -136,6 +163,66 @@ The defined command will be invoked with the following scheme:
 `command certFile keyFile caFile full-URL`. The SSL credentials are coming from the
 repo definition, stored in `$HELM_HOME/repository/repositories.yaml`. Downloader
 plugin is expected to dump the raw content to stdout and report errors on stderr.
+
+## External Plugins Breakout
+
+External plugins have to comply with two conditions:
+
+- Be sure it is accessible by being in the `PATH`.
+
+- Have the `plugin.yaml` installed in the `/usr/share/<external-plugin>` folder.
+
+### Example
+
+```console
+/usr/
+  |- bin/
+    |- helm-mirror
+  |- share/
+      |- helm-mirror
+        |- plugin.yaml
+```
+
+### plugin.yaml for External Plugins
+
+```
+name: "mirror"
+version: "0.1.0"
+usage: "Mirrors Helm charts to a local folder"
+description: "Mirrors Helm charts to a local folder"
+ignoreFlags: false
+useTunnel: false
+command: "/usr/bin/helm-mirror"
+```
+
+The `name` is the name of the plugin. When Helm executes a plugin, this is the
+name it will use (e.g. `helm NAME` will invoke this plugin).
+
+Restrictions on `name`:
+
+- `name` cannot duplicate one of the existing `helm` top-level commands.
+- `name` must be restricted to the characters ASCII a-z, A-Z, 0-9, `_` and `-`.
+
+`version` is the SemVer 2 version of the plugin.
+
+`usage` and `description` are both used to generate the help text of a command.
+
+The `ignoreFlags` switch tells Helm to _not_ pass flags to the plugin. So if a
+plugin is called with `helm myplugin --foo` and `ignoreFlags: true`, then `--foo`
+is silently discarded.
+
+The `useTunnel` switch indicates that the plugin needs a tunnel to Tiller. This
+should be set to `true` _anytime a plugin talks to Tiller_. It will cause Helm
+to open a tunnel, and then set `$TILLER_HOST` to the right local address for that
+tunnel. But don't worry: if Helm detects that a tunnel is not necessary because
+Tiller is running locally, it will not create the tunnel.
+
+Finally, and most importantly, `command` is the command that this plugin will
+execute when it is called. Environment variables are interpolated before the plugin
+is executed. The pattern above illustrates the preferred way to indicate where
+the plugin program lives.
+
+> NOTE: For External Plugins the `plugin.yaml` definition **MUST NOT** contain any `Hooks`.
 
 ## Environment Variables
 

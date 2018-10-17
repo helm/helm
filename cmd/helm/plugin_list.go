@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"io"
 
-	"k8s.io/helm/pkg/helm/helmpath"
-
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 type pluginListOptions struct {
@@ -44,7 +43,8 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 
 func (o *pluginListOptions) run(out io.Writer) error {
 	debug("pluginDirs: %s", settings.PluginDirs())
-	plugins, err := findPlugins(settings.PluginDirs())
+	directories := []string{settings.PluginDirs(), settings.SystemPluginsDir}
+	plugins, err := findPlugins(directories)
 	if err != nil {
 		return err
 	}
