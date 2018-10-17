@@ -23,8 +23,8 @@ import (
 	"sync"
 
 	// Import to initialize client auth plugins.
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/environment"

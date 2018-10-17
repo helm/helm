@@ -28,9 +28,9 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/engine"
@@ -492,8 +492,8 @@ func (kc *mockHooksKubeClient) Build(_ string, _ io.Reader) (kube.Result, error)
 func (kc *mockHooksKubeClient) BuildUnstructured(_ string, _ io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader, _ time.Duration) (core.PodPhase, error) {
-	return core.PodUnknown, nil
+func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader, _ time.Duration) (v1.PodPhase, error) {
+	return v1.PodUnknown, nil
 }
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
