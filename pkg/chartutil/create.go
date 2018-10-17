@@ -44,8 +44,12 @@ const (
 	ServiceName = "service.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = "NOTES.txt"
-	// HelpersName is the name of the example NOTES.txt file.
+	// HelpersName is the name of the example helpers file.
 	HelpersName = "_helpers.tpl"
+	// TemplatesTestsDir is the relative directory name for templates tests.
+	TemplatesTestsDir = "templates/tests"
+	// TestConnectionName is the name of the example connection test file.
+	TestConnectionName = "test-connection.yaml"
 )
 
 const defaultValues = `# Default values for %s.
@@ -295,6 +299,26 @@ Create chart name and version as used by the chart label.
 {{- end -}}
 `
 
+const defaultTestConnection = `apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "<CHARTNAME>.fullname" . }}-test-connection"
+  labels:
+    app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
+    helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
+`
+
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
 func CreateFrom(chartfile *chart.Metadata, dest string, src string) error {
 	schart, err := Load(src)
@@ -359,7 +383,7 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		}
 	}
 
-	for _, d := range []string{TemplatesDir, ChartsDir} {
+	for _, d := range []string{TemplatesDir, TemplatesTestsDir, ChartsDir} {
 		if err := os.MkdirAll(filepath.Join(cdir, d), 0755); err != nil {
 			return cdir, err
 		}
@@ -403,6 +427,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 			// _helpers.tpl
 			path:    filepath.Join(cdir, TemplatesDir, HelpersName),
 			content: Transform(defaultHelpers, "<CHARTNAME>", chartfile.Name),
+		},
+		{
+			// test-connection.yaml
+			path:    filepath.Join(cdir, TemplatesTestsDir, TestConnectionName),
+			content: Transform(defaultTestConnection, "<CHARTNAME>", chartfile.Name),
 		},
 	}
 

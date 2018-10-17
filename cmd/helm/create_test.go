@@ -143,8 +143,8 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Errorf("Wrong API version: %q", c.Metadata.ApiVersion)
 	}
 
-	if l := len(c.Templates); l != 6 {
-		t.Errorf("Expected 5 templates, got %d", l)
+	if l := len(c.Templates); l != 7 {
+		t.Errorf("Expected 6 templates, got %d", l)
 	}
 
 	found := false

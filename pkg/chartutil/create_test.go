@@ -75,6 +75,14 @@ func TestCreate(t *testing.T) {
 		}
 	}
 
+	for _, f := range []string{TestConnectionName} {
+		if fi, err := os.Stat(filepath.Join(dir, TemplatesTestsDir, f)); err != nil {
+			t.Errorf("Expected %s file: %s", f, err)
+		} else if fi.IsDir() {
+			t.Errorf("Expected %s to be a file.", f)
+		}
+	}
+
 }
 
 func TestCreateFrom(t *testing.T) {
