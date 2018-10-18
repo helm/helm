@@ -4,7 +4,7 @@ In the previous section we looked at several ways to create and access named tem
 
 Helm provides access to files through the `.Files` object. Before we get going with the template examples, though, there are a few things to note about how this works:
 
-- It is okay to add extra files to your Helm chart. These files will be bundled and sent to Tiller. Be careful, though. Charts must be smaller than 1M because of the storage limitations of Kubernetes objects.
+- It is okay to add extra files to your Helm chart. These files will be bundled. Be careful, though. Charts must be smaller than 1M because of the storage limitations of Kubernetes objects.
 - Some files cannot be accessed through the `.Files` object, usually for security reasons.
 	- Files in `templates/` cannot be accessed.
 	- Files excluded using `.helmignore` cannot be accessed.

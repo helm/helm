@@ -25,7 +25,6 @@ are recommended, and _should_ be placed onto a chart for global consistency. Tho
 
 Name|Status|Description
 -----|------|----------
-heritage | REC | This should always be set to `{{ .Release.Service }}`. It is for finding all things managed by Tiller.
 release | REC | This should be the `{{ .Release.Name }}`.
 chart | REC | This should be the chart name and version: `{{ .Chart.Name }}-{{ .Chart.Version \| replace "+" "_" }}`.
 app | REC | This should be the app name, reflecting the entire app. Usually `{{ template "name" . }}` is used for this. This is used by many Kubernetes manifests, and is not Helm-specific.

@@ -58,7 +58,6 @@ engine: gotpl # The name of the template engine (optional, defaults to gotpl)
 icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
 deprecated: Whether this chart is deprecated (optional, boolean)
-helmVersion: The version of Tiller that this chart requires. This should be expressed as a SemVer range: ">2.0.0" (optional)
 ```
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
@@ -91,7 +90,7 @@ rely upon or require GitHub or even Git. Consequently, it does not use
 Git SHAs for versioning at all.
 
 The `version` field inside of the `Chart.yaml` is used by many of the
-Helm tools, including the CLI and the Tiller server. When generating a
+Helm tools, including the CLI. When generating a
 package, the `helm package` command will use the version that it finds
 in the `Chart.yaml` as a token in the package name. The system assumes
 that the version number in the chart package name matches the version number in
@@ -488,7 +487,7 @@ the Kubernetes objects from the charts and all its dependencies are
 Hence a single release is created with all the objects for the chart and its dependencies.
 
 The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go
-(see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26)).
+(see [the Helm source file](https://github.com/helm/helm/blob/dev-v3/pkg/tiller/kind_sorter.go#L26)).
 
 ## Templates and Values
 
@@ -574,8 +573,7 @@ cannot be overridden. As with all values, the names are _case
 sensitive_.
 
 - `Release.Name`: The name of the release (not the chart)
-- `Release.Service`: The service that conducted the release. Usually
-  this is `Tiller`.
+- `Release.Service`: The service that conducted the release.
 - `Release.IsUpgrade`: This is set to true if the current operation is an upgrade or rollback.
 - `Release.IsInstall`: This is set to true if the current operation is an
   install.
@@ -589,9 +587,9 @@ sensitive_.
   `{{.Files.GetString name}}` functions. You can also access the contents of the file
   as `[]byte` using `{{.Files.GetBytes}}`
 - `Capabilities`: A map-like object that contains information about the versions
-  of Kubernetes (`{{.Capabilities.KubeVersion}}`, Tiller
-  (`{{.Capabilities.HelmVersion}}`, and the supported Kubernetes API versions
-  (`{{.Capabilities.APIVersions.Has "batch/v1"`)
+  of Kubernetes (`{{.Capabilities.KubeVersion}}`, Helm
+  (`{{.Capabilities.HelmVersion}}`, and the supported Kubernetes
+ API versions (`{{.Capabilities.APIVersions.Has "batch/v1"`)
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not
 be accessible inside of the `Chart` object. Thus, Chart.yaml cannot be

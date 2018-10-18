@@ -45,10 +45,10 @@ consider the lifecycle for a `helm install`. By default, the lifecycle
 looks like this:
 
 1. User runs `helm install foo`
-2. Chart is loaded into Tiller
-3. After some verification, Tiller renders the `foo` templates
-4. Tiller loads the resulting resources into Kubernetes
-5. Tiller returns the release name (and other data) to the client
+2. The Helm library install API is called
+3. After some verification, the library renders the `foo` templates
+4. The library loads the resulting resources into Kubernetes
+5. The library returns the release object (and other data) to the client
 6. The client exits
 
 Helm defines two hooks for the `install` lifecycle: `pre-install` and
@@ -56,24 +56,24 @@ Helm defines two hooks for the `install` lifecycle: `pre-install` and
 hooks, the lifecycle is altered like this:
 
 1. User runs `helm install foo`
-2. Chart is loaded into Tiller
-3. After some verification, Tiller renders the `foo` templates
-4. Tiller prepares to execute the `pre-install` hooks (loading hook resources into
+2. The Helm library install API is called
+3. After some verification, the library renders the `foo` templates
+4. The library prepares to execute the `pre-install` hooks (loading hook resources into
    Kubernetes)
-5. Tiller sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
-6. Tiller then loads the hook with the lowest weight first (negative to positive)
-7. Tiller waits until the hook is "Ready"
-8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
-flag is set, Tiller will wait until all resources are in a ready state
+5. The library sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
+6. The library then loads the hook with the lowest weight first (negative to positive)
+7. The library waits until the hook is "Ready" (except for CRDs)
+8. The library loads the resulting resources into Kubernetes. Note that if the `--wait`
+flag is set, the library will wait until all resources are in a ready state
 and will not run the `post-install` hook until they are ready.
-9. Tiller executes the `post-install` hook (loading hook resources)
-10. Tiller waits until the hook is "Ready"
-11. Tiller returns the release name (and other data) to the client
+9. The library executes the `post-install` hook (loading hook resources)
+10. The library waits until the hook is "Ready"
+11. The library returns the release object (and other data) to the client
 12. The client exits
 
 What does it mean to wait until a hook is ready? This depends on the
-resource declared in the hook. If the resources is a `Job` kind, Tiller
-will wait until the job successfully runs to completion. And if the job
+resource declared in the hook. If the resources is a `Job` kind, the library
+ will wait until the job successfully runs to completion. And if the job
 fails, the release will fail. This is a _blocking operation_, so the
 Helm client will pause while the Job is run.
 
@@ -90,7 +90,7 @@ to `0` if weight is not important.
 ### Hook resources are not managed with corresponding releases
 
 The resources that a hook creates are not tracked or managed as part of the
-release. Once Tiller verifies that the hook has reached its ready state, it
+release. Once Helm verifies that the hook has reached its ready state, it
 will leave the hook resource alone.
 
 Practically speaking, this means that if you create resources in a hook, you
@@ -170,7 +170,7 @@ deterministic executing order. Weights are defined using the following annotatio
 ```
 
 Hook weights can be positive or negative numbers but must be represented as
-strings. When Tiller starts the execution cycle of hooks of a particular Kind it
+strings. When Helm starts the execution cycle of hooks of a particular Kind it
 will sort those hooks in ascending order. 
 
 It is also possible to define policies that determine when to delete corresponding hook resources. Hook deletion policies are defined using the following annotation:
@@ -181,9 +181,9 @@ It is also possible to define policies that determine when to delete correspondi
 ```
 
 You can choose one or more defined annotation values:
-* `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed.
-* `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
-* `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
+* `"hook-succeeded"` specifies Helm should delete the hook after the hook is successfully executed.
+* `"hook-failed"` specifies Helm should delete the hook if the hook failed during execution.
+* `"before-hook-creation"` specifies Helm should delete the previous hook before the new hook is launched.
 
 ### Automatically uninstall hook from previous release
 
@@ -195,4 +195,4 @@ One might choose `"helm.sh/hook-delete-policy": "before-hook-creation"` over `"h
 * It may be necessary to keep succeeded hook resource in kubernetes for some reason.
 * At the same time it is not desirable to do manual resource deletion before helm release upgrade.
 
-`"helm.sh/hook-delete-policy": "before-hook-creation"` annotation on hook causes tiller to remove the hook from previous release if there is one before the new hook is launched and can be used with another policy.
+`"helm.sh/hook-delete-policy": "before-hook-creation"` annotation on hook causes Helm to remove the hook from previous release if there is one before the new hook is launched and can be used with another policy.

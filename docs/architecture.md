@@ -24,41 +24,33 @@ For Helm, there are three important concepts:
 
 ## Components
 
-Helm has two major components:
+Helm is an executable which is implemented into two distinct parts:
 
 **The Helm Client** is a command-line client for end users. The client
-is responsible for the following domains:
+is responsible for the following:
 
 - Local chart development
 - Managing repositories
-- Interacting with the Tiller server
+- Managing releases
+- Interfacing with the Helm library
   - Sending charts to be installed
-  - Asking for information about releases
   - Requesting upgrading or uninstalling of existing releases
 
-**The Tiller Server** is an in-cluster server that interacts with the
-Helm client, and interfaces with the Kubernetes API server. The server
-is responsible for the following:
+**The Helm Library** provides the logic for executing all Helm operations.
+It interfaces with the Kubernetes API server and provides the following capability:
 
-- Listening for incoming requests from the Helm client
 - Combining a chart and configuration to build a release
-- Installing charts into Kubernetes, and then tracking the subsequent
-  release
+- Installing charts into Kubernetes, and providing the subsequent release object
 - Upgrading and uninstalling charts by interacting with Kubernetes
 
-In a nutshell, the client is responsible for managing charts, and the
-server is responsible for managing releases.
+The standalone Helm library encapsulates the Helm logic so that it can be leveraged by different clients.
 
 ## Implementation
 
-The Helm client is written in the Go programming language, and uses the
-gRPC protocol suite to interact with the Tiller server.
+The Helm client and library is written in the Go programming language.
 
-The Tiller server is also written in Go. It provides a gRPC server to
-connect with the client, and it uses the Kubernetes client library to
-communicate with Kubernetes. Currently, that library uses REST+JSON.
-
-The Tiller server stores information in ConfigMaps located inside of
-Kubernetes. It does not need its own database.
+The library uses the Kubernetes client library to communicate with Kubernetes. Currently,
+that library uses REST+JSON. It stores information in Secrets located inside of Kubernetes.
+It does not need its own database.
 
 Configuration files are, when possible, written in YAML.

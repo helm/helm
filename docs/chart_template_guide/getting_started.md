@@ -18,9 +18,9 @@ mychart/
   ...
 ```
 
-The `templates/` directory is for template files. When Tiller evaluates a chart,
+The `templates/` directory is for template files. When Helm evaluates a chart,
 it will send all of the files in the `templates/` directory through the
-template rendering engine. Tiller then collects the results of those templates
+template rendering engine. It then collects the results of those templates
 and sends them on to Kubernetes.
 
 The `values.yaml` file is also important to templates. This file contains the
@@ -90,7 +90,7 @@ In virtue of the fact that this file is in the `templates/` directory, it will
 be sent through the template engine.
 
 It is just fine to put a plain YAML file like this in the `templates/` directory.
-When Tiller reads this template, it will simply send it to Kubernetes as-is.
+When Helm reads this template, it will simply send it to Kubernetes as-is.
 
 With this simple template, we now have an installable chart. And we can install
 it like this:
@@ -165,7 +165,7 @@ The template directive `{{ .Release.Name }}` injects the release name into the t
 
 The leading dot before `Release` indicates that we start with the top-most namespace for this scope (we'll talk about scope in a bit). So we could read `.Release.Name` as "start at the top namespace, find the `Release` object, then look inside of it for an object called `Name`".
 
-The `Release` object is one of the built-in objects for Helm, and we'll cover it in more depth later. But for now, it is sufficient to say that this will display the release name that Tiller assigns to our release.
+The `Release` object is one of the built-in objects for Helm, and we'll cover it in more depth later. But for now, it is sufficient to say that this will display the release name that the library assigns to our release.
 
 Now when we install our resource, we'll immediately see the result of using this template directive:
 
@@ -187,7 +187,7 @@ instead of `mychart-configmap`.
 
 You can run `helm get manifest clunky-serval` to see the entire generated YAML.
 
-At this point, we've seen templates at their most basic: YAML files that have template directives embedded in `{{` and `}}`. In the next part, we'll take a deeper look into templates. But before moving on, there's one quick trick that can make building templates faster: When you want to test the template rendering, but not actually install anything, you can use `helm install --debug --dry-run ./mychart`. This will send the chart to the Tiller server, which will render the templates. But instead of installing the chart, it will return the rendered template to you so you can see the output:
+At this point, we've seen templates at their most basic: YAML files that have template directives embedded in `{{` and `}}`. In the next part, we'll take a deeper look into templates. But before moving on, there's one quick trick that can make building templates faster: When you want to test the template rendering, but not actually install anything, you can use `helm install --debug --dry-run ./mychart`. This will render the templates. But instead of installing the chart, it will return the rendered template to you so you can see the output:
 
 ```console
 $ helm install --debug --dry-run ./mychart
