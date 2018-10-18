@@ -486,7 +486,8 @@ the Kubernetes objects from the charts and all its dependencies are
 
 Hence a single release is created with all the objects for the chart and its dependencies.
 
-The install order of Kubernetes types is given by the enumeration InstallOrder in ***TBD***
+The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go
+(see [the Helm source file](https://github.com/helm/helm/blob/dev-v3/pkg/tiller/kind_sorter.go#L26)).
 
 ## Templates and Values
 
@@ -586,7 +587,8 @@ sensitive_.
   `{{.Files.GetString name}}` functions. You can also access the contents of the file
   as `[]byte` using `{{.Files.GetBytes}}`
 - `Capabilities`: A map-like object that contains information about the versions
-  of Kubernetes (`{{.Capabilities.KubeVersion}}`, and the supported Kubernetes
+  of Kubernetes (`{{.Capabilities.KubeVersion}}`, Helm
+  (`{{.Capabilities.HelmVersion}}`, and the supported Kubernetes
  API versions (`{{.Capabilities.APIVersions.Has "batch/v1"`)
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not

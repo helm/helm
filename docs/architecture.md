@@ -50,7 +50,7 @@ The standalone Helm library encapsulates the Helm logic so that it can be levera
 The Helm client and library is written in the Go programming language.
 
 The library uses the Kubernetes client library to communicate with Kubernetes. Currently,
-that library uses REST+JSON. Information in ConfigMaps located inside of Kubernetes.
+that library uses REST+JSON. It stores information in Secrets located inside of Kubernetes.
 It does not need its own database.
 
 Configuration files are, when possible, written in YAML.

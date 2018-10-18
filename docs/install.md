@@ -45,7 +45,7 @@ choco install kubernetes-helm
 ## From Script
 
 Helm now has an installer script that will automatically grab the latest version
-of the Helm and [install it locally](https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get).
+of Helm and [install it locally](https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get).
 
 You can fetch that script, and then execute it locally. It's well documented so
 that you can read through it and understand what it is doing before you run it.
