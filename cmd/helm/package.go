@@ -157,10 +157,6 @@ func (o *packageOptions) run(out io.Writer) error {
 		debug("Setting appVersion to %s", o.appVersion)
 	}
 
-	if filepath.Base(path) != ch.Name() {
-		return errors.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Name())
-	}
-
 	if reqs := ch.Metadata.Requirements; reqs != nil {
 		if err := checkDependencies(ch, reqs); err != nil {
 			return err
