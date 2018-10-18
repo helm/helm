@@ -163,7 +163,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
-	var objPods = make(map[string][]v1.Pod)
+	var objPods = make(map[string][]core.Pod)
 
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
@@ -178,7 +178,15 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], asVersioned(info))
+		internalObj, err := asInternal(info)
+		if err != nil {
+			c.Log("Warning: conversion to internal type failed: %v", err)
+			// Add the unstructured object in this situation. It will still get listed, just
+			// with less information.
+			objs[vk] = append(objs[vk], info.Object)
+		} else {
+			objs[vk] = append(objs[vk], internalObj)
+		}
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
@@ -682,7 +690,7 @@ func isPodComplete(event watch.Event) (bool, error) {
 
 //get a kubernetes resources' relation pods
 // kubernetes resource used select labels to relate pods
-func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]v1.Pod) (map[string][]v1.Pod, error) {
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {
 	if info == nil {
 		return objPods, nil
 	}
@@ -705,7 +713,9 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 		return objPods, err
 	}
 
-	for _, pod := range pods.Items {
+	for _, externalPod := range pods.Items {
+		pod := core.Pod{}
+		legacyscheme.Scheme.Convert(&externalPod, &pod, nil)
 		if pod.APIVersion == "" {
 			pod.APIVersion = "v1"
 		}
@@ -722,7 +732,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 	return objPods, nil
 }
 
-func isFoundPod(podItem []v1.Pod, pod v1.Pod) bool {
+func isFoundPod(podItem []core.Pod, pod core.Pod) bool {
 	for _, value := range podItem {
 		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
 			return true
@@ -733,4 +743,9 @@ func isFoundPod(podItem []v1.Pod, pod v1.Pod) bool {
 
 func asVersioned(info *resource.Info) runtime.Object {
 	return cmdutil.AsDefaultVersionedOrOriginal(info.Object, info.Mapping)
+}
+
+func asInternal(info *resource.Info) (runtime.Object, error) {
+	groupVersioner := info.Mapping.GroupVersionKind.GroupKind().WithVersion(runtime.APIVersionInternal).GroupVersion()
+	return legacyscheme.Scheme.ConvertToVersion(info.Object, groupVersioner)
 }
