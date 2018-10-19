@@ -94,10 +94,10 @@ simplest, it takes only one argument: The name of the chart.
 ```console
 $ helm install stable/mariadb
 Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
-happy-panda
-Last Deployed: Wed Sep 28 12:32:28 2016
-Namespace: default
-Status: DEPLOYED
+NAME: happy-panda
+LAST DEPLOYED: Wed Sep 28 12:32:28 2016
+NAMESPACE: default
+STATUS: DEPLOYED
 
 Resources:
 ==> extensions/Deployment
