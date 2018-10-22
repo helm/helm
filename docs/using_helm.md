@@ -95,31 +95,75 @@ simplest, it takes only one argument: The name of the chart.
 $ helm install stable/mariadb
 Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 NAME: happy-panda
-LAST DEPLOYED: Wed Sep 28 12:32:28 2016
+LAST DEPLOYED: Fri Oct 19 12:40:03 2018
 NAMESPACE: default
 STATUS: DEPLOYED
 
-Resources:
-==> extensions/Deployment
-NAME                     DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-happy-panda-mariadb   1         0         0            0           1s
+RESOURCES:
+==> v1/Pod(related)
+NAME                                READY  STATUS   RESTARTS  AGE
+happy-panda-mariadb-master-0  0/1    Pending  0         0s
+happy-panda-mariadb-slave-0   0/1    Pending  0         0s
 
 ==> v1/Secret
-NAME                     TYPE      DATA      AGE
-happy-panda-mariadb   Opaque    2         1s
+
+NAME                       AGE
+happy-panda-mariadb  0s
+
+==> v1/ConfigMap
+happy-panda-mariadb-master  0s
+happy-panda-mariadb-slave   0s
+happy-panda-mariadb-tests   0s
 
 ==> v1/Service
-NAME                     CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
-happy-panda-mariadb   10.0.0.70    <none>        3306/TCP   1s
+happy-panda-mariadb        0s
+happy-panda-mariadb-slave  0s
+
+==> v1beta1/StatefulSet
+happy-panda-mariadb-master  0s
+happy-panda-mariadb-slave   0s
 
 
-Notes:
-MariaDB can be accessed via port 3306 on the following DNS name from within your cluster:
-happy-panda-mariadb.default.svc.cluster.local
+NOTES:
 
-To connect to your database run the following command:
+Please be patient while the chart is being deployed
 
-   kubectl run happy-panda-mariadb-client --rm --tty -i --image bitnami/mariadb --command -- mysql -h happy-panda-mariadb
+Tip:
+
+  Watch the deployment status using the command: kubectl get pods -w --namespace default -l release=happy-panda
+
+Services:
+
+  echo Master: happy-panda-mariadb.default.svc.cluster.local:3306
+  echo Slave:  happy-panda-mariadb-slave.default.svc.cluster.local:3306
+
+Administrator credentials:
+
+  Username: root
+  Password : $(kubectl get secret --namespace default happy-panda-mariadb -o jsonpath="{.data.mariadb-root-password}" | base64 --decode)
+
+To connect to your database:
+
+  1. Run a pod that you can use as a client:
+
+      kubectl run happy-panda-mariadb-client --rm --tty -i --image  docker.io/bitnami/mariadb:10.1.36 --namespace default --command -- bash
+
+  2. To connect to master service (read/write):
+
+      mysql -h happy-panda-mariadb.default.svc.cluster.local -uroot -p my_database
+
+  3. To connect to slave service (read-only):
+
+      mysql -h happy-panda-mariadb-slave.default.svc.cluster.local -uroot -p my_database
+
+To upgrade this helm chart:
+
+  1. Obtain the password as described on the 'Administrator credentials' section and set the 'rootUser.password' parameter as shown below:
+
+      ROOT_PASSWORD=$(kubectl get secret --namespace default happy-panda-mariadb -o jsonpath="{.data.mariadb-root-password}" | base64 --decode)
+      helm upgrade happy-panda stable/mariadb --set rootUser.password=$ROOT_PASSWORD
+
+
 ```
 
 Now the `mariadb` chart is installed. Note that installing a chart
@@ -140,32 +184,73 @@ To keep track of a release's state, or to re-read configuration
 information, you can use `helm status`:
 
 ```console
-$ helm status happy-panda
-Last Deployed: Wed Sep 28 12:32:28 2016
-Namespace: default
-Status: DEPLOYED
+LAST DEPLOYED: Fri Oct 19 12:40:03 2018
+NAMESPACE: default
+STATUS: DEPLOYED
 
-Resources:
-==> v1/Service
-NAME                     CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
-happy-panda-mariadb   10.0.0.70    <none>        3306/TCP   4m
-
-==> extensions/Deployment
-NAME                     DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-happy-panda-mariadb   1         1         1            1           4m
+RESOURCES:
+==> v1/Pod(related)
+NAME                                READY  STATUS   RESTARTS  AGE
+happy-panda-mariadb-master-0  1/1    Running  0         3m
+happy-panda-mariadb-slave-0   1/1    Running  0         3m
 
 ==> v1/Secret
-NAME                     TYPE      DATA      AGE
-happy-panda-mariadb   Opaque    2         4m
+
+NAME                       AGE
+happy-panda-mariadb  3m
+
+==> v1/ConfigMap
+happy-panda-mariadb-master  3m
+happy-panda-mariadb-slave   3m
+happy-panda-mariadb-tests   3m
+
+==> v1/Service
+happy-panda-mariadb        3m
+happy-panda-mariadb-slave  3m
+
+==> v1beta1/StatefulSet
+happy-panda-mariadb-master  3m
+happy-panda-mariadb-slave   3m
 
 
-Notes:
-MariaDB can be accessed via port 3306 on the following DNS name from within your cluster:
-happy-panda-mariadb.default.svc.cluster.local
+NOTES:
 
-To connect to your database run the following command:
+Please be patient while the chart is being deployed
 
-   kubectl run happy-panda-mariadb-client --rm --tty -i --image bitnami/mariadb --command -- mysql -h happy-panda-mariadb
+Tip:
+
+  Watch the deployment status using the command: kubectl get pods -w --namespace default -l release=happy-panda
+
+Services:
+
+  echo Master: happy-panda-mariadb.default.svc.cluster.local:3306
+  echo Slave:  happy-panda-mariadb-slave.default.svc.cluster.local:3306
+
+Administrator credentials:
+
+  Username: root
+  Password : $(kubectl get secret --namespace default happy-panda-mariadb -o jsonpath="{.data.mariadb-root-password}" | base64 --decode)
+
+To connect to your database:
+
+  1. Run a pod that you can use as a client:
+
+      kubectl run happy-panda-mariadb-client --rm --tty -i --image  docker.io/bitnami/mariadb:10.1.36 --namespace default --command -- bash
+
+  2. To connect to master service (read/write):
+
+      mysql -h happy-panda-mariadb.default.svc.cluster.local -uroot -p my_database
+
+  3. To connect to slave service (read-only):
+
+      mysql -h happy-panda-mariadb-slave.default.svc.cluster.local -uroot -p my_database
+
+To upgrade this helm chart:
+
+  1. Obtain the password as described on the 'Administrator credentials' section and set the 'rootUser.password' parameter as shown below:
+
+      ROOT_PASSWORD=$(kubectl get secret --namespace default happy-panda-mariadb -o jsonpath="{.data.mariadb-root-password}" | base64 --decode)
+      helm upgrade happy-panda stable/mariadb --set rootUser.password=$ROOT_PASSWORD
 ```
 
 The above shows the current state of your release.
@@ -180,35 +265,304 @@ To see what options are configurable on a chart, use `helm inspect
 values`:
 
 ```console
-helm inspect values stable/mariadb
-Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
-## Bitnami MariaDB image version
+## Global Docker image registry
+## Please, note that this will override the image registry for all the images, including dependencies, configured to use the global value
+##
+# global:
+#   imageRegistry:
+
+## Bitnami MariaDB image
 ## ref: https://hub.docker.com/r/bitnami/mariadb/tags/
 ##
-## Default: none
-imageTag: 10.1.14-r3
+image:
+  registry: docker.io
+  repository: bitnami/mariadb
+  tag: 10.1.36
+  ## Specify a imagePullPolicy
+  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ##
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ##
+  # pullSecrets:
+  #   - myRegistrKeySecretName
 
-## Specify a imagePullPolicy
-## Default to 'Always' if imageTag is 'latest', else set to 'IfNotPresent'
-## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
-##
-# imagePullPolicy:
+service:
+  ## Kubernetes service type, ClusterIP and NodePort are supported at present
+  type: ClusterIP
+  # clusterIp: None
+  port: 3306
+  ## Specify the nodePort value for the LoadBalancer and NodePort service types.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+  ##
+  # nodePort:
+  #   master: 30001
+  #   slave: 30002
 
-## Specify password for root user
-## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#setting-the-root-password-on-first-run
+## Pod Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 ##
-# mariadbRootPassword:
+securityContext:
+  enabled: true
+  fsGroup: 1001
+  runAsUser: 1001
 
-## Create a database user
-## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-user-on-first-run
-##
-# mariadbUser:
-# mariadbPassword:
+rootUser:
+  ## MariaDB admin password
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-the-root-password-on-first-run
+  ##
+  password:
+  ## Use existing secret (ignores root, db and replication passwords)
+  # existingSecret:
+  ##
+  ## Option to force users to specify a password. That is required for 'helm upgrade' to work properly.
+  ## If it is not force, a random password will be generated.
+  forcePassword: false
 
-## Create a database
-## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-on-first-run
-##
-# mariadbDatabase:
+db:
+  ## MariaDB username and password
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#creating-a-database-user-on-first-run
+  ##
+  user:
+  password:
+  ## Password is ignored if existingSecret is specified.
+  ## Database to create
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#creating-a-database-on-first-run
+  ##
+  name: my_database
+  ## Option to force users to specify a password. That is required for 'helm upgrade' to work properly.
+  ## If it is not force, a random password will be generated.
+  forcePassword: false
+
+replication:
+  ## Enable replication. This enables the creation of replicas of MariaDB. If false, only a
+  ## master deployment would be created
+  enabled: true
+  ##
+  ## MariaDB replication user
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-up-a-replication-cluster
+  ##
+  user: replicator
+  ## MariaDB replication user password
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-up-a-replication-cluster
+  ##
+  password:
+  ## Password is ignored if existingSecret is specified.
+  ##
+  ## Option to force users to specify a password. That is required for 'helm upgrade' to work properly.
+  ## If it is not force, a random password will be generated.
+  forcePassword: false
+
+master:
+  ## Mariadb Master additional pod annotations
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  # annotations:
+  #   - key: key1
+  #     value: value1
+
+  ## Affinity for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  ##
+  affinity: {}
+
+  ## Kept for backwards compatibility. You can now disable it by removing it.
+  ## if you wish to set it through master.affinity.podAntiAffinity instead.
+  ##
+  antiAffinity: soft
+
+  ## Tolerations for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  ##
+  tolerations: []
+
+  ## Enable persistence using Persistent Volume Claims
+  ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+  ##
+  persistence:
+    ## If true, use a Persistent Volume Claim, If false, use emptyDir
+    ##
+    enabled: true
+    # Enable persistence using an existing PVC
+    # existingClaim:
+    # mountPath:
+    ## Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "-"
+    ## Persistent Volume Claim annotations
+    ##
+    annotations:
+    ## Persistent Volume Access Mode
+    ##
+    accessModes:
+    - ReadWriteOnce
+    ## Persistent Volume size
+    ##
+    size: 8Gi
+    ##
+
+  ## Configure MySQL with a custom my.cnf file
+  ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
+  ##
+  config: |-
+    [mysqld]
+    skip-name-resolve
+    explicit_defaults_for_timestamp
+    basedir=/opt/bitnami/mariadb
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    tmpdir=/opt/bitnami/mariadb/tmp
+    max_allowed_packet=16M
+    bind-address=0.0.0.0
+    pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+    log-error=/opt/bitnami/mariadb/logs/mysqld.log
+    character-set-server=UTF8
+    collation-server=utf8_general_ci
+
+    [client]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    default-character-set=UTF8
+
+    [manager]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+
+  ## Configure master resource requests and limits
+  ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+  livenessProbe:
+    enabled: true
+    ##
+    ## Initializing the database could take some time
+    initialDelaySeconds: 120
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+
+slave:
+  replicas: 1
+
+  ## Mariadb Slave additional pod annotations
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  # annotations:
+  #   - key: key1
+  #     value: value1
+
+  ## Affinity for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  ##
+  affinity: {}
+
+  ## Kept for backwards compatibility. You can now disable it by removing it.
+  ## if you wish to set it through slave.affinity.podAntiAffinity instead.
+  ##
+  antiAffinity: soft
+
+  ## Tolerations for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  ##
+  tolerations: []
+
+  persistence:
+    ## If true, use a Persistent Volume Claim, If false, use emptyDir
+    ##
+    enabled: true
+    # storageClass: "-"
+    annotations:
+    accessModes:
+    - ReadWriteOnce
+    ## Persistent Volume size
+    ##
+    size: 8Gi
+    ##
+
+  ## Configure MySQL slave with a custom my.cnf file
+  ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
+  ##
+  config: |-
+    [mysqld]
+    skip-name-resolve
+    explicit_defaults_for_timestamp
+    basedir=/opt/bitnami/mariadb
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    tmpdir=/opt/bitnami/mariadb/tmp
+    max_allowed_packet=16M
+    bind-address=0.0.0.0
+    pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+    log-error=/opt/bitnami/mariadb/logs/mysqld.log
+    character-set-server=UTF8
+    collation-server=utf8_general_ci
+
+    [client]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    default-character-set=UTF8
+
+    [manager]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+
+  ##
+  ## Configure slave resource requests and limits
+  ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+  livenessProbe:
+    enabled: true
+    ##
+    ## Initializing the database could take some time
+    initialDelaySeconds: 120
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 45
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+
+metrics:
+  enabled: false
+  image:
+    registry: docker.io
+    repository: prom/mysqld-exporter
+    tag: v0.10.0
+    pullPolicy: IfNotPresent
+  resources: {}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9104"
 ```
 
 You can then override any of these settings in a YAML formatted file,
