@@ -142,7 +142,7 @@ metadata:
   name: tiller-manager
   namespace: myorg-users
 rules:
-- apiGroups: ["", "extensions", "apps"]
+- apiGroups: ["", "batch", "extensions", "apps"]
   resources: ["*"]
   verbs: ["*"]
 ```
