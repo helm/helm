@@ -162,7 +162,7 @@ func (m *RemoteReleaseModule) Delete(r *release.Release, req *services.Uninstall
 // DeleteRelease is a helper that allows Rudder to delete a release without exposing most of Tiller inner functions
 func DeleteRelease(rel *release.Release, vs chartutil.VersionSet, kubeClient environment.KubeClient) (kept string, errs []error) {
 	manifests := relutil.SplitManifests(rel.Manifest)
-	_, files, err := manifest.Partition(manifests, vs, manifest.UninstallOrder)
+	_, files, _, err := manifest.Partition(manifests, vs, manifest.UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based

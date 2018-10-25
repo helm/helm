@@ -140,7 +140,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := Partition(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
+	hs, generic, _, err := Partition(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

@@ -49,12 +49,6 @@ const (
 	// charts to add data. Effectively, that gives us 53 chars.
 	// See https://github.com/kubernetes/helm/issues/1528
 	releaseNameMaxLen = 53
-
-	// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
-	// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
-	// wants to see this file after rendering in the status command. However, it must be a suffix
-	// since there can be filepath in front of it.
-	notesFileSuffix = "NOTES.txt"
 )
 
 var (
@@ -306,32 +300,10 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		return nil, nil, "", err
 	}
 
-	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
-	// pull it out of here into a separate file so that we can actually use the output of the rendered
-	// text file. We have to spin through this map because the file contains path information, so we
-	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
-	// it in the sortHooks.
-	var notesBuffer bytes.Buffer
-	for k, v := range files {
-		if strings.HasSuffix(k, notesFileSuffix) {
-			if subNotes || (k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix)) {
-
-				// If buffer contains data, add newline before adding more
-				if notesBuffer.Len() > 0 {
-					notesBuffer.WriteString("\n")
-				}
-				notesBuffer.WriteString(v)
-			}
-			delete(files, k)
-		}
-	}
-
-	notes := notesBuffer.String()
-
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hooks, manifests, err := manifest.Partition(files, vs, manifest.InstallOrder)
+	hooks, manifests, notesMap, err := manifest.Partition(files, vs, manifest.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
@@ -348,6 +320,21 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 		return nil, b, "", err
 	}
+
+	// Partition gave us a map of all the notes in the parent and child charts,
+	// so now flatten that map into a single string.
+	var notesBuffer bytes.Buffer
+	for chartName, chartNotes := range notesMap {
+		if subNotes || chartName == path.Join(ch.Metadata.Name, "templates") {
+			// If buffer contains data, add newline before adding more
+			if notesBuffer.Len() > 0 {
+				notesBuffer.WriteString("\n")
+			}
+			notesBuffer.WriteString(chartNotes)
+		}
+	}
+
+	notes := notesBuffer.String()
 
 	// Aggregate all valid manifests into one big doc.
 	b := bytes.NewBuffer(nil)

@@ -31,6 +31,12 @@ import (
 	util "k8s.io/helm/pkg/releaseutil"
 )
 
+// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+// wants to see this file after rendering in the status command. However, it must be a suffix
+// since there can be filepath in front of it.
+const notesFileSuffix = "NOTES.txt"
+
 type result struct {
 	hooks   []*release.Hook
 	generic []Manifest
@@ -49,10 +55,16 @@ type manifestFile struct {
 // Any file that does not declare one of the hook types will be placed in the
 // 'generic' bucket.
 //
-// Files that do not parse into the expected format are simply placed into a map and
-// returned.
-func Partition(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
+// Files that do not parse into the expected format are simply placed into a
+// slice and returned.
+//
+// NOTES files discovered in charts (parent and child) are returned in a map;
+// keys of the map are the directories the notes are found in, values are the
+// contents of the NOTES.
+func Partition(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, map[string]string, error) {
 	result := &result{}
+
+	notes := make(map[string]string)
 
 	for filePath, c := range files {
 
@@ -67,6 +79,18 @@ func Partition(files map[string]string, apis chartutil.VersionSet, sort SortOrde
 			continue
 		}
 
+		// NOTES.txt gets rendered like all the other files, but because it's
+		// not a hook nor a resource, pull it out of here into a separate file
+		// so that we can actually use the output of the rendered text file. We
+		// have to spin through this map because the file contains path
+		// information, so we look for terminating NOTES.txt. We also remove it
+		// from the files so that we don't have to skip it in the sortHooks.
+
+		if strings.HasSuffix(filePath, notesFileSuffix) {
+			notes[path.Dir(filePath)] = c
+			continue
+		}
+
 		manifestFile := &manifestFile{
 			entries: util.SplitManifests(c),
 			path:    filePath,
@@ -74,11 +98,11 @@ func Partition(files map[string]string, apis chartutil.VersionSet, sort SortOrde
 		}
 
 		if err := manifestFile.sort(result); err != nil {
-			return result.hooks, result.generic, err
+			return result.hooks, result.generic, notes, err
 		}
 	}
 
-	return result.hooks, sortByKind(result.generic, sort), nil
+	return result.hooks, sortByKind(result.generic, sort), notes, nil
 }
 
 // sort takes a manifestFile object which may contain multiple resource definition
