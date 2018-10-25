@@ -31,15 +31,17 @@ var (
 // detected manifests.
 func SplitManifests(templates map[string]string) []Manifest {
 	var listManifests []Manifest
-	// extract kind and name
-	for k, v := range templates {
-		match := kindRegex.FindStringSubmatch(v)
-		h := "Unknown"
-		if len(match) == 2 {
-			h = strings.TrimSpace(match[1])
+	for k, fileContent := range templates {
+		for _, manifestContent := range releaseutil.SplitManifests(fileContent) {
+			// extract kind and name
+			match := kindRegex.FindStringSubmatch(manifestContent)
+			h := "Unknown"
+			if len(match) == 2 {
+				h = strings.TrimSpace(match[1])
+			}
+			m := Manifest{Name: k, Content: manifestContent, Head: &releaseutil.SimpleHead{Kind: h}}
+			listManifests = append(listManifests, m)
 		}
-		m := Manifest{Name: k, Content: v, Head: &releaseutil.SimpleHead{Kind: h}}
-		listManifests = append(listManifests, m)
 	}
 
 	return listManifests

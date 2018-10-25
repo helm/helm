@@ -51,9 +51,7 @@ data:
     Revision: %d
     Service: Tiller
     Time:
-      seconds: 242085845
-    
-`
+      seconds: 242085845`
 )
 
 var installChart *chart.Chart
