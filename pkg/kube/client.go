@@ -99,7 +99,17 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 		return buildErr
 	}
 	c.Log("creating %d resource(s)", len(infos))
-	if err := perform(infos, createResource); err != nil {
+	if err := perform(infos, func(info *resource.Info) error {
+		err := createResource(info)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				c.Log("Resource already exists, updating: %s", err)
+				return updateResource(c, info, info.Object, true, false)
+			}
+			return err
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
 	if shouldWait {
