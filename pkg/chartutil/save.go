@@ -49,7 +49,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	// Save values.yaml
 	if c.Values != nil && len(c.Values.Raw) > 0 {
 		vf := filepath.Join(outdir, ValuesfileName)
-		if err := ioutil.WriteFile(vf, []byte(c.Values.Raw), 0755); err != nil {
+		if err := ioutil.WriteFile(vf, []byte(c.Values.Raw), 0644); err != nil {
 			return err
 		}
 	}
@@ -63,7 +63,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	// Save templates
 	for _, f := range c.Templates {
 		n := filepath.Join(outdir, f.Name)
-		if err := ioutil.WriteFile(n, f.Data, 0755); err != nil {
+		if err := ioutil.WriteFile(n, f.Data, 0644); err != nil {
 			return err
 		}
 	}
@@ -77,7 +77,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 			return err
 		}
 
-		if err := ioutil.WriteFile(n, f.Value, 0755); err != nil {
+		if err := ioutil.WriteFile(n, f.Value, 0644); err != nil {
 			return err
 		}
 	}
