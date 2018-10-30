@@ -334,8 +334,8 @@ func TestUniqName(t *testing.T) {
 		reuse  bool
 		err    bool
 	}{
+		{"", "", false, true}, // Blank name is illegal
 		{"first", "first", false, false},
-		{"", "[a-z]+-[a-z]+", false, false},
 		{"angry-panda", "", false, true},
 		{"happy-panda", "", false, true},
 		{"happy-panda", "happy-panda", true, false},

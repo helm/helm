@@ -28,10 +28,6 @@
   branch = "master"
 
 [[constraint]]
-  name = "github.com/technosophos/moniker"
-  branch = "master"
-
-[[constraint]]
   name = "k8s.io/api"
   branch = "release-1.12"
 

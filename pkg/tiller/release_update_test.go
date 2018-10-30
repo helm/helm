@@ -130,6 +130,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	rs := rsFixture(t)
 
 	installReq := &hapi.InstallReleaseRequest{
+		Name:      "complex-reuse-values",
 		Namespace: "spaced",
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
