@@ -131,11 +131,12 @@ type installCmd struct {
 	timeout        int64
 	wait           bool
 	repoURL        string
-	username       string
-	password       string
-	devel          bool
-	depUp          bool
-	description    string
+
+	credentials
+
+	devel       bool
+	depUp       bool
+	description string
 
 	certFile string
 	keyFile  string
@@ -171,6 +172,10 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:    installDesc,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := inst.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
@@ -211,14 +216,14 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&inst.username, "username", "", "chart repository username where to locate the requested chart")
-	f.StringVar(&inst.password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&inst.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&inst.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&inst.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&inst.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&inst.depUp, "dep-up", false, "run helm dependency update before installing the chart")
 	f.StringVar(&inst.description, "description", "", "specify a description for the release")
+
+	inst.credentials.addFlags(f)
 
 	// set defaults from environment
 	settings.InitTLS(f)

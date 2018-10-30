@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -59,8 +60,8 @@ type inspectCmd struct {
 	out       io.Writer
 	version   string
 	repoURL   string
-	username  string
-	password  string
+
+	credentials
 
 	certFile string
 	keyFile  string
@@ -87,6 +88,10 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Short: "inspect a chart",
 		Long:  inspectDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := insp.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
@@ -105,6 +110,10 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Short: "shows inspect values",
 		Long:  inspectValuesDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := insp.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			insp.output = valuesOnly
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
@@ -124,6 +133,10 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Short: "shows inspect chart",
 		Long:  inspectChartDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := insp.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			insp.output = chartOnly
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
@@ -143,6 +156,10 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		Short: "shows inspect readme",
 		Long:  readmeChartDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := insp.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			insp.output = readmeOnly
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
@@ -183,18 +200,6 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		subCmd.Flags().StringVar(&insp.repoURL, repoURL, "", repoURLdesc)
 	}
 
-	username := "username"
-	usernamedesc := "chart repository username where to locate the requested chart"
-	inspectCommand.Flags().StringVar(&insp.username, username, "", usernamedesc)
-	valuesSubCmd.Flags().StringVar(&insp.username, username, "", usernamedesc)
-	chartSubCmd.Flags().StringVar(&insp.username, username, "", usernamedesc)
-
-	password := "password"
-	passworddesc := "chart repository password where to locate the requested chart"
-	inspectCommand.Flags().StringVar(&insp.password, password, "", passworddesc)
-	valuesSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
-	chartSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
-
 	certFile := "cert-file"
 	certFiledesc := "verify certificates of HTTPS-enabled servers using this CA bundle"
 	for _, subCmd := range cmds {
@@ -211,6 +216,10 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	caFiledesc := "chart repository url where to locate the requested chart"
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.caFile, caFile, "", caFiledesc)
+	}
+
+	for _, subCmd := range cmds {
+		insp.credentials.addFlags(subCmd.Flags())
 	}
 
 	for _, subCmd := range cmds[1:] {

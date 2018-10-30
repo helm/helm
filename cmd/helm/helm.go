@@ -17,13 +17,18 @@ limitations under the License.
 package main // import "k8s.io/helm/cmd/helm"
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
+	"golang.org/x/crypto/ssh/terminal"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
 	"k8s.io/client-go/kubernetes"
@@ -290,4 +295,51 @@ func newClient() helm.Interface {
 		options = append(options, helm.WithTLS(tlscfg))
 	}
 	return helm.NewClient(options...)
+}
+
+type credentials struct {
+	username      string
+	password      string
+	passwordStdin bool
+}
+
+func (c *credentials) addFlags(f *flag.FlagSet) {
+	f.StringVar(&c.username, "username", "", "chart repository username")
+	f.StringVar(&c.password, "password", "", "chart repository password")
+	f.BoolVar(&c.passwordStdin, "password-stdin", false, "take the chart repository password from stdin")
+}
+
+func (c *credentials) readPassword(r io.Reader, w io.Writer) error {
+	if c.password != "" && c.passwordStdin {
+		return errors.New("--password and --password-stdin are mutually exclusive")
+	}
+
+	if c.passwordStdin && c.username == "" {
+		return errors.New("must provide --username with --password-stdin")
+	}
+
+	if (c.username != "" && c.password == "") || c.passwordStdin {
+		if r == os.Stdin && terminal.IsTerminal(syscall.Stdin) {
+			fmt.Fprint(w, "Password: ")
+			defer fmt.Fprintln(w)
+
+			password, err := terminal.ReadPassword(int(syscall.Stdin))
+
+			if err == nil {
+				c.password = string(password)
+			}
+
+			return err
+		}
+
+		contents, err := ioutil.ReadAll(r)
+		if err != nil {
+			return err
+		}
+
+		c.password = strings.TrimSuffix(string(contents), "\n")
+		c.password = strings.TrimSuffix(c.password, "\r")
+	}
+
+	return nil
 }

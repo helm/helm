@@ -52,8 +52,8 @@ type fetchCmd struct {
 	destdir  string
 	version  string
 	repoURL  string
-	username string
-	password string
+
+	credentials
 
 	verify      bool
 	verifyLater bool
@@ -76,6 +76,10 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 		Short: "download a chart from a repository and (optionally) unpack it in local directory",
 		Long:  fetchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := fch.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			if len(args) == 0 {
 				return fmt.Errorf("need at least one argument, url or repo/name of the chart")
 			}
@@ -108,8 +112,8 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&fch.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&fch.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&fch.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.StringVar(&fch.username, "username", "", "chart repository username")
-	f.StringVar(&fch.password, "password", "", "chart repository password")
+
+	fch.credentials.addFlags(f)
 
 	return cmd
 }

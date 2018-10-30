@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -44,7 +45,7 @@ To customize the chart values, use any of
  - '--set-string' to provide key=val forcing val to be stored as a string,
  - '--set-file' to provide key=path to read a single large value from a file at path.
 
-To edit or append to the existing customized values, add the 
+To edit or append to the existing customized values, add the
  '--reuse-values' flag, otherwise any existing customized values are ignored.
 
 If no chart value arguments are provided on the command line, any existing customized values are carried
@@ -106,10 +107,11 @@ type upgradeCmd struct {
 	reuseValues  bool
 	wait         bool
 	repoURL      string
-	username     string
-	password     string
-	devel        bool
-	description  string
+
+	credentials
+
+	devel       bool
+	description string
 
 	certFile string
 	keyFile  string
@@ -129,6 +131,10 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Long:    upgradeDesc,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := upgrade.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			if err := checkArgsLength(len(args), "release name", "chart path"); err != nil {
 				return err
 			}
@@ -167,13 +173,13 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&upgrade.username, "username", "", "chart repository username where to locate the requested chart")
-	f.StringVar(&upgrade.password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.StringVar(&upgrade.description, "description", "", "specify the description to use for the upgrade, rather than the default")
+
+	upgrade.credentials.addFlags(f)
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 

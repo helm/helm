@@ -550,3 +550,84 @@ func resetEnv() func() {
 		}
 	}
 }
+
+func Test_Credentials_ReadPassword(t *testing.T) {
+	tests := []struct {
+		name             string
+		credentials      credentials
+		r                io.Reader
+		expectedPassword string
+		expectedOutput   string
+		expectedError    string
+	}{
+		{
+			name: "password and password-stdin are mutually exclusive",
+			credentials: credentials{
+				password:      "password",
+				passwordStdin: true,
+			},
+			expectedError:    "--password and --password-stdin are mutually exclusive",
+			expectedPassword: "password", // unchanged from initial state
+		},
+		{
+			name: "must provide username with password-stdin",
+			credentials: credentials{
+				passwordStdin: true,
+			},
+			expectedError: "must provide --username with --password-stdin",
+		},
+		{
+			name: "reads password if username provided but password not provided", // repo-add backwards compatibility
+			credentials: credentials{
+				username: "user",
+			},
+			r:                bytes.NewBufferString("password"),
+			expectedPassword: "password",
+		},
+		{
+			name: "reads password if --password-stdin provided",
+			credentials: credentials{
+				username:      "user",
+				passwordStdin: true,
+			},
+			r:                bytes.NewBufferString("password"),
+			expectedPassword: "password",
+		},
+		{
+			name: "strips CRLF from input",
+			credentials: credentials{
+				username:      "user",
+				passwordStdin: true,
+			},
+			r:                bytes.NewBufferString("password\r\n"),
+			expectedPassword: "password",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := new(bytes.Buffer)
+			err := tt.credentials.readPassword(tt.r, w)
+
+			if err == nil && tt.expectedError != "" {
+				t.Errorf("expected error %v, got none", tt.expectedError)
+				return
+			}
+
+			if err != nil {
+				if s := err.Error(); s != tt.expectedError {
+					t.Errorf("expected error %v, got %v", tt.expectedError, s)
+					return
+				}
+			}
+
+			if s := w.String(); tt.expectedOutput != s {
+				t.Errorf("expected output %v, got %v", tt.expectedOutput, s)
+			}
+
+			if tt.expectedPassword != tt.credentials.password {
+				t.Errorf("expected password %v, got %v", tt.expectedPassword, tt.credentials.password)
+			}
+		})
+	}
+}

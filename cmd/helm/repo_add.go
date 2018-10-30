@@ -19,23 +19,22 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 
-	"golang.org/x/crypto/ssh/terminal"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
-	"syscall"
 )
 
 type repoAddCmd struct {
 	name     string
 	url      string
-	username string
-	password string
 	home     helmpath.Home
 	noupdate bool
+
+	credentials
 
 	certFile string
 	keyFile  string
@@ -51,6 +50,10 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 		Use:   "add [flags] [NAME] [URL]",
 		Short: "add a chart repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := add.readPassword(os.Stdin, os.Stderr); err != nil {
+				return err
+			}
+
 			if err := checkArgsLength(len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
 				return err
 			}
@@ -64,40 +67,22 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&add.username, "username", "", "chart repository username")
-	f.StringVar(&add.password, "password", "", "chart repository password")
 	f.BoolVar(&add.noupdate, "no-update", false, "raise error if repo is already registered")
 	f.StringVar(&add.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&add.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&add.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
+	add.credentials.addFlags(f)
+
 	return cmd
 }
 
 func (a *repoAddCmd) run() error {
-	if a.username != "" && a.password == "" {
-		fmt.Fprint(a.out, "Password:")
-		password, err := readPassword()
-		fmt.Fprintln(a.out)
-		if err != nil {
-			return err
-		}
-		a.password = password
-	}
-
 	if err := addRepository(a.name, a.url, a.username, a.password, a.home, a.certFile, a.keyFile, a.caFile, a.noupdate); err != nil {
 		return err
 	}
 	fmt.Fprintf(a.out, "%q has been added to your repositories\n", a.name)
 	return nil
-}
-
-func readPassword() (string, error) {
-	password, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return "", err
-	}
-	return string(password), nil
 }
 
 func addRepository(name, url, username, password string, home helmpath.Home, certFile, keyFile, caFile string, noUpdate bool) error {
