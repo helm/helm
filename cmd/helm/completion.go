@@ -81,7 +81,8 @@ func runCompletionBash(out io.Writer, cmd *cobra.Command) error {
 }
 
 func runCompletionZsh(out io.Writer, cmd *cobra.Command) error {
-	zshInitialization := `
+	zshInitialization := `#compdef helm
+
 __helm_bash_source() {
 	alias shopt=':'
 	alias _expand=_bash_expand
