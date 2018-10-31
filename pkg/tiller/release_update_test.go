@@ -520,6 +520,30 @@ func TestUpdateReleaseCustomDescription_Force(t *testing.T) {
 	compareStoredAndReturnedRelease(t, *rs, *res)
 }
 
+func TestUpdateReleasePendingInstall_Force(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := namedReleaseStub("forceful-luke", release.Status_PENDING_INSTALL)
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name:  rel.Name,
+		Chart: rel.GetChart(),
+		Force: true,
+	}
+
+	_, err := rs.UpdateRelease(c, req)
+	if err == nil {
+		t.Error("Expected failed update")
+	}
+
+	expectedError := "a released named forceful-luke is in use, cannot re-use a name that is still in use"
+	got := err.Error()
+	if err.Error() != expectedError {
+		t.Errorf("Expected error %q, got %q", expectedError, got)
+	}
+}
+
 func compareStoredAndReturnedRelease(t *testing.T, rs ReleaseServer, res services.UpdateReleaseResponse) *release.Release {
 	storedRelease, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
 	if err != nil {
