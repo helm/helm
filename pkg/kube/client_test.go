@@ -29,16 +29,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	"k8s.io/kubernetes/pkg/api/testapi"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
-var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
+var (
+	codec                  = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+	unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
+)
 
-func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
+func objBody(obj runtime.Object) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 }
 
@@ -89,7 +90,7 @@ func notFoundBody() *metav1.Status {
 func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	header := http.Header{}
 	header.Set("Content-Type", runtime.ContentTypeJSON)
-	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(testapi.Default.Codec(), obj))))
+	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
@@ -161,19 +162,18 @@ func TestUpdate(t *testing.T) {
 		Factory: tf,
 		Log:     nopLogger,
 	}
-	codec := legacyscheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
-	if err := c.Update(v1.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
+	if err := c.Update(v1.NamespaceDefault, objBody(&listA), objBody(&listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
 	// Test with a wait
-	// if err := c.Update("test", objBody(codec, &listB), objBody(codec, &listC), false, 300, true); err != nil {
+	// if err := c.Update("test", objBody(&listB), objBody(&listC), false, 300, true); err != nil {
 	// 	t.Fatal(err)
 	// }
 	// Test with a wait should fail
 	// TODO: A way to make this not based off of an extremely short timeout?
-	// if err := c.Update("test", objBody(codec, &listC), objBody(codec, &listA), false, 2, true); err != nil {
+	// if err := c.Update("test", objBody(&listC), objBody(&listA), false, 2, true); err != nil {
 	// 	t.Fatal(err)
 	// }
 	expectedActions := []string{
