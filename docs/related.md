@@ -36,14 +36,19 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-cos](https://github.com/imroc/helm-cos) - Plugin to manage repositories on Tencent Cloud Object Storage
 - [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
 - [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
+- [helm-export](https://github.com/maorfr/helm-export) - Plugin to export releases from namespace to a file (disaster recovery)
 - [helm-gcs](https://github.com/nouney/helm-gcs) - Plugin to manage repositories on Google Cloud Storage
 - [helm-github](https://github.com/sagansystems/helm-github) - Plugin to install Helm Charts from Github repositories
 - [helm-hashtag](https://github.com/balboah/helm-hashtag) - Plugin for tracking docker tag hash digests as values
+- [helm-import](https://github.com/maorfr/helm-import) - Plugin for importing releases from (exported) file to a namespace (disaster recovery)
+- [helm-inject](https://github.com/maorfr/helm-inject) - Plugin for injecting additional configurations during release upgrade
 - [helm-k8comp](https://github.com/cststack/k8comp) - Plugin to create Helm Charts from hiera using k8comp
 - [helm-last](https://github.com/adamreese/helm-last) - Plugin to show the latest release
 - [helm-local](https://github.com/adamreese/helm-local) - Plugin to run Tiller as a local daemon
+- [helm-logs](https://github.com/maorfr/helm-logs) - Plugin to view changed releases over time
 - [helm-monitor](https://github.com/ContainerSolutions/helm-monitor) - Plugin to monitor a release and rollback based on Prometheus/ElasticSearch query
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
+- [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore the last deployed release to its original state
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
 - [helm-stop](https://github.com/IBM/helm-stop) - Plugin for stopping a release pods
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
@@ -72,6 +77,7 @@ Tools layered on top of Helm or Tiller.
 - [Helmsman](https://github.com/Praqma/helmsman) - Helmsman is a helm-charts-as-code tool which enables installing/upgrading/protecting/moving/deleting releases from version controlled desired state files (described in a simple TOML format).
 - [Landscaper](https://github.com/Eneco/landscaper/) - "Landscaper takes a set of Helm Chart references with values (a desired state), and realizes this in a Kubernetes cluster."
 - [Monocular](https://github.com/helm/monocular) - Web UI for Helm Chart repositories
+- [Orca](https://github.com/maorfr/orca) - Advanced CI\CD tool for Kubernetes and Helm made simple.
 - [Quay App Registry](https://coreos.com/blog/quay-application-registry-for-kubernetes.html) - Open Kubernetes application registry, including a Helm access client
 - [Rudder](https://github.com/AcalephStorage/rudder) - RESTful (JSON) proxy for Tiller's API
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
