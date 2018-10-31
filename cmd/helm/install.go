@@ -20,8 +20,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/Masterminds/sprig"
 	"github.com/pkg/errors"
@@ -46,27 +48,27 @@ To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line, to force
 a string value use '--set-string'.
 
-	$ helm install -f myvalues.yaml ./redis
+	$ helm install -f myvalues.yaml myredis ./redis
 
 or
 
-	$ helm install --set name=prod ./redis
+	$ helm install --set name=prod myredis ./redis
 
 or
 
-	$ helm install --set-string long_int=1234567890 ./redis
+	$ helm install --set-string long_int=1234567890 myredis ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
 
-	$ helm install -f myvalues.yaml -f override.yaml ./redis
+	$ helm install -f myvalues.yaml -f override.yaml  myredis ./redis
 
 You can specify the '--set' flag multiple times. The priority will be given to the
 last (right-most) set specified. For example, if both 'bar' and 'newbar' values are
 set for a key called 'foo', the 'newbar' value would take precedence:
 
-	$ helm install --set foo=bar --set foo=newbar ./redis
+	$ helm install --set foo=bar --set foo=newbar  myredis ./redis
 
 
 To check the generated manifests of a release without installing the chart,
@@ -99,7 +101,7 @@ charts in a repository, use 'helm search'.
 `
 
 type installOptions struct {
-	name         string // --name
+	name         string // arg 0
 	dryRun       bool   // --dry-run
 	disableHooks bool   // --disable-hooks
 	replace      bool   // --replace
@@ -108,7 +110,8 @@ type installOptions struct {
 	wait         bool   // --wait
 	devel        bool   // --devel
 	depUp        bool   // --dep-up
-	chartPath    string // arg
+	chartPath    string // arg 1
+	generateName bool   // --generate-name
 
 	valuesOptions
 	chartPathOptions
@@ -120,10 +123,10 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	o := &installOptions{client: c}
 
 	cmd := &cobra.Command{
-		Use:   "install [CHART]",
-		Short: "install a chart archive",
+		Use:   "install [NAME] [CHART]",
+		Short: "install a chart",
 		Long:  installDesc,
-		Args:  require.ExactArgs(1),
+		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			debug("Original chart version: %q", o.version)
 			if o.version == "" && o.devel {
@@ -131,7 +134,13 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				o.version = ">0.0.0-0"
 			}
 
-			cp, err := o.locateChart(args[0])
+			name, chart, err := o.nameAndChart(args)
+			if err != nil {
+				return err
+			}
+			o.name = name // FIXME
+
+			cp, err := o.locateChart(chart)
 			if err != nil {
 				return err
 			}
@@ -142,7 +151,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&o.name, "name", "", "", "release name. If unspecified, it will autogenerate one for you")
+	f.BoolVarP(&o.generateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
 	f.BoolVar(&o.dryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&o.disableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&o.replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
@@ -157,6 +166,41 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
+// nameAndChart returns the name of the release and the chart that should be used.
+//
+// This will read the flags and handle name generation if necessary.
+func (o *installOptions) nameAndChart(args []string) (string, string, error) {
+	flagsNotSet := func() error {
+		if o.generateName {
+			return errors.New("cannot set --generate-name and also specify a name")
+		}
+		if o.nameTemplate != "" {
+			return errors.New("cannot set --name-template and also specify a name")
+		}
+		return nil
+	}
+	if len(args) == 2 {
+		return args[0], args[1], flagsNotSet()
+	}
+
+	if o.nameTemplate != "" {
+		newName, err := templateName(o.nameTemplate)
+		return newName, args[0], err
+	}
+
+	if !o.generateName {
+		return "", args[0], errors.New("must either provide a name or specify --generate-name")
+	}
+
+	base := filepath.Base(args[0])
+	if base == "." || base == "" {
+		base = "chart"
+	}
+	newName := fmt.Sprintf("%s-%d", base, time.Now().Unix())
+
+	return newName, args[0], nil
+}
+
 func (o *installOptions) run(out io.Writer) error {
 	debug("CHART PATH: %s\n", o.chartPath)
 
@@ -167,7 +211,7 @@ func (o *installOptions) run(out io.Writer) error {
 
 	// If template is specified, try to run the template.
 	if o.nameTemplate != "" {
-		o.name, err = generateName(o.nameTemplate)
+		o.name, err = templateName(o.nameTemplate)
 		if err != nil {
 			return err
 		}
@@ -276,7 +320,7 @@ func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
 	}
 }
 
-func generateName(nameTemplate string) (string, error) {
+func templateName(nameTemplate string) (string, error) {
 	t, err := template.New("name-template").Funcs(sprig.TxtFuncMap()).Parse(nameTemplate)
 	if err != nil {
 		return "", err

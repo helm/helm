@@ -146,7 +146,7 @@ func (o *templateOptions) run(out io.Writer) error {
 
 	// If template is specified, try to run the template.
 	if o.nameTemplate != "" {
-		o.releaseName, err = generateName(o.nameTemplate)
+		o.releaseName, err = templateName(o.nameTemplate)
 		if err != nil {
 			return err
 		}

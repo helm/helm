@@ -562,14 +562,6 @@
   revision = "e3a8ff8ce36581f87a15341206f205b1da467059"
 
 [[projects]]
-  branch = "master"
-  digest = "1:9123998e9b4a6ed0fcf9cae137a6cd9e265a5d18823e34d1cd12e9d9845b2719"
-  name = "github.com/technosophos/moniker"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ab470f5e105a44d0c87ea21bacd6a335c4816d83"
-
-[[projects]]
   digest = "1:9601e4354239b69f62c86d24c74a19d7c7e3c7f7d2d9f01d42e5830b4673e121"
   name = "golang.org/x/crypto"
   packages = [
@@ -1174,7 +1166,6 @@
     "github.com/spf13/cobra/doc",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
-    "github.com/technosophos/moniker",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/openpgp/clearsign",
     "golang.org/x/crypto/openpgp/errors",

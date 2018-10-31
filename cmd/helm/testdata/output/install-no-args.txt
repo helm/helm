@@ -1,3 +1,3 @@
-Error: "helm install" requires 1 argument
+Error: "helm install" requires at least 1 argument
 
-Usage:  helm install [CHART] [flags]
+Usage:  helm install [NAME] [CHART] [flags]

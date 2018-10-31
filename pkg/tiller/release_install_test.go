@@ -28,12 +28,12 @@ import (
 func TestInstallRelease(t *testing.T) {
 	rs := rsFixture(t)
 
-	req := installRequest()
+	req := installRequest(withName("test-install-release"))
 	res, err := rs.InstallRelease(req)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
-	if res.Name == "" {
+	if res.Name != "test-install-release" {
 		t.Errorf("Expected release name.")
 	}
 	if res.Namespace != "spaced" {
@@ -78,11 +78,26 @@ func TestInstallRelease(t *testing.T) {
 	}
 }
 
+func TestInstallRelease_NoName(t *testing.T) {
+	rs := rsFixture(t)
+
+	// No name supplied here, should cause failure.
+	req := installRequest()
+	_, err := rs.InstallRelease(req)
+	if err == nil {
+		t.Fatal("expected failure when no name is specified")
+	}
+	if !strings.Contains(err.Error(), "name is required") {
+		t.Errorf("Expected message %q to include 'name is required'", err.Error())
+	}
+}
+
 func TestInstallRelease_WithNotes(t *testing.T) {
 	rs := rsFixture(t)
 
 	req := installRequest(
 		withChart(withNotes(notesText)),
+		withName("with-notes"),
 	)
 	res, err := rs.InstallRelease(req)
 	if err != nil {
@@ -141,7 +156,8 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	rs := rsFixture(t)
 
 	req := installRequest(
-		withChart(withNotes(notesText + " {{.Release.Name}}")),
+		withChart(withNotes(notesText+" {{.Release.Name}}")),
+		withName("with-notes"),
 	)
 	res, err := rs.InstallRelease(req)
 	if err != nil {
@@ -203,7 +219,7 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 	req := installRequest(withChart(
 		withNotes(notesText),
 		withDependency(withNotes(notesText+" child")),
-	))
+	), withName("with-chart-and-dependency-notes"))
 	res, err := rs.InstallRelease(req)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -233,13 +249,14 @@ func TestInstallRelease_DryRun(t *testing.T) {
 
 	req := installRequest(withDryRun(),
 		withChart(withSampleTemplates()),
+		withName("test-dry-run"),
 	)
 	res, err := rs.InstallRelease(req)
 	if err != nil {
 		t.Errorf("Failed install: %s", err)
 	}
-	if res.Name == "" {
-		t.Errorf("Expected release name.")
+	if res.Name != "test-dry-run" {
+		t.Errorf("unexpected release name: %q", res.Name)
 	}
 
 	if !strings.Contains(res.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
@@ -283,7 +300,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	rs := rsFixture(t)
 	rs.Releases.Create(releaseStub())
 
-	req := installRequest(withDisabledHooks())
+	req := installRequest(withDisabledHooks(), withName("no-hooks"))
 	res, err := rs.InstallRelease(req)
 	if err != nil {
 		t.Errorf("Failed install: %s", err)
@@ -299,7 +316,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	rs.Releases.Create(releaseStub())
 	rs.KubeClient = newHookFailingKubeClient()
 
-	req := installRequest()
+	req := installRequest(withName("failed-hooks"))
 	res, err := rs.InstallRelease(req)
 	if err == nil {
 		t.Error("Expected failed install")
@@ -345,6 +362,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 
 	req := installRequest(
 		withChart(withKube(">=0.0.0")),
+		withName("kube-version"),
 	)
 	_, err := rs.InstallRelease(req)
 	if err != nil {
@@ -357,6 +375,7 @@ func TestInstallRelease_WrongKubeVersion(t *testing.T) {
 
 	req := installRequest(
 		withChart(withKube(">=5.0.0")),
+		withName("wrong-kube-version"),
 	)
 
 	_, err := rs.InstallRelease(req)

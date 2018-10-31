@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/technosophos/moniker"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
@@ -160,47 +159,31 @@ func (s *ReleaseServer) reuseValues(req *hapi.UpdateReleaseRequest, current *rel
 
 func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 
-	// If a name is supplied, we check to see if that name is taken. If not, it
-	// is granted. If reuse is true and a deleted release with that name exists,
-	// we re-grant it. Otherwise, an error is returned.
-	if start != "" {
-
-		if len(start) > releaseNameMaxLen {
-			return "", errors.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
-		}
-
-		h, err := s.Releases.History(start)
-		if err != nil || len(h) < 1 {
-			return start, nil
-		}
-		relutil.Reverse(h, relutil.SortByRevision)
-		rel := h[0]
-
-		if st := rel.Info.Status; reuse && (st == release.StatusUninstalled || st == release.StatusFailed) {
-			// Allowe re-use of names if the previous release is marked deleted.
-			s.Log("name %s exists but is not in use, reusing name", start)
-			return start, nil
-		} else if reuse {
-			return "", errors.New("cannot re-use a name that is still in use")
-		}
-
-		return "", errors.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
+	if start == "" {
+		return "", errors.New("name is required")
 	}
 
-	maxTries := 5
-	for i := 0; i < maxTries; i++ {
-		namer := moniker.New()
-		name := namer.NameSep("-")
-		if len(name) > releaseNameMaxLen {
-			name = name[:releaseNameMaxLen]
-		}
-		if _, err := s.Releases.Get(name, 1); strings.Contains(err.Error(), "not found") {
-			return name, nil
-		}
-		s.Log("info: generated name %s is taken. Searching again.", name)
+	if len(start) > releaseNameMaxLen {
+		return "", errors.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
 	}
-	s.Log("warning: No available release names found after %d tries", maxTries)
-	return "ERROR", errors.New("no available release name found")
+
+	h, err := s.Releases.History(start)
+	if err != nil || len(h) < 1 {
+		return start, nil
+	}
+	relutil.Reverse(h, relutil.SortByRevision)
+	rel := h[0]
+
+	if st := rel.Info.Status; reuse && (st == release.StatusUninstalled || st == release.StatusFailed) {
+		// Allowe re-use of names if the previous release is marked deleted.
+		s.Log("name %s exists but is not in use, reusing name", start)
+		return start, nil
+	} else if reuse {
+		return "", errors.New("cannot re-use a name that is still in use")
+	}
+
+	return "", errors.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
+
 }
 
 // capabilities builds a Capabilities from discovery information.

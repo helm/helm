@@ -27,37 +27,37 @@ func TestInstall(t *testing.T) {
 		// Install, base case
 		{
 			name:   "basic install",
-			cmd:    "install testdata/testcharts/alpine --name aeneas",
+			cmd:    "install aeneas testdata/testcharts/alpine ",
 			golden: "output/install.txt",
 		},
 		// Install, no hooks
 		{
 			name:   "install without hooks",
-			cmd:    "install testdata/testcharts/alpine --name aeneas --no-hooks",
+			cmd:    "install aeneas testdata/testcharts/alpine --no-hooks",
 			golden: "output/install-no-hooks.txt",
 		},
 		// Install, values from cli
 		{
 			name:   "install with values",
-			cmd:    "install testdata/testcharts/alpine --name virgil --set foo=bar",
+			cmd:    "install virgil testdata/testcharts/alpine --set foo=bar",
 			golden: "output/install-with-values.txt",
 		},
 		// Install, values from cli via multiple --set
 		{
 			name:   "install with multiple values",
-			cmd:    "install testdata/testcharts/alpine --name virgil --set foo=bar --set bar=foo",
+			cmd:    "install virgil testdata/testcharts/alpine --set foo=bar --set bar=foo",
 			golden: "output/install-with-multiple-values.txt",
 		},
 		// Install, values from yaml
 		{
 			name:   "install with values file",
-			cmd:    "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml",
+			cmd:    "install virgil testdata/testcharts/alpine  -f testdata/testcharts/alpine/extra_values.yaml",
 			golden: "output/install-with-values-file.txt",
 		},
 		// Install, values from multiple yaml
 		{
 			name:   "install with values",
-			cmd:    "install testdata/testcharts/alpine --name virgil -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml",
+			cmd:    "install virgil testdata/testcharts/alpine -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml",
 			golden: "output/install-with-multiple-values-files.txt",
 		},
 		// Install, no charts
@@ -70,19 +70,19 @@ func TestInstall(t *testing.T) {
 		// Install, re-use name
 		{
 			name:   "install and replace release",
-			cmd:    "install testdata/testcharts/alpine --name aeneas --replace",
+			cmd:    "install aeneas testdata/testcharts/alpine --replace",
 			golden: "output/install-and-replace.txt",
 		},
 		// Install, with timeout
 		{
 			name:   "install with a timeout",
-			cmd:    "install testdata/testcharts/alpine --name foobar --timeout 120",
+			cmd:    "install foobar testdata/testcharts/alpine --timeout 120",
 			golden: "output/install-with-timeout.txt",
 		},
 		// Install, with wait
 		{
 			name:   "install with a wait",
-			cmd:    "install testdata/testcharts/alpine --name apollo --wait",
+			cmd:    "install apollo testdata/testcharts/alpine --wait",
 			golden: "output/install-with-wait.txt",
 		},
 		// Install, using the name-template
@@ -94,28 +94,28 @@ func TestInstall(t *testing.T) {
 		// Install, perform chart verification along the way.
 		{
 			name:      "install with verification, missing provenance",
-			cmd:       "install testdata/testcharts/compressedchart-0.1.0.tgz --verify --keyring testdata/helm-test-key.pub",
+			cmd:       "install bogus testdata/testcharts/compressedchart-0.1.0.tgz --verify --keyring testdata/helm-test-key.pub",
 			wantError: true,
 		},
 		{
 			name:      "install with verification, directory instead of file",
-			cmd:       "install testdata/testcharts/signtest --verify --keyring testdata/helm-test-key.pub",
+			cmd:       "install bogus testdata/testcharts/signtest --verify --keyring testdata/helm-test-key.pub",
 			wantError: true,
 		},
 		{
 			name: "install with verification, valid",
-			cmd:  "install testdata/testcharts/signtest-0.1.0.tgz --verify --keyring testdata/helm-test-key.pub",
+			cmd:  "install signtest testdata/testcharts/signtest-0.1.0.tgz --verify --keyring testdata/helm-test-key.pub",
 		},
 		// Install, chart with missing dependencies in /charts
 		{
 			name:      "install chart with missing dependencies",
-			cmd:       "install testdata/testcharts/chart-missing-deps",
+			cmd:       "install nodeps testdata/testcharts/chart-missing-deps",
 			wantError: true,
 		},
 		// Install, chart with bad dependencies in Chart.yaml in /charts
 		{
 			name:      "install chart with bad  dependencies in Chart.yaml",
-			cmd:       "install testdata/testcharts/chart-bad-requirements",
+			cmd:       "install badreq testdata/testcharts/chart-bad-requirements",
 			wantError: true,
 		},
 	}
@@ -165,7 +165,7 @@ func TestNameTemplate(t *testing.T) {
 
 	for _, tc := range testCases {
 
-		n, err := generateName(tc.tpl)
+		n, err := templateName(tc.tpl)
 		if err != nil {
 			if tc.expectedErrorStr == "" {
 				t.Errorf("Was not expecting error, but got: %v", err)
