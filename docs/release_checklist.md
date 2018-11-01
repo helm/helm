@@ -236,6 +236,7 @@ Download Helm X.Y. The common platform binaries are here:
 - [Linux arm64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz.sha256))
 - [Linux i386](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz.sha256))
 - [Linux ppc64le](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256))
+- [Linux s390x](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz.sha256))
 - [Windows amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip.sha256))
 
 Once you have the client installed, upgrade Tiller with `helm init --upgrade`.
