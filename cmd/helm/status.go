@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -76,8 +76,13 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
-	cmd.PersistentFlags().StringVarP(&status.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
+	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
+	f.Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
+	f.StringVarP(&status.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
+
+	// set defaults from environment
+	settings.InitTLS(f)
 
 	return cmd
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ type lintCmd struct {
 	valueFiles valueFiles
 	values     []string
 	sValues    []string
+	fValues    []string
 	namespace  string
 	strict     bool
 	paths      []string
@@ -73,6 +74,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().VarP(&l.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
 	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&l.fValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to put the release into")
 	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
 
@@ -172,6 +174,12 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 	return lint.All(chartPath, vals, namespace, strict), nil
 }
 
+// vals merges values from files specified via -f/--values and
+// directly via --set or --set-string or --set-file, marshaling them to YAML
+//
+// This func is implemented intentionally and separately from the `vals` func for the `install` and `upgrade` comammdsn.
+// Compared to the alternative func, this func lacks the parameters for tls opts - ca key, cert, and ca cert.
+// That's because this command, `lint`, is explicitly forbidden from making server connections.
 func (l *lintCmd) vals() ([]byte, error) {
 	base := map[string]interface{}{}
 
@@ -201,6 +209,17 @@ func (l *lintCmd) vals() ([]byte, error) {
 	for _, value := range l.sValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
 			return []byte{}, fmt.Errorf("failed parsing --set-string data: %s", err)
+		}
+	}
+
+	// User specified a value via --set-file
+	for _, value := range l.fValues {
+		reader := func(rs []rune) (interface{}, error) {
+			bytes, err := ioutil.ReadFile(string(rs))
+			return string(bytes), err
+		}
+		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
+			return []byte{}, fmt.Errorf("failed parsing --set-file data: %s", err)
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,21 +23,52 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
 func TestGetValuesCmd(t *testing.T) {
+	releaseWithValues := helm.ReleaseMock(&helm.MockReleaseOptions{
+		Name:   "thomas-guide",
+		Chart:  &chart.Chart{Values: &chart.Config{Raw: `foo2: "bar2"`}},
+		Config: &chart.Config{Raw: `foo: "bar"`},
+	})
+
 	tests := []releaseCase{
 		{
 			name:     "get values with a release",
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"}),
 			args:     []string{"thomas-guide"},
-			expected: "name: \"value\"",
+			expected: "name: value",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"})},
+		},
+		{
+			name:     "get values with json format",
+			resp:     releaseWithValues,
+			args:     []string{"thomas-guide"},
+			flags:    []string{"--output", "json"},
+			expected: "{\"foo\":\"bar\"}",
+			rels:     []*release.Release{releaseWithValues},
+		},
+		{
+			name:     "get all values with json format",
+			resp:     releaseWithValues,
+			args:     []string{"thomas-guide"},
+			flags:    []string{"--all", "--output", "json"},
+			expected: "{\"foo\":\"bar\",\"foo2\":\"bar2\"}",
+			rels:     []*release.Release{releaseWithValues},
 		},
 		{
 			name: "get values requires release name arg",
 			err:  true,
+		},
+		{
+			name:  "get values with invalid output format",
+			resp:  releaseWithValues,
+			args:  []string{"thomas-guide"},
+			flags: []string{"--output", "INVALID_FORMAT"},
+			rels:  []*release.Release{releaseWithValues},
+			err:   true,
 		},
 	}
 	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {

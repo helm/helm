@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,6 +72,29 @@ func SortByRevision(list []*rspb.Release) {
 		vi := s.list[i].Version
 		vj := s.list[j].Version
 		return vi < vj
+	}
+	sort.Sort(s)
+}
+
+// SortByChartName sorts the list of releases by a
+// release's chart name in lexicographical order.
+func SortByChartName(list []*rspb.Release) {
+	s := &sorter{list: list}
+	s.less = func(i, j int) bool {
+		chi := s.list[i].Chart
+		chj := s.list[j].Chart
+
+		ni := ""
+		if chi != nil && chi.Metadata != nil {
+			ni = chi.Metadata.Name
+		}
+
+		nj := ""
+		if chj != nil && chj.Metadata != nil {
+			nj = chj.Metadata.Name
+		}
+
+		return ni < nj
 	}
 	sort.Sort(s)
 }

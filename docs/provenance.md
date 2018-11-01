@@ -22,11 +22,18 @@ Prerequisites:
 
 - A valid PGP keypair in a binary (not ASCII-armored) format
 - The `helm` command line tool
-- GnuPG command line tools (optional)
+- GnuPG >=2.1 command line tools (optional)
 - Keybase command line tools (optional)
 
 **NOTE:** If your PGP private key has a passphrase, you will be prompted to enter
-that passphrase for any commands that support the `--sign` option.
+that passphrase for any commands that support the `--sign` option. You can set the
+HELM_KEY_PASSPHRASE environment variable to that passphrase in case you don't want 
+to be prompted to enter the passphrase.
+
+**NOTE:** The keyfile format for GnuPG changed in version 2.1. Prior to that release
+it was unnecessary to export keys out of GnuPG, and you could instead point Helm
+at your `*.gpg` files. With 2.1, the new `.kbx` format was introduced, and this
+format is not supported by Helm.
 
 Creating a new chart is the same as before:
 
@@ -42,10 +49,10 @@ the name under which the signing key is known and the keyring containing the cor
 $ helm package --sign --key 'helm signing key' --keyring path/to/keyring.secret mychart
 ```
 
-**TIP:** for GnuPG users, your secret keyring is in `~/.gnupg/secring.gpg`. You can
+**TIP:** for GnuPG users, your secret keyring is in `~/.gnupg/secring.kbx`. You can
 use `gpg --list-secret-keys` to list the keys you have.
 
-**Warning:**  the GnuPG v2 store your secret keyring using a new format 'kbx' on the default location  '~/.gnupg/pubring.kbx'. Please use the following command to convert your keyring to the legacy gpg format:
+**Warning:**  the GnuPG v2.1 store your secret keyring using a new format 'kbx' on the default location  '~/.gnupg/pubring.kbx'. Please use the following command to convert your keyring to the legacy gpg format:
 
 ```
 $ gpg --export-secret-keys >~/.gnupg/secring.gpg
@@ -95,24 +102,16 @@ Prerequisites:
 The first step is to import your keybase keys into your local GnuPG keyring:
 
 ```
-$ keybase pgp export -s | gpg --import
+$ keybase pgp export -s > secring.gpg
 ```
 
-This will convert your Keybase key into the OpenPGP format, and then import it
-locally into your `~/.gnupg/secring.gpg` file.
+This will convert your Keybase key into the OpenPGP format, and then place it
+locally into your `secring.gpg` file.
 
-You can double check by running `gpg --list-secret-keys`.
+> Tip: If you need to add a Keybase key to an existing keyring, you will need to
+> do `keybase pgp export -s | gpg --import && gpg --export-secret-keys --outfile secring.gpg`
 
-```
-$ gpg --list-secret-keys                                                                                                       1 ↵
-/Users/mattbutcher/.gnupg/secring.gpg
--------------------------------------
-sec   2048R/1FC18762 2016-07-25
-uid                  technosophos (keybase.io/technosophos) <technosophos@keybase.io>
-ssb   2048R/D125E546 2016-07-25
-```
-
-Note that your secret key will have an identifier string:
+Your secret key will have an identifier string:
 
 ```
 technosophos (keybase.io/technosophos) <technosophos@keybase.io>

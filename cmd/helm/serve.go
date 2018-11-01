@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ This command is intended to be used for educational and testing purposes only.
 It is best to rely on a dedicated web server or a cloud-hosted solution like
 Google Cloud Storage for production use.
 
-See https://github.com/kubernetes/helm/blob/master/docs/chart_repository.md#hosting-chart-repositories
+See https://github.com/helm/helm/blob/master/docs/chart_repository.md#hosting-chart-repositories
 for more information on hosting chart repositories in a production setting.
 `
 

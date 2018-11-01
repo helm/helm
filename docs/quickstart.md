@@ -12,7 +12,7 @@ The following prerequisites are required for a successful and properly secured u
 
 
 ### Install Kubernetes or have access to a cluster
-- You must have Kubernetes installed. For the latest release of Helm, we recommend the latest stable release of Kubernetes, which in most cases is the second-latest minor release. 
+- You must have Kubernetes installed. For the latest release of Helm, we recommend the latest stable release of Kubernetes, which in most cases is the second-latest minor release.
 - You should also have a local configured copy of `kubectl`.
 
 NOTE: Kubernetes versions prior to 1.6 have limited or no support for role-based access controls (RBAC).
@@ -43,7 +43,7 @@ to [configure a service account and rules](rbac.md) before proceeding.
 ## Install Helm
 
 Download a binary release of the Helm client. You can use tools like
-`homebrew`, or look at [the official releases page](https://github.com/kubernetes/helm/releases).
+`homebrew`, or look at [the official releases page](https://github.com/helm/helm/releases).
 
 For more details, or for other options, see [the installation
 guide](install.md).
@@ -65,7 +65,7 @@ This will install Tiller into the Kubernetes cluster you saw with
 
 **TIP:** When you want to upgrade Tiller, just run `helm init --upgrade`.
 
-By default, when Tiller is installed,it does not have authentication enabled.
+By default, when Tiller is installed, it does not have authentication enabled.
 To learn more about configuring strong TLS authentication for Tiller, consult
 [the Tiller TLS guide](tiller_ssl.md).
 
@@ -78,11 +78,68 @@ of the official `stable` charts.
 ```console
 $ helm repo update              # Make sure we get the latest list of charts
 $ helm install stable/mysql
-Released smiling-penguin
+NAME:   wintering-rodent
+LAST DEPLOYED: Thu Oct 18 14:21:18 2018
+NAMESPACE: default
+STATUS: DEPLOYED
+
+RESOURCES:
+==> v1/Secret
+NAME                    AGE
+wintering-rodent-mysql  0s
+
+==> v1/ConfigMap
+wintering-rodent-mysql-test  0s
+
+==> v1/PersistentVolumeClaim
+wintering-rodent-mysql  0s
+
+==> v1/Service
+wintering-rodent-mysql  0s
+
+==> v1beta1/Deployment
+wintering-rodent-mysql  0s
+
+==> v1/Pod(related)
+
+NAME                                    READY  STATUS   RESTARTS  AGE
+wintering-rodent-mysql-6986fd6fb-988x7  0/1    Pending  0         0s
+
+
+NOTES:
+MySQL can be accessed via port 3306 on the following DNS name from within your cluster:
+wintering-rodent-mysql.default.svc.cluster.local
+
+To get your root password run:
+
+    MYSQL_ROOT_PASSWORD=$(kubectl get secret --namespace default wintering-rodent-mysql -o jsonpath="{.data.mysql-root-password}" | base64 --decode; echo)
+
+To connect to your database:
+
+1. Run an Ubuntu pod that you can use as a client:
+
+    kubectl run -i --tty ubuntu --image=ubuntu:16.04 --restart=Never -- bash -il
+
+2. Install the mysql client:
+
+    $ apt-get update && apt-get install mysql-client -y
+
+3. Connect using the mysql cli, then provide your password:
+    $ mysql -h wintering-rodent-mysql -p
+
+To connect to your database directly from outside the K8s cluster:
+    MYSQL_HOST=127.0.0.1
+    MYSQL_PORT=3306
+
+    # Execute the following command to route the connection:
+    kubectl port-forward svc/wintering-rodent-mysql 3306
+
+    mysql -h ${MYSQL_HOST} -P${MYSQL_PORT} -u root -p${MYSQL_ROOT_PASSWORD}
+
 ```
 
 In the example above, the `stable/mysql` chart was released, and the name of
-our new release is `smiling-penguin`. You get a simple idea of the
+our new release is `wintering-rodent`. You get a simple idea of the
 features of this MySQL chart by running `helm inspect stable/mysql`.
 
 Whenever you install a chart, a new release is created. So one chart can
@@ -99,8 +156,8 @@ It's easy to see what has been released using Helm:
 
 ```console
 $ helm ls
-NAME             VERSION   UPDATED                   STATUS    CHART
-smiling-penguin  1         Wed Sep 28 12:59:46 2016  DEPLOYED  mysql-0.1.0
+NAME            	REVISION	UPDATED                 	STATUS  	CHART       	APP VERSION	NAMESPACE
+wintering-rodent	1       	Thu Oct 18 15:06:58 2018	DEPLOYED	mysql-0.10.1	5.7.14     	default
 ```
 
 The `helm list` function will show you a list of all deployed releases.
@@ -110,17 +167,48 @@ The `helm list` function will show you a list of all deployed releases.
 To uninstall a release, use the `helm delete` command:
 
 ```console
-$ helm delete smiling-penguin
-Removed smiling-penguin
+$ helm delete wintering-rodent
+release "wintering-rodent" deleted
 ```
 
-This will uninstall `smiling-penguin` from Kubernetes, but you will
+This will uninstall `wintering-rodent` from Kubernetes, but you will
 still be able to request information about that release:
 
 ```console
-$ helm status smiling-penguin
-Status: DELETED
-...
+$ helm status wintering-rodent
+LAST DEPLOYED: Thu Oct 18 14:21:18 2018
+NAMESPACE: default
+STATUS: DELETED
+
+NOTES:
+MySQL can be accessed via port 3306 on the following DNS name from within your cluster:
+wintering-rodent-mysql.default.svc.cluster.local
+
+To get your root password run:
+
+    MYSQL_ROOT_PASSWORD=$(kubectl get secret --namespace default wintering-rodent-mysql -o jsonpath="{.data.mysql-root-password}" | base64 --decode; echo)
+
+To connect to your database:
+
+1. Run an Ubuntu pod that you can use as a client:
+
+    kubectl run -i --tty ubuntu --image=ubuntu:16.04 --restart=Never -- bash -il
+
+2. Install the mysql client:
+
+    $ apt-get update && apt-get install mysql-client -y
+
+3. Connect using the mysql cli, then provide your password:
+    $ mysql -h wintering-rodent-mysql -p
+
+To connect to your database directly from outside the K8s cluster:
+    MYSQL_HOST=127.0.0.1
+    MYSQL_PORT=3306
+
+    # Execute the following command to route the connection:
+    kubectl port-forward svc/wintering-rodent-mysql 3306
+
+    mysql -h ${MYSQL_HOST} -P${MYSQL_PORT} -u root -p${MYSQL_ROOT_PASSWORD}
 ```
 
 Because Helm tracks your releases even after you've deleted them, you

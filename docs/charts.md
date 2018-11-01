@@ -265,7 +265,7 @@ dependencies:
       - name: subchart1
         repository: http://localhost:10191
         version: 0.1.0
-        condition: subchart1.enabled, global.subchart1.enabled
+        condition: subchart1.enabled,global.subchart1.enabled
         tags:
           - front-end
           - subchart1
@@ -303,7 +303,6 @@ The `--set` parameter can be used as usual to alter tag and condition values.
 
 ````
 helm install --set tags.front-end=true --set subchart2.enabled=false
-
 ````
 
 ##### Tags and Condition Resolution
@@ -489,7 +488,7 @@ the Kubernetes objects from the charts and all its dependencies are
 Hence a single release is created with all the objects for the chart and its dependencies.
 
 The install order of Kubernetes types is given by the enumeration InstallOrder in kind_sorter.go 
-(see [the Helm source file](https://github.com/kubernetes/helm/blob/master/pkg/tiller/kind_sorter.go#L26)).
+(see [the Helm source file](https://github.com/helm/helm/blob/master/pkg/tiller/kind_sorter.go#L26)).
 
 ## Templates and Values
 
@@ -527,15 +526,15 @@ metadata:
   name: deis-database
   namespace: deis
   labels:
-    heritage: deis
+    app.kubernetes.io/managed-by: deis
 spec:
   replicas: 1
   selector:
-    app: deis-database
+    app.kubernetes.io/name: deis-database
   template:
     metadata:
       labels:
-        app: deis-database
+        app.kubernetes.io/name: deis-database
     spec:
       serviceAccount: deis-database
       containers:
@@ -664,15 +663,15 @@ metadata:
   name: deis-database
   namespace: deis
   labels:
-    heritage: deis
+    app.kubernetes.io/managed-by: deis
 spec:
   replicas: 1
   selector:
-    app: deis-database
+    app.kubernetes.io/name: deis-database
   template:
     metadata:
       labels:
-        app: deis-database
+        app.kubernetes.io/name: deis-database
     spec:
       serviceAccount: deis-database
       containers:
@@ -849,8 +848,10 @@ considerations in mind:
 - The `Chart.yaml` will be overwritten by the generator.
 - Users will expect to modify such a chart's contents, so documentation
   should indicate how users can do so.
-- All occurrences of `<CHARTNAME>` will be replaced with the specified chart
-  name so that starter charts can be used as templates.
+- All occurrences of `<CHARTNAME>` in files within the `templates` directory
+  will be replaced with the specified chart name so that starter charts can be
+  used as templates. Additionally, occurrences of `<CHARTNAME>` in
+  `values.yaml` will also be replaced.
 
 Currently the only way to add a chart to `$HELM_HOME/starters` is to manually
 copy it there. In your chart's documentation, you may want to explain that

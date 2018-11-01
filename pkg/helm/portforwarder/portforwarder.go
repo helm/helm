@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,6 +52,21 @@ func GetTillerPodName(client corev1.PodsGetter, namespace string) (string, error
 		return "", err
 	}
 	return pod.ObjectMeta.GetName(), nil
+}
+
+// GetTillerPodImage fetches the image of tiller pod running in the given namespace.
+func GetTillerPodImage(client corev1.PodsGetter, namespace string) (string, error) {
+	selector := tillerPodLabels.AsSelector()
+	pod, err := getFirstRunningPod(client, namespace, selector)
+	if err != nil {
+		return "", err
+	}
+	for _, c := range pod.Spec.Containers {
+		if c.Name == "tiller" {
+			return c.Image, nil
+		}
+	}
+	return "", fmt.Errorf("could not find a tiller pod")
 }
 
 func getFirstRunningPod(client corev1.PodsGetter, namespace string, selector labels.Selector) (*v1.Pod, error) {

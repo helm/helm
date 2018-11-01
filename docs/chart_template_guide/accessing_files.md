@@ -130,7 +130,7 @@ Or
 
 ```yaml
 {{ range $path, $bytes := .Files.Glob "foo/*" }}
-{{ $path.base }}: '{{ $root.Files.Get $path | b64enc }}'
+{{ base $path }}: '{{ $root.Files.Get $path | b64enc }}'
 {{ end }}
 ```
 

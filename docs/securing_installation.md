@@ -34,7 +34,7 @@ There are four main areas to consider when securing a tiller installation:
 
 ### RBAC
 
-Recent versions of Kubernetes employ a [role-based access control (or RBAC)](https://en.wikipedia.org/wiki/Role-based_access_control) system (as do modern operating systems) to help mitigate the damage that can done if credentials are misused or bugs exist. Even where an identity is hijacked, the identity has only so many permissions to a controlled space. This effectively adds a layer of security to limit the scope of any attack with that identity. 
+Recent versions of Kubernetes employ a [role-based access control (or RBAC)](https://en.wikipedia.org/wiki/Role-based_access_control) system (as do modern operating systems) to help mitigate the damage that can be done if credentials are misused or bugs exist. Even where an identity is hijacked, the identity has only so many permissions to a controlled space. This effectively adds a layer of security to limit the scope of any attack with that identity.
 
 Helm and Tiller are designed to install, remove, and modify logical applications that can contain many services interacting together. As a result, often its usefulness involves cluster-wide operations, which in a multitenant cluster means that great care must be taken with access to a cluster-wide Tiller installation to prevent improper activity. 
 
@@ -57,7 +57,7 @@ Shared and production clusters -- for the most part -- should use Helm 2.7.2 at 
 
 For more information about the proper steps to configure Tiller and use Helm properly with TLS configured, see [Using SSL between Helm and Tiller](tiller_ssl.md).
 
-When Helm clients are connecting from outside of the cluster, the security between the Helm client and the API server is managed by Kubernetes itself. You may want to ensure that this link is secure. Note that if you are using the TLS configuration recommended above, not even the Kubernetes API server has access to the unencrypted messages between the client and Tiller.
+When Helm clients are connecting from outside of the cluster, the security between the Helm client and the API server is managed by Kubernetes itself. You may want to ensure that this link is secure. Note that if you are using the TLS configuration recommended above, not even the Kubernetes API server has access to the encrypted messages between the client and Tiller.
 
 ### Tiller's Release Information
 
@@ -65,7 +65,7 @@ For historical reasons, Tiller stores its release information in ConfigMaps. We 
 
 Secrets are the Kubernetes accepted mechanism for saving configuration data that is considered sensitive. While secrets don't themselves offer many protections, Kubernetes cluster management software often treats them differently than other objects. Thus, we suggest using secrets to store releases.
 
-Enabling this feature currently requires setting the `--storage=secret` flag in the tiller-deploy deployment. This entails directly modifying the deployment or using `helm init --override=...`, as no helm init flag is currently available to do this for you. For more information, see [Using --override](install.md#using---override).
+Enabling this feature currently requires setting the `--storage=secret` flag in the tiller-deploy deployment. This entails directly modifying the deployment or using `helm init --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}'`, as no helm init flag is currently available to do this for you.
 
 ### Thinking about Charts
 
@@ -93,6 +93,7 @@ If these steps are followed, an example `helm init` command might look something
  
 ```bash
 $ helm init \
+--override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' \
 --tiller-tls \
 --tiller-tls-verify \
 --tiller-tls-cert=cert.pem \
@@ -101,7 +102,7 @@ $ helm init \
 --service-account=accountname
 ```
 
-This command will start Tiller with both strong authentication over gRPC, and a service account to which RBAC policies have been applied. 
+This command will start Tiller with strong authentication over gRPC, release information stored in a Kubernetes Secret, and a service account to which RBAC policies have been applied. 
 
 
 

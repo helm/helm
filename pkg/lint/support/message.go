@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package support
 
 import "fmt"
 
-// Severity indicatest the severity of a Message.
+// Severity indicates the severity of a Message.
 const (
 	// UnknownSev indicates that the severity of the error is unknown, and should not stop processing.
 	UnknownSev = iota

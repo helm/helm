@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -68,8 +68,8 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:        "check_execute_non_existent",
-			desc:        "verify --execute fails on a template that doesnt exist",
-			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesntexist.yaml"},
+			desc:        "verify --execute fails on a template that doesn't exist",
+			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesn'texist.yaml"},
 			expectError: "could not find template",
 		},
 		{

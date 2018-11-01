@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,11 +28,12 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/technosophos/moniker"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/hooks"
@@ -112,23 +113,15 @@ data:
   name: value
 `
 
-func rsFixture() *ReleaseServer {
-	clientset := fake.NewSimpleClientset()
-	return &ReleaseServer{
-		ReleaseModule: &LocalReleaseModule{
-			clientset: clientset,
-		},
-		env:       MockEnvironment(),
-		clientset: clientset,
-		Log:       func(_ string, _ ...interface{}) {},
-	}
-}
-
 type chartOptions struct {
 	*chart.Chart
 }
 
 type chartOption func(*chartOptions)
+
+func rsFixture() *ReleaseServer {
+	return NewReleaseServer(MockEnvironment(), fake.NewSimpleClientset(), false)
+}
 
 func buildChart(opts ...chartOption) *chart.Chart {
 	c := &chartOptions{
@@ -388,6 +381,62 @@ func TestUniqName(t *testing.T) {
 	}
 }
 
+type fakeNamer struct {
+	name string
+}
+
+func NewFakeNamer(nam string) moniker.Namer {
+	return &fakeNamer{
+		name: nam,
+	}
+}
+
+func (f *fakeNamer) Name() string {
+	return f.NameSep(" ")
+}
+
+func (f *fakeNamer) NameSep(sep string) string {
+	return f.name
+}
+
+func TestCreateUniqueName(t *testing.T) {
+	rs := rsFixture()
+
+	rel1 := releaseStub()
+	rel1.Name = "happy-panda"
+
+	rs.env.Releases.Create(rel1)
+
+	tests := []struct {
+		name   string
+		expect string
+		err    bool
+	}{
+		{"happy-panda", "ERROR", true},
+		{"wobbly-octopus", "[a-z]+-[a-z]+", false},
+	}
+
+	for _, tt := range tests {
+		m := NewFakeNamer(tt.name)
+		u, err := rs.createUniqName(m)
+		if err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatal(err)
+		}
+		if tt.err {
+			t.Errorf("Expected an error for %q", tt.name)
+		}
+		if match, err := regexp.MatchString(tt.expect, u); err != nil {
+			t.Fatal(err)
+		} else if !match {
+			t.Errorf("Expected %q to match %q", u, tt.expect)
+		}
+	}
+
+}
+
 func releaseWithKeepStub(rlsName string) *release.Release {
 	ch := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -556,8 +605,8 @@ func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, 
 func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
-	return core.PodUnknown, nil
+func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
+	return v1.PodUnknown, nil
 }
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {

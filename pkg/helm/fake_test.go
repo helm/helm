@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -24,6 +25,57 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
+
+const cmInputTemplate = `kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: example
+data:
+  Release:
+{{.Release | toYaml | indent 4}}
+`
+const cmOutputTemplate = `
+---
+# Source: installChart/templates/cm.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: example
+data:
+  Release:
+    IsInstall: %t
+    IsUpgrade: %t
+    Name: new-release
+    Namespace: default
+    Revision: %d
+    Service: Tiller
+    Time:
+      seconds: 242085845
+    
+`
+
+var installChart *chart.Chart
+
+func init() {
+	installChart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "installChart"},
+		Templates: []*chart.Template{
+			{Name: "templates/cm.yaml", Data: []byte(cmInputTemplate)},
+		},
+	}
+}
+
+func releaseWithChart(opts *MockReleaseOptions) *release.Release {
+	if opts.Chart == nil {
+		opts.Chart = installChart
+	}
+	return ReleaseMock(opts)
+}
+
+func withManifest(r *release.Release, isUpgrade bool) *release.Release {
+	r.Manifest = fmt.Sprintf(cmOutputTemplate, !isUpgrade, isUpgrade, r.Version)
+	return r
+}
 
 func TestFakeClient_ReleaseStatus(t *testing.T) {
 	releasePresent := ReleaseMock(&MockReleaseOptions{Name: "release-present"})
@@ -117,9 +169,9 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 }
 
 func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
-	installChart := &chart.Chart{}
 	type fields struct {
-		Rels []*release.Release
+		Rels            []*release.Release
+		RenderManifests bool
 	}
 	type args struct {
 		ns   string
@@ -143,10 +195,27 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 				opts: []InstallOption{ReleaseName("new-release")},
 			},
 			want: &rls.InstallReleaseResponse{
-				Release: ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
+				Release: releaseWithChart(&MockReleaseOptions{Name: "new-release"}),
 			},
 			relsAfter: []*release.Release{
-				ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
+				releaseWithChart(&MockReleaseOptions{Name: "new-release"}),
+			},
+			wantErr: false,
+		},
+		{
+			name: "Add release with description.",
+			fields: fields{
+				Rels: []*release.Release{},
+			},
+			args: args{
+				ns:   "default",
+				opts: []InstallOption{ReleaseName("new-release"), InstallDescription("foo-bar")},
+			},
+			want: &rls.InstallReleaseResponse{
+				Release: releaseWithChart(&MockReleaseOptions{Name: "new-release", Description: "foo-bar"}),
+			},
+			relsAfter: []*release.Release{
+				releaseWithChart(&MockReleaseOptions{Name: "new-release", Description: "foo-bar"}),
 			},
 			wantErr: false,
 		},
@@ -154,7 +223,7 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 			name: "Try to add a release where the name already exists.",
 			fields: fields{
 				Rels: []*release.Release{
-					ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
+					releaseWithChart(&MockReleaseOptions{Name: "new-release"}),
 				},
 			},
 			args: args{
@@ -162,16 +231,35 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 				opts: []InstallOption{ReleaseName("new-release")},
 			},
 			relsAfter: []*release.Release{
-				ReleaseMock(&MockReleaseOptions{Name: "new-release"}),
+				releaseWithChart(&MockReleaseOptions{Name: "new-release"}),
 			},
 			want:    nil,
 			wantErr: true,
+		},
+		{
+			name: "Render the given chart.",
+			fields: fields{
+				Rels:            []*release.Release{},
+				RenderManifests: true,
+			},
+			args: args{
+				ns:   "default",
+				opts: []InstallOption{ReleaseName("new-release")},
+			},
+			want: &rls.InstallReleaseResponse{
+				Release: withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release"}), false),
+			},
+			relsAfter: []*release.Release{
+				withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release"}), false),
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &FakeClient{
-				Rels: tt.fields.Rels,
+				Rels:            tt.fields.Rels,
+				RenderManifests: tt.fields.RenderManifests,
 			}
 			got, err := c.InstallReleaseFromChart(installChart, tt.args.ns, tt.args.opts...)
 			if (err != nil) != tt.wantErr {
@@ -276,7 +364,84 @@ func TestFakeClient_DeleteRelease(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(c.Rels, tt.relsAfter) {
-				t.Errorf("FakeClient.InstallReleaseFromChart() rels = %v, expected %v", got, tt.relsAfter)
+				t.Errorf("FakeClient.InstallReleaseFromChart() rels = %v, expected %v", c.Rels, tt.relsAfter)
+			}
+		})
+	}
+}
+
+func TestFakeClient_UpdateReleaseFromChart(t *testing.T) {
+	type fields struct {
+		Rels            []*release.Release
+		RenderManifests bool
+	}
+	type args struct {
+		release string
+		opts    []UpdateOption
+	}
+	tests := []struct {
+		name      string
+		fields    fields
+		args      args
+		want      *rls.UpdateReleaseResponse
+		relsAfter []*release.Release
+		wantErr   bool
+	}{
+		{
+			name: "Update release.",
+			fields: fields{
+				Rels: []*release.Release{
+					releaseWithChart(&MockReleaseOptions{Name: "new-release"}),
+				},
+			},
+			args: args{
+				release: "new-release",
+				opts:    []UpdateOption{},
+			},
+			want: &rls.UpdateReleaseResponse{
+				Release: releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2}),
+			},
+			relsAfter: []*release.Release{
+				releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2}),
+			},
+		},
+		{
+			name: "Update and render given chart.",
+			fields: fields{
+				Rels: []*release.Release{
+					releaseWithChart(&MockReleaseOptions{Name: "new-release"}),
+				},
+				RenderManifests: true,
+			},
+			args: args{
+				release: "new-release",
+				opts:    []UpdateOption{},
+			},
+			want: &rls.UpdateReleaseResponse{
+				Release: withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2}), true),
+			},
+			relsAfter: []*release.Release{
+				withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2}), true),
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &FakeClient{
+				Rels:            tt.fields.Rels,
+				RenderManifests: tt.fields.RenderManifests,
+			}
+			got, err := c.UpdateReleaseFromChart(tt.args.release, installChart, tt.args.opts...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FakeClient.UpdateReleaseFromChart() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FakeClient.UpdateReleaseFromChart() =\n%v\nwant\n%v", got, tt.want)
+			}
+			if !reflect.DeepEqual(c.Rels, tt.relsAfter) {
+				t.Errorf("FakeClient.UpdateReleaseFromChart() rels =\n%v\nwant\n%v", c.Rels, tt.relsAfter)
 			}
 		})
 	}

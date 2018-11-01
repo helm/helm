@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -65,8 +65,8 @@ func TestEqual(t *testing.T) {
 
 func TestExtractHostname(t *testing.T) {
 	tests := map[string]string{
-		"http://example.com":                                      "example.com",
-		"https://example.com/foo":                                 "example.com",
+		"http://example.com":      "example.com",
+		"https://example.com/foo": "example.com",
 		"https://example.com:31337/not/with/a/bang/but/a/whimper": "example.com",
 	}
 	for start, expect := range tests {

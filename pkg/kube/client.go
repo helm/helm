@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package kube // import "k8s.io/helm/pkg/kube"
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	goerrors "errors"
 	"fmt"
@@ -36,26 +37,24 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/clientcmd"
-	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/client-go/kubernetes/scheme"
+	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
-	"k8s.io/kubernetes/pkg/printers"
 )
 
-const (
-	// MissingGetHeader is added to Get's output when a resource is not found.
-	MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
-)
+// MissingGetHeader is added to Get's output when a resource is not found.
+const MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = goerrors.New("no objects visited")
@@ -63,18 +62,17 @@ var ErrNoObjectsVisited = goerrors.New("no objects visited")
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
 	cmdutil.Factory
-	// SchemaCacheDir is the path for loading cached schema.
-	SchemaCacheDir string
-
 	Log func(string, ...interface{})
 }
 
 // New creates a new Client.
-func New(config clientcmd.ClientConfig) *Client {
+func New(getter genericclioptions.RESTClientGetter) *Client {
+	if getter == nil {
+		getter = genericclioptions.NewConfigFlags()
+	}
 	return &Client{
-		Factory:        cmdutil.NewFactory(config),
-		SchemaCacheDir: clientcmd.RecommendedSchemaFile,
-		Log:            nopLogger,
+		Factory: cmdutil.NewFactory(getter),
+		Log:     nopLogger,
 	}
 }
 
@@ -87,7 +85,7 @@ type ResourceActorFunc func(*resource.Info) error
 //
 // Namespace will set the namespace.
 func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	client, err := c.ClientSet()
+	client, err := c.KubernetesClientSet()
 	if err != nil {
 		return err
 	}
@@ -111,8 +109,8 @@ func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shoul
 
 func (c *Client) newBuilder(namespace string, reader io.Reader) *resource.Result {
 	return c.NewBuilder().
-		Internal().
 		ContinueOnError().
+		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		Schema(c.validator()).
 		NamespaceParam(namespace).
 		DefaultNamespace().
@@ -164,7 +162,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
-	var objPods = make(map[string][]core.Pod)
+	var objPods = make(map[string][]v1.Pod)
 
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
@@ -179,7 +177,15 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], info.AsInternal())
+		internalObj, err := asInternal(info)
+		if err != nil {
+			c.Log("Warning: conversion to internal type failed: %v", err)
+			// Add the unstructured object in this situation. It will still get listed, just
+			// with less information.
+			objs[vk] = append(objs[vk], info.Object)
+		} else {
+			objs[vk] = append(objs[vk], internalObj)
+		}
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
@@ -205,10 +211,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths.
 	buf := new(bytes.Buffer)
-	p, err := cmdutil.PrinterForOptions(&printers.PrintOptions{})
-	if err != nil {
-		return "", err
-	}
+	p, _ := get.NewHumanPrintFlags().ToPrinter("")
 	for t, ot := range objs {
 		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
 			return "", err
@@ -297,7 +300,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
-		if err := deleteResource(c, info); err != nil {
+		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
 	}
@@ -317,7 +320,7 @@ func (c *Client) Delete(namespace string, reader io.Reader) error {
 	}
 	return perform(infos, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(c, info)
+		err := deleteResource(info)
 		return c.skipIfNotFound(err)
 	})
 }
@@ -372,24 +375,18 @@ func perform(infos Result, fn ResourceActorFunc) error {
 }
 
 func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, nil)
 	if err != nil {
 		return err
 	}
 	return info.Refresh(obj, true)
 }
 
-func deleteResource(c *Client, info *resource.Info) error {
-	reaper, err := c.Reaper(info.Mapping)
-	if err != nil {
-		// If there is no reaper for this resources, delete it.
-		if kubectl.IsNoSuchReaperError(err) {
-			return resource.NewHelper(info.Client, info.Mapping).Delete(info.Namespace, info.Name)
-		}
-		return err
-	}
-	c.Log("Using reaper for deleting %q", info.Name)
-	return reaper.Stop(info.Namespace, info.Name, 0, nil)
+func deleteResource(info *resource.Info) error {
+	policy := metav1.DeletePropagationBackground
+	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
+	_, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptions(info.Namespace, info.Name, opts)
+	return err
 }
 
 func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
@@ -411,7 +408,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Get a versioned object
-	versionedObject, err := target.Versioned()
+	versionedObject := asVersioned(target)
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
@@ -448,14 +445,14 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		// send patch to server
 		helper := resource.NewHelper(target.Client, target.Mapping)
 
-		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch)
+		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			kind := target.Mapping.GroupVersionKind.Kind
 			log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
 
 			if force {
 				// Attempt to delete...
-				if err := deleteResource(c, target); err != nil {
+				if err := deleteResource(target); err != nil {
 					return err
 				}
 				log.Printf("Deleted %s: %q", kind, target.Name)
@@ -483,19 +480,18 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	versioned := target.AsVersioned()
+	versioned := asVersioned(target)
 	selector, ok := getSelectorFromObject(versioned)
 	if !ok {
 		return nil
 	}
 
-	client, err := c.ClientSet()
+	client, err := c.KubernetesClientSet()
 	if err != nil {
 		return err
 	}
 
-	pods, err := client.Core().Pods(target.Namespace).List(metav1.ListOptions{
-		FieldSelector: fields.Everything().String(),
+	pods, err := client.CoreV1().Pods(target.Namespace).List(metav1.ListOptions{
 		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
 	if err != nil {
@@ -507,7 +503,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		c.Log("Restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
-		if err := client.Core().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
+		if err := client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
 			return err
 		}
 	}
@@ -571,7 +567,9 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 	// In the future, we might want to add some special logic for types
 	// like Ingress, Volume, etc.
 
-	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
+	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+	defer cancel()
+	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
 		switch e.Type {
 		case watch.Added, watch.Modified:
 			// For things like a secret or a config map, this is the best indicator
@@ -601,15 +599,15 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 //
 // This operates on an event returned from a watcher.
 func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
-	o, ok := e.Object.(*batchinternal.Job)
+	o, ok := e.Object.(*batch.Job)
 	if !ok {
 		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
 	}
 
 	for _, c := range o.Status.Conditions {
-		if c.Type == batchinternal.JobComplete && c.Status == core.ConditionTrue {
+		if c.Type == batch.JobComplete && c.Status == v1.ConditionTrue {
 			return true, nil
-		} else if c.Type == batchinternal.JobFailed && c.Status == core.ConditionTrue {
+		} else if c.Type == batch.JobFailed && c.Status == v1.ConditionTrue {
 			return true, fmt.Errorf("Job failed: %s", c.Reason)
 		}
 	}
@@ -633,26 +631,26 @@ func scrubValidationError(err error) error {
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	infos, err := c.Build(namespace, reader)
 	if err != nil {
-		return core.PodUnknown, err
+		return v1.PodUnknown, err
 	}
 	info := infos[0]
 
 	kind := info.Mapping.GroupVersionKind.Kind
 	if kind != "Pod" {
-		return core.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
+		return v1.PodUnknown, fmt.Errorf("%s is not a Pod", info.Name)
 	}
 
 	if err := c.watchPodUntilComplete(timeout, info); err != nil {
-		return core.PodUnknown, err
+		return v1.PodUnknown, err
 	}
 
 	if err := info.Get(); err != nil {
-		return core.PodUnknown, err
+		return v1.PodUnknown, err
 	}
-	status := info.Object.(*core.Pod).Status.Phase
+	status := info.Object.(*v1.Pod).Status.Phase
 
 	return status, nil
 }
@@ -664,7 +662,9 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	}
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
-	_, err = watch.Until(timeout, w, func(e watch.Event) (bool, error) {
+	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+	defer cancel()
+	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
 		return isPodComplete(e)
 	})
 
@@ -672,15 +672,15 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 }
 
 func isPodComplete(event watch.Event) (bool, error) {
-	o, ok := event.Object.(*core.Pod)
+	o, ok := event.Object.(*v1.Pod)
 	if !ok {
-		return true, fmt.Errorf("expected a *core.Pod, got %T", event.Object)
+		return true, fmt.Errorf("expected a *v1.Pod, got %T", event.Object)
 	}
 	if event.Type == watch.Deleted {
 		return false, fmt.Errorf("pod not found")
 	}
 	switch o.Status.Phase {
-	case core.PodFailed, core.PodSucceeded:
+	case v1.PodFailed, v1.PodSucceeded:
 		return true, nil
 	}
 	return false, nil
@@ -688,30 +688,22 @@ func isPodComplete(event watch.Event) (bool, error) {
 
 //get a kubernetes resources' relation pods
 // kubernetes resource used select labels to relate pods
-func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]core.Pod) (map[string][]core.Pod, error) {
+func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]v1.Pod) (map[string][]v1.Pod, error) {
 	if info == nil {
 		return objPods, nil
 	}
 
 	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
 
-	versioned, err := info.Versioned()
-	switch {
-	case runtime.IsNotRegisteredError(err):
-		return objPods, nil
-	case err != nil:
-		return objPods, err
-	}
-
+	versioned := asVersioned(info)
 	selector, ok := getSelectorFromObject(versioned)
 	if !ok {
 		return objPods, nil
 	}
 
-	client, _ := c.ClientSet()
+	client, _ := c.KubernetesClientSet()
 
-	pods, err := client.Core().Pods(info.Namespace).List(metav1.ListOptions{
-		FieldSelector: fields.Everything().String(),
+	pods, err := client.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{
 		LabelSelector: labels.Set(selector).AsSelector().String(),
 	})
 	if err != nil {
@@ -719,15 +711,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 	}
 
 	for _, pod := range pods.Items {
-		if pod.APIVersion == "" {
-			pod.APIVersion = "v1"
-		}
-
-		if pod.Kind == "" {
-			pod.Kind = "Pod"
-		}
-		vk := pod.GroupVersionKind().Version + "/" + pod.GroupVersionKind().Kind
-
+		vk := "v1/Pod"
 		if !isFoundPod(objPods[vk], pod) {
 			objPods[vk] = append(objPods[vk], pod)
 		}
@@ -735,11 +719,29 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 	return objPods, nil
 }
 
-func isFoundPod(podItem []core.Pod, pod core.Pod) bool {
+func isFoundPod(podItem []v1.Pod, pod v1.Pod) bool {
 	for _, value := range podItem {
 		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
 			return true
 		}
 	}
 	return false
+}
+
+func asVersioned(info *resource.Info) runtime.Object {
+	converter := runtime.ObjectConvertor(scheme.Scheme)
+	groupVersioner := runtime.GroupVersioner(schema.GroupVersions(scheme.Scheme.PrioritizedVersionsAllGroups()))
+	if info.Mapping != nil {
+		groupVersioner = info.Mapping.GroupVersionKind.GroupVersion()
+	}
+
+	if obj, err := converter.ConvertToVersion(info.Object, groupVersioner); err == nil {
+		return obj
+	}
+	return info.Object
+}
+
+func asInternal(info *resource.Info) (runtime.Object, error) {
+	groupVersioner := info.Mapping.GroupVersionKind.GroupKind().WithVersion(runtime.APIVersionInternal).GroupVersion()
+	return legacyscheme.Scheme.ConvertToVersion(info.Object, groupVersioner)
 }

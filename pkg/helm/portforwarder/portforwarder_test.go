@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ func TestGetFirstPod(t *testing.T) {
 
 	for _, tt := range tests {
 		client := fake.NewSimpleClientset(&v1.PodList{Items: tt.pods})
-		name, err := GetTillerPodName(client.Core(), v1.NamespaceDefault)
+		name, err := GetTillerPodName(client.CoreV1(), v1.NamespaceDefault)
 		if (err != nil) != tt.err {
 			t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
 		}

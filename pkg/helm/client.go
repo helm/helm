@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -360,7 +360,7 @@ func (h *Client) list(ctx context.Context, req *rls.ListReleasesRequest) (*rls.L
 			resp = r
 			continue
 		}
-		resp.Releases = append(resp.Releases, r.GetReleases()[0])
+		resp.Releases = append(resp.Releases, r.GetReleases()...)
 	}
 	return resp, nil
 }

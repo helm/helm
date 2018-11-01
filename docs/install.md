@@ -13,16 +13,25 @@ releases.
 
 ### From the Binary Releases
 
-Every [release](https://github.com/kubernetes/helm/releases) of Helm
+Every [release](https://github.com/helm/helm/releases) of Helm
 provides binary releases for a variety of OSes. These binary versions
 can be manually downloaded and installed.
 
-1. Download your [desired version](https://github.com/kubernetes/helm/releases)
+1. Download your [desired version](https://github.com/helm/helm/releases)
 2. Unpack it (`tar -zxvf helm-v2.0.0-linux-amd64.tgz`)
 3. Find the `helm` binary in the unpacked directory, and move it to its
    desired destination (`mv linux-amd64/helm /usr/local/bin/helm`)
 
 From there, you should be able to run the client: `helm help`.
+
+### From Snap (Linux)
+
+The Snap package for Helm is maintained by
+[Snapcrafters](https://github.com/snapcrafters/helm).
+
+```
+$ sudo snap install helm
+```
 
 ### From Homebrew (macOS)
 
@@ -48,18 +57,18 @@ choco install kubernetes-helm
 ## From Script
 
 Helm now has an installer script that will automatically grab the latest version
-of the Helm client and [install it locally](https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get).
+of the Helm client and [install it locally](https://raw.githubusercontent.com/helm/helm/master/scripts/get).
 
 You can fetch that script, and then execute it locally. It's well documented so
 that you can read through it and understand what it is doing before you run it.
 
 ```
-$ curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
+$ curl https://raw.githubusercontent.com/helm/helm/master/scripts/get > get_helm.sh
 $ chmod 700 get_helm.sh
 $ ./get_helm.sh
 ```
 
-Yes, you can `curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash` that if you want to live on the edge.
+Yes, you can `curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash` that if you want to live on the edge.
 
 ### From Canary Builds
 
@@ -87,7 +96,7 @@ You must have a working Go environment with
 $ cd $GOPATH
 $ mkdir -p src/k8s.io
 $ cd src/k8s.io
-$ git clone https://github.com/kubernetes/helm.git
+$ git clone https://github.com/helm/helm.git
 $ cd helm
 $ make bootstrap build
 ```
@@ -122,6 +131,8 @@ You can explicitly tell `helm init` to...
 - Install a particular image (version) with `--tiller-image`
 - Install to a particular cluster with `--kube-context`
 - Install into a particular namespace with `--tiller-namespace`
+- Install Tiller with a Service Account with `--service-account` (for [RBAC enabled clusters](securing_installation.md#rbac))
+- Install Tiller without mounting a service account with `--automount-service-account false`
 
 Once Tiller is installed, running `helm version` should show you both
 the client and server version. (If it shows only the client version,

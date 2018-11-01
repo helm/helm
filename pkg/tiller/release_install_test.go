@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -493,5 +493,25 @@ func TestInstallRelease_WrongKubeVersion(t *testing.T) {
 	expect := "Chart requires kubernetesVersion"
 	if !strings.Contains(err.Error(), expect) {
 		t.Errorf("Expected %q to contain %q", err.Error(), expect)
+	}
+}
+
+func TestInstallRelease_Description(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rs.env.Releases.Create(releaseStub())
+
+	customDescription := "foo"
+	req := &services.InstallReleaseRequest{
+		Chart:       chartStub(),
+		Description: customDescription,
+	}
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Errorf("Failed install: %s", err)
+	}
+
+	if desc := res.Release.Info.Description; desc != customDescription {
+		t.Errorf("Expected description %q. Got %q", customDescription, desc)
 	}
 }
