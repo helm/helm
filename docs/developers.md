@@ -27,7 +27,8 @@ This will build both Helm and Tiller. `make bootstrap` will attempt to
 install certain tools if they are missing.
 
 To run all the tests (without running the tests for `vendor/`), run
-`make test`.
+`make test`. To run all tests in a containerized environment, run `make
+docker-test`.
 
 To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 
@@ -131,7 +132,7 @@ elegant and high-quality open source code so that our users will benefit.
 
 Make sure you have read and understood the main CONTRIBUTING guide:
 
-https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md
+https://github.com/helm/helm/blob/master/CONTRIBUTING.md
 
 ### Structure of the Code
 
@@ -161,7 +162,7 @@ We accept changes to the code via GitHub Pull Requests (PRs). One
 workflow for doing this is as follows:
 
 1. Go to your `$GOPATH/src/k8s.io` directory and `git clone` the
-   `github.com/kubernetes/helm` repository.
+   `github.com/helm/helm` repository.
 2. Fork that repository into your GitHub account
 3. Add your repository as a remote for `$GOPATH/src/k8s.io/helm`
 4. Create a new working branch (`git checkout -b feat/my-feature`) and
@@ -209,6 +210,9 @@ We follow the Go coding style standards very closely. Typically, running
 
 We also typically follow the conventions recommended by `go lint` and
 `gometalinter`. Run `make test-style` to test the style conformance.
+If you do not want to install all the linters from `gometalinter` into your
+global Go environment, you can run `make docker-test-style` which will
+run the same tests, but isolated within a docker container.
 
 Read more:
 

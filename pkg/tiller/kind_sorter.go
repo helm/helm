@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ var InstallOrder SortOrder = []string{
 	"ResourceQuota",
 	"LimitRange",
 	"PodSecurityPolicy",
+	"PodDisruptionBudget",
 	"Secret",
 	"ConfigMap",
 	"StorageClass",
@@ -81,6 +82,7 @@ var UninstallOrder SortOrder = []string{
 	"StorageClass",
 	"ConfigMap",
 	"Secret",
+	"PodDisruptionBudget",
 	"PodSecurityPolicy",
 	"LimitRange",
 	"ResourceQuota",

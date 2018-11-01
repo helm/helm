@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -88,9 +88,13 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.Int32Var(&his.max, "max", 256, "maximum number of revision to include in history")
 	f.UintVar(&his.colWidth, "col-width", 60, "specifies the max column width of output")
 	f.StringVarP(&his.outputFormat, "output", "o", "table", "prints the output in the specified format (json|table|yaml)")
+
+	// set defaults from environment
+	settings.InitTLS(f)
 
 	return cmd
 }

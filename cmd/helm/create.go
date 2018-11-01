@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,15 +38,17 @@ something like this:
 
 	foo/
 	  |
-	  |- .helmignore   # Contains patterns to ignore when packaging Helm charts.
+	  |- .helmignore        # Contains patterns to ignore when packaging Helm charts.
 	  |
-	  |- Chart.yaml    # Information about your chart
+	  |- Chart.yaml         # Information about your chart
 	  |
-	  |- values.yaml   # The default values for your templates
+	  |- values.yaml        # The default values for your templates
 	  |
-	  |- charts/       # Charts that this chart depends on
+	  |- charts/            # Charts that this chart depends on
 	  |
-	  |- templates/    # The template files
+	  |- templates/         # The template files
+	  |
+	  |- templates/tests/   # The test files
 
 'helm create' takes a path for an argument. If directories in the given path
 do not exist, Helm will attempt to create them as it goes. If the given
@@ -84,7 +86,6 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 
 func (c *createCmd) run() error {
 	fmt.Fprintf(c.out, "Creating %s\n", c.name)
-
 	chartname := filepath.Base(c.name)
 	cfile := &chart.Metadata{
 		Name:        chartname,

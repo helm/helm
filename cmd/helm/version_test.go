@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -56,6 +56,12 @@ func TestVersion(t *testing.T) {
 			args:     []string{},
 			flags:    []string{"--template", "{{ .Client.SemVer }} {{ .Server.SemVer }}"},
 			expected: lver + " " + sver,
+		},
+		{
+			name:     "client short empty git",
+			args:     []string{},
+			flags:    []string{"-c", "--short"},
+			expected: lver,
 		},
 	}
 	settings.TillerHost = "fake-localhost"

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,6 +43,12 @@ func TestRollbackCmd(t *testing.T) {
 			name:     "rollback a release with wait",
 			args:     []string{"funny-honey", "1"},
 			flags:    []string{"--wait"},
+			expected: "Rollback was a success! Happy Helming!",
+		},
+		{
+			name:     "rollback a release with description",
+			args:     []string{"funny-honey", "1"},
+			flags:    []string{"--description", "foo"},
 			expected: "Rollback was a success! Happy Helming!",
 		},
 		{

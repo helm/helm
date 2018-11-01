@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,6 +33,9 @@ type Options struct {
 	CertFile string
 	// Client-only options
 	InsecureSkipVerify bool
+	// Overrides the server name used to verify the hostname on the returned
+	// certificates from the server.
+	ServerName string
 	// Server-only options
 	ClientAuth tls.ClientAuthType
 }
@@ -55,8 +58,12 @@ func ClientConfig(opts Options) (cfg *tls.Config, err error) {
 			return nil, err
 		}
 	}
-
-	cfg = &tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify, Certificates: []tls.Certificate{*cert}, RootCAs: pool}
+	cfg = &tls.Config{
+		InsecureSkipVerify: opts.InsecureSkipVerify,
+		Certificates:       []tls.Certificate{*cert},
+		ServerName:         opts.ServerName,
+		RootCAs:            pool,
+	}
 	return cfg, nil
 }
 

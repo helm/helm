@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,8 +18,10 @@ package helm // import "k8s.io/helm/pkg/helm"
 
 import (
 	"errors"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -360,4 +362,16 @@ func loadChart(t *testing.T, name string) *cpb.Chart {
 		t.Fatalf("failed to load test chart (%q): %s\n", name, err)
 	}
 	return c
+}
+
+func TestDoesNotImportKubernetes(t *testing.T) {
+	cmd := exec.Command("go", "list", "-f", "{{.Deps}}", ".")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to execute %s %s: %s", cmd.Path, strings.Join(cmd.Args, " "), err)
+	}
+
+	if strings.Contains(string(output), "k8s.io/kubernetes") {
+		t.Fatal("k8s.io/helm/pkg/helm contains a dependency on k8s.io/kubernetes. See https://github.com/helm/helm/pull/4499 for more details.")
+	}
 }

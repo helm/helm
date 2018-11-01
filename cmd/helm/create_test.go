@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -143,8 +143,8 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Errorf("Wrong API version: %q", c.Metadata.ApiVersion)
 	}
 
-	if l := len(c.Templates); l != 6 {
-		t.Errorf("Expected 5 templates, got %d", l)
+	if l := len(c.Templates); l != 7 {
+		t.Errorf("Expected 6 templates, got %d", l)
 	}
 
 	found := false

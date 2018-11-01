@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
@@ -147,6 +148,48 @@ func TestListReleasesSort(t *testing.T) {
 	}
 }
 
+func TestListReleasesSortByChartName(t *testing.T) {
+	rs := rsFixture()
+
+	// Put them in by reverse order so that the mock doesn't "accidentally"
+	// sort.
+	num := 7
+	for i := num; i > 0; i-- {
+		rel := releaseStub()
+		rel.Name = fmt.Sprintf("rel-%d", num-i)
+		rel.Chart = &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name: fmt.Sprintf("chartName-%d", i),
+			},
+		}
+		if err := rs.env.Releases.Create(rel); err != nil {
+			t.Fatalf("Could not store mock release: %s", err)
+		}
+	}
+
+	limit := 6
+	mrs := &mockListServer{}
+	req := &services.ListReleasesRequest{
+		Offset: "",
+		Limit:  int64(limit),
+		SortBy: services.ListSort_CHART_NAME,
+	}
+	if err := rs.ListReleases(req, mrs); err != nil {
+		t.Fatalf("Failed listing: %s", err)
+	}
+
+	if len(mrs.val.Releases) != limit {
+		t.Errorf("Expected %d releases, got %d", limit, len(mrs.val.Releases))
+	}
+
+	for i := 0; i < limit; i++ {
+		n := fmt.Sprintf("chartName-%d", i+1)
+		if mrs.val.Releases[i].Chart.Metadata.Name != n {
+			t.Errorf("Expected %q, got %q", n, mrs.val.Releases[i].Chart.Metadata.Name)
+		}
+	}
+}
+
 func TestListReleasesFilter(t *testing.T) {
 	rs := rsFixture()
 	names := []string{
@@ -229,5 +272,28 @@ func TestReleasesNamespace(t *testing.T) {
 
 	if len(mrs.val.Releases) != 2 {
 		t.Errorf("Expected 2 releases, got %d", len(mrs.val.Releases))
+	}
+}
+
+func TestReleasePartition(t *testing.T) {
+	var rl []*release.Release
+	rs := rsFixture()
+	rs.Log = t.Logf
+	num := 7
+	for i := 0; i < num; i++ {
+		rel := releaseStub()
+		rel.Name = fmt.Sprintf("rel-%d", i)
+		rl = append(rl, rel)
+	}
+	visited := map[string]bool{}
+
+	chunks := rs.partition(rl, 0)
+	for chunk := range chunks {
+		for _, rel := range chunk {
+			if visited[rel.Name] {
+				t.Errorf("%s was already visited", rel.Name)
+			}
+			visited[rel.Name] = true
+		}
 	}
 }

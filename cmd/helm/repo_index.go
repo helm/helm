@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ func index(dir, url, mergeTo string) error {
 		var i2 *repo.IndexFile
 		if _, err := os.Stat(mergeTo); os.IsNotExist(err) {
 			i2 = repo.NewIndexFile()
-			i2.WriteFile(mergeTo, 0755)
+			i2.WriteFile(mergeTo, 0644)
 		} else {
 			i2, err = repo.LoadIndexFile(mergeTo)
 			if err != nil {
@@ -101,5 +101,5 @@ func index(dir, url, mergeTo string) error {
 		i.Merge(i2)
 	}
 	i.SortEntries()
-	return i.WriteFile(out, 0755)
+	return i.WriteFile(out, 0644)
 }

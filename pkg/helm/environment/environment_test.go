@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,49 +35,79 @@ func TestEnvSettings(t *testing.T) {
 		envars map[string]string
 
 		// expected values
-		home, host, ns, kcontext, plugins string
-		debug                             bool
+		home, host, ns, kcontext, kconfig, plugins string
+		debug, tlsverify                           bool
 	}{
 		{
-			name:    "defaults",
-			args:    []string{},
-			home:    DefaultHelmHome,
-			plugins: helmpath.Home(DefaultHelmHome).Plugins(),
-			ns:      "kube-system",
+			name:      "defaults",
+			args:      []string{},
+			home:      DefaultHelmHome,
+			plugins:   helmpath.Home(DefaultHelmHome).Plugins(),
+			ns:        "kube-system",
+			tlsverify: false,
 		},
 		{
-			name:    "with flags set",
-			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
-			home:    "/foo",
-			plugins: helmpath.Home("/foo").Plugins(),
-			host:    "here",
-			ns:      "myns",
-			debug:   true,
+			name:      "with flags set",
+			args:      []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns", "--kubeconfig", "/bar"},
+			home:      "/foo",
+			plugins:   helmpath.Home("/foo").Plugins(),
+			host:      "here",
+			ns:        "myns",
+			kconfig:   "/bar",
+			debug:     true,
+			tlsverify: false,
 		},
 		{
-			name:    "with envvars set",
-			args:    []string{},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns"},
-			home:    "/bar",
-			plugins: helmpath.Home("/bar").Plugins(),
-			host:    "there",
-			ns:      "yourns",
-			debug:   true,
+			name:      "with envvars set",
+			args:      []string{},
+			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns"},
+			home:      "/bar",
+			plugins:   helmpath.Home("/bar").Plugins(),
+			host:      "there",
+			ns:        "yourns",
+			debug:     true,
+			tlsverify: false,
 		},
 		{
-			name:    "with flags and envvars set",
-			args:    []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
-			home:    "/foo",
-			plugins: "glade",
-			host:    "here",
-			ns:      "myns",
-			debug:   true,
+			name:      "with TLS envvars set",
+			args:      []string{},
+			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_TLS_VERIFY": "1"},
+			home:      "/bar",
+			plugins:   helmpath.Home("/bar").Plugins(),
+			host:      "there",
+			ns:        "yourns",
+			debug:     true,
+			tlsverify: true,
+		},
+		{
+			name:      "with flags and envvars set",
+			args:      []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
+			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
+			home:      "/foo",
+			plugins:   "glade",
+			host:      "here",
+			ns:        "myns",
+			debug:     true,
+			tlsverify: false,
 		},
 	}
 
-	cleanup := resetEnv()
-	defer cleanup()
+	allEnvvars := map[string]string{
+		"HELM_DEBUG":        "",
+		"HELM_HOME":         "",
+		"HELM_HOST":         "",
+		"TILLER_NAMESPACE":  "",
+		"HELM_PLUGIN":       "",
+		"HELM_TLS_HOSTNAME": "",
+		"HELM_TLS_CA_CERT":  "",
+		"HELM_TLS_CERT":     "",
+		"HELM_TLS_KEY":      "",
+		"HELM_TLS_VERIFY":   "",
+		"HELM_TLS_ENABLE":   "",
+	}
+
+	resetEnv(allEnvvars)
+	defer resetEnv(allEnvvars)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -89,9 +119,11 @@ func TestEnvSettings(t *testing.T) {
 
 			settings := &EnvSettings{}
 			settings.AddFlags(flags)
+			settings.AddFlagsTLS(flags)
 			flags.Parse(tt.args)
 
 			settings.Init(flags)
+			settings.InitTLS(flags)
 
 			if settings.Home != helmpath.Home(tt.home) {
 				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
@@ -111,17 +143,23 @@ func TestEnvSettings(t *testing.T) {
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
 			}
+			if settings.KubeConfig != tt.kconfig {
+				t.Errorf("expected kubeconfig %q, got %q", tt.kconfig, settings.KubeConfig)
+			}
+			if settings.TLSVerify != tt.tlsverify {
+				t.Errorf("expected tls-verify %t, got %t", tt.tlsverify, settings.TLSVerify)
+			}
 
-			cleanup()
+			resetEnv(tt.envars)
 		})
 	}
 }
 
-func resetEnv() func() {
+func resetEnv(envars map[string]string) func() {
 	origEnv := os.Environ()
 
 	// ensure any local envvars do not hose us
-	for _, e := range envMap {
+	for e := range envars {
 		os.Unsetenv(e)
 	}
 

@@ -127,9 +127,9 @@ kind: Job
 metadata:
   name: "{{.Release.Name}}"
   labels:
-    heritage: {{.Release.Service | quote }}
-    release: {{.Release.Name | quote }}
-    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    app.kubernetes.io/managed-by: {{.Release.Service | quote }}
+    app.kubernetes.io/instance: {{.Release.Name | quote }}
+    helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
   annotations:
     # This is what defines this resource as a hook. Without this line, the
     # job is considered part of the release.
@@ -141,9 +141,9 @@ spec:
     metadata:
       name: "{{.Release.Name}}"
       labels:
-        heritage: {{.Release.Service | quote }}
-        release: {{.Release.Name | quote }}
-        chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+        app.kubernetes.io/managed-by: {{.Release.Service | quote }}
+        app.kubernetes.io/instance: {{.Release.Name | quote }}
+        helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
     spec:
       restartPolicy: Never
       containers:
@@ -183,8 +183,7 @@ deterministic executing order. Weights are defined using the following annotatio
 ```
 
 Hook weights can be positive or negative numbers but must be represented as
-strings. When Tiller starts the execution cycle of hooks of a particular Kind it
-will sort those hooks in ascending order. 
+strings. When Tiller starts the execution cycle of hooks of a particular kind (ex. the `pre-install` hooks or `post-install` hooks, etc.) it will sort those hooks in ascending order.
 
 It is also possible to define policies that determine when to delete corresponding hook resources. Hook deletion policies are defined using the following annotation:
 
@@ -194,6 +193,7 @@ It is also possible to define policies that determine when to delete correspondi
 ```
 
 You can choose one or more defined annotation values:
+
 * `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed.
 * `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
 * `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.

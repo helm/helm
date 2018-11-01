@@ -21,7 +21,7 @@ optionally some packaged charts.  When you're ready to share your charts, the
 preferred way to do so is by uploading them to a chart repository.
 
 **Note:** For Helm 2.0.0, chart repositories do not have any intrinsic
-authentication. There is an [issue tracking progress](https://github.com/kubernetes/helm/issues/1038)
+authentication. There is an [issue tracking progress](https://github.com/helm/helm/issues/1038)
 in GitHub.
 
 Because a chart repository can be any HTTP server that can serve YAML and tar
@@ -78,7 +78,7 @@ entries:
       home: https://k8s.io/helm
       name: alpine
       sources:
-      - https://github.com/kubernetes/helm
+      - https://github.com/helm/helm
       urls:
       - https://technosophos.github.io/tscharts/alpine-0.2.0.tgz
       version: 0.2.0
@@ -88,7 +88,7 @@ entries:
       home: https://k8s.io/helm
       name: alpine
       sources:
-      - https://github.com/kubernetes/helm
+      - https://github.com/helm/helm
       urls:
       - https://technosophos.github.io/tscharts/alpine-0.1.0.tgz
       version: 0.1.0
