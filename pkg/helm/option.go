@@ -53,6 +53,8 @@ type options struct {
 	disableHooks bool
 	// if set, skip CRD hook only
 	disableCRDHook bool
+	// if set, render SubChart Notes
+	subNotes bool
 	// name of release
 	releaseName string
 	// tls.Config to use for rpc if tls enabled
@@ -308,6 +310,20 @@ func InstallDisableCRDHook(disable bool) InstallOption {
 func InstallReuseName(reuse bool) InstallOption {
 	return func(opts *options) {
 		opts.reuseName = reuse
+	}
+}
+
+// InstallSubNotes will (if true) instruct Tiller to render SubChart Notes
+func InstallSubNotes(enable bool) InstallOption {
+	return func(opts *options) {
+		opts.subNotes = enable
+	}
+}
+
+// UpgradeSubNotes will (if true) instruct Tiller to render SubChart Notes
+func UpgradeSubNotes(enable bool) UpdateOption {
+	return func(opts *options) {
+		opts.subNotes = enable
 	}
 }
 

@@ -268,7 +268,7 @@ func TestInstallRelease_WrongTillerVersion(t *testing.T) {
 	}
 }
 
-func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
+func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
 
@@ -276,6 +276,39 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 		withNotes(notesText),
 		withDependency(withNotes(notesText+" child")),
 	))
+	res, err := rs.InstallRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	if res.Release.Name == "" {
+		t.Errorf("Expected release name.")
+	}
+
+	rel, err := rs.env.Releases.Get(res.Release.Name, res.Release.Version)
+	if err != nil {
+		t.Errorf("Expected release for %s (%v).", res.Release.Name, rs.env.Releases)
+	}
+
+	t.Logf("rel: %v", rel)
+
+	if rel.Info.Status.Notes != notesText {
+		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
+	}
+
+	if rel.Info.Description != "Install complete" {
+		t.Errorf("unexpected description: %s", rel.Info.Description)
+	}
+}
+
+func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	req := installRequest(withSubNotes(),
+		withChart(
+			withNotes(notesText),
+			withDependency(withNotes(notesText+" child")),
+		))
 	res, err := rs.InstallRelease(c, req)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)

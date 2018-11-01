@@ -209,6 +209,8 @@ message UpdateReleaseRequest {
 	bool reuse_values = 10;
 	// Force resource update through delete/recreate if needed.
 	bool force = 11;
+	// Render subchart notes if enabled
+	bool subNotes = 12;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -273,6 +275,8 @@ message InstallReleaseRequest {
 	bool wait = 9;
 
 	bool disable_crd_hook = 10;
+
+	bool subNotes = 11;
 }
 
 // InstallReleaseResponse is the response from a release installation.
