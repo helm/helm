@@ -29,6 +29,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 ## Helm Plugins
 
 - [App Registry](https://github.com/app-registry/helm-plugin) - Plugin to manage charts via the [App Registry specification](https://github.com/app-registry/spec)
+- [helm-backup](https://github.com/maorfr/helm-backup) - Plugin which performs backup/restore of releases in a namespace to/from a file
 - [Helm Diff](https://github.com/databus23/helm-diff) - Preview `helm upgrade` as a coloured diff
 - [Helm Value Store](https://github.com/skuid/helm-value-store) - Plugin for working with Helm deployment values
 - [Technosophos's Helm Plugins](https://github.com/technosophos/helm-plugins) - Plugins for GitHub, Keybase, and GPG
@@ -36,11 +37,9 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-cos](https://github.com/imroc/helm-cos) - Plugin to manage repositories on Tencent Cloud Object Storage
 - [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
 - [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
-- [helm-export](https://github.com/maorfr/helm-export) - Plugin to export releases from namespace to a file (disaster recovery)
 - [helm-gcs](https://github.com/nouney/helm-gcs) - Plugin to manage repositories on Google Cloud Storage
 - [helm-github](https://github.com/sagansystems/helm-github) - Plugin to install Helm Charts from Github repositories
 - [helm-hashtag](https://github.com/balboah/helm-hashtag) - Plugin for tracking docker tag hash digests as values
-- [helm-import](https://github.com/maorfr/helm-import) - Plugin for importing releases from (exported) file to a namespace (disaster recovery)
 - [helm-inject](https://github.com/maorfr/helm-inject) - Plugin for injecting additional configurations during release upgrade
 - [helm-k8comp](https://github.com/cststack/k8comp) - Plugin to create Helm Charts from hiera using k8comp
 - [helm-last](https://github.com/adamreese/helm-last) - Plugin to show the latest release
@@ -48,7 +47,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-logs](https://github.com/maorfr/helm-logs) - Plugin to view changed releases over time
 - [helm-monitor](https://github.com/ContainerSolutions/helm-monitor) - Plugin to monitor a release and rollback based on Prometheus/ElasticSearch query
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
-- [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore the last deployed release to its original state
+- [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore a deployed release to its original state
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
 - [helm-stop](https://github.com/IBM/helm-stop) - Plugin for stopping a release pods
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
