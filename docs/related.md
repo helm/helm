@@ -55,6 +55,8 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-unittest](https://github.com/lrills/helm-unittest) - Plugin for unit testing chart locally with YAML
 - [Tillerless Helm v2](https://github.com/rimusz/helm-tiller) - Helm plugin for using Tiller locally and in CI/CD pipelines
 
+To help you get started, [helm-plugin-utils](https://github.com/maorfr/helm-plugin-utils) holds some utility functions to be used within Helm plugins.
+
 We also encourage GitHub authors to use the [helm-plugin](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories)
 tag on their plugin repositories.
 
