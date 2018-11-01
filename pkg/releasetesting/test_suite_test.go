@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import (
 	"golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/api/core/v1"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -134,7 +134,7 @@ func TestRun(t *testing.T) {
 	}
 
 	if result2.Status != release.TestRun_FAILURE {
-		t.Errorf("Expected test result to be successful, got: %v", result2.Status)
+		t.Errorf("Expected test result to be failure, got: %v", result2.Status)
 	}
 
 }
@@ -324,8 +324,8 @@ func newPodSucceededKubeClient() *podSucceededKubeClient {
 	}
 }
 
-func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
-	return core.PodSucceeded, nil
+func (p *podSucceededKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (v1.PodPhase, error) {
+	return v1.PodSucceeded, nil
 }
 
 type podFailedKubeClient struct {
@@ -338,6 +338,6 @@ func newPodFailedKubeClient() *podFailedKubeClient {
 	}
 }
 
-func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
-	return core.PodFailed, nil
+func (p *podFailedKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (v1.PodPhase, error) {
+	return v1.PodFailed, nil
 }

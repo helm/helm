@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/timeconv"
 )
@@ -40,6 +41,11 @@ func tsRelease(name string, vers int32, dur time.Duration, code rspb.Status_Code
 		Name:    name,
 		Version: vers,
 		Info:    info,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name: name,
+			},
+		},
 	}
 }
 
@@ -78,5 +84,15 @@ func TestSortByRevision(t *testing.T) {
 		vi := releases[i].Version
 		vj := releases[j].Version
 		return vi < vj
+	})
+}
+
+func TestSortByChartName(t *testing.T) {
+	SortByChartName(releases)
+
+	check(t, "ByChartName", func(i, j int) bool {
+		ni := releases[i].Chart.Metadata.Name
+		nj := releases[j].Chart.Metadata.Name
+		return ni < nj
 	})
 }

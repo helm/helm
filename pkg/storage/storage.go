@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -163,7 +163,7 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	return s.Driver.Query(map[string]string{"NAME": name, "OWNER": "TILLER"})
 }
 
-// removeLeastRecent removes items from history until the lengh number of releases
+// removeLeastRecent removes items from history until the length number of releases
 // does not exceed max.
 //
 // We allow max to be set explicitly so that calling functions can "make space"

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,8 +64,12 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	settings.AddFlagsTLS(f)
 	f.Int64Var(&rlsTest.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "delete test pods upon completion")
+
+	// set defaults from environment
+	settings.InitTLS(f)
 
 	return cmd
 }

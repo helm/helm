@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -76,6 +76,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		return
 	}
 	e := engine.New()
+	e.LintMode = true
 	if strict {
 		e.Strict = true
 	}

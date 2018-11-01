@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/spf13/pflag"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/client-go/kubernetes"
 
-	"github.com/spf13/pflag"
 	"k8s.io/helm/pkg/kube"
 	rudderAPI "k8s.io/helm/pkg/proto/hapi/rudder"
 	"k8s.io/helm/pkg/tiller"
@@ -34,7 +34,7 @@ import (
 )
 
 var kubeClient *kube.Client
-var clientset internalclientset.Interface
+var clientset kubernetes.Interface
 
 type options struct {
 	listen string
@@ -59,7 +59,7 @@ func main() {
 	opts.regAndParseFlags()
 	var err error
 	kubeClient = kube.New(nil)
-	clientset, err = kubeClient.ClientSet()
+	clientset, err = kubeClient.KubernetesClientSet()
 	if err != nil {
 		grpclog.Fatalf("Cannot initialize Kubernetes connection: %s", err)
 	}

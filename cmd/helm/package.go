@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/provenance"
+	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -151,7 +152,7 @@ func (p *packageCmd) run() error {
 	}
 
 	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
-		if err := checkDependencies(ch, reqs); err != nil {
+		if err := renderutil.CheckDependencies(ch, reqs); err != nil {
 			return err
 		}
 	} else {
@@ -214,7 +215,7 @@ func (p *packageCmd) clearsign(filename string) error {
 		return err
 	}
 
-	if err := signer.DecryptKey(promptUser); err != nil {
+	if err := signer.DecryptKey(passphraseFetcher); err != nil {
 		return err
 	}
 
@@ -228,8 +229,13 @@ func (p *packageCmd) clearsign(filename string) error {
 	return ioutil.WriteFile(filename+".prov", []byte(sig), 0755)
 }
 
-// promptUser implements provenance.PassphraseFetcher
-func promptUser(name string) ([]byte, error) {
+// passphraseFetcher implements provenance.PassphraseFetcher
+func passphraseFetcher(name string) ([]byte, error) {
+	var passphrase = settings.HelmKeyPassphrase()
+	if passphrase != "" {
+		return []byte(passphrase), nil
+	}
+
 	fmt.Printf("Password for key %q >  ", name)
 	pw, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()

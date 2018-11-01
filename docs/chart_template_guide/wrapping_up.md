@@ -13,8 +13,10 @@ But there are many things this guide has not covered when it comes to the practi
 - The [Go template docs](https://godoc.org/text/template) explain the template syntax in detail.
 - The [Schelm tool](https://github.com/databus23/schelm) is a nice helper utility for debugging charts.
 
-Sometimes it's easier to ask a few questions and get answers from experienced developers. The best place to do that is in the Kubernetes `#Helm` Slack channel:
+Sometimes it's easier to ask a few questions and get answers from experienced developers. The best place to do this is in the [Kubernetes Slack](https://kubernetes.slack.com) Helm channels:
 
-- [Kubernetes Slack](https://slack.k8s.io/): `#helm`
+- [#helm-users](https://kubernetes.slack.com/messages/helm-users)
+- [#helm-dev](https://kubernetes.slack.com/messages/helm-dev)
+- [#charts](https://kubernetes.slack.com/messages/charts)
 
-Finally, if you find errors or omissions in this document, want to suggest some new content, or would like to contribute, visit [The Helm Project](https://github.com/kubernetes/helm).
+Finally, if you find errors or omissions in this document, want to suggest some new content, or would like to contribute, visit [The Helm Project](https://github.com/helm/helm).

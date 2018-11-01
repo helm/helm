@@ -14,6 +14,5 @@ It simply deploys a single pod running Alpine Linux.
 The `nginx` chart shows how to compose several resources into one chart,
 and it illustrates more complex template usage.
 
-It deploys a `deployment` (which creates a `replica set`), a `config
-map`, and a `service`. The replica set starts an nginx pod. The config
+It deploys a `Deployment` (which creates a `ReplicaSet`), a `ConfigMap`, and a `Service`. The replica set starts an nginx pod. The config
 map stores the files that the nginx server can serve.

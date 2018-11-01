@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/api/core/v1"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
 )
@@ -69,7 +69,7 @@ func TestUNcompressedConfigMapGet(t *testing.T) {
 	}
 	cfgmap.Data["release"] = base64.StdEncoding.EncodeToString(b)
 	var mock MockConfigMapsInterface
-	mock.objects = map[string]*core.ConfigMap{key: cfgmap}
+	mock.objects = map[string]*v1.ConfigMap{key: cfgmap}
 	cfgmaps := NewConfigMaps(&mock)
 
 	// get release with key

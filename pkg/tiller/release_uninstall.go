@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -97,7 +97,11 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	}
 
 	rel.Info.Status.Code = release.Status_DELETED
-	rel.Info.Description = "Deletion complete"
+	if req.Description == "" {
+		rel.Info.Description = "Deletion complete"
+	} else {
+		rel.Info.Description = req.Description
+	}
 
 	if req.Purge {
 		s.Log("purge requested for %s", req.Name)

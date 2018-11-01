@@ -8,7 +8,7 @@ Example tests:
 - Validate that your configuration from the values.yaml file was properly injected.
   - Make sure your username and password work correctly
   - Make sure an incorrect username and password does not work
-- Assert that your services are up and correctly load balancing
+- Assert that your services are up and correctly loadbalanced.
 - etc.
 
 You can run the pre-defined tests in Helm on a release using the command `helm test <RELEASE_NAME>`. For a chart consumer, this is a great way to sanity check that their release of a chart (or application) works as expected.
@@ -22,10 +22,10 @@ In Helm, there are two test hooks: `test-success` and `test-failure`
 
 ## Example Test
 
-Here is an example of a helm test pod definition in an example mariadb chart:
+Here is an example of a helm test pod definition in an example wordpress chart. The test verifies the access and login to the mariadb database:
 
 ```
-mariadb/
+wordpress/
   Chart.yaml
   README.md
   values.yaml
@@ -64,7 +64,7 @@ spec:
 ```
 
 ## Steps to Run a Test Suite on a Release
-1. `$ helm install mariadb`
+1. `$ helm install wordpress`
 ```
 NAME:   quirky-walrus
 LAST DEPLOYED: Mon Feb 13 13:50:43 2017

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -126,6 +126,45 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 	// This should have been unset. Config:  &chart.Config{Raw: `name: value`},
 	if res.Release.Config != nil && res.Release.Config.Raw != "" {
 		t.Errorf("Expected chart config to be empty, got %q", res.Release.Config.Raw)
+	}
+}
+
+func TestUpdateRelease_ReuseValuesWithNoValues(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	installReq := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+	}
+
+	installResp, err := rs.InstallRelease(c, installReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rel := installResp.Release
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+			},
+		},
+		Values:      &chart.Config{Raw: "{}\n"},
+		ReuseValues: true,
+	}
+
+	if _, err := rs.UpdateRelease(c, req); err != nil {
+		t.Fatalf("Failed updated: %s", err)
 	}
 }
 
@@ -429,6 +468,79 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 	_, err := rs.UpdateRelease(c, req)
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
+	}
+}
+
+func TestUpdateReleaseCustomDescription(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	customDescription := "foo"
+
+	req := &services.UpdateReleaseRequest{
+		Name:        rel.Name,
+		Chart:       rel.GetChart(),
+		Description: customDescription,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected release description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
+}
+
+func TestUpdateReleaseCustomDescription_Force(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+
+	customDescription := "foo"
+
+	req := &services.UpdateReleaseRequest{
+		Name:        rel.Name,
+		Chart:       rel.GetChart(),
+		Force:       true,
+		Description: customDescription,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+	if res.Release.Info.Description != customDescription {
+		t.Errorf("Expected release description to be %q, got %q", customDescription, res.Release.Info.Description)
+	}
+	compareStoredAndReturnedRelease(t, *rs, *res)
+}
+
+func TestUpdateReleasePendingInstall_Force(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := namedReleaseStub("forceful-luke", release.Status_PENDING_INSTALL)
+	rs.env.Releases.Create(rel)
+
+	req := &services.UpdateReleaseRequest{
+		Name:  rel.Name,
+		Chart: rel.GetChart(),
+		Force: true,
+	}
+
+	_, err := rs.UpdateRelease(c, req)
+	if err == nil {
+		t.Error("Expected failed update")
+	}
+
+	expectedError := "a released named forceful-luke is in use, cannot re-use a name that is still in use"
+	got := err.Error()
+	if err.Error() != expectedError {
+		t.Errorf("Expected error %q, got %q", expectedError, got)
 	}
 }
 

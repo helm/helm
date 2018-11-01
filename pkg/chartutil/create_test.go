@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,6 +69,14 @@ func TestCreate(t *testing.T) {
 
 	for _, f := range []string{NotesName, DeploymentName, ServiceName, HelpersName} {
 		if fi, err := os.Stat(filepath.Join(dir, TemplatesDir, f)); err != nil {
+			t.Errorf("Expected %s file: %s", f, err)
+		} else if fi.IsDir() {
+			t.Errorf("Expected %s to be a file.", f)
+		}
+	}
+
+	for _, f := range []string{TestConnectionName} {
+		if fi, err := os.Stat(filepath.Join(dir, TemplatesTestsDir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
 		} else if fi.IsDir() {
 			t.Errorf("Expected %s to be a file.", f)

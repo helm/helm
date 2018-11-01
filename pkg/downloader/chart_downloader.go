@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -170,8 +170,11 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 				if err != nil {
 					return u, nil, err
 				}
-				getter, err := getterConstructor(ref, "", "", "")
-				return u, getter, err
+				g, err := getterConstructor(ref, "", "", "")
+				if t, ok := g.(*getter.HttpGetter); ok {
+					t.SetCredentials(c.Username, c.Password)
+				}
+				return u, g, err
 			}
 			return u, nil, err
 		}

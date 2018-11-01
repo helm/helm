@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -270,5 +270,13 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 		return "", fmt.Errorf("failed to parse %s as URL: %v", refURL, err)
 	}
 
-	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
+	// if the base URL contains query string parameters,
+	// propagate them to the child URL but only if the
+	// refURL is relative to baseURL
+	resolvedURL := parsedBaseURL.ResolveReference(parsedRefURL)
+	if (resolvedURL.Hostname() == parsedBaseURL.Hostname()) && (resolvedURL.Port() == parsedBaseURL.Port()) {
+		resolvedURL.RawQuery = parsedBaseURL.RawQuery
+	}
+
+	return resolvedURL.String(), nil
 }

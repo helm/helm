@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -36,10 +36,8 @@ type Files map[string][]byte
 // Given an []*any.Any (the format for files in a chart.Chart), extract a map of files.
 func NewFiles(from []*any.Any) Files {
 	files := map[string][]byte{}
-	if from != nil {
-		for _, f := range from {
-			files[f.TypeUrl] = f.Value
-		}
+	for _, f := range from {
+		files[f.TypeUrl] = f.Value
 	}
 	return files
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
+	"k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/kube"
@@ -61,11 +61,11 @@ func (k *mockKubeClient) Build(ns string, reader io.Reader) (kube.Result, error)
 func (k *mockKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
-	return core.PodUnknown, nil
+func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
+	return v1.PodUnknown, nil
 }
 
-func (k *mockKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
+func (k *mockKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	return "", nil
 }
 

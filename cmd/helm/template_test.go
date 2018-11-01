@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -68,8 +68,8 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:        "check_execute_non_existent",
-			desc:        "verify --execute fails on a template that doesnt exist",
-			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesntexist.yaml"},
+			desc:        "verify --execute fails on a template that doesn't exist",
+			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesn'texist.yaml"},
 			expectError: "could not find template",
 		},
 		{
@@ -106,6 +106,20 @@ func TestTemplateCmd(t *testing.T) {
 			args:        []string{subchart1ChartPath, "--name", "test"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "release-name: \"test\"",
+		},
+		{
+			name:        "check_release_is_install",
+			desc:        "verify --is-upgrade toggles .Release.IsInstall",
+			args:        []string{subchart1ChartPath, "--is-upgrade=false"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectValue: "release-is-install: \"true\"",
+		},
+		{
+			name:        "check_release_is_upgrade",
+			desc:        "verify --is-upgrade toggles .Release.IsUpgrade",
+			args:        []string{subchart1ChartPath, "--is-upgrade", "true"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectValue: "release-is-upgrade: \"true\"",
 		},
 		{
 			name:        "check_notes",
