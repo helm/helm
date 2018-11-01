@@ -633,7 +633,7 @@ type InstallReleaseRequest struct {
 	DisableCrdHook bool `protobuf:"varint,10,opt,name=disable_crd_hook,json=disableCrdHook" json:"disable_crd_hook,omitempty"`
 	// Description, if set, will set the description for the installed release
 	Description string `protobuf:"bytes,11,opt,name=description" json:"description,omitempty"`
-  SubNotes       bool `protobuf:"varint,12,opt,name=subNotes" json:"subNotes,omitempty"`
+	SubNotes    bool   `protobuf:"varint,12,opt,name=subNotes" json:"subNotes,omitempty"`
 }
 
 func (m *InstallReleaseRequest) Reset()                    { *m = InstallReleaseRequest{} }
@@ -710,7 +710,6 @@ func (m *InstallReleaseRequest) GetDisableCrdHook() bool {
 	}
 	return false
 }
-
 
 func (m *InstallReleaseRequest) GetSubNotes() bool {
 	if m != nil {
