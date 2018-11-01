@@ -291,8 +291,8 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 
 	t.Logf("rel: %v", rel)
 
-	if rel.Info.Status.Notes != notesText {
-		t.Fatalf("Expected '%s', got '%s'", notesText, rel.Info.Status.Notes)
+	if !strings.Contains(rel.Info.Status.Notes, notesText) || !strings.Contains(rel.Info.Status.Notes, notesText+" child") {
+		t.Fatalf("Expected '%s', got '%s'", notesText+"\n"+notesText+" child", rel.Info.Status.Notes)
 	}
 
 	if rel.Info.Description != "Install complete" {
