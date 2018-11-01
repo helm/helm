@@ -515,3 +515,21 @@ func TestInstallRelease_Description(t *testing.T) {
 		t.Errorf("Expected description %q. Got %q", customDescription, desc)
 	}
 }
+func TestInstallRelease_ReleaseNamespaceNotExist(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixtureConfigMapStorage()
+
+	req := installRequest(
+		withNamespace("noSpaced"),
+	)
+
+	_, err := rs.InstallRelease(c, req)
+	if err == nil {
+		t.Fatalf("Expected to fail because of the namespace is not exist")
+	}
+
+	expect := "invalid release namespace"
+	if !strings.Contains(err.Error(), expect) {
+		t.Errorf("Expected %q equal to %q", err.Error(), expect)
+	}
+}

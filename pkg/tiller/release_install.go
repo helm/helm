@@ -17,6 +17,7 @@ limitations under the License.
 package tiller
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -58,6 +59,12 @@ func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallRelea
 func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*release.Release, error) {
 	if req.Chart == nil {
 		return nil, errMissingChart
+	}
+
+	err := s.isValidNamespace(req.Namespace)
+	if err != nil {
+		errString := fmt.Sprintf("invalid release namespace, err=%s", err.Error())
+		return nil, errors.New(errString)
 	}
 
 	name, err := s.uniqName(req.Name, req.ReuseName)

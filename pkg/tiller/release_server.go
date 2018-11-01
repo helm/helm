@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	relutil "k8s.io/helm/pkg/releaseutil"
+	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/timeconv"
 	"k8s.io/helm/pkg/version"
@@ -450,6 +451,15 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 		}
 	}
 	return nil
+}
+
+func (s *ReleaseServer) isValidNamespace(name string) error {
+	// if the storage is not configmap, do not check the namespace
+	if s.env.Releases.Name() != driver.ConfigMapsDriverName {
+		return nil
+	}
+	_, err := s.clientset.Core().Namespaces().Get(name, metav1.GetOptions{})
+	return err
 }
 
 // hookShouldBeDeleted determines whether the defined hook deletion policy matches the hook deletion polices

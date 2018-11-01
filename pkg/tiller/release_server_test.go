@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/pkg/helm"
@@ -120,7 +121,13 @@ type chartOptions struct {
 type chartOption func(*chartOptions)
 
 func rsFixture() *ReleaseServer {
-	return NewReleaseServer(MockEnvironment(), fake.NewSimpleClientset(), false)
+	clientset := fake.NewSimpleClientset()
+	return NewReleaseServer(MockEnvironment(driver.MemoryDriverName, clientset), clientset, false)
+}
+
+func rsFixtureConfigMapStorage() *ReleaseServer {
+	clientset := fake.NewSimpleClientset()
+	return NewReleaseServer(MockEnvironment(driver.ConfigMapsDriverName, clientset), clientset, false)
 }
 
 func buildChart(opts ...chartOption) *chart.Chart {
@@ -218,6 +225,12 @@ func withReuseName() installOption {
 func withChart(chartOpts ...chartOption) installOption {
 	return func(opts *installOptions) {
 		opts.Chart = buildChart(chartOpts...)
+	}
+}
+
+func withNamespace(namepace string) installOption {
+	return func(opts *installOptions) {
+		opts.Namespace = namepace
 	}
 }
 
@@ -462,9 +475,13 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 	}
 }
 
-func MockEnvironment() *environment.Environment {
+func MockEnvironment(storageType string, clientset kubernetes.Interface) *environment.Environment {
 	e := environment.New()
-	e.Releases = storage.Init(driver.NewMemory())
+	if storageType == driver.ConfigMapsDriverName {
+		e.Releases = storage.Init(driver.NewConfigMaps(clientset.CoreV1().ConfigMaps("default")))
+	} else {
+		e.Releases = storage.Init(driver.NewMemory())
+	}
 	e.KubeClient = &environment.PrintingKubeClient{Out: ioutil.Discard}
 	return e
 }
