@@ -1,4 +1,5 @@
 NAME        	VERSION	REPOSITORY                	STATUS 
 reqsubchart 	0.1.0  	https://example.com/charts	missing
 reqsubchart2	0.2.0  	https://example.com/charts	missing
+reqsubchart3	>=0.1.0	https://example.com/charts	missing
 

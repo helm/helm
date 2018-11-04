@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,11 +24,11 @@ import (
 
 var (
 	// ErrReleaseNotFound indicates that a release is not found.
-	ErrReleaseNotFound = func(release string) error { return errors.Errorf("release: %q not found", release) }
+	ErrReleaseNotFound = errors.New("release: not found")
 	// ErrReleaseExists indicates that a release already exists.
-	ErrReleaseExists = func(release string) error { return errors.Errorf("release: %q already exists", release) }
+	ErrReleaseExists = errors.New("release: already exists")
 	// ErrInvalidKey indicates that a release key could not be parsed.
-	ErrInvalidKey = func(release string) error { return errors.Errorf("release: %q invalid key", release) }
+	ErrInvalidKey = errors.Errorf("release: invalid key")
 )
 
 // Creator is the interface that wraps the Create method.

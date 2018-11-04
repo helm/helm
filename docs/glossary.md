@@ -94,7 +94,7 @@ chart repository server or any other HTTP server.
 
 ## Release
 
-When a chart is installed, Tiller (the Helm server) creates a _release_
+When a chart is installed, the Helm library creates a _release_
 to track that installation.
 
 A single chart may be installed many times into the same cluster, and
@@ -130,12 +130,10 @@ rollback 1| release 4 (but running the same config as release 1)
 The above table illustrates how release numbers increment across
 install, upgrade, and rollback.
 
-## Tiller
+## Helm Library
 
-Tiller is the in-cluster component of Helm. It interacts directly with
-the Kubernetes API server to install, upgrade, query, and remove
-Kubernetes resources. It also stores the objects that represent
-releases.
+It interacts directly with the Kubernetes API server to install,
+ upgrade, query, and remove Kubernetes resources.
 
 ## Repository (Repo, Chart Repository)
 

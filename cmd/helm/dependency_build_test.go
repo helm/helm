@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -64,7 +64,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	// In the second pass, we want to remove the chart's request dependency,
 	// then see if it restores from the lock.
-	lockfile := hh.Path(chartname, "requirements.lock")
+	lockfile := hh.Path(chartname, "Chart.lock")
 	if _, err := os.Stat(lockfile); err != nil {
 		t.Fatal(err)
 	}

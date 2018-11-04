@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 
 func TestStatusCmd(t *testing.T) {
 	releasesMockWithStatus := func(info *release.Info) []*release.Release {
-		info.LastDeployed = time.Unix(1452902400, 0)
+		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name: "flummoxed-chickadee",
 			Info: info,

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,13 +17,15 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
+	yaml "gopkg.in/yaml.v2"
+
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/tiller"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // Client manages client side of the Helm-Tiller protocol.
@@ -39,8 +41,7 @@ func NewClient(opts ...Option) *Client {
 }
 
 func (c *Client) init() *Client {
-	env := environment.New()
-	c.tiller = tiller.NewReleaseServer(env, c.opts.discovery, c.opts.kubeClient)
+	c.tiller = tiller.NewReleaseServer(c.opts.discovery, c.opts.kubeClient)
 	c.tiller.Releases = storage.Init(c.opts.driver)
 	return c
 }
@@ -69,7 +70,7 @@ func (c *Client) ListReleases(opts ...ReleaseListOption) ([]*release.Release, er
 // InstallRelease loads a chart from chstr, installs it, and returns the release response.
 func (c *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*release.Release, error) {
 	// load the chart to install
-	chart, err := chartutil.Load(chstr)
+	chart, err := loader.Load(chstr)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,9 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	if err := reqOpts.runBefore(req); err != nil {
 		return nil, err
 	}
-	err := chartutil.ProcessRequirementsEnabled(req.Chart, req.Values)
+	var m map[string]interface{}
+	yaml.Unmarshal(req.Values, &m)
+	err := chartutil.ProcessRequirementsEnabled(req.Chart, m)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +109,8 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	return c.tiller.InstallRelease(req)
 }
 
-// DeleteRelease uninstalls a named release and returns the response.
-func (c *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error) {
+// UninstallRelease uninstalls a named release and returns the response.
+func (c *Client) UninstallRelease(rlsName string, opts ...UninstallOption) (*hapi.UninstallReleaseResponse, error) {
 	// apply the uninstall options
 	reqOpts := c.opts
 	for _, opt := range opts {
@@ -136,7 +139,7 @@ func (c *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.Unin
 // UpdateRelease loads a chart from chstr and updates a release to a new/different chart.
 func (c *Client) UpdateRelease(rlsName, chstr string, opts ...UpdateOption) (*release.Release, error) {
 	// load the chart to update
-	chart, err := chartutil.Load(chstr)
+	chart, err := loader.Load(chstr)
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +167,14 @@ func (c *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	if err := reqOpts.runBefore(req); err != nil {
 		return nil, err
 	}
-	err := chartutil.ProcessRequirementsEnabled(req.Chart, req.Values)
-	if err != nil {
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(req.Values, &m); err != nil {
 		return nil, err
 	}
-	err = chartutil.ProcessRequirementsImportValues(req.Chart)
-	if err != nil {
+	if err := chartutil.ProcessRequirementsEnabled(req.Chart, m); err != nil {
+		return nil, err
+	}
+	if err := chartutil.ProcessRequirementsImportValues(req.Chart); err != nil {
 		return nil, err
 	}
 

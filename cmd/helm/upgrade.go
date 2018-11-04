@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,13 +19,12 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/storage/driver"
 )
@@ -125,9 +124,7 @@ func (o *upgradeOptions) run(out io.Writer) error {
 	if o.install {
 		// If a release does not exist, install it. If another error occurs during
 		// the check, ignore the error and continue with the upgrade.
-		_, err := o.client.ReleaseHistory(o.release, 1)
-
-		if err != nil && strings.Contains(err.Error(), driver.ErrReleaseNotFound(o.release).Error()) {
+		if _, err := o.client.ReleaseHistory(o.release, 1); err == driver.ErrReleaseNotFound {
 			fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", o.release)
 			io := &installOptions{
 				chartPath:        chartPath,
@@ -150,16 +147,14 @@ func (o *upgradeOptions) run(out io.Writer) error {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	if ch, err := chartutil.Load(chartPath); err == nil {
-		if req, err := chartutil.LoadRequirements(ch); err == nil {
-			if err := checkDependencies(ch, req); err != nil {
-				return err
-			}
-		} else if err != chartutil.ErrRequirementsNotFound {
-			return errors.Wrap(err, "cannot load requirements")
-		}
-	} else {
+	ch, err := loader.Load(chartPath)
+	if err != nil {
 		return err
+	}
+	if req := ch.Metadata.Requirements; req != nil {
+		if err := checkDependencies(ch, req); err != nil {
+			return err
+		}
 	}
 
 	resp, err := o.client.UpdateRelease(

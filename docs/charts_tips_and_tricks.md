@@ -9,10 +9,8 @@ Helm uses [Go templates](https://godoc.org/text/template) for templating
 your resource files. While Go ships several built-in functions, we have
 added many others.
 
-First, we added almost all of the functions in the
-[Sprig library](https://godoc.org/github.com/Masterminds/sprig). We removed two
-for security reasons: `env` and `expandenv` (which would have given chart authors
-access to Tiller's environment).
+First, we added all of the functions in the
+[Sprig library](https://godoc.org/github.com/Masterminds/sprig).
 
 We also added two special template functions: `include` and `required`. The `include`
 function allows you to bring in another template, and then pass the results to other
@@ -160,11 +158,11 @@ spec:
 See also the `helm upgrade --recreate-pods` flag for a slightly
 different way of addressing this issue.
 
-## Tell Tiller Not To Delete a Resource
+## Tell Helm Not To Uninstall a Resource
 
-Sometimes there are resources that should not be deleted when Helm runs a
-`helm delete`. Chart developers can add an annotation to a resource to prevent
-it from being deleted.
+Sometimes there are resources that should not be uninstalled when Helm runs a
+`helm uninstall`. Chart developers can add an annotation to a resource to prevent
+it from being uninstalled.
 
 ```yaml
 kind: Secret
@@ -176,10 +174,10 @@ metadata:
 
 (Quotation marks are required)
 
-The annotation `"helm.sh/resource-policy": keep` instructs Tiller to skip this
-resource during a `helm delete` operation. _However_, this resource becomes
+The annotation `"helm.sh/resource-policy": keep` instructs Helm to skip this
+resource during a `helm uninstall` operation. _However_, this resource becomes
 orphaned. Helm will no longer manage it in any way. This can lead to problems
-if using `helm install --replace` on a release that has already been deleted, but
+if using `helm install --replace` on a release that has already been uninstalled, but
 has kept resources.
 
 ## Using "Partials" and Template Includes

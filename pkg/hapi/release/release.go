@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,7 +15,7 @@ limitations under the License.
 
 package release
 
-import "k8s.io/helm/pkg/hapi/chart"
+import "k8s.io/helm/pkg/chart"
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.

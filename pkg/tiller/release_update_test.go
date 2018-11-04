@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 )
 
@@ -130,6 +130,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	rs := rsFixture(t)
 
 	installReq := &hapi.InstallReleaseRequest{
+		Name:      "complex-reuse-values",
 		Namespace: "spaced",
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{Name: "hello"},
@@ -137,7 +138,6 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 			},
-			Values: []byte("defaultFoo: defaultBar"),
 		},
 		Values: []byte("foo: bar"),
 	}
@@ -156,7 +156,6 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
-			Values: []byte("defaultFoo: defaultBar"),
 		},
 	}
 
@@ -179,7 +178,6 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
-			Values: []byte("defaultFoo: defaultBar"),
 		},
 		Values:      []byte("foo2: bar2"),
 		ReuseValues: true,
@@ -205,7 +203,6 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hello", Data: []byte("hello: world")},
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
-			Values: []byte("defaultFoo: defaultBar"),
 		},
 		Values:      []byte("foo: baz"),
 		ReuseValues: true,
@@ -236,7 +233,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
 			// Since reuseValues is set, this should get ignored.
-			Values: []byte("foo: bar\n"),
+			Values: map[string]interface{}{"foo": "bar"},
 		},
 		Values:      []byte("name2: val2"),
 		ReuseValues: true,
@@ -246,12 +243,11 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 		t.Fatalf("Failed updated: %s", err)
 	}
 	// This should have been overwritten with the old value.
-	expect := "name: value\n"
-	if res.Chart.Values != nil && !bytes.Equal(res.Chart.Values, []byte(expect)) {
-		t.Errorf("Expected chart values to be %q, got %q", expect, res.Chart.Values)
+	if got := res.Chart.Values["name"]; got != "value" {
+		t.Errorf("Expected chart values 'name' to be 'value', got %q", got)
 	}
 	// This should have the newly-passed overrides and any other computed values. `name: value` comes from release Config via releaseStub()
-	expect = "name: value\nname2: val2\n"
+	expect := "name: value\nname2: val2\n"
 	if res.Config != nil && !bytes.Equal(res.Config, []byte(expect)) {
 		t.Errorf("Expected request config to be %q, got %q", expect, res.Config)
 	}
@@ -366,7 +362,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected to be able to get previous release")
 	}
-	if oldStatus := oldRelease.Info.Status; oldStatus != release.StatusDeleted {
+	if oldStatus := oldRelease.Info.Status; oldStatus != release.StatusUninstalled {
 		t.Errorf("Expected Deleted status on previous Release version. Got %v", oldStatus)
 	}
 }

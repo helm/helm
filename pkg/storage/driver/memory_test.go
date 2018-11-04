@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -123,7 +123,7 @@ func TestMemoryUpdate(t *testing.T) {
 		{
 			"update release does not exist",
 			"rls-z.v1",
-			releaseStub("rls-z", 1, "default", rspb.StatusDeleted),
+			releaseStub("rls-z", 1, "default", rspb.StatusUninstalled),
 			true,
 		},
 	}

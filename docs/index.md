@@ -1,13 +1,12 @@
 # Helm Documentation
 
 - [Quick Start](quickstart.md) - Read me first!
-- [Installing Helm](install.md) - Install Helm and Tiller
+- [Installing Helm](install.md) - Install Helm
   - [Kubernetes Distribution Notes](kubernetes_distros.md)
   - [Frequently Asked Questions](install_faq.md)
 - [Using Helm](using_helm.md) - Learn the Helm tools
   - [Plugins](plugins.md)
   - [Role-based Access Control](rbac.md)
-  - [TLS/SSL for Helm and Tiller](tiller_ssl.md) - Use Helm-to-Tiller encryption
 - [Developing Charts](charts.md) - An introduction to chart development
 	- [Chart Lifecycle Hooks](charts_hooks.md)
 	- [Chart Tips and Tricks](charts_tips_and_tricks.md)
@@ -31,7 +30,7 @@
   - [Appendix A: YAML Techniques](chart_template_guide/yaml_techniques.md)
   - [Appendix B: Go Data Types](chart_template_guide/data_types.md)
 - [Related Projects](related.md) - More Helm tools, articles, and plugins
-- [Architecture](architecture.md) - Overview of the Helm/Tiller design
+- [Architecture](architecture.md) - Overview of the Helm design
 - [Developers](developers.md) - About the developers
 - [History](history.md) - A brief history of the project
 - [Glossary](glossary.md) - Decode the Helm vocabulary

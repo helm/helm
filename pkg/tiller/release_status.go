@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ func (s *ReleaseServer) GetReleaseStatus(req *hapi.GetReleaseStatusRequest) (*ha
 	// Ok, we got the status of the release as we had jotted down, now we need to match the
 	// manifest we stashed away with reality from the cluster.
 	resp, err := s.KubeClient.Get(rel.Namespace, bytes.NewBufferString(rel.Manifest))
-	if sc == release.StatusDeleted || sc == release.StatusFailed {
+	if sc == release.StatusUninstalled || sc == release.StatusFailed {
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil
 	} else if err != nil {

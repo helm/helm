@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 )
 
 func TestCreate(t *testing.T) {
@@ -42,13 +43,13 @@ func TestCreate(t *testing.T) {
 
 	dir := filepath.Join(tdir, "foo")
 
-	mychart, err := LoadDir(c)
+	mychart, err := loader.LoadDir(c)
 	if err != nil {
 		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
 	}
 
-	if mychart.Metadata.Name != "foo" {
-		t.Errorf("Expected name to be 'foo', got %q", mychart.Metadata.Name)
+	if mychart.Name() != "foo" {
+		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
 	}
 
 	for _, d := range []string{TemplatesDir, ChartsDir} {
@@ -94,13 +95,13 @@ func TestCreateFrom(t *testing.T) {
 	dir := filepath.Join(tdir, "foo")
 
 	c := filepath.Join(tdir, cf.Name)
-	mychart, err := LoadDir(c)
+	mychart, err := loader.LoadDir(c)
 	if err != nil {
 		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
 	}
 
-	if mychart.Metadata.Name != "foo" {
-		t.Errorf("Expected name to be 'foo', got %q", mychart.Metadata.Name)
+	if mychart.Name() != "foo" {
+		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
 	}
 
 	for _, d := range []string{TemplatesDir, ChartsDir} {
@@ -111,7 +112,7 @@ func TestCreateFrom(t *testing.T) {
 		}
 	}
 
-	for _, f := range []string{ChartfileName, ValuesfileName, "requirements.yaml"} {
+	for _, f := range []string{ChartfileName, ValuesfileName} {
 		if fi, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
 		} else if fi.IsDir() {
@@ -128,7 +129,7 @@ func TestCreateFrom(t *testing.T) {
 	}
 
 	// Ensure we replace `<CHARTNAME>`
-	if strings.Contains(string(mychart.Values), "<CHARTNAME>") {
-		t.Errorf("Did not expect %s to be present in %s", "<CHARTNAME>", string(mychart.Values))
+	if strings.Contains(string(mychart.RawValues), "<CHARTNAME>") {
+		t.Errorf("Did not expect %s to be present in %s", "<CHARTNAME>", string(mychart.RawValues))
 	}
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,15 +25,15 @@ import (
 	"syscall"
 
 	"github.com/Masterminds/semver"
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 )
@@ -102,7 +102,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.version, "version", "", "set the version on the chart to this semver version")
 	f.StringVar(&o.appVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&o.destination, "destination", "d", ".", "location to write the chart.")
-	f.BoolVarP(&o.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
+	f.BoolVarP(&o.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
 	o.valuesOptions.addFlags(f)
 
 	return cmd
@@ -129,7 +129,7 @@ func (o *packageOptions) run(out io.Writer) error {
 		}
 	}
 
-	ch, err := chartutil.LoadDir(path)
+	ch, err := loader.LoadDir(path)
 	if err != nil {
 		return err
 	}
@@ -142,11 +142,7 @@ func (o *packageOptions) run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	newVals, err := yaml.Marshal(combinedVals)
-	if err != nil {
-		return err
-	}
-	ch.Values = newVals
+	ch.Values = combinedVals
 
 	// If version is set, modify the version.
 	if len(o.version) != 0 {
@@ -161,16 +157,8 @@ func (o *packageOptions) run(out io.Writer) error {
 		debug("Setting appVersion to %s", o.appVersion)
 	}
 
-	if filepath.Base(path) != ch.Metadata.Name {
-		return errors.Errorf("directory name (%s) and Chart.yaml name (%s) must match", filepath.Base(path), ch.Metadata.Name)
-	}
-
-	if reqs, err := chartutil.LoadRequirements(ch); err == nil {
+	if reqs := ch.Metadata.Requirements; reqs != nil {
 		if err := checkDependencies(ch, reqs); err != nil {
-			return err
-		}
-	} else {
-		if err != chartutil.ErrRequirementsNotFound {
 			return err
 		}
 	}
@@ -188,11 +176,10 @@ func (o *packageOptions) run(out io.Writer) error {
 	}
 
 	name, err := chartutil.Save(ch, dest)
-	if err == nil {
-		fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", name)
-	} else {
+	if err != nil {
 		return errors.Wrap(err, "failed to save")
 	}
+	fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", name)
 
 	if o.sign {
 		err = o.clearsign(name)

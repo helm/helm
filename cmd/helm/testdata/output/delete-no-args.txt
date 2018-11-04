@@ -1,3 +1,0 @@
-Error: "helm delete" requires at least 1 argument
-
-Usage:  helm delete RELEASE_NAME [...] [flags]

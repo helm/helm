@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@ import (
 
 	kversion "k8s.io/apimachinery/pkg/version"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -72,12 +73,14 @@ water:
 
 func TestToRenderValuesCaps(t *testing.T) {
 
-	chartValues := `
-name: al Rashid
-where:
-  city: Basrah
-  title: caliph
-`
+	chartValues := map[string]interface{}{
+		"name": "al Rashid",
+		"where": map[string]interface{}{
+			"city":  "Basrah",
+			"title": "caliph",
+		},
+	}
+
 	overideValues := `
 name: Haroun
 where:
@@ -88,17 +91,14 @@ where:
 	c := &chart.Chart{
 		Metadata:  &chart.Metadata{Name: "test"},
 		Templates: []*chart.File{},
-		Values:    []byte(chartValues),
-		Dependencies: []*chart.Chart{
-			{
-				Metadata: &chart.Metadata{Name: "where"},
-				Values:   []byte{},
-			},
-		},
+		Values:    chartValues,
 		Files: []*chart.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 	}
+	c.AddDependency(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "where"},
+	})
 	v := []byte(overideValues)
 
 	o := ReleaseOptions{
@@ -112,7 +112,7 @@ where:
 		KubeVersion: &kversion.Info{Major: "1"},
 	}
 
-	res, err := ToRenderValuesCaps(c, v, o, caps)
+	res, err := ToRenderValues(c, v, o, caps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,10 +259,8 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
-	if err := tt.Execute(&b, v); err != nil {
-		return "", err
-	}
-	return b.String(), nil
+	err := tt.Execute(&b, v)
+	return b.String(), err
 }
 
 // ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
@@ -293,7 +291,7 @@ pequod:
 
 func TestCoalesceValues(t *testing.T) {
 	tchart := "testdata/moby"
-	c, err := LoadDir(tchart)
+	c, err := loader.LoadDir(tchart)
 	if err != nil {
 		t.Fatal(err)
 	}

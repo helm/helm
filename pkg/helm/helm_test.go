@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chartutil"
+	cpb "k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/hapi"
-	cpb "k8s.io/helm/pkg/hapi/chart"
 	rls "k8s.io/helm/pkg/hapi/release"
 )
 
@@ -45,7 +45,7 @@ func TestListReleases_VerifyOptions(t *testing.T) {
 	var sortOrd = hapi.SortAsc
 	var codes = []rls.ReleaseStatus{
 		rls.StatusFailed,
-		rls.StatusDeleted,
+		rls.StatusUninstalled,
 		rls.StatusDeployed,
 		rls.StatusSuperseded,
 	}
@@ -143,27 +143,27 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	assert(t, "", client.opts.instReq.Name)
 }
 
-// Verify each DeleteOptions is applied to an UninstallReleaseRequest correctly.
-func TestDeleteRelease_VerifyOptions(t *testing.T) {
+// Verify each UninstallOptions is applied to an UninstallReleaseRequest correctly.
+func TestUninstallRelease_VerifyOptions(t *testing.T) {
 	// Options testdata
 	var releaseName = "test"
 	var disableHooks = true
 	var purgeFlag = true
 
-	// Expected DeleteReleaseRequest message
+	// Expected UninstallReleaseRequest message
 	exp := &hapi.UninstallReleaseRequest{
 		Name:         releaseName,
 		Purge:        purgeFlag,
 		DisableHooks: disableHooks,
 	}
 
-	// Options used in DeleteRelease
-	ops := []DeleteOption{
-		DeletePurge(purgeFlag),
-		DeleteDisableHooks(disableHooks),
+	// Options used in UninstallRelease
+	ops := []UninstallOption{
+		UninstallPurge(purgeFlag),
+		UninstallDisableHooks(disableHooks),
 	}
 
-	// BeforeCall option to intercept Helm client DeleteReleaseRequest
+	// BeforeCall option to intercept Helm client UninstallReleaseRequest
 	b4c := BeforeCall(func(msg interface{}) error {
 		switch act := msg.(type) {
 		case *hapi.UninstallReleaseRequest:
@@ -176,7 +176,7 @@ func TestDeleteRelease_VerifyOptions(t *testing.T) {
 	})
 
 	client := NewClient(b4c)
-	if _, err := client.DeleteRelease(releaseName, ops...); err != errSkip {
+	if _, err := client.UninstallRelease(releaseName, ops...); err != errSkip {
 		t.Fatalf("did not expect error but got (%v)\n``", err)
 	}
 
@@ -349,7 +349,7 @@ func assert(t *testing.T, expect, actual interface{}) {
 }
 
 func loadChart(t *testing.T, name string) *cpb.Chart {
-	c, err := chartutil.Load(filepath.Join(chartsDir, name))
+	c, err := loader.Load(filepath.Join(chartsDir, name))
 	if err != nil {
 		t.Fatalf("failed to load test chart (%q): %s\n", name, err)
 	}

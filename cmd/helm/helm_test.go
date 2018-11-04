@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -141,12 +141,10 @@ func ensureTestHome(t *testing.T, home helmpath.Home) {
 		}
 	}
 	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
-		t.Log("Updating repository file format...")
 		if err := r.WriteFile(repoFile, 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	t.Logf("$HELM_HOME has been configured at %s.\n", home)
 }
 
 // testHelmHome sets up a Helm Home in a temp dir.

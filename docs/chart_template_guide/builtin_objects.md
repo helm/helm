@@ -8,7 +8,6 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
 
 - `Release`: This object describes the release itself. It has several objects inside of it:
   - `Release.Name`: The release name
-  - `Release.Service`: The name of the releasing service (always `Tiller`).
   - `Release.IsUpgrade`: This is set to `true` if the current operation is an upgrade or rollback.
   - `Release.IsInstall`: This is set to `true` if the current operation is an install.
 - `Values`: Values passed into the template from the `values.yaml` file and from user-supplied files. By default, `Values` is empty.
@@ -21,7 +20,7 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
   - `Capabilities.APIVersions` is a set of versions.
   - `Capabilities.APIVersions.Has $version` indicates whether a version (`batch/v1`) is enabled on the cluster.
   - `Capabilities.KubeVersion` provides a way to look up the Kubernetes version. It has the following values: `Major`, `Minor`, `GitVersion`, `GitCommit`, `GitTreeState`, `BuildDate`, `GoVersion`, `Compiler`, and `Platform`.
-  - `Capabilities.helmVersion` provides a way to look up the Tiller version. It has the following values: `SemVer`, `GitCommit`, and `GitTreeState`.
+  - `Capabilities.HelmVersion` provides a way to look up the Helm version. It has the following values: `SemVer`, `GitCommit`, and `GitTreeState`.
 - `Template`: Contains information about the current template that is being executed
   - `Name`: A namespaced filepath to the current template (e.g. `mychart/templates/mytemplate.yaml`)
   - `BasePath`: The namespaced path to the templates directory of the current chart (e.g. `mychart/templates`).

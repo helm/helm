@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 )
 
 // ErrNoTable indicates that a chart does not have a matching table.
@@ -59,11 +59,10 @@ func (v Values) YAML() (string, error) {
 //
 // An ErrNoTable is returned if the table does not exist.
 func (v Values) Table(name string) (Values, error) {
-	names := strings.Split(name, ".")
 	table := v
 	var err error
 
-	for _, n := range names {
+	for _, n := range strings.Split(name, ".") {
 		table, err = tableLookup(table, n)
 		if err != nil {
 			return table, err
@@ -110,7 +109,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 	}
 
 	var e ErrNoTable = errors.Errorf("no table named %q", simple)
-	return map[string]interface{}{}, e
+	return Values{}, e
 }
 
 // ReadValues will parse YAML byte data into a Values.
@@ -141,59 +140,48 @@ func ReadValuesFile(filename string) (Values, error) {
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals []byte) (Values, error) {
+	var err error
 	cvals := Values{}
 	// Parse values if not nil. We merge these at the top level because
 	// the passed-in values are in the same namespace as the parent chart.
 	if vals != nil {
-		evals, err := ReadValues(vals)
-		if err != nil {
-			return cvals, err
-		}
-		cvals, err = coalesce(chrt, evals)
+		cvals, err = ReadValues(vals)
 		if err != nil {
 			return cvals, err
 		}
 	}
 
-	var err error
-	cvals, err = coalesceDeps(chrt, cvals)
-	return cvals, err
+	coalesce(chrt, cvals)
+
+	return coalesceDeps(chrt, cvals)
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
 // This is a helper function for CoalesceValues.
-func coalesce(ch *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	dest, err = coalesceValues(ch, dest)
-	if err != nil {
-		return dest, err
-	}
+func coalesce(ch *chart.Chart, dest map[string]interface{}) map[string]interface{} {
+	coalesceValues(ch, dest)
 	coalesceDeps(ch, dest)
-	return dest, nil
+	return dest
 }
 
 // coalesceDeps coalesces the dependencies of the given chart.
 func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
-	for _, subchart := range chrt.Dependencies {
-		if c, ok := dest[subchart.Metadata.Name]; !ok {
+	for _, subchart := range chrt.Dependencies() {
+		if c, ok := dest[subchart.Name()]; !ok {
 			// If dest doesn't already have the key, create it.
-			dest[subchart.Metadata.Name] = map[string]interface{}{}
+			dest[subchart.Name()] = make(map[string]interface{})
 		} else if !istable(c) {
-			return dest, errors.Errorf("type mismatch on %s: %t", subchart.Metadata.Name, c)
+			return dest, errors.Errorf("type mismatch on %s: %t", subchart.Name(), c)
 		}
-		if dv, ok := dest[subchart.Metadata.Name]; ok {
+		if dv, ok := dest[subchart.Name()]; ok {
 			dvmap := dv.(map[string]interface{})
 
 			// Get globals out of dest and merge them into dvmap.
 			coalesceGlobals(dvmap, dest)
 
-			var err error
 			// Now coalesce the rest of the values.
-			dest[subchart.Metadata.Name], err = coalesce(subchart, dvmap)
-			if err != nil {
-				return dest, err
-			}
+			dest[subchart.Name()] = coalesce(subchart, dvmap)
 		}
 	}
 	return dest, nil
@@ -202,21 +190,21 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 // coalesceGlobals copies the globals out of src and merges them into dest.
 //
 // For convenience, returns dest.
-func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
+func coalesceGlobals(dest, src map[string]interface{}) {
 	var dg, sg map[string]interface{}
 
 	if destglob, ok := dest[GlobalKey]; !ok {
-		dg = map[string]interface{}{}
+		dg = make(map[string]interface{})
 	} else if dg, ok = destglob.(map[string]interface{}); !ok {
 		log.Printf("warning: skipping globals because destination %s is not a table.", GlobalKey)
-		return dg
+		return
 	}
 
 	if srcglob, ok := src[GlobalKey]; !ok {
-		sg = map[string]interface{}{}
+		sg = make(map[string]interface{})
 	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
 		log.Printf("warning: skipping globals because source %s is not a table.", GlobalKey)
-		return dg
+		return
 	}
 
 	// EXPERIMENTAL: In the past, we have disallowed globals to test tables. This
@@ -226,19 +214,19 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 	for key, val := range sg {
 		if istable(val) {
 			vv := copyMap(val.(map[string]interface{}))
-			if destv, ok := dg[key]; ok {
-				if destvmap, ok := destv.(map[string]interface{}); ok {
+			if destv, ok := dg[key]; !ok {
+				// Here there is no merge. We're just adding.
+				dg[key] = vv
+			} else {
+				if destvmap, ok := destv.(map[string]interface{}); !ok {
+					log.Printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
+				} else {
 					// Basically, we reverse order of coalesce here to merge
 					// top-down.
 					coalesceTables(vv, destvmap)
 					dg[key] = vv
 					continue
-				} else {
-					log.Printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
 				}
-			} else {
-				// Here there is no merge. We're just adding.
-				dg[key] = vv
 			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
 			// It's not clear if this condition can actually ever trigger.
@@ -249,7 +237,6 @@ func coalesceGlobals(dest, src map[string]interface{}) map[string]interface{} {
 		dg[key] = val
 	}
 	dest[GlobalKey] = dg
-	return dest
 }
 
 func copyMap(src map[string]interface{}) map[string]interface{} {
@@ -263,21 +250,8 @@ func copyMap(src map[string]interface{}) map[string]interface{} {
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.
-func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interface{}, error) {
-	// If there are no values in the chart, we just return the given values
-	if len(c.Values) == 0 {
-		return v, nil
-	}
-
-	nv, err := ReadValues(c.Values)
-	if err != nil {
-		// On error, we return just the overridden values.
-		// FIXME: We should log this error. It indicates that the YAML data
-		// did not parse.
-		return v, errors.Wrapf(err, "error reading default values (%s)", c.Values)
-	}
-
-	for key, val := range nv {
+func coalesceValues(c *chart.Chart, v map[string]interface{}) {
+	for key, val := range c.Values {
 		if value, ok := v[key]; ok {
 			if value == nil {
 				// When the YAML value is null, we remove the value's key.
@@ -300,7 +274,6 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 			v[key] = val
 		}
 	}
-	return v, nil
 }
 
 // coalesceTables merges a source map into a destination map.
@@ -340,19 +313,8 @@ type ReleaseOptions struct {
 
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 //
-// WARNING: This function is deprecated for Helm > 2.1.99 Use ToRenderValuesCaps() instead. It will
-// remain in the codebase to stay SemVer compliant.
-//
-// In Helm 3.0, this will be changed to accept Capabilities as a fourth parameter.
-func ToRenderValues(chrt *chart.Chart, chrtVals []byte, options ReleaseOptions) (Values, error) {
-	caps := &Capabilities{APIVersions: DefaultVersionSet}
-	return ToRenderValuesCaps(chrt, chrtVals, options, caps)
-}
-
-// ToRenderValuesCaps composes the struct from the data coming from the Releases, Charts and Values files
-//
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValuesCaps(chrt *chart.Chart, chrtVals []byte, options ReleaseOptions, caps *Capabilities) (Values, error) {
+func ToRenderValues(chrt *chart.Chart, chrtVals []byte, options ReleaseOptions, caps *Capabilities) (Values, error) {
 
 	top := map[string]interface{}{
 		"Release": map[string]interface{}{

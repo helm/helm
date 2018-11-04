@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ type manifestFile struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	for filePath, c := range files {

@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import (
 	"sync"
 
 	// Import to initialize client auth plugins.
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/environment"
@@ -34,7 +34,7 @@ import (
 
 var (
 	settings   environment.EnvSettings
-	config     clientcmd.ClientConfig
+	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
 )
 
@@ -89,7 +89,7 @@ func newClient(allNamespaces bool) helm.Interface {
 	)
 }
 
-func kubeConfig() clientcmd.ClientConfig {
+func kubeConfig() genericclioptions.RESTClientGetter {
 	configOnce.Do(func() {
 		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)
 	})
@@ -97,7 +97,7 @@ func kubeConfig() clientcmd.ClientConfig {
 }
 
 func getNamespace() string {
-	if ns, _, err := kubeConfig().Namespace(); err == nil {
+	if ns, _, err := kubeConfig().ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
 	return "default"

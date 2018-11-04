@@ -1,6 +1,7 @@
 BINDIR     := $(CURDIR)/bin
 DIST_DIRS  := find * -type d -exec
 TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+BINNAME    ?= helm
 
 # go option
 GO         ?= go
@@ -41,12 +42,12 @@ all: build
 
 .PHONY: build
 build:
-	$(GO) build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/helm k8s.io/helm/cmd/helm
+	$(GO) build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME) k8s.io/helm/cmd/helm
 
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
 build-cross:
-	CGO_ENABLED=0 gox -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/{{.Dir}}" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
+	CGO_ENABLED=0 gox -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
 
 .PHONY: dist
 dist:

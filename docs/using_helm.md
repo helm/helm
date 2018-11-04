@@ -1,8 +1,8 @@
 # Using Helm
 
-This guide explains the basics of using Helm (and Tiller) to manage
+This guide explains the basics of using Helm to manage
 packages on your Kubernetes cluster. It assumes that you have already
-[installed](install.md) the Helm client and the Tiller server (typically by `helm
+[installed](install.md) the Helm client and library (typically by `helm
 init`).
 
 If you are simply interested in running a few quick commands, you may
@@ -387,13 +387,13 @@ is not a full list of cli flags. To see a description of all flags, just run
   will cause all pods to be recreated (with the exception of pods belonging to
   deployments)
 
-## 'helm delete': Deleting a Release
+## 'helm uninstall': Uninstalling a Release
 
-When it is time to uninstall or delete a release from the cluster, use
-the `helm delete` command:
+When it is time to uninstall or uninstall a release from the cluster, use
+the `helm uninstall` command:
 
 ```
-$ helm delete happy-panda
+$ helm uninstall happy-panda
 ```
 
 This will remove the release from the cluster. You can see all of your
@@ -406,28 +406,28 @@ inky-cat       	1      	Wed Sep 28 12:59:46 2016       	DEPLOYED       	alpine-0
 ```
 
 From the output above, we can see that the `happy-panda` release was
-deleted.
+uninstalled.
 
 However, Helm always keeps records of what releases happened. Need to
-see the deleted releases? `helm list --deleted` shows those, and `helm
-list --all` shows all of the releases (deleted and currently deployed,
+see the uninstalled releases? `helm list --uninstalled` shows those, and `helm
+list --all` shows all of the releases (uninstalled and currently deployed,
 as well as releases that failed):
 
 ```console
 ⇒  helm list --all
 NAME           	VERSION	UPDATED                        	STATUS         	CHART
-happy-panda   	2      	Wed Sep 28 12:47:54 2016       	DELETED        	mariadb-0.3.0
+happy-panda   	2      	Wed Sep 28 12:47:54 2016       	UNINSTALLED    	mariadb-0.3.0
 inky-cat       	1      	Wed Sep 28 12:59:46 2016       	DEPLOYED       	alpine-0.1.0
-kindred-angelf 	2      	Tue Sep 27 16:16:10 2016       	DELETED        	alpine-0.1.0
+kindred-angelf 	2      	Tue Sep 27 16:16:10 2016       	UNINSTALLED    	alpine-0.1.0
 ```
 
-Because Helm keeps records of deleted releases, a release name cannot be
-re-used. (If you _really_ need to re-use a release name, you can use the
-`--replace` flag, but it will simply re-use the existing release and
+Because Helm keeps records of uninstalled releases, a release name cannot
+be re-used. (If you _really_ need to re-use a release name, you can use
+the `--replace` flag, but it will simply re-use the existing release and
 replace its resources.)
 
 Note that because releases are preserved in this way, you can rollback a
-deleted resource, and have it re-activate.
+uninstalled resource, and have it re-activate.
 
 ## 'helm repo': Working with Repositories
 
@@ -493,19 +493,10 @@ Note: The `stable` repository is managed on the [Kubernetes Charts
 GitHub repository](https://github.com/kubernetes/charts). That project
 accepts chart source code, and (after audit) packages those for you.
 
-## Tiller, Namespaces and RBAC
-In some cases you may wish to scope Tiller or deploy multiple Tillers to a single cluster. Here are some best practices when operating in those circumstances.
-
-1. Tiller can be [installed](install.md) into any namespace. By default, it is installed into kube-system. You can run multiple Tillers provided they each run in their own namespace.
-2. Limiting Tiller to only be able to install into specific namespaces and/or resource types is controlled by Kubernetes [RBAC](https://kubernetes.io/docs/admin/authorization/rbac/) roles and rolebindings. You can add a service account to Tiller when configuring Helm via `helm init --service-account <NAME>`. You can find more information about that [here](rbac.md).
-3. Release names are unique PER TILLER INSTANCE.
-4. Charts should only contain resources that exist in a single namespace.
-5. It is not recommended to have multiple Tillers configured to manage resources in the same namespace.
-
 ## Conclusion
 
 This chapter has covered the basic usage patterns of the `helm` client,
-including searching, installation, upgrading, and deleting. It has also
+including searching, installation, upgrading, and uninstalling. It has also
 covered useful utility commands like `helm status`, `helm get`, and
 `helm repo`.
 

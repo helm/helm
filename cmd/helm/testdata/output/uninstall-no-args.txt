@@ -1,0 +1,3 @@
+Error: "helm uninstall" requires at least 1 argument
+
+Usage:  helm uninstall RELEASE_NAME [...] [flags]

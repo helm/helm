@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -24,11 +24,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ghodss/yaml"
-
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/repo/repotest"
@@ -50,7 +47,8 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	t.Logf("Listening on directory %s", srv.Root())
 
 	chartname := "depup"
-	if err := createTestingChart(hh.String(), chartname, srv.URL()); err != nil {
+	md := createTestingMetadata(chartname, srv.URL())
+	if _, err := chartutil.Create(md, hh.String()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -88,14 +86,12 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	// Now change the dependencies and update. This verifies that on update,
 	// old dependencies are cleansed and new dependencies are added.
-	reqfile := &chartutil.Requirements{
-		Dependencies: []*chartutil.Dependency{
-			{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
-			{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
-		},
+	md.Requirements = []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
+		{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 	}
-	dir := hh.Path(chartname)
-	if err := writeRequirements(dir, reqfile); err != nil {
+	dir := hh.Path(chartname, "Chart.yaml")
+	if err := chartutil.SaveChartfile(dir, md); err != nil {
 		t.Fatal(err)
 	}
 
@@ -170,7 +166,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	o := &dependencyUpdateOptions{}
-	o.helmhome = helmpath.Home(hh)
+	o.helmhome = hh
 	o.chartpath = hh.Path(chartname)
 
 	if err := o.run(out); err != nil {
@@ -210,33 +206,25 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	}
 }
 
-// createTestingChart creates a basic chart that depends on reqtest-0.1.0
+// createTestingMetadata creates a basic chart that depends on reqtest-0.1.0
 //
 // The baseURL can be used to point to a particular repository server.
-func createTestingChart(dest, name, baseURL string) error {
-	cfile := &chart.Metadata{
+func createTestingMetadata(name, baseURL string) *chart.Metadata {
+	return &chart.Metadata{
 		Name:    name,
 		Version: "1.2.3",
-	}
-	dir := filepath.Join(dest, name)
-	_, err := chartutil.Create(cfile, dest)
-	if err != nil {
-		return err
-	}
-	req := &chartutil.Requirements{
-		Dependencies: []*chartutil.Dependency{
+		Requirements: []*chart.Dependency{
 			{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
 			{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
 		},
 	}
-	return writeRequirements(dir, req)
 }
 
-func writeRequirements(dir string, req *chartutil.Requirements) error {
-	data, err := yaml.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	return ioutil.WriteFile(filepath.Join(dir, "requirements.yaml"), data, 0655)
+// createTestingChart creates a basic chart that depends on reqtest-0.1.0
+//
+// The baseURL can be used to point to a particular repository server.
+func createTestingChart(dest, name, baseURL string) error {
+	cfile := createTestingMetadata(name, baseURL)
+	_, err := chartutil.Create(cfile, dest)
+	return err
 }

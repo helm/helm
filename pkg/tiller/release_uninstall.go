@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import (
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
-// UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
+// UninstallRelease deletes all of the resources associated with this release, and marks the release UNINSTALLED.
 func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*hapi.UninstallReleaseResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
 		return nil, errors.Errorf("uninstall: Release name is invalid: %s", req.Name)
@@ -49,7 +49,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
-	if rel.Info.Status == release.StatusDeleted {
+	if rel.Info.Status == release.StatusUninstalled {
 		if req.Purge {
 			if err := s.purgeReleases(rels...); err != nil {
 				return nil, errors.Wrap(err, "uninstall: Failed to purge the release")
@@ -60,7 +60,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 	}
 
 	s.Log("uninstall: Deleting %s", req.Name)
-	rel.Info.Status = release.StatusDeleting
+	rel.Info.Status = release.StatusUninstalling
 	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &hapi.UninstallReleaseResponse{Release: rel}
@@ -73,7 +73,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 		s.Log("delete hooks disabled for %s", req.Name)
 	}
 
-	// From here on out, the release is currently considered to be in StatusDeleting
+	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
 	if err := s.Releases.Update(rel); err != nil {
 		s.Log("uninstall: Failed to store updated release: %s", err)
@@ -88,8 +88,8 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 		}
 	}
 
-	rel.Info.Status = release.StatusDeleted
-	rel.Info.Description = "Deletion complete"
+	rel.Info.Status = release.StatusUninstalled
+	rel.Info.Description = "Uninstallation complete"
 
 	if req.Purge {
 		s.Log("purge requested for %s", req.Name)
@@ -102,7 +102,7 @@ func (s *ReleaseServer) UninstallRelease(req *hapi.UninstallReleaseRequest) (*ha
 	}
 
 	if len(errs) > 0 {
-		return res, errors.Errorf("deletion completed with %d error(s): %s", len(errs), joinErrors(errs))
+		return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
 	}
 	return res, nil
 }
@@ -132,7 +132,7 @@ func (s *ReleaseServer) deleteRelease(rel *release.Release) (kept string, errs [
 	}
 
 	manifests := relutil.SplitManifests(rel.Manifest)
-	_, files, err := sortManifests(manifests, vs, UninstallOrder)
+	_, files, err := SortManifests(manifests, vs, UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based

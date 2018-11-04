@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		// chart commands
 		newCreateCmd(out),
 		newDependencyCmd(out),
-		newFetchCmd(out),
+		newPullCmd(out),
 		newInspectCmd(out),
 		newLintCmd(out),
 		newPackageCmd(out),
@@ -71,7 +71,6 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		newVerifyCmd(out),
 
 		// release commands
-		newDeleteCmd(c, out),
 		newGetCmd(c, out),
 		newHistoryCmd(c, out),
 		newInstallCmd(c, out),
@@ -79,6 +78,7 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		newReleaseTestCmd(c, out),
 		newRollbackCmd(c, out),
 		newStatusCmd(c, out),
+		newUninstallCmd(c, out),
 		newUpgradeCmd(c, out),
 
 		newCompletionCmd(out),

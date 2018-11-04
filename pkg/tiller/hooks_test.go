@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -140,7 +140,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
+	hs, generic, err := SortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

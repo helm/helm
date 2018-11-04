@@ -1,6 +1,6 @@
 # Debugging Templates
 
-Debugging templates can be tricky simply because the templates are rendered on the Tiller server, not the Helm client. And then the rendered templates are sent to the Kubernetes API server, which may reject the YAML files for reasons other than formatting.
+Debugging templates can be tricky because the rendered templates are sent to the Kubernetes API server, which may reject the YAML files for reasons other than formatting.
 
 There are a few commands that can help you debug.
 

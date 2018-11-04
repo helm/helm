@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -85,8 +85,8 @@ func TestUNcompressedSecretGet(t *testing.T) {
 
 func TestSecretList(t *testing.T) {
 	secrets := newTestFixtureSecrets(t, []*rspb.Release{
-		releaseStub("key-1", 1, "default", rspb.StatusDeleted),
-		releaseStub("key-2", 1, "default", rspb.StatusDeleted),
+		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
+		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
 		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
@@ -95,7 +95,7 @@ func TestSecretList(t *testing.T) {
 
 	// list all deleted releases
 	del, err := secrets.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status == rspb.StatusDeleted
+		return rel.Info.Status == rspb.StatusUninstalled
 	})
 	// check
 	if err != nil {

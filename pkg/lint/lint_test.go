@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ func TestInvalidYaml(t *testing.T) {
 
 func TestBadValues(t *testing.T) {
 	m := All(badValuesFileDir, values, namespace, strict).Messages
-	if len(m) != 1 {
+	if len(m) < 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
 	if !strings.Contains(m[0].Err.Error(), "cannot unmarshal") {

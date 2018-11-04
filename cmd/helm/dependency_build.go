@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -26,7 +26,7 @@ import (
 )
 
 const dependencyBuildDesc = `
-Build out the charts/ directory from the requirements.lock file.
+Build out the charts/ directory from the Chart.lock file.
 
 Build is used to reconstruct a chart's dependencies to the state specified in
 the lock file. This will not re-negotiate dependencies, as 'helm dependency update'
@@ -50,7 +50,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "build CHART",
-		Short: "rebuild the charts/ directory based on the requirements.lock file",
+		Short: "rebuild the charts/ directory based on the Chart.lock file",
 		Long:  dependencyBuildDesc,
 		Args:  require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

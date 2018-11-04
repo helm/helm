@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -26,8 +26,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
@@ -94,6 +95,12 @@ func TestPackage(t *testing.T) {
 		{
 			name:    "package testdata/testcharts/alpine",
 			args:    []string{"testdata/testcharts/alpine"},
+			expect:  "",
+			hasfile: "alpine-0.1.0.tgz",
+		},
+		{
+			name:    "package testdata/testcharts/issue1979",
+			args:    []string{"testdata/testcharts/issue1979"},
 			expect:  "",
 			hasfile: "alpine-0.1.0.tgz",
 		},
@@ -206,7 +213,7 @@ func TestSetAppVersion(t *testing.T) {
 	tmp := testTempDir(t)
 
 	hh := testHelmHome(t)
-	settings.Home = helmpath.Home(hh)
+	settings.Home = hh
 
 	c := newPackageCmd(&bytes.Buffer{})
 	flags := map[string]string{
@@ -224,7 +231,7 @@ func TestSetAppVersion(t *testing.T) {
 	} else if fi.Size() == 0 {
 		t.Errorf("file %q has zero bytes.", chartPath)
 	}
-	ch, err := chartutil.Load(chartPath)
+	ch, err := loader.Load(chartPath)
 	if err != nil {
 		t.Errorf("unexpected error loading packaged chart: %v", err)
 	}
@@ -291,6 +298,7 @@ func TestPackageValues(t *testing.T) {
 }
 
 func runAndVerifyPackageCommandValues(t *testing.T, args []string, flags map[string]string, valueFiles string, expected chartutil.Values) {
+	t.Helper()
 	outputDir := testTempDir(t)
 
 	if len(flags) == 0 {
@@ -332,15 +340,16 @@ func createValuesFile(t *testing.T, data string) string {
 
 func getChartValues(chartPath string) (chartutil.Values, error) {
 
-	chart, err := chartutil.Load(chartPath)
+	chart, err := loader.Load(chartPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return chartutil.ReadValues(chart.Values)
+	return chart.Values, nil
 }
 
 func verifyValues(t *testing.T, actual, expected chartutil.Values) {
+	t.Helper()
 	for key, value := range expected.AsMap() {
 		if got := actual[key]; got != value {
 			t.Errorf("Expected %q, got %q (%v)", value, got, actual)

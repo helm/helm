@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 )
@@ -167,5 +167,5 @@ func formatChartname(c *chart.Chart) string {
 		// know how: https://github.com/kubernetes/helm/issues/1347
 		return "MISSING"
 	}
-	return fmt.Sprintf("%s-%s", c.Metadata.Name, c.Metadata.Version)
+	return fmt.Sprintf("%s-%s", c.Name(), c.Metadata.Version)
 }

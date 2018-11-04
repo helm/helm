@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,10 +43,10 @@ func TestGetReleaseStatus(t *testing.T) {
 	}
 }
 
-func TestGetReleaseStatusDeleted(t *testing.T) {
+func TestGetReleaseStatusUninstalled(t *testing.T) {
 	rs := rsFixture(t)
 	rel := releaseStub()
-	rel.Info.Status = release.StatusDeleted
+	rel.Info.Status = release.StatusUninstalled
 	if err := rs.Releases.Create(rel); err != nil {
 		t.Fatalf("Could not store mock release: %s", err)
 	}
@@ -56,7 +56,7 @@ func TestGetReleaseStatusDeleted(t *testing.T) {
 		t.Fatalf("Error getting release content: %s", err)
 	}
 
-	if res.Info.Status != release.StatusDeleted {
-		t.Errorf("Expected %s, got %s", release.StatusDeleted, res.Info.Status)
+	if res.Info.Status != release.StatusUninstalled {
+		t.Errorf("Expected %s, got %s", release.StatusUninstalled, res.Info.Status)
 	}
 }

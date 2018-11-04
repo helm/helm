@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,18 +27,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 )
 
 // deployment holds associated replicaSets for a deployment
 type deployment struct {
-	replicaSets *extensions.ReplicaSet
-	deployment  *extensions.Deployment
+	replicaSets *appsv1.ReplicaSet
+	deployment  *appsv1.Deployment
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
@@ -51,16 +48,14 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		return err
 	}
 	return wait.Poll(2*time.Second, timeout, func() (bool, error) {
-		pods := []v1.Pod{}
-		services := []v1.Service{}
-		pvc := []v1.PersistentVolumeClaim{}
-		deployments := []deployment{}
-		for _, v := range created {
-			obj, err := v.Versioned()
-			if err != nil && !runtime.IsNotRegisteredError(err) {
-				return false, err
-			}
-			switch value := obj.(type) {
+		var (
+			pods        []v1.Pod
+			services    []v1.Service
+			pvc         []v1.PersistentVolumeClaim
+			deployments []deployment
+		)
+		for _, v := range created[:0] {
+			switch value := asVersioned(v).(type) {
 			case *v1.ReplicationController:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector)
 				if err != nil {
@@ -74,12 +69,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				pods = append(pods, *pod)
 			case *appsv1.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -89,12 +84,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				deployments = append(deployments, newDeployment)
 			case *appsv1beta1.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -104,12 +99,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				deployments = append(deployments, newDeployment)
 			case *appsv1beta2.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -119,12 +114,12 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				}
 				deployments = append(deployments, newDeployment)
 			case *extensions.Deployment:
-				currentDeployment, err := kcs.ExtensionsV1beta1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.ExtensionsV1beta1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -208,12 +203,22 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 
 func (c *Client) podsReady(pods []v1.Pod) bool {
 	for _, pod := range pods {
-		if !podutil.IsPodReady(&pod) {
+		if !IsPodReady(&pod) {
 			c.Log("Pod is not ready: %s/%s", pod.GetNamespace(), pod.GetName())
 			return false
 		}
 	}
 	return true
+}
+
+// IsPodReady returns true if a pod is ready; false otherwise.
+func IsPodReady(pod *v1.Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == v1.PodReady && c.Status == v1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Client) servicesReady(svc []v1.Service) bool {
@@ -224,7 +229,7 @@ func (c *Client) servicesReady(svc []v1.Service) bool {
 		}
 
 		// Make sure the service is not explicitly set to "None" before checking the IP
-		if s.Spec.ClusterIP != v1.ClusterIPNone && !helper.IsServiceIPSet(&s) {
+		if s.Spec.ClusterIP != v1.ClusterIPNone && !IsServiceIPSet(&s) {
 			c.Log("Service is not ready: %s/%s", s.GetNamespace(), s.GetName())
 			return false
 		}
@@ -235,6 +240,12 @@ func (c *Client) servicesReady(svc []v1.Service) bool {
 		}
 	}
 	return true
+}
+
+// this function aims to check if the service's ClusterIP is set or not
+// the objective is not to perform validation here
+func IsServiceIPSet(service *v1.Service) bool {
+	return service.Spec.ClusterIP != v1.ClusterIPNone && service.Spec.ClusterIP != ""
 }
 
 func (c *Client) volumesReady(vols []v1.PersistentVolumeClaim) bool {

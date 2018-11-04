@@ -234,8 +234,6 @@ Download Helm X.Y. The common platform binaries are here:
 - [Linux](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz)
 - [Windows](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.tar.gz)
 
-Once you have the client installed, upgrade Tiller with `helm init --upgrade`.
-
 The [Quickstart Guide](https://docs.helm.sh/using_helm/#quickstart-guide) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://docs.helm.sh/using_helm/#installing-helm). You can also use a [script to install](https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get) on any system with `bash`.
 
 ## What's Next

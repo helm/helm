@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ limitations under the License.
 package helm
 
 import (
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 )
 
@@ -27,7 +27,7 @@ type Interface interface {
 	ListReleases(opts ...ReleaseListOption) ([]*release.Release, error)
 	InstallRelease(chStr, namespace string, opts ...InstallOption) (*release.Release, error)
 	InstallReleaseFromChart(chart *chart.Chart, namespace string, opts ...InstallOption) (*release.Release, error)
-	DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error)
+	UninstallRelease(rlsName string, opts ...UninstallOption) (*hapi.UninstallReleaseResponse, error)
 	ReleaseStatus(rlsName string, version int) (*hapi.GetReleaseStatusResponse, error)
 	UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*release.Release, error)
 	UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*release.Release, error)

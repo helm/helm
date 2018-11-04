@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 )
 
@@ -77,8 +77,8 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	return release, nil
 }
 
-// DeleteRelease deletes a release from the FakeClient
-func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*hapi.UninstallReleaseResponse, error) {
+// UninstallRelease uninstalls a release from the FakeClient
+func (c *FakeClient) UninstallRelease(rlsName string, opts ...UninstallOption) (*hapi.UninstallReleaseResponse, error) {
 	for i, rel := range c.Rels {
 		if rel.Name == rlsName {
 			c.Rels = append(c.Rels[:i], c.Rels[i+1:]...)
@@ -187,7 +187,7 @@ type MockReleaseOptions struct {
 
 // ReleaseMock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
 func ReleaseMock(opts *MockReleaseOptions) *release.Release {
-	date := time.Unix(242085845, 0)
+	date := time.Unix(242085845, 0).UTC()
 
 	name := opts.Name
 	if name == "" {

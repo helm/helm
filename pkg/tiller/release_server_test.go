@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,12 +28,13 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
 
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/chart"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/kube"
@@ -93,10 +94,9 @@ data:
 func rsFixture(t *testing.T) *ReleaseServer {
 	t.Helper()
 
-	env := environment.New()
 	dc := fake.NewSimpleClientset().Discovery()
 	kc := &environment.PrintingKubeClient{Out: ioutil.Discard}
-	rs := NewReleaseServer(env, dc, kc)
+	rs := NewReleaseServer(dc, kc)
 	rs.Log = func(format string, v ...interface{}) {
 		t.Helper()
 		if *verbose {
@@ -142,7 +142,7 @@ func withKube(version string) chartOption {
 
 func withDependency(dependencyOpts ...chartOption) chartOption {
 	return func(opts *chartOptions) {
-		opts.Dependencies = append(opts.Dependencies, buildChart(dependencyOpts...))
+		opts.AddDependency(buildChart(dependencyOpts...))
 	}
 }
 
@@ -323,7 +323,7 @@ func TestUniqName(t *testing.T) {
 	rel1 := releaseStub()
 	rel2 := releaseStub()
 	rel2.Name = "happy-panda"
-	rel2.Info.Status = release.StatusDeleted
+	rel2.Info.Status = release.StatusUninstalled
 
 	rs.Releases.Create(rel1)
 	rs.Releases.Create(rel2)
@@ -334,8 +334,8 @@ func TestUniqName(t *testing.T) {
 		reuse  bool
 		err    bool
 	}{
+		{"", "", false, true}, // Blank name is illegal
 		{"first", "first", false, false},
-		{"", "[a-z]+-[a-z]+", false, false},
 		{"angry-panda", "", false, true},
 		{"happy-panda", "", false, true},
 		{"happy-panda", "happy-panda", true, false},
@@ -483,26 +483,23 @@ func (kc *mockHooksKubeClient) WatchUntilReady(ns string, r io.Reader, timeout i
 
 	return nil
 }
-func (kc *mockHooksKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force, recreate bool, timeout int64, shouldWait bool) error {
+func (kc *mockHooksKubeClient) Update(_ string, _, _ io.Reader, _, _ bool, _ int64, _ bool) error {
 	return nil
 }
-func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
+func (kc *mockHooksKubeClient) Build(_ string, _ io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
+func (kc *mockHooksKubeClient) BuildUnstructured(_ string, _ io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
-func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (core.PodPhase, error) {
-	return core.PodUnknown, nil
+func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader, _ time.Duration) (v1.PodPhase, error) {
+	return v1.PodUnknown, nil
 }
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
-	e := environment.New()
-
-	dc := fake.NewSimpleClientset().Discovery()
 	return &ReleaseServer{
-		env:        e,
-		discovery:  dc,
+		engine:     engine.New(),
+		discovery:  fake.NewSimpleClientset().Discovery(),
 		KubeClient: kubeClient,
 		Log:        func(_ string, _ ...interface{}) {},
 	}

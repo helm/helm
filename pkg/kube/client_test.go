@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,58 +23,52 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/rest/fake"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/kubectl"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
-var unstructuredSerializer = dynamic.ContentConfig().NegotiatedSerializer
+var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
+var codec = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
-func objBody(codec runtime.Codec, obj runtime.Object) io.ReadCloser {
+func objBody(obj runtime.Object) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 }
 
-func newPod(name string) core.Pod {
-	return newPodWithStatus(name, core.PodStatus{}, "")
+func newPod(name string) v1.Pod {
+	return newPodWithStatus(name, v1.PodStatus{}, "")
 }
 
-func newPodWithStatus(name string, status core.PodStatus, namespace string) core.Pod {
-	ns := core.NamespaceDefault
+func newPodWithStatus(name string, status v1.PodStatus, namespace string) v1.Pod {
+	ns := v1.NamespaceDefault
 	if namespace != "" {
 		ns = namespace
 	}
-	return core.Pod{
+	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
 			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
 		},
-		Spec: core.PodSpec{
-			Containers: []core.Container{{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{{
 				Name:  "app:v4",
 				Image: "abc/app:v4",
-				Ports: []core.ContainerPort{{Name: "http", ContainerPort: 80}},
+				Ports: []v1.ContainerPort{{Name: "http", ContainerPort: 80}},
 			}},
 		},
 		Status: status,
 	}
 }
 
-func newPodList(names ...string) core.PodList {
-	var list core.PodList
+func newPodList(names ...string) v1.PodList {
+	var list v1.PodList
 	for _, name := range names {
 		list.Items = append(list.Items, newPod(name))
 	}
@@ -94,26 +88,8 @@ func notFoundBody() *metav1.Status {
 func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	header := http.Header{}
 	header.Set("Content-Type", runtime.ContentTypeJSON)
-	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(testapi.Default.Codec(), obj))))
+	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
-}
-
-type fakeReaper struct {
-	name string
-}
-
-func (r *fakeReaper) Stop(namespace, name string, timeout time.Duration, gracePeriod *metav1.DeleteOptions) error {
-	r.name = name
-	return nil
-}
-
-type fakeReaperFactory struct {
-	cmdutil.Factory
-	reaper kubectl.Reaper
-}
-
-func (f *fakeReaperFactory) Reaper(mapping *meta.RESTMapping) (kubectl.Reaper, error) {
-	return f.reaper, nil
 }
 
 type testClient struct {
@@ -123,8 +99,6 @@ type testClient struct {
 
 func newTestClient() *testClient {
 	tf := cmdtesting.NewTestFactory()
-	tf.Namespace = core.NamespaceDefault
-
 	c := &Client{Factory: tf, Log: nopLogger}
 	return &testClient{Client: c, TestFactory: tf}
 }
@@ -133,15 +107,14 @@ func TestUpdate(t *testing.T) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
 	listC := newPodList("starfish", "otter", "dolphin")
-	listB.Items[0].Spec.Containers[0].Ports = []core.ContainerPort{{Name: "https", ContainerPort: 443}}
-	listC.Items[0].Spec.Containers[0].Ports = []core.ContainerPort{{Name: "https", ContainerPort: 443}}
+	listB.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+	listC.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
 
 	var actions []string
 
-	tf := cmdtesting.NewTestFactory()
+	tf := cmdtesting.NewTestFactory().WithNamespace("default")
 	defer tf.Cleanup()
 	tf.UnstructuredClient = &fake.RESTClient{
-		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
@@ -176,13 +149,11 @@ func TestUpdate(t *testing.T) {
 		}),
 	}
 
-	c := newTestClient()
-	tf.Namespace = core.NamespaceDefault
-	reaper := &fakeReaper{}
-	rf := &fakeReaperFactory{Factory: tf, reaper: reaper}
-	c.Client.Factory = rf
-	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
-	if err := c.Update(core.NamespaceDefault, objBody(codec, &listA), objBody(codec, &listB), false, false, 0, false); err != nil {
+	c := &Client{
+		Factory: tf,
+		Log:     nopLogger,
+	}
+	if err := c.Update(v1.NamespaceDefault, objBody(&listA), objBody(&listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
@@ -202,6 +173,7 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/dolphin:GET",
 		"/namespaces/default/pods:POST",
+		"/namespaces/default/pods/squid:DELETE",
 	}
 	if len(expectedActions) != len(actions) {
 		t.Errorf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
@@ -212,11 +184,6 @@ func TestUpdate(t *testing.T) {
 			t.Errorf("expected %s request got %s", v, actions[k])
 		}
 	}
-
-	if reaper.name != "squid" {
-		t.Errorf("unexpected reaper: %#v", reaper)
-	}
-
 }
 
 func TestBuild(t *testing.T) {

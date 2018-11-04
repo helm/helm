@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 
 func init() {
 	if level := os.Getenv("KUBE_LOG_LEVEL"); level != "" {
-		flag.Set("vmodule", fmt.Sprintf("loader=%s,round_trippers=%s,request=%s", level, level, level))
+		flag.Set("vmodule", fmt.Sprintf("loader=%[1]s,round_trippers=%[1]s,request=%[1]s", level))
 		flag.Set("logtostderr", "true")
 	}
 }

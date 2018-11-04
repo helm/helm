@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/chart"
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/chart/loader"
 )
 
 const inspectDesc = `
@@ -146,7 +146,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 }
 
 func (i *inspectOptions) run(out io.Writer) error {
-	chrt, err := chartutil.Load(i.chartpath)
+	chrt, err := loader.Load(i.chartpath)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,11 @@ func (i *inspectOptions) run(out io.Writer) error {
 		if i.output == all {
 			fmt.Fprintln(out, "---")
 		}
-		fmt.Fprintln(out, string(chrt.Values))
+		b, err := yaml.Marshal(chrt.Values)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, string(b))
 	}
 
 	if i.output == readmeOnly || i.output == all {

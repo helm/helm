@@ -1,5 +1,5 @@
 /*
-Copyright 2016 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,16 +27,17 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/tiller"
-	tversion "k8s.io/helm/pkg/version"
 )
 
 const defaultDirectoryPermission = 0755
@@ -145,30 +146,32 @@ func (o *templateOptions) run(out io.Writer) error {
 
 	// If template is specified, try to run the template.
 	if o.nameTemplate != "" {
-		o.releaseName, err = generateName(o.nameTemplate)
+		o.releaseName, err = templateName(o.nameTemplate)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	c, err := chartutil.Load(o.chartPath)
+	c, err := loader.Load(o.chartPath)
 	if err != nil {
 		return err
 	}
 
-	if req, err := chartutil.LoadRequirements(c); err == nil {
+	if req := c.Metadata.Requirements; req != nil {
 		if err := checkDependencies(c, req); err != nil {
 			return err
 		}
-	} else if err != chartutil.ErrRequirementsNotFound {
-		return errors.Wrap(err, "cannot load requirements")
 	}
 	options := chartutil.ReleaseOptions{
 		Name: o.releaseName,
 	}
 
-	if err := chartutil.ProcessRequirementsEnabled(c, config); err != nil {
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(config, &m); err != nil {
+		return err
+	}
+	if err := chartutil.ProcessRequirementsEnabled(c, m); err != nil {
 		return err
 	}
 	if err := chartutil.ProcessRequirementsImportValues(c); err != nil {
@@ -178,22 +181,18 @@ func (o *templateOptions) run(out io.Writer) error {
 	// Set up engine.
 	renderer := engine.New()
 
-	caps := &chartutil.Capabilities{
-		APIVersions: chartutil.DefaultVersionSet,
-		KubeVersion: chartutil.DefaultKubeVersion,
-		HelmVersion: tversion.GetBuildInfo(),
-	}
-
 	// kubernetes version
 	kv, err := semver.NewVersion(o.kubeVersion)
 	if err != nil {
 		return errors.Wrap(err, "could not parse a kubernetes version")
 	}
+
+	caps := chartutil.DefaultCapabilities
 	caps.KubeVersion.Major = fmt.Sprint(kv.Major())
 	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
 	caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
 
-	vals, err := chartutil.ToRenderValuesCaps(c, config, options, caps)
+	vals, err := chartutil.ToRenderValues(c, config, options, caps)
 	if err != nil {
 		return err
 	}

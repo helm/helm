@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors All rights reserved.
+Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -37,9 +37,6 @@ func TestVersionSet(t *testing.T) {
 func TestDefaultVersionSet(t *testing.T) {
 	if !DefaultVersionSet.Has("v1") {
 		t.Error("Expected core v1 version set")
-	}
-	if d := len(DefaultVersionSet); d != 1 {
-		t.Errorf("Expected only one version, got %d", d)
 	}
 }
 
