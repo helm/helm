@@ -108,6 +108,27 @@ func TestTemplateCmd(t *testing.T) {
 			expectValue: "release-name: \"test\"",
 		},
 		{
+			name:        "check_invalid_name_uppercase",
+			desc:        "verify the release name using capitals is invalid",
+			args:        []string{subchart1ChartPath, "--name", "FOO"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectError: "is not a valid DNS label",
+		},
+		{
+			name:        "check_invalid_name_uppercase",
+			desc:        "verify the release name using periods is invalid",
+			args:        []string{subchart1ChartPath, "--name", "foo.bar"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectError: "is not a valid DNS label",
+		},
+		{
+			name:        "check_invalid_name_uppercase",
+			desc:        "verify the release name using underscores is invalid",
+			args:        []string{subchart1ChartPath, "--name", "foo_bar"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectError: "is not a valid DNS label",
+		},
+		{
 			name:        "check_release_is_install",
 			desc:        "verify --is-upgrade toggles .Release.IsInstall",
 			args:        []string{subchart1ChartPath, "--is-upgrade=false"},
@@ -136,11 +157,17 @@ func TestTemplateCmd(t *testing.T) {
 			expectValue: "name: apache",
 		},
 		{
+			name:        "check_invalid_name_template",
+			desc:        "verify the relase name generate by template is invalid",
+			args:        []string{subchart1ChartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
+			expectError: "is not a valid DNS label",
+		},
+		{
 			name:        "check_name_template",
 			desc:        "verify --name-template result exists",
-			args:        []string{subchart1ChartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
+			args:        []string{subchart1ChartPath, "--name-template", "foobar-{{ lower \"ABC\" }}-baz"},
 			expectKey:   "subchart1/templates/service.yaml",
-			expectValue: "release-name: \"foobar-YWJj-baz\"",
+			expectValue: "release-name: \"foobar-abc-baz\"",
 		},
 		{
 			name:        "check_kube_version",
