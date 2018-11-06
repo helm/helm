@@ -109,7 +109,7 @@ to render and exit when .Values.foo is undefined.
 ## Using the 'tpl' Function
 
 The `tpl` function allows developers to evaluate strings as templates inside a template.
-This is useful to pass a template string as a value to a chart or render external configuration files.  
+This is useful to pass a template string as a value to a chart or render external configuration files.
 Syntax: `{{ tpl TEMPLATE_STRING VALUES }}`
 
 Examples:
@@ -152,7 +152,7 @@ imageCredentials:
   registry: quay.io
   username: someone
   password: sillyness
-```  
+```
 
 We then define our helper template as follows:
 ```
@@ -182,7 +182,7 @@ deployment spec itself didn't change the application keeps running
 with the old configuration resulting in an inconsistent deployment.
 
 The `sha256sum` function can be used to ensure a deployment's
-annotation section is updated if another file changes: 
+annotation section is updated if another file changes:
 
 ```yaml
 kind: Deployment
@@ -232,7 +232,7 @@ by convention, helper templates and partials are placed in a
 
 ## Complex Charts with Many Dependencies
 
-Many of the charts in the [official charts repository](https://github.com/kubernetes/charts)
+Many of the charts in the [official charts repository](https://github.com/helm/charts)
 are "building blocks" for creating more advanced applications. But charts may be
 used to create instances of large-scale applications. In such cases, a single
 umbrella chart may have multiple subcharts, each of which functions as a piece
