@@ -122,7 +122,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 
 	// create the output-dir if it doesn't exist
 	if t.outputDir != "" {
-		if err := ensureDirectoryForFile(t.outputDir);err != nil {
+		if err := ensureDirectoryForFile(t.outputDir); err != nil {
 			return err
 		}
 	}
