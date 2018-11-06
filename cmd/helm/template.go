@@ -120,11 +120,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// verify that output-dir exists if provided
+	// create the output-dir if it doesn't exist
 	if t.outputDir != "" {
-		_, err := os.Stat(t.outputDir)
-		if os.IsNotExist(err) {
-			return fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
+		if err := ensureDirectoryForFile(t.outputDir);err != nil {
+			return err
 		}
 	}
 
