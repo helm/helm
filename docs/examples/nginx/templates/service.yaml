@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-{{- if .Values.service.annotations }}
+  {{- if .Values.service.annotations }}
   annotations:
-{{ toYaml .Values.service.annotations | indent 4 }}
-{{- end }}
+    {{- toYaml .Values.service.annotations | nindent 4 }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: {{ template "nginx.name" . }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
@@ -15,17 +15,17 @@ spec:
 # Provides options for the service so chart users have the full choice
   type: "{{ .Values.service.type }}"
   clusterIP: "{{ .Values.service.clusterIP }}"
-{{- if .Values.service.externalIPs }}
+  {{- if .Values.service.externalIPs }}
   externalIPs:
-{{ toYaml .Values.service.externalIPs | indent 4 }}
-{{- end }}
-{{- if .Values.service.loadBalancerIP }}
+    {{- toYaml .Values.service.externalIPs | nindent 4 }}
+  {{- end }}
+  {{- if .Values.service.loadBalancerIP }}
   loadBalancerIP: "{{ .Values.service.loadBalancerIP }}"
-{{- end }}
-{{- if .Values.service.loadBalancerSourceRanges }}
+  {{- end }}
+  {{- if .Values.service.loadBalancerSourceRanges }}
   loadBalancerSourceRanges:
-{{ toYaml .Values.service.loadBalancerSourceRanges | indent 4 }}
-{{- end }}
+    {{- toYaml .Values.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
   ports:
     - name: http
       port: {{ .Values.service.port }}
