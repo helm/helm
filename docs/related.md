@@ -47,6 +47,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-logs](https://github.com/maorfr/helm-logs) - Plugin to view changed releases over time
 - [helm-monitor](https://github.com/ContainerSolutions/helm-monitor) - Plugin to monitor a release and rollback based on Prometheus/ElasticSearch query
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
+- [helm-plugin-utils](https://github.com/maorfr/helm-plugin-utils) - Utility functions to be used within Helm plugins
 - [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore a deployed release to its original state
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
 - [helm-stop](https://github.com/IBM/helm-stop) - Plugin for stopping a release pods
@@ -54,8 +55,6 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-tiller](https://github.com/adamreese/helm-tiller) - Additional commands to work with Tiller
 - [helm-unittest](https://github.com/lrills/helm-unittest) - Plugin for unit testing chart locally with YAML
 - [Tillerless Helm v2](https://github.com/rimusz/helm-tiller) - Helm plugin for using Tiller locally and in CI/CD pipelines
-
-To help you get started, [helm-plugin-utils](https://github.com/maorfr/helm-plugin-utils) holds some utility functions to be used within Helm plugins.
 
 We also encourage GitHub authors to use the [helm-plugin](https://github.com/search?q=topic%3Ahelm-plugin&type=Repositories)
 tag on their plugin repositories.
