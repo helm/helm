@@ -212,7 +212,7 @@ message UpdateReleaseRequest {
 	bool force = 11;
 	// Description, if set, will set the description for the updated release
 	string description = 12;
-  // Render subchart notes if enabled
+        // Render subchart notes if enabled
 	bool subNotes = 13;
 }
 
@@ -284,7 +284,7 @@ message InstallReleaseRequest {
 	// Description, if set, will set the description for the installed release
 	string description = 11;
   
-  bool subNotes = 12;
+        bool subNotes = 12;
 
 }
 
