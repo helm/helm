@@ -29,6 +29,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -92,7 +93,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&t.showNotes, "notes", false, "show the computed NOTES.txt file as well")
-	f.StringVarP(&t.releaseName, "name", "n", "RELEASE-NAME", "release name")
+	f.StringVarP(&t.releaseName, "name", "n", "release-name", "release name")
 	f.BoolVar(&t.releaseIsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringArrayVarP(&t.renderFiles, "execute", "x", []string{}, "only execute the given templates")
 	f.VarP(&t.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
@@ -144,6 +145,10 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if msgs := validation.IsDNS1123Label(t.releaseName); t.releaseName != "" && len(msgs) > 0 {
+		return fmt.Errorf("release name %s is not a valid DNS label: %s", t.releaseName, strings.Join(msgs, ";"))
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
