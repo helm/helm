@@ -333,6 +333,41 @@ function run(e, project) {
 events.on("run", run)
 ```
 
+### Overriding the dependencies of a chart
+
+You can use the `--requirements` flag on `helm install` or `helm upgrade` to override dependencies.
+
+When we are working with a parent chart which has many subcharts. For testing a subchart's change, 
+we first publish the subchart artifact and we can then use `--requirements` to override the parent 
+chart's dependencies with the new subchart version.
+
+For example, consider a parent chart's `requirements.yaml` that looks like this:
+
+```
+# parentchart/requirements.yaml
+dependencies:
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+```
+
+After publishing a new subchart whose version is `0.2.0`, you can then create a new `custom-requirements.yaml` file
+and override the parent chart's dependencies to test the subchart.
+
+```
+# custom-requirements.yaml
+dependencies:
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.2.0
+```
+
+```
+$ helm install --requirements custom-requirements.yaml local/parentchart
+```
+
+In the above case, the subchart version will be replaced with `0.2.0`.
+
 ### More Installation Methods
 
 The `helm install` command can install from several sources:
