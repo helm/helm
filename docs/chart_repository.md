@@ -5,7 +5,7 @@ high level, a chart repository is a location where packaged charts can be
 stored and shared.
 
 The official chart repository is maintained by the
-[Kubernetes Charts](https://github.com/kubernetes/charts), and we welcome
+[Helm Charts](https://github.com/helm/charts), and we welcome
 participation. But Helm also makes it easy to create and run your own chart
 repository. This guide explains how to do so.
 
@@ -99,7 +99,7 @@ entries:
       home: https://k8s.io/helm
       name: nginx
       sources:
-      - https://github.com/kubernetes/charts
+      - https://github.com/helm/charts
       urls:
       - https://technosophos.github.io/tscharts/nginx-1.1.0.tgz
       version: 1.1.0
@@ -143,7 +143,7 @@ Congratulations, now you have an empty GCS bucket ready to serve charts!
 You may upload your chart repository using the Google Cloud Storage command line
 tool, or using the GCS web UI. This is the technique the official Kubernetes
 Charts repository hosts its charts, so you may want to take a
-[peek at that project](https://github.com/kubernetes/charts) if you get stuck.
+[peek at that project](https://github.com/helm/charts) if you get stuck.
 
 **Note:** A public GCS bucket can be accessed via simple HTTPS at this address
 `https://bucket-name.storage.googleapis.com/`.
