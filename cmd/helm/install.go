@@ -32,6 +32,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
@@ -246,6 +247,10 @@ func (i *installCmd) run() error {
 		}
 		// Print the final name so the user knows what the final name of the release is.
 		fmt.Printf("FINAL NAME: %s\n", i.name)
+	}
+
+	if msgs := validation.IsDNS1123Label(i.name); i.name != "" && len(msgs) > 0 {
+		return fmt.Errorf("release name %s is not a valid DNS label: %s", i.name, strings.Join(msgs, ";"))
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
