@@ -28,7 +28,7 @@ helm template [flags] CHART
   -h, --help                     help for template
       --is-upgrade               set .Release.IsUpgrade instead of .Release.IsInstall
       --kube-version string      kubernetes version used as Capabilities.KubeVersion.Major/Minor (default "1.9")
-  -n, --name string              release name (default "RELEASE-NAME")
+  -n, --name string              release name (default "release-name")
       --name-template string     specify template used to name the release
       --namespace string         namespace to install the release into
       --notes                    show the computed NOTES.txt file as well
