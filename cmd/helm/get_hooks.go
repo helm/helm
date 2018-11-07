@@ -75,7 +75,7 @@ func (g *getHooksCmd) run() error {
 	}
 
 	for _, hook := range res.Release.Hooks {
-		fmt.Fprintf(g.out, "---\n# %s\n%s", hook.Name, hook.Manifest)
+		fmt.Fprintf(g.out, "---\n# %s\n%s\n", hook.Name, hook.Manifest)
 	}
 	return nil
 }
