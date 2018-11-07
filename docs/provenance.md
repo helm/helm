@@ -27,7 +27,7 @@ Prerequisites:
 
 **NOTE:** If your PGP private key has a passphrase, you will be prompted to enter
 that passphrase for any commands that support the `--sign` option. You can set the
-HELM_KEY_PASSPHRASE environment variable to that passphrase in case you don't want 
+HELM_KEY_PASSPHRASE environment variable to that passphrase in case you don't want
 to be prompted to enter the passphrase.
 
 **NOTE:** The keyfile format for GnuPG changed in version 2.1. Prior to that release
@@ -261,9 +261,9 @@ in using the provenance system:
   - Keybase also has fabulous documentation available
   - While we haven't tested it, Keybase's "secure website" feature could
     be used to serve Helm charts.
-- The [official Kubernetes Charts project](https://github.com/kubernetes/charts)
+- The [official Helm Charts project](https://github.com/helm/charts)
   is trying to solve this problem for the official chart repository.
-  - There is a long issue there [detailing the current thoughts](https://github.com/kubernetes/charts/issues/23).
+  - There is a long issue there [detailing the current thoughts](https://github.com/helm/charts/issues/23).
   - The basic idea is that an official "chart reviewer" signs charts with
     her or his key, and the resulting provenance file is then uploaded
     to the chart repository.
