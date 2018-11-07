@@ -498,6 +498,20 @@ func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout 
 	return errors.New("Failed watch")
 }
 
+func newDeleteFailingKubeClient() *deleteFailingKubeClient {
+	return &deleteFailingKubeClient{
+		PrintingKubeClient: environment.PrintingKubeClient{Out: ioutil.Discard},
+	}
+}
+
+type deleteFailingKubeClient struct {
+	environment.PrintingKubeClient
+}
+
+func (d *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
+	return kube.ErrNoObjectsVisited
+}
+
 type mockListServer struct {
 	val *services.ListReleasesResponse
 }
