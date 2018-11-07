@@ -73,7 +73,7 @@ Blocks (such as control structures) may be indented to indicate flow of the temp
 ```
 {{ if $foo -}}
   {{- with .Bar }}Hello{{ end -}}
-{{- end -}} 
+{{- end -}}
 ```
 
 However, since YAML is a whitespace-oriented language, it is often not possible for code indentation to follow that convention.
@@ -145,7 +145,7 @@ metadata:
   name: {{ .Release.Name }}-myservice
 ```
 
-Or if there is only one resource of this kind then we could use .Release.Name or the template fullname function defined in _helpers.tpl (which uses release name):
+Or if there is only one resource of this kind then we could use .Release.Name or the template fullname function defined in \_helpers.tpl (which uses release name):
 
 ```yaml
 apiVersion: v1
@@ -217,7 +217,7 @@ readable than other YAML representations.
 For example, this YAML is closer to the normal YAML method of expressing lists:
 
 ```yaml
-arguments: 
+arguments:
   - "--dirname"
   - "/foo"
 ```
