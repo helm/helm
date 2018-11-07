@@ -56,21 +56,11 @@ The following two sub-sections describe options of how to setup Tiller so there 
 
 #### Enabling TLS
 
+(Note that out of the two options, this is the recommended one for Helm 2.)
+
 Shared and production clusters -- for the most part -- should use Helm 2.7.2 at a minimum and configure TLS for each Tiller gRPC endpoint to ensure that within the cluster usage of gRPC endpoints is only for the properly authenticated identity for that endpoint (i.e. configure each endpoint to use a separate TLS certificate). Doing so enables any number of Tiller instances to be deployed in any number of namespaces and yet no unauthenticated usage of any gRPC endpoint is possible. Finally, use Helm `init` with the `--tiller-tls-verify` option to install Tiller with TLS enabled and to verify remote certificates, and all other Helm commands should use the `--tls` option.
 
-The following command will start Tiller with strong authentication over gRPC, release information stored in a Kubernetes Secret, and a service account to which RBAC policies have been applied:
-```bash
-$ helm init \
---override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' \
---tiller-tls \
---tiller-tls-verify \
---tiller-tls-cert=cert.pem \
---tiller-tls-key=key.pem \
---tls-ca-cert=ca.pem \
---service-account=accountname
-```
-
-For more information about the proper steps to configure Tiller and use Helm properly with TLS configured, see [Using SSL between Helm and Tiller](tiller_ssl.md).
+For more information about the proper steps to configure Tiller and use Helm properly with TLS configured, see the [Best Practices](#best-practices-for-securing-helm-and-tiller) section below, and [Using SSL between Helm and Tiller](tiller_ssl.md).
 
 When Helm clients are connecting from outside of the cluster, the security between the Helm client and the API server is managed by Kubernetes itself. You may want to ensure that this link is secure. Note that if you are using the TLS configuration recommended above, not even the Kubernetes API server has access to the encrypted messages between the client and Tiller.
 
@@ -108,6 +98,21 @@ Many very useful tools use the gRPC interface directly, and having been built ag
 The following guidelines reiterate the Best Practices for securing Helm and Tiller and using them correctly.
 
 1. Create a cluster with RBAC enabled
-2. Configure Tiller to not have an unauthenticated endpoint
+2. Configure each Tiller gRPC endpoint to use a separate TLS certificate
 3. Release information should be a Kubernetes Secret
 4. Install one Tiller per user, team, or other organizational entity with the `--service-account` flag, Roles, and RoleBindings
+5. Use the `--tiller-tls-verify` option with `helm init` and the `--tls` flag with other Helm commands to enforce verification
+
+If these steps are followed, an example `helm init` command might look something like this:
+```bash
+$ helm init \
+--override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}' \
+--tiller-tls \
+--tiller-tls-verify \
+--tiller-tls-cert=cert.pem \
+--tiller-tls-key=key.pem \
+--tls-ca-cert=ca.pem \
+--service-account=accountname
+```
+
+This command will start Tiller with strong authentication over gRPC, release information stored in a Kubernetes Secret, and a service account to which RBAC policies have been applied.
