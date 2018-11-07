@@ -95,7 +95,6 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	req := &reqOpts.instReq
 	req.Chart = chart
 	req.Namespace = ns
-	req.SubNotes = reqOpts.subNotes
 	req.DryRun = reqOpts.dryRun
 	req.DisableHooks = reqOpts.disableHooks
 	req.DisableCrdHook = reqOpts.disableCRDHook
@@ -172,7 +171,6 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	req.DryRun = reqOpts.dryRun
 	req.Name = rlsName
 	req.DisableHooks = reqOpts.disableHooks
-	req.SubNotes = reqOpts.subNotes
 	req.Recreate = reqOpts.recreate
 	req.Force = reqOpts.force
 	req.ResetValues = reqOpts.resetValues
