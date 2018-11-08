@@ -215,7 +215,7 @@ func TestEnsureHome(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			if !filepath.IsAbs(rr.Cache) {
+			if filepath.IsAbs(rr.Cache) {
 				t.Errorf("%s stable repo cache path is an absolute path", rr.Cache)
 			}
 			absCache, err := filepath.Abs(filepath.Join(hh.Cache(), rr.Cache))
