@@ -24,6 +24,7 @@ import (
 
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/repo"
 )
 
 func TestInitialize(t *testing.T) {
@@ -95,6 +96,35 @@ func TestEnsureHome(t *testing.T) {
 	}
 	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {
 		t.Error(err)
+	}
+
+	rf, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
+	if err != nil {
+		t.Error(err)
+	}
+
+	foundStable := false
+	for _, rr := range rf.Repositories {
+		if rr.Name == stableRepository {
+			foundStable = true
+			if err != nil {
+				t.Error(err)
+			}
+			if filepath.IsAbs(rr.Cache) {
+				t.Errorf("%s stable repo cache path is an absolute path", rr.Cache)
+			}
+			absCache, err := filepath.Abs(filepath.Join(hh.Cache(), rr.Cache))
+			if err != nil {
+				t.Error(err)
+			}
+			if absCache != hh.CacheIndex(stableRepository) {
+				t.Errorf("%s stable repo cache path doesn't resolve to absolute cache index path", rr.Cache)
+			}
+			break
+		}
+	}
+	if !foundStable {
+		t.Errorf("stable repo not found")
 	}
 
 	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache(), hh.LocalRepository()}
