@@ -135,10 +135,11 @@ func (t *test) run(env *Environment) error {
 	resourceCleanExit := true
 	status := v1.PodUnknown
 	if resourceCreated {
-		status, err = env.getTestPodStatus(test)
+		var err error
+		status, err = env.getTestPodStatus(t)
 		if err != nil {
 			resourceCleanExit = false
-			if streamErr := env.streamError(test.result.Info); streamErr != nil {
+			if streamErr := env.streamError(t.result.Info); streamErr != nil {
 				return streamErr
 			}
 		}

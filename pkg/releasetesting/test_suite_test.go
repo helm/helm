@@ -443,10 +443,10 @@ func newSleepOnWaitKubeClient() *sleepOnWaitKubeClient {
 	}
 }
 
-func (p *sleepOnWaitKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (core.PodPhase, error) {
+func (p *sleepOnWaitKubeClient) WaitAndGetCompletedPodPhase(ns string, r io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	time.Sleep(1 * time.Millisecond)
 
-	return core.PodSucceeded, nil
+	return v1.PodSucceeded, nil
 }
 
 type podFailedKubeClient struct {
