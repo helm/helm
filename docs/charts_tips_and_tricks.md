@@ -71,12 +71,16 @@ Go template pipelines.
 To make it possible to include a template, and then perform an operation
 on that template's output, Helm has a special `include` function:
 
-```
-{{ include "toYaml" $value | indent 2 }}
+```gotpl
+{{- include "toYaml" $value | nindent 2 }}
 ```
 
 The above includes a template called `toYaml`, passes it `$value`, and
-then passes the output of that template to the `indent` function.
+then passes the output of that template to the `nindent` function. Using
+the `{{- ... | nindent _n_ }}` pattern makes it easier to read the `include`
+in context, because it chomps the whitespace to the left (including the
+previous newline), then the `nindent` re-adds the newline and indents
+the included content by the requested amount.
 
 Because YAML ascribes significance to indentation levels and whitespace,
 this is one great way to include snippets of code, but handle
