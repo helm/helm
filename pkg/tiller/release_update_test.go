@@ -23,10 +23,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	"reflect"
 )
 
 func TestUpdateRelease(t *testing.T) {
@@ -165,6 +167,71 @@ func TestUpdateRelease_ReuseValuesWithNoValues(t *testing.T) {
 
 	if _, err := rs.UpdateRelease(c, req); err != nil {
 		t.Fatalf("Failed updated: %s", err)
+	}
+}
+
+func TestUpdateRelease_NestedReuseValues(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	installReq := &services.InstallReleaseRequest{
+		Namespace: "spaced",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values: &chart.Config{Raw: `
+foo: bar
+root:
+  nested: nestedValue
+  anotherNested: anotherNestedValue
+`},
+	}
+
+	installResp, err := rs.InstallRelease(c, installReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rel := installResp.Release
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+			},
+			Values: &chart.Config{Raw: "defaultFoo: defaultBar"},
+		},
+		Values: &chart.Config{Raw: `
+root:
+  nested: newNestedValue
+`},
+		ReuseValues: true,
+	}
+
+	res, err := rs.UpdateRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed updated: %s", err)
+	}
+
+	expect, _ := chartutil.ReadValues([]byte(`
+foo: bar
+root:
+  nested: newNestedValue
+  anotherNested: anotherNestedValue
+`))
+
+	requestConfig, err := chartutil.ReadValues([]byte(res.Release.Config.Raw))
+	if err != nil {
+		t.Errorf("Request config could not be parsed: %v", err)
+	}
+
+	if !reflect.DeepEqual(expect, requestConfig) {
+		t.Errorf("Expected request config to be %v, got %v", expect, requestConfig)
 	}
 }
 
