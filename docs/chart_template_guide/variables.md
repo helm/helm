@@ -100,7 +100,7 @@ Variables are normally not "global". They are scoped to the block in which they 
 
 However, there is one variable that is always global - `$` - this
 variable will always point to the root context.  This can be very
-useful when you are looping in a range need to know the chart's release
+useful when you are looping in a range and need to know the chart's release
 name.
 
 An example illustrating this:
