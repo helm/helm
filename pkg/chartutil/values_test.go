@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 	"text/template"
 
@@ -454,6 +455,87 @@ chapter:
 	if v, err := d.PathValue("title"); err == nil {
 		if v != "Moby Dick" {
 			t.Errorf("Failed to return values for root key title")
+		}
+	}
+}
+
+func TestValuesMergeInto(t *testing.T) {
+	testCases := map[string]struct {
+		destination string
+		source      string
+		result      string
+	}{
+		"maps are merged": {
+			`
+resources:
+ requests:
+   cpu: 400m
+ something: else
+`,
+			`
+resources:
+ requests:
+   cpu: 500m
+`,
+			`
+resources:
+ requests:
+   cpu: 500m
+ something: else
+`,
+		},
+		"values are replaced": {
+			`
+firstKey: firstValue
+secondKey: secondValue
+thirdKey: thirdValue
+`,
+			`
+firstKey: newFirstValue
+thirdKey: newThirdValue
+`,
+			`
+firstKey: newFirstValue
+secondKey: secondValue
+thirdKey: newThirdValue
+`,
+		},
+		"new values are added": {
+			`
+existingKey: existingValue
+`,
+			`
+newKey: newValue
+anotherNewKey:
+  nestedNewKey: nestedNewValue
+`,
+			`
+existingKey: existingValue
+newKey: newValue
+anotherNewKey:
+  nestedNewKey: nestedNewValue
+`,
+		},
+	}
+
+	for name, tc := range testCases {
+		d, err := ReadValues([]byte(tc.destination))
+		if err != nil {
+			t.Error(err)
+		}
+		s, err := ReadValues([]byte(tc.source))
+		if err != nil {
+			t.Error(err)
+		}
+		expectedRes, err := ReadValues([]byte(tc.result))
+		if err != nil {
+			t.Error(err)
+		}
+
+		d.MergeInto(s)
+
+		if !reflect.DeepEqual(expectedRes, d) {
+			t.Errorf("%s: Expected %v, but got %v", name, expectedRes, d)
 		}
 	}
 }
