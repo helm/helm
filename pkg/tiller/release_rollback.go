@@ -18,6 +18,8 @@ package tiller
 
 import (
 	"fmt"
+	"k8s.io/helm/pkg/storage"
+	"strings"
 
 	ctx "golang.org/x/net/context"
 
@@ -151,11 +153,16 @@ func (s *ReleaseServer) performRollback(currentRelease, targetRelease *release.R
 		}
 	}
 
+	// update the current release
+	s.Log("superseding previous deployment %d", currentRelease.Version)
+	currentRelease.Info.Status.Code = release.Status_SUPERSEDED
+	s.recordRelease(currentRelease, true)
+
+	// Supersede all previous deployments, see issue #2941.
 	deployed, err := s.env.Releases.DeployedAll(currentRelease.Name)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), storage.NoReleasesErr) {
 		return nil, err
 	}
-	// Supersede all previous deployments, see issue #2941.
 	for _, r := range deployed {
 		s.Log("superseding previous deployment %d", r.Version)
 		r.Info.Status.Code = release.Status_SUPERSEDED

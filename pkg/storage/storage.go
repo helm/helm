@@ -25,6 +25,8 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
+const NoReleasesErr = "has no deployed releases"
+
 // Storage represents a storage engine for a Release.
 type Storage struct {
 	driver.Driver
@@ -124,13 +126,13 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	ls, err := s.DeployedAll(name)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return nil, fmt.Errorf("%q has no deployed releases", name)
+			return nil, fmt.Errorf("%q %s", name, NoReleasesErr)
 		}
 		return nil, err
 	}
 
 	if len(ls) == 0 {
-		return nil, fmt.Errorf("%q has no deployed releases", name)
+		return nil, fmt.Errorf("%q %s", name, NoReleasesErr)
 	}
 
 	return ls[0], err
@@ -150,7 +152,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 		return ls, nil
 	}
 	if strings.Contains(err.Error(), "not found") {
-		return nil, fmt.Errorf("%q has no deployed releases", name)
+		return nil, fmt.Errorf("%q %s", name, NoReleasesErr)
 	}
 	return nil, err
 }
