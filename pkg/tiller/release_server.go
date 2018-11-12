@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/technosophos/moniker"
-	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -136,28 +135,28 @@ func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current 
 		if err != nil {
 			return err
 		}
-
-		// merge new values with current
-		if current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
-			if req.Values.Raw != "{}\n" {
-				req.Values.Raw = current.Config.Raw + "\n" + req.Values.Raw
-			} else {
-				req.Values.Raw = current.Config.Raw + "\n"
-			}
-		}
 		req.Chart.Values = &chart.Config{Raw: nv}
 
-		// yaml unmarshal and marshal to remove duplicate keys
-		y := map[string]interface{}{}
-		if err := yaml.Unmarshal([]byte(req.Values.Raw), &y); err != nil {
-			return err
-		}
-		data, err := yaml.Marshal(y)
+		reqValues, err := chartutil.ReadValues([]byte(req.Values.Raw))
 		if err != nil {
 			return err
 		}
 
-		req.Values.Raw = string(data)
+		currentConfig := chartutil.Values{}
+		if current.Config != nil && current.Config.Raw != "" && current.Config.Raw != "{}\n" {
+			currentConfig, err = chartutil.ReadValues([]byte(current.Config.Raw))
+			if err != nil {
+				return err
+			}
+		}
+
+		currentConfig.MergeInto(reqValues)
+		data, err := currentConfig.YAML()
+		if err != nil {
+			return err
+		}
+
+		req.Values.Raw = data
 		return nil
 	}
 

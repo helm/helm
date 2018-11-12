@@ -94,6 +94,22 @@ func (v Values) Encode(w io.Writer) error {
 	return err
 }
 
+// MergeInto takes the properties in src and merges them into Values. Maps
+// are merged while values and arrays are replaced.
+func (v Values) MergeInto(src Values) {
+	for key, srcVal := range src {
+		destVal, found := v[key]
+
+		if found && istable(srcVal) && istable(destVal) {
+			destMap := destVal.(map[string]interface{})
+			srcMap := srcVal.(map[string]interface{})
+			Values(destMap).MergeInto(Values(srcMap))
+		} else {
+			v[key] = srcVal
+		}
+	}
+}
+
 func tableLookup(v Values, simple string) (Values, error) {
 	v2, ok := v[simple]
 	if !ok {
