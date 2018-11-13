@@ -19,7 +19,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/ghodss/yaml"
+	yaml "gopkg.in/yaml.v2"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/version"
