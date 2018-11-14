@@ -205,29 +205,18 @@ func pathToMap(path string, data map[string]interface{}) map[string]interface{} 
 	if path == "." {
 		return data
 	}
-	ap := strings.Split(path, ".")
-	if len(ap) == 0 {
+	return set(parsePath(path), data)
+}
+
+func set(path []string, data map[string]interface{}) map[string]interface{} {
+	if len(path) == 0 {
 		return nil
 	}
-	n := []map[string]interface{}{}
-	// created nested map for each key, adding to slice
-	for _, v := range ap {
-		nm := make(map[string]interface{})
-		nm[v] = make(map[string]interface{})
-		n = append(n, nm)
+	cur := data
+	for i := len(path) - 1; i >= 0; i-- {
+		cur = map[string]interface{}{path[i]: cur}
 	}
-	// find the last key (map) and set our data
-	for i, d := range n {
-		for k := range d {
-			z := i + 1
-			if z == len(n) {
-				n[i][k] = data
-				break
-			}
-			n[i][k] = n[z]
-		}
-	}
-	return n[0]
+	return cur
 }
 
 // processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
@@ -247,27 +236,29 @@ func processImportValues(c *chart.Chart) error {
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {
 			case map[string]interface{}:
-				nm := map[string]string{
-					"child":  iv["child"].(string),
-					"parent": iv["parent"].(string),
-				}
-				outiv = append(outiv, nm)
+				child := iv["child"].(string)
+				parent := iv["parent"].(string)
+
+				outiv = append(outiv, map[string]string{
+					"child":  child,
+					"parent": parent,
+				})
+
 				// get child table
-				vv, err := cvals.Table(r.Name + "." + nm["child"])
+				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
 					log.Printf("Warning: ImportValues missing table: %v", err)
 					continue
 				}
 				// create value map from child to be merged into parent
-				vm := pathToMap(nm["parent"], vv.AsMap())
-				b = coalesceTables(cvals, vm)
+				b = coalesceTables(cvals, pathToMap(parent, vv.AsMap()))
 			case string:
-				nm := map[string]string{
-					"child":  "exports." + iv,
+				child := "exports." + iv
+				outiv = append(outiv, map[string]string{
+					"child":  child,
 					"parent": ".",
-				}
-				outiv = append(outiv, nm)
-				vm, err := cvals.Table(r.Name + "." + nm["child"])
+				})
+				vm, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
 					log.Printf("Warning: ImportValues missing table: %v", err)
 					continue

@@ -15,6 +15,9 @@ limitations under the License.
 
 package chart
 
+// APIVersionv1 is the API version number for version 1.
+const APIVersionv1 = "v1"
+
 // Chart is a helm package that contains metadata, a default config, zero or more
 // optionally parameterizable templates, and zero or more charts (dependencies).
 type Chart struct {

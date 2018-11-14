@@ -62,7 +62,7 @@ func (v Values) Table(name string) (Values, error) {
 	table := v
 	var err error
 
-	for _, n := range strings.Split(name, ".") {
+	for _, n := range parsePath(name) {
 		table, err = tableLookup(table, n)
 		if err != nil {
 			return table, err
@@ -118,7 +118,7 @@ func ReadValues(data []byte) (vals Values, err error) {
 	if len(vals) == 0 {
 		vals = Values{}
 	}
-	return
+	return vals, err
 }
 
 // ReadValuesFile will parse a YAML file into a map of values.
@@ -240,11 +240,11 @@ func coalesceGlobals(dest, src map[string]interface{}) {
 }
 
 func copyMap(src map[string]interface{}) map[string]interface{} {
-	dest := make(map[string]interface{}, len(src))
+	m := make(map[string]interface{}, len(src))
 	for k, v := range src {
-		dest[k] = v
+		m[k] = v
 	}
-	return dest
+	return m
 }
 
 // coalesceValues builds up a values map for a particular chart.
@@ -350,40 +350,35 @@ func istable(v interface{}) bool {
 //	chapter:
 //	  one:
 //	    title: "Loomings"
-func (v Values) PathValue(ypath string) (interface{}, error) {
-	if len(ypath) == 0 {
-		return nil, errors.New("YAML path string cannot be zero length")
+func (v Values) PathValue(path string) (interface{}, error) {
+	if path == "" {
+		return nil, errors.New("YAML path cannot be empty")
 	}
-	yps := strings.Split(ypath, ".")
-	if len(yps) == 1 {
+	return v.pathValue(parsePath(path))
+}
+
+func (v Values) pathValue(path []string) (interface{}, error) {
+	if len(path) == 1 {
 		// if exists must be root key not table
-		vals := v.AsMap()
-		k := yps[0]
-		if _, ok := vals[k]; ok && !istable(vals[k]) {
-			// key found
-			return vals[yps[0]], nil
+		if _, ok := v[path[0]]; ok && !istable(v[path[0]]) {
+			return v[path[0]], nil
 		}
-		// key not found
-		return nil, ErrNoValue(errors.Errorf("%v is not a value", k))
-	}
-	// join all elements of YAML path except last to get string table path
-	ypsLen := len(yps)
-	table := yps[:ypsLen-1]
-	st := strings.Join(table, ".")
-	// get the last element as a string key
-	sk := yps[ypsLen-1:][0]
-	// get our table for table path
-	t, err := v.Table(st)
-	if err != nil {
-		//no table
-		return nil, ErrNoValue(errors.Errorf("%v is not a value", sk))
-	}
-	// check table for key and ensure value is not a table
-	if k, ok := t[sk]; ok && !istable(k) {
-		// key found
-		return k, nil
+		return nil, ErrNoValue(errors.Errorf("%v is not a value", path[0]))
 	}
 
-	// key not found
-	return nil, ErrNoValue(errors.Errorf("key not found: %s", sk))
+	key, path := path[len(path)-1], path[:len(path)-1]
+	// get our table for table path
+	t, err := v.Table(joinPath(path...))
+	if err != nil {
+		return nil, ErrNoValue(errors.Errorf("%v is not a value", key))
+	}
+	// check table for key and ensure value is not a table
+	if k, ok := t[key]; ok && !istable(k) {
+		return k, nil
+	}
+	return nil, ErrNoValue(errors.Errorf("key not found: %s", key))
 }
+
+func parsePath(key string) []string { return strings.Split(key, ".") }
+
+func joinPath(path ...string) string { return strings.Join(path, ".") }
