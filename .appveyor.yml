@@ -9,7 +9,7 @@ install:
   - gofish install dep
   - dep ensure -v
 cache:
-  - vendor -> Gopkg.lock
+  - c:\go\pkg\dep
 build: "off"
 deploy: "off"
 test_script:
