@@ -18,6 +18,7 @@ package downloader
 import (
 	"bytes"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -165,6 +166,63 @@ func TestGetRepoNames(t *testing.T) {
 		eq := reflect.DeepEqual(l, tt.expect)
 		if !eq {
 			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
+		}
+	}
+}
+
+func TestDependenciesChanged(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect bool
+		oldDep []*chartutil.Dependency
+		newDep []*chartutil.Dependency
+	}{
+		{
+			name:   "did not change",
+			expect: false,
+			oldDep: []*chartutil.Dependency{
+				{
+					Name:       "test",
+					Version:    "1.0.0",
+					Repository: "http://example.com",
+				},
+			},
+			newDep: []*chartutil.Dependency{
+				{
+					Name:       "test",
+					Version:    "1.0.0",
+					Repository: "http://example.com",
+				},
+			},
+		},
+		{
+			name:   "did change",
+			expect: true,
+			oldDep: []*chartutil.Dependency{
+				{
+					Name:       "test",
+					Version:    "1.0.0",
+					Repository: "http://example.com",
+				},
+			},
+			newDep: []*chartutil.Dependency{
+				{
+					Name:       "test",
+					Version:    "1.1.0",
+					Repository: "http://example.com",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		changed, err := dependenciesChanged(tt.oldDep, tt.newDep)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if changed != tt.expect {
+			t.Errorf("%s: Expected %s, got %s", tt.name, strconv.FormatBool(tt.expect), strconv.FormatBool(changed))
 		}
 	}
 }

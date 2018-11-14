@@ -156,14 +156,13 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// If the lock file hasn't changed, don't write a new one.
-	oldLock, err := chartutil.LoadRequirementsLock(c)
-	if err == nil && oldLock.Digest == lock.Digest {
-		return nil
+	// Finally, we need to write the lockfile if the dependencies changed.
+	if oldLock, err := chartutil.LoadRequirementsLock(c); err == nil {
+		if changed, err := dependenciesChanged(oldLock.Dependencies, lock.Dependencies); err == nil && changed {
+			return writeLock(m.ChartPath, lock)
+		}
 	}
-
-	// Finally, we need to write the lockfile.
-	return writeLock(m.ChartPath, lock)
+	return nil
 }
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
@@ -589,6 +588,22 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		indices[lname] = cr
 	}
 	return indices, nil
+}
+
+// dependenciesChanged compares the chksum of old and new dependencies and returns
+// true or false if there's a difference
+func dependenciesChanged(oldDep, newDep []*chartutil.Dependency) (bool, error) {
+	newDigest, err := resolver.HashReq(&chartutil.Requirements{Dependencies: newDep})
+	if err != nil {
+		return false, err
+	}
+
+	oldDigest, err := resolver.HashReq(&chartutil.Requirements{Dependencies: oldDep})
+	if err != nil {
+		return false, err
+	}
+
+	return newDigest != oldDigest, nil
 }
 
 // writeLock writes a lockfile to disk
