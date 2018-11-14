@@ -150,6 +150,16 @@ Template functions and pipelines are a powerful way to transform information and
 
 ## Operators are functions
 
-For templates, the operators (`eq`, `ne`, `lt`, `gt`, `and`, `or` and so on) are all implemented as functions. In pipelines, operations can be grouped with parentheses (`(`, and `)`).
+Operators are implemented as functions that return a boolean value. To use `eq`, `ne`, `lt`, `gt`, `and`, `or`, `not` etcetera place the operator at the front of the statement followed by its parameters just as you would a function. To chain multiple operations together, separate individual functions by surrounding them with paranthesis.
+
+```yaml
+{{ if and .Values.fooString (eq .Values.fooString "foo") }}
+    #Include this when the variable .Values.fooString exists and is set to "foo"
+{{ end }}
+
+{{ if or .Values.unsetVariable (not .Values.setVariable) }}
+    #do not include this because unset variables evaluate to false and .Values.setVariable was negated with the not function.
+{{ end }}
+```
 
 Now we can turn from functions and pipelines to flow control with conditions, loops, and scope modifiers.
