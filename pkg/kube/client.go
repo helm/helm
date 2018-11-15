@@ -48,6 +48,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
@@ -202,7 +203,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	//here, we will add the objPods to the objs
 	for key, podItems := range objPods {
 		for i := range podItems {
-			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
+			pod := &core.Pod{}
+			legacyscheme.Scheme.Convert(&podItems[i], pod, nil)
+			objs[key+"(related)"] = append(objs[key+"(related)"], pod)
 		}
 	}
 
