@@ -29,19 +29,19 @@ import (
 	"k8s.io/helm/pkg/chart/loader"
 )
 
-const inspectDesc = `
+const showDesc = `
 This command inspects a chart and displays information. It takes a chart reference
 ('stable/drupal'), a full path to a directory or packaged chart, or a URL.
 
 Inspect prints the contents of the Chart.yaml file and the values.yaml file.
 `
 
-const inspectValuesDesc = `
+const showValuesDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the values.yaml file
 `
 
-const inspectChartDesc = `
+const showChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the Charts.yaml file
 `
@@ -51,7 +51,7 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the README file
 `
 
-type inspectOptions struct {
+type showOptions struct {
 	chartpath string
 	output    string
 
@@ -67,14 +67,15 @@ const (
 
 var readmeFileNames = []string{"readme.md", "readme.txt", "readme"}
 
-func newInspectCmd(out io.Writer) *cobra.Command {
-	o := &inspectOptions{output: all}
+func newShowCmd(out io.Writer) *cobra.Command {
+	o := &showOptions{output: all}
 
-	inspectCommand := &cobra.Command{
-		Use:   "inspect [CHART]",
-		Short: "inspect a chart",
-		Long:  inspectDesc,
-		Args:  require.ExactArgs(1),
+	showCommand := &cobra.Command{
+		Use:     "show [CHART]",
+		Short:   "inspect a chart",
+		Aliases: []string{"inspect"},
+		Long:    showDesc,
+		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cp, err := o.locateChart(args[0])
 			if err != nil {
@@ -87,8 +88,8 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 
 	valuesSubCmd := &cobra.Command{
 		Use:   "values [CHART]",
-		Short: "shows inspect values",
-		Long:  inspectValuesDesc,
+		Short: "shows values for this chart",
+		Long:  showValuesDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = valuesOnly
@@ -103,8 +104,8 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 
 	chartSubCmd := &cobra.Command{
 		Use:   "chart [CHART]",
-		Short: "shows inspect chart",
-		Long:  inspectChartDesc,
+		Short: "shows the chart",
+		Long:  showChartDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.output = chartOnly
@@ -119,7 +120,7 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 
 	readmeSubCmd := &cobra.Command{
 		Use:   "readme [CHART]",
-		Short: "shows inspect readme",
+		Short: "shows the chart's README",
 		Long:  readmeChartDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -133,19 +134,19 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmds := []*cobra.Command{inspectCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
+	cmds := []*cobra.Command{showCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	for _, subCmd := range cmds {
 		o.chartPathOptions.addFlags(subCmd.Flags())
 	}
 
 	for _, subCmd := range cmds[1:] {
-		inspectCommand.AddCommand(subCmd)
+		showCommand.AddCommand(subCmd)
 	}
 
-	return inspectCommand
+	return showCommand
 }
 
-func (i *inspectOptions) run(out io.Writer) error {
+func (i *showOptions) run(out io.Writer) error {
 	chrt, err := loader.Load(i.chartpath)
 	if err != nil {
 		return err

@@ -23,10 +23,10 @@ import (
 	"testing"
 )
 
-func TestInspect(t *testing.T) {
+func TestShow(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 
-	o := &inspectOptions{
+	o := &showOptions{
 		chartpath: "testdata/testcharts/alpine",
 		output:    all,
 	}
@@ -67,7 +67,7 @@ func TestInspect(t *testing.T) {
 
 	// Regression tests for missing values. See issue #1024.
 	b.Reset()
-	o = &inspectOptions{
+	o = &showOptions{
 		chartpath: "testdata/testcharts/novals",
 		output:    "values",
 	}

@@ -63,7 +63,7 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		newCreateCmd(out),
 		newDependencyCmd(out),
 		newPullCmd(out),
-		newInspectCmd(out),
+		newShowCmd(out),
 		newLintCmd(out),
 		newPackageCmd(out),
 		newRepoCmd(out),
