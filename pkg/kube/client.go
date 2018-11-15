@@ -211,18 +211,15 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths.
 	buf := new(bytes.Buffer)
-	p, _ := get.NewHumanPrintFlags().ToPrinter("")
-	index := 0
+	printFlags := get.NewHumanPrintFlags()
 	for t, ot := range objs {
-		kindHeader := fmt.Sprintf("==> %s", t)
-		if index == 0 {
-			kindHeader = kindHeader + "\n"
-		}
+		kindHeader := fmt.Sprintf("==> %s\n", t)
 		if _, err = buf.WriteString(kindHeader); err != nil {
 			return "", err
 		}
+		typePrinter, _ := printFlags.ToPrinter("")
 		for _, o := range ot {
-			if err := p.PrintObj(o, buf); err != nil {
+			if err := typePrinter.PrintObj(o, buf); err != nil {
 				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
 				return "", err
 			}
@@ -230,7 +227,6 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		if _, err := buf.WriteString("\n"); err != nil {
 			return "", err
 		}
-		index += 1
 	}
 	if len(missing) > 0 {
 		buf.WriteString(MissingGetHeader)
