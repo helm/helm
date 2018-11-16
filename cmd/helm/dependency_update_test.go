@@ -52,7 +52,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := executeCommand(nil, fmt.Sprintf("--home=%s dependency update %s", hh, hh.Path(chartname)))
+	out, err := executeCommand(nil, fmt.Sprintf("--home=%s dependency update %s", hh.String(), hh.Path(chartname)))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)

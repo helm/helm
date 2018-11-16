@@ -135,7 +135,7 @@ func (o *dependencyLisOptions) run(out io.Writer) error {
 	}
 
 	if c.Metadata.Dependencies == nil {
-		fmt.Fprintf(out, "WARNING: no dependencies at %s/charts\n", o.chartpath)
+		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(o.chartpath, "charts"))
 		return nil
 	}
 

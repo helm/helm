@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -110,7 +111,7 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 		_, file := filepath.Split(filename)
 		u, err = urlutil.URLJoin(baseURL, file)
 		if err != nil {
-			u = filepath.Join(baseURL, file)
+			u = path.Join(baseURL, file)
 		}
 	}
 	cr := &ChartVersion{
@@ -246,9 +247,11 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 
 		var parentDir string
 		parentDir, fname = filepath.Split(fname)
+		// filepath.Split appends an extra slash to the end of parentDir. We want to strip that out.
+		parentDir = strings.TrimSuffix(parentDir, string(os.PathSeparator))
 		parentURL, err := urlutil.URLJoin(baseURL, parentDir)
 		if err != nil {
-			parentURL = filepath.Join(baseURL, parentDir)
+			parentURL = path.Join(baseURL, parentDir)
 		}
 
 		c, err := loader.Load(arch)

@@ -57,7 +57,6 @@ func init() {
 
 func TestMain(m *testing.M) {
 	os.Unsetenv("HELM_HOME")
-
 	exitCode := m.Run()
 	os.RemoveAll(testingDir)
 	os.Exit(exitCode)
