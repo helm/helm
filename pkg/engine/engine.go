@@ -159,7 +159,7 @@ func (e *Engine) alterFuncMap(t *template.Template, referenceTpls map[string]ren
 			if e.LintMode {
 				// Don't fail on missing required values when linting
 				log.Printf("[INFO] Missing required value: %s", warn)
-				return val, nil
+				return "", nil
 			}
 			// Convert nil to "" in case required is piped into other functions
 			return "", fmt.Errorf(warn)
