@@ -22,7 +22,7 @@ import (
 )
 
 func TestHelmHome(t *testing.T) {
-	hh := Home("/r")
+	hh := Home("/r/users/helmtest")
 	isEq := func(t *testing.T, a, b string) {
 		if a != b {
 			t.Error(runtime.GOOS)
@@ -30,13 +30,13 @@ func TestHelmHome(t *testing.T) {
 		}
 	}
 
-	isEq(t, hh.String(), "/r")
-	isEq(t, hh.Repository(), "/r/repository")
-	isEq(t, hh.RepositoryFile(), "/r/repository/repositories.yaml")
-	isEq(t, hh.Cache(), "/r/repository/cache")
-	isEq(t, hh.CacheIndex("t"), "/r/repository/cache/t-index.yaml")
-	isEq(t, hh.Starters(), "/r/starters")
-	isEq(t, hh.Archive(), "/r/cache/archive")
+	isEq(t, hh.String(), "/r/users/helmtest")
+	isEq(t, hh.Repository(), "/r/users/helmtest/repository")
+	isEq(t, hh.RepositoryFile(), "/r/users/helmtest/repository/repositories.yaml")
+	isEq(t, hh.Cache(), "/r/users/helmtest/repository/cache")
+	isEq(t, hh.CacheIndex("t"), "/r/users/helmtest/repository/cache/t-index.yaml")
+	isEq(t, hh.Starters(), "/r/users/helmtest/starters")
+	isEq(t, hh.Archive(), "/r/users/helmtest/cache/archive")
 }
 
 func TestHelmHome_expand(t *testing.T) {

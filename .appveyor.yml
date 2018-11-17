@@ -6,7 +6,7 @@ environment:
 install:
   - ps: iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fishworks/gofish/master/scripts/install.ps1'))
   - gofish init
-  - gofish install dep go
+  - gofish install dep
   - go version
   - dep ensure -vendor-only
 cache:
