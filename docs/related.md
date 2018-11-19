@@ -77,7 +77,7 @@ Tools layered on top of Helm or Tiller.
 - [Helmsman](https://github.com/Praqma/helmsman) - Helmsman is a helm-charts-as-code tool which enables installing/upgrading/protecting/moving/deleting releases from version controlled desired state files (described in a simple TOML format).
 - [Landscaper](https://github.com/Eneco/landscaper/) - "Landscaper takes a set of Helm Chart references with values (a desired state), and realizes this in a Kubernetes cluster."
 - [Monocular](https://github.com/helm/monocular) - Web UI for Helm Chart repositories
-- [Orca](https://github.com/maorfr/orca) - Advanced CI\CD tool for Kubernetes and Helm made simple.
+- [Orca](https://github.com/nuvo/orca) - Advanced CI\CD tool for Kubernetes and Helm made simple.
 - [Quay App Registry](https://coreos.com/blog/quay-application-registry-for-kubernetes.html) - Open Kubernetes application registry, including a Helm access client
 - [Rudder](https://github.com/AcalephStorage/rudder) - RESTful (JSON) proxy for Tiller's API
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
