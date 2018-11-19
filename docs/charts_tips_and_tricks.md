@@ -22,18 +22,18 @@ For example, this template snippet includes a template called `mytpl`, then
 lowercases the result, then wraps that in double quotes.
 
 ```yaml
-value: {{include "mytpl" . | lower | quote}}
+value: {{ include "mytpl" . | lower | quote }}
 ```
 
 The `required` function allows you to declare a particular
-values entry as required for template rendering.  If the value is empty, the template
+values entry as required for template rendering. If the value is empty, the template
 rendering will fail with a user submitted error message.
 
 The following example of the `required` function declares an entry for .Values.who
 is required, and will print an error message when that entry is missing:
 
 ```yaml
-value: {{required "A valid .Values.who entry required!" .Values.who }}
+value: {{ required "A valid .Values.who entry required!" .Values.who }}
 ```
 
 ## Quote Strings, Don't Quote Integers
@@ -41,20 +41,20 @@ value: {{required "A valid .Values.who entry required!" .Values.who }}
 When you are working with string data, you are always safer quoting the
 strings than leaving them as bare words:
 
-```
-name: {{.Values.MyName | quote }}
+```yaml
+name: {{ .Values.MyName | quote }}
 ```
 
 But when working with integers _do not quote the values._ That can, in
 many cases, cause parsing errors inside of Kubernetes.
 
-```
+```yaml
 port: {{ .Values.Port }}
 ```
 
 This remark does not apply to env variables values which are expected to be string, even if they represent integers:
 
-```
+```yaml
 env:
   -name: HOST
     value: "http://host"
@@ -71,12 +71,16 @@ Go template pipelines.
 To make it possible to include a template, and then perform an operation
 on that template's output, Helm has a special `include` function:
 
-```
-{{ include "toYaml" $value | indent 2 }}
+```gotpl
+{{- include "toYaml" $value | nindent 2 }}
 ```
 
 The above includes a template called `toYaml`, passes it `$value`, and
-then passes the output of that template to the `indent` function.
+then passes the output of that template to the `nindent` function. Using
+the `{{- ... | nindent _n_ }}` pattern makes it easier to read the `include`
+in context, because it chomps the whitespace to the left (including the
+previous newline), then the `nindent` re-adds the newline and indents
+the included content by the requested amount.
 
 Because YAML ascribes significance to indentation levels and whitespace,
 this is one great way to include snippets of code, but handle
@@ -99,7 +103,7 @@ developer.
 
 For example:
 
-```
+```gotpl
 {{ required "A valid foo is required!" .Values.foo }}
 ```
 
@@ -113,7 +117,8 @@ This is useful to pass a template string as a value to a chart or render externa
 Syntax: `{{ tpl TEMPLATE_STRING VALUES }}`
 
 Examples:
-```
+
+```yaml
 # values
 template: "{{ .Values.name }}"
 name: "Tom"
@@ -126,7 +131,8 @@ Tom
 ```
 
 Rendering a external configuration file:
-```
+
+```yaml
 # external configuration file conf/app.conf
 firstName={{ .Values.firstName }}
 lastName={{ .Values.lastName }}
@@ -144,10 +150,12 @@ lastName=Parker
 ```
 
 ## Creating Image Pull Secrets
-Image pull secrets are essentially a combination of _registry_, _username_, and _password_.  You may need them in an application you are deploying, but to create them requires running _base64_ a couple of times.  We can write a helper template to compose the Docker configuration file for use as the Secret's payload.  Here is an example:
+
+Image pull secrets are essentially a combination of _registry_, _username_, and _password_. You may need them in an application you are deploying, but to create them requires running _base64_ a couple of times. We can write a helper template to compose the Docker configuration file for use as the Secret's payload. Here is an example:
 
 First, assume that the credentials are defined in the `values.yaml` file like so:
-```
+
+```yaml
 imageCredentials:
   registry: quay.io
   username: someone
@@ -155,14 +163,16 @@ imageCredentials:
 ```
 
 We then define our helper template as follows:
-```
+
+```gotpl
 {{- define "imagePullSecret" }}
 {{- printf "{\"auths\": {\"%s\": {\"auth\": \"%s\"}}}" .Values.imageCredentials.registry (printf "%s:%s" .Values.imageCredentials.username .Values.imageCredentials.password | b64enc) | b64enc }}
 {{- end }}
 ```
 
 Finally, we use the helper template in a larger template to create the Secret manifest:
-```
+
+```yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -282,6 +292,7 @@ update of that resource.
 ## Upgrade a release idempotently
 
 In order to use the same command when installing and upgrading a release, use the following command:
+
 ```shell
 helm upgrade --install <release name> --values <values file> <chart directory>
 ```
